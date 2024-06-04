@@ -33,7 +33,7 @@ static int number_index(lua_State *Lua)
    if ((num = (struct fnumber *)luaL_checkudata(Lua, 1, "Fluid.num"))) {
       if (!(field = luaL_checkstring(Lua, 2))) return 0;
 
-      if (HASH_VALUE IS StrHash(field, 0)) {
+      if (HASH_VALUE IS strihash(field)) {
          switch (num->Type) {
             case NUM_DOUBLE: lua_pushnumber(Lua, num->f64); break;
             case NUM_FLOAT:  lua_pushnumber(Lua, num->f32); break;

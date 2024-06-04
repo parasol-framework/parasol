@@ -11,23 +11,23 @@ Name: Input
 static std::unordered_map<LONG, InputCallback> glInputCallbacks;
 static std::vector<std::pair<LONG, InputCallback>> glNewSubscriptions;
 EventBuffer glInputEvents;
-
+namespace gfx{
 /*********************************************************************************************************************
 
 -FUNCTION-
 GetInputTypeName: Returns the string name for an input type.
 
-This function converts JET integer constants to their string equivalent.
+This function converts `JET` integer constants to their string equivalent.
 
 -INPUT-
 int(JET) Type: JET type integer.
 
 -RESULT-
-cstr: A string describing the input type is returned or NULL if the Type is invalid.
+cstr: A string describing the input `Type` is returned, or `NULL` if the `Type` is invalid.
 
 *********************************************************************************************************************/
 
-CSTRING gfxGetInputTypeName(JET Type)
+CSTRING GetInputTypeName(JET Type)
 {
    if ((LONG(Type) < 1) or (LONG(Type) >= LONG(JET::END))) return NULL;
    return glInputNames[LONG(Type)];
@@ -51,7 +51,7 @@ A callback is required for receiving the input events.  The following C++ code i
 events in the callback:
 
 <pre>
-ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+ERR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    for (auto e=Events; e; e=e->Next) {
       if (((e->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (e->Value > 0)) {
@@ -59,27 +59,27 @@ ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 </pre>
 
-All processable events are referenced in the InputEvent structure in the Events parameter.
+All processable events are referenced in the !InputEvent structure in the `Events` parameter.
 
-JET constants are as follows and take note of `ENTERED_SURFACE` and `LEFT_SURFACE` which are software generated and not
+`JET` constants are as follows and take note of `CROSSED_IN` and `CROSSED_OUT` which are software generated and not
 a device event:
 
 <types lookup="JET"/>
 
-The JTYPE values for the Flags field are as follows.  Note that these flags also serve as input masks for the
-SubscribeInput() function, so to receive a message of the given type the appropriate JTYPE flag must have been set in the
+The `JTYPE` values for the `Flags` field are as follows.  Note that these flags also serve as input masks for the
+SubscribeInput() function, so to receive a message of the given type the appropriate `JTYPE` flag must have been set in the
 original subscription call.
 
 <types lookup="JTYPE"/>
 
 -INPUT-
 ptr(func) Callback: Reference to a callback function that will receive input messages.
-oid SurfaceFilter: Optional.  Only the input messages that match the given surface ID will be received.
-int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.
+oid SurfaceFilter: Optional.  Only the input messages that match the given @Surface ID will be received.
+int(JTYPE) Mask: Combine #JTYPE flags to define the input messages required by the client.  Set to `0xffffffff` if all messages are required.
 oid DeviceFilter: Optional.  Only the input messages that match the given device ID will be received.  NOTE - Support not yet implemented, set to zero.
 &int Handle: A handle for the subscription is returned here.
 
@@ -89,12 +89,12 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, LONG *Handle)
+ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, LONG *Handle)
 {
    static LONG counter = 1;
    pf::Log log(__FUNCTION__);
 
-   if ((!Callback) or (!Handle)) return log.warning(ERR_NullArgs);
+   if ((!Callback) or (!Handle)) return log.warning(ERR::NullArgs);
 
    log.branch("Surface Filter: #%d, Mask: $%.4x", SurfaceFilter, LONG(InputMask));
 
@@ -111,7 +111,7 @@ ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputM
    if (glInputEvents.processing) glNewSubscriptions.push_back(std::make_pair(*Handle, is));
    else glInputCallbacks.emplace(*Handle, is);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -122,7 +122,7 @@ UnsubscribeInput: Removes an input subscription.
 This function removes an input subscription that has been created with ~SubscribeInput().
 
 -INPUT-
-int Handle: Reference to a handle returned by SubscribeInput().
+int Handle: Reference to a handle returned by ~SubscribeInput().
 
 -ERRORS-
 Okay
@@ -132,18 +132,18 @@ NotFound
 
 *********************************************************************************************************************/
 
-ERROR gfxUnsubscribeInput(LONG Handle)
+ERR UnsubscribeInput(LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Handle) return log.warning(ERR_NullArgs);
+   if (!Handle) return log.warning(ERR::NullArgs);
 
    log.branch("Handle: %d", Handle);
 
    const std::lock_guard<std::recursive_mutex> lock(glInputLock);
 
    auto it = glInputCallbacks.find(Handle);
-   if (it IS glInputCallbacks.end()) return log.warning(ERR_NotFound);
+   if (it IS glInputCallbacks.end()) return log.warning(ERR::NotFound);
    else {
       if (glInputEvents.processing) { // Cannot erase during input processing
          ClearMemory(&it->second, sizeof(it->second));
@@ -151,8 +151,10 @@ ERROR gfxUnsubscribeInput(LONG Handle)
       else glInputCallbacks.erase(it);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
+
+} // namespace
 
 //********************************************************************************************************************
 // This routine is called on every cycle of ProcessMessages() so that we can check if there are input events
@@ -192,21 +194,19 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
          glInputLock.unlock();
 
          auto &cb = sub.Callback;
-         if (cb.Type IS CALL_STDC) {
-            pf::ScopedObjectLock lock(cb.StdC.Context, 2000); // Ensure that the object can't be removed until after input processing
+         if (sub.Callback.isC()) {
+            pf::ScopedObjectLock lock(cb.Context, 2000); // Ensure that the object can't be removed until after input processing
             if (lock.granted()) {
-               pf::SwitchContext ctx(cb.StdC.Context);
-               auto func = (ERROR (*)(InputEvent *, LONG))cb.StdC.Routine;
-               func(first, handle);
+               pf::SwitchContext ctx(cb.Context);
+               auto func = (ERR (*)(InputEvent *, LONG, APTR))cb.Routine;
+               func(first, handle, cb.Meta);
             }
          }
-         else if (cb.Type IS CALL_SCRIPT) {
-            const ScriptArg args[] = {
-               { "Events:InputEvent", FD_PTR|FDF_STRUCT, { .Address  = first } },
-               { "Handle", FD_LONG, { .Long = handle } },
-            };
-            ERROR result;
-            scCallback(cb.Script.Script, cb.Script.ProcedureID, args, ARRAYSIZE(args), &result);
+         else if (sub.Callback.isScript()) {
+            sc::Call(sub.Callback, std::to_array<ScriptArg>({
+               { "Events:InputEvent", first, FD_PTR|FDF_STRUCT },
+               { "Handle", handle }
+            }));
          }
 
          glInputLock.lock();

@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
+
+<body font-size="10pt"/>
+
+<page name="Index">
+
+<h1>Input Widgets</h1>
+
+<p>Prefix <input width="200" value="pre-defined content"/> Suffix</p>
+
+<p font-face="Courier" font-size="20pt"><input width="300" value="Courier 20pt" label="Default Label"/> Not a label</p>
+
+<p><input width="200" label-pos="left" label="Left Label: " value="pre-defined content"/> Suffix</p>
+
+<h1>Checkbox Widgets</h1>
+
+<p><checkbox label="Checkbox label" value="false"/> <font fill="rgb(0,0,128)">Clicking the label should change the checkbox state</font></p>
+
+<p><checkbox value="false"/> Follow-on text with default (bottom) alignment.</p>
+
+<p><checkbox label="Left Label: " label-pos="left" value="false"/></p>
+
+<p v-align="center" font-size="20pt">Prefix <checkbox value="true"/> Suffix; v-align="center"</p>
+
+<h1>Button Widgets</h1>
+
+<p>Suffix <button>Hello<button>Extra_Button</button>World</button> Prefix</p>
+<p><button width="400" height="60"><font size="30">Preset <i>400w<br/>60h</i></font> Size</button></p>
+<p><font size="30"><button>No <i>size<br/>is</i> preset</button></font></p>
+
+<h1>Combobox Widgets</h1>
+
+<p>Prefix <combobox width="200" value="pre-defined content">
+  <option icon="icons:items/add" value="volvo">Volvo</option>
+  <option icon="icons:items/find" value="saab">Saab</option>
+  <option icon="icons:items/cancel" value="mercedes">Mercedes</option>
+  <option icon="icons:items/start" value="audi">Audi</option>
+</combobox> Suffix</p>
+
+<p font-face="Courier" font-size="20pt"><combobox width="300" value="Courier 20pt" label="Default Label">
+  <option icon="icons:items/add" value="Volvo">Volvo</option>
+  <option value="Saab">Saab</option>
+  <option icon="icons:items/cancel" value="Mercedes">Mercedes</option>
+  <option icon="icons:items/start" value="Audi">Äudi</option>
+  <option value="Ferrari"><i>Ferrari</i></option>
+  <option value="Toyota">Toyota</option>
+  <option value="Subaru">Subaru</option>
+  <option value="Mitsubishi">Mitsubishi</option>
+  <option value="BMW"><b>BMW</b></option>
+  <option value="Ford">Ford</option>
+  <option value="Rover">Rover</option>
+  <option value="Rolls Royce">Rolls Royce</option>
+  <option value="Lamborgini">Lamborgini</option>
+  <option value="Tesla">Tesla</option>
+</combobox> Not a label</p>
+
+<p font-face="Noto Sans" font-size="20pt"><combobox width="300" value="Noto Sans 20pt">
+  <option icon="icons:items/add" value="Volvo">Volvo</option>
+  <option value="Saab">Saab</option>
+  <option icon="icons:items/cancel" value="Mercedes">Mercedes</option>
+  <option icon="icons:items/start" value="Audi">Äudi</option>
+  <option value="Ferrari"><i>Ferrari</i></option>
+  <option value="Toyota">Toyota</option>
+  <option value="Subaru">Subaru</option>
+  <option value="Mitsubishi">Mitsubishi</option>
+  <option value="BMW"><b>BMW</b></option>
+  <option value="Ford">Ford</option>
+  <option value="Rover">Rover</option>
+  <option value="Rolls Royce">Rolls Royce</option>
+  <option value="Lamborgini">Lamborgini</option>
+  <option value="Tesla">Tesla</option>
+</combobox></p>
+
+<p><combobox width="200" label-pos="left" label="Left Label: " value="pre-defined content">
+  <style>
+    <svg placement="background">
+      <rect rx="1%" ry="1%" x="1" y="1" xOffset="1" yOffset="1" fill="rgb(255,0,0)" stroke="rgb(255,255,255)" stroke-width="2"/>
+      <defs>
+        <pattern id="Highlight">
+          <rect width="100%" height="100%" fill="rgb(128,64,64)"/>
+        </pattern>
+        <image id="cancel" xlink:href="icons:items/cancel" width="32" height="32"/>
+      </defs>
+    </svg>
+    <body font-fill="rgb(255,255,255)" link="rgb(255,255,255)" v-link="rgb(255,255,255)"/>
+  </style>
+
+  <option value="volvo">This is a <b>really long</b> option <image src="url(#cancel)"/> to expand the width of the item list.</option>
+  <option value="saab">Saab</option>
+  <option value="mercedes">Mercedes</option>
+  <option value="audi">Audi</option>
+</combobox> Suffix</p>
+
+</page>

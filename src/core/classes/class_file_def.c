@@ -29,16 +29,16 @@ FDEF maNext[] = { { "File", FD_OBJECTPTR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF maWatch[] = { { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_LARGE }, { "Flags", FD_LONG }, { 0, 0 } };
 
 static const struct MethodEntry clFileMethods[] = {
-   { -1, (APTR)FILE_StartStream, "StartStream", maStartStream, sizeof(struct flStartStream) },
+   { -1, (APTR)FILE_StartStream, "StartStream", maStartStream, sizeof(struct fl::StartStream) },
    { -2, (APTR)FILE_StopStream, "StopStream", 0, 0 },
-   { -3, (APTR)FILE_Delete, "Delete", maDelete, sizeof(struct flDelete) },
-   { -4, (APTR)FILE_MoveFile, "Move", maMove, sizeof(struct flMove) },
-   { -5, (APTR)FILE_Copy, "Copy", maCopy, sizeof(struct flCopy) },
-   { -6, (APTR)FILE_SetDate, "SetDate", maSetDate, sizeof(struct flSetDate) },
-   { -7, (APTR)FILE_ReadLine, "ReadLine", maReadLine, sizeof(struct flReadLine) },
+   { -3, (APTR)FILE_Delete, "Delete", maDelete, sizeof(struct fl::Delete) },
+   { -4, (APTR)FILE_MoveFile, "Move", maMove, sizeof(struct fl::Move) },
+   { -5, (APTR)FILE_Copy, "Copy", maCopy, sizeof(struct fl::Copy) },
+   { -6, (APTR)FILE_SetDate, "SetDate", maSetDate, sizeof(struct fl::SetDate) },
+   { -7, (APTR)FILE_ReadLine, "ReadLine", maReadLine, sizeof(struct fl::ReadLine) },
    { -8, (APTR)FILE_BufferContent, "BufferContent", 0, 0 },
-   { -9, (APTR)FILE_NextFile, "Next", maNext, sizeof(struct flNext) },
-   { -10, (APTR)FILE_Watch, "Watch", maWatch, sizeof(struct flWatch) },
+   { -9, (APTR)FILE_NextFile, "Next", maNext, sizeof(struct fl::Next) },
+   { -10, (APTR)FILE_Watch, "Watch", maWatch, sizeof(struct fl::Watch) },
    { 0, 0, 0, 0, 0 }
 };
 

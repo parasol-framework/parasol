@@ -56,7 +56,7 @@ function updateTime(elapsed)
    totalTime = totalTime / #glTimes
    local fps = 1000000 / totalTime
 
-   if glFPS then glFPS.string = string.format('Render Time: %.2fms, FPS: %.0f', totalTime/1000, fps) end
+   if glFPS then glFPS.string = string.format('FPS: %.0f', fps) end
 
    if (#glTimes >= 50) and (fps > glBestFPS) then
       glBestFPS = fps
@@ -157,6 +157,16 @@ function timer(Subscriber, Elapsed, Current)
 
    glViewport.acDraw()
    updateTime(glScene.renderTime)
+
+   if (math.round(Current / 1000000) % 4 == 0) then
+      if not glPrinted then
+         glPrinted = true
+         print('Best frame rate: ' .. math.round(glBestFPS))
+         glBestFPS = 0
+      end
+   else
+      glPrinted = false
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -257,5 +267,3 @@ end
 
    glWindow:show()
    processing.sleep()
-
-   print('Best frame rate: ' .. math.round(glBestFPS))

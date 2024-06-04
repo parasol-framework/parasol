@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, function()
+module({ name="Audio", copyright="Paul Manias © 2002-2024", version=1.0 }, function()
   flags("ADF", { comment="Optional flags for the Audio object." },
     "OVER_SAMPLING: Enables oversampling for higher quality audio at the cost of slower mixing.",
     "FILTER_LOW: Enable a low level of output filtering to minimise distortion.",
@@ -32,7 +32,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
   )
 
   flags("SDF", { type='int', comment="Sound flags" },
-    "LOOP: Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.",
+    "LOOP: Enables sample looping. The #LoopStart and #LoopEnd fields determine where the looping area lies within the sample data.",
     "NEW: Create the sample from scratch (e.g. for audio recording purposes).",
     "STEREO: Indicates that the sound has multiple audio channels.",
     "RESTRICT_PLAY: Restricts playback so that the sound can never play on more than one channel at any given time.",
@@ -101,14 +101,14 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     int InputRate
     int Quality
     int(ADF) Flags     # Special flags
-    int BitDepth       # Typically 8 or 16 bit, reflects the hardware driver's bit depth
+    int BitDepth       # Typically `8` or `16` bit, reflects the hardware driver's bit depth
     int Periods        # Number of periods for ALSA audio buffering
     int PeriodSize     # Period size for ALSA audio buffering
   ]])
 
   class("Sound", { src="class_sound.cpp" }, [[
     double Volume      # Volume of sample (0 - 100%)
-    double Pan         # Horizontal positioning for playback on stereo speakers (-100 to +100)
+    double Pan         # Horizontal positioning for playback on stereo speakers (`-100` to `+100`)
     large Position     # Byte position to start playing from
     int Priority       # Priority over other sounds
     int Length         # Length of sample data in bytes
@@ -117,9 +117,9 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     int Frequency      # Frequency of sampled sound (nb: does not affect playback - use the Playback field)
     int Playback       # Frequency to use for sample playback
     int Compression    # Compression rating (0% none, 100% high)
-    int BytesPerSecond # Bytes per second (Formula: Frequency * BytesPerSample)
-    int BitsPerSample  # Usually set to 8 or 16 bit
-    oid Audio          # Reference to an Audio object to use for audio output and input
+    int BytesPerSecond # Bytes per second, measured as `Frequency * BytesPerSample`
+    int BitsPerSample  # Usually set to `8` or `16` bit
+    oid Audio          # Reference to an @Audio object to use for audio output and input
     int LoopStart      # Byte position of looping start
     int LoopEnd        # Byte position of looping end
     int(STREAM) Stream # Streaming type (smart by default)

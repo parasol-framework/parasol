@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
 Name: Events
@@ -36,7 +35,8 @@ struct eventsub {
    struct eventsub *Prev;
    EVENTID  EventID;
    EVENTID  EventMask;
-   void     (*Callback)(APTR Custom, APTR Info, LONG Size);
+   void     (*Callback)(APTR Custom, APTR Info, LONG Size, APTR Meta);
+   APTR     CallbackMeta;
    EVG      Group;
    UBYTE    Called;
    OBJECTID ContextID;
@@ -77,23 +77,19 @@ void free_events(void)
 -FUNCTION-
 BroadcastEvent: Broadcast an event to all event listeners in the system.
 
-Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  An Event structure is
-required that must start with a 64-bit EventID acquired from ~GetEventID(), followed by any required data that is
-relevant to that event.  The C/C++ template is as follows:
+Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  An event structure is
+required that must start with a 64-bit `EventID` acquired from ~GetEventID(), followed by any required data that is
+relevant to that event.  Here are some examples:
 
 <pre>
-typedef struct rkEvent {
-   EVENTID EventID;
-   // Data follows
-} rkEvent;
+typedef struct { EVENTID EventID; char Name[1]; } evVolumeCreated;
+typedef struct { EVENTID EventID; OBJECTID TaskID; } evTaskCreated;
+typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskRemoved;
 </pre>
-
-This document does not describe the available system events.  For more information about them, please refer to the
-System Events Reference manual.
 
 -INPUT-
 ptr Event: Pointer to an event structure.
-int EventSize: The size of the Event structure, in bytes.
+int EventSize: The size of the `Event` structure, in bytes.
 
 -ERRORS-
 Okay
@@ -101,11 +97,11 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR BroadcastEvent(APTR Event, LONG EventSize)
+ERR BroadcastEvent(APTR Event, LONG EventSize)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Event) or ((size_t)EventSize < sizeof(rkEvent))) return ERR_NullArgs;
+   if ((!Event) or ((size_t)EventSize < sizeof(rkEvent))) return ERR::NullArgs;
 
    LONG groupmask = 1<<((((rkEvent *)Event)->EventID>>56) & 0xff);
 
@@ -116,7 +112,7 @@ ERROR BroadcastEvent(APTR Event, LONG EventSize)
       SendMessage(MSGID_EVENT, MSF::NIL, Event, EventSize);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -125,17 +121,17 @@ ERROR BroadcastEvent(APTR Event, LONG EventSize)
 GetEventID: Generates unique event ID's suitable for event broadcasting.
 
 Use GetEventID() to generate a 64-bit event identifier.  This identifier can be used for broadcasting and subscribing
-to events.  Events are described in three parts - Group, SubGroup and the Event name, or in string format
+to events.  Events are described in three parts - `Group`, `SubGroup` and the `Event` name, or in string format
 `group.subgroup.event`.
 
-The Group is strictly limited to one of the following definitions:
+The `Group` is strictly limited to one of the following definitions:
 
 <types lookup="EVG"/>
 
-The SubGroup and Event parameters are string-based and there are no restrictions on naming.  If a SubGroup or Event
-name is NULL, this will act as a wildcard for subscribing to multiple events.  For example, subscribing to the network
-group with SubGroup and Event set to NULL will allow for a subscription to all network events that are broadcast.  A
-Group setting of zero is not allowed.
+The `SubGroup` and `Event` parameters are string-based and there are no restrictions on naming.  If a `SubGroup` or `Event`
+name is `NULL`, this will act as a wildcard for subscribing to multiple events.  For example, subscribing to the network
+group with `SubGroup` and `Event` set to `NULL` will allow for a subscription to all network events that are broadcast.  A
+`Group` setting of zero is not allowed.
 
 -INPUT-
 int(EVG) Group: The group to which the event belongs.
@@ -143,7 +139,7 @@ cstr SubGroup: The sub-group to which the event belongs (case-sensitive).
 cstr Event:    The name of the event (case-sensitive).
 
 -RESULT-
-large: The EventID is returned as a 64-bit integer.
+large: The event ID is returned as a 64-bit integer.
 
 *********************************************************************************************************************/
 
@@ -153,8 +149,8 @@ LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
 
    if (Group IS EVG::NIL) return 0;
 
-   auto hash_subgroup = StrHash(SubGroup, true) & 0x00ffffff;
-   auto hash_event = StrHash(Event, true);
+   auto hash_subgroup = strhash(SubGroup) & 0x00ffffff;
+   auto hash_event = strhash(Event);
 
    LARGE event_id = LARGE(UBYTE(Group))<<56;
    if ((SubGroup) and (SubGroup[0] != '*')) event_id |= LARGE(hash_subgroup)<<32;
@@ -174,19 +170,19 @@ LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
 -FUNCTION-
 SubscribeEvent: Subscribe to a system event.
 
-Use the SubscribeEvent() function to listen for system events.  An EventID (obtainable from ~GetEventID())
+Use the SubscribeEvent() function to listen for system events.  An event ID (obtainable from ~GetEventID())
 must be provided, as well as a reference to a function that will be called each time that the event is broadcast.
 
-An event handle will be returned in the Handle parameter to identify the subscription.  This must be retained to later
+An event handle will be returned in the `Handle` parameter to identify the subscription.  This must be retained to later
 unsubscribe from the event with the ~UnsubscribeEvent() function.
 
-The format for the Callback function is `Function(APTR Custom, APTR Event, LONG Size)`, where 'Event' is the
+The prototype for the `Callback` function is `Function(APTR Custom, APTR Event, LONG Size)`, where `Event` is the
 event structure that matches to the subscribed EventID.
 
 -INPUT-
 large Event:  An event identifier.
 ptr(func) Callback: The function that will be subscribed to the event.
-ptr Custom:   A custom pointer that will be sent to the callback function, set to NULL if not required.
+ptr Custom:   A custom pointer that will be sent to the callback function, set to `NULL` if not required.
 &ptr Handle:  Pointer to an address that will receive the event handle.
 
 -ERRORS-
@@ -196,29 +192,29 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handle)
+ERR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handle)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Callback) or (!EventID) or (!Handle)) return ERR_NullArgs;
+   if ((!Callback) or (!EventID) or (!Handle)) return ERR::NullArgs;
 
-   if (Callback->Type != CALL_STDC) return ERR_Args; // Currently only StdC callbacks are accepted.
+   if (!Callback->isC()) return ERR::Args; // Currently only StdC callbacks are accepted.
 
    auto gid = EVG(UBYTE(EventID>>56));
 
    if ((LONG(gid) < 1) or (LONG(gid) >= LONG(EVG::END))) {
-      return log.warning(ERR_Args);
+      return log.warning(ERR::Args);
    }
 
-   struct eventsub *event;
-   if ((event = (struct eventsub *)malloc(sizeof(struct eventsub)))) {
+   if (auto event = (struct eventsub *)malloc(sizeof(struct eventsub))) {
       LARGE mask = 0xff00000000000000LL;
       if (EventID & 0x00ffffff00000000LL) mask |= 0x00ffffff00000000LL;
       if (EventID & 0x00000000ffffffffLL) mask |= 0x00000000ffffffffLL;
 
       OBJECTPTR context = CurrentContext();
       event->EventID   = EventID;
-      event->Callback  = (void (*)(APTR, APTR, LONG))Callback->StdC.Routine;
+      event->Callback  = (void (*)(APTR, APTR, LONG, APTR))Callback->Routine;
+      event->CallbackMeta = Callback->Meta;
       event->Group     = gid;
       event->ContextID = context->UID;
       event->Next      = glEventList;
@@ -241,9 +237,9 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
 
       *Handle = event;
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_AllocMemory;
+   else return ERR::AllocMemory;
 }
 
 /*********************************************************************************************************************
@@ -255,7 +251,7 @@ Use UnsubscribeEvent() to remove an existing event subscription.  A valid handle
 function must be provided.
 
 -INPUT-
-ptr Handle: An event handle returned from SubscribeEvent()
+ptr Handle: An event handle returned from ~SubscribeEvent()
 -END-
 
 *********************************************************************************************************************/
@@ -295,19 +291,18 @@ void UnsubscribeEvent(APTR Handle)
    glEventListAltered = true;
 }
 
-/*********************************************************************************************************************
-** ProcessMessages() will call this function whenever a MSGID_EVENT message is received.
-*/
+//********************************************************************************************************************
+// ProcessMessages() will call this function whenever a MSGID_EVENT message is received.
 
-ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Message) or ((size_t)MsgSize < sizeof(rkEvent))) return ERR_Okay;
+   if ((!Message) or ((size_t)MsgSize < sizeof(rkEvent))) return ERR::Okay;
 
    rkEvent *eventmsg = (rkEvent *)Message;
 
-   log.msg(VLF::EXTAPI|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
+   log.msg(VLF::DETAIL|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
       (LONG)(eventmsg->EventID & 0xffffffff));
 
    struct eventsub *event;
@@ -326,7 +321,7 @@ restart:
          pf::ScopedObjectLock lock(event->ContextID, 3000);
          if (lock.granted()) {
             pf::SwitchContext ctx(lock.obj);
-            event->Callback(event->Custom, Message, MsgSize);
+            event->Callback(event->Custom, Message, MsgSize, event->CallbackMeta);
          }
 
          if (glEventListAltered) goto restart;
@@ -335,5 +330,5 @@ restart:
       event = event->Next;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }

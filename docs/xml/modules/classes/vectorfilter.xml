@@ -12,9 +12,9 @@
     <idstring>ID_VECTORFILTER</idstring>
     <category>Graphics</category>
     <include>modules/vectorfilter.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
-<p>The VectorFilter class allows post-effect filters to be applied to vectors as they are being rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard. Once created, a filter can be utilised by vector objects through their Filter field.  By way of example in SVG:</p>
+<p>The VectorFilter class allows post-effect filters to be applied to vectors as they are being rendered.  Filter support is closely modelled around the SVG standard, and effect results are intended to match that of the standard. Once created, a filter can be utilised by vector objects through their <class name="Vector" field="Filter">Vector.Filter</class> field.  By way of example in SVG:</p>
 <pre>&lt;circle cx="160" cy="50" r="40" fill="#f00" filter="url(#EffectPipeline)"/&gt;
 </pre>
 <p>Filter pipelines are constructed from effects based on the <class name="FilterEffect">FilterEffect</class> class, such as <class name="CompositeFX">CompositeFX</class> and <class name="FloodFX">FloodFX</class>. Construct a new pipeline by creating effect objects and placing them under the ownership of the VectorFilter that will be supporting them.  The VectorFilter will automatically detect them and they will be processed in the order in which they are added.  It is most optimal to create each pipeline in advance, and a new VectorFilter object should be created for each pipeline as necessary.</p>
@@ -29,11 +29,22 @@
     <action>
       <name>Clear</name>
       <comment>Removes all filter effects.</comment>
+      <prototype>ERR acClear(*Object)</prototype>
     </action>
 
   </actions>
 
   <fields>
+    <field>
+      <name>AspectRatio</name>
+      <comment>Aspect ratio to use when scaling X/Y values</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VFA">VFA</type>
+      <description>
+<types lookup="VFA"/>
+      </description>
+    </field>
+
     <field>
       <name>ColourSpace</name>
       <comment>The colour space of the filter graphics (SRGB or linear RGB).</comment>
@@ -48,20 +59,20 @@
 
     <field>
       <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or scaled values.</comment>
       <access read="R">Read</access>
-      <type>INT</type>
+      <type lookup="DMF">DMF</type>
       <description>
 <p>The following dimension flags are supported:</p>
 <types lookup="DMF">
-<type name="FIXED_X">The <field>X</field> value is a fixed coordinate.</type>
-<type name="FIXED_Y">The <field>Y</field> value is a fixed coordinate.</type>
-<type name="RELATIVE_X">The <field>X</field> value is a relative coordinate.</type>
-<type name="RELATIVE_Y">The <field>Y</field> value is a relative coordinate.</type>
-<type name="FIXED_WIDTH">The <field>Width</field> value is a fixed coordinate.</type>
-<type name="FIXED_HEIGHT">The <field>Height</field> value is a fixed coordinate.</type>
-<type name="RELATIVE_WIDTH">The <field>Width</field> value is a relative coordinate.</type>
-<type name="RELATIVE_HEIGHT">The <field>Height</field> value is a relative coordinate.</type>
+<type name="FIXED_X">The <fl>X</fl> value is a fixed coordinate.</type>
+<type name="FIXED_Y">The <fl>Y</fl> value is a fixed coordinate.</type>
+<type name="SCALED_X">The <fl>X</fl> value is a scaled coordinate.</type>
+<type name="SCALED_Y">The <fl>Y</fl> value is a scaled coordinate.</type>
+<type name="FIXED_WIDTH">The <fl>Width</fl> value is a fixed coordinate.</type>
+<type name="FIXED_HEIGHT">The <fl>Height</fl> value is a fixed coordinate.</type>
+<type name="SCALED_WIDTH">The <fl>Width</fl> value is a scaled coordinate.</type>
+<type name="SCALED_HEIGHT">The <fl>Height</fl> value is a scaled coordinate.</type>
 </types>
       </description>
     </field>
@@ -78,13 +89,13 @@
 
     <field>
       <name>Height</name>
-      <comment>The height of the filter area.  Can be expressed as a fixed or relative coordinate.</comment>
+      <comment>The height of the filter area.  Can be expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
-<p>The coordinate system for the width and height depends on the value for <field>Units</field>.</p>
-<p>If width or height is not specified, the effect is as if a value of 120% were specified.</p>
+<p>The height of the filter area is expressed here as a fixed or scaled coordinate.  The <fl>Width</fl> and Height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
+<p>The coordinate system for the width and height depends on the value for <fl>Units</fl>.</p>
+<p>The default values for <fl>Width</fl> and Height is <code>120%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
 
@@ -114,7 +125,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is <code>USERSPACE</code>.  When set to <code>BOUNDING_BOX</code>, the effect may calculate its dimensions strictly based on the client vector using a relative coordinate space of (0,0,100%,100%).</p>
+<p>PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is <code>USERSPACE</code>.  When set to <code>BOUNDING_BOX</code>, the effect may calculate its dimensions strictly based on the client vector using a scaled coordinate space of <code>(0, 0, 100%, 100%)</code>.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
@@ -125,7 +136,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>The combination of ResX and ResY define the available space for rendering of filter effects.  It is recommended that the client does not set these values because the default 1:1 pixel ratio is appropriate in the majority of circumstances.</p>
+<p>The combination of ResX and <fl>ResY</fl> define the available space for rendering of filter effects.  It is recommended that the client does not set these values because the default <code>1:1</code> pixel ratio is appropriate in the majority of circumstances.</p>
       </description>
     </field>
 
@@ -135,13 +146,13 @@
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>The combination of ResX and ResY define the available space for rendering of filter effects.  It is recommended that the client does not set these values because the default 1:1 pixel ratio is appropriate in the majority of circumstances.</p>
+<p>The combination of <fl>ResX</fl> and ResY define the available space for rendering of filter effects.  It is recommended that the client does not set these values because the default <code>1:1</code> pixel ratio is appropriate in the majority of circumstances.</p>
       </description>
     </field>
 
     <field>
       <name>Units</name>
-      <comment>Defines the coordinate system for fields X, Y, Width and Height.</comment>
+      <comment>Defines the coordinate system for <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl>.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
@@ -152,13 +163,13 @@
 
     <field>
       <name>Width</name>
-      <comment>The width of the filter area.  Can be expressed as a fixed or relative coordinate.</comment>
+      <comment>The width of the filter area.  Can be expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
-<p>The coordinate system for the width and height depends on the value for <field>Units</field>.</p>
-<p>If width or height is not specified, the effect is as if a value of 120% were specified.</p>
+<p>The width of the filter area is expressed here as a fixed or scaled coordinate.  The Width and <fl>Height</fl> effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
+<p>The coordinate system for the width and height depends on the value for <fl>Units</fl>.</p>
+<p>The default values for <fl>Width</fl> and Height is <code>120%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
 
@@ -168,8 +179,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The meaning of the (X,Y) field values depend on the value for <field>Units</field>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
-<p>If X or Y is not specified, the effect is as if a value of -10% were specified.</p>
+<p>The meaning of the (X, <fl>Y</fl>) field values depend on the value for <fl>Units</fl>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
+<p>The default values for X and <fl>Y</fl> is <code>10%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
 
@@ -179,23 +190,57 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The meaning of the (X,Y) field values depend on the value for <field>Units</field>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
-<p>If X or Y is not specified, the effect is as if a value of -10% were specified.</p>
+<p>The meaning of the (<fl>X</fl>, Y) field values depend on the value for <fl>Units</fl>.  In userspace mode, the filter position will be relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the vector's position.  It is important to note that coordinates are measured before any transforms are applied.</p>
+<p>The default values for <fl>X</fl> and Y is <code>10%</code>, as per the SVG standard.  This provides a buffer space for the filter algorithms to work with, and is usually a sufficient default.</p>
       </description>
     </field>
 
   </fields>
   <types>
+    <constants lookup="DMF">
+      <const name="FIXED_CENTER_X">The CenterX field is a fixed size.</const>
+      <const name="FIXED_CENTER_Y">The CenterY field is a fixed size.</const>
+      <const name="FIXED_DEPTH">The Depth field is a fixed size.</const>
+      <const name="FIXED_HEIGHT">The Height field is a fixed size.</const>
+      <const name="FIXED_RADIUS_X">The RadiusX field is a fixed size.</const>
+      <const name="FIXED_RADIUS_Y">The RadiusY field is a fixed size.</const>
+      <const name="FIXED_WIDTH">The Width field is a fixed suze.</const>
+      <const name="FIXED_X">The X field is a fixed coordinate.</const>
+      <const name="FIXED_X_OFFSET">The XOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
+      <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
+      <const name="SCALED_CENTER_X">The CenterX field is scaled to this object's parent.</const>
+      <const name="SCALED_CENTER_Y">The CenterY field is scaled to this object's parent.</const>
+      <const name="SCALED_DEPTH">The Depth field is scaled to this object's parent.</const>
+      <const name="SCALED_HEIGHT">The Height field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_X">The RadiusX field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_Y">The RadiusY field is a scaled size to this object's parent.</const>
+      <const name="SCALED_WIDTH">The Width field is scaled to this object's parent.</const>
+      <const name="SCALED_X">The X field is scaled to this object's parent.</const>
+      <const name="SCALED_X_OFFSET">The XOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Y">The Y field is scaled to this object's parent.</const>
+      <const name="SCALED_Y_OFFSET">The YOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Z">The Z field is a scaled coordinate to this object's parent.</const>
+      <const name="STATUS_CHANGE_H"/>
+      <const name="STATUS_CHANGE_V"/>
+    </constants>
+
     <constants lookup="VCS" comment="Colour space options.">
       <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
       <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
       <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
     </constants>
 
+    <constants lookup="VFA" comment="Define the aspect ratio for VectorFilter unit scaling.">
+      <const name="MEET">Scale X/Y values independently and in relation to the width/height of the parent viewport.</const>
+      <const name="NONE">Scale X/Y values on a <code>1:1</code> basis, in relation to the diagonal of the parent viewport.</const>
+    </constants>
+
     <constants lookup="VUNIT">
-      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
-      <const name="UNDEFINED"/>
-      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
+      <const name="BOUNDING_BOX">Coordinates are scaled to the object's bounding box.</const>
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
+      <const name="USERSPACE">Coordinates are scaled to the current viewport.</const>
     </constants>
 
   </types>

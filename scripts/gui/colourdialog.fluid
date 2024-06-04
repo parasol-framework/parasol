@@ -1,36 +1,5 @@
 --[[
-The colour dialog provides a standard interface for user colour selection.  On activation, it presents the user
-with a small window containing common colours, personal colours and a rainbow palette.  The dialog will close once the
-user selects a colour, or cancels the dialog window.
-
-To create a dialog box:
-
-   require 'gui/colourdialog'
-   gui.dialog.colour({ Options... })
-
-If the dialog box is modal, the call will not return until the user has responded to the dialog.
-
-To receive feedback from the dialog box, set the feedback option with a function that follows this prototype:
-
-   function feedback(Colour)
-
-The Colour will refer to the user's selected colour in RGB string format, e.g. '128,255,64'.  In the event that the
-dialog is cancelled, the Colour is set to nil.
-
-Note that the dialog box is designed for execution as a temporary resource that is deallocated once the user has
-responded.  Retaining dialog boxes consumes resources with no descernible speed improvement to the user.
-
-Valid options to use when creating the dialog are as follows:
-
-   popOver:    Place the dialog window over the referenced surface.
-   target:     Open the dialog window within the referenced surface.
-   modal:      Set to true if the dialog box needs to be modal (prevents interaction with other windows).
-   okText:     Text to display in the OK button.
-   cancelText: Text to display in the Cancel button.
-   path:       The initial selection path.
-   feedback:   A callback to receive the user's response to the dialog.
-   colour:     The default colour in 'R,G,B' format.
-
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
@@ -399,7 +368,7 @@ local function buildLayout(self, Options)
 
    lCancelButton = gui.button({
       target  = self.viewport,
-      text    = nz(Options.cancelText, 'Cancel'),
+      text    = 'Cancel',
       xOffset = WIDGET_GAP,
       y       = dy,
       icon    = 'items/cancel',
@@ -415,7 +384,7 @@ local function buildLayout(self, Options)
 
    lOkayButton = gui.button({
       target  = self.viewport,
-      text    = nz(Options.okText, 'OK'),
+      text    = 'OK',
       xOffset = lCancelButton.viewport.width + (WIDGET_GAP * 2),
       y       = dy,
       icon    = 'items/checkmark',
@@ -564,7 +533,7 @@ gui.dialog.colour = function(Options)
                end
             end
          end
-      elseif (Msg.type == JET_ABS_X) or (Msg.type == JET_ABS_Y) then
+      elseif (Msg.type == JET_ABS_XY) then
          if (self._rainbowClick) then selectPalette(self, Msg.x - self._rainbow.winX, Msg.y - self._rainbow.winY) end
       end
    end

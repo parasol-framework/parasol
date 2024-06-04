@@ -12,7 +12,7 @@
     <idstring>ID_FILTEREFFECT</idstring>
     <category>Graphics</category>
     <include>modules/filtereffect.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The FilterEffect class provides base-class functionality for effect classes.  FilterEffect objects mut not be instantiated directly by the client.</p>
 <p>The documented fields and actions here are integral to all effects that utilise this class.</p></description>
@@ -25,11 +25,13 @@
     <action>
       <name>MoveToBack</name>
       <comment>Move an effect to the front of the VectorFilter's list order.</comment>
+      <prototype>ERR acMoveToBack(*Object)</prototype>
     </action>
 
     <action>
       <name>MoveToFront</name>
       <comment>Move an object to the front of its current location.</comment>
+      <prototype>ERR acMoveToFront(*Object)</prototype>
     </action>
 
   </actions>
@@ -39,9 +41,9 @@
       <name>Dimensions</name>
       <comment>Dimension flags are stored here.</comment>
       <access read="R">Read</access>
-      <type lookup="DMF">INT</type>
+      <type lookup="DMF">DMF</type>
       <description>
-<p>Dimension flags are automatically defined when setting the <field>X</field>, <field>Y</field>, <field>Width</field> and <field>Height</field> fields.</p>
+<p>Dimension flags are automatically defined when setting the <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl> fields.</p>
 <types lookup="DMF"/>
       </description>
     </field>
@@ -52,7 +54,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The (Width,Height) field values define the dimensions of the effect within the target clipping area.</p>
+<p>The <code>(Width, Height)</code> field values define the dimensions of the effect within the target clipping area.</p>
       </description>
     </field>
 
@@ -62,7 +64,7 @@
       <access read="R" write="S">Read/Set</access>
       <type class="FilterEffect">*FilterEffect</type>
       <description>
-<p>If another effect should be used as a source input, it must be referenced here.  The <field>SourceType</field> will be automatically set to <code>REFERENCE</code> as a result.</p>
+<p>If another effect should be used as a source input, it must be referenced here.  The <fl>SourceType</fl> will be automatically set to <code>REFERENCE</code> as a result.</p>
 <p>This field is the SVG equivalent to <code>in</code>.  If the Input is not defined by the client then it will default to the previous effect if available, otherwise the source graphic is used.</p>
       </description>
     </field>
@@ -73,7 +75,7 @@
       <access read="R" write="S">Read/Set</access>
       <type class="FilterEffect">*FilterEffect</type>
       <description>
-<p>If another effect should be used as a mixed source input, it must be referenced here.  The <field>MixType</field> will be automatically set to <code>REFERENCE</code> as a result.</p>
+<p>If another effect should be used as a mixed source input, it must be referenced here.  The <fl>MixType</fl> will be automatically set to <code>REFERENCE</code> as a result.</p>
 <p>This field is the SVG equivalent to <code>in2</code>.  It does nothing if the effect does not supported a mixed source input.</p>
       </description>
     </field>
@@ -84,7 +86,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSF">VSF</type>
       <description>
-<p>Some effects support a secondary mix input for compositing, such as the <class name="CompositeFX">CompositeFX</class> class.  If the mixing source is a reference to another effect, set the <field>Mix</field> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
+<p>Some effects support a secondary mix input for compositing, such as the <class name="CompositeFX">CompositeFX</class> class.  If the mixing source is a reference to another effect, set the <fl>Mix</fl> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
 <types lookup="VSF"/>
       </description>
     </field>
@@ -109,7 +111,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSF">VSF</type>
       <description>
-<p>If an effect requires an input source for processing, it must be specified here.  If the source is a reference to another effect, set the <field>Input</field> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
+<p>If an effect requires an input source for processing, it must be specified here.  If the source is a reference to another effect, set the <fl>Input</fl> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
 <types lookup="VSF"/>
       </description>
     </field>
@@ -152,6 +154,49 @@
     </field>
 
   </fields>
+  <types>
+    <constants lookup="DMF">
+      <const name="FIXED_CENTER_X">The CenterX field is a fixed size.</const>
+      <const name="FIXED_CENTER_Y">The CenterY field is a fixed size.</const>
+      <const name="FIXED_DEPTH">The Depth field is a fixed size.</const>
+      <const name="FIXED_HEIGHT">The Height field is a fixed size.</const>
+      <const name="FIXED_RADIUS_X">The RadiusX field is a fixed size.</const>
+      <const name="FIXED_RADIUS_Y">The RadiusY field is a fixed size.</const>
+      <const name="FIXED_WIDTH">The Width field is a fixed suze.</const>
+      <const name="FIXED_X">The X field is a fixed coordinate.</const>
+      <const name="FIXED_X_OFFSET">The XOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
+      <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
+      <const name="SCALED_CENTER_X">The CenterX field is scaled to this object's parent.</const>
+      <const name="SCALED_CENTER_Y">The CenterY field is scaled to this object's parent.</const>
+      <const name="SCALED_DEPTH">The Depth field is scaled to this object's parent.</const>
+      <const name="SCALED_HEIGHT">The Height field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_X">The RadiusX field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_Y">The RadiusY field is a scaled size to this object's parent.</const>
+      <const name="SCALED_WIDTH">The Width field is scaled to this object's parent.</const>
+      <const name="SCALED_X">The X field is scaled to this object's parent.</const>
+      <const name="SCALED_X_OFFSET">The XOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Y">The Y field is scaled to this object's parent.</const>
+      <const name="SCALED_Y_OFFSET">The YOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Z">The Z field is a scaled coordinate to this object's parent.</const>
+      <const name="STATUS_CHANGE_H"/>
+      <const name="STATUS_CHANGE_V"/>
+    </constants>
+
+    <constants lookup="VSF" comment="Filter source types - these are used internally">
+      <const name="ALPHA">As for <code>GRAPHIC</code> except that only the alpha channel is used.</const>
+      <const name="BKGD">An image snapshot of the SVG document under the filter region at the time that the filter element was invoked.</const>
+      <const name="BKGD_ALPHA">As for <code>BKGD</code> but only the alpha channel is used.</const>
+      <const name="FILL">The value of the fill property on the target element for the filter effect.</const>
+      <const name="GRAPHIC">Represents the graphics elements that were the original input into the filter element.</const>
+      <const name="IGNORE">The filter does not require an input source.</const>
+      <const name="PREVIOUS">Use the previous effect as input, or source graphic if no previous effect.</const>
+      <const name="REFERENCE">This value is an assigned name for the filter primitive in the form of a custom-ident. If supplied, then graphics that result from processing this filter primitive can be referenced by an in attribute on a subsequent filter primitive within the same filter element. If no value is provided, the output will only be available for re-use as the implicit input into the next filter primitive if that filter primitive provides no value for its in attribute.</const>
+      <const name="STROKE">The value of the stroke property on the target element for the filter effect.</const>
+    </constants>
+
+  </types>
   <structs>
   </structs>
 </book>

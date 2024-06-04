@@ -51,7 +51,7 @@ end
    local xml_folder = arg('src', 'sdk:docs/xml/')
 
    file.search(xml_folder, {
-      nameFilter = arg('filter', '*.xml'),
+      nameFilter = arg('filter', '^.*%.xml$'),
       nameWild   = true,
       matchFeedback = function(Path, FileName, File)
          local src_path = Path .. FileName

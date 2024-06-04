@@ -12,7 +12,7 @@
     <idstring>ID_PROXY</idstring>
     <category>Network</category>
     <include>modules/proxy.h</include>
-    <copyright>Paul Manias © 2005-2023</copyright>
+    <copyright>Paul Manias © 2005-2024</copyright>
     <description>
 <p>The proxy server class provides a global management service for a user's proxy servers.  You can alter proxy settings manually or present the user with a dialog box to edit and create new proxies.  Scanning functions are also provided with filtering, allowing you to scan for proxies that should be used with the user's network connection.</p>
 <p>Proxy objects are designed to work similarly to database recordsets. Creating a new proxy object will allow you to create a new proxy record if all required fields are set and the object is saved.</p>
@@ -26,8 +26,9 @@
     <action>
       <name>Disable</name>
       <comment>Marks a proxy as disabled.</comment>
+      <prototype>ERR acDisable(*Object)</prototype>
       <description>
-<p>Calling the Disable action will mark the proxy as disabled.  Disabled proxies remain in the system but are ignored by programs that scan the database for active proxies.</p>
+<p>Calling the Disable() action will mark the proxy as disabled.  Disabled proxies remain in the system but are ignored by programs that scan the database for active proxies.</p>
 <p>The change will not come into effect until the proxy record is saved.</p>
       </description>
     </action>
@@ -35,14 +36,16 @@
     <action>
       <name>Enable</name>
       <comment>Enables a proxy.</comment>
+      <prototype>ERR acEnable(*Object)</prototype>
       <description>
-<p>Calling the Enable action will mark the proxy as enabled.  The change will not come into effect until the proxy record is saved.</p>
+<p>Calling the Enable() action will mark the proxy as enabled.  The change will not come into effect until the proxy record is saved.</p>
       </description>
     </action>
 
     <action>
       <name>SaveSettings</name>
       <comment>Permanently saves user configurable settings for a proxy.</comment>
+      <prototype>ERR acSaveSettings(*Object)</prototype>
       <description>
 <p>This action saves a user's settings for a proxy. Saving the proxy settings will make them available to the user on subsequent logins.</p>
 <p>Settings are saved to the user's local account under <code>user:config/network/proxies.cfg</code>.  It is possible for the administrator to define proxy settings as the default for all users by copying the <code>proxies.cfg</code> file to the <code>system:users/default/config/network/</code> folder.</p>
@@ -53,11 +56,11 @@
 
   <methods>
     <method>
-      <name>Delete</name>
+      <name>DeleteRecord</name>
       <comment>Removes a proxy from the database.</comment>
-      <prototype>ERROR prxDelete(OBJECTPTR Object)</prototype>
+      <prototype>ERR prx::DeleteRecord(OBJECTPTR Object)</prototype>
       <description>
-<p>Call the Delete method to remove a proxy from the system.  The proxy will be permanently removed from the proxy database on the success of this function.</p>
+<p>Call the DeleteRecord() method to remove a proxy from the system.  The proxy will be permanently removed from the proxy database on the success of this function.</p>
       </description>
       <result>
         <error code="Okay">Proxy deleted.</error>
@@ -67,19 +70,19 @@
     <method>
       <name>Find</name>
       <comment>Search for a proxy that matches a set of filters.</comment>
-      <prototype>ERROR prxFind(OBJECTPTR Object, LONG Port, LONG Enabled)</prototype>
+      <prototype>ERR prx::Find(OBJECTPTR Object, LONG Port, LONG Enabled)</prototype>
       <input>
         <param type="LONG" name="Port">The port number  to access.  If zero, all proxies will be returned if you perform a looped search.</param>
-        <param type="LONG" name="Enabled">Set to TRUE to return only enabled proxies, FALSE for disabled proxies or -1 for all proxies.</param>
+        <param type="LONG" name="Enabled">Set to <code>true</code> to return only enabled proxies, <code>false</code> for disabled proxies or <code>-1</code> for all proxies.</param>
       </input>
       <description>
 <p>The following example searches for all proxies available for use on port 80 (HTTP).</p>
 <pre>objProxy::create proxy;
 if (proxy.ok()) {
-   if (!prxFind(*proxy, 80)) {
+   if (prxFind(*proxy, 80) IS ERR::Okay) {
       do {
          ...
-      } while (!prxFindNext(*proxy));
+      } while (prxFindNext(*proxy) IS ERR::Okay);
    }
 }
 </pre>
@@ -93,9 +96,9 @@ if (proxy.ok()) {
     <method>
       <name>FindNext</name>
       <comment>Continues an initiated search.</comment>
-      <prototype>ERROR prxFindNext(OBJECTPTR Object)</prototype>
+      <prototype>ERR prx::FindNext(OBJECTPTR Object)</prototype>
       <description>
-<p>This method continues searches that have been initiated by the <method>Find</method> method. If a proxy is found that matches the filter, ERR_Okay is returned and the details of the proxy object will reflect the data of the discovered record. ERR_NoSearchResult is returned if there are no more matching proxies.</p>
+<p>This method continues searches that have been initiated by the <method>Find</method> method. If a proxy is found that matches the filter, <code>ERR::Okay</code> is returned and the details of the proxy object will reflect the data of the discovered record. <code>ERR::NoSearchResult</code> is returned if there are no more matching proxies.</p>
       </description>
       <result>
         <error code="Okay">A proxy was discovered.</error>
@@ -108,11 +111,11 @@ if (proxy.ok()) {
   <fields>
     <field>
       <name>Enabled</name>
-      <comment>All proxies are enabled by default until this field is set to FALSE.</comment>
+      <comment>All proxies are enabled by default until this field is set to <code>false</code>.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>To disable a proxy, set this field to FALSE or call the <action>Disable</action> action.  This prevents the proxy from being discovered in searches unless</p>
+<p>To disable a proxy, set this field to <code>false</code> or call the <action>Disable</action> action.  This prevents the proxy from being discovered in searches.</p>
       </description>
     </field>
 
@@ -128,11 +131,11 @@ if (proxy.ok()) {
 
     <field>
       <name>Host</name>
-      <comment>If TRUE, the proxy settings are derived from the host operating system's default settings.</comment>
+      <comment>If <code>true</code>, the proxy settings are derived from the host operating system's default settings.</comment>
       <access>-/-</access>
       <type>INT</type>
       <description>
-<p>If Host is set to TRUE, the proxy settings are derived from the host operating system's default settings.  Hosted proxies are treated differently to user proxies - they have priority, and any changes are applied directly to the host system rather than the user's configuration.</p>
+<p>If Host is set to <code>true</code>, the proxy settings are derived from the host operating system's default settings.  Hosted proxies are treated differently to user proxies - they have priority, and any changes are applied directly to the host system rather than the user's configuration.</p>
       </description>
     </field>
 
@@ -153,7 +156,7 @@ if (proxy.ok()) {
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
-<p>If the proxy requires authentication, the user password may be set here to enSable an automated authentication process. If the password is not set, a dialog will need to be used to prompt the user for the password before communicating with the proxy.</p>
+<p>If the proxy requires authentication, the user password may be set here to enable an automated authentication process. If the password is not set, a dialog will need to be used to prompt the user for the password before communicating with the proxy.</p>
       </description>
     </field>
 
@@ -184,7 +187,7 @@ if (proxy.ok()) {
       <type>INT</type>
       <description>
 <p>The Record is set to the unique ID of the current proxy record.  If no record is indexed then the Record is set to zero.</p>
-<p>If you set the Record manually, the proxy object will attempt to lookup that record.  ERR_Okay will be returned if the record is found and all record fields will be updated to reflect the data of that proxy.</p>
+<p>If Record is set manually, the proxy object will attempt to lookup that record.  <code>ERR::Okay</code> will be returned if the record is found and all record fields will be updated to reflect the data of that proxy.</p>
       </description>
     </field>
 

@@ -4,6 +4,7 @@
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 #include <inttypes.h>
 #include <mutex>
 
@@ -29,8 +30,8 @@ extern "C" {
 int fcmd_check(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      ERROR error = lua_tointeger(Lua, 1);
-      if (error >= ERR_ExceptionThreshold) {
+      ERR error = ERR(lua_tointeger(Lua, 1));
+      if (LONG(error) >= LONG(ERR::ExceptionThreshold)) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = error;
          luaL_error(prv->Lua, GetErrorMsg(error));
@@ -46,7 +47,7 @@ int fcmd_check(lua_State *Lua)
 int fcmd_raise(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      ERROR error = lua_tointeger(Lua, 1);
+      ERR error = ERR(lua_tointeger(Lua, 1));
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       prv->CaughtError = error;
       luaL_error(prv->Lua, GetErrorMsg(error));
@@ -55,7 +56,7 @@ int fcmd_raise(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Use catch() to switch on exception handling for functions that return an error code other than ERR_Okay, as well as
+// Use catch() to switch on exception handling for functions that return an error code other than ERR::Okay, as well as
 // normal exceptions that would otherwise be caught by pcall().  Areas affected include obj.new(); any module function
 // that returns an ERROR; any method or action called on an object.
 //
@@ -80,7 +81,7 @@ int fcmd_raise(lua_State *Lua)
 //   err = catch(function()
 //      // Code to execute
 //   end,
-//   { ERR_Failed, ERR_Terminate }, // Errors to filter for
+//   { ERR::Failed, ERR::Terminate }, // Errors to filter for
 //   fuction(Exception) // Exception handler for the filtered errors
 //   end)
 //
@@ -127,20 +128,20 @@ int fcmd_catch(lua_State *Lua)
 
          if (type IS LUA_TFUNCTION) {
             BYTE caught_by_filter = FALSE;
-            prv->Catch++; // Flag to convert ERROR results to exceptions.
-            prv->CaughtError = ERR_Okay;
+            prv->Catch++; // Flag to convert ERR results to exceptions.
+            prv->CaughtError = ERR::Okay;
             lua_pushcfunction(Lua, fcmd_catch_handler);
             lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
             LONG result_top = lua_gettop(Lua);
             if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) { // An exception was raised!
                prv->Catch--;
 
-               if ((prv->CaughtError >= ERR_ExceptionThreshold) and (catch_filter)) { // Apply error code filtering
+               if ((prv->CaughtError >= ERR::ExceptionThreshold) and (catch_filter)) { // Apply error code filtering
                   lua_rawgeti(Lua, LUA_REGISTRYINDEX, catch_filter);
                   lua_pushnil(Lua);  // First key
                   while ((!caught_by_filter) and (lua_next(Lua, -2) != 0)) { // Iterate over each table key
                      // -1 is the value and -2 is the key.
-                     if (lua_tointeger(Lua, -1) IS prv->CaughtError) {
+                     if (lua_tointeger(Lua, -1) IS LONG(prv->CaughtError)) {
                         caught_by_filter = TRUE;
                         lua_pop(Lua, 1); // Pop the key because we're going to break the loop early.
                      }
@@ -159,7 +160,7 @@ int fcmd_catch(lua_State *Lua)
 
                   lua_newtable(Lua);
                   lua_pushstring(Lua, "code");
-                  if (prv->CaughtError >= ERR_ExceptionThreshold) lua_pushinteger(Lua, prv->CaughtError);
+                  if (prv->CaughtError >= ERR::ExceptionThreshold) lua_pushinteger(Lua, LONG(prv->CaughtError));
                   else lua_pushnil(Lua);
                   lua_settable(Lua, -3);
 
@@ -167,7 +168,7 @@ int fcmd_catch(lua_State *Lua)
                   if (lua_type(Lua, -4) IS LUA_TSTRING) {
                      lua_pushvalue(Lua, -4); // This is the error exception string returned by pcall()
                   }
-                  else if (prv->CaughtError) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
+                  else if (prv->CaughtError != ERR::Okay) lua_pushstring(Lua, GetErrorMsg(prv->CaughtError));
                   else lua_pushstring(Lua, "<No message>");
                   lua_settable(Lua, -3);
 
@@ -181,13 +182,13 @@ int fcmd_catch(lua_State *Lua)
                }
                else luaL_error(Lua, lua_tostring(Lua, -1)); // Rethrow the message
 
-               lua_pushinteger(Lua, prv->CaughtError ? prv->CaughtError : ERR_Exception);
+               lua_pushinteger(Lua, prv->CaughtError != ERR::Okay ? LONG(prv->CaughtError) : LONG(ERR::Exception));
                return 1;
             }
             else { // pcall() was successful
                prv->Catch--;
                if (catch_filter) luaL_unref(Lua, LUA_REGISTRYINDEX, catch_filter);
-               lua_pushinteger(Lua, ERR_Okay);
+               lua_pushinteger(Lua, LONG(ERR::Okay));
                LONG result_count = lua_gettop(Lua) - result_top + 1;
                lua_insert(Lua, -result_count); // Push the error code in front of any other results
                return result_count;
@@ -204,7 +205,7 @@ int fcmd_catch(lua_State *Lua)
       LONG type = lua_type(Lua, 1);
       if (type IS LUA_TFUNCTION) {
          prv->Catch++; // Indicate to other routines that errors must be converted to exceptions.
-         prv->CaughtError = ERR_Okay;
+         prv->CaughtError = ERR::Okay;
 
          lua_pushcfunction(Lua, fcmd_catch_handler);
          lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
@@ -223,7 +224,7 @@ int fcmd_catch(lua_State *Lua)
 
             lua_newtable(Lua); // +1 stack
             lua_pushstring(Lua, "code");
-            if (prv->CaughtError >= ERR_ExceptionThreshold) lua_pushinteger(Lua, prv->CaughtError);
+            if (prv->CaughtError >= ERR::ExceptionThreshold) lua_pushinteger(Lua, LONG(prv->CaughtError));
             else lua_pushnil(Lua); // Distinguish Lua exceptions by setting the code to nil.
             lua_settable(Lua, -3);
 
@@ -253,7 +254,7 @@ int fcmd_catch(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// The event callback will be called with the following synopsis:
+// The event callback will be called with the following prototype:
 //
 // function callback(EventID, Args)
 //
@@ -335,7 +336,7 @@ int fcmd_subscribe_event(lua_State *Lua)
          if ((size_t)i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
          for (j=0; (j < i) and ((size_t)j < sizeof(group)-1); j++) group[j] = event[j];
          group[j] = 0;
-         group_hash = StrHash(group, 0);
+         group_hash = strihash(group);
          event += i + 1;
 
          for (LONG i=0; event[i]; i++) {
@@ -344,7 +345,7 @@ int fcmd_subscribe_event(lua_State *Lua)
                if ((size_t)i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
                for (j=0; (j < i) and ((size_t)j < sizeof(group)-1); j++) group[j] = event[j];
                group[j] = 0;
-               subgroup_hash = StrHash(group, 0);
+               subgroup_hash = strihash(group);
                event += i + 1;
                break;
             }
@@ -380,22 +381,21 @@ int fcmd_subscribe_event(lua_State *Lua)
 
    if (!event_id) {
       luaL_argerror(Lua, 1, "Failed to build event ID.");
-      lua_pushinteger(Lua, ERR_Failed);
+      lua_pushinteger(Lua, LONG(ERR::Failed));
       return 1;
    }
    else {
-      auto call = make_function_stdc(receive_event);
       APTR handle;
-      if (auto error = SubscribeEvent(event_id, &call, NULL, &handle); !error) {
+      if (auto error = SubscribeEvent(event_id, C_FUNCTION(receive_event), NULL, &handle); error IS ERR::Okay) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          lua_settop(Lua, 2);
          prv->EventList.emplace_back(luaL_ref(Lua, LUA_REGISTRYINDEX), event_id, handle);
          lua_pushlightuserdata(Lua, handle); // 1: Handle
-         lua_pushinteger(Lua, error); // 2: Error code
+         lua_pushinteger(Lua, LONG(error)); // 2: Error code
       }
       else {
          lua_pushnil(Lua); // Handle
-         lua_pushinteger(Lua, error); // Error code
+         lua_pushinteger(Lua, LONG(error)); // Error code
       }
       return 2;
    }
@@ -469,9 +469,8 @@ int fcmd_include(lua_State *Lua)
    LONG top = lua_gettop(Lua);
    for (LONG n=1; n <= top; n++) {
       CSTRING include = lua_tostring(Lua, n);
-      ERROR error;
-      if ((error = load_include(Lua->Script, include))) {
-         if (error IS ERR_FileNotFound) luaL_error(Lua, "Requested include file '%s' does not exist.", include);
+      if (auto error = load_include(Lua->Script, include); error != ERR::Okay) {
+         if (error IS ERR::FileNotFound) luaL_error(Lua, "Requested include file '%s' does not exist.", include);
          else luaL_error(Lua, "Failed to process include file: %s", GetErrorMsg(error));
          return 0;
       }
@@ -491,7 +490,7 @@ int fcmd_require(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    CSTRING module, error_msg = NULL;
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    if ((module = lua_tostring(Lua, 1))) {
       // For security purposes, check the validity of the module name.
 
@@ -545,7 +544,7 @@ int fcmd_require(lua_State *Lua)
    else luaL_argerror(Lua, 1, "Expected module name.");
 
    if (error_msg) luaL_error(Lua, error_msg);
-   else if (error) luaL_error(Lua, GetErrorMsg(error));
+   else if (error != ERR::Okay) luaL_error(Lua, GetErrorMsg(error));
 
    return 0;
 }
@@ -577,7 +576,7 @@ int fcmd_loadfile(lua_State *Lua)
 
    CSTRING error_msg = NULL;
    LONG results = 0;
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    if (auto path = lua_tostring(Lua, 1)) {
       pf::Log log("loadfile");
@@ -590,7 +589,7 @@ int fcmd_loadfile(lua_State *Lua)
       #if 0
       LONG pathlen = strlen(path);
       char fbpath[pathlen+6];
-      if (!StrMatch(".fluid", path + pathlen - 6)) {
+      if (iequals(".fluid", path + pathlen - 6)) {
          // File is a .fluid.  Let's check if a .fb exists and is date-stamped for the same date as the .fluid version.
          // Note: The developer can also delete the .fluid file in favour of a .fb that is already present (for
          // production releases)
@@ -611,11 +610,11 @@ int fcmd_loadfile(lua_State *Lua)
                if (fb_ts != src_ts) {
                   log.msg("Timestamp mismatch, will recompile the cached version.");
                   recompile = true;
-                  error = ERR_Failed;
+                  error = ERR::Failed;
                }
                else src = fbpath;
             }
-            else if (error IS ERR_FileNotFound) {
+            else if (error IS ERR::FileNotFound) {
                src = fbpath; // Use the .fb if the developer removed the .fluid (typically done for production releases)
             }
          }
@@ -625,7 +624,7 @@ int fcmd_loadfile(lua_State *Lua)
       objFile::create file = { fl::Path(src), fl::Flags(FL::READ) };
       if (file.ok()) {
          APTR buffer;
-         if (!AllocMemory(SIZE_READ, MEM::NO_CLEAR, &buffer)) {
+         if (AllocMemory(SIZE_READ, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
             struct code_reader_handle handle = { *file, buffer };
 
             // Check for the presence of a compiled header and skip it if present
@@ -633,8 +632,8 @@ int fcmd_loadfile(lua_State *Lua)
             {
                LONG len, i;
                char header[256];
-               if (!file->read(header, sizeof(header), &len)) {
-                  if (!StrCompare(LUA_COMPILED, header)) {
+               if (file->read(header, sizeof(header), &len) IS ERR::Okay) {
+                  if (pf::startswith(LUA_COMPILED, header)) {
                      recompile = FALSE; // Do not recompile that which is already compiled
                      for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
                      if (!header[i]) i++;
@@ -685,11 +684,11 @@ int fcmd_loadfile(lua_State *Lua)
 
             FreeResource(buffer);
          }
-         else error = ERR_AllocMemory;
+         else error = ERR::AllocMemory;
       }
-      else error = ERR_DoesNotExist;
+      else error = ERR::DoesNotExist;
 
-      if ((!error_msg) and (error)) error_msg = GetErrorMsg(error);
+      if ((!error_msg) and (error != ERR::Okay)) error_msg = GetErrorMsg(error);
       if (error_msg) luaL_error(Lua, "Failed to load/parse file '%s', error: %s", path, error_msg);
    }
    else luaL_argerror(Lua, 1, "File path required.");
@@ -714,8 +713,7 @@ int fcmd_exec(lua_State *Lua)
 
    LONG results = 0;
 
-   CSTRING statement;
-   if ((statement = lua_tostring(Lua, 1))) {
+   if (auto statement = lua_tostring(Lua, 1)) {
       CSTRING error_msg = NULL;
 
       {
@@ -724,7 +722,7 @@ int fcmd_exec(lua_State *Lua)
 
          // Check for the presence of a compiled header and skip it if present
 
-         if (!StrCompare(LUA_COMPILED, statement)) {
+         if (pf::startswith(LUA_COMPILED, statement)) {
             size_t i;
             for (i=sizeof(LUA_COMPILED)-1; statement[i]; i++);
             if (!statement[i]) statement += i + 1;

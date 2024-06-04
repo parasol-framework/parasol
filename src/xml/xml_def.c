@@ -20,7 +20,7 @@ static const struct FieldDef clXMLFlags[] = {
 };
 
 FDEF maSetAttrib[] = { { "Index", FD_LONG }, { "Attrib", FD_LONG }, { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
-FDEF maGetString[] = { { "Index", FD_LONG }, { "Flags", FD_LONG }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
+FDEF maSerialise[] = { { "Index", FD_LONG }, { "Flags", FD_LONG }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF maInsertXML[] = { { "Index", FD_LONG }, { "Where", FD_LONG }, { "XML", FD_STR }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maGetContent[] = { { "Index", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Length", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF maSort[] = { { "XPath", FD_STR }, { "Sort", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
@@ -36,21 +36,21 @@ FDEF maRemoveXPath[] = { { "XPath", FD_STR }, { "Limit", FD_LONG }, { 0, 0 } };
 FDEF maGetTag[] = { { "Index", FD_LONG }, { "XMLTag:Result", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clXMLMethods[] = {
-   { -1, (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xmlSetAttrib) },
-   { -2, (APTR)XML_GetString, "GetString", maGetString, sizeof(struct xmlGetString) },
-   { -3, (APTR)XML_InsertXML, "InsertXML", maInsertXML, sizeof(struct xmlInsertXML) },
-   { -4, (APTR)XML_GetContent, "GetContent", maGetContent, sizeof(struct xmlGetContent) },
-   { -5, (APTR)XML_SortXML, "Sort", maSort, sizeof(struct xmlSort) },
-   { -6, (APTR)XML_RemoveTag, "RemoveTag", maRemoveTag, sizeof(struct xmlRemoveTag) },
-   { -7, (APTR)XML_MoveTags, "MoveTags", maMoveTags, sizeof(struct xmlMoveTags) },
-   { -8, (APTR)XML_GetAttrib, "GetAttrib", maGetAttrib, sizeof(struct xmlGetAttrib) },
-   { -9, (APTR)XML_InsertXPath, "InsertXPath", maInsertXPath, sizeof(struct xmlInsertXPath) },
-   { -10, (APTR)XML_FindTag, "FindTag", maFindTag, sizeof(struct xmlFindTag) },
-   { -11, (APTR)XML_Filter, "Filter", maFilter, sizeof(struct xmlFilter) },
-   { -13, (APTR)XML_Count, "Count", maCount, sizeof(struct xmlCount) },
-   { -14, (APTR)XML_InsertContent, "InsertContent", maInsertContent, sizeof(struct xmlInsertContent) },
-   { -15, (APTR)XML_RemoveXPath, "RemoveXPath", maRemoveXPath, sizeof(struct xmlRemoveXPath) },
-   { -18, (APTR)XML_GetTag, "GetTag", maGetTag, sizeof(struct xmlGetTag) },
+   { -1, (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xml::SetAttrib) },
+   { -2, (APTR)XML_Serialise, "Serialise", maSerialise, sizeof(struct xml::Serialise) },
+   { -3, (APTR)XML_InsertXML, "InsertXML", maInsertXML, sizeof(struct xml::InsertXML) },
+   { -4, (APTR)XML_GetContent, "GetContent", maGetContent, sizeof(struct xml::GetContent) },
+   { -5, (APTR)XML_Sort, "Sort", maSort, sizeof(struct xml::Sort) },
+   { -6, (APTR)XML_RemoveTag, "RemoveTag", maRemoveTag, sizeof(struct xml::RemoveTag) },
+   { -7, (APTR)XML_MoveTags, "MoveTags", maMoveTags, sizeof(struct xml::MoveTags) },
+   { -8, (APTR)XML_GetAttrib, "GetAttrib", maGetAttrib, sizeof(struct xml::GetAttrib) },
+   { -9, (APTR)XML_InsertXPath, "InsertXPath", maInsertXPath, sizeof(struct xml::InsertXPath) },
+   { -10, (APTR)XML_FindTag, "FindTag", maFindTag, sizeof(struct xml::FindTag) },
+   { -11, (APTR)XML_Filter, "Filter", maFilter, sizeof(struct xml::Filter) },
+   { -13, (APTR)XML_Count, "Count", maCount, sizeof(struct xml::Count) },
+   { -14, (APTR)XML_InsertContent, "InsertContent", maInsertContent, sizeof(struct xml::InsertContent) },
+   { -15, (APTR)XML_RemoveXPath, "RemoveXPath", maRemoveXPath, sizeof(struct xml::RemoveXPath) },
+   { -18, (APTR)XML_GetTag, "GetTag", maGetTag, sizeof(struct xml::GetTag) },
    { 0, 0, 0, 0, 0 }
 };
 
@@ -58,12 +58,12 @@ static const struct ActionArray clXMLActions[] = {
    { AC_Clear, XML_Clear },
    { AC_DataFeed, XML_DataFeed },
    { AC_Free, XML_Free },
-   { AC_GetVar, XML_GetVar },
+   { AC_GetKey, XML_GetKey },
    { AC_Init, XML_Init },
    { AC_NewObject, XML_NewObject },
    { AC_Reset, XML_Reset },
    { AC_SaveToObject, XML_SaveToObject },
-   { AC_SetVar, XML_SetVar },
+   { AC_SetKey, XML_SetKey },
    { 0, NULL }
 };
 

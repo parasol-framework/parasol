@@ -15,7 +15,7 @@ extern struct CoreBase *CoreBase;
 APTR jpeg_get_small(j_common_ptr cinfo, LONG sizeofobject)
 {
    APTR result;
-   if (AllocMemory(sizeofobject, MEM::DATA, &result) IS ERR_Okay) return result;
+   if (AllocMemory(sizeofobject, MEM::DATA, &result) IS ERR::Okay) return result;
    else return NULL;
 }
 
@@ -27,7 +27,7 @@ void jpeg_free_small(j_common_ptr cinfo, void * object, LONG sizeofobject)
 APTR jpeg_get_large(j_common_ptr cinfo, LONG sizeofobject)
 {
    APTR result;
-   if (AllocMemory(sizeofobject, MEM::DATA, &result) IS ERR_Okay) return result;
+   if (AllocMemory(sizeofobject, MEM::DATA, &result) IS ERR::Okay) return result;
    else return NULL;
 }
 
@@ -63,22 +63,22 @@ void read_backing_store(j_common_ptr cinfo, backing_store_ptr info, void FAR * b
 
    seek.Offset   = file_offset;
    seek.Position = SEEK::START;
-   if (Action(AC_Seek, info->temp_file, &seek) != ERR_Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
+   if (Action(AC_Seek, info->temp_file, &seek) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
 
    read.Buffer = buffer_address;
    read.Length = byte_count;
-   if (Action(AC_Read, info->temp_file, &read) != ERR_Okay) ERREXIT(cinfo, JERR_TFILE_READ);
+   if (Action(AC_Read, info->temp_file, &read) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_READ);
 }
 
 void write_backing_store(j_common_ptr cinfo, backing_store_ptr info, void FAR * buffer_address, long file_offset, long byte_count)
 {
    struct acSeek seek = { .Offset = (DOUBLE)file_offset, .Position = SEEK::START };
-   if (Action(AC_Seek, info->temp_file, &seek) != ERR_Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
+   if (Action(AC_Seek, info->temp_file, &seek) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
 
    const long CHUNK = 1024LL * 1024LL;
    while (byte_count > 0) {
       struct acWrite write = { .Buffer = buffer_address, .Length = byte_count > CHUNK ? (LONG)CHUNK : (LONG)byte_count };
-      if (Action(AC_Write, info->temp_file, &write) != ERR_Okay) ERREXIT(cinfo, JERR_TFILE_WRITE);
+      if (Action(AC_Write, info->temp_file, &write) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_WRITE);
       byte_count -= write.Result;
       buffer_address = (UBYTE *)buffer_address + write.Result;
    }

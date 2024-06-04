@@ -7,17 +7,12 @@
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
-//
 // Smooth polygon generator
-//
-//----------------------------------------------------------------------------
 
 #include "agg_vcgen_smooth_poly1.h"
 
 namespace agg
 {
-
-    //------------------------------------------------------------------------
     vcgen_smooth_poly1::vcgen_smooth_poly1() :
         m_src_vertices(),
         m_smooth_value(0.5),
@@ -27,8 +22,6 @@ namespace agg
     {
     }
 
-
-    //------------------------------------------------------------------------
     void vcgen_smooth_poly1::remove_all()
     {
         m_src_vertices.remove_all();
@@ -36,48 +29,25 @@ namespace agg
         m_status = initial;
     }
 
-
-    //------------------------------------------------------------------------
-    void vcgen_smooth_poly1::add_vertex(double x, double y, unsigned cmd)
-    {
+    void vcgen_smooth_poly1::add_vertex(double x, double y, unsigned cmd) {
         m_status = initial;
-        if(is_move_to(cmd))
-        {
+        if (is_move_to(cmd)) {
             m_src_vertices.modify_last(vertex_dist(x, y));
         }
-        else
-        {
-            if(is_vertex(cmd))
-            {
-                m_src_vertices.add(vertex_dist(x, y));
-            }
-            else
-            {
-                m_closed = get_close_flag(cmd);
-            }
+        else {
+            if(is_vertex(cmd)) m_src_vertices.add(vertex_dist(x, y));
+            else m_closed = get_close_flag(cmd);
         }
     }
 
-
-    //------------------------------------------------------------------------
-    void vcgen_smooth_poly1::rewind(unsigned)
-    {
-        if(m_status == initial)
-        {
-            m_src_vertices.close(m_closed != 0);
-        }
+    void vcgen_smooth_poly1::rewind(unsigned) {
+        if (m_status == initial) m_src_vertices.close(m_closed != 0);
         m_status = ready;
         m_src_vertex = 0;
     }
 
-
-    //------------------------------------------------------------------------
-    void vcgen_smooth_poly1::calculate(const vertex_dist& v0, 
-                                       const vertex_dist& v1, 
-                                       const vertex_dist& v2,
-                                       const vertex_dist& v3)
+    void vcgen_smooth_poly1::calculate(const vertex_dist& v0, const vertex_dist& v1, const vertex_dist& v2, const vertex_dist& v3)
     {
-
         double k1 = v0.dist / (v0.dist + v1.dist);
         double k2 = v1.dist / (v1.dist + v2.dist);
 
@@ -92,27 +62,21 @@ namespace agg
         m_ctrl2_y = v2.y + m_smooth_value * (v1.y - ym2);
     }
 
-
-    //------------------------------------------------------------------------
-    unsigned vcgen_smooth_poly1::vertex(double* x, double* y)
-    {
+    unsigned vcgen_smooth_poly1::vertex(double* x, double* y) {
         unsigned cmd = path_cmd_line_to;
-        while(!is_stop(cmd))
-        {
-            switch(m_status)
-            {
+        while(!is_stop(cmd)) {
+            switch(m_status) {
             case initial:
                 rewind(0);
+                [[fallthrough]];
 
             case ready:
-                if(m_src_vertices.size() <  2)
-                {
+                if (m_src_vertices.size() <  2) {
                     cmd = path_cmd_stop;
                     break;
                 }
 
-                if(m_src_vertices.size() == 2)
-                {
+                if (m_src_vertices.size() == 2) {
                     *x = m_src_vertices[m_src_vertex].x;
                     *y = m_src_vertices[m_src_vertex].y;
                     m_src_vertex++;
@@ -125,27 +89,22 @@ namespace agg
                 cmd = path_cmd_move_to;
                 m_status = polygon;
                 m_src_vertex = 0;
+                [[fallthrough]];
 
             case polygon:
-                if(m_closed)
-                {
-                    if(m_src_vertex >= m_src_vertices.size())
-                    {
-                        *x = m_src_vertices[0].x;
-                        *y = m_src_vertices[0].y;
-                        m_status = end_poly;
-                        return path_cmd_curve4;
-                    }
+                if (m_closed) {
+                   if (m_src_vertex >= m_src_vertices.size()) {
+                      *x = m_src_vertices[0].x;
+                      *y = m_src_vertices[0].y;
+                      m_status = end_poly;
+                      return path_cmd_curve4;
+                   }
                 }
-                else
-                {
-                    if(m_src_vertex >= m_src_vertices.size() - 1)
-                    {
-                        *x = m_src_vertices[m_src_vertices.size() - 1].x;
-                        *y = m_src_vertices[m_src_vertices.size() - 1].y;
-                        m_status = end_poly;
-                        return path_cmd_curve3;
-                    }
+                else if (m_src_vertex >= m_src_vertices.size() - 1) {
+                   *x = m_src_vertices[m_src_vertices.size() - 1].x;
+                   *y = m_src_vertices[m_src_vertices.size() - 1].y;
+                   m_status = end_poly;
+                   return path_cmd_curve3;                    
                 }
 
                 calculate(m_src_vertices.prev(m_src_vertex), 
@@ -157,25 +116,21 @@ namespace agg
                 *y = m_src_vertices[m_src_vertex].y;
                 m_src_vertex++;
 
-                if(m_closed)
-                {
+                if (m_closed) {
                     m_status = ctrl1;
-                    return ((m_src_vertex == 1) ? 
-                             path_cmd_move_to : 
-                             path_cmd_curve4);
+                    return ((m_src_vertex == 1) ? path_cmd_move_to : path_cmd_curve4);
                 }
-                else
-                {
-                    if(m_src_vertex == 1)
-                    {
-                        m_status = ctrl_b;
-                        return path_cmd_move_to;
+                else {
+                    if (m_src_vertex == 1) {
+                       m_status = ctrl_b;
+                       return path_cmd_move_to;
                     }
-                    if(m_src_vertex >= m_src_vertices.size() - 1)
-                    {
-                        m_status = ctrl_e;
-                        return path_cmd_curve3;
+
+                    if (m_src_vertex >= m_src_vertices.size() - 1) {
+                       m_status = ctrl_e;
+                       return path_cmd_curve3;
                     }
+
                     m_status = ctrl1;
                     return path_cmd_curve4;
                 }
@@ -215,6 +170,5 @@ namespace agg
         }
         return cmd;
     }
-
 }
 

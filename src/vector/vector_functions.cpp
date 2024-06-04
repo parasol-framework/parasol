@@ -16,6 +16,7 @@ functions for creating paths and rendering them to bitmaps.
 *********************************************************************************************************************/
 
 //#include "vector.h"
+//#include "font.h"
 #include "colours.cpp"
 
 inline char read_nibble(CSTRING Str)
@@ -28,8 +29,8 @@ inline char read_nibble(CSTRING Str)
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
 
-ERROR simplevector_free(APTR Address) {
-   return ERR_Okay;
+ERR simplevector_free(APTR Address) {
+   return ERR::Okay;
 }
 
 static ResourceManager glResourceSimpleVector = {
@@ -46,23 +47,13 @@ void set_memory_manager(APTR Address, ResourceManager *Manager)
 static SimpleVector * new_simplevector(void)
 {
    SimpleVector *vector;
-   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR_Okay) return NULL;
+   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR::Okay) return NULL;
    set_memory_manager(vector, &glResourceSimpleVector);
    new(vector) SimpleVector;
    return vector;
 }
 
-//********************************************************************************************************************
-
-#include "module_def.c"
-
-//********************************************************************************************************************
-
-ERROR CMDOpen(OBJECTPTR Module)
-{
-   ((objModule *)Module)->setFunctionList(glFunctions);
-   return ERR_Okay;
-}
+namespace vec {
 
 /*********************************************************************************************************************
 
@@ -70,14 +61,14 @@ ERROR CMDOpen(OBJECTPTR Module)
 ApplyPath: Copy a pre-generated or custom path to a VectorPath object.
 
 Any path originating from ~GeneratePath(), ~GenerateEllipse() or ~GenerateRectangle() can be applied to a VectorPath
-object by calling ApplyPath().  The source Path can then be deallocated with ~FreePath() if it is no longer required.
+object by calling ApplyPath().  The source Path can then be deallocated with ~Core.FreeResource() if it is no longer required.
 
 This method is particularly useful when paths need to be generated or changed in real-time and the alternative of
 processing the path as a string is detrimental to performance.
 
 -INPUT-
 ptr Path: The source path to be copied.
-obj VectorPath: The target VectorPath object.
+obj(VectorPath) VectorPath: The target VectorPath object.
 
 -ERRORS-
 Okay
@@ -85,16 +76,16 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
+ERR ApplyPath(APTR Vector, objVectorPath *VectorPath)
 {
-   if ((!Vector) or (!VectorPath)) return ERR_NullArgs;
-   if (VectorPath->Class->ClassID != ID_VECTORPATH) return ERR_Args;
+   if ((!Vector) or (!VectorPath)) return ERR::NullArgs;
+   if (VectorPath->classID() != CLASSID::VECTORPATH) return ERR::Args;
 
    SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
 
-   if (VectorPath->CustomPath) { delete VectorPath->CustomPath; VectorPath->CustomPath = NULL; }
-   VectorPath->CustomPath = new (std::nothrow) agg::path_storage(Vector->mPath);
-   return ERR_Okay;
+   // TODO: Apply mPath to VectorPath
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -116,9 +107,57 @@ int(ARC) Flags: Optional flags.
 
 *********************************************************************************************************************/
 
-void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags)
+void ArcTo(APTR Vector, double RX, double RY, double Angle, double X, double Y, ARC Flags)
 {
-   Vector->mPath.arc_to(RX, RY, Angle, ((Flags & ARC::LARGE) != ARC::NIL) ? 1 : 0, ((Flags & ARC::SWEEP) != ARC::NIL) ? 1 : 0, X, Y);
+   ((SimpleVector *)Vector)->mPath.arc_to(RX, RY, Angle, ((Flags & ARC::LARGE) != ARC::NIL) ? 1 : 0, ((Flags & ARC::SWEEP) != ARC::NIL) ? 1 : 0, X, Y);
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+CharWidth: Returns the width of a character.
+
+This function will return the pixel width of a font character.  The character is specified as a unicode value in the
+`Char` parameter. Kerning values can also be returned, which affect the position of the character along the horizontal.
+The previous character in the word is set in `KChar` and the kerning value will be returned in the `Kerning` parameter.
+If kerning information is not required, set the `KChar` and `Kerning` parameters to zero.
+
+The font's glyph spacing value is not used in calculating the character width.
+
+-INPUT-
+ptr FontHandle: The font to use for calculating the character width.
+uint Char: A 32-bit unicode character.
+uint KChar: A unicode character to use for calculating the font kerning (optional).
+&double Kerning: The resulting kerning value (optional).
+
+-RESULT-
+double: The pixel width of the character will be returned.
+
+*********************************************************************************************************************/
+
+double CharWidth(APTR Handle, ULONG Char, ULONG KChar, double *Kerning)
+{
+   if (!Handle) return 0;
+
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
+      auto pt = (freetype_font::ft_point *)Handle;
+      FT_Activate_Size(pt->ft_size);
+
+      auto &cache = pt->get_glyph(Char);
+      if (Kerning) {
+         if (KChar) {
+            FT_Vector delta;
+            FT_Get_Kerning(pt->ft_size->face, FT_Get_Char_Index(pt->font->face, KChar), cache.glyph_index, FT_KERNING_DEFAULT, &delta);
+            *Kerning = int26p6_to_dbl(delta.x);
+         }
+         else *Kerning = 0;
+      }
+      return cache.adv_x;
+   }
+   else {
+      if (Kerning) *Kerning = 0;
+      return fnt::CharWidth(((bmp_font *)Handle)->font, Char);
+   }
 }
 
 /*********************************************************************************************************************
@@ -133,19 +172,19 @@ Note that closing a path does not necessarily terminate the vector.  Further pat
 interesting effects can be created by taking advantage of fill rules.
 
 -INPUT-
-ptr Path:  The vector path to modify.
+ptr Path: The vector path to modify.
 
 *********************************************************************************************************************/
 
-void vecClosePath(SimpleVector *Vector)
+void ClosePath(APTR Vector)
 {
-   Vector->mPath.close_polygon();
+   ((SimpleVector *)Vector)->mPath.close_polygon();
 }
 
 /*********************************************************************************************************************
 
 -FUNCTION-
-Curve3: Alter a path by setting a quadratic bezier curve command at the current vertex position.
+Curve3: Alter a path by inserting a quadratic bezier curve command at the current vertex position.
 
 This function will set a quadratic bezier curve command at the current vertex.  It then increments the vertex position
 for the next path command.
@@ -159,15 +198,15 @@ double Y: The vertical end point for the curve3 command.
 
 *********************************************************************************************************************/
 
-void vecCurve3(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
+void Curve3(APTR Vector, double CtrlX, double CtrlY, double X, double Y)
 {
-   Vector->mPath.curve3(CtrlX, CtrlY, X, Y);
+   ((SimpleVector *)Vector)->mPath.curve3(CtrlX, CtrlY, X, Y);
 }
 
 /*********************************************************************************************************************
 
 -FUNCTION-
-Curve4: Alter a path by setting a curve4 command at the current vertex position.
+Curve4: Alter a path by inserting a curve4 command at the current vertex position.
 
 This function will set a cubic bezier curve command at the current vertex.  It then increments the vertex position
 for the next path command.
@@ -183,9 +222,9 @@ double Y: The vertical end point for the curve4 command.
 
 *********************************************************************************************************************/
 
-void vecCurve4(SimpleVector *Vector, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y)
+void Curve4(APTR Vector, double CtrlX1, double CtrlY1, double CtrlX2, double CtrlY2, double X, double Y)
 {
-   Vector->mPath.curve4(CtrlX1, CtrlY1, CtrlX2, CtrlY2, X, Y);
+   ((SimpleVector *)Vector)->mPath.curve4(CtrlX1, CtrlY1, CtrlX2, CtrlY2, X, Y);
 }
 
 /*********************************************************************************************************************
@@ -193,21 +232,21 @@ void vecCurve4(SimpleVector *Vector, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2
 -FUNCTION-
 DrawPath: Draws a vector path to a target bitmap.
 
-Use DrawPath() to draw a generated path to a Bitmap, using customised fill and stroke definitions.  This
+Use DrawPath() to draw a generated path to a @Bitmap, using customised fill and stroke definitions.  This
 functionality provides an effective alternative to configuring vector scenes for situations where only
 simple vector shapes are required.  However, it is limited in that advanced rendering options and effects are not
 available to the client.
 
-A StrokeStyle and/or FillStyle will be required to render the path.  Valid styles are allocated and configured using
+A `StrokeStyle` and/or `FillStyle` will be required to render the path.  Valid styles are allocated and configured using
 recognised vector style objects, specifically from the classes @VectorImage, @VectorPattern and @VectorGradient.  If a
-fill or stroke operation is not required, set the relevant parameter to NULL.
+fill or stroke operation is not required, set the relevant parameter to `NULL`.
 
 -INPUT-
-obj(Bitmap) Bitmap: Pointer to a target Bitmap object.
+obj(Bitmap) Bitmap: Pointer to a target @Bitmap object.
 ptr Path: The vector path to render.
 double StrokeWidth: The width of the stroke.  Set to 0 if no stroke is required.
-obj StrokeStyle: Pointer to a valid object for stroke definition, or NULL if none required.
-obj FillStyle: Pointer to a valid object for fill definition, or NULL if none required.
+obj StrokeStyle: Pointer to a valid object for stroke definition, or `NULL` if none required.
+obj FillStyle: Pointer to a valid object for fill definition, or `NULL` if none required.
 
 -ERRORS-
 Okay
@@ -215,40 +254,52 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR vecDrawPath(objBitmap *Bitmap, class SimpleVector *Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle,
+ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle,
    OBJECTPTR FillStyle)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Bitmap) or (!Path)) return log.warning(ERR_NullArgs);
+   if ((!Bitmap) or (!Path)) return log.warning(ERR::NullArgs);
    if (StrokeWidth < 0.001) StrokeStyle = NULL;
 
    if ((!StrokeStyle) and (!FillStyle)) {
       log.traceWarning("No Stroke or Fill parameter provided.");
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   Path->DrawPath(Bitmap, StrokeWidth, StrokeStyle, FillStyle);
-   return ERR_Okay;
+   ((SimpleVector *)Path)->DrawPath(Bitmap, StrokeWidth, StrokeStyle, FillStyle);
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 
 -FUNCTION-
-FreePath: Remove a generated path.
+FlushMatrix: Flushes matrix changes to a vector.
 
-Deallocates paths generated by the Vector module, such as ~GeneratePath().
+If the matrices values of a vector have been directly modified by the client, the changes will need to be flushed in
+order to have those changes reflected on the display.  This needs to be done before the next draw cycle.
+
+Note that if the client uses API functions to modify a !VectorMatrix, a call to FlushMatrix() is unnecessary as the
+vector will have already been marked for an update.
 
 -INPUT-
-ptr Path: Pointer to the path to deallocate.
+struct(*VectorMatrix) Matrix: The matrix to be flushed.
+
+-ERRORS-
+Okay:
+NullArgs:
 
 *********************************************************************************************************************/
 
-void vecFreePath(APTR Path)
+ERR FlushMatrix(VectorMatrix *Matrix)
 {
-   if (!Path) return;
-   // NB: Refer to the deallocator for SimpleVector for anything relating to additional resource deallocation.
-   FreeResource(Path);
+   if (!Matrix) {
+      pf::Log log(__FUNCTION__);
+      return log.warning(ERR::NullArgs);
+   }
+
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -256,22 +307,22 @@ void vecFreePath(APTR Path)
 -FUNCTION-
 GetVertex: Retrieve the coordinates of the current vertex.
 
-The coordinates of the current vertex are returned by this function in the X and Y parameters.  In addition, the
+The coordinates of the current vertex are returned by this function in the `X` and `Y` parameters.  In addition, the
 internal command number for that vertex is the return value.
 
 -INPUT-
-ptr Path: The vector path to modify.
-&double X: Pointer to a DOUBLE that will receive the X coordinate value.
-&double Y: Pointer to a DOUBLE that will receive the Y coordinate value.
+ptr Path: The vector path to query.
+&double X: Pointer to a double that will receive the X coordinate value.
+&double Y: Pointer to a double that will receive the Y coordinate value.
 
 -RESULT-
 int: The internal command value for the vertex will be returned.
 
 *********************************************************************************************************************/
 
-LONG vecGetVertex(SimpleVector *Vector, DOUBLE *X, DOUBLE *Y)
+LONG GetVertex(APTR Vector, double *X, double *Y)
 {
-   return Vector->mPath.vertex(X, Y);
+   return ((SimpleVector *)Vector)->mPath.vertex(X, Y);
 }
 
 /*********************************************************************************************************************
@@ -280,14 +331,14 @@ LONG vecGetVertex(SimpleVector *Vector, DOUBLE *X, DOUBLE *Y)
 GenerateEllipse: Generates an elliptical path.
 
 Use GenerateEllipse() to create an elliptical path suitable for passing to vector functions that receive a Path
-parameter.  The path must be manually deallocated with ~FreePath() once it is no longer required.
+parameter.  The path must be manually deallocated with ~Core.FreeResource() once it is no longer required.
 
 -INPUT-
 double CX: Horizontal center point of the ellipse.
 double CY: Vertical center point of the ellipse.
 double RX: Horizontal radius of the ellipse.
 double RY: Vertical radius of the ellipse.
-int Vertices: Optional.  If >= 3, the total number of generated vertices will be limited to the specified value.
+int Vertices: Optional.  If `>= 3`, the total number of generated vertices will be limited to the specified value.
 &ptr Path: A pointer variable that will receive the resulting path.
 
 -ERRORS-
@@ -297,25 +348,25 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path)
+ERR GenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Path) return log.warning(ERR_NullArgs);
+   if (!Path) return log.warning(ERR::NullArgs);
 
    auto vector = new_simplevector();
-   if (!vector) return log.warning(ERR_CreateResource);
+   if (!vector) return log.warning(ERR::CreateResource);
 
 #if 0
    // Bezier curves can produce a reasonable approximation of an ellipse, but in practice there is
    // both a noticeable loss of speed and path accuracy vs the point plotting method.
 
-   const DOUBLE kappa = 0.5522848; // 4 * ((√(2) - 1) / 3)
+   const double kappa = 0.5522848; // 4 * ((√(2) - 1) / 3)
 
-   const DOUBLE ox = RX * kappa;  // control point offset horizontal
-   const DOUBLE oy = RY * kappa;  // control point offset vertical
-   const DOUBLE xe = CX + RX;
-   const DOUBLE ye = CY + RY;
+   const double ox = RX * kappa;  // control point offset horizontal
+   const double oy = RY * kappa;  // control point offset vertical
+   const double xe = CX + RX;
+   const double ye = CY + RY;
 
    vector->mPath.move_to(CX - RX, CY);
    vector->mPath.curve4(CX - RX, CY - oy, CX - ox, CY - RY, CX, CY - RY);
@@ -328,16 +379,16 @@ ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertic
 
    if (Vertices >= 3) steps = Vertices;
    else {
-      const DOUBLE ra = (fabs(RX) + fabs(RY)) / 2.0;
-      const DOUBLE da = acos(ra / (ra + 0.125)) * 2.0;
+      const double ra = (fabs(RX) + fabs(RY)) / 2.0;
+      const double da = acos(ra / (ra + 0.125)) * 2.0;
       steps = agg::uround(2.0 * agg::pi / da);
       if (steps < 3) steps = 3; // Because you need at least 3 vertices to create a shape.
    }
 
    for (ULONG step=0; step < steps; step++) {
-      const DOUBLE angle = DOUBLE(step) / DOUBLE(steps) * 2.0 * agg::pi;
-      const DOUBLE x = CX + cos(angle) * RX;
-      const DOUBLE y = CY + sin(angle) * RY;
+      const double angle = double(step) / double(steps) * 2.0 * agg::pi;
+      const double x = CX + cos(angle) * RX;
+      const double y = CY + sin(angle) * RY;
       if (step == 0) vector->mPath.move_to(x, y);
       else vector->mPath.line_to(x, y);
    }
@@ -345,7 +396,7 @@ ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertic
 #endif
 
    *Path = vector;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -354,7 +405,7 @@ ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertic
 GenerateRectangle: Generate a rectangular path at (x,y) with size (width,height).
 
 Use GenerateRectangle() to create a rectangular path suitable for passing to vector functions that receive a Path
-parameter.  The path must be manually deallocated with ~FreePath() once it is no longer required.
+parameter.  The path must be manually deallocated with ~Core.FreeResource() once it is no longer required.
 
 -INPUT-
 double X: The horizontal position of the rectangle.
@@ -370,14 +421,14 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path)
+ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Path) return log.warning(ERR_NullArgs);
+   if (!Path) return log.warning(ERR::NullArgs);
 
    auto vector = new_simplevector();
-   if (!vector) return log.warning(ERR_CreateResource);
+   if (!vector) return log.warning(ERR::CreateResource);
 
    vector->mPath.move_to(X, Y);
    vector->mPath.line_to(X+Width, Y);
@@ -385,7 +436,7 @@ ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR
    vector->mPath.line_to(X, Y+Height);
    vector->mPath.close_polygon();
    *Path = vector;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -395,10 +446,10 @@ GeneratePath: Generates a path from an SVG path command sequence, or an empty pa
 
 This function will generate a vector path from a sequence of fixed point coordinates and curve instructions.  The
 resulting path can then be passed to vector functions that receive a Path parameter.  The path must be manually
-deallocated with ~FreePath() once it is no longer required.
+deallocated with ~Core.FreeResource() once it is no longer required.
 
 The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path
-element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are
+element `d` attribute, but also provides some additional features that are present in the vector engine.  Commands are
 case insensitive.
 
 The following commands are supported:
@@ -419,7 +470,7 @@ Z: Close Path
 The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate
 of the previous command).
 
-If the Sequence is NULL then an empty path resource will be generated.  This path will be suitable for passing
+If the `Sequence` is `NULL` then an empty path resource will be generated.  This path will be suitable for passing
 to path modifying functions such as ~MoveTo() and ~LineTo() for custom path generation.
 
 -INPUT-
@@ -433,30 +484,189 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR vecGeneratePath(CSTRING Sequence, APTR *Path)
+ERR GeneratePath(CSTRING Sequence, APTR *Path)
 {
-   if (!Path) return ERR_NullArgs;
+   if (!Path) return ERR::NullArgs;
 
-   ERROR error;
+   ERR error = ERR::Okay;
 
    if (!Sequence) {
       auto vector = new_simplevector();
       if (vector) *Path = vector;
-      else error = ERR_AllocMemory;
+      else error = ERR::AllocMemory;
    }
    else {
       std::vector<PathCommand> paths;
-      if (!(error = read_path(paths, Sequence))) {
+      if ((error = read_path(paths, Sequence)) IS ERR::Okay) {
          auto vector = new_simplevector();
          if (vector) {
-            convert_to_aggpath(paths, &vector->mPath);
+            convert_to_aggpath(NULL, paths, vector->mPath);
             *Path = vector;
          }
-         else error = ERR_AllocMemory;
+         else error = ERR::AllocMemory;
       }
    }
 
    return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetFontHandle: Returns a handle for a given font family.
+
+For a given font family and size, this function will return a `Handle` that can be passed to font querying functions.
+
+The handle is deterministic and permanent, remaining valid for the lifetime of the program.
+
+-INPUT-
+cstr Family: The name of the font family to access.
+cstr Style: The preferred style to choose from the family.  Use `Regular` or `NULL` for the default.
+int Weight: Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.
+int Size: The font-size, measured in pixels @ 72 DPI.
+&ptr Handle: The resulting font handle is returned here.
+
+-ERRORS-
+Okay:
+Args:
+NullArgs:
+-END-
+
+*********************************************************************************************************************/
+
+ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (Size < 1) return log.warning(ERR::Args);
+
+   if (!Style) Style = "Regular";
+   common_font *handle;
+   if (auto error = get_font(log, Family, Style, Weight, Size, &handle); error IS ERR::Okay) {
+      *Handle = handle;
+      return ERR::Okay;
+   }
+   else return error;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetFontMetrics: Returns a set of display metric values for a font.
+
+Call GetFontMetrics() to retrieve a basic set of display metrics measured in pixels (adjusted to the display's DPI)
+for a given font.
+
+-INPUT-
+ptr Handle: A font handle obtained from ~GetFontHandle().
+struct(*FontMetrics) Info: The font metrics for the `Handle` will be stored here.
+
+-ERRORS-
+Okay:
+NullArgs:
+-END-
+
+*********************************************************************************************************************/
+
+ERR GetFontMetrics(APTR Handle, struct FontMetrics *Metrics)
+{
+   if ((!Handle) or (!Metrics)) return ERR::NullArgs;
+
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
+      auto pt = (freetype_font::ft_point *)Handle;
+      Metrics->Height      = pt->height;
+      Metrics->LineSpacing = pt->line_spacing;
+      Metrics->Ascent      = pt->ascent;
+      Metrics->Descent     = pt->descent;
+      return ERR::Okay;
+   }
+   else {
+      auto font = ((bmp_font *)Handle)->font;
+      Metrics->Height      = font->Ascent;
+      Metrics->LineSpacing = font->LineSpacing;
+      Metrics->Ascent      = font->Height;
+      Metrics->Descent     = font->Gutter;
+      return ERR::Okay;
+   }
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+TracePath: Returns the coordinates for a vector path, using callbacks.
+
+Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the
+`Path` from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function
+is `ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, double X, double Y, APTR Meta)`.
+
+The `Index` is an incrementing counter that reflects the currently plotted point.  The `X` and `Y` parameters reflect the
+coordinate of a point on the path.
+
+If the `Callback` returns `ERR::Terminate`, then no further coordinates will be processed.
+
+-INPUT-
+ptr Path:      The vector path to trace.
+ptr(func) Callback: A function to call with the path coordinates.
+double Scale:  Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.
+
+-ERRORS-
+Okay:
+NullArgs:
+
+*********************************************************************************************************************/
+
+ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
+{
+   pf::Log log;
+
+   if ((!Path) or (!Callback)) return ERR::NullArgs;
+
+   ((SimpleVector *)Path)->mPath.rewind(0);
+   ((SimpleVector *)Path)->mPath.approximation_scale(Scale);
+
+   double x, y;
+   LONG cmd = -1;
+   LONG index = 0;
+
+   if (Callback->isC()) {
+      auto routine = ((ERR (*)(SimpleVector *, LONG, LONG, double, double, APTR))(Callback->Routine));
+
+      pf::SwitchContext context(GetParentContext());
+
+      do {
+         cmd = ((SimpleVector *)Path)->mPath.vertex(&x, &y);
+         if (agg::is_vertex(cmd)) {
+            if (routine((SimpleVector *)Path, index++, cmd, x, y, Callback->Meta) IS ERR::Terminate) {
+               return ERR::Okay;
+            }
+         }
+      } while (cmd != agg::path_cmd_stop);
+   }
+   else if (Callback->isScript()) {
+      std::array<ScriptArg, 5> args {{
+         { "Path",    Path },
+         { "Index",   LONG(0) },
+         { "Command", LONG(0) },
+         { "X",       double(0) },
+         { "Y",       double(0) }
+      }};
+      args[0].Address = Path;
+
+      ERR result;
+      do {
+         cmd = ((SimpleVector *)Path)->mPath.vertex(&x, &y);
+         if (agg::is_vertex(cmd)) {
+            args[1].Long = index++;
+            args[2].Long = cmd;
+            args[3].Double = x;
+            args[4].Double = y;
+            if (sc::Call(*Callback, args, result) != ERR::Okay) return ERR::Failed;
+            if (result IS ERR::Terminate) return ERR::Okay;
+         }
+      } while (cmd != agg::path_cmd_stop);
+   }
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -474,9 +684,9 @@ double Y: The line end point on the vertical plane.
 
 *********************************************************************************************************************/
 
-void vecLineTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void LineTo(APTR Vector, double X, double Y)
 {
-   Vector->mPath.line_to(X, Y);
+   ((SimpleVector *)Vector)->mPath.line_to(X, Y);
 }
 
 /*********************************************************************************************************************
@@ -496,9 +706,9 @@ double Y: The vertical end point for the command.
 
 *********************************************************************************************************************/
 
-void vecMoveTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void MoveTo(APTR Vector, double X, double Y)
 {
-   Vector->mPath.move_to(X, Y);
+   ((SimpleVector *)Vector)->mPath.move_to(X, Y);
 }
 
 /*********************************************************************************************************************
@@ -506,7 +716,7 @@ void vecMoveTo(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
 -FUNCTION-
 Multiply: Combines a matrix with a series of matrix values.
 
-This function uses matrix multiplication to combine a set of values with a VectorMatrix structure.
+This function uses matrix multiplication to combine a set of values with a !VectorMatrix structure.
 
 -INPUT-
 struct(*VectorMatrix) Matrix: The target transformation matrix.
@@ -524,18 +734,18 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX,
-   DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)
+ERR Multiply(VectorMatrix *Matrix, double ScaleX, double ShearY, double ShearX,
+   double ScaleY, double TranslateX, double TranslateY)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    auto &d = *Matrix;
-   DOUBLE t0    = (d.ScaleX * ScaleX) + (d.ShearY * ShearX);
-   DOUBLE t2    = (d.ShearX * ScaleX) + (d.ScaleY * ShearX);
-   DOUBLE t4    = (d.TranslateX * ScaleX) + (d.TranslateY * ShearX) + TranslateX;
+   double t0    = (d.ScaleX * ScaleX) + (d.ShearY * ShearX);
+   double t2    = (d.ShearX * ScaleX) + (d.ScaleY * ShearX);
+   double t4    = (d.TranslateX * ScaleX) + (d.TranslateY * ShearX) + TranslateX;
    d.ShearY     = (d.ScaleX * ShearY) + (d.ShearY * ScaleY);
    d.ScaleY     = (d.ShearX * ShearY) + (d.ScaleY * ScaleY);
    d.TranslateY = (d.TranslateX * ShearY) + (d.TranslateY * ScaleY) + TranslateY;
@@ -544,7 +754,7 @@ ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE She
    d.TranslateX = t4;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -552,7 +762,7 @@ ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE She
 -FUNCTION-
 MultiplyMatrix: Combines a source matrix with a target.
 
-This function uses matrix multiplication to combine a Source matrix with a Target.
+This function uses matrix multiplication to combine a `Source` matrix with a `Target`.
 
 -INPUT-
 struct(*VectorMatrix) Target: The target transformation matrix.
@@ -565,18 +775,18 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
+ERR MultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
 {
    if ((!Target) or (!Source)) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    auto &d = *Target;
    auto &s = *Source;
-   DOUBLE t0  = (d.ScaleX * s.ScaleX) + (d.ShearY * s.ShearX);
-   DOUBLE t2  = (d.ShearX * s.ScaleX) + (d.ScaleY * s.ShearX);
-   DOUBLE t4  = (d.TranslateX * s.ScaleX) + (d.TranslateY * s.ShearX) + s.TranslateX;
+   double t0  = (d.ScaleX * s.ScaleX) + (d.ShearY * s.ShearX);
+   double t2  = (d.ShearX * s.ScaleX) + (d.ScaleY * s.ShearX);
+   double t4  = (d.TranslateX * s.ScaleX) + (d.TranslateY * s.ShearX) + s.TranslateX;
    d.ShearY     = (d.ScaleX * s.ShearY) + (d.ShearY * s.ScaleY);
    d.ScaleY     = (d.ShearX * s.ShearY) + (d.ScaleY * s.ScaleY);
    d.TranslateY = (d.TranslateX * s.ShearY) + (d.TranslateY * s.ScaleY) + s.TranslateY;
@@ -585,7 +795,7 @@ ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
    d.TranslateX = t4;
 
    if (Target->Vector) mark_dirty(Target->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -612,19 +822,19 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
+ERR ParseTransform(VectorMatrix *Matrix, CSTRING Commands)
 {
    if ((!Matrix) or (!Commands)) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    enum { M_MUL, M_TRANSLATE, M_ROTATE, M_SCALE, M_SKEW };
    class cmd {
       public:
       BYTE type;
-      DOUBLE sx, sy, shx, shy, tx, ty;
-      DOUBLE angle;
+      double sx, sy, shx, shy, tx, ty;
+      double angle;
       cmd(BYTE pType) : type(pType), sx(0), sy(0), shx(0), shy(0), tx(0), ty(0), angle(0) {};
    };
 
@@ -633,39 +843,50 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    auto str = Commands;
    while (*str) {
       if ((*str >= 'a') and (*str <= 'z')) {
-         if (!StrCompare(str, "matrix", 6)) {
+         if (startswith("matrix", str)) {
             cmd m(M_MUL);
-            str = read_numseq(str+6, &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty, TAGEND);
+            str += 6;
+            read_numseq(str, { &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "translate", 9)) {
+         else if (startswith("translate", str)) {
             cmd m(M_TRANSLATE);
-            str = read_numseq(str+9, &m.tx, &m.ty, TAGEND);
+            str += 9;
+            bool scaled_x, scaled_y;
+            next_value(str);
+            m.tx = read_unit(str, scaled_x);
+            next_value(str);
+            m.ty = read_unit(str, scaled_y);
+            read_numseq(str, { &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "rotate", 6)) {
+         else if (startswith("rotate", str)) {
             cmd m(M_ROTATE);
-            str = read_numseq(str+6, &m.angle, &m.tx, &m.ty, TAGEND);
+            str += 6;
+            read_numseq(str, { &m.angle, &m.tx, &m.ty });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "scale", 5)) {
+         else if (startswith("scale", str)) {
             cmd m(M_SCALE);
             m.tx = 1.0;
             m.ty = DBL_EPSILON;
-            str = read_numseq(str+5, &m.tx, &m.ty, TAGEND);
+            str += 5;
+            read_numseq(str, { &m.tx, &m.ty });
             if (m.ty IS DBL_EPSILON) m.ty = m.tx;
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "skewX", 5)) {
+         else if (startswith("skewX", str)) {
             cmd m(M_SKEW);
             m.ty = 0;
-            str = read_numseq(str+5, &m.tx, TAGEND);
+            str += 5;
+            read_numseq(str, { &m.tx });
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "skewY", 5)) {
+         else if (startswith("skewY", str)) {
             cmd m(M_SKEW);
             m.tx = 0;
-            str = read_numseq(str+5, &m.ty, TAGEND);
+            str += 5;
+            read_numseq(str, { &m.ty });
             list.push_back(std::move(m));
          }
          else str++;
@@ -685,9 +906,9 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
          case M_MUL: {
             auto &d = *Matrix;
             auto &s = m;
-            DOUBLE t0    = (d.ScaleX * s.sx) + (d.ShearY * s.shx);
-            DOUBLE t2    = (d.ShearX * s.sx) + (d.ScaleY * s.shx);
-            DOUBLE t4    = (d.TranslateX * s.sx) + (d.TranslateY * s.shx) + s.tx;
+            double t0    = (d.ScaleX * s.sx) + (d.ShearY * s.shx);
+            double t2    = (d.ShearX * s.sx) + (d.ScaleY * s.shx);
+            double t4    = (d.TranslateX * s.sx) + (d.TranslateY * s.shx) + s.tx;
             d.ShearY     = (d.ScaleX * s.shy) + (d.ShearY * s.sy);
             d.ScaleY     = (d.ShearX * s.shy) + (d.ScaleY * s.sy);
             d.TranslateY = (d.TranslateX * s.shy) + (d.TranslateY * s.sy) + s.ty;
@@ -703,7 +924,7 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             break;
 
          case M_ROTATE: {
-            vecRotate(Matrix, m.angle, m.tx, m.ty);
+            vec::Rotate(Matrix, m.angle, m.tx, m.ty);
             break;
          }
 
@@ -717,38 +938,40 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             break;
 
          case M_SKEW:
-            vecSkew(Matrix, m.tx, m.ty);
+            vec::Skew(Matrix, m.tx, m.ty);
             break;
       }
    });
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 
 -FUNCTION-
-ReadPainter: Parses a painter string into its colour, gradient and image values.
+ReadPainter: Parses a painter string to its colour, gradient, pattern or image value.
 
-This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be
-processed for rendering a stroke or fill operation in the chosen style.
+This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for
+rendering a stroke or fill operation in the chosen style.
 
 Colours can be referenced using one of three methods.  Colour names such as `orange` and `red` are accepted.  Hexadecimal
 RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is supported as `rgb(r,g,b,a)` whereby the
-component values range between 0.0 and 1.0.
+component values range between `0.0` and `255.0`.
 
 A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has
-been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference.
-Any failure to lookup a reference will be silently discarded.
+been registered with the provided `Scene` object.  If `Scene` is `NULL` then it will not be possible to find the
+reference.  Any failure to lookup a reference will be silently discarded.
+
+A !VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
+that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An
+optional `Result` string can store a reference to the character up to which the IRI was parsed.
 
 -INPUT-
-obj(VectorScene) Scene: Optional.  Required if url() references are to be resolved.
+obj(VectorScene) Scene: Optional.  Required if `url()` references are to be resolved.
 cstr IRI: The IRI string to be translated.
-struct(*FRGB) RGB: A colour will be returned here if specified in the IRI.
-&obj(VectorGradient) Gradient: A VectorGradient will be returned here if specified in the IRI.
-&obj(VectorImage) Image: A VectorImage will be returned here if specified in the IRI.
-&obj(VectorPattern) Pattern: A VectorPattern will be returned here if specified in the IRI.
+struct(*VectorPainter) Painter: This !VectorPainter structure will store the deserialised result.
+&cstr Result: Optional pointer for storing the end of the parsed IRI string.  `NULL` is returned if there is no further content to parse.
 
 -ERRORS-
 Okay:
@@ -757,35 +980,29 @@ Failed:
 
 *********************************************************************************************************************/
 
-ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
-   objVectorImage **Image, objVectorPattern **Pattern)
+ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    pf::Log log(__FUNCTION__);
    ULONG i;
 
-   if (!IRI) return ERR_NullArgs;
+   if ((!IRI) or (!Painter)) return ERR::NullArgs;
 
-   if (RGB)      RGB->Alpha = 0; // Nullify the colour
-   if (Gradient) *Gradient = NULL;
-   if (Image)    *Image    = NULL;
-   if (Pattern)  *Pattern  = NULL;
+   Painter->Colour.Alpha = 0; // Nullify the colour
+   Painter->Gradient = NULL;
+   Painter->Image    = NULL;
+   Painter->Pattern  = NULL;
 
    log.trace("IRI: %s", IRI);
 
 next:
+   if (*IRI IS ';') IRI++;
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
-   if (!StrCompare("url(", IRI, 4)) {
-      if (!Scene) {
-         log.trace("No Scene specified to enable URL() reference.");
-         return ERR_Failed;
-      }
+   if (startswith("url(", IRI)) {
+      if (!Scene) return log.warning(ERR::NullArgs);
 
-      if (Scene->Class->BaseClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
-      else if (Scene->Class->ClassID != ID_VECTORSCENE) {
-         log.warning("The Scene is invalid.");
-         return ERR_Failed;
-      }
+      if (Scene->Class->BaseClassID IS CLASSID::VECTOR) Scene = ((objVector *)Scene)->Scene;
+      else if (Scene->classID() != CLASSID::VECTORSCENE) return log.warning(ERR::InvalidObject);
 
       if (Scene->HostScene) Scene = Scene->HostScene;
 
@@ -798,128 +1015,238 @@ next:
 
          if (((extVectorScene *)Scene)->Defs.contains(lookup)) {
             auto def = ((extVectorScene *)Scene)->Defs[lookup];
-            if (def->Class->ClassID IS ID_VECTORGRADIENT) {
-               if (Gradient) *Gradient = (objVectorGradient *)def;
+            if (def->classID() IS CLASSID::VECTORGRADIENT) {
+               Painter->Gradient = (objVectorGradient *)def;
             }
-            else if (def->Class->ClassID IS ID_VECTORIMAGE) {
-               if (Image) *Image = (objVectorImage *)def;
+            else if (def->classID() IS CLASSID::VECTORIMAGE) {
+               Painter->Image = (objVectorImage *)def;
             }
-            else if (def->Class->ClassID IS ID_VECTORPATTERN) {
-               if (Pattern) *Pattern = (objVectorPattern *)def;
+            else if (def->classID() IS CLASSID::VECTORPATTERN) {
+               Painter->Pattern = (objVectorPattern *)def;
             }
-            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), def->Class->ClassID);
+            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), ULONG(def->classID()));
 
-            // Check for combinations
-            if (IRI[i++] IS ')') {
-               while ((IRI[i]) and (IRI[i] <= 0x20)) i++;
-               if (IRI[i++] IS '+') {
-                  IRI += i;
-                  goto next;
-               }
+            // Check for combinations like url(#this)+url(#that)
+
+            IRI += i;
+            if (*IRI IS ')') {
+               while ((*IRI) and (*IRI <= 0x20)) IRI++;
+               if (*IRI++ IS '+') goto next;
             }
 
-            return ERR_Okay;
+            if (Result) *Result = IRI[0] ? IRI : NULL;
+            return ERR::Okay;
          }
 
          log.warning("Failed to lookup IRI '%s' in scene #%d", IRI, Scene->UID);
+         return ERR::NotFound;
       }
-      else log.warning("Invalid IRI: %s", IRI);
-
-      return ERR_Failed;
+      else {
+         log.warning("Invalid IRI: %s", IRI);
+         return ERR::Syntax;
+      }
    }
-   else if (!StrCompare("rgb(", IRI, 4)) {
+   else if (startswith("rgb(", IRI)) {
+      auto &rgb = Painter->Colour;
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
       IRI += 4;
-      RGB->Red = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Red = StrToFloat(IRI) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') RGB->Red = RGB->Red * (255.0 / 100.0);
+         if (*IRI IS '%') rgb.Red = rgb.Red * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) IRI++;
-      RGB->Green = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Green = StrToFloat(IRI) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') RGB->Green = RGB->Green * (255.0 / 100.0);
+         if (*IRI IS '%') rgb.Green = rgb.Green * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) IRI++;
-      RGB->Blue = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Blue = StrToFloat(IRI) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') RGB->Blue = RGB->Blue * (255.0 / 100.0);
+         if (*IRI IS '%') rgb.Blue = rgb.Blue * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) {
          IRI++;
-         RGB->Alpha = StrToFloat(IRI) * (1.0 / 255.0);
+         rgb.Alpha = StrToFloat(IRI) * (1.0 / 255.0);
          while (*IRI) {
-            if (*IRI IS '%') RGB->Alpha = RGB->Alpha * (255.0 / 100.0);
+            if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
             IRI++;
          }
-         if (RGB->Alpha > 1) RGB->Alpha = 1;
-         else if (RGB->Alpha < 0) RGB->Alpha = 0;
+         if (rgb.Alpha > 1) rgb.Alpha = 1;
+         else if (rgb.Alpha < 0) rgb.Alpha = 0;
       }
-      else if (RGB->Alpha <= 0) RGB->Alpha = 1.0; // Only set the alpha if it hasn't been set already (example: stroke-opacity)
+      else rgb.Alpha = 1.0;
 
-      if (RGB->Red > 1) RGB->Red = 1;
-      else if (RGB->Red < 0) RGB->Red = 0;
+      if (rgb.Red > 1) rgb.Red = 1;
+      else if (rgb.Red < 0) rgb.Red = 0;
 
-      if (RGB->Green > 1) RGB->Green = 1;
-      else if (RGB->Green < 0) RGB->Green = 0;
+      if (rgb.Green > 1) rgb.Green = 1;
+      else if (rgb.Green < 0) rgb.Green = 0;
 
-      if (RGB->Blue > 1) RGB->Blue = 1;
-      else if (RGB->Blue < 0) RGB->Blue = 0;
+      if (rgb.Blue > 1) rgb.Blue = 1;
+      else if (rgb.Blue < 0) rgb.Blue = 0;
 
-      return ERR_Okay;
+      if (Result) {
+         while ((*IRI) and (*IRI != ';')) IRI++;
+         *Result = IRI[0] ? IRI : NULL;
+      }
+      return ERR::Okay;
+   }
+   else if ((startswith("hsl(", IRI)) or (startswith("hsla(", IRI))) {
+      // Hue is a number expressing an angle in degrees
+      // S&L are expressed as a percentage from 0 to 100.  The '%' is ignored.  'none' is also valid.
+      // Alpha is a number from 0 to 1
+      auto &rgb = Painter->Colour;
+      while (*IRI != '(') IRI++;
+      IRI++;
+      double hue = StrToFloat(IRI) * (1.0 / 360.0);
+      while ((*IRI) and (*IRI != ',')) IRI++;
+      if (*IRI) IRI++;
+      double sat = StrToFloat(IRI) * 0.01;
+      while ((*IRI) and (*IRI != ',')) IRI++;
+      if (*IRI) IRI++;
+      double light = StrToFloat(IRI) * 0.01;
+      while ((*IRI) and (*IRI != ',')) IRI++;
+
+      if (*IRI) {
+         IRI++;
+         rgb.Alpha = std::clamp(StrToFloat(IRI), 0.0, 1.0);
+         while (*IRI) IRI++;
+      }
+      else rgb.Alpha = 1.0;
+
+      hue = std::clamp(hue, 0.0, 1.0);
+      sat = std::clamp(sat, 0.0, 1.0);
+      light = std::clamp(light, 0.0, 1.0);
+
+      // Convert HSL to RGB.  HSL values are from 0.0 - 1.0
+
+      auto hueToRgb = [](double p, double q, double t) {
+         if (t < 0) t += 1;
+         if (t > 1) t -= 1;
+         if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+         if (t < 1.0/2.0) return q;
+         if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+         return p;
+      };
+
+      if (sat == 0) {
+         rgb.Red = rgb.Green = rgb.Blue = light;
+      }
+      else {
+         const double q = (light < 0.5) ? light * (1.0 + sat) : light + sat - light * sat;
+         const double p = 2.0 * light - q;
+         rgb.Red   = hueToRgb(p, q, hue + 1.0/3.0);
+         rgb.Green = hueToRgb(p, q, hue);
+         rgb.Blue  = hueToRgb(p, q, hue - 1.0/3.0);
+      }
+
+      if (Result) {
+         while ((*IRI) and (*IRI != ';')) IRI++;
+         *Result = IRI[0] ? IRI : NULL;
+      }
+      return ERR::Okay;
+   }
+   else if (startswith("hsv(", IRI)) {
+      // Rules apply as for HSL, but the conversion algorithm is different.
+      auto &rgb = Painter->Colour;
+      IRI += 4;
+      double hue = StrToFloat(IRI) * (1.0 / 360.0);
+      while ((*IRI) and (*IRI != ',')) IRI++;
+      if (*IRI) IRI++;
+      double sat = StrToFloat(IRI) * 0.01;
+      while ((*IRI) and (*IRI != ',')) IRI++;
+      if (*IRI) IRI++;
+      double val = StrToFloat(IRI) * 0.01;
+      while ((*IRI) and (*IRI != ',')) IRI++;
+      if (*IRI) {
+         IRI++;
+         rgb.Alpha = std::clamp(StrToFloat(IRI), 0.0, 1.0);
+         while (*IRI) IRI++;
+      }
+      else rgb.Alpha = 1.0;
+
+      hue = std::clamp(hue, 0.0, 1.0);
+      sat = std::clamp(sat, 0.0, 1.0);
+      val = std::clamp(val, 0.0, 1.0);
+
+      hue = hue / 60.0;
+      LONG i = floor(hue);
+      double f = hue - i;
+      if (!(i & 1)) f = 1.0 - f; // if i is even
+      double m = val * (1.0 - sat);
+      double n = val * (1.0 - sat * f);
+      switch (i) {
+         case 6:
+         case 0:  rgb.Red = val; rgb.Green = n;   rgb.Blue = m; break;
+         case 1:  rgb.Red = n;   rgb.Green = val; rgb.Blue = m; break;
+         case 2:  rgb.Red = m;   rgb.Green = val; rgb.Blue = n; break;
+         case 3:  rgb.Red = m;   rgb.Green = n;   rgb.Blue = val; break;
+         case 4:  rgb.Red = n;   rgb.Green = m;   rgb.Blue = val; break;
+         case 5:  rgb.Red = val; rgb.Green = m;   rgb.Blue = n; break;
+         default: rgb.Red = 0;   rgb.Green = 0;   rgb.Blue = 0; break;
+      }
+
+      if (Result) {
+         while ((*IRI) and (*IRI != ';')) IRI++;
+         *Result = IRI[0] ? IRI : NULL;
+      }
+      return ERR::Okay;
    }
    else if (*IRI IS '#') {
+      auto &rgb = Painter->Colour;
       IRI++;
       char nibbles[8];
       UBYTE n = 0;
       while ((*IRI) and (n < ARRAYSIZE(nibbles))) nibbles[n++] = read_nibble(IRI++);
+      while ((*IRI) and (*IRI != ';')) IRI++;
 
       if (n IS 3) {
-         RGB->Red   = DOUBLE(nibbles[0]<<4) * (1.0 / 255.0);
-         RGB->Green = DOUBLE(nibbles[1]<<4) * (1.0 / 255.0);
-         RGB->Blue  = DOUBLE(nibbles[2]<<4) * (1.0 / 255.0);
-         RGB->Alpha = 1.0;
-         return ERR_Okay;
+         rgb.Red   = double((nibbles[0]<<4)|nibbles[0]) * (1.0 / 255.0);
+         rgb.Green = double((nibbles[1]<<4)|nibbles[1]) * (1.0 / 255.0);
+         rgb.Blue  = double((nibbles[2]<<4)|nibbles[2]) * (1.0 / 255.0);
+         rgb.Alpha = 1.0;
+         if (Result) *Result = IRI[0] ? IRI : NULL;
+         return ERR::Okay;
       }
       else if (n IS 6) {
-         RGB->Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
-         RGB->Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
-         RGB->Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
-         RGB->Alpha = 1.0;
-         return ERR_Okay;
+         rgb.Red   = double((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
+         rgb.Green = double((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
+         rgb.Blue  = double((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
+         rgb.Alpha = 1.0;
+         if (Result) *Result = IRI[0] ? IRI : NULL;
+         return ERR::Okay;
       }
       else if (n IS 8) {
-         RGB->Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
-         RGB->Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
-         RGB->Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
-         RGB->Alpha = DOUBLE((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
-         return ERR_Okay;
+         rgb.Red   = double((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
+         rgb.Green = double((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
+         rgb.Blue  = double((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
+         rgb.Alpha = double((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
+         if (Result) *Result = IRI[0] ? IRI : NULL;
+         return ERR::Okay;
       }
-      else return ERR_Syntax;
-   }
-   else if ((!StrMatch("currentColor", IRI)) or (!StrMatch("currentColour", IRI))) {
-      // This SVG feature derivess the colour from first parent that defines a fill value.  Since this
-      // function doesn't support a vector reference, we have to throw an error.
-
-      log.warning("Parser needs to add support for %s.", IRI);
-      return ERR_Failed;
+      else return ERR::Syntax;
    }
    else {
-      auto hash = StrHash(IRI, FALSE);
-      for (WORD i=0; i < ARRAYSIZE(glNamedColours); i++) {
-         if (glNamedColours[i].Hash IS hash) {
-            RGB->Red   = (FLOAT)glNamedColours[i].Red * (1.0 / 255.0);
-            RGB->Green = (FLOAT)glNamedColours[i].Green * (1.0 / 255.0);
-            RGB->Blue  = (FLOAT)glNamedColours[i].Blue * (1.0 / 255.0);
-            RGB->Alpha = (FLOAT)glNamedColours[i].Alpha * (1.0 / 255.0);
-            return ERR_Okay;
+      if (auto it = glNamedColours.find(strihash(IRI)); it != glNamedColours.end()) {
+         auto &src = it->second;
+         auto &rgb = Painter->Colour;
+         rgb.Red   = (FLOAT)src.Red   * (1.0 / 255.0);
+         rgb.Green = (FLOAT)src.Green * (1.0 / 255.0);
+         rgb.Blue  = (FLOAT)src.Blue  * (1.0 / 255.0);
+         rgb.Alpha = (FLOAT)src.Alpha * (1.0 / 255.0);
+         if (Result) {
+            while ((*IRI) and (*IRI != ';')) IRI++;
+            *Result = IRI[0] ? IRI : NULL;
          }
+         return ERR::Okay;
       }
 
-      log.warning("Failed to interpret colour: %s", IRI);
-      return ERR_Failed;
+      // Note: Resolving 'currentColour' is handled in the SVG parser and not the Vector API.
+      log.warning("Failed to interpret colour \"%s\"", IRI);
+      return ERR::Syntax;
    }
 }
 
@@ -939,11 +1266,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecResetMatrix(VectorMatrix *Matrix)
+ERR ResetMatrix(VectorMatrix *Matrix)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->ScaleX     = 1.0;
@@ -954,7 +1281,7 @@ ERROR vecResetMatrix(VectorMatrix *Matrix)
    Matrix->TranslateY = 0;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -965,16 +1292,16 @@ RewindPath: Resets the vertex seek position to zero.
 Rewinding a path will reset the current vertex index to zero.  The next call to a vertex modification function such as
 ~LineTo() would result in the first vertex being modified.
 
-If the referenced Path is empty, this function does nothing.
+If the referenced `Path` is empty, this function does nothing.
 
 -INPUT-
 ptr Path: The vector path to rewind.
 
 *********************************************************************************************************************/
 
-void vecRewindPath(SimpleVector *Vector)
+void RewindPath(APTR Vector)
 {
-   if (Vector) Vector->mPath.rewind(0);
+   if (Vector) ((SimpleVector *)Vector)->mPath.rewind(0);
 }
 
 /*********************************************************************************************************************
@@ -982,8 +1309,8 @@ void vecRewindPath(SimpleVector *Vector)
 -FUNCTION-
 Rotate: Applies a rotation transformation to a matrix.
 
-This function will apply a rotation transformation to a matrix.  By default, rotation will occur around point (0,0)
-unless CenterX and CenterY values are specified.
+This function will apply a rotation transformation to a matrix.  By default, rotation will occur around point `(0, 0)`
+unless `CenterX` and `CenterY` values are specified.
 
 -INPUT-
 struct(*VectorMatrix) Matrix: The target transformation matrix.
@@ -997,21 +1324,21 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)
+ERR Rotate(VectorMatrix *Matrix, double Angle, double CenterX, double CenterY)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->TranslateX -= CenterX;
    Matrix->TranslateY -= CenterY;
 
-   DOUBLE ca = cos(Angle * DEG2RAD);
-   DOUBLE sa = sin(Angle * DEG2RAD);
-   DOUBLE t0 = (Matrix->ScaleX * ca) - (Matrix->ShearY * sa);
-   DOUBLE t2 = (Matrix->ShearX * ca) - (Matrix->ScaleY * sa);
-   DOUBLE t4 = (Matrix->TranslateX  * ca) - (Matrix->TranslateY * sa);
+   double ca = cos(Angle * DEG2RAD);
+   double sa = sin(Angle * DEG2RAD);
+   double t0 = (Matrix->ScaleX * ca) - (Matrix->ShearY * sa);
+   double t2 = (Matrix->ShearX * ca) - (Matrix->ScaleY * sa);
+   double t4 = (Matrix->TranslateX  * ca) - (Matrix->TranslateY * sa);
    Matrix->ShearY     = (Matrix->ScaleX * sa) + (Matrix->ShearY * ca);
    Matrix->ScaleY     = (Matrix->ShearX * sa) + (Matrix->ScaleY * ca);
    Matrix->TranslateY = (Matrix->TranslateX * sa) + (Matrix->TranslateY * ca);
@@ -1023,7 +1350,7 @@ ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE Cente
    Matrix->TranslateY += CenterY;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1031,15 +1358,15 @@ ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE Cente
 -FUNCTION-
 Scale: Scale the size of the vector by (x,y)
 
-This function will perform a scale operation on a matrix.  Values of less than 1.0 will shrink the affected vector
-path, while values greater than 1.0 will enlarge it.
+This function will perform a scale operation on a matrix.  Values of less than `1.0` will shrink the affected vector
+path, while values greater than `1.0` will enlarge it.
 
-Scaling is relative to position (0,0).  If the width and height of the vector path needs to be transformed without
-affecting its top-left position, the client must translate the path to (0,0) around its center point.  The path
+Scaling is relative to position `(0, 0)`.  If the width and height of the vector path needs to be transformed without
+affecting its top-left position, the client must translate the path to `(0, 0)` around its center point.  The path
 should then be scaled before being transformed back to its original top-left coordinate.
 
 The scale operation can also be used to flip a vector path if negative values are used.  For instance, a value of
--1.0 on the x axis would result in a 1:1 flip across the horizontal.
+`-1.0` on the x axis would result in a `1:1` flip across the horizontal.
 
 -INPUT-
 struct(*VectorMatrix) Matrix: The target transformation matrix.
@@ -1052,11 +1379,11 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR Scale(VectorMatrix *Matrix, double X, double Y)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->ScaleX     *= X;
@@ -1067,7 +1394,7 @@ ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    Matrix->TranslateY *= Y;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1076,7 +1403,7 @@ ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
 Skew: Skews the matrix along the horizontal and/or vertical axis.
 
 The Skew function applies a skew transformation to the horizontal and/or vertical axis of the matrix.
-Valid X and Y values are in the range of -90 < Angle < 90.
+Valid X and Y values are in the range of `-90 < Angle < 90`.
 
 -INPUT-
 struct(*VectorMatrix) Matrix: The target transformation matrix.
@@ -1091,11 +1418,11 @@ OutOfRange: At least one of the angles is out of the allowable range.
 
 *********************************************************************************************************************/
 
-ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR Skew(VectorMatrix *Matrix, double X, double Y)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Matrix) return log.warning(ERR_NullArgs);
+   if (!Matrix) return log.warning(ERR::NullArgs);
 
    if ((X > -90) and (X < 90)) {
       VectorMatrix skew = {
@@ -1103,9 +1430,9 @@ ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
          .ScaleY = 1.0, .TranslateX = 0, .TranslateY = 0
       };
 
-      vecMultiplyMatrix(Matrix, &skew);
+      vec::MultiplyMatrix(Matrix, &skew);
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 
    if ((Y > -90) and (Y < 90)) {
       VectorMatrix skew = {
@@ -1113,11 +1440,11 @@ ERROR vecSkew(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
          .ScaleY = 1.0, .TranslateX = 0, .TranslateY = 0
       };
 
-      vecMultiplyMatrix(Matrix, &skew);
+      vec::MultiplyMatrix(Matrix, &skew);
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1137,10 +1464,10 @@ double Y: The vertical end point for the smooth3 command.
 
 *********************************************************************************************************************/
 
-void vecSmooth3(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void Smooth3(APTR Vector, double X, double Y)
 {
    if (!Vector) return;
-   Vector->mPath.curve3(X, Y);
+   ((SimpleVector *)Vector)->mPath.curve3(X, Y);
 }
 
 /*********************************************************************************************************************
@@ -1163,10 +1490,77 @@ double Y: The vertical end point for the smooth4 instruction.
 
 *********************************************************************************************************************/
 
-void vecSmooth4(SimpleVector *Vector, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)
+void Smooth4(APTR Vector, double CtrlX, double CtrlY, double X, double Y)
 {
    if (!Vector) return;
-   Vector->mPath.curve4(CtrlX, CtrlY, X, Y);
+   ((SimpleVector *)Vector)->mPath.curve4(CtrlX, CtrlY, X, Y);
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+StringWidth: Calculate the pixel width of a UTF-8 string, for a given font.
+
+This function calculates the pixel width of a string, in relation to a known font.  The function takes into account
+any line-feeds that are encountered, so if the `String` contains multiple lines, then the width of the longest line will
+be returned.
+
+The font's kerning specifications will be taken into account when computing the distance between glyphs.
+
+-INPUT-
+ptr FontHandle: A font handle obtained from ~GetFontHandle().
+cstr String: Pointer to a null-terminated string.
+int Chars: The maximum number of unicode characters to process in calculating the string width.  Set to `-1` for all chars.
+
+-RESULT-
+double: The pixel width of the string is returned.
+-END-
+
+*********************************************************************************************************************/
+
+double StringWidth(APTR Handle, CSTRING String, LONG Chars)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((!Handle) or (!String)) { log.warning(ERR::NullArgs); return 0; }
+
+   const std::lock_guard lock(glFontMutex);
+
+   if (((common_font *)Handle)->type IS CF_FREETYPE) {
+      auto pt = (freetype_font::ft_point *)Handle;
+      FT_Activate_Size(pt->ft_size);
+
+      if (Chars IS -1) Chars = 0x7fffffff;
+
+      LONG len        = 0;
+      LONG widest     = 0;
+      LONG prev_glyph = 0;
+      LONG i = 0;
+      while ((i < Chars) and (String[i])) {
+         if (String[i] IS '\n') {
+            if (widest < len) widest = len;
+            len = 0;
+            i++;
+         }
+         else {
+            ULONG unicode;
+            auto charlen = get_utf8(String, unicode, i);
+            auto &glyph  = pt->get_glyph(unicode);
+            len += glyph.adv_x;
+            if (prev_glyph) {;
+               FT_Vector delta;
+               FT_Get_Kerning(pt->ft_size->face, prev_glyph, glyph.glyph_index, FT_KERNING_DEFAULT, &delta);
+               len += int26p6_to_dbl(delta.x);
+            }
+            prev_glyph = glyph.glyph_index;
+            i += charlen;
+         }
+      }
+
+      if (widest > len) return widest;
+      else return len;
+   }
+   else return fnt::StringWidth(((bmp_font *)Handle)->font, String, Chars);
 }
 
 /*********************************************************************************************************************
@@ -1188,18 +1582,18 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
+ERR Translate(VectorMatrix *Matrix, double X, double Y)
 {
    if (!Matrix) {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Matrix->TranslateX += X;
    Matrix->TranslateY += Y;
 
    if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1218,8 +1612,22 @@ double Y: Translate the path vertically by the given value.
 
 *********************************************************************************************************************/
 
-void vecTranslatePath(SimpleVector *Vector, DOUBLE X, DOUBLE Y)
+void TranslatePath(APTR Vector, double X, double Y)
 {
    if (!Vector) return;
-   Vector->mPath.translate_all_paths(X, Y);
+   ((SimpleVector *)Vector)->mPath.translate_all_paths(X, Y);
+}
+
+} // namespace
+
+//********************************************************************************************************************
+
+#include "module_def.c"
+
+//********************************************************************************************************************
+
+ERR MODOpen(OBJECTPTR Module)
+{
+   ((objModule *)Module)->setFunctionList(glFunctions);
+   return ERR::Okay;
 }

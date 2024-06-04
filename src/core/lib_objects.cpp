@@ -54,90 +54,96 @@ static void free_children(OBJECTPTR Object);
 
 //********************************************************************************************************************
 
-ERROR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    // Lock the object via conventional means to guarantee thread safety.
    OBJECTPTR obj;
-   if (!AccessObject(((OBJECTID *)Message)[0], 10000, &obj)) {
+   if (AccessObject(((OBJECTID *)Message)[0], 10000, &obj) IS ERR::Okay) {
       obj->Locked = false; // Required to allow the object to be freed while maintaining a lock via the Queue mechanism.
       FreeResource(obj);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Object termination hook for FreeResource()
 
-static ERROR object_free(BaseClass *Object)
+static ERR object_free(Object *Object)
 {
    pf::Log log("Free");
 
    ScopedObjectAccess objlock(Object);
-   if (!objlock.granted()) return ERR_AccessObject;
+   if (!objlock.granted()) return ERR::AccessObject;
 
    ObjectContext new_context(Object, AC_Free);
 
    auto mc = Object->ExtClass;
    if (!mc) {
       log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   // Return if the object is currently in the process of being freed (i.e. avoid recursion)
+   // If the object is locked then we mark it for collection and return.
+   // Collection is achieved via the message queue for maximum safety.
 
    if (Object->Locked) {
-      log.debug("Object #%d locked; marking for deletion.", Object->UID);
+      log.detail("Object #%d locked; marking for deletion.", Object->UID);
+      if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL; // The Owner pointer is no longer safe to use
       Object->Flags |= NF::FREE_ON_UNLOCK;
-      return ERR_InUse;
+      return ERR::InUse;
    }
 
-   // If the object is locked from LockObject() then we mark it for collection and return.
-   // Collection is achieved via the message queue as the safest and predictable option.
-
    if (Object->terminating()) {
-      log.trace("Object already marked for termination.");
-      return ERR_InUse;
+      log.trace("Object already being terminated.");
+      return ERR::InUse;
    }
 
    if (Object->ActionDepth > 0) {
       // The object is still in use.  This should only be triggered if the object wasn't locked with LockObject().
       log.trace("Object in use; marking for collection.");
+      if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL;
       if (!Object->defined(NF::COLLECT)) {
          Object->Flags |= NF::COLLECT;
          SendMessage(MSGID_FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
       }
-      return ERR_InUse;
+      return ERR::InUse;
    }
 
-   if (Object->Class->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
-   else if (Object->Class->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
-   else if (Object->Name[0])                     log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
-   else log.branch("Owner: %d", Object->OwnerID);
+   if (Object->classID() IS CLASSID::METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->ownerID());
+   else if (Object->classID() IS CLASSID::MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->ownerID());
+   else if (Object->Name[0])                      log.branch("Name: %s, Owner: %d", Object->Name, Object->ownerID());
+   else log.branch("Owner: %d", Object->ownerID());
 
    // If the object wants to be warned when the free process is about to be executed, it will subscribe to the
-   // FreeWarning action.  The process can be aborted by returning ERR_InUse.
+   // FreeWarning action.  The process can be aborted by returning ERR::InUse.
 
    if (mc->ActionTable[AC_FreeWarning].PerformAction) {
-      if (mc->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
+      if (mc->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR::InUse) {
          if (Object->collecting()) {
             // If the object is marked for deletion then it is not possible to avoid destruction (this prevents objects
             // from locking up the shutdown process).
 
             log.msg("Object will be destroyed despite being in use.");
          }
-         else return ERR_InUse;
+         else {
+            if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL;
+            return ERR::InUse;
+         }
       }
    }
 
    if (mc->Base) { // Sub-class detected, so call the base class
       if (mc->Base->ActionTable[AC_FreeWarning].PerformAction) {
-         if (mc->Base->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR_InUse) {
+         if (mc->Base->ActionTable[AC_FreeWarning].PerformAction(Object, NULL) IS ERR::InUse) {
             if (Object->collecting()) {
                // If the object is marked for deletion then it is not possible to avoid destruction (this prevents
                // objects from locking up the shutdown process).
                log.msg("Object will be destroyed despite being in use.");
             }
-            else return ERR_InUse;
+            else {
+               if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL;
+               return ERR::InUse;
+            }
          }
       }
    }
@@ -147,7 +153,7 @@ static ERROR object_free(BaseClass *Object)
 
    Object->Flags = (Object->Flags|NF::FREE) & (~NF::FREE_ON_UNLOCK);
 
-   NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
+   NotifySubscribers(Object, AC_Free, NULL, ERR::Okay);
 
    if (mc->ActionTable[AC_Free].PerformAction) {  // Could be sub-class or base-class
       mc->ActionTable[AC_Free].PerformAction(Object, NULL);
@@ -167,7 +173,7 @@ static ERROR object_free(BaseClass *Object)
    // If a private child structure is present, remove it
 
    if (Object->ChildPrivate) {
-      if (FreeResource(Object->ChildPrivate)) log.warning("Invalid ChildPrivate address %p.", Object->ChildPrivate);
+      if (FreeResource(Object->ChildPrivate) != ERR::Okay) log.warning("Invalid ChildPrivate address %p.", Object->ChildPrivate);
       Object->ChildPrivate = NULL;
    }
 
@@ -199,12 +205,12 @@ static ERROR object_free(BaseClass *Object)
 
    Object->Class = NULL;
    Object->UID   = 0;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 static ResourceManager glResourceObject = {
    "Object",
-   (ERROR (*)(APTR))&object_free
+   (ERR (*)(APTR))&object_free
 };
 
 //********************************************************************************************************************
@@ -233,13 +239,13 @@ struct thread_data {
    BYTE      Parameters;
 };
 
-static ERROR thread_action(extThread *Thread)
+static ERR thread_action(extThread *Thread)
 {
-   ERROR error;
+   ERR error;
    auto data = (thread_data *)Thread->Data;
    OBJECTPTR obj = data->Object;
 
-   if (!(error = LockObject(obj, 5000))) { // Access the object and process the action.
+   if ((error = LockObject(obj, 5000)) IS ERR::Okay) { // Access the object and process the action.
       --obj->ThreadPending;
       error = Action(data->ActionID, obj, data->Parameters ? (data + 1) : NULL);
 
@@ -255,7 +261,7 @@ static ERROR thread_action(extThread *Thread)
 
    // Send a callback notification via messaging if required.  The receiver is in msg_threadaction() in class_thread.c
 
-   if (data->Callback.Type) {
+   if (data->Callback.defined()) {
       ThreadActionMessage msg = {
          .Object   = obj,
          .ActionID = data->ActionID,
@@ -287,14 +293,14 @@ static void free_children(OBJECTPTR Object)
 
             if (((mem.Flags & MEM::DELETE) != MEM::NIL) or (!mem.Object)) continue;
 
-            if (mem.Object->OwnerID != Object->UID) {
-               log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->OwnerID, Object->UID);
+            if ((mem.Object->Owner) and (mem.Object->Owner != Object)) {
+               log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->ownerID(), Object->UID);
                continue;
             }
 
             if (!mem.Object->defined(NF::FREE_ON_UNLOCK)) {
-               if (mem.Object->defined(NF::INTEGRAL)) {
-                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->Class->ClassID), Object->className(), Object->UID);
+               if (mem.Object->defined(NF::LOCAL)) {
+                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->classID()), Object->className(), Object->UID);
                }
                FreeResource(mem.Object);
             }
@@ -323,7 +329,7 @@ static void free_children(OBJECTPTR Object)
                else log.warning("Unfreed memory block %p, Size %d", mem.Address, mem.Size);
             }
 
-            if (FreeResource(mem.Address) != ERR_Okay) log.warning("Error freeing tracked address %p", mem.Address);
+            if (FreeResource(mem.Address) != ERR::Okay) log.warning("Error freeing tracked address %p", mem.Address);
          }
       }
 
@@ -339,7 +345,7 @@ Action: This function is responsible for executing action routines.
 
 This function is the key entry point for executing actions and method routines.  An action is a predefined function
 call that can be called on any object, while a method is a function call that is specific to a class implementation.
-You can find a complete list of available actions and their associated details in the Action List document.
+You can find a complete list of available actions and their associated details in the Parasol Wiki.
 The actions and methods supported by any class will be referenced in their auto-generated documentation.
 
 Here are two examples that demonstrate how to make an action call.  The first performs an activation, which
@@ -363,14 +369,11 @@ In all cases, action calls in C++ can be simplified by using their corresponding
 2b. Window->move(30, 15, 0);
 </pre>
 
-If the class of an object does not support the action ID, an error code of `ERR_NoSupport` is returned.  To test
+If the class of an object does not support the `Action` ID, an error code of `ERR::NoSupport` is returned.  To test
 an object to see if its class supports an action, use the ~CheckAction() function.
 
-In circumstances where an object ID is known without its pointer, the use of ~ActionMsg() or ~QueueAction() may be
-desirable to avoid acquiring an object lock.
-
 -INPUT-
-int(AC) Action: An action or method ID must be specified here (e.g. AC_Query).
+int(AC) Action: An action or method ID must be specified here (e.g. `AC_Query`).
 obj Object:     A pointer to the object that is going to perform the action.
 ptr Parameters: If the action or method is documented as taking parameters, point to the relevant parameter structure here.
 
@@ -384,26 +387,22 @@ ObjectCorrupt:   The object that was received is badly corrupted in a critical a
 
 **********************************************************************************************************************/
 
-ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
+ERR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
 {
-   if (!Object) return ERR_NullArgs;
+   if (!Object) return ERR::NullArgs;
 
    ScopedObjectAccess lock(Object);
-   if (!lock.granted()) return ERR_AccessObject;
+   if (!lock.granted()) return ERR::AccessObject;
 
    ObjectContext new_context(Object, ActionID);
    Object->ActionDepth++;
    auto cl = Object->ExtClass;
 
-#ifdef _DEBUG
-   auto log_depth = tlDepth;
-#endif
-
-   ERROR error;
+   ERR error;
    if (ActionID >= 0) {
       if (cl->ActionTable[ActionID].PerformAction) { // Can be a base-class or sub-class call
          error = cl->ActionTable[ActionID].PerformAction(Object, Parameters);
-         if (error IS ERR_NoAction) {
+         if (error IS ERR::NoAction) {
             if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) { // Base is set only if this is a sub-class
                error = cl->Base->ActionTable[ActionID].PerformAction(Object, Parameters);
             }
@@ -412,34 +411,36 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
       else if ((cl->Base) and (cl->Base->ActionTable[ActionID].PerformAction)) { // Base is set only if this is a sub-class
          error = cl->Base->ActionTable[ActionID].PerformAction(Object, Parameters);
       }
-      else error = ERR_NoAction;
+      else error = ERR::NoAction;
    }
    else { // Method call
-      // Note that sub-classes may return ERR_NoAction if propagation to the base class is desirable.
-      auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Methods[-ActionID].Routine;
+      // Note that sub-classes may return ERR::NoAction if propagation to the base class is desirable.
+      auto routine = (ERR (*)(OBJECTPTR, APTR))cl->Methods[-ActionID].Routine;
       if (routine) error = routine(Object, Parameters);
-      else error = ERR_NoAction;
+      else error = ERR::NoAction;
 
-      if ((error IS ERR_NoAction) and (cl->Base)) {  // If this is a child, check the base class
-         auto routine = (ERROR (*)(OBJECTPTR, APTR))cl->Base->Methods[-ActionID].Routine;
+      if ((error IS ERR::NoAction) and (cl->Base)) {  // If this is a child, check the base class
+         auto routine = (ERR (*)(OBJECTPTR, APTR))cl->Base->Methods[-ActionID].Routine;
          if (routine) error = routine(Object, Parameters);
       }
    }
 
    // If the object has action subscribers, check if any of them are listening to this particular action, and if so, notify them.
 
-   if (error & ERF_Notified) {
-      error &= ~ERF_Notified;
+   if (LONG(error) & LONG(ERR::Notified)) {
+      error = ERR(LONG(error) & ~LONG(ERR::Notified));
    }
    else if ((ActionID > 0) and (Object->NotifyFlags.load() & (1LL<<(ActionID & 63)))) {
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
       glSubReadOnly++;
 
-      if ((glSubscriptions.contains(Object->UID)) and (glSubscriptions[Object->UID].contains(ActionID))) {
-         for (auto &list : glSubscriptions[Object->UID][ActionID]) {
-            pf::SwitchContext ctx(list.Context);
-            list.Callback(Object, ActionID, (error IS ERR_NoAction) ? ERR_Okay : error, Parameters);
+      if (auto it = glSubscriptions.find(Object->UID); it != glSubscriptions.end()) {
+         if (it->second.contains(ActionID)) {
+            for (auto &list : it->second[ActionID]) {
+               pf::SwitchContext ctx(list.Subscriber);
+               list.Callback(Object, ActionID, (error IS ERR::NoAction) ? ERR::Okay : error, Parameters, list.Meta);
+            }
          }
       }
 
@@ -458,10 +459,10 @@ ActionList: Returns a pointer to the global action table.
 This function returns an array of all actions supported by the Core, including name, arguments and structure
 size.  The ID of each action is indicated by its index within the array.
 
-The Name field specifies the name of the action.  The Args field refers to the action's argument definition structure,
-which lists the argument names and their relevant types.  This is matched by the Size field, which indicates the
-byte-size of the action's related argument structure.  If the action does not support arguments, the Args and Size
-fields will be set to NULL.  The following illustrates two argument definition examples:
+The `Name` field specifies the name of the action.  The `Args` field refers to the action's argument definition structure,
+which lists the argument names and their relevant types.  This is matched by the `Size` field, which indicates the
+byte-size of the action's related argument structure.  If the action does not support arguments, the `Args` and `Size`
+fields will be set to `NULL`.  The following illustrates two argument definition examples:
 
 <pre>
 struct FunctionField argsCopyData[] = {
@@ -485,13 +486,13 @@ The argument types that can be used by actions are limited to those listed in th
 <type name="PTR">A standard address space pointer.</>
 <type name="STRING">A pointer to a null-terminated string.</>
 <type name="DOUBLE">A 64-bit floating point value.</>
-<type name="OBJECT">This flag is sometimes set in conjunction with the FD_LONG type.  It indicates that the argument refers to an object ID.</>
-<type name="PTRSIZE">This argument type can only be used if it follows an FD_PTR type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous FD_PTR argument.</>
-<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a LONG field in which the function will store a result, the correct argument definition will be FD_RESULT|FD_LONG|FD_PTR. To make the definition of these argument types easier, FD_PTRRESULT and FD_LONGRESULT macros are also available for use.</>
+<type name="OBJECT">This flag is sometimes set in conjunction with the `FD_LONG` type.  It indicates that the argument refers to an object ID.</>
+<type name="PTRSIZE">This argument type can only be used if it follows an `FD_PTR` type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous `FD_PTR` argument.</>
+<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a `LONG` field in which the function will store a result, the correct argument definition will be `FD_RESULT|FD_LONG|FD_PTR`. To make the definition of these argument types easier, `FD_PTRRESULT` and `FD_LONGRESULT` macros are also available for use.</>
 </>
 
 -INPUT-
-&array(struct(ActionTable)) Actions: A pointer to the Core's action table (struct ActionTable *) is returned. Please note that the first entry in the ActionTable list has all fields driven to NULL, because valid action ID's start from one, not zero.  The final action in the list is also terminated with NULL fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.
+&array(struct(ActionTable)) Actions: A pointer to the Core's action table `struct ActionTable *` is returned. Please note that the first entry in the `ActionTable` list has all fields driven to `NULL`, because valid action ID's start from one, not zero.  The final action in the list is also terminated with `NULL` fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.
 &arraysize Size: Total number of elements in the returned list.
 
 *********************************************************************************************************************/
@@ -505,51 +506,16 @@ void ActionList(struct ActionTable **List, LONG *Size)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ActionMsg: Execute an action or method by way of object ID.
-
-Use ActionMsg() to execute an action when only the object ID is known.
-
--INPUT-
-int Action: The ID of the action or method to be executed.
-oid Object: The target object.
-ptr Args:   The parameter structure required by Action.
-
--ERRORS-
-Okay: The action was either executed or queued for another thread.
-NullArgs:
-OutOfRange:
-Failed: Failed to build buffered arguments.
--END-
-
-*********************************************************************************************************************/
-
-ERROR ActionMsg(LONG ActionID, OBJECTID ObjectID, APTR Args)
-{
-   OBJECTPTR object;
-   if (auto error = AccessObject(ObjectID, 3000, &object); !error) {
-      error = Action(ActionID, object, Args);
-      ReleaseObject(object);
-      return error;
-   }
-   else {
-      pf::Log log(__FUNCTION__);
-      return log.warning(error);
-   }
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 ActionThread: Execute an action in parallel, via a separate thread.
 
 This function follows the same principles of execution as the Action() function, with the difference of executing the
 action in parallel via a dynamically allocated thread.  Please refer to the ~Action() function for general
 information on action execution.
 
-To receive feedback of the action's completion, use the Callback parameter and supply a function.  The function
-prototype for the callback routine is `callback(ACTIONID ActionID, OBJECTPTR Object, ERROR Error, LONG Key)`
+To receive feedback of the action's completion, use the `Callback` parameter and supply a function.  The
+prototype for the callback routine is `callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, LONG Key)`
 
-It is crucial that the target object is not destroyed while the thread is executing.  Use the Callback routine to
+It is crucial that the target object is not destroyed while the thread is executing.  Use the `Callback` routine to
 receive notification of the thread's completion and then free the object if desired.  The callback will be processed
 in the next call to ~ProcessMessages(), so as to maintain an orderly execution process within the application.
 
@@ -562,9 +528,9 @@ at its most effective when used to perform lengthy processes such as the loading
 -INPUT-
 int(AC) Action: An action or method ID must be specified here.
 obj Object: A pointer to the object that is going to perform the action.
-ptr Args: If the action or method is documented as taking parameters, point to the relevant parameter structure here.  Pre-defined parameter structures are obtained from the "system/actions.h" include file.
+ptr Args: If the action or method is documented as taking parameters, provide the correct parameter structure here.
 ptr(func) Callback: This function will be called after the thread has finished executing the action.
-int Key: An optional key value to be passed to the callback routine.
+int Key: An optional key value to be passed to the `Callback` routine.
 
 -ERRORS-
 Okay
@@ -577,19 +543,19 @@ Init
 
 *********************************************************************************************************************/
 
-ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *Callback, LONG Key)
+ERR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *Callback, LONG Key)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!ActionID) or (!Object)) return ERR_NullArgs;
+   if ((!ActionID) or (!Object)) return ERR::NullArgs;
 
    log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p, Key: %d", ActionID, Object->UID, Parameters, Callback, Key);
 
    ++Object->ThreadPending;
 
-   ERROR error;
+   ERR error;
    extThread *thread = NULL;
-   if (!(error = threadpool_get(&thread))) {
+   if ((error = threadpool_get(&thread)) IS ERR::Okay) {
       // Prepare the parameter buffer for passing to the thread routine.
 
       LONG argssize;
@@ -601,7 +567,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
          if (ActionID > 0) {
             args = ActionTable[ActionID].Args;
             if ((argssize = ActionTable[ActionID].Size) > 0) {
-               if (!(error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[ActionID].Name))) {
+               if ((error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[ActionID].Name)) IS ERR::Okay) {
                   free_args = true;
                }
 
@@ -612,7 +578,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
          else if (auto cl = Object->ExtClass) {
             args = cl->Methods[-ActionID].Args;
             if ((argssize = cl->Methods[-ActionID].Size) > 0) {
-               if (!(error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-ActionID].Name))) {
+               if ((error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-ActionID].Name)) IS ERR::Okay) {
                   free_args = true;
                }
             }
@@ -620,14 +586,14 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
 
             argssize += sizeof(thread_data);
          }
-         else error = log.warning(ERR_MissingClass);
+         else error = log.warning(ERR::MissingClass);
       }
       else argssize = sizeof(thread_data);
 
       // Execute the thread that will call the action.  Refer to thread_action() for the routine.
 
-      if (!error) {
-         thread->Routine = make_function_stdc(thread_action);
+      if (error IS ERR::Okay) {
+         thread->Routine = C_FUNCTION(thread_action);
 
          auto call = (thread_data *)call_data;
          call->Object   = Object;
@@ -635,21 +601,21 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
          call->Key      = Key;
          call->Parameters = Parameters ? true : false;
          if (Callback) call->Callback = *Callback;
-         else call->Callback.Type = 0;
+         else call->Callback.Type = CALL::NIL;
 
-         thSetData(thread, call, argssize);
+         thread->setData(call, argssize);
 
          error = thread->activate();
       }
 
-      if (error) {
+      if (error != ERR::Okay) {
          threadpool_release(thread);
          if (free_args) local_free_args(call_data + sizeof(thread_data), args);
       }
    }
-   else error = ERR_NewObject;
+   else error = ERR::NewObject;
 
-   if (error) --Object->ThreadPending;
+   if (error != ERR::Okay) --Object->ThreadPending;
 
    return error;
 }
@@ -659,45 +625,46 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
 -FUNCTION-
 CheckAction: Checks objects to see whether or not they support certain actions.
 
-This function checks if an object's class supports a given action or method ID.  For instance:
+This function returns `ERR::True` if an object's class supports a given action or method ID.  For example:
 
 <pre>
-if (!CheckAction(pic, AC_Query)) {
+if (CheckAction(pic, AC_Query) IS ERR::True) {
    // The Query action is supported.
 }
 </pre>
 
 -INPUT-
 obj Object: The target object.
-int Action: A registered action ID.
+int Action: A registered action or method ID.
 
 -ERRORS-
-Okay: The object supports the specified action.
+True: The object supports the specified action.
 False: The action is not supported.
 NullArgs:
-LostClass: The object has lost its class reference (object corrupt).
+LostClass:
 
 *********************************************************************************************************************/
 
-ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
+ERR CheckAction(OBJECTPTR Object, LONG ActionID)
 {
    pf::Log log(__FUNCTION__);
 
    if (Object) {
-      if (Object->Class->ClassID IS ID_METACLASS) {
-         if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
-         else return ERR_False;
+      if (!Object->Class) return ERR::False;
+      else if (Object->classID() IS CLASSID::METACLASS) {
+         if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR::True;
+         else return ERR::False;
       }
       else if (auto cl = Object->ExtClass) {
-         if (cl->ActionTable[ActionID].PerformAction) return ERR_Okay;
+         if (cl->ActionTable[ActionID].PerformAction) return ERR::True;
          else if (cl->Base) {
-            if (cl->Base->ActionTable[ActionID].PerformAction) return ERR_Okay;
+            if (cl->Base->ActionTable[ActionID].PerformAction) return ERR::True;
          }
-         return ERR_False;
+         return ERR::False;
       }
-      else return log.warning(ERR_LostClass);
+      else return log.warning(ERR::LostClass);
    }
-   else return log.warning(ERR_NullArgs);
+   else return log.warning(ERR::NullArgs);
 }
 
 /*********************************************************************************************************************
@@ -717,20 +684,20 @@ LockFailed:
 
 *********************************************************************************************************************/
 
-ERROR CheckObjectExists(OBJECTID ObjectID)
+ERR CheckObjectExists(OBJECTID ObjectID)
 {
    if (auto lock = std::unique_lock{glmMemory}) {
-      LONG result = ERR_False;
+      ERR result = ERR::False;
       auto mem = glPrivateMemory.find(ObjectID);
       if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
          if (mem->second.Object->defined(NF::FREE_ON_UNLOCK));
-         else result = ERR_True;
+         else result = ERR::True;
       }
       return result;
    }
    else {
       pf::Log log(__FUNCTION__);
-      return log.warning(ERR_LockFailed);
+      return log.warning(ERR::LockFailed);
    }
 }
 
@@ -743,12 +710,12 @@ This function returns a pointer to the object that has the current context.  Con
 resource allocations.  Manipulating the context is sometimes necessary to ensure that a resource is tracked to
 the correct object.
 
-To get the parent context (technically the 'context of the current context'), use GetParentContext(), which is
+To get the parent context (technically the 'context of the current context'), use `GetParentContext()`, which is
 implemented as a macro.  This is used in method and action routines where the context of the object's caller may be
 needed.
 
 -RESULT-
-obj: Returns an object pointer (of which the Task has exclusive access to).  Cannot return NULL except in the initial start-up and late shut-down sequence of the Core.
+obj: Returns an object pointer (of which the Task has exclusive access to).  Cannot return `NULL` except in the initial start-up and late shut-down sequence of the Core.
 
 *********************************************************************************************************************/
 
@@ -764,7 +731,7 @@ FindClass: Returns all class objects for a given class ID.
 
 This function will find a specific class by ID and return its @MetaClass.  If the class is not in memory, the internal
 dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded
-into memory and the class will be returned.  In any event of failure, NULL is returned.
+into memory and the class will be returned.  In any event of failure, `NULL` is returned.
 
 If the ID of a named class is not known, call ~ResolveClassName() first and pass the resulting ID to this function.
 
@@ -772,7 +739,7 @@ If the ID of a named class is not known, call ~ResolveClassName() first and pass
 cid ClassID: A class ID such as one retrieved from ~ResolveClassName().
 
 -RESULT-
-obj(MetaClass): Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.
+obj(MetaClass): Returns a pointer to the @MetaClass structure that has been found as a result of the search, or `NULL` if no matching class was found.
 
 *********************************************************************************************************************/
 
@@ -783,7 +750,7 @@ objMetaClass * FindClass(CLASSID ClassID)
 
    if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
 
-   // Class is not loaded.  Try and find a master in the dictionary.  If we find one, we can
+   // Class is not loaded.  Try and find the class in the dictionary.  If we find one, we can
    // initialise the module and then find the new Class.
    //
    // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
@@ -797,7 +764,7 @@ objMetaClass * FindClass(CLASSID ClassID)
          // Load the module from the associated location and then find the class that it contains.  If the module fails,
          // we keep on looking for other installed modules that may handle the class.
 
-         log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ClassID);
+         log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ULONG(ClassID));
 
          objModule::create mod = { fl::Name(path) };
          if (mod.ok()) {
@@ -809,7 +776,7 @@ objMetaClass * FindClass(CLASSID ClassID)
       }
       else log.warning("No module path defined for class \"%s\"", glClassDB[ClassID].Name.c_str());
    }
-   else log.warning("Could not find class $%.8x in memory or dictionary.", ClassID);
+   else log.warning("Could not find class $%.8x in memory or dictionary (%d registered).", ULONG(ClassID), LONG(glClassDB.size()));
 
    return NULL;
 }
@@ -826,7 +793,7 @@ with a given name:
 
 <pre>
 OBJECTID id;
-FindObject("SystemPointer", ID_POINTER, 0, &id);
+FindObject("SystemPointer", CLASSID::POINTER, 0, &id);
 </pre>
 
 If FindObject() cannot find any matching objects then it will return an error code.
@@ -838,7 +805,7 @@ int(FOF) Flags: Optional flags.
 &oid ObjectID:  An object id variable for storing the result.
 
 -ERRORS-
-Okay: At least one matching object was found and stored in the ObjectID.
+Okay: At least one matching object was found and stored in the `ObjectID`.
 Args:
 Search: No objects matching the given name could be found.
 LockFailed:
@@ -848,12 +815,12 @@ DoesNotExist:
 
 *********************************************************************************************************************/
 
-ERROR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result)
+ERR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Result) or (!InitialName)) return ERR_NullArgs;
-   if (!InitialName[0]) return log.warning(ERR_EmptyString);
+   if ((!Result) or (!InitialName)) return ERR::NullArgs;
+   if (!InitialName[0]) return log.warning(ERR::EmptyString);
 
    if ((Flags & FOF::SMART_NAMES) != FOF::NIL) {
       // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
@@ -875,46 +842,43 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Resu
 
       if (number) {
          if (auto objectid = (OBJECTID)StrToInt(InitialName)) {
-            if (!CheckObjectExists(objectid)) {
+            if (CheckObjectExists(objectid) IS ERR::Okay) {
                *Result = objectid;
-               return ERR_Okay;
+               return ERR::Okay;
             }
-            else return ERR_Search;
+            else return ERR::Search;
          }
-         else return ERR_Search;
+         else return ERR::Search;
       }
 
-      if (!StrMatch("owner", InitialName)) {
-         if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
-            if (!CheckObjectExists(tlContext->object()->OwnerID)) {
-               *Result = tlContext->object()->OwnerID;
-               return ERR_Okay;
-            }
-            else return ERR_DoesNotExist;
+      if (iequals("owner", InitialName)) {
+         if ((tlContext != &glTopContext) and (tlContext->object()->Owner)) {
+            *Result = tlContext->object()->Owner->UID;
+            return ERR::Okay;
          }
-         else return ERR_DoesNotExist;
+         else return ERR::DoesNotExist;
       }
    }
 
    if (auto lock = std::unique_lock{glmObjectLookup, 4s}) {
       if (glObjectLookup.contains(InitialName)) {
          auto &list = glObjectLookup[InitialName];
-         if (!ClassID) {
+         if (ClassID IS CLASSID::NIL) {
             *Result = list.back()->UID;
-            return ERR_Okay;
+            return ERR::Okay;
          }
 
          for (auto it=list.rbegin(); it != list.rend(); it++) {
             auto obj = *it;
-            if ((obj->Class->ClassID IS ClassID) or (obj->Class->BaseClassID IS ClassID)) {
+            if ((obj->classID() IS ClassID) or (obj->Class->BaseClassID IS ClassID)) {
                *Result = obj->UID;
-               return ERR_Okay;
+               return ERR::Okay;
             }
          }
       }
    }
 
-   return ERR_Search;
+   return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -924,13 +888,13 @@ GetActionMsg: Returns a message structure if called from an action that was exec
 
 This function is for use by action and method support routines only.  It will return a Message structure if the
 action currently under execution has been called directly from the ~ProcessMessages() function.  In all other
-cases a NULL pointer is returned.
+cases a `NULL` pointer is returned.
 
-The Message structure reflects the contents of a standard ~GetMessage() call.  Of particular interest may be
-the Time field, which indicates the time-stamp at which the action message was originally sent to the object.
+The !Message structure reflects the contents of a standard ~GetMessage() call.  Of particular interest may be
+the `Time` field, which indicates the time-stamp at which the action message was originally sent to the object.
 
 -RESULT-
-resource(Message): A Message structure is returned if the function is called in valid circumstances, otherwise NULL.  The Message structure's fields are described in the ~GetMessage() function.
+resource(Message): A !Message structure is returned if the function is called in valid circumstances, otherwise `NULL`.  The !Message structure's fields are described in the ~GetMessage() function.
 
 *********************************************************************************************************************/
 
@@ -952,8 +916,8 @@ GetClassID: Returns the class ID of an ID-referenced object.
 Call this function with any valid object ID to learn the identifier for its base class.  This is the quickest way to
 retrieve the class of an object without having to gain exclusive access to the object first.
 
-Note that if the object's pointer is already known, the quickest way to learn of its class is to read the ClassID
-field in the object header.
+Note that if the object's pointer is already known, the quickest way to learn of its class is to call the `classID()`
+C++ method.
 
 -INPUT-
 oid Object: The object to be examined.
@@ -966,7 +930,7 @@ cid: Returns the base class ID of the object or zero if failure.
 CLASSID GetClassID(OBJECTID ObjectID)
 {
    if (auto object = GetObjectPtr(ObjectID)) return object->Class->BaseClassID;
-   else return 0;
+   else return CLASSID::NIL;
 }
 
 /*********************************************************************************************************************
@@ -974,13 +938,13 @@ CLASSID GetClassID(OBJECTID ObjectID)
 -FUNCTION-
 GetObjectPtr: Returns a direct pointer for any object ID.
 
-This function translates object ID's to their respective address pointers.
+This function translates an object ID to its respective address pointer.
 
 -INPUT-
 oid Object: The ID of the object to lookup.
 
 -RESULT-
-obj: The address of the object is returned, or NULL if the ID does not relate to an object.
+obj: The address of the object is returned, or `NULL` if the ID does not relate to an object.
 
 *********************************************************************************************************************/
 
@@ -1007,7 +971,7 @@ GetOwnerID: Returns the unique ID of an object's owner.
 This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the
 owner of an object if only the ID is known.
 
-If the object address is already known then the fastest means of retrieval is via the ownerID() C++ class method.
+If the object address is already known then the fastest means of retrieval is via the `ownerID()` C++ class method.
 
 -INPUT-
 oid Object: The ID of an object to query.
@@ -1021,7 +985,7 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
    if (auto lock = std::unique_lock{glmMemory}) {
       if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
-         if (mem->second.Object) return mem->second.Object->OwnerID;
+         if (mem->second.Object) return mem->second.Object->ownerID();
       }
    }
    return 0;
@@ -1032,16 +996,16 @@ OBJECTID GetOwnerID(OBJECTID ObjectID)
 -FUNCTION-
 InitObject: Initialises an object so that it is ready for use.
 
-This function initialises objects so that they can be used for their intended purpose. The process of initialisation
-is compulsory, and a client may not use any other actions on an object until it has been initialised.  Exceptions to
-this rule only apply to the GetVar() and SetVar() actions.
+This function initialises objects so that they can be used for their intended purpose. Initialisation is compulsory,
+and a client may not call any actions or methods on an object until it has been initialised.  Exceptions to
+this rule only apply to the `GetKey()` and `SetKey()` actions.
 
 If the initialisation of an object fails due to a support problem (for example, if a PNG @Picture object attempts to
 load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can
-provide ample support exists, a partial transfer of ownership will occur and the object's  management will be shared
-between both the base class and the sub-class.
+support the object's configuration is available, the object's interface will be shared between both the base-class
+and the sub-class.
 
-If an object does not support the data or its configuration, an error code of `ERR_NoSupport` will be returned.
+If an object does not support the data or its configuration, an error code of `ERR::NoSupport` will be returned.
 Other appropriate error codes can be returned if initialisation fails.
 
 -INPUT-
@@ -1050,11 +1014,12 @@ obj Object: The object to initialise.
 -ERRORS-
 Okay: The object was initialised.
 LostClass
+DoubleInit
 ObjectCorrupt
 
 *********************************************************************************************************************/
 
-ERROR InitObject(OBJECTPTR Object)
+ERR InitObject(OBJECTPTR Object)
 {
    pf::Log log("Init");
 
@@ -1063,17 +1028,17 @@ ERROR InitObject(OBJECTPTR Object)
    auto cl = Object->ExtClass;
 
    if (Object->initialised()) {  // Initialising twice does not cause an error, but send a warning and return
-      log.warning(ERR_DoubleInit);
-      return ERR_Okay;
+      log.warning(ERR::DoubleInit);
+      return ERR::Okay;
    }
 
-   if (Object->Name[0]) log.branch("%s #%d, Name: %s, Owner: %d", cl->ClassName, Object->UID, Object->Name, Object->OwnerID);
-   else log.branch("%s #%d, Owner: %d", cl->ClassName, Object->UID, Object->OwnerID);
+   if (Object->Name[0]) log.branch("%s #%d, Name: %s, Owner: %d", cl->ClassName, Object->UID, Object->Name, Object->ownerID());
+   else log.branch("%s #%d, Owner: %d", cl->ClassName, Object->UID, Object->ownerID());
 
    ObjectContext new_context(Object, AC_Init);
 
    bool use_subclass = false;
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    if (Object->isSubClass()) {
       // For sub-classes, the base-class gets called first.  It should verify that
       // the object is sub-classed so as to prevent it from doing 'too much' initialisation.
@@ -1082,12 +1047,12 @@ ERROR InitObject(OBJECTPTR Object)
          error = cl->Base->ActionTable[AC_Init].PerformAction(Object, NULL);
       }
 
-      if (!error) {
+      if (error IS ERR::Okay) {
          if (cl->ActionTable[AC_Init].PerformAction) {
             error = cl->ActionTable[AC_Init].PerformAction(Object, NULL);
          }
 
-         if (!error) Object->Flags |= NF::INITIALISED;
+         if (error IS ERR::Okay) Object->Flags |= NF::INITIALISED;
       }
 
       return error;
@@ -1095,11 +1060,11 @@ ERROR InitObject(OBJECTPTR Object)
    else {
       // Meaning of special error codes:
       //
-      // ERR_NoSupport: The source data is not recognised.  Search for a sub-class that might have better luck.  Note
+      // ERR::NoSupport: The source data is not recognised.  Search for a sub-class that might have better luck.  Note
       //   that in the first case we can only support classes that are already in memory.  The second part of this
       //   routine supports checking of sub-classes that aren't loaded yet.
       //
-      // ERR_UseSubClass: Similar to ERR_NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
+      // ERR::UseSubClass: Similar to ERR::NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
 
       std::array<extMetaClass *, 16> sublist;
       LONG sli = -1;
@@ -1108,9 +1073,9 @@ ERROR InitObject(OBJECTPTR Object)
          if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
             error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL);
          }
-         else error = ERR_Okay; // If no initialiser defined, auto-OK
+         else error = ERR::Okay; // If no initialiser defined, auto-OK
 
-         if (!error) {
+         if (error IS ERR::Okay) {
             Object->Flags |= NF::INITIALISED;
 
             if (Object->ExtClass != cl) {
@@ -1123,14 +1088,14 @@ ERROR InitObject(OBJECTPTR Object)
                Object->Flags |= NF::RECLASSED; // This flag indicates that the object originally belonged to the base-class
             }
 
-            return ERR_Okay;
+            return ERR::Okay;
          }
 
-         if (error IS ERR_UseSubClass) {
+         if (error IS ERR::UseSubClass) {
             log.trace("Requested to use registered sub-class.");
             use_subclass = TRUE;
          }
-         else if (error != ERR_NoSupport) break;
+         else if (error != ERR::NoSupport) break;
 
          if (sli IS -1) {
             // Initialise a list of all sub-classes already in memory for querying in sequence.
@@ -1138,7 +1103,7 @@ ERROR InitObject(OBJECTPTR Object)
             LONG i = 0;
             for (auto & [ id, class_ptr ] : glClassMap) {
                if (i >= LONG(sublist.size())-1) break;
-               if ((Object->Class->ClassID IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->Class->ClassID)) {
+               if ((Object->classID() IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->classID())) {
                   sublist[i++] = class_ptr;
                }
             }
@@ -1163,29 +1128,29 @@ ERROR InitObject(OBJECTPTR Object)
    // memory resources (loading each sub-class into memory just to check whether or not the data is supported is overkill).
 
    CSTRING path;
-   if (use_subclass) { // If ERR_UseSubClass was set and the sub-class was not registered, do not call IdentifyFile()
-      log.warning("ERR_UseSubClass was used but no suitable sub-class was registered.");
+   if (use_subclass) { // If ERR::UseSubClass was set and the sub-class was not registered, do not call IdentifyFile()
+      log.warning("ERR::UseSubClass was used but no suitable sub-class was registered.");
    }
-   else if ((error IS ERR_NoSupport) and (!GetField(Object, FID_Path|TSTR, &path)) and (path)) {
+   else if ((error IS ERR::NoSupport) and (GetField(Object, FID_Path|TSTR, &path) IS ERR::Okay) and (path)) {
       CLASSID class_id, subclass_id;
-      if (!IdentifyFile(path, &class_id, &subclass_id)) {
-         if ((class_id IS Object->Class->ClassID) and (subclass_id)) {
-            log.msg("Searching for subclass $%.8x", subclass_id);
+      if (IdentifyFile(path, &class_id, &subclass_id) IS ERR::Okay) {
+         if ((class_id IS Object->classID()) and (subclass_id != CLASSID::NIL)) {
+            log.msg("Searching for subclass $%.8x", ULONG(subclass_id));
             if ((Object->ExtClass = (extMetaClass *)FindClass(subclass_id))) {
                if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
-                  if (!(error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL))) {
+                  if ((error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL)) IS ERR::Okay) {
                      log.msg("Object class switched to sub-class \"%s\".", Object->className());
                      Object->Flags |= NF::INITIALISED;
                      Object->ExtClass->OpenCount++;
-                     return ERR_Okay;
+                     return ERR::Okay;
                   }
                }
-               else return ERR_Okay;
+               else return ERR::Okay;
             }
-            else log.warning("Failed to load module for class #%d.", subclass_id);
+            else log.warning("Failed to load module for class #%d.", ULONG(subclass_id));
          }
       }
-      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), class_id);
+      else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), ULONG(class_id));
 
       Object->Class = cl;  // Put back the original to retain object integrity
    }
@@ -1199,27 +1164,28 @@ ERROR InitObject(OBJECTPTR Object)
 ListChildren: Returns a list of all children belonging to an object.
 
 The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty
-vector of ChildEntry structures to host the results, which include unique object ID's and their class identifiers.
+vector of !ChildEntry structures to host the results, which include unique object ID's and their class identifiers.
 
-Note that any child objects marked with the `INTEGRAL` flag will be excluded because they are private members of the
+Note that any child objects marked with the `LOCAL` flag will be excluded because they are private members of the
 targeted object.
 
 -INPUT-
 oid Object: An object to query.
-ptr(cpp(array(resource(ChildEntry)))) List: Must refer to an array of ChildEntry structures.
+ptr(cpp(array(resource(ChildEntry)))) List: Must refer to an array of !ChildEntry structures.
 
 -ERRORS-
 Okay: Zero or more children were found and listed.
 Args
 NullArgs
+LockFailed
 
 *********************************************************************************************************************/
 
-ERROR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
+ERR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!ObjectID) or (!List)) return log.warning(ERR_NullArgs);
+   if ((!ObjectID) or (!List)) return log.warning(ERR::NullArgs);
 
    log.trace("#%d, List: %p", ObjectID, List);
 
@@ -1229,14 +1195,14 @@ ERROR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
          if (mem IS glPrivateMemory.end()) continue;
 
          if (auto child = mem->second.Object) {
-            if (!child->defined(NF::INTEGRAL)) {
-               List->emplace_back(child->UID, child->Class->ClassID);
+            if (!child->defined(NF::LOCAL)) {
+               List->emplace_back(child->UID, child->classID());
             }
          }
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_LockFailed;
+   else return ERR::LockFailed;
 }
 
 /*********************************************************************************************************************
@@ -1248,55 +1214,54 @@ The NewObject() function is used to create new objects and register them for use
 a new object, the client can proceed to set the object's field values and initialise it with #Init() so that it
 can be used as intended.
 
-The new object will be modeled according to the class blueprint indicated by ClassID.  Pre-defined class ID's are
+The new object will be modeled according to the class blueprint indicated by `ClassID`.  Pre-defined class ID's are
 defined in their documentation and the `parasol/system/register.h` include file.  ID's for unregistered classes can
 be computed using the ~ResolveClassName() function.
 
-A pointer to the new object will be returned in the Object parameter.  By default, object allocations are context
+A pointer to the new object will be returned in the `Object` parameter.  By default, object allocations are context
 sensitive and will be collected when their owner is terminated.  It is possible to track an object to a different
 owner by using the ~SetOwner() function.
 
 To destroy an object, call ~FreeResource().
 
 -INPUT-
-large ClassID: A class ID from "system/register.h" or generated by ~ResolveClassName().
+cid ClassID: A class ID from `system/register.h` or generated by ~ResolveClassName().
 flags(NF) Flags:  Optional flags.
 &obj Object: Pointer to an address variable that will store a reference to the new object.
 
 -ERRORS-
 Okay
 NullArgs
-MissingClass: The ClassID is invalid or refers to a class that is not installed.
-Failed
-ObjectExists: An object with the provided Name already exists in the system (applies only when the NF_UNIQUE flag has been used).
+MissingClass: The `ClassID` is invalid or refers to a class that is not installed.
+AllocMemory
 -END-
 
 *********************************************************************************************************************/
 
-ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
+ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
 {
    pf::Log log(__FUNCTION__);
 
-   auto class_id = ULONG(ClassID & 0xffffffff);
-   if ((!class_id) or (!Object)) return log.warning(ERR_NullArgs);
+   auto class_id = ClassID;
+   if ((class_id IS CLASSID::NIL) or (!Object)) return log.warning(ERR::NullArgs);
 
    auto mc = (extMetaClass *)FindClass(class_id);
    if (!mc) {
       if (glClassMap.contains(class_id)) {
          log.function("Class %s was not found in the system.", glClassMap[class_id]->ClassName);
       }
-      else log.function("Class $%.8x was not found in the system.", class_id);
-      return ERR_MissingClass;
+      else log.function("Class $%.8x was not found in the system.", ULONG(class_id));
+      return ERR::MissingClass;
    }
 
    if (Object) *Object = NULL;
 
-   Flags &= (NF::UNTRACKED|NF::INTEGRAL|NF::UNIQUE|NF::NAME|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
+   Flags &= (NF::UNTRACKED|NF::LOCAL|NF::UNIQUE|NF::NAME|NF::SUPPRESS_LOG); // Very important to eliminate any internal flags.
 
-   // If the object is integral then turn off use of the UNTRACKED flag (otherwise the child will
+   // If the object is local then turn off use of the UNTRACKED flag (otherwise the child will
    // end up being tracked to its task rather than its parent object).
 
-   if ((Flags & NF::INTEGRAL) != NF::NIL) Flags = Flags & (~NF::UNTRACKED);
+   if ((Flags & NF::LOCAL) != NF::NIL) Flags = Flags & (~NF::UNTRACKED);
 
    // Force certain flags on the class' behalf
 
@@ -1307,7 +1272,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
    OBJECTPTR head = NULL;
    MEMORYID head_id;
 
-   if (!AllocMemory(mc->Size, MEM::MANAGED|MEM::OBJECT|MEM::NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM::UNTRACKED : MEM::NIL), (APTR *)&head, &head_id)) {
+   if (AllocMemory(mc->Size, MEM::MANAGED|MEM::OBJECT|MEM::NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM::UNTRACKED : MEM::NIL), (APTR *)&head, &head_id) IS ERR::Okay) {
       set_memory_manager(head, &glResourceObject);
 
       head->UID     = head_id;
@@ -1318,7 +1283,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
       if ((mc->Flags & CLF::NO_OWNERSHIP) != CLF::NIL) { } // Used by classes like RootModule to avoid tracking back to the task.
       else if ((Flags & NF::UNTRACKED) != NF::NIL) {
-         if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
+         if (class_id IS CLASSID::MODULE); // Untracked modules have no owner, due to the expunge process.
          else {
             // Untracked objects are owned by the current task.  This ensures that the object
             // is deallocated correctly when the Core is closed.
@@ -1330,7 +1295,14 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
          }
       }
       else if (tlContext != &glTopContext) { // Track the object to the current context
-         SetOwner(head, tlContext->resource());
+         auto obj = tlContext->resource();
+         if (obj IS &glDummyObject) {
+            if (glCurrentTask) {
+               ScopedObjectAccess lock(glCurrentTask);
+               SetOwner(head, glCurrentTask);
+            }
+         }
+         else SetOwner(head, obj);
       }
       else if (glCurrentTask) {
          ScopedObjectAccess lock(glCurrentTask);
@@ -1342,34 +1314,34 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
       pf::SwitchContext context(head);
 
-      ERROR error = ERR_Okay;
+      ERR error = ERR::Okay;
       if (mc->Base) {
          if (mc->Base->ActionTable[AC_NewObject].PerformAction) {
-            if ((error = mc->Base->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+            if ((error = mc->Base->ActionTable[AC_NewObject].PerformAction(head, NULL)) != ERR::Okay) {
                log.warning(error);
             }
          }
-         else error = log.warning(ERR_NoAction);
+         else error = log.warning(ERR::NoAction);
       }
 
-      if ((!error) and (mc->ActionTable[AC_NewObject].PerformAction)) {
-         if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL))) {
+      if ((error IS ERR::Okay) and (mc->ActionTable[AC_NewObject].PerformAction)) {
+         if ((error = mc->ActionTable[AC_NewObject].PerformAction(head, NULL)) != ERR::Okay) {
             log.warning(error);
          }
       }
 
-      if (!error) {
+      if (error IS ERR::Okay) {
          ((extMetaClass *)head->Class)->OpenCount++;
          if (mc->Base) mc->Base->OpenCount++;
 
          *Object = head;
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       FreeResource(head);
       return error;
    }
-   else return ERR_AllocMemory;
+   else return ERR::AllocMemory;
 }
 
 /*********************************************************************************************************************
@@ -1377,34 +1349,33 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 -FUNCTION-
 NotifySubscribers: Used to send notification messages to action subscribers.
 
-This function can be used by classes that need total control over notification management.  The system default for
-notifying action subscribers is to call them immediately after an action has taken place.  This may be inconvenient
-if the code for an action needs to execute code post-notification.  Using NotifySubscribers() allows these scenarios
-to be addressed.  Another possible use is for customised parameter values to be sent to subscribers instead of
-the original values.
+This function can be used by classes that need total control over notification management.  It allows an action to
+notify its subscribers manually, rather than deferring to the system default of notifying on return.
+
+Another useful feature is that parameter values can be customised for the recipients.
 
 NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it
-normally would, thus causing duplication.  To prevent this the client must logical-or the return code of
-the action function with `ERF_Notified`, e.g. `ERR_Okay|ERF_Notified`.
+normally would, thus causing duplication.  To prevent this, the client must logical-or the return code of
+the action function with `ERR::Notified`, e.g. `ERR::Okay|ERR::Notified`.
 
 -INPUT-
 obj Object: Pointer to the object that is to receive the notification message.
 int(AC) Action: The action ID for notification.
-ptr Args: Pointer to an action parameter structure that is relevant to the ActionID.
+ptr Args: Pointer to an action parameter structure that is relevant to the `Action` ID.
 error Error: The error code that is associated with the action result.
 
 -END-
 
 *********************************************************************************************************************/
 
-void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR ErrorCode)
+void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERR ErrorCode)
 {
    pf::Log log(__FUNCTION__);
 
    // No need for prv_access() since this function is called from within class action code only.
 
-   if (!Object) { log.warning(ERR_NullArgs); return; }
-   if ((ActionID <= 0) or (ActionID >= AC_END)) { log.warning(ERR_Args); return; }
+   if (!Object) { log.warning(ERR::NullArgs); return; }
+   if ((ActionID <= 0) or (ActionID >= AC_END)) { log.warning(ERR::Args); return; }
 
    if (!(Object->NotifyFlags.load() & (1LL<<(ActionID & 63)))) return;
 
@@ -1413,9 +1384,9 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
    if ((!glSubscriptions[Object->UID].empty()) and (!glSubscriptions[Object->UID][ActionID].empty())) {
       glSubReadOnly++; // Prevents changes to glSubscriptions while we're processing it.
       for (auto &sub : glSubscriptions[Object->UID][ActionID]) {
-         if (sub.Context) {
-            pf::SwitchContext ctx(sub.Context);
-            sub.Callback(Object, ActionID, ErrorCode, Parameters);
+         if (sub.Subscriber) {
+            pf::SwitchContext ctx(sub.Subscriber);
+            sub.Callback(Object, ActionID, ErrorCode, Parameters, sub.Meta);
          }
       }
       glSubReadOnly--;
@@ -1423,7 +1394,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
       if (!glSubReadOnly) {
          if (!glDelayedSubscribe.empty()) {
             for (auto &entry : glDelayedSubscribe) {
-               glSubscriptions[entry.ObjectID][entry.ActionID].emplace_back(entry.Callback.StdC.Context, entry.Callback.StdC.Routine);
+               glSubscriptions[entry.ObjectID][entry.ActionID].emplace_back(entry.Callback.Context, entry.Callback.Routine, entry.Callback.Meta);
             }
             glDelayedSubscribe.clear();
          }
@@ -1433,7 +1404,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
                if (Object->UID IS entry.ObjectID) UnsubscribeAction(Object, ActionID);
                else {
                   OBJECTPTR obj;
-                  if (!AccessObject(entry.ObjectID, 3000, &obj)) {
+                  if (AccessObject(entry.ObjectID, 3000, &obj) IS ERR::Okay) {
                      UnsubscribeAction(obj, entry.ActionID);
                      ReleaseObject(obj);
                   }
@@ -1454,20 +1425,20 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
 -FUNCTION-
 QueueAction: Delay the execution of an action by adding the call to the message queue.
 
-Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied Action and
-the Args will be bundled into a message that will be placed in the queue.  This function then returns immediately.
+Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied `Action` and
+`Args` will be combined into a message for the queue.  This function then returns immediately.
 
 The action will be executed on the next cycle of ~ProcessMessages() in line with the FIFO order of queued messages.
 
 -INPUT-
 int Action: The ID of an action or method to execute.
 oid Object: The target object.
-ptr Args:   The relevant argument structure for the Action, or NULL if not required.
+ptr Args:   The relevant argument structure for the `Action`, or `NULL` if not required.
 
 -ERRORS-
 Okay:
 NullArgs:
-OutOfRange: The ActionID is invalid.
+OutOfRange: The `Action` ID is invalid.
 NoMatchingObject:
 MissingClass:
 Failed:
@@ -1476,12 +1447,12 @@ IllegalMethodID:
 
 *********************************************************************************************************************/
 
-ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
+ERR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!ActionID) or (!ObjectID)) log.warning(ERR_NullArgs);
-   if (ActionID >= AC_END) return log.warning(ERR_OutOfRange);
+   if ((!ActionID) or (!ObjectID)) log.warning(ERR::NullArgs);
+   if (ActionID >= AC_END) return log.warning(ERR::OutOfRange);
 
    struct msgAction {
       ActionMessage Action;
@@ -1502,9 +1473,9 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
          if (ActionTable[ActionID].Size) {
             auto fields   = ActionTable[ActionID].Args;
             auto argssize = ActionTable[ActionID].Size;
-            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[ActionID].Name) != ERR_Okay) {
+            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[ActionID].Name) != ERR::Okay) {
                log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[ActionID].Name);
-               return ERR_Failed;
+               return ERR::Failed;
             }
 
             msg.Action.SendArgs = true;
@@ -1513,24 +1484,24 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
       else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
          auto fields   = cl->Methods[-ActionID].Args;
          auto argssize = cl->Methods[-ActionID].Size;
-         if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR_Okay) {
+         if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-ActionID].Name) != ERR::Okay) {
             log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-ActionID].Name);
-            return ERR_Failed;
+            return ERR::Failed;
          }
          msg.Action.SendArgs = true;
       }
-      else return log.warning(ERR_MissingClass);
+      else return log.warning(ERR::MissingClass);
    }
 
-   ERROR error = SendMessage(MSGID_ACTION, MSF::NIL, &msg.Action, msgsize + sizeof(ActionMessage));
+   ERR error = SendMessage(MSGID_ACTION, MSF::NIL, &msg.Action, msgsize + sizeof(ActionMessage));
 
-   if (error) {
+   if (error != ERR::Okay) {
       if (ActionID > 0) {
-         log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[error]);
+         log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[ActionID].Name, ObjectID, glMessages[LONG(error)]);
       }
-      else log.warning("Method %d on object #%d failed, SendMsg error: %s", ActionID, ObjectID, glMessages[error]);
+      else log.warning("Method %d on object #%d failed, SendMsg error: %s", ActionID, ObjectID, glMessages[LONG(error)]);
 
-      if (error IS ERR_MemoryDoesNotExist) error = ERR_NoMatchingObject;
+      if (error IS ERR::MemoryDoesNotExist) error = ERR::NoMatchingObject;
    }
 
    return error;
@@ -1539,17 +1510,16 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ResolveClassName: Resolves any class name to a unique identification ID.
+ResolveClassName: Resolves any class name to a `CLASSID` UID.
 
-This function will resolve a class name to its unique ID.
-
-Class ID's are used by functions such as ~NewObject() for fast processing.
+This function will resolve a class `Name` to its `CLASSID` UID and verifies that the class is installed.  It is case
+insensitive.
 
 -INPUT-
 cstr Name: The name of the class that requires resolution.
 
 -RESULT-
-cid: Returns the class ID identified from the class name, or NULL if the class could not be found.
+cid: Returns the class ID identified from the class name, or `NULL` if the class could not be found.
 -END-
 
 *********************************************************************************************************************/
@@ -1558,30 +1528,30 @@ CLASSID ResolveClassName(CSTRING ClassName)
 {
    if ((!ClassName) or (!*ClassName)) {
       pf::Log log(__FUNCTION__);
-      log.warning(ERR_NullArgs);
-      return 0;
+      log.warning(ERR::NullArgs);
+      return CLASSID::NIL;
    }
 
-   CLASSID cid = StrHash(ClassName, FALSE);
+   auto cid = CLASSID(strihash(ClassName));
    if (glClassDB.contains(cid)) return cid;
-   else return 0;
+   else return CLASSID::NIL;
 }
 
 /*********************************************************************************************************************
 
 -FUNCTION-
-ResolveClassID: Converts a valid class ID to its equivalent name.
+ResolveClassID: Resolve a valid `CLASSID` to its name.
 
-This function will resolve a valid class ID to its equivalent name.  The name is resolved by scanning the
+This function will resolve a valid class ID to its equivalent name.  The name is resolved by checking the
 class database, so the class must be registered in the database for this function to return successfully.
-Registration is achieved by loading the module that hosts the class, after which the class is permanently saved
-in the database.
+
+Registration is achieved by ensuring that the class is compiled into the build.
 
 -INPUT-
 cid ID: The ID of the class that needs to be resolved.
 
 -RESULT-
-cstr: Returns the name of the class, or NULL if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. "NetSocket".
+cstr: Returns the name of the class, or `NULL` if the ID is not recognised.  Standard naming conventions apply, so it can be expected that the string is capitalised and without spaces, e.g. `NetSocket`.
 -END-
 
 *********************************************************************************************************************/
@@ -1591,7 +1561,7 @@ CSTRING ResolveClassID(CLASSID ID)
    if (glClassDB.contains(ID)) return glClassDB[ID].Name.c_str();
 
    pf::Log log(__FUNCTION__);
-   log.warning("Failed to resolve ID $%.8x", ID);
+   log.warning("Failed to resolve ID $%.8x", ULONG(ID));
    return NULL;
 }
 
@@ -1610,47 +1580,49 @@ Internally, setting a new owner will cause three things to happen:
 <li>The resource tracking of the new owner will be modified so that the object is accepted as its child.  This means that if and when the owning object is destroyed, the new child object will be destroyed with it.</li>
 </list>
 
-If the Object does not support the NewOwner action, or the Owner does not support the NewChild action, then the
+If the `Object` does not support the NewOwner action, or the `Owner` does not support the NewChild action, then the
 process will not fail.  It will continue on the assumption that neither party is concerned about ownership management.
 
 -INPUT-
-obj Object: Pointer to the object to modify.
-obj Owner: Pointer to the new owner for the object.
+obj Object: The object to modify.
+obj Owner: The new owner for the `Object`.
 
 -ERRORS-
 Okay
 NullArgs
 Args
+Recursion
+SystemLocked
 -END-
 
 *********************************************************************************************************************/
 
-ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
+ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Object) or (!Owner)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!Owner)) return log.warning(ERR::NullArgs);
 
-   if (Object->OwnerID IS Owner->UID) return ERR_Okay;
+   if (Object->Owner IS Owner) return ERR::Okay;
 
    if ((Object->ExtClass->Flags & CLF::NO_OWNERSHIP) != CLF::NIL) {
       log.traceWarning("Cannot set the object owner as CLF::NO_OWNERSHIP is set in its class.");
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   if (Object IS Owner) return log.warning(ERR_Recursion);
+   if (Object IS Owner) return log.warning(ERR::Recursion);
 
-   //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UID, Owner->UID, Object->OwnerID);
+   //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UID, Owner->UID, Object->ownerID());
 
    // Send a new child alert to the owner.  If the owner returns an error then we return immediately.
 
    ScopedObjectAccess objlock(Object);
 
-   if (!CheckAction(Owner, AC_NewChild)) {
+   if (CheckAction(Owner, AC_NewChild) IS ERR::Okay) {
       struct acNewChild newchild = { .Object = Object };
-      if (auto error = Action(AC_NewChild, Owner, &newchild); error != ERR_NoSupport) {
-         if (error) { // If the owner has passed the object through to another owner, return ERR_Okay, otherwise error.
-            if (error IS ERR_OwnerPassThrough) return ERR_Okay;
+      if (auto error = Action(AC_NewChild, Owner, &newchild); error != ERR::NoSupport) {
+         if (error != ERR::Okay) { // If the owner has passed the object through to another owner, return ERR::Okay, otherwise error.
+            if (error IS ERR::OwnerPassThrough) return ERR::Okay;
             else return error;
          }
       }
@@ -1659,24 +1631,24 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    struct acNewOwner newowner = { .NewOwner = Owner };
    Action(AC_NewOwner, Object, &newowner);
 
-   //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
+   //if (Object->Owner) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->ownerID(), Owner->UID);
 
    // Track the object's memory header to the new owner
 
    if (auto lock = std::unique_lock{glmMemory}) {
       auto mem = glPrivateMemory.find(Object->UID);
-      if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
+      if (mem IS glPrivateMemory.end()) return log.warning(ERR::SystemCorrupt);
       mem->second.OwnerID = Owner->UID;
 
       // Remove reference from the now previous owner
-      if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UID);
+      if (Object->Owner) glObjectChildren[Object->Owner->UID].erase(Object->UID);
 
-      Object->OwnerID = Owner->UID;
+      Object->Owner = Owner;
 
       glObjectChildren[Owner->UID].insert(Object->UID);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -1692,14 +1664,14 @@ allocations.  For example:
 InitObject(display);
 auto ctx = SetContext(display);
 
-   NewObject(ID_BITMAP, &bitmap);
+   NewObject(CLASSID::BITMAP, &bitmap);
    AllocMemory(1000, MEM::DATA, &memory, NULL);
 
 SetContext(ctx);
 FreeResource(display->UID);
 </pre>
 
-The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When
+The above code allocates a @Bitmap and a memory block, both of which will be contained by the display. When
 ~FreeResource() is called, both the bitmap and memory block will be automatically removed as they have a dependency
 on the display's existence.  Please keep in mind that the following is incorrect:
 
@@ -1707,7 +1679,7 @@ on the display's existence.  Please keep in mind that the following is incorrect
 InitObject(display);
 auto ctx = SetContext(display);
 
-   NewObject(ID_BITMAP, &bitmap);
+   NewObject(CLASSID::BITMAP, &bitmap);
    AllocMemory(1000, MEM::DATA, &memory, NULL);
 
 SetContext(ctx);
@@ -1742,8 +1714,8 @@ OBJECTPTR SetContext(OBJECTPTR Object)
 -FUNCTION-
 SetName: Sets the name of an object.
 
-This function sets the name of an object.  This enhances log messages and allows the object to be found in searches.
-Please note that the length of the Name will be limited to the value indicated in the core header file, under
+This function sets the name of an `Object`.  This enhances log messages and allows the object to be found in searches.
+Please note that the length of the `Name` will be limited to the value indicated in the core header file, under
 the `MAX_NAME_LEN` definition.  Names exceeding the allowed length are trimmed to fit.
 
 Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with
@@ -1756,7 +1728,7 @@ cstr Name: The new name for the object.
 -ERRORS-
 Okay:
 NullArgs:
-Search:       The Object is not recognised by the system - the address may be invalid.
+Search: The `Object` is not recognised by the system - the address may be invalid.
 LockFailed:
 
 *********************************************************************************************************************/
@@ -1776,11 +1748,11 @@ static const char sn_lookup[256] = {
    '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_'
 };
 
-ERROR SetName(OBJECTPTR Object, CSTRING NewName)
+ERR SetName(OBJECTPTR Object, CSTRING NewName)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
+   if ((!Object) or (!NewName)) return log.warning(ERR::NullArgs);
 
    ScopedObjectAccess objlock(Object);
 
@@ -1794,9 +1766,9 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
       Object->Name[i] = 0;
 
       if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_LockFailed);
+   else return log.warning(ERR::LockFailed);
 }
 
 /*********************************************************************************************************************
@@ -1805,38 +1777,37 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
 SubscribeAction: Monitor action calls made against an object.
 
 The SubscribeAction() function allows a client to receive a callback each time that an action is executed on
-an object.  This technique is referred to as "action monitoring" and is often used for responding to UI
+an object.  This strategy is referred to as "action monitoring" and is often used for responding to UI
 events and the termination of objects.
 
-Subscriptions are context sensitive, so the Callback will execute in the space attributed to to the caller.
+Subscriptions are context sensitive, so the `Callback` will execute in the space attributed to to the caller.
 
-The following example illustrates how to listen to a Surface object's Redimension action and respond to resize
+The following example illustrates how to listen to a @Surface object's Redimension action and respond to resize
 events:
 
 <pre>
-auto callback = make_function_stdc(notify_resize);
-SubscribeAction(surface, AC_Redimension, &callback);
+SubscribeAction(surface, AC_Redimension, C_FUNCTION(notify_resize, meta_ptr));
 </pre>
 
-The template below illustrates how the Callback function should be constructed:
+The template below illustrates how the `Callback` function should be constructed:
 
 <pre>
-void notify_resize(OBJECTPTR Object, ACTIONID Action, ERROR Result, APTR Parameters)
+void notify_resize(OBJECTPTR Object, ACTIONID Action, ERR Result, APTR Parameters, APTR CallbackMeta)
 {
    auto Self = (objClassType *)CurrentContext();
 
    // Code here...
-   if ((Result == ERR_Okay) and (Parameters)) {
+   if ((Result == ERR::Okay) and (Parameters)) {
       auto resize = (struct acRedimension *)Parameters;
    }
 }
 </pre>
 
-The Object is the original subscription target, as-is the Action ID.  The Result is the error code that was generated
-at the end of the action call.  If this is not set to `ERR_Okay`, assume that the action did not have an effect on
-state.  The Parameters are the original arguments provided by the client - be aware that these can legitimately be
-NULL even if an action specifies a required parameter structure.  Notice that because subscriptions are context
-sensitive, we can use ~CurrentContext() to get a reference to the object that initiated the subscription.
+The `Object` is the original subscription target, as-is the Action ID.  The Result is the error code that was generated
+at the end of the action call.  If this is not set to `ERR::Okay`, assume that the action did not have an effect on
+state.  The `Parameters` are the original arguments provided by the client - be aware that these can legitimately be
+`NULL` even if an action specifies a required parameter structure.  Notice that because subscriptions are context
+sensitive, ~CurrentContext() can be used to get a reference to the object that initiated the subscription.
 
 To terminate an action subscription, use the ~UnsubscribeAction() function.  Subscriptions are not resource tracked,
 so it is critical to match the original call with an unsubscription.
@@ -1854,14 +1825,14 @@ OutOfRange: The Action parameter is invalid.
 
 *********************************************************************************************************************/
 
-ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
+ERR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Object) or (!Callback)) return log.warning(ERR_NullArgs);
-   if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_OutOfRange);
-   if (Callback->Type != CALL_STDC) return log.warning(ERR_Args);
-   if (Object->collecting()) return ERR_Okay;
+   if ((!Object) or (!Callback)) return log.warning(ERR::NullArgs);
+   if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR::OutOfRange);
+   if (!Callback->isC()) return log.warning(ERR::Args);
+   if (Object->collecting()) return ERR::Okay;
 
    if (glSubReadOnly) {
       glDelayedSubscribe.emplace_back(Object->UID, ActionID, *Callback);
@@ -1870,11 +1841,11 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
    else {
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
-      glSubscriptions[Object->UID][ActionID].emplace_back(Callback->StdC.Context, Callback->StdC.Routine);
+      glSubscriptions[Object->UID][ActionID].emplace_back(Callback->Context, Callback->Routine, Callback->Meta);
       Object->NotifyFlags.fetch_or(1LL<<(ActionID & 63), std::memory_order::relaxed);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1898,16 +1869,16 @@ Args:
 
 *********************************************************************************************************************/
 
-ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
+ERR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Object) return log.warning(ERR_NullArgs);
-   if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR_Args);
+   if (!Object) return log.warning(ERR::NullArgs);
+   if ((ActionID < 0) or (ActionID >= AC_END)) return log.warning(ERR::Args);
 
    if (glSubReadOnly) {
       glDelayedUnsubscribe.emplace_back(Object->UID, ActionID);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    std::lock_guard<std::recursive_mutex> lock(glSubLock);
@@ -1918,7 +1889,7 @@ ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 restart:
          for (auto & [action, list] : glSubscriptions[Object->UID]) {
             for (auto it = list.begin(); it != list.end(); ) {
-               if (it->Context->UID IS subscriber) it = list.erase(it);
+               if (it->SubscriberID IS subscriber) it = list.erase(it);
                else it++;
             }
 
@@ -1942,7 +1913,7 @@ restart:
 
       auto &list = glSubscriptions[Object->UID][ActionID];
       for (auto it = list.begin(); it != list.end(); ) {
-         if (it->Context->UID IS subscriber) it = list.erase(it);
+         if (it->SubscriberID IS subscriber) it = list.erase(it);
          else it++;
       }
 
@@ -1956,5 +1927,5 @@ restart:
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }

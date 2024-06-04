@@ -7,29 +7,21 @@ static FLOAT *glMixDest = NULL; // TODO: Global requires deprecation
 static void filter_float_mono(extAudio *, FLOAT *, LONG);
 static void filter_float_stereo(extAudio *, FLOAT *, LONG);
 static void mix_channel(extAudio *, AudioChannel &, LONG, APTR);
-static ERROR mix_data(extAudio *, LONG, APTR);
-static ERROR process_commands(extAudio *, SAMPLE);
+static ERR mix_data(extAudio *, LONG, APTR);
+static ERR process_commands(extAudio *, SAMPLE);
 
 //********************************************************************************************************************
 
 static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
 {
    auto &sample = Audio.Samples[SampleHandle];
-   if (sample.OnStop.Type IS CALL_STDC) {
-      pf::SwitchContext context(sample.OnStop.StdC.Context);
-      auto routine = (void (*)(extAudio *, LONG))sample.OnStop.StdC.Routine;
-      routine(&Audio, SampleHandle);
+   if (sample.OnStop.isC()) {
+      pf::SwitchContext context(sample.OnStop.Context);
+      auto routine = (void (*)(extAudio *, LONG, APTR))sample.OnStop.Routine;
+      routine(&Audio, SampleHandle, sample.OnStop.Meta);
    }
-   else if (sample.OnStop.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = sample.OnStop.Script.Script)) {
-         const ScriptArg args[] = {
-            { "Audio", FD_OBJECTPTR, { .Address = &Audio } },
-            { "Handle", FD_LONG, { .Long = SampleHandle } }
-         };
-         ERROR error;
-         scCallback(script, sample.OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
-      }
+   else if (sample.OnStop.isScript()) {
+      sc::Call(sample.OnStop, std::to_array<ScriptArg>({ { "Audio", &Audio, FD_OBJECTPTR }, { "Handle", SampleHandle } }));
    }
 }
 
@@ -38,26 +30,22 @@ static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
 
 static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
 {
-   if (Sample.Callback.Type IS CALL_STDC) {
-      pf::SwitchContext context(Sample.Callback.StdC.Context);
-      auto routine = (BYTELEN (*)(LONG, LONG, UBYTE *, LONG))Sample.Callback.StdC.Routine;
-      return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType));
+   if (Sample.Callback.isC()) {
+      pf::SwitchContext context(Sample.Callback.Context);
+      auto routine = (BYTELEN (*)(LONG, LONG, UBYTE *, LONG, APTR))Sample.Callback.Routine;
+      return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType), Sample.Callback.Meta);
    }
-   else if (Sample.Callback.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Sample.Callback.Script.Script)) {
-         const ScriptArg args[] = {
-            { "Handle", FD_LONG,    { .Long = Handle } },
-            { "Offset", FD_LONG,    { .Long = Offset } },
-            { "Buffer", FD_BUFFER,  { .Address = Sample.Data } },
-            { "Length", FD_BUFSIZE|FD_LONG, { .Long = Sample.SampleLength<<sample_shift(Sample.SampleType) } }
-         };
+   else if (Sample.Callback.isScript()) {
+      const auto args = std::to_array<ScriptArg>({
+         { "Handle", Handle },
+         { "Offset", Offset },
+         { "Buffer", Sample.Data, FD_BUFFER },
+         { "Length", Sample.SampleLength<<sample_shift(Sample.SampleType), FD_BUFSIZE|FD_LONG }
+      });
 
-         LONG result = 0;
-         ERROR error;
-         if (scCallback(script, Sample.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result)) error = ERR_Failed;
-         return BYTELEN(result);
-      }
+      ERR result;
+      if (sc::Call(Sample.Callback, args, result) IS ERR::Okay) return BYTELEN(result);
+      else return BYTELEN(0);
    }
 
    return BYTELEN(0);
@@ -65,7 +53,7 @@ static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
 
 //********************************************************************************************************************
 
-static ERROR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
+static ERR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
 {
    auto ml = SAMPLE(0x7fffffff);
    for (LONG i=1; i < (LONG)Self->Sets.size(); i++) {
@@ -75,20 +63,20 @@ static ERROR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
    }
 
    *MixLeft = ml;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Functions for use by dsound.cpp
 
 #ifdef _WIN32
-extern "C" int dsReadData(BaseClass *Self, void *Buffer, int Length) {
-   if (Self->Class->BaseClassID IS ID_SOUND) {
+extern "C" int dsReadData(Object *Self, void *Buffer, int Length) {
+   if (Self->Class->BaseClassID IS CLASSID::SOUND) {
       LONG result;
-      if (((objSound *)Self)->read(Buffer, Length, &result)) return 0;
+      if (((objSound *)Self)->read(Buffer, Length, &result) != ERR::Okay) return 0;
       else return result;
    }
-   else if (Self->Class->BaseClassID IS ID_AUDIO) {
+   else if (Self->Class->BaseClassID IS CLASSID::AUDIO) {
       auto space_left = SAMPLE(Length / ((extAudio *)Self)->DriverBitSize); // Convert to number of samples
 
       SAMPLE mix_left;
@@ -99,7 +87,7 @@ extern "C" int dsReadData(BaseClass *Self, void *Buffer, int Length) {
 
          SAMPLE elements = (mix_left < space_left) ? mix_left : space_left;
 
-         if (mix_data((extAudio *)Self, elements, Buffer) != ERR_Okay) break;
+         if (mix_data((extAudio *)Self, elements, Buffer) != ERR::Okay) break;
 
          // Drop the mix amount.  This may also update buffered channels for the next round
 
@@ -114,8 +102,8 @@ extern "C" int dsReadData(BaseClass *Self, void *Buffer, int Length) {
    else return 0;
 }
 
-extern "C" void dsSeekData(BaseClass *Self, LONG Offset) {
-   if (Self->Class->BaseClassID IS ID_SOUND) {
+extern "C" void dsSeekData(Object *Self, LONG Offset) {
+   if (Self->Class->BaseClassID IS CLASSID::SOUND) {
       ((objSound *)Self)->seek(Offset, SEEK::START);
    }
    else return; // Seeking not applicable for the Audio class.
@@ -125,11 +113,11 @@ extern "C" void dsSeekData(BaseClass *Self, LONG Offset) {
 //********************************************************************************************************************
 // Defines the L/RVolume and Ramping values for an AudioChannel.  These values are derived from the Volume and Pan.
 
-static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
+static ERR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Self) or (!Channel)) return log.warning(ERR_NullArgs);
+   if ((!Self) or (!Channel)) return log.warning(ERR::NullArgs);
 
    if (Channel->Volume > 1.0) Channel->Volume = 1.0;
    else if (Channel->Volume < 0) Channel->Volume = 0;
@@ -174,13 +162,13 @@ static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
       Channel->RVolumeTarget = rightvol;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Process as many command batches as possible that will fit within MixLeft.
 
-ERROR process_commands(extAudio *Self, SAMPLE Elements)
+ERR process_commands(extAudio *Self, SAMPLE Elements)
 {
    pf::Log log(__FUNCTION__);
 
@@ -198,16 +186,16 @@ ERROR process_commands(extAudio *Self, SAMPLE Elements)
          auto &cmds = Self->Sets[index].Commands;
          for (i=0; (i < (LONG)cmds.size()) and (!stop); i++) {
             switch(cmds[i].CommandID) {
-               case CMD::CONTINUE:     sndMixContinue(Self, cmds[i].Handle); break;
-               case CMD::MUTE:         sndMixMute(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::PLAY:         sndMixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::FREQUENCY:    sndMixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::PAN:          sndMixPan(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::RATE:         sndMixRate(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::SAMPLE:       sndMixSample(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::VOLUME:       sndMixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::STOP:         sndMixStop(Self, cmds[i].Handle); break;
-               case CMD::STOP_LOOPING: sndMixStopLoop(Self, cmds[i].Handle); break;
+               case CMD::CONTINUE:     snd::MixContinue(Self, cmds[i].Handle); break;
+               case CMD::MUTE:         snd::MixMute(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::PLAY:         snd::MixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::FREQUENCY:    snd::MixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::PAN:          snd::MixPan(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::RATE:         snd::MixRate(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::SAMPLE:       snd::MixSample(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::VOLUME:       snd::MixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::STOP:         snd::MixStop(Self, cmds[i].Handle); break;
+               case CMD::STOP_LOOPING: snd::MixStopLoop(Self, cmds[i].Handle); break;
                case CMD::END_SEQUENCE: stop = true; break;
 
                default:
@@ -221,12 +209,12 @@ ERROR process_commands(extAudio *Self, SAMPLE Elements)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 {
 #ifdef ALSA_ENABLED
 
@@ -255,7 +243,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
    }
    else {
       log.warning("ALSA not in an initialised state.");
-      return ERR_Terminate;
+      return ERR::Terminate;
    }
 
    // If the audio system is inactive or in a bad state, try to fix it.
@@ -269,14 +257,14 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
          Self->deactivate();
 
-         if (Self->activate() != ERR_Okay) {
+         if (Self->activate() != ERR::Okay) {
             log.warning("Audio error is terminal, self-destructing...");
             SendMessage(MSGID_FREE, MSF::NIL, &Self->UID, sizeof(OBJECTID));
-            return ERR_Failed;
+            return ERR::Failed;
          }
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if (space_left > SAMPLE(Self->AudioBufferSize / Self->DriverBitSize)) {
@@ -297,7 +285,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
       // Produce the audio data
 
-      if (mix_data(Self, elements, buffer) != ERR_Okay) break;
+      if (mix_data(Self, elements, buffer) != ERR::Okay) break;
 
       // Drop the mix amount.  This may also update buffered channels for the next round
 
@@ -320,7 +308,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
             snd_pcm_status_t *status;
             snd_pcm_status_alloca(&status);
             if (snd_pcm_status(Self->Handle, status) < 0) {
-               return ERR_Okay;
+               return ERR::Okay;
             }
 
             auto code = snd_pcm_status_get_state(status);
@@ -342,17 +330,17 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 
 #elif _WIN32
 
    sndStreamAudio((PlatformData *)Self->PlatformData);
-   return ERR_Okay;
+   return ERR::Okay;
 
 #else
 
    #warning No audio timer support on this platform.
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 
 #endif
 }
@@ -639,7 +627,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 //********************************************************************************************************************
 // Main entry point for mixing sound data to destination
 
-static ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
+static ERR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 {
    pf::Log log(__FUNCTION__);
 
@@ -689,7 +677,7 @@ static ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
       Elements -= window;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

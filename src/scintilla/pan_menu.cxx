@@ -19,7 +19,7 @@ void Scintilla::Menu::CreatePopUp()
    /*** Create Parasol popup window ***/
 
    /*OBJECTID surface_id;
-   if (CreateObject(ID_SURFACE, 0, NULL, &surface_id,
+   if (CreateObject(CLASSID::SURFACE, 0, NULL, &surface_id,
       FID_Name|TSTRING,    "ScintillaPopup",
       TAGEND) != ERR_Okay) {
 
@@ -27,7 +27,7 @@ void Scintilla::Menu::CreatePopUp()
       return;
    }*/
 
-   FindObject((STRING)"SystemSurface", ID_SURFACE, FOF::NIL, &display_id);
+   FindObject((STRING)"SystemSurface", CLASSID::SURFACE, FOF::NIL, &display_id);
 
    //id = *reinterpret_cast<MenuID *>(&surface_id);
 /*

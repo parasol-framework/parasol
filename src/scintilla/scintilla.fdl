@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Scintilla", copyright="Paul Manias © 2005-2023", version=1.0 }, function()
+module({ name="Scintilla", copyright="Paul Manias © 2005-2024", version=1.0 }, function()
   c_include("<parasol/modules/display.h>",
   "<parasol/modules/font.h>")
 
@@ -67,7 +67,8 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2023", version=1.0 }, 
     { id=8,  name="GotoLine" },
     { id=9,  name="TrimWhitespace" },
     { id=10, name="GetPos" },
-    { id=11, name="ReportEvent" }
+    { id=11, name="ReportEvent" },
+    { id=12, name="ScrollToPoint" }
   })
 
   class("Scintilla", { src={ "class_scintilla.cxx" }, output="class_scintilla_def.cxx" }, [[

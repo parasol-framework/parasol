@@ -5,21 +5,21 @@ Redimension: Moves and resizes a surface object in a single action call.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
+static ERR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs)|ERF_Notified;
+   if (!Args) return log.warning(ERR::NullArgs)|ERR::Notified;
 
    if ((Args->Width < 0) or (Args->Height < 0)) {
       log.trace("Bad width/height: %.0fx%.0f", Args->Width, Args->Height);
-      return ERR_Args|ERF_Notified;
+      return ERR::Args|ERR::Notified;
    }
 
    if (auto msg = GetActionMsg()) { // If this action was called as a message, then it could have been delayed and thus superseded by a more recent call.
       if (msg->Time < Self->LastRedimension) {
          log.trace("Ignoring superseded redimension message (%" PF64 " < %" PF64 ").", msg->Time, Self->LastRedimension);
-         return ERR_Okay|ERF_Notified;
+         return ERR::Okay|ERR::Notified;
       }
    }
 
@@ -29,10 +29,10 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
    if (Self->visible()) { // Visibility check because this sub-routine doesn't play nice with hidden surfaces.
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage)];
       LONG index = 0;
-      while (!ScanMessages(&index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
+      while (ScanMessages(&index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
          if ((action->ActionID IS AC_Redimension) and (action->ObjectID IS Self->UID)) {
-            return ERR_Okay|ERF_Notified;
+            return ERR::Okay|ERR::Notified;
          }
       }
    }
@@ -82,13 +82,13 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
    // Check for changes
 
    if ((newx IS oldx) and (newy IS oldy) and (newwidth IS oldwidth) and (newheight IS oldheight)) {
-      return ERR_Okay|ERF_Notified;
+      return ERR::Okay|ERR::Notified;
    }
 
    log.traceBranch("%dx%d %dx%d (req. %dx%d, %dx%d) Depth: %.0f $%.8x", newx, newy, newwidth, newheight, F2T(Args->X), F2T(Args->Y), F2T(Args->Width), F2T(Args->Height), Args->Depth, LONG(Self->Flags));
 
-   ERROR error = resize_layer(Self, newx, newy, newwidth, newheight, newwidth, newheight, F2T(Args->Depth), 0.0, 0);
-   return error|ERF_Notified;
+   ERR error = resize_layer(Self, newx, newy, newwidth, newheight, newwidth, newheight, F2T(Args->Depth), 0.0, 0);
+   return error|ERR::Notified;
 }
 
 /*********************************************************************************************************************
@@ -97,15 +97,15 @@ Resize: Alters the dimensions of a surface object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SURFACE_Resize(extSurface *Self, struct acResize *Args)
+static ERR SURFACE_Resize(extSurface *Self, struct acResize *Args)
 {
-   if (!Args) return ERR_NullArgs|ERF_Notified;
+   if (!Args) return ERR::NullArgs|ERR::Notified;
 
    if (((!Args->Width) or (Args->Width IS Self->Width)) and
-       ((!Args->Height) or (Args->Height IS Self->Height))) return ERR_Okay|ERF_Notified;
+       ((!Args->Height) or (Args->Height IS Self->Height))) return ERR::Okay|ERR::Notified;
 
    struct acRedimension redimension = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, Args->Width, Args->Height, Args->Depth };
-   return Action(AC_Redimension, Self, &redimension)|ERF_Notified;
+   return Action(AC_Redimension, Self, &redimension)|ERR::Notified;
 }
 
 /*********************************************************************************************************************
@@ -142,23 +142,23 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERROR SURFACE_SetDisplay(extSurface *Self, struct gfxSetDisplay *Args)
+static ERR SURFACE_SetDisplay(extSurface *Self, struct gfx::SetDisplay *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (Args->Width < 0) or (Args->Height < 0)) return log.warning(ERR_Args);
-   if (Self->ParentID) return log.warning(ERR_Failed);
+   if ((!Args) or (Args->Width < 0) or (Args->Height < 0)) return log.warning(ERR::Args);
+   if (Self->ParentID) return log.warning(ERR::Failed);
 
    LONG newx = Args->X;
    LONG newy = Args->Y;
    LONG newwidth  = (!Args->Width) ? Self->Width : Args->Width;
    LONG newheight = (!Args->Height) ? Self->Height : Args->Height;
 
-   //if ((newx IS Self->X) and (newy IS Self->Y) and (newwidth IS Self->Width) and (newheight IS Self->Height)) return ERR_Okay;
+   //if ((newx IS Self->X) and (newy IS Self->Y) and (newwidth IS Self->Width) and (newheight IS Self->Height)) return ERR::Okay;
 
    log.branch("%dx%d,%dx%d, BPP %d", newx, newy, newwidth, newheight, Args->BitsPerPixel);
 
-   ERROR error = resize_layer(Self, newx, newy, newwidth, newheight,
+   ERR error = resize_layer(Self, newx, newy, newwidth, newheight,
       Args->InsideWidth, Args->InsideHeight, Args->BitsPerPixel,
       Args->RefreshRate, Args->Flags);
 

@@ -82,37 +82,37 @@ extern "C" void program(void)
    STRING *Args;
    if ((!glTask->getPtr(FID_ArgsList, &Args)) and (Args)) {
       for (i=0; Args[i]; i++) {
-         if (!StrMatch(Args[i], "--help")) {
+         if (iequals(Args[i], "--help")) {
             // Print help for the user
             printf(Help);
             goto exit;
          }
-         else if (!StrMatch(Args[i], "--time")) {
+         else if (iequals(Args[i], "--time")) {
             time = true;
          }
-         else if (!StrMatch(Args[i], "--info")) {
+         else if (iequals(Args[i], "--info")) {
             printf("Instance: %d\n", GetResource(RES::INSTANCE));
          }
-         else if (!StrMatch(Args[i], "--instance")) {
+         else if (iequals(Args[i], "--instance")) {
             glTask->get(FID_Instance, &j);
             printf("Instance: %d\n", j);
          }
-         else if (!StrMatch(Args[i], "--winhandle")) { // Target a desktop window in the host environment
+         else if (iequals(Args[i], "--winhandle")) { // Target a desktop window in the host environment
             if (Args[i+1]) {
                if ((winhandle = StrToInt(Args[i+1]))) i++;
             }
          }
-         else if (!StrMatch(Args[i], "--width")) {
+         else if (iequals(Args[i], "--width")) {
             if (Args[i+1]) {
                if ((width = StrToInt(Args[i+1]))) i++;
             }
          }
-         else if (!StrMatch(Args[i], "--height")) {
+         else if (iequals(Args[i], "--height")) {
             if (Args[i+1]) {
                if ((height = StrToInt(Args[i+1]))) i++;
             }
          }
-         else if (!StrMatch(Args[i], "--procedure")) {
+         else if (iequals(Args[i], "--procedure")) {
             if (procedure) { FreeResource(procedure); procedure = NULL; }
 
             if (Args[i+1]) {
@@ -124,7 +124,7 @@ extern "C" void program(void)
                i++;
             }
          }
-         else if (!StrMatch(Args[i], "--target")) {
+         else if (iequals(Args[i], "--target")) {
             if (Args[i+1]) {
                if (FindObject(Args[i+1], 0, FOF::SMART_NAMES, &TargetID) != ERR_Okay) {
                   printf("Warning - could not find target object \"%s\".\n", Args[i+1]);
@@ -132,7 +132,7 @@ extern "C" void program(void)
                else log.msg("Using target %d", TargetID);
             }
          }
-         else if (!StrMatch(Args[i], "--hash")) {
+         else if (iequals(Args[i], "--hash")) {
             if (Args[i+1]) {
                auto hash = LCASEHASH(Args[i+1]);
                printf("Hash for %s = 0x%.8x\n", Args[i+1], hash);
@@ -255,9 +255,9 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
             return(ERR_Failed);
          }
          ScriptFile = glDirectory;
-         class_id = ID_SCRIPT;
+         class_id = CLASSID::SCRIPT;
       }
-      else if (class_id != ID_SCRIPT) {
+      else if (class_id != CLASSID::SCRIPT) {
          OBJECTPTR run;
 
          // The script is actually a reference to a data file, in which case we may be able to run it, if it has a file association.
@@ -279,12 +279,12 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
 
                         j++;
                         if (glArgs[i][j] > 0x20) {
-                           SetVar(run, argbuffer, glArgs[i] + j);
+                           SetKey(run, argbuffer, glArgs[i] + j);
                         }
 
                         i++;
                         while ((glArgs[i]) and (glArgs[i][0] != '}')) {
-                           SetVar(run, argbuffer, glArgs[i]);
+                           SetKey(run, argbuffer, glArgs[i]);
                            i++;
                         }
                      }
@@ -292,11 +292,11 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
                         j++;
                         for (k=j; (glArgs[i][k]) and (glArgs[i][k] != '"'); k++);
                         if (glArgs[i][k] IS '"') glArgs[i][k] = 0;
-                        SetVar(run, argname, glArgs[i]+j);
+                        SetKey(run, argname, glArgs[i]+j);
                      }
-                     else SetVar(run, argname, glArgs[i]+j);
+                     else SetKey(run, argname, glArgs[i]+j);
                   }
-                  else SetVar(run, argname, "1");
+                  else SetKey(run, argname, "1");
                }
             }
 
@@ -308,9 +308,9 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
       }
    }
    else {
-      printf("Failed to identify the type of file for path '%s', error: %s.  Assuming ID_SCRIPT.\n", ScriptFile, GetErrorMsg(error));
-      subclass = ID_SCRIPT;
-      class_id = ID_SCRIPT;
+      printf("Failed to identify the type of file for path '%s', error: %s.  Assuming CLASSID::SCRIPT.\n", ScriptFile, GetErrorMsg(error));
+      subclass = CLASSID::SCRIPT;
+      class_id = CLASSID::SCRIPT;
    }
 
    if (!NewObject(subclass ? subclass : class_id, 0, &glScript)) {
@@ -332,12 +332,12 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
 
                   j++;
                   if (glArgs[i][j] > 0x20) {
-                     SetVar(glScript, argbuffer, glArgs[i] + j);
+                     SetKey(glScript, argbuffer, glArgs[i] + j);
                   }
 
                   i++;
                   while ((glArgs[i]) and (glArgs[i][0] != '}')) {
-                     SetVar(glScript, argbuffer, glArgs[i]);
+                     SetKey(glScript, argbuffer, glArgs[i]);
                      i++;
                   }
                   if (!glArgs[i]) break;
@@ -347,11 +347,11 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
                   j++;
                   for (k=j; (glArgs[i][k]) and (glArgs[i][k] != '"'); k++);
                   if (glArgs[i][k] IS '"') glArgs[i][k] = 0;
-                  SetVar(glScript, argname, glArgs[i]+j);
+                  SetKey(glScript, argname, glArgs[i]+j);
                }
-               else SetVar(glScript, argname, glArgs[i]+j);
+               else SetKey(glScript, argname, glArgs[i]+j);
             }
-            else SetVar(glScript, argname, "1");
+            else SetKey(glScript, argname, "1");
          }
       }
 

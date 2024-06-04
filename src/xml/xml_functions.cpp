@@ -2,7 +2,7 @@
 //********************************************************************************************************************
 // Output an XML string with escape characters.
 
-template <class T> void output_attribvalue(T &&String, std::stringstream &Output)
+template <class T> void output_attribvalue(T &&String, std::ostringstream &Output)
 {
    CSTRING str = to_cstring(String);
    for (auto j=0; str[j]; j++) {
@@ -28,7 +28,7 @@ static void parse_doctype(extXML *Self, CSTRING Input)
 //********************************************************************************************************************
 // Extract content and add it to the end of Tags
 
-static ERROR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
+static ERR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
 {
    pf::Log log(__FUNCTION__);
 
@@ -46,14 +46,14 @@ static ERROR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
    if ((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) {
       while ((*str) and (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
       State.Pos = str;
-      return ERR_NoData;
+      return ERR::NoData;
    }
 
    for (LONG i=0; (str[i]) and (str[i] != '<'); i++) {
       if (str[i] IS '\r') continue;
       // Content detected
 
-      std::stringstream buffer;
+      std::ostringstream buffer;
       while ((*str) and (*str != '<')) {
          if (*str IS '\n') Self->LineNo++;
          if (*str != '\r') buffer << *str++;
@@ -61,17 +61,17 @@ static ERROR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
       }
       Tags.emplace_back(XMLTag(glTagID++, 0, { { "", buffer.str() } }));
       State.Pos = str;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    State.Pos = str;
-   return ERR_NoData;
+   return ERR::NoData;
 }
 
 //********************************************************************************************************************
 // Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
 
-static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
+static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 {
    enum { RAW_NONE=0, RAW_CDATA, RAW_NDATA };
 
@@ -81,7 +81,7 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    if (State.Pos[0] != '<') {
       log.warning("Malformed XML statement detected.");
-      return ERR_InvalidData;
+      return ERR::InvalidData;
    }
 
    CSTRING str = State.Pos + 1;
@@ -92,11 +92,11 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
          LONG i;
          if ((i = StrSearchCase("-->", str)) != -1) {
             State.Pos = str + i + 3;
-            return ERR_NothingDone;
+            return ERR::NothingDone;
          }
          else {
             log.warning("Detected malformed comment (missing --> terminator).");
-            return ERR_InvalidData;
+            return ERR::InvalidData;
          }
       }
    }
@@ -104,8 +104,8 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
    auto line_no = Self->LineNo;
    BYTE raw_content;
 
-   if (!StrCompare("![CDATA[", str, 8, STR::MATCH_CASE)) { raw_content = RAW_CDATA; str += 8; }
-   else if (!StrCompare("![NDATA[", str, 8, STR::MATCH_CASE)) { raw_content = RAW_NDATA; str += 8; }
+   if (!strncmp("![CDATA[", str, 8)) { raw_content = RAW_CDATA; str += 8; }
+   else if (!strncmp("![NDATA[", str, 8)) { raw_content = RAW_NDATA; str += 8; }
    else raw_content = RAW_NONE;
 
    if (raw_content) {
@@ -139,12 +139,12 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
       if (((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) or (!len)) {
          State.Pos = str + len + 3;
-         return ERR_NothingDone;
+         return ERR::NothingDone;
       }
 
       if (!str[len]) {
          log.warning("Malformed XML:  A CDATA section is missing its closing string.");
-         return ERR_InvalidData;
+         return ERR::InvalidData;
       }
 
       // CDATA sections are assimilated into the parent tag as content
@@ -154,20 +154,18 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       }));
       cdata_tag.Flags |= XTF::CDATA;
       State.Pos = str + len + 3;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if ((State.Pos[1] IS '?') or (State.Pos[1] IS '!')) {
       if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) {
-         if (!StrCompare("!DOCTYPE", State.Pos+1, 7)) {
-            parse_doctype(Self, State.Pos+7);
-         }
+         if (pf::startswith("!DOCTYPE", State.Pos+1)) parse_doctype(Self, State.Pos+7);
       }
 
       if ((Self->Flags & XMF::STRIP_HEADERS) != XMF::NIL) {
          if (*str IS '>') str++;
          State.Pos = str;
-         return ERR_NothingDone;
+         return ERR::NothingDone;
       }
    }
 
@@ -186,7 +184,7 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       if ((str[0] IS '/') and (str[1] IS '>')) break; // Termination checks
       if ((str[0] IS '?') and (str[1] IS '>')) break;
 
-      if (*str IS '=') return log.warning(ERR_InvalidData);
+      if (*str IS '=') return log.warning(ERR::InvalidData);
 
       // Extract the name of the attribute
 
@@ -211,7 +209,7 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       if (*str IS '=') {
          str++;
          while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-         std::stringstream buffer;
+         std::ostringstream buffer;
          if (*str IS '"') {
             str++;
             while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; buffer << *str++; }
@@ -248,7 +246,7 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    if (tag.Attribs.empty()) {
       log.warning("No attributes parsed for tag at line %d", Self->LineNo);
-      return ERR_Syntax;
+      return ERR::Syntax;
    }
 
    State.Pos = str;
@@ -258,28 +256,28 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       // We reached the end of an open tag.  Extract the content within it and handle any child tags.
 
       State.Pos++;
-      ERROR error = extract_content(Self, Tags.back().Children, State);
+      ERR error = extract_content(Self, Tags.back().Children, State);
 
-      if ((error) and (error != ERR_NoData)) return error;
+      if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
 
       while ((State.Pos[0] IS '<') and (State.Pos[1] != '/')) {
          error = extract_tag(Self, Tags.back().Children, State);
 
-         if (error IS ERR_NothingDone) {
+         if (error IS ERR::NothingDone) {
             // Extract any additional content trapped between tags
 
             error = extract_content(Self, Tags.back().Children, State);
 
-            if ((error) and (error != ERR_NoData)) return error;
+            if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
          }
-         else if (!error) {
+         else if (error IS ERR::Okay) {
             // Extract any new content caught in-between tags
 
             error = extract_content(Self, Tags.back().Children, State);
 
-            if ((error) and (error != ERR_NoData)) return error;
+            if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
          }
-         else return ERR_Failed;
+         else return ERR::Failed;
       }
 
       // There should be a closing tag - skip past it
@@ -296,13 +294,13 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       State.Balance--;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Convert a text string into XML tags.
 
-static ERROR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
+static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 {
    pf::Log log(__FUNCTION__);
 
@@ -316,11 +314,11 @@ static ERROR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
    for (str=Text; (*str) and (*str != '<'); str++) if (*str IS '\n') Self->LineNo++;
    state.Pos = str;
    while ((state.Pos[0] IS '<') and (state.Pos[1] != '/')) {
-      ERROR error = extract_tag(Self, Tags, state);
+      ERR error = extract_tag(Self, Tags, state);
 
-      if ((error != ERR_Okay) and (error != ERR_NothingDone)) {
+      if ((error != ERR::Okay) and (error != ERR::NothingDone)) {
          log.warning("XML parsing aborted.");
-         return ERR_InvalidData;
+         return ERR::InvalidData;
       }
 
       // Skip content/whitespace to get to the next tag
@@ -328,13 +326,13 @@ static ERROR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
       while ((*str) and (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
       state.Pos = str;
 
-      if (error IS ERR_NothingDone) continue;
+      if (error IS ERR::NothingDone) continue;
    }
 
-   // If the WELL_FORMED flag has been used, check that the tags balance.  If they don't then return ERR_InvalidData.
+   // If the WELL_FORMED flag has been used, check that the tags balance.  If they don't then return ERR::InvalidData.
 
    if ((Self->Flags & XMF::WELL_FORMED) != XMF::NIL) {
-      if (state.Balance != 0) return log.warning(ERR_UnbalancedXML);
+      if (state.Balance != 0) return log.warning(ERR::UnbalancedXML);
    }
 
    if ((Self->Flags & XMF::NO_ESCAPE) IS XMF::NIL) {
@@ -345,13 +343,13 @@ static ERROR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
    Self->modified();
 
    log.trace("XML parsing complete.");
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Serialise XML data into string form.
 
-void serialise_xml(XMLTag &Tag, std::stringstream &Buffer, XMF Flags)
+void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
 {
    if (Tag.Attribs[0].isContent()) {
       if (!Tag.Attribs[0].Value.empty()) {
@@ -473,7 +471,7 @@ static void sift_up(ListSort **lookup, LONG i, LONG heapsize)
 
 //********************************************************************************************************************
 
-static ERROR parse_source(extXML *Self)
+static ERR parse_source(extXML *Self)
 {
    pf::Log log(__FUNCTION__);
    CacheFile *filecache;
@@ -489,42 +487,42 @@ static ERROR parse_source(extXML *Self)
    if (Self->Source) {
       char *buffer;
       LARGE size = 64 * 1024;
-      if (!AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &buffer)) {
+      if (AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
          LONG pos = 0;
-         Self->ParseError = ERR_Okay;
+         Self->ParseError = ERR::Okay;
          acSeekStart(Self->Source, 0);
          while (1) {
             LONG result;
-            if (acRead(Self->Source, buffer+pos, size-pos, &result)) {
-               Self->ParseError = ERR_Read;
+            if (acRead(Self->Source, buffer+pos, size-pos, &result) != ERR::Okay) {
+               Self->ParseError = ERR::Read;
                break;
             }
             else if (result <= 0) break;
 
             pos += result;
             if (pos >= size-1024) {
-               if (ReallocMemory(buffer, (size * 2) + 1, &buffer, NULL)) {
-                  Self->ParseError = ERR_ReallocMemory;
+               if (ReallocMemory(buffer, (size * 2) + 1, (APTR *)&buffer, NULL) != ERR::Okay) {
+                  Self->ParseError = ERR::ReallocMemory;
                   break;
                }
                size = size * 2;
             }
          }
 
-         if (!Self->ParseError) {
+         if (Self->ParseError IS ERR::Okay) {
             buffer[pos] = 0;
             Self->ParseError = txt_to_xml(Self, Self->Tags, buffer);
          }
 
          FreeResource(buffer);
       }
-      else Self->ParseError = ERR_AllocMemory;
+      else Self->ParseError = ERR::AllocMemory;
    }
-   else if (!LoadFile(Self->Path, LDF::NIL, &filecache)) {
+   else if (LoadFile(Self->Path, LDF::NIL, &filecache) IS ERR::Okay) {
       Self->ParseError = txt_to_xml(Self, Self->Tags, (CSTRING)filecache->Data);
       UnloadFile(filecache);
    }
-   else Self->ParseError = ERR_File;
+   else Self->ParseError = ERR::File;
 
    return Self->ParseError;
 }
@@ -532,7 +530,7 @@ static ERROR parse_source(extXML *Self)
 //********************************************************************************************************************
 // Extracts immediate content, does not recurse into child tags.
 
-static ERROR get_content(extXML *Self, XMLTag &Tag, STRING Buffer, LONG Size)
+static ERR get_content(extXML *Self, XMLTag &Tag, STRING Buffer, LONG Size)
 {
    Buffer[0] = 0;
    if (!Tag.Children.empty()) {
@@ -542,10 +540,10 @@ static ERROR get_content(extXML *Self, XMLTag &Tag, STRING Buffer, LONG Size)
 
          if (scan.Attribs[0].isContent()) {
             j += StrCopy(scan.Attribs[0].Value.c_str(), Buffer+j, Size-j);
-            if (j >= Size) return ERR_BufferOverflow;
+            if (j >= Size) return ERR::BufferOverflow;
          }
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }

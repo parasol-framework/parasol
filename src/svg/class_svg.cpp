@@ -3,18 +3,28 @@
 -CLASS-
 SVG: Provides support for parsing and rendering SVG files.
 
-The SVG class provides support for parsing SVG statements into native @Vector objects and related definitions.
-For low-level vector programming, consider using the @Vector class directly, or use the SVG class to parse an
-SVG script and then access the #Viewport field to perform transforms and manipulation of the vector group.
+The SVG class provides support for parsing SVG statements into a scene graph that consists of @Vector objects and
+related constructs.  The generated scene graph is accessible via the #Scene and #Viewport fields.
+
+It is possible to parse SVG documents directly to the UI.  Set the #Target field with a vector to contain the SVG
+content and it will be structured in the existing scene graph.
 
 Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG
-elements.  Unfortunately we do not support all SVG capabilities at this time, but support will improve in future.
+elements.
 
 *********************************************************************************************************************/
 
-static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   ((extSVG *)CurrentContext())->FrameCallback.Type = CALL_NONE;
+   ((extSVG *)CurrentContext())->FrameCallback.clear();
+}
+
+//********************************************************************************************************************
+
+static void notify_free_scene(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extSVG *)CurrentContext();
+   if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = NULL; }
 }
 
 /*********************************************************************************************************************
@@ -22,23 +32,25 @@ static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERRO
 Activate: Initiates playback of SVG animations.
 
 SVG documents that use animation features will remain static until they are activated with this action.  The animation
-code will be processed in the background at the pre-defined #FrameRate.  The client may hook into the animation cycle
-by setting the #FrameCallback with a suitable function.
+code will be processed in the background at the pre-defined #FrameRate.  The #Scene will be redrawn automatically as
+each frame is processed.
+
+The client can hook into the animation cycle by setting the #FrameCallback with a suitable function.
 
 -END-
 *********************************************************************************************************************/
 
-static ERROR SVG_Activate(extSVG *Self, APTR Void)
+static ERR SVG_Activate(extSVG *Self)
 {
-   if (Self->Animated) {
+   if (!Self->Animations.empty()) {
       if (!Self->AnimationTimer) {
-         auto call = make_function_stdc(animation_timer);
-         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, &call, &Self->AnimationTimer);
+         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
+         SubscribeAction(Self->Scene, AC_Free, C_FUNCTION(notify_free_scene));
       }
       else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -47,32 +59,32 @@ Deactivate: Stops all playback of SVG animations.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SVG_Deactivate(extSVG *Self, APTR Void)
+static ERR SVG_Deactivate(extSVG *Self)
 {
    if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = 0; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
-DataFeed: Vector graphics are created by passing XML-based instructions here.
+DataFeed: SVG data can be parsed on-the-fly via the data feed mechanism.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SVG_DataFeed(extSVG *Self, struct acDataFeed *Args)
+static ERR SVG_DataFeed(extSVG *Self, struct acDataFeed *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if (Args->Datatype IS DATA::XML) {
-      return load_svg(Self, 0, (CSTRING)Args->Buffer);
+      return parse_svg(Self, 0, (CSTRING)Args->Buffer);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR SVG_Free(extSVG *Self, APTR Void)
+static ERR SVG_Free(extSVG *Self)
 {
    Self->~extSVG();
 
@@ -81,21 +93,23 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
       Self->AnimationTimer = 0;
    }
 
-   if (Self->FrameCallback.Type IS CALL_SCRIPT) {
-      UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
-      Self->FrameCallback.Type = CALL_NONE;
+   if (Self->FrameCallback.isScript()) {
+      UnsubscribeAction(Self->FrameCallback.Context, AC_Free);
+      Self->FrameCallback.clear();
    }
 
-   if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->ownerID() IS Self->UID)) {
+   if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->Owner IS Self)) {
       FreeResource(Self->Target);
       Self->Target = NULL;
    }
 
-   if (Self->Folder) { FreeResource(Self->Folder); Self->Folder = NULL; }
-   if (Self->Path)   { FreeResource(Self->Path);   Self->Path = NULL; }
-   if (Self->Title)  { FreeResource(Self->Title);  Self->Title = NULL; }
+   if (Self->Folder)    { FreeResource(Self->Folder);    Self->Folder = NULL; }
+   if (Self->Path)      { FreeResource(Self->Path);      Self->Path = NULL; }
+   if (Self->Title)     { FreeResource(Self->Title);     Self->Title = NULL; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+   if (Self->XML)       { FreeResource(Self->XML);       Self->XML = NULL; }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -109,23 +123,24 @@ generate the content in a local #Scene object, or alternatively the content can 
 -END-
 *********************************************************************************************************************/
 
-static ERROR SVG_Init(extSVG *Self, APTR Void)
+static ERR SVG_Init(extSVG *Self)
 {
    if (!Self->Target) {
-      if ((Self->Target = objVectorScene::create::integral())) {
+      if ((Self->Target = objVectorScene::create::local())) {
          Self->Scene = (objVectorScene *)Self->Target;
       }
-      else return ERR_NewObject;
+      else return ERR::NewObject;
    }
 
-   if (Self->Path) return load_svg(Self, Self->Path, NULL);
+   if (Self->Path) return parse_svg(Self, Self->Path, NULL);
+   else if (Self->Statement) return parse_svg(Self, NULL, Self->Statement);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR SVG_NewObject(extSVG *Self, APTR Void)
+static ERR SVG_NewObject(extSVG *Self)
 {
    #ifdef __ANDROID__
       Self->FrameRate = 30; // Choose a lower frame rate for Android devices, so as to minimise power consumption.
@@ -133,7 +148,46 @@ static ERROR SVG_NewObject(extSVG *Self, APTR Void)
       Self->FrameRate = 60;
    #endif
    new (Self) extSVG;
-   return ERR_Okay;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+ParseSymbol: Generate a vector scene graph from an SVG symbol, targeting a viewport.
+
+ParseSymbol() allows the symbols of a loaded SVG document to be processed post-initialisation.  This is useful for
+utilising symbols in a way that is akin to running macros as required by the program.
+
+The `Name` must refer to a symbol that has been declared in the loaded document.  A @VectorViewport must be provided
+for the symbol's generated content to target.
+
+-INPUT-
+cstr ID: Name of the symbol to parse.
+obj(VectorViewport) Viewport: The target viewport.
+
+-RESULT-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERR SVG_ParseSymbol(extSVG *Self, struct svg::ParseSymbol *Args)
+{
+   pf::Log log;
+
+   if ((!Args) or (!Args->ID) or (!Args->Viewport)) return log.warning(ERR::NullArgs);
+
+   if (auto tagref = find_href_tag(Self, Args->ID)) {
+      svgState state(Self);
+      process_children(Self, state, *tagref, Args->Viewport);
+      return ERR::Okay;
+   }
+   else {
+      log.warning("Symbol '%s' not found.", Args->ID);
+      return ERR::NotFound;
+   }
 }
 
 /*********************************************************************************************************************
@@ -141,11 +195,11 @@ static ERROR SVG_NewObject(extSVG *Self, APTR Void)
 -METHOD-
 Render: Render the scene to a target Bitamp.
 
-This method will render the vector scene directly to a target bitmap at coordinates (X,Y) and scaled to the desired
-(Width,Height).
+This method will render the vector scene directly to a target bitmap at coordinates `(X,Y)` and scaled to the desired
+`(Width,Height)`.
 
 -INPUT-
-obj(Bitmap) Bitmap: The target bitmap.
+obj(Bitmap) Bitmap: The target @Bitmap.
 int X: Target X coordinate.
 int Y: Target Y coordinate.
 int Width: Target page width.
@@ -158,9 +212,9 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR SVG_Render(extSVG *Self, struct svgRender *Args)
+static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    objBitmap *bmp = Args->Bitmap;
    LONG page_width = Args->Width;
@@ -182,7 +236,7 @@ static ERROR SVG_Render(extSVG *Self, struct svgRender *Args)
    bmp->XOffset -= Args->X;
    bmp->YOffset -= Args->Y;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -190,19 +244,20 @@ static ERROR SVG_Render(extSVG *Self, struct svgRender *Args)
 SaveImage: Saves the SVG document as a PNG image.
 
 This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is
-determined by the PageWidth and PageHeight of the #Scene, or if not defined then the default of 1920x1080 is applied.
+determined by the @VectorScene.PageWidth and @VectorScene.PageHeight of the #Scene, or if not defined, the
+default of 1920x1080 is applied.
 
-The image will be saved in PNG format by default, but can be changed by specifying an alternate ClassID.  PNG
+The image will be saved in PNG format by default, but can be changed by specifying an alternate `ClassID`.  PNG
 is recommended in particular because it supports an alpha channel.
 
 -END-
 *********************************************************************************************************************/
 
-static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
+static ERR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
 {
-   ERROR error;
+   ERR error;
 
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    LONG width = 0;
    LONG height = 0;
@@ -212,15 +267,15 @@ static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
    if (!width) width = 1920;
    if (!height) height = 1080;
 
-   objPicture::create pic = { fl::Width(width), fl::Height(height), fl::Flags(PCF::ALPHA|PCF::NEW) };
+   auto pic = objPicture::create { fl::Width(width), fl::Height(height), fl::Flags(PCF::ALPHA|PCF::NEW) };
    if (pic.ok()) {
-      if (!(error = svgRender(Self, pic->Bitmap, 0, 0, width, height))) {
-         if (!(error = acSaveImage(*pic, Args->Dest, Args->ClassID))) {
-            return ERR_Okay;
+      if ((error = Self->render(pic->Bitmap, 0, 0, width, height)) IS ERR::Okay) {
+         if ((error = acSaveImage(*pic, Args->Dest, Args->ClassID)) IS ERR::Okay) {
+            return ERR::Okay;
          }
       }
    }
-   else error = ERR_CreateObject;
+   else error = ERR::CreateObject;
 
    return error;
 }
@@ -231,42 +286,44 @@ SaveToObject: Saves the SVG document to a data object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
+static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
-   static char header[] =
+   static const char header[] =
 "<?xml version=\"1.0\" standalone=\"no\"?>\n\
 <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n";
-   ERROR (**routine)(OBJECTPTR, APTR);
+   ERR (**actions)(OBJECTPTR, APTR);
 
-   if (!Self->Viewport) return log.warning(ERR_NoData);
+   if (!Self->Viewport) return log.warning(ERR::NoData);
 
-   if ((Args->ClassID) and (Args->ClassID != ID_SVG)) {
+   if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((!mc->getPtr(FID_ActionTable, &routine)) and (routine)) {
-         if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
-            return routine[AC_SaveToObject](Self, Args);
+      if ((mc->getPtr(FID_ActionTable, &actions) IS ERR::Okay) and (actions)) {
+         if ((actions[AC_SaveToObject]) and (actions[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
+            return actions[AC_SaveToObject](Self, Args);
          }
-         else if ((routine[AC_SaveImage]) and (routine[AC_SaveImage] != (APTR)SVG_SaveImage)) {
+         else if ((actions[AC_SaveImage]) and (actions[AC_SaveImage] != (APTR)SVG_SaveImage)) {
             struct acSaveImage saveimage = { .Dest = Args->Dest };
-            return routine[AC_SaveImage](Self, &saveimage);
+            return actions[AC_SaveImage](Self, &saveimage);
          }
-         else return log.warning(ERR_NoSupport);
+         else return log.warning(ERR::NoSupport);
       }
-      else return log.warning(ERR_GetField);
+      else return log.warning(ERR::GetField);
    }
    else {
-      objXML::create xml = { fl::Flags(XMF::NEW|XMF::READABLE) };
+      auto xml = objXML::create { fl::Flags(XMF::NEW|XMF::READABLE) };
 
       if (xml.ok()) {
-         ERROR error = xmlInsertXML(*xml, 0, XMI::NIL, header, NULL);
+         Self->XML = *xml;
+
+         ERR error = xml->insertXML(0, XMI::NIL, header, NULL);
          LONG index = xml->Tags.back().ID;
 
          XMLTag *tag;
-         if (!(error = xmlInsertStatement(*xml, index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag))) {
+         if ((error = xml->insertStatement(index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag)) IS ERR::Okay) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {
-               if (!(error = save_svg_defs(Self, *xml, Self->Scene, index))) {
+               if ((error = save_svg_defs(Self, *xml, Self->Scene, index)) IS ERR::Okay) {
                   for (auto scan=Self->Scene->Viewport; scan; scan=(objVectorViewport *)scan->Next) {
                      if (!scan->Child) continue; // Ignore dummy viewports with no content
                      save_svg_scan(Self, *xml, scan, index);
@@ -278,34 +335,34 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
             else {
                DOUBLE x, y, width, height;
 
-               if (!error) error = Self->Viewport->get(FID_ViewX, &x);
-               if (!error) error = Self->Viewport->get(FID_ViewY, &y);
-               if (!error) error = Self->Viewport->get(FID_ViewWidth, &width);
-               if (!error) error = Self->Viewport->get(FID_ViewHeight, &height);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewX, &x);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewY, &y);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewWidth, &width);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewHeight, &height);
 
-               if (!error) {
+               if (error IS ERR::Okay) {
                   char buffer[80];
                   snprintf(buffer, sizeof(buffer), "%g %g %g %g", x, y, width, height);
-                  xmlNewAttrib(tag, "viewBox", buffer);
+                  xml::NewAttrib(tag, "viewBox", buffer);
                }
 
-               LONG dim;
-               if ((!error) and (!(error = Self->Viewport->get(FID_Dimensions, &dim)))) {
-                  if ((dim & (DMF_RELATIVE_X|DMF_FIXED_X)) and (!Self->Viewport->get(FID_X, &x)))
-                     set_dimension(tag, "x", x, dim & DMF_RELATIVE_X);
+               if (error IS ERR::Okay) {
+                  auto dim = Self->Viewport->get<DMF>(FID_Dimensions);
+                  if (dmf::hasAnyX(dim) and (Self->Viewport->get(FID_X, &x) IS ERR::Okay))
+                     set_dimension(tag, "x", x, dmf::hasScaledX(dim));
 
-                  if ((dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (!Self->Viewport->get(FID_Y, &y)))
-                     set_dimension(tag, "y", y, dim & DMF_RELATIVE_Y);
+                  if (dmf::hasAnyY(dim) and (Self->Viewport->get(FID_Y, &y) IS ERR::Okay))
+                     set_dimension(tag, "y", y, dmf::hasScaledY(dim));
 
-                  if ((dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) and (!Self->Viewport->get(FID_Width, &width)))
-                     set_dimension(tag, "width", width, dim & DMF_RELATIVE_WIDTH);
+                  if (dmf::hasAnyWidth(dim) and (Self->Viewport->get(FID_Width, &width) IS ERR::Okay))
+                     set_dimension(tag, "width", width, dmf::hasScaledWidth(dim));
 
-                  if ((dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) and (!Self->Viewport->get(FID_Height, &height)))
-                     set_dimension(tag, "height", height, dim & DMF_RELATIVE_HEIGHT);
+                  if (dmf::hasAnyHeight(dim) and (Self->Viewport->get(FID_Height, &height) IS ERR::Okay))
+                     set_dimension(tag, "height", height, dmf::hasScaledHeight(dim));
                }
 
-               if (!error) {
-                  if (!(error = save_svg_defs(Self, *xml, Self->Scene, index))) {
+               if (error IS ERR::Okay) {
+                  if ((error = save_svg_defs(Self, *xml, Self->Scene, index)) IS ERR::Okay) {
                      for (auto scan=((objVector *)Self->Viewport)->Child; scan; scan=scan->Next) {
                         save_svg_scan(Self, *xml, scan, index);
                      }
@@ -314,12 +371,40 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                   }
                }
             }
+
+            Self->XML = NULL;
          }
 
          return error;
       }
-      else return ERR_CreateObject;
+      else return ERR::CreateObject;
    }
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Colour: Defines the default fill to use for `currentColor` references.
+
+Set the Colour value to alter the default fill that is used for `currentColor` references.  Typically a standard RGB
+painter fill reference should be used for this purpose, e.g. `rgb(255,255,255)`.  It is however, also acceptable to use
+URL references to named definitions such as gradients and images.  This will work as long as the named definition is
+registered in the top-level @VectorScene object.
+
+*********************************************************************************************************************/
+
+static ERR GET_Colour(extSVG *Self, CSTRING *Value)
+{
+   *Value = Self->Colour.c_str();
+   return ERR::Okay;
+}
+
+static ERR SET_Colour(extSVG *Self, CSTRING Value)
+{
+   if ((Value) and (*Value)) {
+      Self->Colour.assign(Value);
+   }
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -347,27 +432,26 @@ The function prototype is `void Function(*SVG)`.
 
 *********************************************************************************************************************/
 
-static ERROR GET_FrameCallback(extSVG *Self, FUNCTION **Value)
+static ERR GET_FrameCallback(extSVG *Self, FUNCTION **Value)
 {
-   if (Self->FrameCallback.Type != CALL_NONE) {
+   if (Self->FrameCallback.defined()) {
       *Value = &Self->FrameCallback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
+static ERR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->FrameCallback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
+      if (Self->FrameCallback.isScript()) UnsubscribeAction(Self->FrameCallback.Context, AC_Free);
       Self->FrameCallback = *Value;
-      if (Self->FrameCallback.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_frame_callback);
-         SubscribeAction(Self->FrameCallback.Script.Script, AC_Free, &callback);
+      if (Self->FrameCallback.isScript()) {
+         SubscribeAction(Self->FrameCallback.Context, AC_Free, C_FUNCTION(notify_free_frame_callback));
       }
    }
-   else Self->FrameCallback.Type = CALL_NONE;
-   return ERR_Okay;
+   else Self->FrameCallback.clear();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -384,39 +468,39 @@ The recommended frame rate is 60, as this will match the majority of modern disp
 
 *********************************************************************************************************************/
 
-static ERROR SET_FrameRate(extSVG *Self, LONG Value)
+static ERR SET_FrameRate(extSVG *Self, LONG Value)
 {
    if ((Value >= 20) and (Value <= 1000)) {
       Self->FrameRate = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
 /*********************************************************************************************************************
 
 -FIELD-
-Path: The location of the source SVG data.
+Path: A path referring to an SVG file.
 
 SVG data can be loaded from a file source by setting the Path field to an SVG file.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Path(extSVG *Self, STRING *Value)
+static ERR GET_Path(extSVG *Self, STRING *Value)
 {
    *Value = Self->Path;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Path(extSVG *Self, CSTRING Value)
+static ERR SET_Path(extSVG *Self, CSTRING Value)
 {
    if (Self->Path)   { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Folder) { FreeResource(Self->Folder); Self->Folder = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->Path = StrClone(Value))) return ERR::AllocMemory;
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -428,50 +512,73 @@ The Scene is a read-only field that assists in quickly finding the @VectorScene 
 
 *********************************************************************************************************************/
 
-static ERROR GET_Scene(extSVG *Self, objVectorScene **Value)
+static ERR GET_Scene(extSVG *Self, objVectorScene **Value)
 {
    *Value = Self->Scene;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 
 -FIELD-
-Target: The root Viewport that is generated during SVG initialisation can be created as a child of this target object.
+Statement: A string containing SVG data.
 
-During the initialisation of an SVG object, a VectorViewport will be created that hosts the SVG's vector objects.  The
-target of this VectorViewport can be specified here, conditional on that object residing within a @VectorScene, or is a
-VectorScene itself.
+SVG data can be loaded from a string by specifying it here prior to initialisation.  If the #Path field has been
+defined, it will take precedent and the Statement is ignored.
 
-An attempt will be made to find the new target's parent VectorScene.  If none is identified, an error will be returned
-and no further action is taken.
-
-If a SVG object is initialised with no Target being defined, a @VectorScene will be created automatically and
-referenced by the Target field.
+Alternatively the #DataFeed() action can be used to parse data on-the-fly after the SVG object is initialised.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Target(extSVG *Self, OBJECTPTR Value)
+static ERR SET_Statement(extSVG *Self, CSTRING Value)
 {
-   if (Value->Class->ClassID IS ID_VECTORSCENE) {
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+
+   if ((Value) and (*Value)) {
+      if (!(Self->Statement = StrClone(Value))) return ERR::AllocMemory;
+   }
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Target: The container object for new SVG content can be declared here.
+
+During the normal initialisation process, a new @VectorViewport is created to host the SVG scene graph.  By default,
+the viewport and its content is strictly owned by the SVG object unless a Target is defined to redirect the scene
+graph elsewhere.
+
+The provided Target can be any object class, as long as it forms part of a scene graph owned by a @VectorScene
+object.  It is recommended that the chosen target is a @VectorViewport.
+
+The use of a Target will make the generated scene graph independent of the SVG object.  Consequently, it is possible
+to terminate the SVG object without impacting the resources it created.
+
+*********************************************************************************************************************/
+
+static ERR SET_Target(extSVG *Self, OBJECTPTR Value)
+{
+   if (Value->classID() IS CLASSID::VECTORSCENE) {
       Self->Target = Value;
       Self->Scene = (objVectorScene *)Value;
       if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
    }
    else {
-      auto owner_id = Value->ownerID();
-      while ((owner_id) and (GetClassID(owner_id) != ID_VECTORSCENE)) {
-         owner_id = GetOwnerID(owner_id);
+      auto owner = Value->Owner;
+      while ((owner) and (owner->classID() != CLASSID::VECTORSCENE)) {
+         owner = owner->Owner;
       }
 
-      if (!owner_id) return ERR_Failed;
-
-      Self->Scene = (objVectorScene *)GetObjectPtr(owner_id);
-      Self->Target = Value;
-      if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
+      if (owner) {
+         Self->Scene = (objVectorScene *)owner;
+         Self->Target = Value;
+         if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
+      }
+      else return ERR::Failed;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -481,15 +588,15 @@ Title: The title of the SVG document.
 
 The title of an SVG document is declared with a title element that can embedded anywhere in the document.  In cases
 where a title has been specified, it will be possible to read it from this field.  If no title is in the document then
-NULL will be returned.
+`NULL` will be returned.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Title(extSVG *Self, CSTRING Value)
+static ERR SET_Title(extSVG *Self, CSTRING Value)
 {
    if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
    if (Value) Self->Title = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -497,22 +604,27 @@ static ERROR SET_Title(extSVG *Self, CSTRING Value)
 -FIELD-
 Viewport: Returns the first viewport created by an SVG document.
 
-This field simplifies the process of finding the first @VectorViewport that was created by a loaded SVG document.  NULL
-is returned if an SVG document has not been successfully parsed yet.
+This field simplifies the process of finding the first @VectorViewport that was created by a loaded SVG document.
+`NULL` is returned if an SVG document has not been successfully parsed yet.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
+static ERR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 {
-   if (!Self->initialised()) return ERR_NotInitialised;
+   if (!Self->initialised()) return ERR::NotInitialised;
    *Value = Self->Viewport;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-#include "animation.cpp"
+#include "anim_metrics.cpp"
+#include "anim_timing.cpp"
+#include "anim_parsing.cpp"
+#include "anim_motion.cpp"
+#include "anim_transform.cpp"
+#include "anim_value.cpp"
 #include "gradients.cpp"
 #include "parser.cpp"
 
@@ -522,20 +634,24 @@ static ERROR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 
 static const FieldArray clSVGFields[] = {
    { "Target",    FDF_OBJECT|FDF_RI, NULL, SET_Target },
-   { "Path",      FDF_STRING|FDF_RW, GET_Path, SET_Path },
+   { "Path",      FDF_STRING|FDF_RW, NULL, SET_Path },
    { "Title",     FDF_STRING|FDF_RW, NULL, SET_Title },
+   { "Statement", FDF_STRING|FDF_RW, NULL, SET_Statement },
    { "Frame",     FDF_LONG|FDF_RW, NULL, NULL },
    { "Flags",     FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clSVGFlags },
    { "FrameRate", FDF_LONG|FDF_RW, NULL, SET_FrameRate },
-   { "FrameCallback", FDF_FUNCTION|FDF_RW, GET_FrameCallback, SET_FrameCallback },
    // Virtual Fields
-   { "Src",      FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "Scene",    FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, NULL },
-   { "Viewport", FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, NULL },
+   { "Colour",        FDF_VIRTUAL|FDF_STRING|FDF_RW, GET_Colour, SET_Colour },
+   { "FrameCallback", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_FrameCallback, SET_FrameCallback },
+   { "Src",           FDF_VIRTUAL|FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
+   { "Scene",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, NULL },
+   { "Viewport",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, NULL },
    END_FIELD
 };
 
-static ERROR init_svg(void)
+//********************************************************************************************************************
+
+static ERR init_svg(void)
 {
    clSVG = objMetaClass::create::global(
       fl::ClassVersion(VER_SVG),
@@ -544,9 +660,9 @@ static ERROR init_svg(void)
       fl::Actions(clSVGActions),
       fl::Methods(clSVGMethods),
       fl::Fields(clSVGFields),
-      fl::Flags(CLF::PROMOTE_INTEGRAL),
+      fl::Flags(CLF::INHERIT_LOCAL),
       fl::Size(sizeof(extSVG)),
       fl::Path(MOD_PATH));
 
-   return clSVG ? ERR_Okay : ERR_AddClass;
+   return clSVG ? ERR::Okay : ERR::AddClass;
 }

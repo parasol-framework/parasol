@@ -12,10 +12,10 @@
     <idstring>ID_SOURCEFX</idstring>
     <category>Graphics</category>
     <include>modules/sourcefx.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The SourceFX class will render a named vector into a given rectangle within the current user coordinate system.</p>
-<p>Technically the SourceFX object is represented by a new viewport, the bounds of which are defined by attributes X, Y, Width and Height.  The placement and scaling of the referenced vector is controlled by the <field>AspectRatio</field> field.</p></description>
+<p>Technically the SourceFX object is represented by a new viewport, the bounds of which are defined by attributes <code>X</code>, <code>Y</code>, <code>Width</code> and <code>Height</code>.  The placement and scaling of the referenced vector is controlled by the <fl>AspectRatio</fl> field.</p></description>
     <source>
       <file path="filters/">filter_source.cpp</file>
     </source>
@@ -25,6 +25,13 @@
     <action>
       <name>Draw</name>
       <comment>Render the source vector to the target bitmap.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
     </action>
 
   </actions>
@@ -56,8 +63,8 @@
       <access write="S">Set</access>
       <type>STRING</type>
       <description>
-<p>Setting Def to the name of a pre-registered scene definition will reference that object in <field>Source</field>.  If the name is not registered then <code>ERR_Search</code> is returned.  The named object must be derived from the <class name="Vector">Vector</class> class.</p>
-<p>Vectors are registered via the <class name="VectorScene">VectorScene</class> AddDef() method.</p>
+<p>Setting Def to the name of a pre-registered scene definition will reference that object in <fl>Source</fl>.  If the name is not registered then <code>ERR::Search</code> is returned.  The named object must be derived from the <class name="Vector">Vector</class> class.</p>
+<p>Vectors are registered via the <class name="VectorScene" method="AddDef">VectorScene.AddDef()</class> method.</p>
       </description>
     </field>
 

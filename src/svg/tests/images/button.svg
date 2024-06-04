@@ -1,0 +1,33 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="125" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="darkEdge" x1="0" y1="1" x2="0" y2="0" gradientUnits="objectBoundingBox">
+      <stop stop-color="#000000" stop-opacity="1" offset="0"/>
+      <stop stop-color="#050505" stop-opacity="1" offset="0.84"/>
+      <stop stop-color="#afafaf" stop-opacity="1" offset="1"/>
+    </linearGradient>
+
+    <filter id="dropShadow" color-interpolation-filters="sRGB" primitiveUnits="objectBoundingBox">
+      <feGaussianBlur stdDeviation="0.013"/>
+    </filter>
+
+    <linearGradient id="shading" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="0" y2="1.04">
+      <stop stop-color="#ffffff" stop-opacity="0.50" offset="0"/>
+      <stop stop-color="#7f7f7f" stop-opacity="0" offset="0.5"/>
+      <stop stop-color="#000000" stop-opacity="0.54" offset="1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect opacity="0.6" fill="rgb(0,0,0)" filter="url(#dropShadow)" width="95%" height="94%" x="2.5%" y="4%" ry="20" rx="20"/>
+
+  <!-- Brown tint -->
+  <rect fill="#6d5d55" width="95%" height="93%" x="2.5%" y="2.5%" ry="20" rx="20"/>
+
+  <!-- Dark edge -->
+  <rect rx="20" ry="20" width="95%" height="93%" x="2.5%" y="2.5%" fill="none" stroke="url(#darkEdge)" stroke-width="0.5%"
+    stroke-linecap="round" stroke-opacity="0.7" stroke-linejoin="round" stroke-miterlimit="4"/>
+
+  <!-- 3D Highlight & Shadow -->
+  <rect rx="20" ry="20" width="95%" height="93%" x="2.5%" y="2.5%" fill="url(#shading)"/>
+</svg>

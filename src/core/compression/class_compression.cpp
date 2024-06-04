@@ -8,7 +8,7 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 Compression: Compresses data into archives, supporting a variety of compression formats.
 
-The Compression class provides the necessary means to compress and decompress data.  It provides support for file
+The Compression class provides an interface to compress and decompress data.  It provides support for file
 based compression as well as memory based compression routines.  The base class uses zip algorithms to support pkzip
 files, while other forms of compressed data can be supported by installing additional compression sub-classes.
 
@@ -206,18 +206,18 @@ class extCompression : public objCompression {
    bool   Inflating;
 };
 
-static ERROR compress_folder(extCompression *, std::string, std::string);
-static ERROR compress_file(extCompression *, std::string, std::string, bool);
+static ERR compress_folder(extCompression *, std::string, std::string);
+static ERR compress_file(extCompression *, std::string, std::string, bool);
 static void print(extCompression *, CSTRING);
 static void print(extCompression *, std::string);
-static ERROR remove_file(extCompression *, std::list<ZipFile>::iterator &);
-static ERROR scan_zip(extCompression *);
-static ERROR fast_scan_zip(extCompression *);
-static ERROR send_feedback(extCompression *, CompressionFeedback *);
+static ERR remove_file(extCompression *, std::list<ZipFile>::iterator &);
+static ERR scan_zip(extCompression *);
+static ERR fast_scan_zip(extCompression *);
+static ERR send_feedback(extCompression *, CompressionFeedback *);
 static void write_eof(extCompression *);
 void zipfile_to_item(ZipFile &, CompressedItem &);
 
-static ERROR GET_Size(extCompression *, LARGE *);
+static ERR GET_Size(extCompression *, LARGE *);
 
 //********************************************************************************************************************
 // Special definitions.
@@ -271,18 +271,18 @@ static const UBYTE glTail[TAIL_LENGTH] = {
 
 //********************************************************************************************************************
 
-ERROR convert_zip_error(struct z_stream_s *Stream, LONG Result)
+ERR convert_zip_error(struct z_stream_s *Stream, LONG Result)
 {
    pf::Log log;
 
-   ERROR error;
+   ERR error;
    switch(Result) {
-      case Z_STREAM_ERROR:  error = ERR_Failed;
-      case Z_DATA_ERROR:    error = ERR_InvalidData;
-      case Z_MEM_ERROR:     error = ERR_Memory;
-      case Z_BUF_ERROR:     error = ERR_BufferOverflow;
-      case Z_VERSION_ERROR: error = ERR_WrongVersion;
-      default:              error = ERR_Failed;
+      case Z_STREAM_ERROR:  error = ERR::Failed;
+      case Z_DATA_ERROR:    error = ERR::InvalidData;
+      case Z_MEM_ERROR:     error = ERR::Memory;
+      case Z_BUF_ERROR:     error = ERR::BufferOverflow;
+      case Z_VERSION_ERROR: error = ERR::WrongVersion;
+      default:              error = ERR::Failed;
    }
 
    if (Stream->msg) log.warning("%s", Stream->msg);
@@ -293,10 +293,10 @@ ERROR convert_zip_error(struct z_stream_s *Stream, LONG Result)
 
 //********************************************************************************************************************
 
-static void notify_free_feedback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_feedback(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extCompression *)CurrentContext();
-   Self->Feedback.Type = CALL_NONE;
+   Self->Feedback.clear();
 }
 
 /*********************************************************************************************************************
@@ -307,7 +307,7 @@ CompressBuffer: Compresses a plain memory area into an empty buffer.
 This method provides a simple way of compressing a memory area into a buffer.  It requires a reference to the
 source data and a buffer large enough to accept the compressed information.  Generally the destination buffer should
 be no smaller than 75% of the size of the source data.  If the destination buffer is not large enough, an error of
-`ERR_BufferOverflow` will be returned.  The size of the compressed data will be returned in the Result parameter.
+`ERR::BufferOverflow` will be returned.  The size of the compressed data will be returned in the Result parameter.
 
 To decompress the data that is output by this function, use the #DecompressBuffer() method.
 
@@ -331,12 +331,12 @@ BufferOverflow: The output buffer is not large enough.
 
 *********************************************************************************************************************/
 
-static ERROR COMPRESSION_CompressBuffer(extCompression *Self, struct cmpCompressBuffer *Args)
+static ERR COMPRESSION_CompressBuffer(extCompression *Self, struct cmp::CompressBuffer *Args)
 {
    pf::Log log;
 
    if ((!Args) or (!Args->Input) or (Args->InputSize <= 0) or (!Args->Output) or (Args->OutputSize <= 8)) {
-      return log.warning(ERR_Args);
+      return log.warning(ERR::Args);
    }
 
    Self->Zip.next_in   = (Bytef *)Args->Input;
@@ -348,7 +348,7 @@ static ERROR COMPRESSION_CompressBuffer(extCompression *Self, struct cmpCompress
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
-   if (deflateInit2(&Self->Zip, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY) IS ERR_Okay) {
+   if (deflateInit2(&Self->Zip, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY) IS Z_OK) {
       if (deflate(&Self->Zip, Z_FINISH) IS Z_STREAM_END) {
          Args->Result = Self->Zip.total_out + 8;
          deflateEnd(&Self->Zip);
@@ -358,498 +358,14 @@ static ERROR COMPRESSION_CompressBuffer(extCompression *Self, struct cmpCompress
          ((char *)Args->Output)[2] = 'I';
          ((char *)Args->Output)[3] = 'B';
          ((LONG *)Args->Output)[1] = Self->Zip.total_out;
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else {
          deflateEnd(&Self->Zip);
-         return log.warning(ERR_BufferOverflow);
+         return log.warning(ERR::BufferOverflow);
       }
    }
-   else return log.warning(ERR_Failed);
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-CompressStreamStart: Initialises a new compression stream.
-
-The level of compression is determined by the #CompressionLevel field value.
-
--ERRORS-
-Okay
-Failed: Failed to initialise the decompression process.
-
-*********************************************************************************************************************/
-
-static ERROR COMPRESSION_CompressStreamStart(extCompression *Self, APTR Void)
-{
-   pf::Log log;
-
-   if (Self->Deflating) {
-      deflateEnd(&Self->DeflateStream);
-      Self->Deflating = false;
-   }
-
-   LONG level = Self->CompressionLevel / 10;
-   if (level < 0) level = 0;
-   else if (level > 9) level = 9;
-
-   ClearMemory(&Self->DeflateStream, sizeof(Self->DeflateStream));
-
-   Self->TotalOutput = 0;
-   LONG err;
-   if ((err = deflateInit2(&Self->DeflateStream, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) IS ERR_Okay) {
-      log.trace("Compression stream initialised.");
-      Self->Deflating = true;
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_Failed);
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-CompressStream: Compresses streamed data into a buffer.
-
-Use the CompressStream method to compress incoming streams of data whilst using a minimal amount of memory.  The
-compression process is handled in three phases of Start, Compress and End.  The methods provided for each phase are
-#CompressStreamStart(), #CompressStream() and #CompressStreamEnd().
-
-A compression object can manage only one compression stream at any given time.  If it is necessary to compress
-multiple streams at once, create a compression object for each individual stream.
-
-No meta-information is written to the stream, so the client will need a way to record the total number of bytes that
-have been output during the compression process. This value must be stored somewhere in order to decompress the
-stream correctly.  There is also no header information recorded to identify the type of algorithm used to compress
-the stream.  We recommend that the compression object's sub-class ID is stored for future reference.
-
-The following C code illustrates a simple means of compressing a file to another file using a stream:
-
-<pre>
-ERROR error = mtCompressStreamStart(compress);
-
-if (!error) {
-   LONG len;
-   LONG cmpsize = 0;
-   UBYTE input[4096];
-   while (!(error = acRead(file, input, sizeof(input), &len))) {
-      if (!len) break; // No more data to read.
-
-      error = mtCompressStream(compress, input, len, &callback, NULL, 0);
-      if (error) break;
-
-      if (result > 0) {
-         cmpsize += result;
-         error = acWrite(outfile, output, result, &len);
-         if (error) break;
-      }
-   }
-
-   if (!error) {
-      if (!(error = mtCompressStreamEnd(compress, NULL, 0))) {
-         cmpsize += result;
-         error = acWrite(outfile, output, result, &len);
-      }
-   }
-}
-</pre>
-
-Please note that, depending on the type of algorithm, this method will not always write data to the output buffer.  The
-algorithm may store a copy of the input and wait for more data for efficiency reasons.  Any unwritten data will be
-resolved when the stream is terminated with #CompressStreamEnd().  To check if data was output by this
-function, either set a flag in the callback function or compare the #TotalOutput value to its original setting
-before CompressStream was called.
-
--INPUT-
-buf(ptr) Input: Pointer to the source data.
-bufsize Length: Amount of data to compress, in bytes.
-ptr(func) Callback: This callback function will be called with a pointer to the compressed data.
-buf(ptr) Output: Optional.  Points to a buffer that will receive the compressed data.  Must be equal to or larger than the MinOutputSize field.
-bufsize OutputSize: Indicates the size of the Output buffer, otherwise set to zero.
-
--ERRORS-
-Okay
-NullArgs
-Args
-BufferOverflow: The output buffer is not large enough to contain the compressed data.
-Retry: Please recall the method using a larger output buffer.
--END-
-
-*********************************************************************************************************************/
-
-static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompressStream *Args)
-{
-   pf::Log log;
-
-   if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR_NullArgs);
-
-   if (!Self->Deflating) return log.warning(ERR_Failed);
-
-   Self->DeflateStream.next_in   = (Bytef *)Args->Input;
-   Self->DeflateStream.avail_in  = Args->Length;
-
-   APTR output;
-   LONG err, outputsize;
-   if ((output = Args->Output)) {
-      outputsize = Args->OutputSize;
-      if (outputsize < Self->MinOutputSize) {
-         log.warning("OutputSize (%d) < MinOutputSize (%d)", outputsize, Self->MinOutputSize);
-         return ERR_BufferOverflow;
-      }
-   }
-   else if ((output = Self->OutputBuffer)) {
-      outputsize = Self->OutputSize;
-   }
-   else {
-      Self->OutputSize = 32 * 1024;
-      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
-         return ERR_AllocMemory;
-      }
-      output = Self->OutputBuffer;
-      outputsize = Self->OutputSize;
-   }
-
-   log.trace("Compressing Input: %p, Len: %d to buffer of size %d bytes.", Args->Input, Args->Length, outputsize);
-
-   // If zlib succeeds but sets avail_out to zero, this means that data was written to the output buffer, but the
-   // output buffer is not large enough (so keep calling until avail_out > 0).
-
-   ERROR error;
-   Self->DeflateStream.avail_out = 0;
-   while (Self->DeflateStream.avail_out IS 0) {
-      Self->DeflateStream.next_out  = (Bytef *)output;
-      Self->DeflateStream.avail_out = outputsize;
-      if ((err = deflate(&Self->DeflateStream, Z_NO_FLUSH))) {
-         deflateEnd(&Self->DeflateStream);
-         error = ERR_BufferOverflow;
-         break;
-      }
-      else error = ERR_Okay;
-
-      LONG len = outputsize - Self->DeflateStream.avail_out; // Get number of compressed bytes that were output
-
-      if (len > 0) {
-         Self->TotalOutput += len;
-
-         log.trace("%d bytes (total %" PF64 ") were compressed.", len, Self->TotalOutput);
-
-         if (Args->Callback->Type IS CALL_STDC) {
-            pf::SwitchContext context(Args->Callback->StdC.Context);
-            auto routine = (ERROR (*)(extCompression *, APTR, LONG))Args->Callback->StdC.Routine;
-            error = routine(Self, output, len);
-         }
-         else if (Args->Callback->Type IS CALL_SCRIPT) {
-            OBJECTPTR script = Args->Callback->Script.Script;
-            if (script) {
-               const ScriptArg args[] = {
-                  { "Compression", FD_OBJECTPTR, { .Address = Self } },
-                  { "Output", FD_BUFFER, { .Address = output } },
-                  { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = len } }
-               };
-               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-            }
-            else error = ERR_Terminate;
-         }
-         else {
-            log.warning("Callback function structure does not specify a recognised Type.");
-            break;
-         }
-      }
-      else {
-         // deflate() may not output anything if it needs more data to fill up a compression frame.  Return ERR_Okay
-         // and wait for more data, or for the developer to call CompressStreamEnd().
-
-         //log.trace("No data output on this cycle.");
-         break;
-      }
-   }
-
-   if (error) log.warning(error);
-   return error;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-CompressStreamEnd: Ends the compression of an open stream.
-
-To end the compression process, this method must be called to write any final blocks of data and remove the resources
-that were allocated.
-
-The expected format of the Callback function is specified in the #CompressStream() method.
-
--INPUT-
-ptr(func) Callback: Refers to a function that will be called for each compressed block of data.
-buf(ptr) Output: Optional pointer to a buffer that will receive the compressed data.  If not set, the compression object will use its own buffer.
-bufsize OutputSize: Size of the buffer specified in Output (value ignored if Output is NULL).
-
--ERRORS-
-Okay
-NullArgs
-BufferOverflow: The supplied Output buffer is not large enough (check the MinOutputSize field for the minimum allowable size).
-
-*********************************************************************************************************************/
-
-static ERROR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompressStreamEnd *Args)
-{
-   pf::Log log;
-
-   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
-   if (!Self->Deflating) return ERR_Okay;
-
-   APTR output;
-   LONG outputsize;
-
-   if ((output = Args->Output)) {
-      outputsize = Args->OutputSize;
-      if (outputsize < Self->MinOutputSize) return log.warning(ERR_BufferOverflow);
-   }
-   else if ((output = Self->OutputBuffer)) {
-      outputsize = Self->OutputSize;
-   }
-   else return log.warning(ERR_FieldNotSet);
-
-   log.trace("Output Size: %d", outputsize);
-
-   Self->DeflateStream.next_in   = 0;
-   Self->DeflateStream.avail_in  = 0;
-   Self->DeflateStream.avail_out = 0;
-
-   ERROR error;
-   LONG err = Z_OK;
-   while ((Self->DeflateStream.avail_out IS 0) and (err IS Z_OK)) {
-      Self->DeflateStream.next_out  = (Bytef *)output;
-      Self->DeflateStream.avail_out = outputsize;
-      if ((err = deflate(&Self->DeflateStream, Z_FINISH)) and (err != Z_STREAM_END)) {
-         error = log.warning(ERR_BufferOverflow);
-         break;
-      }
-
-      Self->TotalOutput += outputsize - Self->DeflateStream.avail_out;
-
-      if (Args->Callback->Type IS CALL_STDC) {
-         pf::SwitchContext context(Args->Callback->StdC.Context);
-         auto routine = (ERROR (*)(extCompression *, APTR, LONG))Args->Callback->StdC.Routine;
-         error = routine(Self, output, outputsize - Self->DeflateStream.avail_out);
-      }
-      else if (Args->Callback->Type IS CALL_SCRIPT) {
-         OBJECTPTR script = Args->Callback->Script.Script;
-         const ScriptArg args[] = {
-            { "Compression",  FD_OBJECTPTR, { .Address = Self } },
-            { "Output",       FD_BUFFER, { .Address = output } },
-            { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = (LONG)(outputsize - Self->DeflateStream.avail_out) } }
-         };
-         if (script) {
-            if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-         }
-         else error = ERR_Terminate;
-      }
-      else error = ERR_Okay;
-   }
-
-   // Free the output buffer if it is quite large
-
-   if ((Self->OutputBuffer) and (Self->OutputSize > 64 * 1024)) {
-      FreeResource(Self->OutputBuffer);
-      Self->OutputBuffer = NULL;
-      Self->OutputSize = 0;
-   }
-
-   deflateEnd(&Self->DeflateStream);
-   ClearMemory(&Self->DeflateStream, sizeof(Self->DeflateStream));
-   Self->Deflating = false;
-   return error;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-DecompressStreamStart: Initialises a new decompression stream.
-
-Use the DecompressStreamStart method to initialise a new decompression stream.  No parameters are required.
-
-If a decompression stream is already active at the time that this method is called, all resources associated with that
-stream will be deallocated so that the new stream can be initiated.
-
-To decompress the data stream, follow this call with repeated calls to #DecompressStream() until all the data
-has been processed, then call #DecompressStreamEnd().
-
--ERRORS-
-Okay
-Failed: Failed to initialise the decompression process.
-
-*********************************************************************************************************************/
-
-static ERROR COMPRESSION_DecompressStreamStart(extCompression *Self, APTR Void)
-{
-   pf::Log log;
-
-   if (Self->Inflating) { inflateEnd(&Self->InflateStream); Self->Inflating = false; }
-
-   ClearMemory(&Self->InflateStream, sizeof(Self->InflateStream));
-
-   Self->TotalOutput = 0;
-
-   LONG err;
-   if ((err = inflateInit2(&Self->InflateStream, Self->WindowBits)) IS ERR_Okay) {
-      log.trace("Decompression stream initialised.");
-      Self->Inflating = true;
-      return ERR_Okay;
-   }
-   else return log.warning(ERR_Failed);
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-DecompressStream: Decompresses streamed data to an output buffer.
-
-Call DecompressStream repeatedly to decompress a data stream and process the results in a callback routine.  The client
-will need to provide a pointer to the data in the Input parameter and indicate its size in Length.  The decompression
-routine will call the routine that was specified in Callback for each block that is decompressed.
-
-The format of the Callback routine is `ERROR Function(*Compression, APTR Buffer, LONG Length)`
-
-The Buffer will refer to the start of the decompressed data and its size will be indicated in Length.  If the Callback
-routine returns an error of any kind, the decompression process will be stopped and the error code will be immediately
-returned by the method.
-
-Optionally, the client can specify an output buffer in the Output parameter.  This can be a valuable
-optimisation technique, as it will eliminate the need to copy data out of the compression object's internal buffer.
-
-When there is no more data in the decompression stream or if an error has occurred, the client must call
-#DecompressStreamEnd().
-
--INPUT-
-buf(ptr) Input: Pointer to data to decompress.
-bufsize Length: Amount of data to decompress from the Input parameter.
-ptr(func) Callback: Refers to a function that will be called for each decompressed block of information.
-buf(ptr) Output: Optional pointer to a buffer that will receive the decompressed data.  If not set, the compression object will use its own buffer.
-bufsize OutputSize: Size of the buffer specified in Output (value ignored if Output is NULL).
-
--ERRORS-
-Okay
-NullArgs
-AllocMemory
-BufferOverflow: The output buffer is not large enough.
-
-*********************************************************************************************************************/
-
-static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecompressStream *Args)
-{
-   pf::Log log;
-
-   if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR_NullArgs);
-   if (!Self->Inflating) return ERR_Okay; // Decompression is complete
-
-   APTR output;
-   LONG outputsize;
-
-   if ((output = Args->Output)) {
-      outputsize = Args->OutputSize;
-      if (outputsize < Self->MinOutputSize) return log.warning(ERR_BufferOverflow);
-   }
-   else if ((output = Self->OutputBuffer)) {
-      outputsize = Self->OutputSize;
-   }
-   else {
-      Self->OutputSize = 32 * 1024;
-      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
-         return ERR_AllocMemory;
-      }
-      output = Self->OutputBuffer;
-      outputsize = Self->OutputSize;
-   }
-
-   Self->InflateStream.next_in  = (Bytef *)Args->Input;
-   Self->InflateStream.avail_in = Args->Length;
-
-   // Keep looping until Z_STREAM_END or an error is returned
-
-   ERROR error = ERR_Okay;
-   LONG result = Z_OK;
-   while ((result IS Z_OK) and (Self->InflateStream.avail_in > 0)) {
-      Self->InflateStream.next_out  = (Bytef *)output;
-      Self->InflateStream.avail_out = outputsize;
-      result = inflate(&Self->InflateStream, Z_SYNC_FLUSH);
-
-      if ((result) and (result != Z_STREAM_END)) {
-         error = convert_zip_error(&Self->InflateStream, result);
-         break;
-      }
-
-      if (error) break;
-
-      // Write out the decompressed data
-
-      LONG len = outputsize - Self->InflateStream.avail_out;
-      if (len > 0) {
-         if (Args->Callback->Type IS CALL_STDC) {
-            pf::SwitchContext context(Args->Callback->StdC.Context);
-            auto routine = (ERROR (*)(extCompression *, APTR, LONG))Args->Callback->StdC.Routine;
-            error = routine(Self, output, len);
-         }
-         else if (Args->Callback->Type IS CALL_SCRIPT) {
-            OBJECTPTR script = Args->Callback->Script.Script;
-            if (script) {
-               const ScriptArg args[] = {
-                  { "Compression",  FD_OBJECTPTR, { .Address = Self } },
-                  { "Output",       FD_BUFFER, { .Address = output } },
-                  { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = len } }
-               };
-               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-            }
-            else error = ERR_Terminate;
-         }
-         else {
-            log.warning("Callback function structure does not specify a recognised Type.");
-            break;
-         }
-      }
-
-      if (error) break;
-
-      if (result IS Z_STREAM_END) { // Decompression is complete, auto-perform DecompressStreamEnd()
-         inflateEnd(&Self->InflateStream);
-         Self->Inflating = false;
-         Self->TotalOutput = Self->InflateStream.total_out;
-         break;
-      }
-   }
-
-   if (error) log.warning(error);
-   return error;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-DecompressStreamEnd: Must be called at the end of the decompression process.
-
-To end the decompression process, this method must be called to write any final blocks of data and remove the resources
-that were allocated during decompression.
-
--INPUT-
-ptr(func) Callback: Refers to a function that will be called for each decompressed block of information.
-
--ERRORS-
-Okay
-NullArgs
-
-*********************************************************************************************************************/
-
-static ERROR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmpDecompressStreamEnd *Args)
-{
-   pf::Log log;
-
-   if (!Self->Inflating) return ERR_Okay; // If not inflating, not a problem
-
-   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
-
-   Self->TotalOutput = Self->InflateStream.total_out;
-   inflateEnd(&Self->InflateStream);
-   Self->Inflating = false;
-   return ERR_Okay;
+   else return log.warning(ERR::Failed);
 }
 
 /*********************************************************************************************************************
@@ -857,41 +373,41 @@ static ERROR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmpDec
 -METHOD-
 CompressFile: Add files to a compression object.
 
-The CompressFile method is used to add new files and folders to a compression object. You need to supply the location
-of the file to compress, as well as the path that is prefixed to the file name when it is in the compression object.
-The Location parameter accepts wildcards, allowing you to add multiple files in a single function call if you require
-this convenience.
+The CompressFile method is used to add new files and folders to a compression object. The client must supply the
+`Location` of the file to compress, as well as the `Path` that is prefixed to the file name when it is in the
+compression object.  The `Location` parameter accepts wildcards, allowing multiple files to be processed in a single
+function call.
 
-To compress all contents of a folder, specify its path in the Location parameter and ensure that it is fully qualified
-by appending a forward slash or colon character.
+To compress all contents of a folder, specify its path in the `Location` parameter and ensure that it is fully
+qualified by appending a forward slash or colon character.
 
-The Path parameter must include a slash when targeting a folder, otherwise the source file will be renamed to suit the
-target path.  If the Path starts with a forward slash and the source is a folder, the name of that folder will be used
-in the target path for the compressed files and folders.
+The `Path` parameter must include a trailing slash when targeting a folder, otherwise the source file will be renamed
+to suit the target path.  If the `Path` starts with a forward slash and the source is a folder, the name of that
+folder will be used in the target path for the compressed files and folders.
 
 -INPUT-
 cstr Location: The location of the file(s) to add.
-cstr Path:     The path that is prefixed to the file name when added to the compression object.  May be NULL for no path.
+cstr Path:     The path that is prefixed to the file name when added to the compression object.  May be `NULL` for no path.
 
 -ERRORS-
 Okay: The file was added to the compression object.
 Args:
 File: An error was encountered when trying to open the source file.
-NoPermission: The READ_ONLY flag has been set on the compression object.
+NoPermission: The `READ_ONLY` flag has been set on the compression object.
 NoSupport: The sub-class does not support this method.
 
 *********************************************************************************************************************/
 
-static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFile *Args)
+static ERR COMPRESSION_CompressFile(extCompression *Self, struct cmp::CompressFile *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Location) or (!*Args->Location)) return log.warning(ERR_NullArgs);
-   if (!Self->FileIO) return log.warning(ERR_MissingPath);
+   if ((!Args) or (!Args->Location) or (!*Args->Location)) return log.warning(ERR::NullArgs);
+   if (!Self->FileIO) return log.warning(ERR::MissingPath);
 
-   if ((Self->Flags & CMF::READ_ONLY) != CMF::NIL) return log.warning(ERR_NoPermission);
+   if ((Self->Flags & CMF::READ_ONLY) != CMF::NIL) return log.warning(ERR::NoPermission);
 
-   if (Self->isSubClass()) return log.warning(ERR_NoSupport);
+   if (Self->isSubClass()) return log.warning(ERR::NoSupport);
 
    if (Self->OutputID) {
       std::ostringstream out;
@@ -955,7 +471,7 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
       return compress_folder(Self, src, path);
    }
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    // Check the location string for wildcards, * and ?
 
@@ -976,10 +492,10 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
       std::string srcfolder(src, pathlen); // Extract the path without the file name
 
       DirInfo *dir;
-      if (!OpenDir(srcfolder.c_str(), RDF::FILE, &dir)) {
-         while (!ScanDir(dir)) {
+      if (OpenDir(srcfolder.c_str(), RDF::FILE, &dir) IS ERR::Okay) {
+         while (ScanDir(dir) IS ERR::Okay) {
             FileInfo *scan = dir->Info;
-            if (!StrCompare(filename, scan->Name, 0, STR::WILDCARD)) {
+            if (wildcmp(filename, scan->Name)) {
                auto folder = src.substr(0, pathlen);
                folder.append(scan->Name);
                error = compress_file(Self, folder, path, FALSE);
@@ -1004,12 +520,477 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
 /*********************************************************************************************************************
 
 -METHOD-
-DecompressBuffer: Decompresses data originating from the CompressBuffer method.
+CompressStreamStart: Initialises a new compression stream.
+
+The level of compression is determined by the #CompressionLevel field value.
+
+-ERRORS-
+Okay
+Failed: Failed to initialise the decompression process.
+
+*********************************************************************************************************************/
+
+static ERR COMPRESSION_CompressStreamStart(extCompression *Self)
+{
+   pf::Log log;
+
+   if (Self->Deflating) {
+      deflateEnd(&Self->DeflateStream);
+      Self->Deflating = false;
+   }
+
+   LONG level = Self->CompressionLevel / 10;
+   if (level < 0) level = 0;
+   else if (level > 9) level = 9;
+
+   ClearMemory(&Self->DeflateStream, sizeof(Self->DeflateStream));
+
+   Self->TotalOutput = 0;
+   if (auto err = deflateInit2(&Self->DeflateStream, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY); err IS Z_OK) {
+      log.trace("Compression stream initialised.");
+      Self->Deflating = true;
+      return ERR::Okay;
+   }
+   else return log.warning(ERR::Failed);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+CompressStream: Compresses streamed data into a buffer.
+
+Use the CompressStream method to compress incoming streams of data whilst using a minimal amount of memory.  The
+compression process is handled in three phases of Start, Compress and End.  The methods provided for each phase are
+#CompressStreamStart(), #CompressStream() and #CompressStreamEnd().
+
+A compression object can manage only one compression stream at any given time.  If it is necessary to compress
+multiple streams at once, create a compression object for each individual stream.
+
+No meta-information is written to the stream, so the client will need a way to record the total number of bytes that
+have been output during the compression process. This value must be stored somewhere in order to decompress the
+stream correctly.  There is also no header information recorded to identify the type of algorithm used to compress
+the stream.  We recommend that the compression object's sub-class ID is stored for future reference.
+
+The following C code illustrates a simple means of compressing a file to another file using a stream:
+
+<pre>
+if (auto error = mtCompressStreamStart(compress); error IS ERR::Okay) {
+   LONG len;
+   LONG cmpsize = 0;
+   UBYTE input[4096];
+   while ((error = acRead(file, input, sizeof(input), &len)) IS ERR::Okay) {
+      if (!len) break; // No more data to read.
+
+      error = mtCompressStream(compress, input, len, &callback, NULL, 0);
+      if (error != ERR::Okay) break;
+
+      if (result > 0) {
+         cmpsize += result;
+         error = acWrite(outfile, output, result, &len);
+         if (error != ERR::Okay) break;
+      }
+   }
+
+   if (error IS ERR::Okay) {
+      if ((error = mtCompressStreamEnd(compress, NULL, 0)) IS ERR::Okay) {
+         cmpsize += result;
+         error = acWrite(outfile, output, result, &len);
+      }
+   }
+}
+</pre>
+
+Please note that, depending on the type of algorithm, this method will not always write data to the output buffer.  The
+algorithm may store a copy of the input and wait for more data for efficiency reasons.  Any unwritten data will be
+resolved when the stream is terminated with #CompressStreamEnd().  To check if data was output by this
+function, either set a flag in the callback function or compare the #TotalOutput value to its original setting
+before CompressStream was called.
+
+-INPUT-
+buf(ptr) Input: Pointer to the source data.
+bufsize Length: Amount of data to compress, in bytes.
+ptr(func) Callback: This callback function will be called with a pointer to the compressed data.
+buf(ptr) Output: Optional.  Points to a buffer that will receive the compressed data.  Must be equal to or larger than the #MinOutputSize field.
+bufsize OutputSize: Indicates the size of the `Output` buffer, otherwise set to zero.
+
+-ERRORS-
+Okay
+NullArgs
+Args
+BufferOverflow: The output buffer is not large enough to contain the compressed data.
+Retry: Please recall the method using a larger output buffer.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::CompressStream *Args)
+{
+   pf::Log log;
+
+   if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR::NullArgs);
+
+   if (!Self->Deflating) return log.warning(ERR::Failed);
+
+   Self->DeflateStream.next_in   = (Bytef *)Args->Input;
+   Self->DeflateStream.avail_in  = Args->Length;
+
+   APTR output;
+   LONG err, outputsize;
+   if ((output = Args->Output)) {
+      outputsize = Args->OutputSize;
+      if (outputsize < Self->MinOutputSize) {
+         log.warning("OutputSize (%d) < MinOutputSize (%d)", outputsize, Self->MinOutputSize);
+         return ERR::BufferOverflow;
+      }
+   }
+   else if ((output = Self->OutputBuffer)) {
+      outputsize = Self->OutputSize;
+   }
+   else {
+      Self->OutputSize = 32 * 1024;
+      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR::Okay) {
+         return ERR::AllocMemory;
+      }
+      output = Self->OutputBuffer;
+      outputsize = Self->OutputSize;
+   }
+
+   log.trace("Compressing Input: %p, Len: %d to buffer of size %d bytes.", Args->Input, Args->Length, outputsize);
+
+   // If zlib succeeds but sets avail_out to zero, this means that data was written to the output buffer, but the
+   // output buffer is not large enough (so keep calling until avail_out > 0).
+
+   ERR error;
+   Self->DeflateStream.avail_out = 0;
+   while (Self->DeflateStream.avail_out IS 0) {
+      Self->DeflateStream.next_out  = (Bytef *)output;
+      Self->DeflateStream.avail_out = outputsize;
+      if ((err = deflate(&Self->DeflateStream, Z_NO_FLUSH))) {
+         deflateEnd(&Self->DeflateStream);
+         error = ERR::BufferOverflow;
+         break;
+      }
+      else error = ERR::Okay;
+
+      auto len = outputsize - Self->DeflateStream.avail_out; // Get number of compressed bytes that were output
+
+      if (len > 0) {
+         Self->TotalOutput += len;
+
+         log.trace("%d bytes (total %" PF64 ") were compressed.", len, Self->TotalOutput);
+
+         if (Args->Callback->isC()) {
+            pf::SwitchContext context(Args->Callback->Context);
+            auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR))Args->Callback->Routine;
+            error = routine(Self, output, len, Args->Callback->Meta);
+         }
+         else if (Args->Callback->isScript()) {
+            if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
+                  { "Compression",  Self, FD_OBJECTPTR },
+                  { "Output",       output, FD_BUFFER },
+                  { "OutputLength", LARGE(len), FD_LARGE|FD_BUFSIZE }
+               }), error) != ERR::Okay) error = ERR::Failed;
+         }
+         else {
+            log.warning("Callback function structure does not specify a recognised Type.");
+            break;
+         }
+      }
+      else {
+         // deflate() may not output anything if it needs more data to fill up a compression frame.  Return ERR::Okay
+         // and wait for more data, or for the developer to call CompressStreamEnd().
+
+         //log.trace("No data output on this cycle.");
+         break;
+      }
+   }
+
+   if (error != ERR::Okay) log.warning(error);
+   return error;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+CompressStreamEnd: Ends the compression of an open stream.
+
+To end the compression process, this method must be called to write any final blocks of data and remove the resources
+that were allocated.
+
+The expected format of the `Callback` function is specified in the #CompressStream() method.
+
+-INPUT-
+ptr(func) Callback: Refers to a function that will be called for each compressed block of data.
+buf(ptr) Output: Optional pointer to a buffer that will receive the compressed data.  If not set, the compression object will use its own buffer.
+bufsize OutputSize: Size of the `Output` buffer (ignored if Output is `NULL`).
+
+-ERRORS-
+Okay
+NullArgs
+BufferOverflow: The supplied Output buffer is not large enough (check the #MinOutputSize field for the minimum allowable size).
+
+*********************************************************************************************************************/
+
+static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::CompressStreamEnd *Args)
+{
+   pf::Log log;
+
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
+   if (!Self->Deflating) return ERR::Okay;
+
+   APTR output;
+   LONG outputsize;
+
+   if ((output = Args->Output)) {
+      outputsize = Args->OutputSize;
+      if (outputsize < Self->MinOutputSize) return log.warning(ERR::BufferOverflow);
+   }
+   else if ((output = Self->OutputBuffer)) {
+      outputsize = Self->OutputSize;
+   }
+   else return log.warning(ERR::FieldNotSet);
+
+   log.trace("Output Size: %d", outputsize);
+
+   Self->DeflateStream.next_in   = 0;
+   Self->DeflateStream.avail_in  = 0;
+   Self->DeflateStream.avail_out = 0;
+
+   ERR error;
+   LONG err = Z_OK;
+   while ((Self->DeflateStream.avail_out IS 0) and (err IS Z_OK)) {
+      Self->DeflateStream.next_out  = (Bytef *)output;
+      Self->DeflateStream.avail_out = outputsize;
+      if ((err = deflate(&Self->DeflateStream, Z_FINISH)) and (err != Z_STREAM_END)) {
+         error = log.warning(ERR::BufferOverflow);
+         break;
+      }
+
+      Self->TotalOutput += outputsize - Self->DeflateStream.avail_out;
+
+      if (Args->Callback->isC()) {
+         pf::SwitchContext context(Args->Callback->Context);
+         auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR Meta))Args->Callback->Routine;
+         error = routine(Self, output, outputsize - Self->DeflateStream.avail_out, Args->Callback->Meta);
+      }
+      else if (Args->Callback->isScript()) {
+         if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
+            { "Compression",  Self,   FD_OBJECTPTR },
+            { "Output",       output, FD_BUFFER },
+            { "OutputLength", LARGE(outputsize - Self->DeflateStream.avail_out), FD_LARGE|FD_BUFSIZE }
+         }), error) != ERR::Okay) error = ERR::Failed;
+      }
+      else error = ERR::Okay;
+   }
+
+   // Free the output buffer if it is quite large
+
+   if ((Self->OutputBuffer) and (Self->OutputSize > 64 * 1024)) {
+      FreeResource(Self->OutputBuffer);
+      Self->OutputBuffer = NULL;
+      Self->OutputSize = 0;
+   }
+
+   deflateEnd(&Self->DeflateStream);
+   ClearMemory(&Self->DeflateStream, sizeof(Self->DeflateStream));
+   Self->Deflating = false;
+   return error;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+DecompressStreamStart: Initialises a new decompression stream.
+
+Use the DecompressStreamStart method to initialise a new decompression stream.  No parameters are required.
+
+If a decompression stream is already active at the time that this method is called, all resources associated with that
+stream will be deallocated so that the new stream can be initiated.
+
+To decompress the data stream, follow this call with repeated calls to #DecompressStream() until all the data
+has been processed, then call #DecompressStreamEnd().
+
+-ERRORS-
+Okay
+Failed: Failed to initialise the decompression process.
+
+*********************************************************************************************************************/
+
+static ERR COMPRESSION_DecompressStreamStart(extCompression *Self)
+{
+   pf::Log log;
+
+   if (Self->Inflating) { inflateEnd(&Self->InflateStream); Self->Inflating = false; }
+
+   ClearMemory(&Self->InflateStream, sizeof(Self->InflateStream));
+
+   Self->TotalOutput = 0;
+
+   if (auto err = inflateInit2(&Self->InflateStream, Self->WindowBits); err IS Z_OK) {
+      log.trace("Decompression stream initialised.");
+      Self->Inflating = true;
+      return ERR::Okay;
+   }
+   else return log.warning(ERR::Failed);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+DecompressStream: Decompresses streamed data to an output buffer.
+
+Call DecompressStream repeatedly to decompress a data stream and process the results in a callback routine.  The client
+will need to provide a pointer to the data in the `Input` parameter and indicate its size in `Length`.  The decompression
+routine will call the routine that was specified in `Callback` for each block that is decompressed.
+
+The format of the `Callback` routine is `ERR Function(*Compression, APTR Buffer, LONG Length)`
+
+The `Buffer` will refer to the start of the decompressed data and its size will be indicated in `Length`.  If the
+`Callback` routine returns an error of any kind, the decompression process will be stopped and the error code will be
+immediately returned by the method.
+
+Optionally, the client can specify an output buffer in the `Output` parameter.  This can be a valuable
+optimisation technique, as it will eliminate the need to copy data out of the compression object's internal buffer.
+
+When there is no more data in the decompression stream or if an error has occurred, the client must call
+#DecompressStreamEnd().
+
+-INPUT-
+buf(ptr) Input: Pointer to data to decompress.
+bufsize Length: Amount of data to decompress from the Input parameter.
+ptr(func) Callback: Refers to a function that will be called for each decompressed block of information.
+buf(ptr) Output: Optional pointer to a buffer that will receive the decompressed data.  If not set, the compression object will use its own buffer.
+bufsize OutputSize: Size of the buffer specified in Output (value ignored if `Output` is `NULL`).
+
+-ERRORS-
+Okay
+NullArgs
+AllocMemory
+BufferOverflow: The output buffer is not large enough.
+
+*********************************************************************************************************************/
+
+static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmp::DecompressStream *Args)
+{
+   pf::Log log;
+
+   if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR::NullArgs);
+   if (!Self->Inflating) return ERR::Okay; // Decompression is complete
+
+   APTR output;
+   LONG outputsize;
+
+   if ((output = Args->Output)) {
+      outputsize = Args->OutputSize;
+      if (outputsize < Self->MinOutputSize) return log.warning(ERR::BufferOverflow);
+   }
+   else if ((output = Self->OutputBuffer)) {
+      outputsize = Self->OutputSize;
+   }
+   else {
+      Self->OutputSize = 32 * 1024;
+      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR::Okay) {
+         return ERR::AllocMemory;
+      }
+      output = Self->OutputBuffer;
+      outputsize = Self->OutputSize;
+   }
+
+   Self->InflateStream.next_in  = (Bytef *)Args->Input;
+   Self->InflateStream.avail_in = Args->Length;
+
+   // Keep looping until Z_STREAM_END or an error is returned
+
+   ERR error = ERR::Okay;
+   LONG result = Z_OK;
+   while ((result IS Z_OK) and (Self->InflateStream.avail_in > 0)) {
+      Self->InflateStream.next_out  = (Bytef *)output;
+      Self->InflateStream.avail_out = outputsize;
+      result = inflate(&Self->InflateStream, Z_SYNC_FLUSH);
+
+      if ((result) and (result != Z_STREAM_END)) {
+         error = convert_zip_error(&Self->InflateStream, result);
+         break;
+      }
+
+      if (error != ERR::Okay) break;
+
+      // Write out the decompressed data
+
+      LONG len = outputsize - Self->InflateStream.avail_out;
+      if (len > 0) {
+         if (Args->Callback->isC()) {
+            pf::SwitchContext context(Args->Callback->Context);
+            auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR))Args->Callback->Routine;
+            error = routine(Self, output, len, Args->Callback->Meta);
+         }
+         else if (Args->Callback->isScript()) {
+            if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
+               { "Compression",  Self,   FD_OBJECTPTR },
+               { "Output",       output, FD_BUFFER },
+               { "OutputLength", len,    FD_LONG|FD_BUFSIZE }
+            }), error) != ERR::Okay) error = ERR::Failed;
+         }
+         else {
+            log.warning("Callback function structure does not specify a recognised Type.");
+            break;
+         }
+      }
+
+      if (error != ERR::Okay) break;
+
+      if (result IS Z_STREAM_END) { // Decompression is complete, auto-perform DecompressStreamEnd()
+         inflateEnd(&Self->InflateStream);
+         Self->Inflating = false;
+         Self->TotalOutput = Self->InflateStream.total_out;
+         break;
+      }
+   }
+
+   if (error != ERR::Okay) log.warning(error);
+   return error;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+DecompressStreamEnd: Must be called at the end of the decompression process.
+
+To end the decompression process, this method must be called to write any final blocks of data and remove the resources
+that were allocated during decompression.
+
+-INPUT-
+ptr(func) Callback: Refers to a function that will be called for each decompressed block of information.
+
+-ERRORS-
+Okay
+NullArgs
+
+*********************************************************************************************************************/
+
+static ERR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmp::DecompressStreamEnd *Args)
+{
+   pf::Log log;
+
+   if (!Self->Inflating) return ERR::Okay; // If not inflating, not a problem
+
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
+
+   Self->TotalOutput = Self->InflateStream.total_out;
+   inflateEnd(&Self->InflateStream);
+   Self->Inflating = false;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+DecompressBuffer: Decompresses data originating from the #CompressBuffer() method.
 
 This method is used to decompress data that has been packed using the #CompressBuffer() method.  A pointer to the
 compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer
 is not large enough to contain the data, the method will write out as much information as it can and then return with
-an error code of `ERR_BufferOverflow`.
+an error code of `ERR::BufferOverflow`.
 
 -INPUT-
 buf(ptr) Input: Pointer to the compressed data.
@@ -1024,12 +1005,12 @@ BufferOverflow: The output buffer is not large enough to hold the decompressed i
 
 *********************************************************************************************************************/
 
-static ERROR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmpDecompressBuffer *Args)
+static ERR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmp::DecompressBuffer *Args)
 {
    pf::Log log;
 
    if ((!Args) or (!Args->Input) or (!Args->Output) or (Args->OutputSize <= 0)) {
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    Self->Zip.next_in   = (Bytef *)Args->Input + 8;
@@ -1037,21 +1018,21 @@ static ERROR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmpDecomp
    Self->Zip.next_out  = (Bytef *)Args->Output;
    Self->Zip.avail_out = Args->OutputSize;
 
-   if (inflateInit2(&Self->Zip, Self->WindowBits) IS ERR_Okay) {
+   if (inflateInit2(&Self->Zip, Self->WindowBits) IS Z_OK) {
       LONG err;
       if ((err = inflate(&Self->Zip, Z_FINISH)) IS Z_STREAM_END) {
          Args->Result = Self->Zip.total_out;
          inflateEnd(&Self->Zip);
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else {
          inflateEnd(&Self->Zip);
          if (Self->Zip.msg) log.warning("%s", Self->Zip.msg);
-         else log.warning(ERR_BufferOverflow);
-         return ERR_BufferOverflow;
+         else log.warning(ERR::BufferOverflow);
+         return ERR::BufferOverflow;
       }
    }
-   else return log.warning(ERR_Failed);
+   else return log.warning(ERR::Failed);
 }
 
 /*********************************************************************************************************************
@@ -1059,11 +1040,11 @@ static ERROR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmpDecomp
 -METHOD-
 DecompressFile: Extracts one or more files from a compression object.
 
-Use the DecompressFile method to decompress a file or files to a destination folder.  The exact path name of the
+Use the DecompressFile() method to decompress a file or files to a destination folder.  The exact path name of the
 compressed file is required for extraction unless using wildcards.  A single asterisk in the Path parameter will
 extract all files in a compression object.
 
-When specifying the Dest parameter, it is recommended that you specify a folder location by using a forward slash at
+When specifying the `Dest` parameter, it is recommended that you specify a folder location by using a forward slash at
 the end of the string.  If this is omitted, the destination will be interpreted as a file name.  If the destination
 file already exists, it will be overwritten by the decompressed data.
 
@@ -1089,41 +1070,41 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompressFile *Args)
+static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::DecompressFile *Args)
 {
    pf::Log log;
 
-   if (Self->Files.empty()) return ERR_NoData;
+   if (Self->Files.empty()) return ERR::NoData;
 
    // Validate arguments
 
    if ((!Args) or (!Args->Path)) {
       if (Self->OutputID) print(Self, "Please supply a Path setting that refers to a compressed file archive.\n");
 
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    if (!Args->Dest) {
       if (Self->OutputID) print(Self, "Please supply a Destination that refers to a folder for decompression.\n");
 
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    if ((!*Args->Path) or (!*Args->Dest)) {
       if (Self->OutputID) print(Self, "Please supply valid Path and Destination settings.\n");
 
-      return log.warning(ERR_Args);
+      return log.warning(ERR::Args);
    }
 
    if (!Self->FileIO) {
       if (Self->OutputID) print(Self, "Internal error - decompression aborted.\n");
 
-      return log.warning(ERR_MissingPath);
+      return log.warning(ERR::MissingPath);
    }
 
-   // If the object belongs to a Compression sub-class, return ERR_NoSupport
+   // If the object belongs to a Compression sub-class, return ERR::NoSupport
 
-   if (Self->isSubClass()) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR::NoSupport;
 
    // Tell the user what we are doing
 
@@ -1142,7 +1123,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
    UWORD pathend = 0;
    for (UWORD i=0; Args->Path[i]; i++) if ((Args->Path[i] IS '/') or (Args->Path[i] IS '\\')) pathend = i + 1;
 
-   ERROR error      = ERR_Okay;
+   ERR error      = ERR::Okay;
    bool inflate_end = false;
    Self->FileIndex = 0;
 
@@ -1151,7 +1132,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
    for (auto &zf : Self->Files) {
       log.trace("Found %s", zf.Name);
-      if (!StrCompare(Args->Path, zf.Name, 0, STR::WILDCARD)) {
+      if (wildcmp(Args->Path, zf.Name)) {
          log.trace("Extracting \"%s\"", zf.Name);
 
          if (Self->OutputID) {
@@ -1171,7 +1152,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
          if ((destpath.back() IS '/') or (destpath.back() IS '\\')) {
             LOC result;
-            if ((!AnalysePath(destpath.c_str(), &result)) and (result IS LOC::DIRECTORY)) {
+            if ((AnalysePath(destpath.c_str(), &result) IS ERR::Okay) and (result IS LOC::DIRECTORY)) {
                Self->FileIndex++;
                continue;
             }
@@ -1194,29 +1175,29 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          feedback.Progress       = 0;
 
          error = send_feedback(Self, &feedback);
-         if ((error IS ERR_Terminate) or (error IS ERR_Cancelled)) {
-            error = ERR_Cancelled;
+         if ((error IS ERR::Terminate) or (error IS ERR::Cancelled)) {
+            error = ERR::Cancelled;
             goto exit;
          }
-         else if (error IS ERR_Skip) {
-            error = ERR_Okay;
+         else if (error IS ERR::Skip) {
+            error = ERR::Okay;
             Self->FileIndex++; // Increase counter to show that the file was analysed
             continue;
          }
-         else error = ERR_Okay;
+         else error = ERR::Okay;
 
          // Seek to the start of the compressed data
 
-         if (acSeek(Self->FileIO, zf.Offset + HEAD_NAMELEN, SEEK::START) != ERR_Okay) {
-            error = log.warning(ERR_Seek);
+         if (acSeek(Self->FileIO, zf.Offset + HEAD_NAMELEN, SEEK::START) != ERR::Okay) {
+            error = log.warning(ERR::Seek);
             goto exit;
          }
 
          UWORD namelen, extralen;
-         if (flReadLE(Self->FileIO, &namelen)) { error = ERR_Read; goto exit; }
-         if (flReadLE(Self->FileIO, &extralen)) { error = ERR_Read; goto exit; }
-         if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR_Okay) {
-            error = log.warning(ERR_Seek);
+         if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) { error = ERR::Read; goto exit; }
+         if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) { error = ERR::Read; goto exit; }
+         if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR::Okay) {
+            error = log.warning(ERR::Seek);
             goto exit;
          }
 
@@ -1233,16 +1214,16 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                   // This routine is used if the file is stored rather than compressed
 
                   struct acRead read = { .Buffer = Self->Input, .Length = SIZE_COMPRESSION_BUFFER-1 };
-                  if (!(error = Action(AC_Read, Self->FileIO, &read))) {
+                  if ((error = Action(AC_Read, Self->FileIO, &read)) IS ERR::Okay) {
                      Self->Input[read.Result] = 0;
                      DeleteFile(destpath.c_str(), NULL);
                      error = CreateLink(destpath.c_str(), (CSTRING)Self->Input);
-                     if (error IS ERR_NoSupport) error = ERR_Okay;
+                     if (error IS ERR::NoSupport) error = ERR::Okay;
                   }
 
-                  if (error) goto exit;
+                  if (error != ERR::Okay) goto exit;
                }
-               else if ((zf.DeflateMethod IS 8) and (inflateInit2(&Self->Zip, -MAX_WBITS) IS ERR_Okay)) {
+               else if ((zf.DeflateMethod IS 8) and (inflateInit2(&Self->Zip, -MAX_WBITS) IS Z_OK)) {
                   // Decompressing a link
 
                   inflate_end = true;
@@ -1252,9 +1233,9 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                   if (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) read.Length = zf.CompressedSize;
                   else read.Length = SIZE_COMPRESSION_BUFFER;
 
-                  ERROR err = ERR_Okay;
-                  if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR_Okay) goto exit;
-                  if (read.Result <= 0) { error = ERR_Read; goto exit; }
+                  auto err = Z_OK;
+                  if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
+                  if (read.Result <= 0) { error = ERR::Read; goto exit; }
 
                   Self->Zip.next_in   = Self->Input;
                   Self->Zip.avail_in  = read.Result;
@@ -1263,16 +1244,16 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
                   err = inflate(&Self->Zip, Z_SYNC_FLUSH);
 
-                  if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
+                  if ((err != Z_OK) and (err != Z_STREAM_END)) {
                      if (Self->Zip.msg) log.warning("%s", Self->Zip.msg);
-                     error = ERR_Failed;
+                     error = ERR::Failed;
                      goto exit;
                   }
 
                   Self->Output[zf.OriginalSize] = 0; // !!! We should terminate according to the amount of data decompressed
                   DeleteFile(destpath.c_str(), NULL);
                   error = CreateLink(destpath.c_str(), (CSTRING)Self->Output);
-                  if (error IS ERR_NoSupport) error = ERR_Okay;
+                  if (error IS ERR::NoSupport) error = ERR::Okay;
 
                   inflateEnd(&Self->Zip);
                   inflate_end = false;
@@ -1303,13 +1284,13 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
             }
             else permissions = Self->Permissions;
 
-            objFile::create file = {
+            auto file = objFile::create {
                fl::Path(destpath), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(permissions)
             };
 
             if (!file.ok()) {
-               log.warning("Error %d creating file \"%s\".", file.error, destpath.c_str());
-               error = ERR_File;
+               log.warning("Error %d creating file \"%s\".", LONG(file.error), destpath.c_str());
+               error = ERR::File;
                goto exit;
             }
 
@@ -1331,9 +1312,9 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                      .Length = (inputlen < SIZE_COMPRESSION_BUFFER) ? inputlen : SIZE_COMPRESSION_BUFFER
                   };
 
-                  while ((!(error = Action(AC_Read, Self->FileIO, &read))) and (read.Result > 0)) {
+                  while (((error = Action(AC_Read, Self->FileIO, &read)) IS ERR::Okay) and (read.Result > 0)) {
                      struct acWrite write = { .Buffer = Self->Input, .Length = read.Result };
-                     if (Action(AC_Write, *file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
+                     if (Action(AC_Write, *file, &write) != ERR::Okay) { error = log.warning(ERR::Write); goto exit; }
 
                      inputlen -= read.Result;
                      if (inputlen <= 0) break;
@@ -1341,9 +1322,9 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                      else read.Length = SIZE_COMPRESSION_BUFFER;
                   }
 
-                  if (error) goto exit;
+                  if (error != ERR::Okay) goto exit;
                }
-               else if ((zf.DeflateMethod IS 8) and (inflateInit2(&Self->Zip, -MAX_WBITS) IS ERR_Okay)) {
+               else if ((zf.DeflateMethod IS 8) and (inflateInit2(&Self->Zip, -MAX_WBITS) IS Z_OK)) {
                   // Decompressing a file
 
                   log.trace("Inflating file from %d -> %d bytes @ offset %d.", zf.CompressedSize, zf.OriginalSize, zf.Offset);
@@ -1355,8 +1336,8 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                      .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
                   };
 
-                  if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR_Okay) goto exit;
-                  if (read.Result <= 0) { error = ERR_Read; goto exit; }
+                  if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
+                  if (read.Result <= 0) { error = ERR::Read; goto exit; }
                   LONG inputlen = zf.CompressedSize - read.Result;
 
                   Self->Zip.next_in   = Self->Input;
@@ -1366,13 +1347,13 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
                   // Keep loooping until Z_STREAM_END or an error is returned
 
-                  ERROR err = ERR_Okay;
-                  while (err IS ERR_Okay) {
+                  auto err = Z_OK;
+                  while (err IS Z_OK) {
                      err = inflate(&Self->Zip, Z_SYNC_FLUSH);
 
-                     if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
+                     if ((err != Z_OK) and (err != Z_STREAM_END)) {
                         if (Self->Zip.msg) log.warning("%s", Self->Zip.msg);
-                        error = ERR_Failed;
+                        error = ERR::Failed;
                         goto exit;
                      }
 
@@ -1382,7 +1363,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                         .Buffer = Self->Output,
                         .Length = (LONG)(SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out)
                      };
-                     if (Action(AC_Write, *file, &write) != ERR_Okay) { error = log.warning(ERR_Write); goto exit; }
+                     if (Action(AC_Write, *file, &write) != ERR::Okay) { error = log.warning(ERR::Write); goto exit; }
 
                      // Exit if all data has been written out
 
@@ -1402,8 +1383,8 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
                         if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                         else read.Length = SIZE_COMPRESSION_BUFFER;
 
-                        if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR_Okay) goto exit;
-                        if (read.Result <= 0) { error = ERR_Read; break; }
+                        if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
+                        if (read.Result <= 0) { error = ERR::Read; break; }
                         inputlen -= read.Result;
 
                         Self->Zip.next_in  = Self->Input;
@@ -1420,7 +1401,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
             // Give the file a date that matches the original
 
-            flSetDate(*file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, FDT::NIL);
+            file->setDate(feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, FDT::NIL);
          }
 
          if (feedback.Progress < feedback.OriginalSize) {
@@ -1437,9 +1418,9 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 exit:
    if (inflate_end) inflateEnd(&Self->Zip);
 
-   if ((error IS ERR_Okay) and (Self->FileIndex <= 0)) {
+   if ((error IS ERR::Okay) and (Self->FileIndex <= 0)) {
       log.msg("No files matched the path \"%s\".", Args->Path);
-      error = ERR_Search;
+      error = ERR::Search;
    }
 
    return error;
@@ -1472,14 +1453,14 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecompressObject *Args)
+static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::DecompressObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Path) or (!Args->Path[0])) return log.warning(ERR_NullArgs);
-   if (!Args->Object) return log.warning(ERR_NullArgs);
-   if (!Self->FileIO) return log.warning(ERR_MissingPath);
-   if (Self->isSubClass()) return ERR_NoSupport; // Object belongs to a Compression sub-class
+   if ((!Args) or (!Args->Path) or (!Args->Path[0])) return log.warning(ERR::NullArgs);
+   if (!Args->Object) return log.warning(ERR::NullArgs);
+   if (!Self->FileIO) return log.warning(ERR::MissingPath);
+   if (Self->isSubClass()) return ERR::NoSupport; // Object belongs to a Compression sub-class
 
    log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, LONG(Self->Permissions));
 
@@ -1489,11 +1470,11 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
    CompressionFeedback fb;
    ClearMemory(&fb, sizeof(fb));
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
    LONG total_scanned = 0;
    for (auto &list : Self->Files) {
       total_scanned++;
-      if (StrCompare(Args->Path, list.Name, 0, STR::WILDCARD)) continue;
+      if (!wildcmp(Args->Path, list.Name)) continue;
 
       log.trace("Decompressing \"%s\"", list.Name);
 
@@ -1517,20 +1498,20 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
 
       // Seek to the start of the compressed data
 
-      if (acSeek(Self->FileIO, list.Offset + HEAD_NAMELEN, SEEK::START) != ERR_Okay) {
-         return log.warning(ERR_Seek);
+      if (acSeek(Self->FileIO, list.Offset + HEAD_NAMELEN, SEEK::START) != ERR::Okay) {
+         return log.warning(ERR::Seek);
       }
 
       UWORD namelen, extralen;
-      if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
-      if (flReadLE(Self->FileIO, &extralen)) return ERR_Read;
-      if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR_Okay) {
-         return log.warning(ERR_Seek);
+      if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
+      if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
+      if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR::Okay) {
+         return log.warning(ERR::Seek);
       }
 
       if (list.Flags & ZIP_LINK) { // For symbolic links, decompress the data to get the destination link string
          log.warning("Unable to unzip symbolic link %s (flags $%.8x), size %d.", list.Name.c_str(), list.Flags, list.OriginalSize);
-         return ERR_Failed;
+         return ERR::Failed;
       }
       else { // Create the destination file or folder
          Self->Zip.next_in   = 0;
@@ -1548,9 +1529,9 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
                if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                else read.Length = SIZE_COMPRESSION_BUFFER;
 
-               while ((!(error = Action(AC_Read, Self->FileIO, &read))) and (read.Result > 0)) {
+               while (((error = Action(AC_Read, Self->FileIO, &read)) IS ERR::Okay) and (read.Result > 0)) {
                   struct acWrite write = { .Buffer = Self->Input, .Length = read.Result };
-                  if (Action(AC_Write, Args->Object, &write) != ERR_Okay) { error = ERR_Write; goto exit; }
+                  if (Action(AC_Write, Args->Object, &write) != ERR::Okay) { error = ERR::Write; goto exit; }
 
                   inputlen -= read.Result;
                   if (inputlen <= 0) break;
@@ -1558,9 +1539,9 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
                   else read.Length = SIZE_COMPRESSION_BUFFER;
                }
 
-               if (error) goto exit;
+               if (error != ERR::Okay) goto exit;
             }
-            else if ((list.DeflateMethod IS 8) and (inflateInit2(&Self->Zip, -MAX_WBITS) IS ERR_Okay)) {
+            else if ((list.DeflateMethod IS 8) and (inflateInit2(&Self->Zip, -MAX_WBITS) IS Z_OK)) {
                // Decompressing a file
 
                inflate_end = true;
@@ -1570,9 +1551,9 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
                if (list.CompressedSize < SIZE_COMPRESSION_BUFFER) read.Length = list.CompressedSize;
                else read.Length = SIZE_COMPRESSION_BUFFER;
 
-               ERROR err = ERR_Okay;
-               if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR_Okay) goto exit;
-               if (read.Result <= 0) { error = ERR_Read; goto exit; }
+               auto err = Z_OK;
+               if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
+               if (read.Result <= 0) { error = ERR::Read; goto exit; }
                LONG inputlen = list.CompressedSize - read.Result;
 
                Self->Zip.next_in   = Self->Input;
@@ -1582,19 +1563,19 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
 
                // Keep loooping until Z_STREAM_END or an error is returned
 
-               while (err IS ERR_Okay) {
+               while (err IS Z_OK) {
                   err = inflate(&Self->Zip, Z_SYNC_FLUSH);
 
-                  if ((err != ERR_Okay) and (err != Z_STREAM_END)) {
+                  if ((err != Z_OK) and (err != Z_STREAM_END)) {
                      if (Self->Zip.msg) log.warning("%s", Self->Zip.msg);
-                     error = ERR_Decompression;
+                     error = ERR::Decompression;
                      goto exit;
                   }
 
                   // Write out the decompressed data
 
                   struct acWrite write = { Self->Output, (LONG)(SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out) };
-                  if (Action(AC_Write, Args->Object, &write) != ERR_Okay) { error = ERR_Write; goto exit; }
+                  if (Action(AC_Write, Args->Object, &write) != ERR::Okay) { error = ERR::Write; goto exit; }
 
                   // Exit if all data has been written out
 
@@ -1614,8 +1595,8 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
                      if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                      else read.Length = SIZE_COMPRESSION_BUFFER;
 
-                     if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR_Okay) goto exit;
-                     if (read.Result <= 0) { error = ERR_Read; break; }
+                     if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
+                     if (read.Result <= 0) { error = ERR::Read; break; }
                      inputlen -= read.Result;
 
                      Self->Zip.next_in  = Self->Input;
@@ -1640,14 +1621,14 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
       break;
    }
 
-   if (error) {
+   if (error != ERR::Okay) {
       log.msg("No files matched the path \"%s\" from %d files.", Args->Path, total_scanned);
-      return ERR_Search;
+      return ERR::Search;
    }
 
 exit:
    if (inflate_end) inflateEnd(&Self->Zip);
-   if (error) log.warning(error);
+   if (error != ERR::Okay) log.warning(error);
    return error;
 }
 
@@ -1656,19 +1637,18 @@ exit:
 -METHOD-
 Find: Find the first item that matches a given filter.
 
-Use the Find method to search for a specific item in an archive.  The algorithm will return the first item that
-matches the Path parameter string in conjunction with the options in Flags.  The options match those in the
-~Core.StrCompare() function - in particular `STR::CASE`, `STR::MATCH_LEN` and `STR::WILDCARD` are the most
-useful.
+Use the Find() method to search for a specific item in an archive.  The algorithm will return the first item that
+matches the `Path` string in conjunction with the `Case` and `Wildcard` options.
 
-Please refer to the #Scan() method for a break-down of the CompressedItem structure that is returned by this
-method.  The resulting structure is temporary and values will be discarded on the next call to this method.  If
-persistent values are required, copy the resulting structure immediately after the call.
+If successful, the discovered item is returned as a !CompressedItem.  The result is temporary and
+values will be discarded on the next call to this method.  If persistent values are required, copy the resulting
+structure immediately after the call.
 
 -INPUT-
 cstr Path: Search for a specific item or items, using wildcards.
-int(STR) Flags: String comparison flags used by StrCompare().
-&struct(*CompressedItem) Item: The discovered item is returned in this parameter, or NULL if the search failed.
+int CaseSensitive: Set to `true` if `Path` comparisons are case-sensitive.
+int Wildcard: Set to `true` if `Path` uses wildcards.
+&struct(*CompressedItem) Item: The discovered item is returned in this parameter, or `NULL` if the search failed.
 
 -ERRORS-
 Okay
@@ -1680,23 +1660,29 @@ Search
 
 static THREADVAR CompressedItem glFindMeta;
 
-static ERROR COMPRESSION_Find(extCompression *Self, struct cmpFind *Args)
+static ERR COMPRESSION_Find(extCompression *Self, struct cmp::Find *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
-   if (Self->isSubClass()) return ERR_NoSupport;
+   if ((!Args) or (!Args->Path)) return log.warning(ERR::NullArgs);
+   if (Self->isSubClass()) return ERR::NoSupport;
 
-   log.traceBranch("Path: %s, Flags: $%.8x", Args->Path, LONG(Args->Flags));
+   log.traceBranch("Path: %s, Case: %d, Wildcard: %d", Args->Path, Args->CaseSensitive, Args->Wildcard);
    for (auto &item : Self->Files) {
-      if (StrCompare(Args->Path, item.Name, 0, Args->Flags)) continue;
+      if (Args->Wildcard) {
+         if (!wildcmp(Args->Path, item.Name, Args->CaseSensitive)) continue;
+      }
+      else if (Args->CaseSensitive) {
+         if (item.Name != Args->Path) continue;
+      }
+      else if (!iequals(item.Name, Args->Path)) continue;
 
       zipfile_to_item(item, glFindMeta);
       Args->Item = &glFindMeta;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   return ERR_Search;
+   return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -1705,9 +1691,9 @@ Flush: Flushes all pending actions.
 -END-
 *********************************************************************************************************************/
 
-static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
+static ERR COMPRESSION_Flush(extCompression *Self)
 {
-   if (Self->isSubClass()) return ERR_Okay;
+   if (Self->isSubClass()) return ERR::Okay;
 
    Self->Zip.avail_in = 0;
 
@@ -1719,7 +1705,7 @@ static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
       LONG length, zerror;
       if ((length = SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out) > 0) {
          struct acWrite write = { Self->Output, length };
-         if (Action(AC_Write, Self->FileIO, &write) != ERR_Okay) return ERR_Write;
+         if (Action(AC_Write, Self->FileIO, &write) != ERR::Okay) return ERR::Write;
          Self->Zip.next_out  = Self->Output;
          Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
       }
@@ -1730,21 +1716,21 @@ static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
 
       // Ignore the second of two consecutive flushes:
 
-      if ((!length) and (zerror IS Z_BUF_ERROR)) zerror = ERR_Okay;
+      if ((!length) and (zerror IS Z_BUF_ERROR)) zerror = Z_OK;
 
       done = ((Self->Zip.avail_out != 0) or (zerror IS Z_STREAM_END));
 
-      if ((zerror != ERR_Okay) and (zerror != Z_STREAM_END)) break;
+      if ((zerror != Z_OK) and (zerror != Z_STREAM_END)) break;
    }
 
    acFlush(Self->FileIO);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
+static ERR COMPRESSION_Free(extCompression *Self)
 {
    // Before terminating anything, write the EOF signature (if modifications have been made).
 
@@ -1755,9 +1741,9 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
       Self->ArchiveHash = 0;
    }
 
-   if (Self->Feedback.Type IS CALL_SCRIPT) {
-      UnsubscribeAction(Self->Feedback.Script.Script, AC_Free);
-      Self->Feedback.Type = CALL_NONE;
+   if (Self->Feedback.isScript()) {
+      UnsubscribeAction(Self->Feedback.Context, AC_Free);
+      Self->Feedback.clear();
    }
 
    if (Self->Inflating)    { inflateEnd(&Self->InflateStream); Self->Inflating = false; }
@@ -1770,28 +1756,26 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
 
    Self->~extCompression();
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
+static ERR COMPRESSION_Init(extCompression *Self)
 {
    pf::Log log;
-   STRING path;
-
-   Self->get(FID_Path, &path);
+   auto path = Self->get<STRING>(FID_Path);
 
    if (!path) {
       // If no location has been set, assume that the developer only wants to use the buffer or stream compression routines.
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if ((Self->Flags & CMF::NEW) != CMF::NIL) {
       // If the NEW flag is set then create a new archive, destroying any file already at that location
 
-      if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
-         return ERR_Okay;
+      if ((Self->FileIO = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
+         return ERR::Okay;
       }
       else {
          if (Self->OutputID) {
@@ -1800,60 +1784,60 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
             print(Self, out.str());
          }
 
-         return log.warning(ERR_CreateObject);
+         return log.warning(ERR::CreateObject);
       }
    }
    else {
-      ERROR error = ERR_Okay;
+      ERR error = ERR::Okay;
       LOC type;
-      bool exists = ((!AnalysePath(path, &type)) and (type IS LOC::FILE));
+      bool exists = ((AnalysePath(path, &type) IS ERR::Okay) and (type IS LOC::FILE));
 
       if (exists) {
          pf::Create<objFile> file({
             fl::Path(path),
             fl::Flags(FL::READ|FL::APPROXIMATE|(((Self->Flags & CMF::READ_ONLY) != CMF::NIL) ? FL::NIL : FL::WRITE))
-         }, NF::INTEGRAL);
+         }, NF::LOCAL);
 
          // Try switching to read-only access if we were denied permission.
 
          if (file.ok()) Self->FileIO = *file;
-         else if ((file.error IS ERR_NoPermission) and ((Self->Flags & CMF::READ_ONLY) IS CMF::NIL)) {
+         else if ((file.error IS ERR::NoPermission) and ((Self->Flags & CMF::READ_ONLY) IS CMF::NIL)) {
             log.trace("Trying read-only access...");
 
-            if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
+            if ((Self->FileIO = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
                Self->Flags |= CMF::READ_ONLY;
             }
-            else error = ERR_File;
+            else error = ERR::File;
          }
-         else error = ERR_File;
+         else error = ERR::File;
       }
-      else error = ERR_DoesNotExist;
+      else error = ERR::DoesNotExist;
 
-      if (!error) { // Test the given location to see if it matches our supported file format (pkzip).
+      if (error IS ERR::Okay) { // Test the given location to see if it matches our supported file format (pkzip).
          LONG result;
-         if (acRead(Self->FileIO, Self->Header, sizeof(Self->Header), &result) != ERR_Okay) return log.warning(ERR_Read);
+         if (acRead(Self->FileIO, Self->Header, sizeof(Self->Header), &result) != ERR::Okay) return log.warning(ERR::Read);
 
          // If the file is empty then we will accept it as a zip file
 
-         if (!result) return ERR_Okay;
+         if (!result) return ERR::Okay;
 
          // Check for a pkzip header
 
          if ((Self->Header[0] IS 0x50) and (Self->Header[1] IS 0x4b) and
              (Self->Header[2] IS 0x03) and (Self->Header[3] IS 0x04)) {
             error = fast_scan_zip(Self);
-            if (error != ERR_Okay) return log.warning(error);
+            if (error != ERR::Okay) return log.warning(error);
             else return error;
          }
-         else return ERR_NoSupport;
+         else return ERR::NoSupport;
       }
       else if ((!exists) and ((Self->Flags & CMF::CREATE_FILE) != CMF::NIL)) {
          // Create a new file if the requested location does not exist
 
-         log.extmsg("Creating a new file because the location does not exist.");
+         log.detail("Creating a new file because the location does not exist.");
 
-         if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
-            return ERR_Okay;
+         if ((Self->FileIO = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
+            return ERR::Okay;
          }
          else {
             if (Self->OutputID) {
@@ -1862,37 +1846,37 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
                print(Self, out.str());
             }
 
-            return log.warning(ERR_CreateObject);
+            return log.warning(ERR::CreateObject);
          }
       }
       else {
          std::ostringstream out;
          out << "Failed to open \"" << path << "\".";
          print(Self, out.str());
-         return log.warning(ERR_File);
+         return log.warning(ERR::File);
       }
    }
 }
 
 //********************************************************************************************************************
 
-static ERROR COMPRESSION_NewObject(extCompression *Self, APTR Void)
+static ERR COMPRESSION_NewObject(extCompression *Self)
 {
    pf::Log log;
 
    new (Self) extCompression;
 
-   if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Output, NULL)) {
-      if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Input, NULL)) {
+   if (AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Output, NULL) IS ERR::Okay) {
+      if (AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Input, NULL) IS ERR::Okay) {
          Self->CompressionLevel = 60; // 60% compression by default
          Self->Permissions      = PERMIT::NIL; // Inherit permissions by default. PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
          Self->MinOutputSize    = (32 * 1024) + 2048; // Has to at least match the minimum 'window size' of each compression block, plus extra in case of overflow.  Min window size is typically 16k
          Self->WindowBits = MAX_WBITS; // If negative then you get raw compression when dealing with buffers and stream data, i.e. no header information
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_AllocMemory);
+      else return log.warning(ERR::AllocMemory);
    }
-   else return log.warning(ERR_AllocMemory);
+   else return log.warning(ERR::AllocMemory);
 }
 
 /*********************************************************************************************************************
@@ -1902,7 +1886,7 @@ RemoveFile: Deletes one or more files from a compression object.
 
 This method deletes compressed files from a compression object.  If the file is in a folder then the client must
 specify the complete path in conjunction with the file name.  Wild cards are accepted if you want to delete multiple
-files.  A Path setting of `*` will delete an archive's entire contents, while a more conservative Path of
+files.  A `Path` setting of `*` will delete an archive's entire contents, while a more conservative `Path` of
 `documents/ *` would delete all files and directories under the documents path.  Directories can be declared using
 either the back-slash or the forward-slash characters.
 
@@ -1920,20 +1904,20 @@ NoSupport
 
 *********************************************************************************************************************/
 
-static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *Args)
+static ERR COMPRESSION_RemoveFile(extCompression *Self, struct cmp::RemoveFile *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Path)) return log.warning(ERR::NullArgs);
 
-   if (Self->isSubClass()) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR::NoSupport;
 
    // Search for the file(s) in our archive that match the given name and delete them.
 
    log.msg("%s", Args->Path);
 
    for (auto it = Self->Files.begin(); it != Self->Files.end(); ) {
-      if (!StrCompare(Args->Path, it->Name, 0, STR::WILDCARD)) {
+      if (wildcmp(Args->Path, it->Name)) {
          // Delete the file from the archive
 
          if (Self->OutputID) {
@@ -1942,12 +1926,12 @@ static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *
             print(Self, out.str());
          }
 
-         if (auto error = remove_file(Self, it)) return error;
+         if (auto error = remove_file(Self, it); error != ERR::Okay) return error;
       }
       else it++;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1955,22 +1939,22 @@ static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *
 -METHOD-
 Scan: Scan the archive's index of compressed data.
 
-Use the Scan method to search an archive's list of items.  Optional filtering can be applied using the Folder parameter
-to limit results to those within a folder, and Filter parameter to apply wildcard matching to item names.  Each item
-that is discovered during the scan will be passed to the function referenced in the Callback parameter.  If the
-Callback function returns ERR_Terminate, the scan will stop immediately.  The synopsis of the callback function is
-`ERROR Function(*Compression, *CompressedItem)`.
+Use the Scan() method to search an archive's list of items.  Optional filtering can be applied using the `Folder` parameter
+to limit results to those within a folder, and `Filter` parameter to apply wildcard matching to item names.  Each item
+that is discovered during the scan will be passed to the function referenced in the `Callback` parameter.  If the
+`Callback` function returns `ERR::Terminate`, the scan will stop immediately.  The prototype of the `Callback`
+function is `ERR Function(*Compression, *CompressedItem)`.
 
-The &CompressedItem structure consists of the following fields:
+The !CompressedItem structure consists of the following fields:
 
-&CompressedItem
+!CompressedItem
 
-To search for a single item with a path and name already known, please use the #Find() method instead.
+To search for a single item with a path and name already known, use the #Find() method instead.
 
 -INPUT-
 cstr Folder: If defined, only items within the specified folder are returned.  Use an empty string for files in the root folder.
-cstr Filter: Search for a specific item or items by name, using wildcards.  If NULL or an empty string, all items will be scanned.
-ptr(func) Callback: This callback function will be called with a pointer to a CompressedItem structure.
+cstr Filter: Search for a specific item or items by name, using wildcards.  If `NULL` or an empty string, all items will be scanned.
+ptr(func) Callback: This callback function will be called with a pointer to a !CompressedItem structure.
 
 -ERRORS-
 Okay
@@ -1980,13 +1964,13 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
+static ERR COMPRESSION_Scan(extCompression *Self, struct cmp::Scan *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
-   if (Self->isSubClass()) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR::NoSupport;
 
    log.traceBranch("Folder: \"%s\", Filter: \"%s\"", Args->Folder, Args->Filter);
 
@@ -1996,14 +1980,14 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
       if ((folder_len > 0) and (Args->Folder[folder_len-1] IS '/')) folder_len--;
    }
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    for (auto &item : Self->Files) {
       log.trace("Item: %s", item.Name);
 
       if (Args->Folder) {
-         if ((LONG)item.Name.size() > folder_len) {
-            if (!StrCompare(Args->Folder, item.Name)) {
+         if (std::ssize(item.Name) > folder_len) {
+            if (iequals(Args->Folder, item.Name)) {
                if ((folder_len > 0) and (item.Name[folder_len] != '/')) continue;
                if ((item.Name[folder_len] IS '/') and (!item.Name[folder_len+1])) continue;
 
@@ -2021,7 +2005,7 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
       }
 
       if ((Args->Filter) and (Args->Filter[0])) {
-         if (!StrCompare(Args->Filter, item.Name, 0, STR::WILDCARD)) break;
+         if (wildcmp(Args->Filter, item.Name)) break;
          else continue;
       }
 
@@ -2029,24 +2013,20 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
       zipfile_to_item(item, meta);
 
       {
-         if (Args->Callback->Type IS CALL_STDC) {
-            pf::SwitchContext context(Args->Callback->StdC.Context);
-            auto routine = (ERROR (*)(extCompression *, CompressedItem *))Args->Callback->StdC.Routine;
-            error = routine(Self, &meta);
+         if (Args->Callback->isC()) {
+            pf::SwitchContext context(Args->Callback->Context);
+            auto routine = (ERR (*)(extCompression *, CompressedItem *, APTR))Args->Callback->Routine;
+            error = routine(Self, &meta, Args->Callback->Meta);
          }
-         else if (Args->Callback->Type IS CALL_SCRIPT) {
-            if (auto script = Args->Callback->Script.Script) {
-               const ScriptArg args[] = {
-                  { "Compression", FD_OBJECTPTR, { .Address = Self } },
-                  { "CompressedItem:Item", FD_STRUCT|FD_PTR, { .Address = &meta } }
-               };
-               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-            }
-            else error = ERR_Terminate;
+         else if (Args->Callback->isScript()) {
+            if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
+               { "Compression", Self, FD_OBJECTPTR },
+               { "CompressedItem:Item", &meta, FD_STRUCT|FD_PTR }
+            }), error) != ERR::Okay) error = ERR::Failed;
          }
-         else error = log.warning(ERR_WrongType);
+         else error = log.warning(ERR::WrongType);
 
-         if (error) break; // Break the scanning loop.
+         if (error != ERR::Okay) break; // Break the scanning loop.
       }
    }
 
@@ -2108,7 +2088,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERROR add_compression_class(void)
+extern "C" ERR add_compression_class(void)
 {
    glCompressionClass = extMetaClass::create::global(
       fl::ClassVersion(VER_COMPRESSION),
@@ -2123,7 +2103,7 @@ extern "C" ERROR add_compression_class(void)
       fl::Size(sizeof(extCompression)),
       fl::Path("modules:core"));
 
-   return glCompressionClass ? ERR_Okay : ERR_AddClass;
+   return glCompressionClass ? ERR::Okay : ERR::AddClass;
 }
 
 //********************************************************************************************************************

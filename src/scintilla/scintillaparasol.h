@@ -3,6 +3,7 @@ class objScintilla;
 class ScintillaParasol;
 
 #include <parasol/modules/scintilla.h>
+#include "../link/unicode.h"
 
 using namespace pf;
 

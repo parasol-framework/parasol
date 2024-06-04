@@ -45,7 +45,7 @@ static int processing_new(lua_State *Lua)
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 1) != 0) {
             if (auto field_name = luaL_checkstring(Lua, -2)) {
-               auto field_hash = StrHash(field_name, 0);
+               auto field_hash = strihash(field_name);
 
                switch (field_hash) {
                   case HASH_TIMEOUT:
@@ -114,7 +114,7 @@ static int processing_sleep(lua_State *Lua)
    pf::Log log;
    static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
-   ERROR error;
+   ERR error;
    LONG timeout;
 
    auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Fluid.processing");
@@ -133,7 +133,7 @@ static int processing_sleep(lua_State *Lua)
    // The Lua signal flag is always reset on entry just in case it has been polluted by prior activity.
    // All other objects can be pre-signalled legitimately.
 
-   Lua->Script->BaseClass::Flags = Lua->Script->BaseClass::Flags & (~NF::SIGNALLED);
+   Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
 
    if (wake_on_signal) {
       if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {
@@ -158,10 +158,10 @@ static int processing_sleep(lua_State *Lua)
    else {
       std::scoped_lock lock(recursion);
       WaitTime(timeout / 1000, (timeout % 1000) * 1000);
-      error = ERR_Okay;
+      error = ERR::Okay;
    }
 
-   lua_pushinteger(Lua, error);
+   lua_pushinteger(Lua, LONG(error));
    return 1;
 }
 
@@ -181,31 +181,25 @@ static int processing_signal(lua_State *Lua)
 
 static int processing_get(lua_State *Lua)
 {
-   auto fp = (struct fprocessing *)lua_touserdata(Lua, 1);
-
-   if (fp) {
-      CSTRING fieldname;
-      if ((fieldname = luaL_checkstring(Lua, 2))) {
-         if (!StrCompare("sleep", fieldname, 0, STR::MATCH_CASE)) {
-            lua_pushvalue(Lua, 1);
-            lua_pushcclosure(Lua, &processing_sleep, 1);
-            return 1;
-         }
-         else if (!StrCompare("signal", fieldname, 0, STR::MATCH_CASE)) {
-            lua_pushvalue(Lua, 1);
-            lua_pushcclosure(Lua, &processing_signal, 1);
-            return 1;
-         }
-         else return luaL_error(Lua, "Unrecognised field name '%s'", fieldname);
+   if (auto fieldname = luaL_checkstring(Lua, 2)) {
+      if (std::string_view("sleep") IS fieldname) {
+         lua_pushvalue(Lua, 1);
+         lua_pushcclosure(Lua, &processing_sleep, 1);
+         return 1;
       }
+      else if (std::string_view("signal") IS fieldname) {
+         lua_pushvalue(Lua, 1);
+         lua_pushcclosure(Lua, &processing_signal, 1);
+         return 1;
+      }
+      else return luaL_error(Lua, "Unrecognised field name '%s'", fieldname);
    }
 
    return 0;
 }
 
-/*********************************************************************************************************************
-** Garbage collecter.
-*/
+//********************************************************************************************************************
+// Garbage collecter.
 
 static int processing_destruct(lua_State *Lua)
 {

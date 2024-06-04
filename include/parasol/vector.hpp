@@ -120,22 +120,32 @@ public:
 
    // Erasure
 
-   inline void erase(iterator Ref) {
+   inline T * erase(iterator Ref) {
       erase(Ref, Ref + 1);
+      return Ref;
    }
 
-   inline void erase(size_t Index) {
+   inline T * erase(size_t Index) {
       erase(from(Index), from(Index + 1));
+      return from(Index);
    }
 
-   void erase(iterator Start, iterator Stop) {
-      size_t count = 0;
-      for (auto it=Stop, st=Start; it != end(); it++, st++) {
-         *st = std::move(*it);
-         count++;
+   T * erase(iterator Start, iterator Stop) {
+      if (Stop IS end()) {
+         for (auto it = Start; it != Stop; it++) {
+            (*it).~T();
+            length--;
+         }
+      }
+      else {
+         for (auto it=Stop, start=Start; it != end(); it++, start++) {
+            *start = std::move(*it);
+         }
+         auto total_removed = Stop - Start;
+         length -= total_removed;
       }
 
-      length -= count;
+      return Start;
    }
 
    iterator insert(const_iterator pTarget, T &pValue) {

@@ -6,21 +6,24 @@
 
 FDEF argsApplyPath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_PTR }, { "VectorPath", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsArcTo[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "RX", FD_DOUBLE }, { "RY", FD_DOUBLE }, { "Angle", FD_DOUBLE }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
+FDEF argsCharWidth[] = { { "Result", FD_DOUBLE }, { "FontHandle", FD_PTR }, { "Char", FD_LONG|FD_UNSIGNED }, { "KChar", FD_LONG|FD_UNSIGNED }, { "Kerning", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
 FDEF argsClosePath[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { 0, 0 } };
 FDEF argsCurve3[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "CtrlX", FD_DOUBLE }, { "CtrlY", FD_DOUBLE }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsCurve4[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "CtrlX1", FD_DOUBLE }, { "CtrlY1", FD_DOUBLE }, { "CtrlX2", FD_DOUBLE }, { "CtrlY2", FD_DOUBLE }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsDrawPath[] = { { "Error", FD_LONG|FD_ERROR }, { "Bitmap", FD_OBJECTPTR }, { "Path", FD_PTR }, { "StrokeWidth", FD_DOUBLE }, { "StrokeStyle", FD_OBJECTPTR }, { "FillStyle", FD_OBJECTPTR }, { 0, 0 } };
-FDEF argsFreePath[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { 0, 0 } };
+FDEF argsFlushMatrix[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsGenerateEllipse[] = { { "Error", FD_LONG|FD_ERROR }, { "CX", FD_DOUBLE }, { "CY", FD_DOUBLE }, { "RX", FD_DOUBLE }, { "RY", FD_DOUBLE }, { "Vertices", FD_LONG }, { "Path", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsGeneratePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Sequence", FD_STR }, { "Path", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsGenerateRectangle[] = { { "Error", FD_LONG|FD_ERROR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { "Path", FD_PTR|FD_RESULT }, { 0, 0 } };
+FDEF argsGetFontHandle[] = { { "Error", FD_LONG|FD_ERROR }, { "Family", FD_STR }, { "Style", FD_STR }, { "Weight", FD_LONG }, { "Size", FD_LONG }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
+FDEF argsGetFontMetrics[] = { { "Error", FD_LONG|FD_ERROR }, { "Handle", FD_PTR }, { "FontMetrics:Info", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsGetVertex[] = { { "Result", FD_LONG }, { "Path", FD_PTR }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
 FDEF argsLineTo[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsMoveTo[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsMultiply[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "ScaleX", FD_DOUBLE }, { "ShearY", FD_DOUBLE }, { "ShearX", FD_DOUBLE }, { "ScaleY", FD_DOUBLE }, { "TranslateX", FD_DOUBLE }, { "TranslateY", FD_DOUBLE }, { 0, 0 } };
 FDEF argsMultiplyMatrix[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Target", FD_PTR|FD_STRUCT }, { "VectorMatrix:Source", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsParseTransform[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "Transform", FD_STR }, { 0, 0 } };
-FDEF argsReadPainter[] = { { "Error", FD_LONG|FD_ERROR }, { "Scene", FD_OBJECTPTR }, { "IRI", FD_STR }, { "FRGB:RGB", FD_PTR|FD_STRUCT }, { "Gradient", FD_OBJECTPTR|FD_RESULT }, { "Image", FD_OBJECTPTR|FD_RESULT }, { "Pattern", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
+FDEF argsReadPainter[] = { { "Error", FD_LONG|FD_ERROR }, { "Scene", FD_OBJECTPTR }, { "IRI", FD_STR }, { "VectorPainter:Painter", FD_PTR|FD_STRUCT }, { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsResetMatrix[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsRewindPath[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { 0, 0 } };
 FDEF argsRotate[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "Angle", FD_DOUBLE }, { "CenterX", FD_DOUBLE }, { "CenterY", FD_DOUBLE }, { 0, 0 } };
@@ -28,36 +31,43 @@ FDEF argsScale[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_
 FDEF argsSkew[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsSmooth3[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsSmooth4[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "CtrlX", FD_DOUBLE }, { "CtrlY", FD_DOUBLE }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
+FDEF argsStringWidth[] = { { "Result", FD_DOUBLE }, { "FontHandle", FD_PTR }, { "String", FD_STR }, { "Chars", FD_LONG }, { 0, 0 } };
+FDEF argsTracePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_PTR }, { "Callback", FD_FUNCTIONPTR }, { "Scale", FD_DOUBLE }, { 0, 0 } };
 FDEF argsTranslate[] = { { "Error", FD_LONG|FD_ERROR }, { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF argsTranslatePath[] = { { "Void", FD_VOID }, { "Path", FD_PTR }, { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
-   { (APTR)vecDrawPath, "DrawPath", argsDrawPath },
-   { (APTR)vecFreePath, "FreePath", argsFreePath },
-   { (APTR)vecGenerateEllipse, "GenerateEllipse", argsGenerateEllipse },
-   { (APTR)vecGeneratePath, "GeneratePath", argsGeneratePath },
-   { (APTR)vecGenerateRectangle, "GenerateRectangle", argsGenerateRectangle },
-   { (APTR)vecReadPainter, "ReadPainter", argsReadPainter },
-   { (APTR)vecTranslatePath, "TranslatePath", argsTranslatePath },
-   { (APTR)vecMoveTo, "MoveTo", argsMoveTo },
-   { (APTR)vecLineTo, "LineTo", argsLineTo },
-   { (APTR)vecArcTo, "ArcTo", argsArcTo },
-   { (APTR)vecCurve3, "Curve3", argsCurve3 },
-   { (APTR)vecSmooth3, "Smooth3", argsSmooth3 },
-   { (APTR)vecCurve4, "Curve4", argsCurve4 },
-   { (APTR)vecSmooth4, "Smooth4", argsSmooth4 },
-   { (APTR)vecClosePath, "ClosePath", argsClosePath },
-   { (APTR)vecRewindPath, "RewindPath", argsRewindPath },
-   { (APTR)vecGetVertex, "GetVertex", argsGetVertex },
-   { (APTR)vecApplyPath, "ApplyPath", argsApplyPath },
-   { (APTR)vecRotate, "Rotate", argsRotate },
-   { (APTR)vecTranslate, "Translate", argsTranslate },
-   { (APTR)vecSkew, "Skew", argsSkew },
-   { (APTR)vecMultiply, "Multiply", argsMultiply },
-   { (APTR)vecMultiplyMatrix, "MultiplyMatrix", argsMultiplyMatrix },
-   { (APTR)vecScale, "Scale", argsScale },
-   { (APTR)vecParseTransform, "ParseTransform", argsParseTransform },
-   { (APTR)vecResetMatrix, "ResetMatrix", argsResetMatrix },
+   { (APTR)vec::DrawPath, "DrawPath", argsDrawPath },
+   { (APTR)vec::GenerateEllipse, "GenerateEllipse", argsGenerateEllipse },
+   { (APTR)vec::GeneratePath, "GeneratePath", argsGeneratePath },
+   { (APTR)vec::GenerateRectangle, "GenerateRectangle", argsGenerateRectangle },
+   { (APTR)vec::ReadPainter, "ReadPainter", argsReadPainter },
+   { (APTR)vec::TranslatePath, "TranslatePath", argsTranslatePath },
+   { (APTR)vec::MoveTo, "MoveTo", argsMoveTo },
+   { (APTR)vec::LineTo, "LineTo", argsLineTo },
+   { (APTR)vec::ArcTo, "ArcTo", argsArcTo },
+   { (APTR)vec::Curve3, "Curve3", argsCurve3 },
+   { (APTR)vec::Smooth3, "Smooth3", argsSmooth3 },
+   { (APTR)vec::Curve4, "Curve4", argsCurve4 },
+   { (APTR)vec::Smooth4, "Smooth4", argsSmooth4 },
+   { (APTR)vec::ClosePath, "ClosePath", argsClosePath },
+   { (APTR)vec::RewindPath, "RewindPath", argsRewindPath },
+   { (APTR)vec::GetVertex, "GetVertex", argsGetVertex },
+   { (APTR)vec::ApplyPath, "ApplyPath", argsApplyPath },
+   { (APTR)vec::Rotate, "Rotate", argsRotate },
+   { (APTR)vec::Translate, "Translate", argsTranslate },
+   { (APTR)vec::Skew, "Skew", argsSkew },
+   { (APTR)vec::Multiply, "Multiply", argsMultiply },
+   { (APTR)vec::MultiplyMatrix, "MultiplyMatrix", argsMultiplyMatrix },
+   { (APTR)vec::Scale, "Scale", argsScale },
+   { (APTR)vec::ParseTransform, "ParseTransform", argsParseTransform },
+   { (APTR)vec::ResetMatrix, "ResetMatrix", argsResetMatrix },
+   { (APTR)vec::GetFontHandle, "GetFontHandle", argsGetFontHandle },
+   { (APTR)vec::GetFontMetrics, "GetFontMetrics", argsGetFontMetrics },
+   { (APTR)vec::CharWidth, "CharWidth", argsCharWidth },
+   { (APTR)vec::StringWidth, "StringWidth", argsStringWidth },
+   { (APTR)vec::FlushMatrix, "FlushMatrix", argsFlushMatrix },
+   { (APTR)vec::TracePath, "TracePath", argsTracePath },
    { NULL, NULL, NULL }
 };
 

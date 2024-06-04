@@ -49,8 +49,8 @@ using namespace pf;
 -FUNCTION-
 AllocateID: Generates unique ID's for general purposes.
 
-This function generates unique ID's that can be used in other Core functions.  A type ID is required and the resulting
-number will be unique to that type only.
+This function generates unique ID's that can be used in other Core functions.  A `Type` indicator is required and the
+resulting number will be unique to that `Type` only.
 
 ID allocations are permanent, so there is no need to free the allocated ID once it is no longer required.
 
@@ -107,7 +107,7 @@ objTask * CurrentTask(void)
 GetErrorMsg: Translates error codes into human readable strings.
 Category: Logging
 
-The GetErrorMsg() function converts error codes into human readable strings.  If the Code is invalid, a string of
+The GetErrorMsg() function converts error codes into human readable strings.  If the `Error` is invalid, a string of
 "Unknown error code" is returned.
 
 -INPUT-
@@ -118,12 +118,12 @@ cstr: A human readable string for the error code is returned.  By default error 
 
 *********************************************************************************************************************/
 
-CSTRING GetErrorMsg(ERROR Code)
+CSTRING GetErrorMsg(ERR Code)
 {
-   if ((Code < glTotalMessages) and (Code > 0)) {
-      return glMessages[Code];
+   if ((LONG(Code) < glTotalMessages) and (LONG(Code) > 0)) {
+      return glMessages[LONG(Code)];
    }
-   else if (!Code) return "Operation successful.";
+   else if (Code IS ERR::Okay) return "Operation successful.";
    else return "Unknown error code.";
 }
 
@@ -139,7 +139,7 @@ CRC values, making it ideal for processing streamed data.
 -INPUT-
 uint CRC: If streaming data to this function, this value should reflect the most recently returned CRC integer.  Otherwise set to zero.
 ptr Data: The data to generate a CRC value for.
-uint Length: The length of the Data buffer.
+uint Length: The length of the `Data` buffer.
 
 -RESULT-
 uint: Returns the computed 32 bit CRC value for the given data.
@@ -388,13 +388,13 @@ GetResource: Retrieves miscellaneous resource identifiers.
 The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the
 Resource identifier for the full list of available resource codes and their meaning.
 
-C++ developers should use the GetResourcePtr() macro if a resource identifier is known to return a pointer.
+C++ developers should use the `GetResourcePtr()` macro if a resource identifier is known to return a pointer.
 
 -INPUT-
 int(RES) Resource: The ID of the resource that you want to obtain.
 
 -RESULT-
-large: Returns the value of the resource that you have requested.  If the resource ID is not known by the Core, NULL is returned.
+large: Returns the value of the resource that you have requested.  If the resource ID is not known by the Core, `NULL` is returned.
 -END-
 
 *********************************************************************************************************************/
@@ -450,18 +450,12 @@ LARGE GetResource(RES Resource)
          char str[2048];
          LONG result;
          LARGE freemem = 0;
-         if (!ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result)) {
+         if (ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result) IS ERR::Okay) {
             LONG i = 0;
             while (i < result) {
-               if (!StrCompare("Cached", str+i, sizeof("Cached")-1)) {
-                  freemem += (LARGE)StrToInt(str+i) * 1024LL;
-               }
-               else if (!StrCompare("Buffers", str+i, sizeof("Buffers")-1)) {
-                  freemem += (LARGE)StrToInt(str+i) * 1024LL;
-               }
-               else if (!StrCompare("MemFree", str+i, sizeof("MemFree")-1)) {
-                  freemem += (LARGE)StrToInt(str+i) * 1024LL;
-               }
+               if (startswith("Cached", str+i)) freemem += (LARGE)StrToInt(str+i) * 1024LL;
+               else if (startswith("Buffers", str+i)) freemem += (LARGE)StrToInt(str+i) * 1024LL;
+               else if (startswith("MemFree", str+i)) freemem += (LARGE)StrToInt(str+i) * 1024LL;
 
                while ((i < result) and (str[i] != '\n')) i++;
                i++;
@@ -490,13 +484,11 @@ LARGE GetResource(RES Resource)
 
          if (cpu_mhz) return cpu_mhz;
 
-         objFile::create file = { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL::READ|FL::BUFFER) };
+         auto file = objFile::create { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL::READ|FL::BUFFER) };
 
          if (file.ok()) {
-            while ((line = flReadLine(*file))) {
-               if (!StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1)) {
-                  cpu_mhz = StrToInt(line);
-               }
+            while ((line = file->readLine())) {
+               if (startswith("cpu Mhz", line)) cpu_mhz = StrToInt(line);
             }
          }
 
@@ -521,7 +513,7 @@ The GetSystemState() function is used to retrieve miscellaneous resource and env
 paths, the Core's version number and the name of the host platform.
 
 -RESULT-
-cstruct(*SystemState): A read-only SystemState structure is returned.
+cstruct(*SystemState): A read-only !SystemState structure is returned.
 
 *********************************************************************************************************************/
 
@@ -560,7 +552,7 @@ switched on).  The benefit of monotonic time is that it is unaffected by changes
 savings adjustments or manual changes by the user.
 
 -RESULT-
-large: Returns the system time in microseconds.  An error is extremely unlikely, but zero is returned in the event of one.
+large: Returns the system time in microseconds.  Could return zero in the extremely unlikely event of an error.
 
 *********************************************************************************************************************/
 
@@ -583,17 +575,16 @@ LARGE PreciseTime(void)
 -FUNCTION-
 RegisterFD: Registers a file descriptor for monitoring when the task is asleep.
 
-This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If
-activity occurs on the descriptor then the function specified in the Routine parameter will be called.  The routine
-must read all of information from the descriptor, as the running process will not be able to sleep until all the
-data is cleared.
+This function will register a file descriptor that will be monitored for activity when the task is sleeping.  When
+activity occurs on the descriptor, the callback referenced in `Routine` will be called.  The callback should read all 
+information from the descriptor, as the process will not be able to sleep if data is back-logged.
 
 The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause the
 program to hang if not handled carefully.
 
-File descriptors support read and write states simultaneously and a callback routine can be applied to either state.
-Set the `RFD::READ` flag to apply the Routine to the read callback and `RFD::WRITE` for the write callback.  If neither
-flag is specified, `RFD::READ` is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read
+File descriptors support read and write states simultaneously, and a callback routine can be applied to either state.
+Set the `RFD::READ` flag to apply the `Routine` to the read callback and `RFD::WRITE` for the write callback.  If neither
+flag is specified, `RFD::READ` is assumed.  A file descriptor may have up to one subscription per flag, for example a read
 callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by
 combining the read/write flags with `RFD::REMOVE`.
 
@@ -601,26 +592,26 @@ The capabilities of this function and FD handling in general is developed to sui
 compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking
 restrictions do not apply, except to sockets.
 
-Call the DeregisterFD() macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.
+Call the `DeregisterFD()` macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.
 
 -INPUT-
 hhandle FD: The file descriptor that is to be watched.
-int(RFD) Flags: Set to at least one of READ, WRITE, EXCEPT, REMOVE.
-fptr(void hhandle ptr) Routine: The routine that will read from the descriptor when data is detected on it.  The template for the function is "void Routine(LONG FD, APTR Data)".
-ptr Data: User specific data pointer that will be passed to the Routine.  Separate data pointers apply to the read and write states of operation.
+int(RFD) Flags: Set to at least one of `READ`, `WRITE`, `EXCEPT`, `REMOVE`.
+fptr(void hhandle ptr) Routine: The routine that will read from the descriptor when data is detected on it.  The prototype is `void Routine(HOSTHANDLE FD, APTR Data)`.
+ptr Data: User specific data pointer that will be passed to the `Routine`.  Separate data pointers apply to the read and write states of operation.
 
 -ERRORS-
-Okay: The FD was successfully registered.
-Args: The FD was set to a value of -1.
-NoSupport: The host platform does not support file descriptors.
+Okay: The `FD` was successfully registered.
+Args: The `FD` was set to a value of `-1`.
+NoSupport: The host platform does not support the provided `FD`.
 -END-
 
 *********************************************************************************************************************/
 
 #ifdef _WIN32
-ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #else
-ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #endif
 {
    pf::Log log(__FUNCTION__);
@@ -628,15 +619,15 @@ ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Dat
    // Note that FD's < -1 are permitted for the registering of functions marked with RFD::ALWAYS_CALL
 
 #ifdef _WIN32
-   if (FD IS (HOSTHANDLE)-1) return log.warning(ERR_Args);
-   if ((Flags & RFD::SOCKET) != RFD::NIL) return log.warning(ERR_NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
+   if (FD IS (HOSTHANDLE)-1) return log.warning(ERR::Args);
+   if ((Flags & RFD::SOCKET) != RFD::NIL) return log.warning(ERR::NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
 #else
-   if (FD IS -1) return log.warning(ERR_Args);
+   if (FD IS -1) return log.warning(ERR::Args);
 #endif
 
    if (glFDProtected) { // Cache the request while glFDTable is in use.
       glRegisterFD.emplace_back(FD, Routine, Data, Flags);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if ((Flags & RFD::REMOVE) != RFD::NIL) {
@@ -649,7 +640,7 @@ ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Dat
          }
          else it++;
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    if ((Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::REMOVE|RFD::ALWAYS_CALL)) IS RFD::NIL) Flags |= RFD::READ;
@@ -659,7 +650,7 @@ ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Dat
          fd.Routine = Routine;
          fd.Flags   = Flags;
          fd.Data    = Data;
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
 
@@ -672,7 +663,7 @@ ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Dat
 #endif
 
    glFDTable.emplace_back(FD, Routine, Data, Flags);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -694,7 +685,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR SetResourcePath(RP PathType, CSTRING Path)
+ERR SetResourcePath(RP PathType, CSTRING Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -712,7 +703,7 @@ ERROR SetResourcePath(RP PathType, CSTRING Path)
                #endif
             }
          }
-         return ERR_Okay;
+         return ERR::Okay;
 
       case RP::SYSTEM_PATH:
          if (Path) {
@@ -725,7 +716,7 @@ ERROR SetResourcePath(RP PathType, CSTRING Path)
                #endif
             }
          }
-         return ERR_Okay;
+         return ERR::Okay;
 
       case RP::MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
@@ -738,10 +729,10 @@ ERROR SetResourcePath(RP PathType, CSTRING Path)
                #endif
             }
          }
-         return ERR_Okay;
+         return ERR::Okay;
 
       default:
-         return ERR_Args;
+         return ERR::Args;
    }
 }
 
@@ -754,9 +745,9 @@ The SetResource() function is used to manipulate miscellaneous system resources.
 are supported:
 
 <types lookup="RES" type="Resource">
-<type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</>
-<type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</>
-<type name="PRIVILEGED_USER">If the Value is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</>
+<type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on ~AllocMemory().  The `Value` specifies the memory limit in bytes.</>
+<type name="LOG_LEVEL">Adjusts the current debug level.  The `Value` must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</>
+<type name="PRIVILEGED_USER">If the `Value` is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</>
 </>
 
 -INPUT-
@@ -764,7 +755,7 @@ int(RES) Resource: The ID of the resource to be set.
 large Value:    The new value to set for the resource.
 
 -RESULT-
-large: Returns the previous value used for the resource that you have set.  If the resource ID that you provide is invalid, NULL is returned.
+large: Returns the previous value of the `Resource`.  If the `Resource` value is invalid, `NULL` is returned.
 -END-
 
 *********************************************************************************************************************/
@@ -808,10 +799,10 @@ LARGE SetResource(RES Resource, LARGE Value)
 #ifdef __unix__
          log.trace("Privileged User: %s, Current UID: %d, Depth: %d", (Value) ? "TRUE" : "FALSE", geteuid(), privileged);
 
-         if (glPrivileged) return ERR_Okay; // In privileged mode, the user is always an admin
+         if (glPrivileged) return LARGE(ERR::Okay); // In privileged mode, the user is always an admin
 
          if (Value) { // Enable admin privileges
-            oldvalue = ERR_Okay;
+            oldvalue = LARGE(ERR::Okay);
             if (!privileged) {
                if (glUID) {
                   if (glUID != glEUID) {
@@ -820,7 +811,7 @@ LARGE SetResource(RES Resource, LARGE Value)
                   }
                   else {
                      log.msg("Admin privileges not available.");
-                     oldvalue = ERR_Failed; // Admin privileges are not available
+                     oldvalue = LARGE(ERR::Failed); // Admin privileges are not available
                   }
                }
                else privileged++;; // The user already has admin privileges
@@ -837,7 +828,7 @@ LARGE SetResource(RES Resource, LARGE Value)
             }
          }
 #else
-         return ERR_Okay;
+         return LARGE(ERR::Okay);
 #endif
          break;
 
@@ -855,12 +846,12 @@ SubscribeTimer: Subscribes an object or function to the timer service.
 
 This function creates a new timer subscription that will be called at regular intervals for the calling object.
 
-A callback function must be provided that follows this prototype: `ERROR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)`
+A callback function must be provided that follows this prototype: `ERR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)`
 
-The Elapsed parameter is the total number of microseconds that have elapsed since the last call.  The CurrentTime
-parameter is set to the ~PreciseTime() value just prior to the Callback being called.  The callback function
-can return `ERR_Terminate` at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks
-should call `check(ERR_Terminate)` to perform the equivalent of this behaviour.
+The `Elapsed` parameter is the total number of microseconds that have elapsed since the last call.  The `CurrentTime`
+parameter is set to the ~PreciseTime() value just prior to the `Callback` being called.  The callback function
+can return `ERR::Terminate` at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks
+should call `check(ERR::Terminate)` to perform the equivalent of this behaviour.
 
 To change the interval, call ~UpdateTimer() with the new value.  To release a timer subscription, call
 ~UpdateTimer() with the resulting SubscriptionID and an Interval of zero.
@@ -885,18 +876,18 @@ SystemLocked:
 
 *********************************************************************************************************************/
 
-ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
+ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Interval) or (!Callback)) return log.warning(ERR_NullArgs);
-   if (Interval < 0) return log.warning(ERR_Args);
+   if ((!Interval) or (!Callback)) return log.warning(ERR::NullArgs);
+   if (Interval < 0) return log.warning(ERR::Args);
 
    auto subscriber = tlContext->object();
-   if (subscriber->collecting()) return log.warning(ERR_InvalidState);
+   if (subscriber->collecting()) return log.warning(ERR::InvalidState);
 
-   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Interval: %.3fs", Interval);
-   else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
+   if (Callback->Type IS CALL::SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Interval: %.3fs", Interval);
+   else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Callback: %p, Interval: %.3fs", Callback->Routine, Interval);
 
    if (auto lock = std::unique_lock{glmTimer, 200ms}) {
       auto usInterval = LARGE(Interval * 1000000.0); // Scale the interval to microseconds
@@ -923,9 +914,9 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 
       subscriber->Flags |= NF::TIMER_SUB;
       if (Subscription) *Subscription = &*it;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -948,13 +939,13 @@ Search:
 
 *********************************************************************************************************************/
 
-ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
+ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Subscription) return log.warning(ERR_NullArgs);
+   if (!Subscription) return log.warning(ERR::NullArgs);
 
-   log.msg(VLF::EXTAPI|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
+   log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
    if (auto lock = std::unique_lock{glmTimer, 200ms}) {
       auto timer = (CoreTimer *)Subscription;
@@ -962,26 +953,26 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
          // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
          auto usInterval = -(LARGE(Interval * 1000000.0));
          if (usInterval < timer->Interval) timer->Interval = usInterval;
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else if (Interval > 0) {
          auto usInterval = LARGE(Interval * 1000000.0);
          timer->Interval = usInterval;
          timer->NextCall = PreciseTime() + usInterval;
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else {
          if (timer->Locked) {
             // A timer can't be removed during its execution, but we can nullify the function entry
             // and ProcessMessages() will automatically terminate it on the next cycle.
-            timer->Routine.Type = 0;
-            return log.warning(ERR_AlreadyLocked);
+            timer->Routine.Type = CALL::NIL;
+            return log.warning(ERR::AlreadyLocked);
          }
 
          lock.release();
 
-         if (timer->Routine.Type IS CALL_SCRIPT) {
-            scDerefProcedure(timer->Routine.Script.Script, &timer->Routine);
+         if (timer->Routine.isScript()) {
+            ((objScript *)timer->Routine.Context)->derefProcedure(timer->Routine);
          }
 
          for (auto it=glTimers.begin(); it != glTimers.end(); it++) {
@@ -991,10 +982,10 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
             }
          }
 
-         return ERR_Okay;
+         return ERR::Okay;
       }
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -1002,16 +993,16 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 -FUNCTION-
 WaitTime: Waits for a specified amount of seconds and/or microseconds.
 
-This function waits for a period of time as specified by the Seconds and MicroSeconds arguments.  While waiting, your
-task will continue to process incoming messages in order to prevent the process' message queue from developing a
-back-log.
+This function waits for a period of time as specified by the `Seconds` and `MicroSeconds` parameters.  While waiting,
+your process will continue to process incoming messages in order to prevent the process' message queue from
+developing a back-log.
 
-WaitTime() can return earlier than the indicated timeout if a message handler returns `ERR_Terminate`, or if a
+WaitTime() can return earlier than the indicated timeout if a message handler returns `ERR::Terminate`, or if a
 `MSGID_QUIT` message is sent to the task's message queue.
 
 -INPUT-
 int Seconds:      The number of seconds to wait for.
-int MicroSeconds: The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - 1/1000000.  The value cannot exceed 999999.
+int MicroSeconds: The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - `1/1000000`.  The value cannot exceed `999999`.
 
 -END-
 
@@ -1042,7 +1033,7 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
       LARGE current = PreciseTime() / 1000LL;
       LARGE end = current + (Seconds * 1000) + (MicroSeconds / 1000);
       do {
-         if (ProcessMessages(PMF::NIL, end - current) IS ERR_Terminate) break;
+         if (ProcessMessages(PMF::NIL, end - current) IS ERR::Terminate) break;
          current = (PreciseTime() / 1000LL);
       } while (current < end);
    }

@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      network.h
-// Copyright: Paul Manias © 2005-2023
+// Copyright: Paul Manias © 2005-2024
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -148,7 +148,7 @@ struct NetClient {
    struct NetClient * Prev;    // Previous client in the chain
    objNetSocket * NetSocket;   // Reference to the parent socket
    objClientSocket * Sockets;  // Pointer to a list of sockets opened with this client.
-   APTR UserData;              // Free for user data storage.
+   APTR ClientData;            // Free for user data storage.
    LONG TotalSockets;          // Count of all created sockets
 };
 
@@ -158,31 +158,15 @@ struct NetClient {
 
 // ClientSocket methods
 
-#define MT_csReadClientMsg -1
-#define MT_csWriteClientMsg -2
+namespace cs {
+struct ReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct WriteClientMsg { APTR Message; LONG Length; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
-struct csReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
-struct csWriteClientMsg { APTR Message; LONG Length;  };
+} // namespace
 
-INLINE ERROR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
-   struct csReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
-   ERROR error = Action(MT_csReadClientMsg, (OBJECTPTR)Ob, &args);
-   if (Message) *Message = args.Message;
-   if (Length) *Length = args.Length;
-   if (Progress) *Progress = args.Progress;
-   if (CRC) *CRC = args.CRC;
-   return(error);
-}
-
-INLINE ERROR csWriteClientMsg(APTR Ob, APTR Message, LONG Length) {
-   struct csWriteClientMsg args = { Message, Length };
-   return(Action(MT_csWriteClientMsg, (OBJECTPTR)Ob, &args));
-}
-
-
-class objClientSocket : public BaseClass {
+class objClientSocket : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_CLIENTSOCKET;
+   static constexpr CLASSID CLASS_ID = CLASSID::CLIENTSOCKET;
    static constexpr CSTRING CLASS_NAME = "ClientSocket";
 
    using create = pf::Create<objClientSocket>;
@@ -191,7 +175,7 @@ class objClientSocket : public BaseClass {
    objClientSocket * Prev;       // Previous socket in the chain
    objClientSocket * Next;       // Next socket in the chain
    struct NetClient * Client;    // Parent client structure
-   APTR     UserData;            // Free for user data storage.
+   APTR     ClientData;          // Free for user data storage.
    FUNCTION Outgoing;            // Callback for data being sent over the socket
    FUNCTION Incoming;            // Callback for data being received from the socket
    LONG     MsgLen;              // Length of the current incoming message
@@ -199,45 +183,63 @@ class objClientSocket : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return InitObject(this); }
-   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+   inline ERR init() noexcept { return InitObject(this); }
+   template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      ERROR error;
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (!(error = Action(AC_Read, this, &read))) *Result = static_cast<U>(read.Result);
-      else *Result = 0;
-      return error;
+      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+         *Result = static_cast<U>(read.Result);
+         return ERR::Okay;
+      }
+      else { *Result = 0; return error; }
    }
-   template <class T> ERROR read(APTR Buffer, T Size) {
+   template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
-      ERROR error;
+   inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (!(error = Action(AC_Write, this, &write))) {
+      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
+         return ERR::Okay;
       }
-      else if (Result) *Result = 0;
-      return error;
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
    }
-   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
-      ERROR error;
+   inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (!(error = Action(AC_Write, this, &write))) {
+      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
+         return ERR::Okay;
       }
-      else if (Result) *Result = 0;
-      return error;
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) {
+   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (!Action(AC_Write, this, &write)) return write.Result;
+      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
+   }
+   inline ERR readClientMsg(APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
+      struct cs::ReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
+      ERR error = Action(-1, this, &args);
+      if (Message) *Message = args.Message;
+      if (Length) *Length = args.Length;
+      if (Progress) *Progress = args.Progress;
+      if (CRC) *CRC = args.CRC;
+      return(error);
+   }
+   inline ERR writeClientMsg(APTR Message, LONG Length) noexcept {
+      struct cs::WriteClientMsg args = { Message, Length };
+      return(Action(-2, this, &args));
    }
 
    // Customised field setting
@@ -250,25 +252,16 @@ class objClientSocket : public BaseClass {
 
 // Proxy methods
 
-#define MT_prxDelete -1
-#define MT_prxFind -2
-#define MT_prxFindNext -3
+namespace prx {
+struct DeleteRecord { static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Find { LONG Port; LONG Enabled; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindNext { static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
-struct prxFind { LONG Port; LONG Enabled;  };
+} // namespace
 
-#define prxDelete(obj) Action(MT_prxDelete,(obj),0)
-
-INLINE ERROR prxFind(APTR Ob, LONG Port, LONG Enabled) {
-   struct prxFind args = { Port, Enabled };
-   return(Action(MT_prxFind, (OBJECTPTR)Ob, &args));
-}
-
-#define prxFindNext(obj) Action(MT_prxFindNext,(obj),0)
-
-
-class objProxy : public BaseClass {
+class objProxy : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_PROXY;
+   static constexpr CLASSID CLASS_ID = CLASSID::PROXY;
    static constexpr CSTRING CLASS_NAME = "Proxy";
 
    using create = pf::Create<objProxy>;
@@ -281,74 +274,84 @@ class objProxy : public BaseClass {
    STRING Server;           // The destination address of the proxy server - may be an IP address or resolvable domain name.
    LONG   Port;             // Defines the ports supported by this proxy.
    LONG   ServerPort;       // The port that is used for proxy server communication.
-   LONG   Enabled;          // All proxies are enabled by default until this field is set to FALSE.
+   LONG   Enabled;          // All proxies are enabled by default until this field is set to false.
    LONG   Record;           // The unique ID of the current proxy record.
-   LONG   Host;             // If TRUE, the proxy settings are derived from the host operating system's default settings.
+   LONG   Host;             // If true, the proxy settings are derived from the host operating system's default settings.
 
    // Action stubs
 
-   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
+   inline ERR deleteRecord() noexcept {
+      return(Action(-1, this, NULL));
+   }
+   inline ERR find(LONG Port, LONG Enabled) noexcept {
+      struct prx::Find args = { Port, Enabled };
+      return(Action(-2, this, &args));
+   }
+   inline ERR findNext() noexcept {
+      return(Action(-3, this, NULL));
+   }
 
    // Customised field setting
 
-   template <class T> inline ERROR setNetworkFilter(T && Value) {
+   template <class T> inline ERR setNetworkFilter(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setGatewayFilter(T && Value) {
+   template <class T> inline ERR setGatewayFilter(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setUsername(T && Value) {
+   template <class T> inline ERR setUsername(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setPassword(T && Value) {
+   template <class T> inline ERR setPassword(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setProxyName(T && Value) {
+   template <class T> inline ERR setProxyName(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setServer(T && Value) {
+   template <class T> inline ERR setServer(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setPort(const LONG Value) {
+   inline ERR setPort(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setServerPort(const LONG Value) {
+   inline ERR setServerPort(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setEnabled(const LONG Value) {
+   inline ERR setEnabled(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setRecord(const LONG Value) {
+   inline ERR setRecord(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -362,64 +365,57 @@ class objProxy : public BaseClass {
 
 // NetLookup methods
 
-#define MT_nlResolveName -1
-#define MT_nlResolveAddress -2
-#define MT_nlBlockingResolveName -3
-#define MT_nlBlockingResolveAddress -4
+namespace nl {
+struct ResolveName { CSTRING HostName; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResolveAddress { CSTRING Address; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct BlockingResolveName { CSTRING HostName; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct BlockingResolveAddress { CSTRING Address; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
-struct nlResolveName { CSTRING HostName;  };
-struct nlResolveAddress { CSTRING Address;  };
-struct nlBlockingResolveName { CSTRING HostName;  };
-struct nlBlockingResolveAddress { CSTRING Address;  };
+} // namespace
 
-INLINE ERROR nlResolveName(APTR Ob, CSTRING HostName) {
-   struct nlResolveName args = { HostName };
-   return(Action(MT_nlResolveName, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR nlResolveAddress(APTR Ob, CSTRING Address) {
-   struct nlResolveAddress args = { Address };
-   return(Action(MT_nlResolveAddress, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR nlBlockingResolveName(APTR Ob, CSTRING HostName) {
-   struct nlBlockingResolveName args = { HostName };
-   return(Action(MT_nlBlockingResolveName, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR nlBlockingResolveAddress(APTR Ob, CSTRING Address) {
-   struct nlBlockingResolveAddress args = { Address };
-   return(Action(MT_nlBlockingResolveAddress, (OBJECTPTR)Ob, &args));
-}
-
-
-class objNetLookup : public BaseClass {
+class objNetLookup : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_NETLOOKUP;
+   static constexpr CLASSID CLASS_ID = CLASSID::NETLOOKUP;
    static constexpr CSTRING CLASS_NAME = "NetLookup";
 
    using create = pf::Create<objNetLookup>;
 
-   LARGE UserData;    // Optional user data storage
-   NLF   Flags;       // Optional flags
+   LARGE ClientData;    // Optional user data storage
+   NLF   Flags;         // Optional flags
 
    // Action stubs
 
-   inline ERROR init() { return InitObject(this); }
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR resolveName(CSTRING HostName) noexcept {
+      struct nl::ResolveName args = { HostName };
+      return(Action(-1, this, &args));
+   }
+   inline ERR resolveAddress(CSTRING Address) noexcept {
+      struct nl::ResolveAddress args = { Address };
+      return(Action(-2, this, &args));
+   }
+   inline ERR blockingResolveName(CSTRING HostName) noexcept {
+      struct nl::BlockingResolveName args = { HostName };
+      return(Action(-3, this, &args));
+   }
+   inline ERR blockingResolveAddress(CSTRING Address) noexcept {
+      struct nl::BlockingResolveAddress args = { Address };
+      return(Action(-4, this, &args));
+   }
 
    // Customised field setting
 
-   inline ERROR setUserData(const LARGE Value) {
-      this->UserData = Value;
-      return ERR_Okay;
+   inline ERR setClientData(const LARGE Value) noexcept {
+      this->ClientData = Value;
+      return ERR::Okay;
    }
 
-   inline ERROR setFlags(const NLF Value) {
+   inline ERR setFlags(const NLF Value) noexcept {
       this->Flags = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setCallback(FUNCTION Value) {
+   inline ERR setCallback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -433,68 +429,28 @@ class objNetLookup : public BaseClass {
 
 // NetSocket methods
 
-#define MT_nsConnect -1
-#define MT_nsGetLocalIPAddress -2
-#define MT_nsDisconnectClient -3
-#define MT_nsDisconnectSocket -4
-#define MT_nsReadMsg -5
-#define MT_nsWriteMsg -6
+namespace ns {
+struct Connect { CSTRING Address; LONG Port; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetLocalIPAddress { struct IPAddress * Address; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DisconnectClient { struct NetClient * Client; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DisconnectSocket { objClientSocket * Socket; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct WriteMsg { APTR Message; LONG Length; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
-struct nsConnect { CSTRING Address; LONG Port;  };
-struct nsGetLocalIPAddress { struct IPAddress * Address;  };
-struct nsDisconnectClient { struct NetClient * Client;  };
-struct nsDisconnectSocket { objClientSocket * Socket;  };
-struct nsReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
-struct nsWriteMsg { APTR Message; LONG Length;  };
+} // namespace
 
-INLINE ERROR nsConnect(APTR Ob, CSTRING Address, LONG Port) {
-   struct nsConnect args = { Address, Port };
-   return(Action(MT_nsConnect, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR nsGetLocalIPAddress(APTR Ob, struct IPAddress * Address) {
-   struct nsGetLocalIPAddress args = { Address };
-   return(Action(MT_nsGetLocalIPAddress, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR nsDisconnectClient(APTR Ob, struct NetClient * Client) {
-   struct nsDisconnectClient args = { Client };
-   return(Action(MT_nsDisconnectClient, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR nsDisconnectSocket(APTR Ob, objClientSocket * Socket) {
-   struct nsDisconnectSocket args = { Socket };
-   return(Action(MT_nsDisconnectSocket, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
-   struct nsReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
-   ERROR error = Action(MT_nsReadMsg, (OBJECTPTR)Ob, &args);
-   if (Message) *Message = args.Message;
-   if (Length) *Length = args.Length;
-   if (Progress) *Progress = args.Progress;
-   if (CRC) *CRC = args.CRC;
-   return(error);
-}
-
-INLINE ERROR nsWriteMsg(APTR Ob, APTR Message, LONG Length) {
-   struct nsWriteMsg args = { Message, Length };
-   return(Action(MT_nsWriteMsg, (OBJECTPTR)Ob, &args));
-}
-
-
-class objNetSocket : public BaseClass {
+class objNetSocket : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_NETSOCKET;
+   static constexpr CLASSID CLASS_ID = CLASSID::NETSOCKET;
    static constexpr CSTRING CLASS_NAME = "NetSocket";
 
    using create = pf::Create<objNetSocket>;
 
    struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
-   APTR   UserData;               // A user-defined pointer that can be useful in action notify events.
+   APTR   ClientData;             // A client-defined value that can be useful in action notify events.
    STRING Address;                // An IP address or domain name to connect to.
    NTC    State;                  // The current connection state of the netsocket object.
-   ERROR  Error;                  // Information about the last error that occurred during a NetSocket operation
+   ERR    Error;                  // Information about the last error that occurred during a NetSocket operation
    LONG   Port;                   // The port number to use for initiating a connection.
    NSF    Flags;                  // Optional flags.
    LONG   TotalClients;           // Indicates the total number of clients currently connected to the socket (if in server mode).
@@ -504,118 +460,152 @@ class objNetSocket : public BaseClass {
 
    // Action stubs
 
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERR init() noexcept { return InitObject(this); }
+   template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      ERROR error;
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (!(error = Action(AC_Read, this, &read))) *Result = static_cast<U>(read.Result);
-      else *Result = 0;
-      return error;
+      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+         *Result = static_cast<U>(read.Result);
+         return ERR::Okay;
+      }
+      else { *Result = 0; return error; }
    }
-   template <class T> ERROR read(APTR Buffer, T Size) {
+   template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
-      ERROR error;
+   inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (!(error = Action(AC_Write, this, &write))) {
+      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
+         return ERR::Okay;
       }
-      else if (Result) *Result = 0;
-      return error;
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
    }
-   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
-      ERROR error;
+   inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (!(error = Action(AC_Write, this, &write))) {
+      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
+         return ERR::Okay;
       }
-      else if (Result) *Result = 0;
-      return error;
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) {
+   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (!Action(AC_Write, this, &write)) return write.Result;
+      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
+   }
+   inline ERR connect(CSTRING Address, LONG Port) noexcept {
+      struct ns::Connect args = { Address, Port };
+      return(Action(-1, this, &args));
+   }
+   inline ERR getLocalIPAddress(struct IPAddress * Address) noexcept {
+      struct ns::GetLocalIPAddress args = { Address };
+      return(Action(-2, this, &args));
+   }
+   inline ERR disconnectClient(struct NetClient * Client) noexcept {
+      struct ns::DisconnectClient args = { Client };
+      return(Action(-3, this, &args));
+   }
+   inline ERR disconnectSocket(objClientSocket * Socket) noexcept {
+      struct ns::DisconnectSocket args = { Socket };
+      return(Action(-4, this, &args));
+   }
+   inline ERR readMsg(APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
+      struct ns::ReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
+      ERR error = Action(-5, this, &args);
+      if (Message) *Message = args.Message;
+      if (Length) *Length = args.Length;
+      if (Progress) *Progress = args.Progress;
+      if (CRC) *CRC = args.CRC;
+      return(error);
+   }
+   inline ERR writeMsg(APTR Message, LONG Length) noexcept {
+      struct ns::WriteMsg args = { Message, Length };
+      return(Action(-6, this, &args));
    }
 
    // Customised field setting
 
-   inline ERROR setUserData(APTR Value) {
-      this->UserData = Value;
-      return ERR_Okay;
+   inline ERR setClientData(APTR Value) noexcept {
+      this->ClientData = Value;
+      return ERR::Okay;
    }
 
-   template <class T> inline ERROR setAddress(T && Value) {
+   template <class T> inline ERR setAddress(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERROR setState(const NTC Value) {
+   inline ERR setState(const NTC Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPort(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setPort(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Port = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setFlags(const NSF Value) {
+   inline ERR setFlags(const NSF Value) noexcept {
       this->Flags = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setBacklog(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setBacklog(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Backlog = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setClientLimit(const LONG Value) {
+   inline ERR setClientLimit(const LONG Value) noexcept {
       this->ClientLimit = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setMsgLimit(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setMsgLimit(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->MsgLimit = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setSocketHandle(APTR Value) {
+   inline ERR setSocketHandle(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
-   inline ERROR setFeedback(FUNCTION Value) {
+   inline ERR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setIncoming(FUNCTION Value) {
+   inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setOutgoing(FUNCTION Value) {
+   inline ERR setOutgoing(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
@@ -623,9 +613,9 @@ class objNetSocket : public BaseClass {
 
 };
 
-inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
-   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
-   else return ERR_CreateObject;
+inline ERR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR ClientData) {
+   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::ClientData(ClientData)))) return ERR::Okay;
+   else return ERR::CreateObject;
 }
 #ifdef PARASOL_STATIC
 #define JUMPTABLE_NETWORK static struct NetworkBase *NetworkBase;
@@ -635,36 +625,38 @@ inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR 
 
 struct NetworkBase {
 #ifndef PARASOL_STATIC
-   ERROR (*_StrToAddress)(CSTRING String, struct IPAddress * Address);
-   CSTRING (*_AddressToStr)(struct IPAddress * IPAddress);
+   ERR (*_StrToAddress)(CSTRING String, struct IPAddress *Address);
+   CSTRING (*_AddressToStr)(struct IPAddress *IPAddress);
    ULONG (*_HostToShort)(ULONG Value);
    ULONG (*_HostToLong)(ULONG Value);
    ULONG (*_ShortToHost)(ULONG Value);
    ULONG (*_LongToHost)(ULONG Value);
-   ERROR (*_SetSSL)(objNetSocket * NetSocket, ...);
+   ERR (*_SetSSL)(objNetSocket *NetSocket, ...);
 #endif // PARASOL_STATIC
 };
 
 #ifndef PRV_NETWORK_MODULE
 #ifndef PARASOL_STATIC
 extern struct NetworkBase *NetworkBase;
-inline ERROR netStrToAddress(CSTRING String, struct IPAddress * Address) { return NetworkBase->_StrToAddress(String,Address); }
-inline CSTRING netAddressToStr(struct IPAddress * IPAddress) { return NetworkBase->_AddressToStr(IPAddress); }
-inline ULONG netHostToShort(ULONG Value) { return NetworkBase->_HostToShort(Value); }
-inline ULONG netHostToLong(ULONG Value) { return NetworkBase->_HostToLong(Value); }
-inline ULONG netShortToHost(ULONG Value) { return NetworkBase->_ShortToHost(Value); }
-inline ULONG netLongToHost(ULONG Value) { return NetworkBase->_LongToHost(Value); }
-template<class... Args> ERROR netSetSSL(objNetSocket * NetSocket, Args... Tags) { return NetworkBase->_SetSSL(NetSocket,Tags...); }
+namespace net {
+inline ERR StrToAddress(CSTRING String, struct IPAddress *Address) { return NetworkBase->_StrToAddress(String,Address); }
+inline CSTRING AddressToStr(struct IPAddress *IPAddress) { return NetworkBase->_AddressToStr(IPAddress); }
+inline ULONG HostToShort(ULONG Value) { return NetworkBase->_HostToShort(Value); }
+inline ULONG HostToLong(ULONG Value) { return NetworkBase->_HostToLong(Value); }
+inline ULONG ShortToHost(ULONG Value) { return NetworkBase->_ShortToHost(Value); }
+inline ULONG LongToHost(ULONG Value) { return NetworkBase->_LongToHost(Value); }
+template<class... Args> ERR SetSSL(objNetSocket *NetSocket, Args... Tags) { return NetworkBase->_SetSSL(NetSocket,Tags...); }
+} // namespace
 #else
-extern "C" {
-extern ERROR netStrToAddress(CSTRING String, struct IPAddress * Address);
-extern CSTRING netAddressToStr(struct IPAddress * IPAddress);
-extern ULONG netHostToShort(ULONG Value);
-extern ULONG netHostToLong(ULONG Value);
-extern ULONG netShortToHost(ULONG Value);
-extern ULONG netLongToHost(ULONG Value);
-extern ERROR netSetSSL(objNetSocket * NetSocket, ...);
-}
+namespace net {
+extern ERR StrToAddress(CSTRING String, struct IPAddress *Address);
+extern CSTRING AddressToStr(struct IPAddress *IPAddress);
+extern ULONG HostToShort(ULONG Value);
+extern ULONG HostToLong(ULONG Value);
+extern ULONG ShortToHost(ULONG Value);
+extern ULONG LongToHost(ULONG Value);
+extern ERR SetSSL(objNetSocket *NetSocket, ...);
+} // namespace
 #endif // PARASOL_STATIC
 #endif
 

@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <set>
 #include <array>
+#include <parasol/strings.hpp>
 
 using namespace pf;
 
@@ -68,7 +69,7 @@ struct actionmonitor {
          pf::Log log(__FUNCTION__);
          log.trace("Unsubscribe action %s from object #%d", glActions[ActionID].Name, ObjectID);
          OBJECTPTR obj;
-         if (!AccessObject(ObjectID, 3000, &obj)) {
+         if (AccessObject(ObjectID, 3000, &obj) IS ERR::Okay) {
             UnsubscribeAction(obj, ActionID);
             ReleaseObject(obj);
          }
@@ -127,7 +128,7 @@ struct struct_field {
    LONG  ArraySize = 0;    // Set if the field is an array
 
    ULONG nameHash() {
-      if (!NameHash) NameHash = StrHash(Name);
+      if (!NameHash) NameHash = strihash(Name);
       return NameHash;
    }
 
@@ -188,7 +189,7 @@ struct prvFluid {
    APTR   FocusEventHandle;
    struct finput *InputList;         // Managed by the input interface
    DateTime CacheDate;
-   ERROR  CaughtError;               // Set to -1 to enable catching of ERROR results.
+   ERR  CaughtError;               // Set to -1 to enable catching of ERR results.
    PERMIT CachePermissions;
    LONG   LoadedSize;
    UBYTE  Recurse;
@@ -218,25 +219,6 @@ struct array {
       UBYTE  *ptrByte;
       APTR   ptrVoid;
    };
-};
-
-// This structure is created & managed through the 'memory' interface
-// DEPRECATED
-
-struct memory {
-   union {
-      APTR Memory;
-      APTR Address;
-   };
-   MEMORYID MemoryID;
-   UBYTE    Linked:1;      // TRUE if the memory is an external reference
-   UBYTE    ElementSize;
-   LONG     ArrayType;
-   LONG     IndexType;
-   UBYTE    IndexSize;    // Byte size of each index element (e.g. LONG = 4)
-   LONG     MemorySize;   // Size of the allocated memory
-   LONG     MemFlags;
-   ULONG    AccessCount;
 };
 
 // This structure is created & managed through the 'struct' interface
@@ -327,7 +309,7 @@ typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
 //********************************************************************************************************************
 
 struct obj_write {
-   typedef ERROR JUMP(lua_State *, OBJECTPTR, struct Field *, LONG);
+   typedef ERR JUMP(lua_State *, OBJECTPTR, struct Field *, LONG);
 
    ULONG Hash;
    JUMP *Call;
@@ -370,28 +352,28 @@ struct lua_ref {
 OBJECTPTR access_object(struct object *);
 std::vector<lua_ref> * alloc_references(void);
 void auto_load_include(lua_State *, objMetaClass *);
-ERROR build_args(lua_State *, const struct FunctionField *, LONG, BYTE *, LONG *);
+ERR build_args(lua_State *, const struct FunctionField *, LONG, BYTE *, LONG *);
 const char * code_reader(lua_State *, void *, size_t *);
 int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));
-ERROR create_fluid(void);
+ERR create_fluid(void);
 void get_line(objScript *, LONG, STRING, LONG);
 APTR get_meta(lua_State *Lua, LONG Arg, CSTRING);
 void hook_debug(lua_State *, lua_Debug *) __attribute__ ((unused));
-ERROR load_include(objScript *, CSTRING);
+ERR load_include(objScript *, CSTRING);
 int MAKESTRUCT(lua_State *);
 void make_any_table(lua_State *, LONG, CSTRING, LONG, CPTR ) __attribute__((unused));
 void make_array(lua_State *, LONG, CSTRING, APTR *, LONG, bool);
 void make_table(lua_State *, LONG, LONG, CPTR ) __attribute__((unused));
-int make_struct(lua_State *, const std::string &, CSTRING) __attribute__((unused));
-ERROR named_struct_to_table(lua_State *, const std::string, CPTR);
+ERR make_struct(lua_State *, const std::string &, CSTRING) __attribute__((unused));
+ERR named_struct_to_table(lua_State *, const std::string, CPTR);
 void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
 void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
 CSTRING next_line(CSTRING String);
-void notify_action(OBJECTPTR, ACTIONID, ERROR, APTR);
+void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);
 void process_error(objScript *, CSTRING);
 struct object * push_object(lua_State *, OBJECTPTR Object);
-ERROR push_object_id(lua_State *, OBJECTID ObjectID);
+ERR push_object_id(lua_State *, OBJECTID ObjectID);
 struct fstruct * push_struct(objScript *, APTR, const std::string &, bool, bool);
 struct fstruct * push_struct_def(lua_State *, APTR, struct struct_record &, bool);
 extern void register_array_class(lua_State *);
@@ -404,7 +386,8 @@ extern void register_struct_class(lua_State *);
 extern void register_thread_class(lua_State *);
 //static void register_widget_class(lua_State *);
 void release_object(struct object *);
-ERROR struct_to_table(lua_State *, std::vector<lua_ref> &, struct struct_record &, CPTR);
+ERR struct_to_table(lua_State *, std::vector<lua_ref> &, struct struct_record &, CPTR);
+ERR keyvalue_to_table(lua_State *, const KEYVALUE *);
 
 int fcmd_arg(lua_State *);
 int fcmd_catch(lua_State *);

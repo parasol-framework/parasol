@@ -86,6 +86,7 @@ set_module_defaults (${MOD})
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
+target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PUBLIC linear_rgb)
 
 if (WIN32)
@@ -106,6 +107,6 @@ else ()
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-strict-overflow")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
    target_sources (${MOD} PRIVATE ${FUNCTIONS} ${CLASSES})
-   target_link_libraries (${MOD} PRIVATE ${MATH_LINK} Xext X11) # x11/libXxf86dga.a
+   target_link_libraries (${MOD} PRIVATE ${MATH_LINK} Xrender Xrandr Xext X11) # x11/libXxf86dga.a
    add_compile_definitions ("__X11DGA__" "__xwindows__")
 endif ()

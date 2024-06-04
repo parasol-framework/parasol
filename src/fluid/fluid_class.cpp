@@ -6,6 +6,7 @@
 #include <parasol/modules/xml.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 #include <sstream>
 
 extern "C" {
@@ -18,11 +19,11 @@ extern "C" {
 #include "hashes.h"
 #include "defs.h"
 
-static ERROR run_script(objScript *);
-static ERROR stack_args(lua_State *, OBJECTID, const FunctionField *, BYTE *);
-static ERROR save_binary(objScript *, OBJECTPTR);
+static ERR run_script(objScript *);
+static ERR stack_args(lua_State *, OBJECTID, const FunctionField *, BYTE *);
+static ERR save_binary(objScript *, OBJECTPTR);
 
-INLINE CSTRING check_bom(CSTRING Value)
+inline CSTRING check_bom(CSTRING Value)
 {
    if (((char)Value[0] IS 0xef) and ((char)Value[1] IS 0xbb) and ((char)Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
    else if (((char)Value[0] IS 0xfe) and ((char)Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
@@ -32,7 +33,7 @@ INLINE CSTRING check_bom(CSTRING Value)
 
 // Dump the variables of any global table
 
-static ERROR register_interfaces(objScript *) __attribute__ ((unused));
+static ERR register_interfaces(objScript *) __attribute__ ((unused));
 static void dump_global_table(objScript *, STRING Global) __attribute__ ((unused));
 
 static void dump_global_table(objScript *Self, STRING Global)
@@ -52,7 +53,7 @@ static void dump_global_table(objScript *Self, STRING Global)
 
 //********************************************************************************************************************
 
-static ERROR GET_Procedures(objScript *, pf::vector<std::string> **, LONG *);
+static ERR GET_Procedures(objScript *, pf::vector<std::string> **, LONG *);
 
 static const FieldArray clFields[] = {
    { "Procedures", FDF_VIRTUAL|FDF_CPP|FDF_ARRAY|FDF_STRING|FDF_R, GET_Procedures },
@@ -61,11 +62,11 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-static ERROR FLUID_Activate(objScript *, APTR);
-static ERROR FLUID_DataFeed(objScript *, struct acDataFeed *);
-static ERROR FLUID_Free(objScript *, APTR);
-static ERROR FLUID_Init(objScript *, APTR);
-static ERROR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
+static ERR FLUID_Activate(objScript *);
+static ERR FLUID_DataFeed(objScript *, struct acDataFeed *);
+static ERR FLUID_Free(objScript *);
+static ERR FLUID_Init(objScript *);
+static ERR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const ActionArray clActions[] = {
    { AC_Activate,     FLUID_Activate },
@@ -78,12 +79,12 @@ static const ActionArray clActions[] = {
 
 //********************************************************************************************************************
 
-static ERROR FLUID_GetProcedureID(objScript *, struct scGetProcedureID *);
-static ERROR FLUID_DerefProcedure(objScript *, struct scDerefProcedure *);
+static ERR FLUID_GetProcedureID(objScript *, struct sc::GetProcedureID *);
+static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);
 
 static const MethodEntry clMethods[] = {
-   { MT_ScGetProcedureID, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
-   { MT_ScDerefProcedure, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
+   { sc::GetProcedureID::id, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
+   { sc::DerefProcedure::id, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }
 };
 
@@ -137,9 +138,9 @@ void process_error(objScript *Self, CSTRING Procedure)
    auto prv = (prvFluid *)Self->ChildPrivate;
 
    auto flags = VLF::WARNING;
-   if (prv->CaughtError) {
+   if (prv->CaughtError != ERR::Okay) {
       Self->Error = prv->CaughtError;
-      if (Self->Error <= ERR_Terminate) flags = VLF::EXTAPI; // Non-critical errors are muted to prevent log noise.
+      if (Self->Error <= ERR::Terminate) flags = VLF::DETAIL; // Non-critical errors are muted to prevent log noise.
    }
 
    pf::Log log;
@@ -169,12 +170,12 @@ void process_error(objScript *Self, CSTRING Procedure)
 ** action and copies them into a table.  Each value is represented by the relevant parameter name for ease of use.
 */
 
-static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *args, BYTE *Buffer)
+static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *args, BYTE *Buffer)
 {
    pf::Log log(__FUNCTION__);
    LONG j;
 
-   if (!args) return ERR_Okay;
+   if (!args) return ERR::Okay;
 
    log.traceBranch("Args: %p, Buffer: %p", args, Buffer);
 
@@ -213,12 +214,12 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *
       }
       else {
          log.warning("Unsupported arg %s, flags $%.8x, aborting now.", args[i].Name, args[i].Type);
-         return ERR_Failed;
+         return ERR::Failed;
       }
       lua_settable(Lua, -3);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -226,11 +227,11 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *
 //
 // function(ObjectID, Args, Reference)
 
-void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (objScript *)CurrentContext();
 
-   if (Result != ERR_Okay) return;
+   if (Result != ERR::Okay) return;
 
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return;
@@ -242,12 +243,12 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
          {
             pf::Log log;
 
-            log.msg(VLF::BRANCH|VLF::EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
+            log.msg(VLF::BRANCH|VLF::DETAIL, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
 
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID
             lua_newtable(prv->Lua);  // +1: Table to store the parameters
-            if (!stack_args(prv->Lua, Object->UID, scan.Args, (STRING)Args)) {
+            if (stack_args(prv->Lua, Object->UID, scan.Args, (STRING)Args) IS ERR::Okay) {
                LONG total_args;
                if (scan.Reference) { // +1: Custom reference (optional)
                   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Reference);
@@ -272,22 +273,22 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 
 //********************************************************************************************************************
 
-static ERROR FLUID_Activate(objScript *Self, APTR Void)
+static ERR FLUID_Activate(objScript *Self)
 {
    pf::Log log;
 
-   if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
+   if ((!Self->String) or (!Self->String[0])) return log.warning(ERR::FieldNotSet);
 
-   log.msg(VLF::EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
+   log.trace("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
-   ERROR error = ERR_Failed;
+   ERR error = ERR::Failed;
 
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return log.warning(ERR_ObjectCorrupt);
+   if (!prv) return log.warning(ERR::ObjectCorrupt);
 
    if (prv->Recurse) { // When performing a recursive call, we can assume that the code has already been loaded.
       error = run_script(Self);
-      if (error) Self->Error = error;
+      if (error != ERR::Okay) Self->Error = error;
 
       {
          pf::Log log;
@@ -295,13 +296,13 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    prv->Recurse++;
 
    Self->CurrentLine = -1;
-   Self->Error       = ERR_Okay;
+   Self->Error       = ERR::Okay;
 
    // Set the script owner to the current process, prior to script execution.  Once complete, we will change back to
    // the original owner.
@@ -361,7 +362,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
       // Register private variables in the registry, which is tamper proof from the user's Lua code
 
-      if (register_interfaces(Self) != ERR_Okay) goto failure;
+      if (register_interfaces(Self) != ERR::Okay) goto failure;
 
       // Line hook, executes on the execution of a new line
 
@@ -394,7 +395,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       prv->Lua->ProtectedGlobals = true;
 
       LONG result;
-      if (!StrCompare(LUA_COMPILED, Self->String)) { // The source is compiled
+      if (startswith(LUA_COMPILED, Self->String)) { // The source is compiled
          log.trace("Loading pre-compiled Lua script.");
          LONG headerlen = StrLength(Self->String) + 1;
          result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, "DefaultChunk");
@@ -408,31 +409,27 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          if (auto errorstr = lua_tostring(prv->Lua,-1)) {
             // Format: [string "..."]:Line:Error
             if ((i = StrSearchCase("\"]:", errorstr)) != -1) {
-               char buffer[240];
                i += 3;
                LONG line = StrToInt(errorstr + i);
                while ((errorstr[i]) and (errorstr[i] != ':')) i++;
                if (errorstr[i] IS ':') i++;
-               i = snprintf(buffer, sizeof(buffer), "Line %d: %s\n", line+Self->LineOffset, errorstr + i);
+
+               std::ostringstream buf;
+               buf << "Line " << line+Self->LineOffset << ": " << errorstr + i << '\n';
                CSTRING str = Self->String;
 
                for (j=1; j <= line+1; j++) {
                   if (j >= line-1) {
-                     i += snprintf(buffer+i, sizeof(buffer)-i, "%d: ", j+Self->LineOffset);
-                     LONG k;
-                     for (k=0; (str[k]) and (str[k] != '\n') and (str[k] != '\r') and (k < 120); k++) {
-                        if ((size_t)i >= sizeof(buffer)-1) break;
-                        buffer[i++] = str[k];
-                     }
-                     if (k IS 120) {
-                        for (k=0; (k < 3) and ((size_t)i < sizeof(buffer)-1); k++) buffer[i++] = '.';
-                     }
-                     if ((size_t)i < sizeof(buffer)-1) buffer[i++] = '\n';
-                     buffer[i] = 0;
+                     buf << (j + Self->LineOffset) << ": ";
+                     LONG col;
+                     for (col=0; (str[col]) and (str[col] != '\n') and (str[col] != '\r') and (col < 120); col++);
+                     buf.write(str, col);
+                     if (col IS 120) buf << "...";
+                     buf << '\n';
                   }
                   if (!(str = next_line(str))) break;
                }
-               Self->setErrorString(buffer);
+               Self->setErrorString(buf.str().c_str());
 
                log.warning("Parser Failed: %s", Self->ErrorString);
             }
@@ -471,15 +468,15 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          log.traceBranch("Collecting functions prior to procedure call...");
 
          if (lua_pcall(prv->Lua, 0, 0, 0)) {
-            Self->Error = ERR_Failed;
+            Self->Error = ERR::Failed;
             process_error(Self, "Activation");
          }
       }
    }
 
-   if (!Self->Error) run_script(Self); // Will set Self->Error if there's an issue
+   if (Self->Error IS ERR::Okay) run_script(Self); // Will set Self->Error if there's an issue
 
-   error = ERR_Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
+   error = ERR::Okay; // The error reflects on the initial processing of the script only - the developer must check the Error field for information on script execution
 
 failure:
 
@@ -493,7 +490,7 @@ failure:
 
    if (owner_id) {
       OBJECTPTR owner;
-      if (!AccessObject(owner_id, 5000, &owner)) {
+      if (AccessObject(owner_id, 5000, &owner) IS ERR::Okay) {
          SetOwner(Self, owner);
          ReleaseObject(owner);
       }
@@ -510,11 +507,11 @@ failure:
 
 //********************************************************************************************************************
 
-static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
+static ERR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if (Args->Datatype IS DATA::TEXT) {
       Self->setStatement((CSTRING)Args->Buffer);
@@ -536,13 +533,13 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
                lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, it->Callback); // +1 Reference to callback
                lua_newtable(prv->Lua); // +1 Item table
 
-               if (auto xml = objXML::create::integral(fl::Statement((CSTRING)Args->Buffer))) {
+               if (auto xml = objXML::create::local(fl::Statement((CSTRING)Args->Buffer))) {
                   // <file path="blah.exe"/> becomes { item='file', path='blah.exe' }
 
                   if (!xml->Tags.empty()) {
                      auto &tag = xml->Tags[0];
                      LONG i = 1;
-                     if (!StrMatch("receipt", tag.name())) {
+                     if (iequals("receipt", tag.name())) {
                         for (auto &scan : tag.Children) {
                            lua_pushinteger(prv->Lua, i++);
                            lua_newtable(prv->Lua);
@@ -584,102 +581,102 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
+static ERR FLUID_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
-   if ((Args->Procedure) and (Args->Procedure->Type IS CALL_SCRIPT)) {
-      if (Args->Procedure->Script.Script IS Self) { // Verification of ownership
+   if ((Args->Procedure) and (Args->Procedure->isScript())) {
+      if (Args->Procedure->Context IS Self) { // Verification of ownership
          auto prv = (prvFluid *)Self->ChildPrivate;
-         if (!prv) return log.warning(ERR_ObjectCorrupt);
+         if (!prv) return log.warning(ERR::ObjectCorrupt);
 
-         log.trace("Dereferencing procedure #%" PF64, Args->Procedure->Script.ProcedureID);
+         log.trace("Dereferencing procedure #%" PF64, Args->Procedure->ProcedureID);
 
-         if (Args->Procedure->Script.ProcedureID) {
-            luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Args->Procedure->Script.ProcedureID);
-            Args->Procedure->Script.ProcedureID = 0;
+         if (Args->Procedure->ProcedureID) {
+            luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Args->Procedure->ProcedureID);
+            Args->Procedure->ProcedureID = 0;
          }
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_Args);
+      else return log.warning(ERR::Args);
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 //********************************************************************************************************************
 
-static ERROR FLUID_Free(objScript *Self, APTR Void)
+static ERR FLUID_Free(objScript *Self)
 {
    free_all(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR FLUID_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
+static ERR FLUID_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR::NullArgs);
 
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return log.warning(ERR_ObjectCorrupt);
+   if (!prv) return log.warning(ERR::ObjectCorrupt);
 
    if ((!prv->Lua) or (!Self->ActivationCount)) {
       log.warning("Cannot resolve function '%s'.  Script requires activation.", Args->Procedure);
-      return ERR_NotFound;
+      return ERR::NotFound;
    }
 
    lua_getglobal(prv->Lua, Args->Procedure);
    LONG id = luaL_ref(prv->Lua, LUA_REGISTRYINDEX);
    if ((id != LUA_REFNIL) and (id != LUA_NOREF)) {
       Args->ProcedureID = id;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       log.warning("Failed to resolve function name '%s' to an ID.", Args->Procedure);
-      return ERR_NotFound;
+      return ERR::NotFound;
    }
 }
 
 //********************************************************************************************************************
 
-static ERROR FLUID_Init(objScript *Self, APTR Void)
+static ERR FLUID_Init(objScript *Self)
 {
    pf::Log log;
 
    if (Self->Path) {
-      if (StrCompare("*.fluid|*.fb|*.lua", Self->Path, 0, STR::WILDCARD) != ERR_Okay) {
+      if (!wildcmp("*.fluid|*.fb|*.lua", Self->Path)) {
          log.trace("No support for path '%s'", Self->Path);
-         return ERR_NoSupport;
+         return ERR::NoSupport;
       }
    }
 
    if ((Self->defined(NF::RECLASSED)) and (!Self->String)) {
       log.trace("No support for reclassed Script with no String field value.");
-      return ERR_NoSupport;
+      return ERR::NoSupport;
    }
 
    STRING str;
-   ERROR error;
+   ERR error;
    bool compile = false;
    LONG loaded_size = 0;
    objFile *src_file = NULL;
    if ((!Self->String) and (Self->Path)) {
       LARGE src_ts, src_size;
 
-      if ((src_file = objFile::create::integral(fl::Path(Self->Path)))) {
+      if ((src_file = objFile::create::local(fl::Path(Self->Path)))) {
          error = src_file->get(FID_TimeStamp, &src_ts);
-         if (!error) error = src_file->get(FID_Size, &src_size);
+         if (error IS ERR::Okay) error = src_file->get(FID_Size, &src_size);
       }
-      else error = ERR_File;
+      else error = ERR::File;
 
       if (Self->CacheFile) {
          // Compare the cache file date to the original source.  If they match, or if there was a problem
@@ -697,22 +694,22 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
          }
 
          if (cache_ts != -1) {
-            if ((cache_ts IS src_ts) or (error)) {
+            if ((cache_ts IS src_ts) or (error != ERR::Okay)) {
                log.msg("Using cache '%s'", Self->CacheFile);
-               if (!AllocMemory(cache_size, MEM::STRING|MEM::NO_CLEAR, &Self->String)) {
+               if (AllocMemory(cache_size, MEM::STRING|MEM::NO_CLEAR, &Self->String) IS ERR::Okay) {
                   LONG len;
                   error = ReadFileToBuffer(Self->CacheFile, Self->String, cache_size, &len);
                   loaded_size = cache_size;
                }
-               else error = ERR_AllocMemory;
+               else error = ERR::AllocMemory;
             }
          }
       }
 
-      if ((!error) and (!loaded_size)) {
-         if (!AllocMemory(src_size+1, MEM::STRING|MEM::NO_CLEAR, &Self->String)) {
+      if ((error IS ERR::Okay) and (!loaded_size)) {
+         if (AllocMemory(src_size+1, MEM::STRING|MEM::NO_CLEAR, &Self->String) IS ERR::Okay) {
             LONG len;
-            if (!ReadFileToBuffer(Self->Path, Self->String, src_size, &len)) {
+            if (ReadFileToBuffer(Self->Path, Self->String, src_size, &len) IS ERR::Okay) {
                Self->String[len] = 0;
 
                // Unicode BOM handler - in case the file starts with a BOM header.
@@ -727,32 +724,32 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
                log.trace("Failed to read %" PF64 " bytes from '%s'", src_size, Self->Path);
                FreeResource(Self->String);
                Self->String = NULL;
-               error = ERR_ReadFileToBuffer;
+               error = ERR::ReadFileToBuffer;
             }
          }
-         else error = ERR_AllocMemory;
+         else error = ERR::AllocMemory;
       }
    }
-   else error = ERR_Okay;
+   else error = ERR::Okay;
 
    // Allocate private structure
 
    prvFluid *prv;
-   if (!error) {
-      if (!AllocMemory(sizeof(prvFluid), MEM::DATA, &Self->ChildPrivate)) {
+   if (error IS ERR::Okay) {
+      if (AllocMemory(sizeof(prvFluid), MEM::DATA, &Self->ChildPrivate) IS ERR::Okay) {
          prv = (prvFluid *)Self->ChildPrivate;
          new (prv) prvFluid;
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
-            if (!src_file->getPtr(FID_Date, &dt)) prv->CacheDate = *dt;
+            if (src_file->getPtr(FID_Date, &dt) IS ERR::Okay) prv->CacheDate = *dt;
             src_file->get(FID_Permissions, (LONG *)&prv->CachePermissions);
             prv->LoadedSize = loaded_size;
          }
       }
-      else error = ERR_AllocMemory;
+      else error = ERR::AllocMemory;
    }
 
-   if (error) {
+   if (error != ERR::Okay) {
       if (src_file) FreeResource(src_file);
       return log.warning(error);
    }
@@ -764,13 +761,13 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       FreeResource(Self->ChildPrivate);
       Self->ChildPrivate = NULL;
       if (src_file) FreeResource(src_file);
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    if (!(str = Self->String)) {
       log.trace("No statement specified at this stage.");
       if (src_file) FreeResource(src_file);
-      return ERR_Okay; // Assume that the script's text will be incoming later
+      return ERR::Okay; // Assume that the script's text will be incoming later
    }
 
    // Search for a $FLUID comment - this can contain extra details and options for the script.  Valid identifiers are
@@ -779,12 +776,12 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    //    \* $FLUID
    //    // $FLUID
 
-   if (!StrCompare("?? $FLUID", str, 0, STR::WILDCARD)) {
+   if (wildcmp("?? $FLUID", str)) {
 
    }
 
    if (src_file) FreeResource(src_file);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -798,28 +795,28 @@ usage.
 
 *********************************************************************************************************************/
 
-static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
+static ERR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
 
-   if (!Self->String) return log.warning(ERR_FieldNotSet);
+   if (!Self->String) return log.warning(ERR::FieldNotSet);
 
    log.branch("Compiling the statement...");
 
    auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return log.warning(ERR_ObjectCorrupt);
+   if (!prv) return log.warning(ERR::ObjectCorrupt);
 
    if (!luaL_loadstring(prv->Lua, Self->String)) {
-      ERROR error = save_binary(Self, Args->Dest);
+      ERR error = save_binary(Self, Args->Dest);
       return error;
    }
    else {
       CSTRING str = lua_tostring(prv->Lua,-1);
       lua_pop(prv->Lua, 1);
       log.warning("Compile Failure: %s", str);
-      return ERR_InvalidData;
+      return ERR::InvalidData;
    }
 }
 
@@ -834,7 +831,7 @@ It will otherwise return an empty array.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Procedures(objScript *Self, pf::vector<std::string> **Value, LONG *Elements)
+static ERR GET_Procedures(objScript *Self, pf::vector<std::string> **Value, LONG *Elements)
 {
    if (auto prv = (prvFluid *)Self->ChildPrivate) {
       prv->Procedures.clear();
@@ -848,18 +845,18 @@ static ERROR GET_Procedures(objScript *Self, pf::vector<std::string> **Value, LO
 
       *Value = &prv->Procedures;
       *Elements = prv->Procedures.size();
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_NotInitialised;
+   else return ERR::NotInitialised;
 }
 
 //********************************************************************************************************************
 
-static ERROR save_binary(objScript *Self, OBJECTPTR Target)
+static ERR save_binary(objScript *Self, OBJECTPTR Target)
 {
    // TODO No support for save_binary() yet.
 
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 /*
    pf::Log log(__FUNCTION__);
    prvFluid *prv;
@@ -869,7 +866,7 @@ static ERROR save_binary(objScript *Self, OBJECTPTR Target)
 
    log.branch("Save Symbols: %d", Self->Flags & SCF::LOG_ALL);
 
-   if (!(prv = Self->ChildPrivate)) return LogReturnError(0, ERR_ObjectCorrupt);
+   if (!(prv = Self->ChildPrivate)) return LogReturnError(0, ERR::ObjectCorrupt);
 
    f = clvalue(prv->Lua->top + (-1))->l.p;
 
@@ -885,7 +882,7 @@ static ERROR save_binary(objScript *Self, OBJECTPTR Target)
 
       if (acWrite(dest, header, i, &result)) {
          ReleaseObject(dest);
-         return LogReturnError(0, ERR_Write);
+         return LogReturnError(0, ERR::Write);
       }
       ReleaseObject(dest);
    }
@@ -896,13 +893,13 @@ static ERROR save_binary(objScript *Self, OBJECTPTR Target)
    else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF::LOG_ALL) ? 0 : 1);
 
    LogReturn();
-   return ERR_Okay;
+   return ERR::Okay;
 */
 }
 
 //********************************************************************************************************************
 
-static ERROR run_script(objScript *Self)
+static ERR run_script(objScript *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -910,7 +907,7 @@ static ERROR run_script(objScript *Self)
 
    log.traceBranch("Procedure: %s, Top: %d", Self->Procedure, lua_gettop(prv->Lua));
 
-   prv->CaughtError = ERR_Okay;
+   prv->CaughtError = ERR::Okay;
    struct object * release_list[8];
    LONG r = 0;
    LONG top;
@@ -958,7 +955,7 @@ static ERROR run_script(objScript *Self)
                else if (type & FD_STRUCT) {
                   // Pointer to a struct, which can be referenced with a name of "StructName" or "StructName:ArgName"
                   if (args->Address) {
-                     if (named_struct_to_table(prv->Lua, args->Name, args->Address) != ERR_Okay) lua_pushnil(prv->Lua);
+                     if (named_struct_to_table(prv->Lua, args->Name, args->Address) != ERR::Okay) lua_pushnil(prv->Lua);
                      if (type & FD_ALLOC) FreeResource(args->Address);
                   }
                   else lua_pushnil(prv->Lua);
@@ -1027,13 +1024,13 @@ static ERROR run_script(objScript *Self)
          #ifdef _DEBUG
             pf::vector<std::string> *list;
             LONG total_procedures;
-            if (!GET_Procedures(Self, &list, &total_procedures)) {
+            if (GET_Procedures(Self, &list, &total_procedures) IS ERR::Okay) {
                for (LONG i=0; i < total_procedures; i++) log.trace("%s", list[0][i]);
             }
          #endif
 
-         Self->Error = ERR_NotFound;
-         return ERR_NotFound;
+         Self->Error = ERR::NotFound;
+         return ERR::NotFound;
       }
    }
    else {
@@ -1067,7 +1064,7 @@ static ERROR run_script(objScript *Self)
          lua_pop(prv->Lua, results);  // pop returned values
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       process_error(Self, Self->Procedure ? Self->Procedure : "run_script");
@@ -1076,7 +1073,7 @@ static ERROR run_script(objScript *Self)
 }
 //********************************************************************************************************************
 
-static ERROR register_interfaces(objScript *Self)
+static ERR register_interfaces(objScript *Self)
 {
    pf::Log log;
 
@@ -1111,16 +1108,16 @@ static ERROR register_interfaces(objScript *Self)
 
    load_include(Self, "core");
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-ERROR create_fluid(void)
+ERR create_fluid(void)
 {
    clFluid = objMetaClass::create::global(
-      fl::BaseClassID(ID_SCRIPT),
-      fl::ClassID(ID_FLUID),
+      fl::BaseClassID(CLASSID::SCRIPT),
+      fl::ClassID(CLASSID::FLUID),
       fl::ClassVersion(VER_FLUID),
       fl::Name("Fluid"),
       fl::Category(CCF::DATA),
@@ -1131,5 +1128,5 @@ ERROR create_fluid(void)
       fl::Fields(clFields),
       fl::Path(MOD_PATH));
 
-   return clFluid ? ERR_Okay : ERR_AddClass;
+   return clFluid ? ERR::Okay : ERR::AddClass;
 }

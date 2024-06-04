@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Network", copyright="Paul Manias © 2005-2023", version=1.0, prefix="net", status="stable" }, function()
+module({ name="Network", copyright="Paul Manias © 2005-2024", version=1.0, prefix="net", status="stable" }, function()
   restrict(function()
     loadFile(glPath .. 'common.fdl')
   end)
@@ -85,7 +85,7 @@ typedef LONG SOCKET_HANDLE;
     ptr(struct(NetClient)) Prev    # Previous client in the chain
     obj(NetSocket) NetSocket       # Reference to the parent socket
     obj(ClientSocket) Sockets      # Pointer to a list of sockets opened with this client.
-    ptr UserData                   # Free for user data storage.
+    ptr ClientData                 # Free for user data storage.
     int TotalSockets               # Count of all created sockets
   ]])
 
@@ -98,8 +98,8 @@ typedef LONG SOCKET_HANDLE;
     large ConnectTime                # System time for the creation of this socket
     obj(ClientSocket) Prev           # Previous socket in the chain
     obj(ClientSocket) Next           # Next socket in the chain
-    ptr(struct(NetClient)) Client  # Parent client structure
-    ptr  UserData                    # Free for user data storage.
+    ptr(struct(NetClient)) Client    # Parent client structure
+    ptr  ClientData                  # Free for user data storage.
     func Outgoing                    # Callback for data being sent over the socket
     func Incoming                    # Callback for data being received from the socket
     int  MsgLen                      # Length of the current incoming message
@@ -107,7 +107,7 @@ typedef LONG SOCKET_HANDLE;
   ]])
 
   methods("proxy", "prx", {
-    { id=1, name="Delete" },
+    { id=1, name="DeleteRecord" },
     { id=2, name="Find" },
     { id=3, name="FindNext" }
   })
@@ -134,7 +134,7 @@ typedef LONG SOCKET_HANDLE;
   })
 
   class("NetLookup", { src="class_netlookup.cpp", output="class_netlookup_def.c" }, [[
-    large UserData   # Optional user data storage
+    large ClientData # Optional user data storage
     int(NLF) Flags   # Optional flags
   ]])
 
@@ -149,7 +149,7 @@ typedef LONG SOCKET_HANDLE;
 
   class("NetSocket", { src="netsocket/netsocket.cpp", output="netsocket/netsocket_def.c" }, [[
     ptr(struct(NetClient)) Clients # ServerMode - Attached clients
-    ptr UserData      # Pointer to user data that can be used during events
+    ptr ClientData    # Pointer to user data that can be used during events
     str Address       # Connect the socket to this remote address (if client)
     int(NTC) State    # Connection state
     error Error       # The last NetSocket error can be read from this field
@@ -198,9 +198,9 @@ typedef LONG SOCKET_HANDLE;
   })
 
   c_insert([[
-inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
-   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
-   else return ERR_CreateObject;
+inline ERR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR ClientData) {
+   if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::ClientData(ClientData)))) return ERR::Okay;
+   else return ERR::CreateObject;
 }
   ]])
 

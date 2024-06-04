@@ -1,0 +1,35 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <rect fill="white" width="100%" height="100%"/>
+
+  <g font-size="20">
+    <text x="70" y="110">Text from 0s to 1s</text>
+    <text x="100" y="185">Text at 4s</text>
+    <text x="100" y="220">Text at 7s</text>
+  </g>
+
+  <!-- Guide objects to show where the animation elements belong at which time -->
+  <g font-family="MyFont" stroke="none" fill="#bee">
+    <text transform="translate(50,90) rotate(-30)" font-size="20">It's alive!</text>
+    <text transform="translate(75,180) rotate(-15)" font-size="40">It's alive!</text>
+    <text x="100" y="270" font-size="60">It's alive!</text>
+  </g>
+
+  <!-- Set up a new user coordinate system so that the text string's origin is at (0,0), allowing rotation and scale relative to the new origin -->
+
+  <g transform="translate(50,90)">
+    <!-- The following illustrates the use of the 'animateMotion', and 'animateTransform' elements. At 1 seconds, the text:
+     * continuously moves diagonally across the viewport
+     * rotates from -30 to zero degrees
+     * scales by a factor of three.
+    -->
+    <text id="TextElement" x="0" y="0" font-family="MyFont" font-size="20" fill="#36e" transform="rotate(-30)">
+      It's alive!
+      <animateMotion path="M 0 0 L 50 180" begin="1s" dur="6s" fill="freeze"/>
+      <animateTransform attributeName="transform" attributeType="XML" type="rotate" from="-30" to="0" begin="1s" dur="6s" fill="freeze"/>
+      <animateTransform attributeName="transform" attributeType="XML" type="scale" from="1" to="3" additive="sum" begin="1s" dur="6s" fill="freeze"/>
+    </text>
+  </g>
+</svg>

@@ -29,6 +29,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 
 #include <parasol/main.h>
 #include <parasol/modules/network.h>
+#include <parasol/strings.hpp>
 
 #ifdef ENABLE_SSL
 #include <openssl/ssl.h>
@@ -241,11 +242,11 @@ JUMPTABLE_CORE
 #ifdef ENABLE_SSL
 static BYTE ssl_init = FALSE;
 
-static ERROR sslConnect(extNetSocket *);
+static ERR sslConnect(extNetSocket *);
 static void sslDisconnect(extNetSocket *);
-static ERROR sslInit(void);
-static ERROR sslLinkSocket(extNetSocket *);
-static ERROR sslSetup(extNetSocket *);
+static ERR sslInit(void);
+static ERR sslLinkSocket(extNetSocket *);
+static ERR sslSetup(extNetSocket *);
 #endif
 
 //********************************************************************************************************************
@@ -271,29 +272,29 @@ static LONG glResolveAddrMsgID = 0;
 
 static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
 static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
-static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
-static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
+static ERR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
+static ERR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
 
-static ERROR init_netsocket(void);
-static ERROR init_clientsocket(void);
-static ERROR init_proxy(void);
-static ERROR init_netlookup(void);
+static ERR init_netsocket(void);
+static ERR init_clientsocket(void);
+static ERR init_proxy(void);
+static ERR init_netlookup(void);
 
 static MsgHandler *glResolveNameHandler = NULL;
 static MsgHandler *glResolveAddrHandler = NULL;
 
 //********************************************************************************************************************
 
-ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log;
 
    CoreBase = argCoreBase;
 
-   if (init_netsocket()) return ERR_AddClass;
-   if (init_clientsocket()) return ERR_AddClass;
-   if (init_proxy()) return ERR_AddClass;
-   if (init_netlookup()) return ERR_AddClass;
+   if (init_netsocket() != ERR::Okay) return ERR::AddClass;
+   if (init_clientsocket() != ERR::Okay) return ERR::AddClass;
+   if (init_proxy() != ERR::Okay) return ERR::AddClass;
+   if (init_netlookup() != ERR::Okay) return ERR::AddClass;
 
    glResolveNameMsgID = AllocateID(IDTYPE::MESSAGE);
    glResolveAddrMsgID = AllocateID(IDTYPE::MESSAGE);
@@ -304,38 +305,39 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       CSTRING msg;
       if ((msg = StartupWinsock()) != 0) {
          log.warning("Winsock initialisation failed: %s", msg);
-         return ERR_SystemCall;
+         return ERR::SystemCall;
       }
       SetResourcePtr(RES::NET_PROCESSING, reinterpret_cast<APTR>(win_net_processing)); // Hooks into ProcessMessages()
    }
 #endif
 
-   auto recv_function = make_function_stdc(resolve_name_receiver, CurrentTask());
-   if (AddMsgHandler(NULL, glResolveNameMsgID, &recv_function, &glResolveNameHandler)) {
-      return ERR_Failed;
+   auto recv_function = C_FUNCTION(resolve_name_receiver);
+   recv_function.Context = CurrentTask();
+   if (AddMsgHandler(NULL, glResolveNameMsgID, &recv_function, &glResolveNameHandler) != ERR::Okay) {
+      return ERR::Failed;
    }
 
-   recv_function.StdC.Routine = (APTR)resolve_addr_receiver;
-   if (AddMsgHandler(NULL, glResolveAddrMsgID, &recv_function, &glResolveAddrHandler)) {
-      return ERR_Failed;
+   recv_function.Routine = (APTR)resolve_addr_receiver;
+   if (AddMsgHandler(NULL, glResolveAddrMsgID, &recv_function, &glResolveAddrHandler) != ERR::Okay) {
+      return ERR::Failed;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-ERROR MODOpen(OBJECTPTR Module)
+static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Note: Take care and attention with the order of operations during the expunge process, particuarly due to the
 // background processes that are managed by the module.
 
-static ERROR MODExpunge(void)
+static ERR MODExpunge(void)
 {
    pf::Log log;
 
@@ -365,8 +367,10 @@ static ERROR MODExpunge(void)
    }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
+
+namespace net {
 
 /*********************************************************************************************************************
 
@@ -384,7 +388,7 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 
 *********************************************************************************************************************/
 
-CSTRING netAddressToStr(IPAddress *Address)
+CSTRING AddressToStr(IPAddress *Address)
 {
    pf::Log log(__FUNCTION__);
 
@@ -396,7 +400,7 @@ CSTRING netAddressToStr(IPAddress *Address)
    }
 
    struct in_addr addr;
-   addr.s_addr = netHostToLong(Address->Data[0]);
+   addr.s_addr = net::HostToLong(Address->Data[0]);
 
    STRING result;
 #ifdef __linux__
@@ -412,9 +416,9 @@ CSTRING netAddressToStr(IPAddress *Address)
 /*********************************************************************************************************************
 
 -FUNCTION-
-StrToAddress: Converts an IP Address in string form to an IPAddress structure.
+StrToAddress: Converts an IP Address in string form to an !IPAddress structure.
 
-Converts an IPv4 or an IPv6 address in dotted string format to an IPAddress structure.  The String must be of form
+Converts an IPv4 or an IPv6 address in dotted string format to an !IPAddress structure.  The `String` must be of form
 `1.2.3.4` (IPv4).
 
 <pre>
@@ -426,18 +430,18 @@ if (!StrToAddress("127.0.0.1", &addr)) {
 
 -INPUT-
 cstr String:  A null-terminated string containing the IP Address in dotted format.
-struct(IPAddress) Address: Must point to an IPAddress structure that will be filled in.
+struct(IPAddress) Address: Must point to an !IPAddress structure that will be filled in.
 
 -ERRORS-
-Okay:    The Address was converted successfully.
-Args:    Either the string or the IPAddress pointer were NULL.
-Failed:  The String was not a valid IP Address.
+Okay:    The `Address` was converted successfully.
+NullArgs
+Failed:  The `String` was not a valid IP Address.
 
 *********************************************************************************************************************/
 
-ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
+ERR StrToAddress(CSTRING Str, IPAddress *Address)
 {
-   if ((!Str) or (!Address)) return ERR_NullArgs;
+   if ((!Str) or (!Address)) return ERR::NullArgs;
 
 #ifdef __linux__
    ULONG result = inet_addr(Str);
@@ -445,15 +449,15 @@ ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
    ULONG result = win_inet_addr(Str);
 #endif
 
-   if (result IS INADDR_NONE) return ERR_Failed;
+   if (result IS INADDR_NONE) return ERR::Failed;
 
-   Address->Data[0] = netLongToHost(result);
+   Address->Data[0] = net::LongToHost(result);
    Address->Data[1] = 0;
    Address->Data[2] = 0;
    Address->Data[3] = 0;
    Address->Type = IPADDR::V4;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -471,7 +475,7 @@ uint: The word in network byte order
 
 *********************************************************************************************************************/
 
-ULONG netHostToShort(ULONG Value)
+ULONG HostToShort(ULONG Value)
 {
    return (ULONG)htons((UWORD)Value);
 }
@@ -491,7 +495,7 @@ uint: The long in network byte order
 
 *********************************************************************************************************************/
 
-ULONG netHostToLong(ULONG Value)
+ULONG HostToLong(ULONG Value)
 {
    return htonl(Value);
 }
@@ -511,7 +515,7 @@ uint: The Value in host byte order
 
 *********************************************************************************************************************/
 
-ULONG netShortToHost(ULONG Value)
+ULONG ShortToHost(ULONG Value)
 {
    return (ULONG)ntohs((UWORD)Value);
 }
@@ -531,7 +535,7 @@ uint: The Value in host byte order.
 
 *********************************************************************************************************************/
 
-ULONG netLongToHost(ULONG Value)
+ULONG LongToHost(ULONG Value)
 {
    return ntohl(Value);
 }
@@ -552,7 +556,7 @@ If a failure occurs when executing a command, the execution of all further comma
 returned immediately.
 
 -INPUT-
-ext(NetSocket) NetSocket: The target NetSocket object.
+obj(NetSocket) NetSocket: The target NetSocket object.
 tags Tags: Series of tags terminated by TAGEND.
 
 -ERRORS-
@@ -562,14 +566,14 @@ NullArgs: The NetSocket argument was not specified.
 
 *********************************************************************************************************************/
 
-ERROR netSetSSL(extNetSocket *Socket, ...)
+ERR SetSSL(objNetSocket *Socket, ...)
 {
 #ifdef ENABLE_SSL
    LONG value, tagid;
-   ERROR error;
+   ERR error;
    va_list list;
 
-   if (!Socket) return ERR_NullArgs;
+   if (!Socket) return ERR::NullArgs;
 
    va_start(list, Socket);
    while ((tagid = va_arg(list, LONG))) {
@@ -580,18 +584,18 @@ ERROR netSetSSL(extNetSocket *Socket, ...)
          case NSL::CONNECT:
             value = va_arg(list, LONG);
             if (value) { // Initiate an SSL connection on this socket
-               if ((error = sslSetup(Socket)) IS ERR_Okay) {
-                  sslLinkSocket(Socket);
-                  error = sslConnect(Socket);
+               if ((error = sslSetup((extNetSocket *)Socket)) IS ERR::Okay) {
+                  sslLinkSocket((extNetSocket *)Socket);
+                  error = sslConnect((extNetSocket *)Socket);
                }
 
-               if (error) {
+               if (error != ERR::Okay) {
                   va_end(list);
                   return error;
                }
             }
             else { // Disconnect SSL (i.e. go back to unencrypted mode)
-               sslDisconnect(Socket);
+               sslDisconnect((extNetSocket *)Socket);
             }
             break;
          default:
@@ -600,11 +604,13 @@ ERROR netSetSSL(extNetSocket *Socket, ...)
    }
 
    va_end(list);
-   return ERR_Okay;
+   return ERR::Okay;
 #else
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 #endif
 }
+
+} // namespace
 
 #ifdef ENABLE_SSL
 #include "ssl.cpp"
@@ -626,7 +632,7 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 
 //********************************************************************************************************************
 
-static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
+static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -638,10 +644,10 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
    if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
    else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
-   if (Self->SSLBusy != SSL_NOT_BUSY) return ERR_Okay;
+   if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
 #endif
 
-   if (!BufferSize) return ERR_Okay;
+   if (!BufferSize) return ERR::Okay;
 
 #ifdef ENABLE_SSL
    BYTE read_blocked;
@@ -656,7 +662,7 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          if (result <= 0) {
             switch (SSL_get_error(Self->SSL, result)) {
                case SSL_ERROR_ZERO_RETURN:
-                  return ERR_Disconnected;
+                  return ERR::Disconnected;
 
                case SSL_ERROR_WANT_READ:
                   read_blocked = TRUE;
@@ -674,13 +680,13 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
                       win_socketstate(Socket, -1, TRUE);
                    #endif
 
-                   return ERR_Okay;
+                   return ERR::Okay;
 
                 case SSL_ERROR_SYSCALL:
 
                 default:
                    log.warning("SSL read problem");
-                   return ERR_Okay; // Non-fatal
+                   return ERR::Okay; // Non-fatal
             }
          }
          else {
@@ -711,7 +717,7 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          #endif
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 #endif
 
@@ -721,17 +727,17 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 
       if (result > 0) {
          *Result = result;
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else if (result IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
-         return ERR_Disconnected;
+         return ERR::Disconnected;
       }
       else if ((errno IS EAGAIN) or (errno IS EINTR)) {
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else {
          log.warning("recv() failed: %s", strerror(errno));
-         return ERR_Failed;
+         return ERR::Failed;
       }
    }
 #elif _WIN32
@@ -743,11 +749,11 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
 
 //********************************************************************************************************************
 
-static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
+static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!*Length) return ERR_Okay;
+   if (!*Length) return ERR::Okay;
 
 #ifdef ENABLE_SSL
 
@@ -758,7 +764,7 @@ static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
       else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
       if (Self->SSLBusy != SSL_NOT_BUSY) {
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       LONG bytes_sent = SSL_write(Self->SSL, Buffer, *Length);
@@ -770,7 +776,7 @@ static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
          switch(ssl_error){
             case SSL_ERROR_WANT_WRITE:
                log.traceWarning("Buffer overflow (SSL want write)");
-               return ERR_BufferOverflow;
+               return ERR::BufferOverflow;
 
             // We get a WANT_READ if we're trying to rehandshake and we block on write during the current connection.
             //
@@ -784,11 +790,11 @@ static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
                #elif _WIN32
                   win_socketstate(Socket, TRUE, -1);
                #endif
-               return ERR_Okay;
+               return ERR::Okay;
 
             case SSL_ERROR_SYSCALL:
                log.warning("SSL_write() SysError %d: %s", errno, strerror(errno));
-               return ERR_Failed;
+               return ERR::Failed;
 
             default:
                while (ssl_error) {
@@ -796,7 +802,7 @@ static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
                   ssl_error = ERR_get_error();
                }
 
-               return ERR_Failed;
+               return ERR::Failed;
          }
       }
       else {
@@ -806,21 +812,21 @@ static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
          *Length = bytes_sent;
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 #endif
 
 #ifdef __linux__
    *Length = send(Socket, Buffer, *Length, Flags);
 
-   if (*Length >= 0) return ERR_Okay;
+   if (*Length >= 0) return ERR::Okay;
    else {
       *Length = 0;
-      if (errno IS EAGAIN) return ERR_BufferOverflow;
-      else if (errno IS EMSGSIZE) return ERR_DataSize;
+      if (errno IS EAGAIN) return ERR::BufferOverflow;
+      else if (errno IS EMSGSIZE) return ERR::DataSize;
       else {
          log.warning("send() failed: %s", strerror(errno));
-         return ERR_Failed;
+         return ERR::Failed;
       }
    }
 #elif _WIN32

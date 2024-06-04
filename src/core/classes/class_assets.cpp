@@ -70,8 +70,8 @@ struct prvFileAsset {
 };
 
 static const MethodEntry clMethods[] = {
-   { MT_FileDelete, ASSET_Delete, "Delete", NULL, 0 },
-   { MT_FileMove,   ASSET_Move, "Move", NULL, 0 },
+   { asset::FileDelete::id, ASSET_Delete, "Delete", NULL, 0 },
+   { asset::FileMove::id,   ASSET_Move, "Move", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }
 };
 
@@ -96,7 +96,7 @@ ERROR add_asset_class(void)
 
    if (!(openinfo = GetResourcePtr(RES::OPENINFO))) {
       log.warning("No OpenInfo structure set during Core initialisation.");
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    classname = NULL;
@@ -127,7 +127,7 @@ ERROR add_asset_class(void)
 
       if ((!env) or (!classname)) {
          log.warning("Android env and class name must be defined when opening the Core.");
-         return ERR_Failed;
+         return ERR::Failed;
       }
 
       jclass glActivityClass = ((*env)->FindClass)(env, classname);
@@ -138,11 +138,11 @@ ERROR add_asset_class(void)
             if (glAssetManager) {
                glAssetManager = (*env)->NewGlobalRef(env, glAssetManager); // This call is required to prevent the Java GC from collecting the reference.
             }
-            else { log.traceWarning("Failed to get assetManager field."); return ERR_SystemCall; }
+            else { log.traceWarning("Failed to get assetManager field."); return ERR::SystemCall; }
          }
-         else { log.traceWarning("Failed to get assetManager field ID."); return ERR_SystemCall; }
+         else { log.traceWarning("Failed to get assetManager field ID."); return ERR::SystemCall; }
       }
-      else { log.traceWarning("Failed to get Java class %s", classname); return ERR_SystemCall; }
+      else { log.traceWarning("Failed to get Java class %s", classname); return ERR::SystemCall; }
    }
 
    // Create the assets: control class
@@ -154,7 +154,7 @@ ERROR add_asset_class(void)
       fl::Actions(clActions),
       fl::Methods(clMethods),
       fl::Fields(clFields),
-      fl::Path("modules:core")))) return ERR_CreateObject;
+      fl::Path("modules:core")))) return ERR::CreateObject;
 
    // Create the 'assets' virtual volume
 
@@ -165,7 +165,7 @@ ERROR add_asset_class(void)
                            VAS_GET_INFO,  &get_info,
                            0);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -184,32 +184,32 @@ void free_asset_class(void)
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Delete(objFile *Self, APTR Void)
+static ERROR ASSET_Delete(objFile *Self)
 {
-   return ERR_NoSupport; // Asset files cannot be deleted.
+   return ERR::NoSupport; // Asset files cannot be deleted.
 }
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Free(objFile *Self, APTR Void)
+static ERROR ASSET_Free(objFile *Self)
 {
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Init(objFile *Self, APTR Void)
+static ERROR ASSET_Init(objFile *Self)
 {
    pf::Log log(__FUNCTION__);
    prvFileAsset *prv;
 
-   if (!Self->Path) return ERR_FieldNotSet;
+   if (!Self->Path) return ERR::FieldNotSet;
 
    log.trace("Path: %s", Self->Path);
 
-   if (StrCompare("assets:", Self->Path, LEN_ASSETS) != ERR_Okay) return ERR_NoSupport;
+   if (!pf::startswith("assets:", Self->Path)) return ERR::NoSupport;
 
-   if (Self->Flags & (FL::NEW|FL::WRITE)) return log.warning(ERR_ReadOnly);
+   if (Self->Flags & (FL::NEW|FL::WRITE)) return log.warning(ERR::ReadOnly);
 
    // Allocate private structure
 
@@ -218,7 +218,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
       for (len=0; Self->Path[len]; len++);
 
       if (Self->Path[len-1] IS ':') {
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else if (Self->Path[len-1] IS '/') {
          // Check that the folder exists.
@@ -233,12 +233,12 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
          if ((dir = AAssetManager_openDir(get_asset_manager(), dirpath))) {
             // Folder exists, close it and return OK
             AAssetDir_close(dir);
-            return ERR_Okay;
+            return ERR::Okay;
          }
          else {
             FreeResource(Self->ChildPrivate);
             Self->ChildPrivate = NULL;
-            return ERR_DoesNotExist;
+            return ERR::DoesNotExist;
          }
       }
       else {
@@ -249,24 +249,24 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
          AAssetManager *mgr = get_asset_manager();
          if (mgr) {
             if ((prv->Asset = AAssetManager_open(mgr, Self->Path+LEN_ASSETS, AASSET_MODE_RANDOM))) { // AASSET_MODE_UNKNOWN, AASSET_MODE_RANDOM
-               return ERR_Okay;
+               return ERR::Okay;
             }
             else log.warning("Failed to open asset file \"%s\"", Self->Path+LEN_ASSETS);
          }
 
          FreeResource(Self->ChildPrivate);
          Self->ChildPrivate = NULL;
-         return ERR_Failed;
+         return ERR::Failed;
       }
    }
-   else return log.warning(ERR_AllocMemory);
+   else return log.warning(ERR::AllocMemory);
 }
 
 //********************************************************************************************************************
 
 static ERROR ASSET_Move(objFile *Self, struct mtFileMove *Args)
 {
-   return ERR_NoSupport; // Assets cannot be moved
+   return ERR::NoSupport; // Assets cannot be moved
 }
 
 //********************************************************************************************************************
@@ -276,8 +276,8 @@ static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
    pf::Log log(__FUNCTION__);
    prvFileAsset *prv;
 
-   if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
-   if (!(Self->Flags & FL::READ)) return log.warning(ERR_FileReadFlag);
+   if (!(prv = Self->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
+   if (!(Self->Flags & FL::READ)) return log.warning(ERR::FileReadFlag);
 
    Args->Result = AAsset_read(prv->Asset, Args->Buffer, Args->Length);
 
@@ -285,18 +285,18 @@ static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
       if (Args->Result IS -1) {
          log.msg("Failed to read %d bytes from the file.", Args->Length);
          Args->Result = 0;
-         return ERR_Failed;
+         return ERR::Failed;
       }
 
-      // Return ERR_Okay even though not all data was read, because this was not due to a failure.
+      // Return ERR::Okay even though not all data was read, because this was not due to a failure.
 
       log.msg("%d of the intended %d bytes were read from the file.", Args->Result, Args->Length);
       Self->Position += Args->Result;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       Self->Position += Args->Result;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
@@ -304,7 +304,7 @@ static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
 
 static ERROR ASSET_Rename(objFile *Self, struct acRename *Args)
 {
-   return ERR_NoSupport; // Assets cannot be renamed.
+   return ERR::NoSupport; // Assets cannot be renamed.
 }
 
 //********************************************************************************************************************
@@ -314,18 +314,18 @@ static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
    prvFileAsset *prv;
    LONG method;
 
-   if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = Self->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
 
    if (Args->Position IS POS_START) method = SEEK::SET;
    else if (Args->Position IS POS_END) method = SEEK::END;
    else if (Args->Position IS POS_CURRENT) method = SEEK::CUR;
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 
    off_t offset = AAsset_seek(prv->Asset, Args->Offset, method);
    if (offset != -1) Self->Position = offset;
-   else return ERR_Failed;
+   else return ERR::Failed;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -334,7 +334,7 @@ static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
 
 static ERROR ASSET_Write(objFile *Self, struct acWrite *Args)
 {
-   return ERR_NoSupport; // Writing to assets is disallowed
+   return ERR::NoSupport; // Writing to assets is disallowed
 }
 
 //********************************************************************************************************************
@@ -342,12 +342,12 @@ static ERROR ASSET_Write(objFile *Self, struct acWrite *Args)
 static ERROR GET_Permissions(objFile *Self, APTR *Value)
 {
    *Value = NULL;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 static ERROR SET_Permissions(objFile *Self, APTR Value)
 {
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -356,14 +356,14 @@ static ERROR GET_Size(objFile *Self, LARGE *Value)
 {
    prvFileAsset *prv;
 
-   if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = Self->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
 
    if (prv->Asset) {
       *Value = AAsset_getLength(prv->Asset);
-      if (*Value >= 0) return ERR_Okay;
-      else return ERR_Failed;
+      if (*Value >= 0) return ERR::Okay;
+      else return ERR::Failed;
    }
-   else return ERR_Failed; // Either the file is a folder or hasn't been opened.
+   else return ERR::Failed; // Either the file is a folder or hasn't been opened.
 }
 
 //********************************************************************************************************************
@@ -377,7 +377,7 @@ static ERROR open_dir(DirInfo *Dir)
 
    log.traceBranch("%s", Dir->prvResolvedPath);
 
-   if (!(mgr = get_asset_manager())) return log.warning(ERR_SystemCall);
+   if (!(mgr = get_asset_manager())) return log.warning(ERR::SystemCall);
 
    // openDir() doesn't like trailing slashes, this code will handle such circumstances.
 
@@ -392,9 +392,9 @@ static ERROR open_dir(DirInfo *Dir)
    }
 
    if (Dir->prvHandle) {
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidPath;
+   else return ERR::InvalidPath;
 }
 
 //********************************************************************************************************************
@@ -408,7 +408,7 @@ static ERROR scan_dir(DirInfo *Dir)
    log.traceBranch("Asset file scan on %s", Dir->prvResolvedPath);
 
    if (!(mgr = get_asset_manager())) {
-      return log.warning(ERR_SystemCall);
+      return log.warning(ERR::SystemCall);
    }
 
    while ((filename = AAssetDir_getNextFileName(Dir->prvHandle))) {
@@ -422,7 +422,7 @@ static ERROR scan_dir(DirInfo *Dir)
 
             Dir->prvIndex++;
             Dir->prvTotal++;
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
 
@@ -436,12 +436,12 @@ static ERROR scan_dir(DirInfo *Dir)
 
             Dir->prvIndex++;
             Dir->prvTotal++;
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
    }
 
-   return ERR_DirEmpty;
+   return ERR::DirEmpty;
 }
 
 //********************************************************************************************************************
@@ -457,7 +457,7 @@ static ERROR close_dir(DirInfo *Dir)
       Dir->prvHandle = NULL;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -475,7 +475,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    if (mgr) {
       AAsset *asset;
       AAssetDir *assetdir;
-      if (!StrCompare("assets:", Path, LEN_ASSETS)) { // Just a sanity check - the Path is always meant to be resolved.
+      if (pf::startswith("assets:", Path)) { // Just a sanity check - the Path is always meant to be resolved.
          if ((asset = AAssetManager_open(mgr, Path+LEN_ASSETS, AASSET_MODE_UNKNOWN))) {
             Info->Size = AAsset_getLength(asset);
             AAsset_close(asset);
@@ -485,9 +485,9 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
             AAssetDir_close(assetdir);
          }
       }
-      else return ERR_NoSupport;
+      else return ERR::NoSupport;
    }
-   else return ERR_SystemCall;
+   else return ERR::SystemCall;
 
    Info->Flags = 0;
    Info->Time.Year   = 2013;
@@ -522,7 +522,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    Info->UserID      = 0;
    Info->GroupID     = 0;
    Info->Tags        = NULL;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -538,7 +538,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LOC *Type)
 
    log.traceBranch("%s", Path);
 
-   if (!(mgr = get_asset_manager())) return ERR_SystemCall;
+   if (!(mgr = get_asset_manager())) return ERR::SystemCall;
 
    for (len=0; Path[len]; len++);  // Check if the reference is explicitly defined as a folder.
    if (Path[len-1] != '/') {
@@ -546,7 +546,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LOC *Type)
          log.trace("Path identified as a file.");
          *Type = LOC::FILE;
          AAsset_close(asset);
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       dir = AAssetManager_openDir(mgr, Path+LEN_ASSETS);
@@ -569,13 +569,13 @@ static ERROR test_path(CSTRING Path, LONG Flags, LOC *Type)
          log.trace("Path identified as a folder.");
          *Type = LOC::DIRECTORY;
          AAssetDir_close(dir);
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else AAssetDir_close(dir);
    }
 
    log.trace("Path '%s' does not exist.", Path + LEN_ASSETS);
-   return ERR_DoesNotExist;
+   return ERR::DoesNotExist;
 }
 
 //********************************************************************************************************************
@@ -592,7 +592,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
    log.traceBranch("Path: %s, Flags: $%.8x", Path, Flags);
 
    if (!(mgr = get_asset_manager())) {
-      return log.warning(ERR_SystemCall);
+      return log.warning(ERR::SystemCall);
    }
 
    // openDir() doesn't like trailing slashes, this code will handle such circumstances.
@@ -608,12 +608,12 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
    }
 
    if (!dir) {
-      return ERR_InvalidPath;
+      return ERR::InvalidPath;
    }
 
    if (AllocMemory(sizeof(DirInfo), MEM::DATA, &dirinfo, NULL)) {
       AAssetDir_close(dir);
-      return ERR_AllocMemory;
+      return ERR::AllocMemory;
    }
 
    const char *filename;
@@ -625,7 +625,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 
    current = NULL;
    dirinfo->Total = 0;
-   ERROR error = ERR_Okay;
+   ERROR error = ERR::Okay;
    LONG insert = StrCopy(Path+LEN_ASSETS, assetpath, sizeof(assetpath)-2);
    if (assetpath[insert-1] != '/') assetpath[insert++] = '/';
    while ((filename = AAssetDir_getNextFileName(dir)) and (!error)) {
@@ -633,7 +633,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 
       StrCopy(filename, assetpath+insert, sizeof(assetpath)-insert-1);
       if (insert >= sizeof(assetpath)-1) {
-         error = ERR_BufferOverflow;
+         error = ERR::BufferOverflow;
          break;
       }
 
@@ -665,7 +665,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 
                dirinfo->Total++;
             }
-            else error = ERR_AllocMemory;
+            else error = ERR::AllocMemory;
          }
          AAsset_close(asset);
       }
@@ -685,7 +685,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 
             dirinfo->Total++;
          }
-         else error = ERR_AllocMemory;
+         else error = ERR::AllocMemory;
       }
 
       // Insert entry into the linked list
@@ -717,7 +717,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
    }
    else {
       if (Result) *Result = dirinfo;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 #endif

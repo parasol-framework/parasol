@@ -12,7 +12,7 @@ of `(XOffset,YOffset)`.
 
 class extOffsetFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_OFFSETFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::OFFSETFX;
    static constexpr CSTRING CLASS_NAME = "OffsetFX";
    using create = pf::Create<extOffsetFX>;
 
@@ -21,16 +21,16 @@ class extOffsetFX : public extFilterEffect {
 
 //********************************************************************************************************************
 
-static ERROR OFFSETFX_Draw(extOffsetFX *Self, struct acDraw *Args)
+static ERR OFFSETFX_Draw(extOffsetFX *Self, struct acDraw *Args)
 {
    objBitmap *inBmp;
    LONG dx = F2T((DOUBLE)Self->XOffset * Self->Filter->ClientVector->Transform.sx);
    LONG dy = F2T((DOUBLE)Self->YOffset * Self->Filter->ClientVector->Transform.sy);
-   if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
-      gfxCopyArea(inBmp, Self->Target, BAF::NIL, 0, 0, inBmp->Width, inBmp->Height, dx, dy);
-      return ERR_Okay;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
+      gfx::CopyArea(inBmp, Self->Target, BAF::NIL, 0, 0, inBmp->Width, inBmp->Height, dx, dy);
+      return ERR::Okay;
    }
-   else return ERR_Failed;
+   else return ERR::Failed;
 }
 
 /*********************************************************************************************************************
@@ -38,20 +38,20 @@ static ERROR OFFSETFX_Draw(extOffsetFX *Self, struct acDraw *Args)
 -FIELD-
 XOffset: The delta X coordinate for the input graphic.
 
-The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.
+The `(XOffset, YOffset)` field values define the offset of the input source within the target clipping area.
 
 *********************************************************************************************************************/
 
-static ERROR OFFSETFX_GET_XOffset(extOffsetFX *Self, LONG *Value)
+static ERR OFFSETFX_GET_XOffset(extOffsetFX *Self, LONG *Value)
 {
    *Value = Self->XOffset;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR OFFSETFX_SET_XOffset(extOffsetFX *Self, LONG Value)
+static ERR OFFSETFX_SET_XOffset(extOffsetFX *Self, LONG Value)
 {
    Self->XOffset = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -59,20 +59,20 @@ static ERROR OFFSETFX_SET_XOffset(extOffsetFX *Self, LONG Value)
 -FIELD-
 YOffset: The delta Y coordinate for the input graphic.
 
-The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.
+The `(XOffset, YOffset)` field values define the offset of the input source within the target clipping area.
 
 *********************************************************************************************************************/
 
-static ERROR OFFSETFX_GET_YOffset(extOffsetFX *Self, LONG *Value)
+static ERR OFFSETFX_GET_YOffset(extOffsetFX *Self, LONG *Value)
 {
    *Value = Self->YOffset;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR OFFSETFX_SET_YOffset(extOffsetFX *Self, LONG Value)
+static ERR OFFSETFX_SET_YOffset(extOffsetFX *Self, LONG Value)
 {
    Self->YOffset = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -83,12 +83,12 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR OFFSETFX_GET_XMLDef(extOffsetFX *Self, STRING *Value)
+static ERR OFFSETFX_GET_XMLDef(extOffsetFX *Self, STRING *Value)
 {
    std::stringstream stream;
    stream << "feOffset dx=\"" << Self->XOffset << "\" dy=\"" << Self->YOffset << "\"";
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -104,11 +104,11 @@ static const FieldArray clOffsetFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_offsetfx(void)
+ERR init_offsetfx(void)
 {
    clOffsetFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_OFFSETFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::OFFSETFX),
       fl::Name("OffsetFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clOffsetFXActions),
@@ -116,5 +116,5 @@ ERROR init_offsetfx(void)
       fl::Size(sizeof(extOffsetFX)),
       fl::Path(MOD_PATH));
 
-   return clOffsetFX ? ERR_Okay : ERR_AddClass;
+   return clOffsetFX ? ERR::Okay : ERR::AddClass;
 }

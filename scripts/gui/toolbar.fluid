@@ -1,36 +1,5 @@
 --[[
-The ToolBar interface creates and manages the use of items and groups of items in the UI, typically using icons, text
-or both for item representation.  Each item performs a specific application function that is activated via a callback
-mechanism.
-
-The following example illustrates basic usage:
-
-   tbar = gui.toolbar(viewport, {
-      x=0, y=0, xOffset=0,
-      createItems = function(Bar)
-         Bar.addItem(10, 'Rename', 'Rename', 'layout/interface_textbox', function()
-            print('rename')
-         end)
-         Bar.addItem(11, 'Delete', 'Delete', 'tools/eraser', function()
-            print('delete')
-         end)
-      end
-   })
-
-The first parameter is the hosting viewport for the ToolBar UI.  Valid options to use when creating the toolbar are
-as follows:
-
-  createItems: Required.  Defines the items that will be displayed in the toolbar.
-  orientation: Defaults to 'horizontal' (left to right item arrangement).  Set to 'vertical' for top to bottom.
-  x, y:        The x and y coordinates of the toolbar.
-  xOffset:     Optional x offset.  If not set then the toolbar width is calculated based on the number of items.
-  iconSize:    Optional.  The preferred size of the toolbar icons, in pixels.  This determines the overall size of the toolbar.
-  cellMargin:  The amount of whitespace at the four edges of each item, measured in pixels.
-
-The resulting object consists of the following accessible fields:
-
-  viewport: The viewport that hosts the toolbar's UI.
-
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
@@ -38,8 +7,6 @@ The resulting object consists of the following accessible fields:
    require 'gui/tooltip'
    require 'translate'
    include 'vector'
-
-   if (not mFont) then mFont = mod.load('font') end
 
 local lColours = {
    hover       = 'rgb(0,0,0,32)',
@@ -60,7 +27,7 @@ local function counter()
    return lCounter
 end
 
-gui.toolbar = function(HostVP, Options)
+gui.toolbar = function(Options)
    local self = { -- Public variables
       host = nil,
       viewport   = nil,  -- The main viewport for the toolbar
@@ -69,13 +36,13 @@ gui.toolbar = function(HostVP, Options)
       _cellMargin = nz(Options.cellMargin, 6),
       _disabled = false,
       _lookup = { },
-      _iconSize = nz(Options.iconSize, 20),
+      _iconSize = nz(Options.iconSize, gui.interface.iconSize),
       _hasFocus = false
    }
 
    local function sendFeedback()
       if self._current and self._current.callback then
-         self._current.callback(self._current.id, self._current.name)
+         self._current.callback(self, self._current)
       end
    end
 
@@ -172,7 +139,7 @@ gui.toolbar = function(HostVP, Options)
       if self.vg then self.vg.free() end
 
       if (self._groupCount > 0) then
-         self._groupClip = self.viewport.scene.new('VectorClip', { name='GroupMask', units='BoundingBox' })
+         self._groupClip = self.viewport.scene.new('VectorClip', { name='GroupMask', units='UserSpace' })
       end
 
       self.vg = self.viewport.new('VectorGroup', { name='ItemGroup' })
@@ -239,8 +206,8 @@ gui.toolbar = function(HostVP, Options)
             })
 
             if self._groupClip then
-               item.clip = self._groupClip.new('VectorRectangle', {
-                  name = 'groupclip', x = self.viewport.x + x, y = self.viewport.y + y, roundX = 4, roundY = 4, width = 1, height = 1
+               item.clip = self._groupClip.viewport.new('VectorRectangle', {
+                  name = 'groupclip', x = x, y = y, roundX = 4, roundY = 4, width = 1, height = 1
                })
             end
          elseif (item.type == TI_ICON) then
@@ -257,19 +224,22 @@ gui.toolbar = function(HostVP, Options)
                end
             elseif nz(item.displayName) then
                local gname = 'tbar_grd' .. counter()
-               item.svgGradient = gui.simpleGradient(self.viewport.scene, gname, { lColours.iconGradient.first, lColours.iconGradient.last }, 0, item.y, 0, item.height, 'userspace')
+               item.svgGradient = gui.simpleGradient(self.viewport.scene, gname,
+                  { lColours.iconGradient.first, lColours.iconGradient.last },
+                  0, item.y, 0, item.height, 'userspace')
 
                item.vectorText = self.vg.new('VectorText', {
                   x        = x + self._cellMargin,
-                  face     = 'Open Sans',
+                  face     = 'Noto Sans',
                   fontSize = self._iconSize * 0.75,
                   weight   = 500,
                   fill     = 'url(#' .. gname .. ')',
-                  string  = item.displayName
+                  string   = item.displayName
                })
 
-               item.width = mFont.StringWidth(item.vectorText.font, item.displayName, -1) + (self._cellMargin * 2)
-               item.vectorText.y = (self.viewport.height * 0.5) + (item.vectorText.font.height * 0.5)
+               local err, bx, by, bw, bh = item.vectorText.mtGetBoundary(0)
+               item.width = bw + (self._cellMargin * 2)
+               item.vectorText.y = (self.viewport.height * 0.5) + (item.vectorText.displaySize * 0.5)
 
                if self._disabled or item.disabled then
                   item.vectorText.opacity = 0.5
@@ -338,7 +308,7 @@ gui.toolbar = function(HostVP, Options)
 
       if Icon then
          pcall(function()
-            item.icon = gui.createIcon(self.viewport.scene, 'icons:' .. Icon .. '.svg', self._iconSize, lColours.iconGradient, Icon)
+            gui.createIcon(self.viewport.scene, 'icons:' .. Icon .. '.svg', self._iconSize, lColours.iconGradient, Icon)
             item.svgGroup = self.viewport.new('VectorRectangle', {
                fill = 'url(#' .. Icon .. ')',
                x=0, y=0, width=self._iconSize, height=self._iconSize
@@ -420,18 +390,6 @@ gui.toolbar = function(HostVP, Options)
       if (not found) then check(ERR_Search) end
    end
 
-   -- Remove an item from the toolbar.
-
-   self.removeItem = function(ID)
-      local item = self._lookup[ID]
-      self._lookup[ID] = nil
-      if item.prev then item.prev.next = item.next end
-      if item.next then item.next.prev = item.prev end
-      if (item == self._first)  then self._first  = item.next end
-      if (item == self._last)   then self._last   = item.prev end
-      if (item == self._current) then self._current = nil end
-   end
-
    local function tipTimer(Elapsed, CurrentTime)
       if self._current and nz(self._current.tip) then
          gui.tooltip({ text=self._current.tip })
@@ -478,9 +436,9 @@ gui.toolbar = function(HostVP, Options)
    local function inputFeedback(Viewport, Events) -- Internal input handler
       local ev = Events
       while ev do
-         if (ev.type == JET_ENTERED_SURFACE) then
+         if (ev.type == JET_CROSSED_IN) then
 
-         elseif (ev.type == JET_LEFT_SURFACE) then
+         elseif (ev.type == JET_CROSSED_OUT) then
             resetTipTimer()
             if self._current then
                hoverUpdate(nil)
@@ -541,15 +499,15 @@ gui.toolbar = function(HostVP, Options)
 
    -- Main entry point
 
-   if (not HostVP) then error('A host viewport is required.') end
+   if (not Options.target) then error('A target viewport is required.') end
 
    if Options.groupMargin then
       self._groupMargin = Options.groupMargin
       if self._groupMargin < 1 then self._groupMargin = 1 end
    end
 
-   self.host = HostVP
-   self.viewport = HostVP.new('VectorViewport')
+   self.host = Options.target
+   self.viewport = Options.target.new('VectorViewport')
    self.viewport.x = nz(Options.x, 0)
    self.viewport.y = nz(Options.y, 0)
 
@@ -562,7 +520,7 @@ gui.toolbar = function(HostVP, Options)
    if Options.xOffset then
       self.viewport.xOffset = Options.xOffset
    else
-      self.viewport.width = HostVP.width - self.viewport.x
+      self.viewport.width = Options.target.width - self.viewport.x
       self._arrangedWidth = true
    end
 
@@ -622,7 +580,7 @@ gui.toolbar = function(HostVP, Options)
       end
    end)
 
-   self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), inputFeedback)
+   self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_CROSSING), inputFeedback)
 
    local fill = 'rgb(0,0,0,128)'
    if (Options.theme != 'light') then

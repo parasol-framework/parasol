@@ -105,7 +105,6 @@ void CloseCore(void)
    if ((glCurrentTask) or (glProcessID)) remove_process_waitlocks();
 
    if (!glCrashStatus) { // This code is only safe to execute if the process hasn't crashed.
-      if (glLocale) { FreeResource(glLocale); glLocale = NULL; } // Allocated by StrReadLocale()
       if (glTime) { FreeResource(glTime); glTime = NULL; }
 
       // Removing objects that are tracked to the task before the first expunge will make for a cleaner exit.
@@ -143,6 +142,7 @@ void CloseCore(void)
          pf::Log log("Shutdown");
          log.branch("Freeing the task object and its resources.");
          FreeResource(glCurrentTask);
+         glCurrentTask = NULL;
       }
 
       // Remove locks on any private objects that have not been unlocked yet
@@ -150,7 +150,7 @@ void CloseCore(void)
       for (const auto & [ id, mem ] : glPrivateMemory) {
          if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (mem.AccessCount > 0)) {
             if (auto obj = mem.Object) {
-               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->OwnerID, mem.AccessCount);
+               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->Owner ? obj->Owner->UID : 0, mem.AccessCount);
                for (auto count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
             }
          }
@@ -166,8 +166,6 @@ void CloseCore(void)
          free_file_cache();
 
          if (glInotify != -1) { close(glInotify); glInotify = -1; }
-
-         free_iconv();
       }
 
       Expunge(true); // Third and final expunge.  Forcibly unloads modules.
@@ -296,7 +294,7 @@ __export void Expunge(WORD Force)
                if (mem IS glPrivateMemory.end()) continue;
 
                auto mc = (extMetaClass *)mem->second.Address;
-               if ((mc) and (mc->Class->ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
+               if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
                   log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->ClassName, mc->OpenCount);
                   class_in_use = true;
                }
@@ -306,9 +304,9 @@ __export void Expunge(WORD Force)
                if (mod_master->Expunge) {
                   pf::Log log(__FUNCTION__);
                   log.branch("Sending expunge request to the %s module #%d.", mod_master->Name, mod_master->UID);
-                  if (!mod_master->Expunge()) {
+                  if (mod_master->Expunge() IS ERR::Okay) {
                      ccount++;
-                     if (FreeResource(mod_master)) {
+                     if (FreeResource(mod_master) != ERR::Okay) {
                         log.warning("RootModule data is corrupt");
                         mod_count = ccount; // Break the loop because the chain links are broken.
                         break;
@@ -318,7 +316,7 @@ __export void Expunge(WORD Force)
                }
                else {
                   ccount++;
-                  if (FreeResource(mod_master)) {
+                  if (FreeResource(mod_master) != ERR::Okay) {
                      log.warning("RootModule data is corrupt");
                      mod_count = ccount; // Break the loop because the chain links are broken.
                      break;
@@ -357,7 +355,7 @@ __export void Expunge(WORD Force)
                   if (mem IS glPrivateMemory.end()) continue;
 
                   auto mc = (extMetaClass *)mem->second.Address;
-                  if ((mc) and (mc->Class->ClassID IS ID_METACLASS) and (mc->OpenCount > 0)) {
+                  if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
                      log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
                   }
                }
@@ -415,7 +413,7 @@ static void free_private_memory(void)
       if (mem.Address) {
          if (!glCrashStatus) {
             if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
-               log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, mem.Object->Class->ClassID, mem.OwnerID);
+               log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, ULONG(mem.Object->classID()), mem.OwnerID);
             }
             else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
          }

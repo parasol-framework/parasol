@@ -1,57 +1,5 @@
 --[[
-The FileView API enhances any View object to create a file system browser.  The following example illustrates basic
-usage:
-
-   gui.fileview(view, {
-      showParent = true,
-      showHidden = true,
-      autoMode   = 'open',
-      pathChanged = function(FileView, Path)
-      end,
-      fileSelected = function(FileView)
-      end
-   })
-
-The first parameter is the target surface for the MenuBar graphic.  Valid options to use when creating the menubar are
-as follows:
-
-   noExtensions: If true, file extensions are not displayed when this option is active.
-   sysKeys:      If true, system key monitoring and relevant default behaviours are active when this option is enabled.  Cut, Copy, Paste and Select-All key combinations are provided to the user in this mode.
-   noFiles:      If true, do not display files in the file list.
-   showParent:   If true, the file view will display an item in the file list that reverts to the parent folder when activated.
-   showHidden:   If true, show hidden files.
-   showSystem:   If true, show system files.
-   showDocs:     If true, show document views.
-   filter:       Show only the files that match this wildcard filter, e.g. '*.csv'.
-   limitPath:    Limit browsing to this folder and its sub-folders.
-   autoMode:     Automatically perform 'open', 'edit' or 'view' if a folder or file is activated by the user.
-   pathChanged:  Callback for changes to the path.  The path string is passed in the second parameter.
-   fileSelected: Callback for the user selecting a file.
-
-Available methods:
-
-   browse(p)        Browse the folder at (p).
-   byteSize()       Returns the size of the browsed storage device.
-   bytesFree()      Returns the amount of free space on the browsed storage device.
-   bytesUsed()      Returns the amount of used space on the browsed storage device.
-   copyFiles()      Apply all selected items to the clipboard with a copy operation.
-   copyFilesTo(p)   Copy all selected items to the path at (p).
-   createFolder()   Prompt the user to create a new folder.
-   createShortcut() Prompt the user to create a shortcut.
-   cutFiles()       Apply all selected items to the clipboard with a cut operation.
-   deleteFiles()    Prompt the user and delete all selected items.
-   editFiles()      Run the default edit command for all currently selected files.
-   filter(w)        Apply a wildcard filter to limit the display to matching file names.
-   moveFilesTo(p)   Move all selected items to the destination path at (p).
-   openFiles()      Run the default open command for all currently selected files.
-   parentFolder()   Browse the parent folder of the current path.
-   pasteFiles()     Paste files from the clipboard to the current path.
-   refresh()        Force a refresh of the view.
-   renameFile()     Prompt the user to rename the selected item.
-   selectionPath()  Returns the complete, fully-qualified path of the most recently selected item.
-   selection()      Returns the name of the currently selected item, as it appears to the user.
-   selectionFile()  Returns the currently selected file or folder (fully-qualified).
-   viewFiles()      Run the default view command for all currently selected files.
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
@@ -468,7 +416,7 @@ local function createFileItem(self, Info)
    elseif bit.band(Info.Flags, RDF_FILE) != 0 then
       if lNoFiles then return end
 
-      if not lFilter or (mSys.StrCompare(lFilter, Info.name, 0, STR_WILDCARD) == ERR_Okay) then
+      if not lFilter or (string.find(Info.name, lFilter) != nil) then
          local filename
          if lNoExtensions then
             filename = Info.name:gsub('^(.-)%.[^:/\\]+$', '%1')
@@ -789,8 +737,8 @@ gui.fileview = function(View, Options)
          self.path = nil
       end
 
-      if self.limitPath then
-         if mSys.StrCompare(self.limitPath, self.path, self.limitPath:len(), 0) != ERR_Okay then
+      if self.limitPath then -- Limit browsing to the limitPath folder and its sub-folders.
+         if not self.path or (self.path:sub(1, self.limitPath:len()) != self.limitPath) then
             self.path = self.limitPath
          end
       end
@@ -1017,7 +965,7 @@ gui.fileview = function(View, Options)
       openFiles(self.view.selectedItems, 'Edit')
    end
 
-   -- Apply a file filter using wildcards.  E.g. '*.fluid', '*.*', '???.fluid'
+   -- Apply a file filter using wildcards.  E.g. '.*%.fluid$'
 
    self.filter = function(Filter)
       lFilter = Filter

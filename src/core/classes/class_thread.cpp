@@ -11,20 +11,19 @@ Thread: Threads are created and managed by the Thread class.
 The Thread class provides the means to execute and manage threads within an application.
 
 The following code illustrates how to create a temporary thread that is automatically destroyed after the
-thread_entry() function has completed:
+`thread_entry()` function has completed:
 
 <pre>
-static ERROR thread_entry(objThread *Thread) {
-   return ERR_Okay;
+static ERR thread_entry(objThread *Thread) {
+   return ERR::Okay;
 }
 
 objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
 if (thread.ok()) thread->activate(thread);
-
 </pre>
 
-To initialise the thread with data, call #SetData() prior to execution and read the #Data field from
-within the thread routine.
+To initialise the thread with data, call #SetData() prior to execution and read the #Data field from within the 
+thread routine.
 
 -END-
 
@@ -90,7 +89,7 @@ LONG get_thread_id(void)
 //********************************************************************************************************************
 // Retrieve a thread object from the thread pool.
 
-ERROR threadpool_get(extThread **Result)
+ERR threadpool_get(extThread **Result)
 {
    pf::Log log;
 
@@ -103,7 +102,7 @@ ERROR threadpool_get(extThread **Result)
             at.InUse = true;
             *Result = at.Thread;
             glmThreadPool.unlock();
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
 
@@ -117,9 +116,9 @@ ERROR threadpool_get(extThread **Result)
       }
       *Result = thread;
       glmThreadPool.unlock();
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_CreateObject);
+   else return log.warning(ERR::CreateObject);
 }
 
 //********************************************************************************************************************
@@ -164,38 +163,35 @@ void remove_threadpool(void)
 // Called whenever a MSGID_THREAD_ACTION message is caught by ProcessMessages().  See thread_action() in lib_actions.c
 // for usage.
 
-ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    auto msg = (ThreadActionMessage *)Message;
-   if (!msg) return ERR_Okay;
+   if (!msg) return ERR::Okay;
 
-   if (msg->Callback.Type IS CALL_STDC) {
-      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERROR, LONG))msg->Callback.StdC.Routine;
-      routine(msg->ActionID, msg->Object, msg->Error, msg->Key);
+   if (msg->Callback.isC()) {
+      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, LONG, APTR))msg->Callback.Routine;
+      routine(msg->ActionID, msg->Object, msg->Error, msg->Key, msg->Callback.Meta);
    }
-   else if (msg->Callback.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = msg->Callback.Script.Script)) {
-         if (!LockObject(script, 5000)) {
-            const ScriptArg args[] = {
-               { "ActionID", FD_LONG,      { .Long = msg->ActionID } },
-               { "Object",   FD_OBJECTPTR, { .Address = msg->Object } },
-               { "Error",    FD_LONG,      { .Long = msg->Error } },
-               { "Key",      FD_LONG,      { .Long = msg->Key } }
-            };
-            scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-            ReleaseObject(script);
-         }
+   else if (msg->Callback.isScript()) {
+      auto script = msg->Callback.Context;
+      if (LockObject(script, 5000) IS ERR::Okay) {
+         sc::Call(msg->Callback, std::to_array<ScriptArg>({
+            { "ActionID", msg->ActionID },
+            { "Object",   msg->Object, FD_OBJECTPTR },
+            { "Error",    LONG(msg->Error) },
+            { "Key",      msg->Key }
+         }));
+         ReleaseObject(script);
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Called whenever a MSGID_THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
 
-ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    pf::Log log;
 
@@ -204,18 +200,13 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
 
    log.branch("Executing completion callback for thread #%d", uid);
 
-   if (msg->Callback.Type IS CALL_STDC) {
-      auto callback = (void (*)(OBJECTID))msg->Callback.StdC.Routine;
-      callback(uid);
+   if (msg->Callback.isC()) {
+      auto callback = (void (*)(OBJECTID, APTR))msg->Callback.Routine;
+      callback(uid, msg->Callback.Meta);
    }
-   else if (msg->Callback.Type IS CALL_SCRIPT) {
-      if (auto script = msg->Callback.Script.Script) {
-         if (!LockObject(script, 5000)) {
-            const ScriptArg args[] = { { "Thread", FD_OBJECTID, { .Long = uid } } };
-            scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-            ReleaseObject(script);
-         }
-      }
+   else if (msg->Callback.isScript()) {
+      ScopedObjectLock<objScript> script(msg->Callback.Context, 5000);
+      if (script.granted()) sc::Call(msg->Callback, std::to_array<ScriptArg>({ { "Thread", uid, FD_OBJECTID } }));
    }
 
    // NB: Assume 'msg' is unstable after this point because the callback may have modified the message table.
@@ -230,9 +221,9 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
       }
       else acSignal(*thread); // Convenience for the client
    }
-   else log.warning(ERR_AccessObject);
+   else log.warning(ERR::AccessObject);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -267,15 +258,14 @@ static void * thread_entry(extThread *Self)
       // Replace the default dummy context with one that pertains to the thread
       ObjectContext thread_ctx(Self, 0);
 
-      if (Self->Routine.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extThread *))Self->Routine.StdC.Routine;
-         Self->Error = routine(Self);
+      if (Self->Routine.isC()) {
+         auto routine = (ERR (*)(extThread *, APTR))Self->Routine.Routine;
+         Self->Error = routine(Self, Self->Routine.Meta);
       }
-      else if (Self->Routine.Type IS CALL_SCRIPT) {
-         ScopedObjectLock<objScript> script(Self->Routine.Script.Script, 5000);
+      else if (Self->Routine.isScript()) {
+         ScopedObjectLock<objScript> script(Self->Routine.Context, 5000);
          if (script.granted()) {
-            const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
-            scCallback(*script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+            sc::Call(Self->Routine, std::to_array<ScriptArg>({ { "Thread", Self, FD_OBJECTPTR } }));
          }
       }
    }
@@ -317,16 +307,16 @@ Activate: Spawn a new thread that calls the function referenced in the #Routine 
 -END-
 *********************************************************************************************************************/
 
-static ERROR THREAD_Activate(extThread *Self, APTR Void)
+static ERR THREAD_Activate(extThread *Self)
 {
    pf::Log log;
 
-   if (Self->Active) return ERR_ThreadAlreadyActive;
+   if (Self->Active) return ERR::ThreadAlreadyActive;
 
    // Thread objects MUST be locked prior to activation.  There is otherwise a genuine risk that the object
    // could be terminated by code operating outside of the thread space while it is active.
 
-   if (Self->Queue.load() < 1) return log.warning(ERR_ThreadNotLocked);
+   if (Self->Queue.load() < 1) return log.warning(ERR::ThreadNotLocked);
 
    Self->Active = true; // Indicate that the thread is running
 
@@ -338,7 +328,7 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
    //pthread_attr_setstacksize(&attr, Self->StackSize);
    if (!pthread_create(&Self->PThread, &attr, (APTR (*)(APTR))&thread_entry, Self)) {
       pthread_attr_destroy(&attr);
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       char errstr[80];
@@ -346,17 +336,17 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
       log.warning("pthread_create() failed with error: %s.", errstr);
       pthread_attr_destroy(&attr);
       Self->Active = false;
-      return log.warning(ERR_SystemCall);
+      return log.warning(ERR::SystemCall);
    }
 
 #elif _WIN32
 
    if ((Self->Handle = winCreateThread((APTR)&thread_entry, Self, Self->StackSize, &Self->ThreadID))) {
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       Self->Active = false;
-      return log.warning(ERR_SystemCall);
+      return log.warning(ERR::SystemCall);
    }
 
 #else
@@ -373,11 +363,11 @@ could result in an unstable application.
 -END-
 *********************************************************************************************************************/
 
-static ERROR THREAD_Deactivate(extThread *Self, APTR Void)
+static ERR THREAD_Deactivate(extThread *Self)
 {
    if (Self->Active) {
       #ifdef __ANDROID__
-         return ERR_NoSupport;
+         return ERR::NoSupport;
       #elif __unix__
          pthread_cancel(Self->PThread);
       #elif _WIN32
@@ -389,7 +379,7 @@ static ERROR THREAD_Deactivate(extThread *Self, APTR Void)
       Self->Active = false;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -401,7 +391,7 @@ an active thread is made then it will be marked for termination so as to avoid t
 -END-
 *********************************************************************************************************************/
 
-static ERROR THREAD_Free(extThread *Self, APTR Void)
+static ERR THREAD_Free(extThread *Self)
 {
    if ((Self->Data) and (Self->DataSize > 0)) {
       FreeResource(Self->Data);
@@ -418,37 +408,37 @@ static ERROR THREAD_Free(extThread *Self, APTR Void)
    #endif
 
    Self->~extThread();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
+static ERR THREAD_FreeWarning(extThread *Self)
 {
-   if (!Self->Active) return ERR_Okay;
+   if (!Self->Active) return ERR::Okay;
    else {
       pf::Log log;
-      log.debug("Thread is still running, marking for auto termination.");
+      log.detail("Thread is still running, marking for auto termination.");
       Self->Flags |= THF::AUTO_FREE;
-      return ERR_InUse;
+      return ERR::InUse;
    }
 }
 
 //********************************************************************************************************************
 
-static ERROR THREAD_Init(extThread *Self, APTR Void)
+static ERR THREAD_Init(extThread *Self)
 {
    pf::Log log;
 
    if (Self->StackSize < 1024) Self->StackSize = 1024;
-   else if (Self->StackSize > 1024 * 1024) return log.warning(ERR_OutOfRange);
+   else if (Self->StackSize > 1024 * 1024) return log.warning(ERR::OutOfRange);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR THREAD_NewObject(extThread *Self, APTR Void)
+static ERR THREAD_NewObject(extThread *Self)
 {
    new (Self) extThread;
    Self->StackSize = 16384;
@@ -456,7 +446,7 @@ static ERROR THREAD_NewObject(extThread *Self, APTR Void)
       Self->Msgs[0] = -1;
       Self->Msgs[1] = -1;
    #endif
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -464,7 +454,7 @@ static ERROR THREAD_NewObject(extThread *Self, APTR Void)
 -METHOD-
 SetData: Attaches data to the thread.
 
-Use the SetData method prior to activating a thread so that it can be initialised with user data.  The thread will be
+Use the SetData() method prior to activating a thread so that it can be initialised with user data.  The thread will be
 able to read the data from the #Data field.
 
 A copy of the provided data buffer will be stored with the thread object, so there is no need to retain the original
@@ -484,12 +474,12 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
+static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Data)) return log.warning(ERR_NullArgs);
-   if (Args->Size < 0) return log.warning(ERR_Args);
+   if ((!Args) or (!Args->Data)) return log.warning(ERR::NullArgs);
+   if (Args->Size < 0) return log.warning(ERR::Args);
 
    if (Self->Data) {
       FreeResource(Self->Data);
@@ -499,14 +489,14 @@ static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
 
    if (!Args->Size) { // If no size is provided, we simply copy the provided pointer.
       Self->Data = Args->Data;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else if (!AllocMemory(Args->Size, MEM::DATA, &Self->Data, NULL)) {
+   else if (AllocMemory(Args->Size, MEM::DATA, &Self->Data, NULL) IS ERR::Okay) {
       Self->DataSize = Args->Size;
       CopyMemory(Args->Data, Self->Data, Args->Size);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_AllocMemory);
+   else return log.warning(ERR::AllocMemory);
 }
 
 /*********************************************************************************************************************
@@ -517,24 +507,24 @@ Callback: A function reference that will be called when the thread is started.
 Set a function reference here to receive a notification when the thread finishes processing.  The
 callback will be executed in the context of the main program loop to minimise resource locking issues.
 
-The synopsis for the callback routine is `void Callback(objThread *Thread)`.
+The prototype for the callback routine is `void Callback(objThread *Thread)`.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Callback(extThread *Self, FUNCTION **Value)
+static ERR GET_Callback(extThread *Self, FUNCTION **Value)
 {
-   if (Self->Callback.Type != CALL_NONE) {
+   if (Self->Callback.defined()) {
       *Value = &Self->Callback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_Callback(extThread *Self, FUNCTION *Value)
+static ERR SET_Callback(extThread *Self, FUNCTION *Value)
 {
    if (Value) Self->Callback = *Value;
-   else Self->Callback.Type = CALL_NONE;
-   return ERR_Okay;
+   else Self->Callback.clear();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -547,11 +537,11 @@ the thread object.  It is paired with the #DataSize field, which reflects the si
 
 *********************************************************************************************************************/
 
-static ERROR GET_Data(extThread *Self, APTR *Value, LONG *Elements)
+static ERR GET_Data(extThread *Self, APTR *Value, LONG *Elements)
 {
    *Value = Self->Data;
    *Elements = Self->DataSize;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -569,28 +559,28 @@ Lookup: THF
 -FIELD-
 Routine: A function reference that will be called when the thread is started.
 
-The routine that will be executed when the thread is activated must be specified here.  The function synopsis is
-`ERROR routine(objThread *Thread)`.
+The routine that will be executed when the thread is activated must be specified here.  The function prototype is
+`ERR routine(objThread *Thread)`.
 
 When the routine is called, a reference to the thread object is passed as a parameter.  Once the routine has
 finished processing, the resulting error code will be stored in the thread object's #Error field.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Routine(extThread *Self, FUNCTION **Value)
+static ERR GET_Routine(extThread *Self, FUNCTION **Value)
 {
-   if (Self->Routine.Type != CALL_NONE) {
+   if (Self->Routine.defined()) {
       *Value = &Self->Routine;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_Routine(extThread *Self, FUNCTION *Value)
+static ERR SET_Routine(extThread *Self, FUNCTION *Value)
 {
    if (Value) Self->Routine = *Value;
-   else Self->Routine.Type = CALL_NONE;
-   return ERR_Okay;
+   else Self->Routine.clear();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -620,7 +610,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERROR add_thread_class(void)
+extern "C" ERR add_thread_class(void)
 {
    glThreadClass = objMetaClass::create::global(
       fl::ClassVersion(VER_THREAD),
@@ -632,5 +622,5 @@ extern "C" ERROR add_thread_class(void)
       fl::Size(sizeof(extThread)),
       fl::Path("modules:core"));
 
-   return glThreadClass ? ERR_Okay : ERR_AddClass;
+   return glThreadClass ? ERR::Okay : ERR::AddClass;
 }

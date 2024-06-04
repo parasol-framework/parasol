@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <g id="test-body-content" font-family="SVGFreeSansASCII,sans-serif" font-size="18">
+    <text font-size="35" fill="red" x="20" y="120" rotate="5,15,25,35,-10,-20,-30,-40,-40,-40,-40,-40,-40,-40,-40,-40,-40,-40,-40,70,60,50,40,30,20,-40,-40,-40,-40,-40,-40,-40,-40,-40,-40,-40,-40,55,-10,-10,-10,-10,-10,-10,-10,-10,-10,55,55,55,55,55,55,55,55,55">
+      Not all characters in the
+      <tspan x="20" y="180">text have a specified rotation</tspan>
+    </text>
+
+    <text font-size="35" fill="green" x="20" y="120" rotate="5,15,25,35,45,55" stroke="green" stroke-width="0.5">
+      Not
+
+      <tspan id="child1" rotate="-10,-20,-30,-40">
+        all characters
+
+        <tspan id="child2" rotate="70,60,50,40,30,20,10">
+          in
+
+          <tspan id="child3">
+            the
+          </tspan>
+        </tspan>
+
+        <tspan x="20" y="180" id="child4">
+          text
+        </tspan>
+
+        have a
+      </tspan>
+
+      <tspan id="child5" rotate="-10">
+        specified
+      </tspan>
+
+      rotation
+    </text>
+
+    <text id="rotation_values" font-size="8" xml:space="preserve">
+      <tspan x="30" y="135">
+5      15   25
+      </tspan>
+      <tspan x="80" y="130">
+-10  -20 -30
+      </tspan>
+      <tspan x="125" y="130">
+ -40  -40  -40  -40  -40   -40 -40 -40  -40  -40
+      </tspan>
+      <tspan x="295" y="145">
+70   60
+      </tspan>
+      <tspan x="340" y="140">
+40   30    20
+      </tspan>
+      <tspan x="15" y="190">
+-40 -40  -40  -40    -40  -40   -40   -40       -40
+      </tspan>
+      <tspan x="190" y="200">
+   -10   -10    -10   -10 -10   -10 -10    -10
+      </tspan>
+      <tspan x="275" y="190">
+-10
+      </tspan>
+      <tspan x="340" y="210">
+  55    55  55  55   55 55  55   55
+      </tspan>
+    </text>
+  </g>
+</svg>

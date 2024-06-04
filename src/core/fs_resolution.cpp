@@ -23,17 +23,17 @@ checking the validity of each possible location.  For instance, if resolving a p
 and the `user:` volume refers to both `system:users/joebloggs/` and `system:users/default/`, the routine will check
 both directories for the existence of the `document.txt` file to determine the correct location.  While helpful, this
 can cause problems if the intent is to create a new file.  To circumvent this feature, use the `RSF::NO_FILE_CHECK`
-setting in the Flags parameter.
+setting in the `Flags` parameter.
 
 When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be
 treated as an approximation (i.e. file extensions can be ignored) then use the `RSF::APPROXIMATE` flag to tell the
 function to ignore extensions for the purpose of file name matching.
 
-To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the PATH environment
-variable to resolve the file name specified in the Path parameter.
+To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the `PATH` environment
+variable to resolve the file name specified in the `Path` parameter.
 
-The resolved path will be returned in the Result parameter as an allocated memory block.  It must be removed once it is
-no longer required with FreeResource().
+The resolved path will be returned in the `Result` parameter as an allocated memory block.  It must be removed once it is
+no longer required with ~FreeResource().
 
 <types lookup="RSF"/>
 
@@ -43,26 +43,26 @@ virtual driver does not support this check.  This is common when working with ne
 -INPUT-
 cstr Path: The path to be resolved.
 int(RSF) Flags: Optional flags.
-!str Result: Must point to an empty STRING variable so that the resolved path can be stored.  If NULL, ResolvePath() will work as normal and return a valid error code without the result string.
+!str Result: Must point to an empty `STRING` variable so that the resolved path can be stored.  If `NULL`, ResolvePath() will work as normal and return a valid error code without the result string.
 
 -ERRORS-
-Okay:            The path was resolved.
-NullArgs:        Invalid arguments were specified.
-AllocMemory:     The result string could not be allocated.
+Okay:        The `Path` was resolved.
+NullArgs:    Invalid parameters were specified.
+AllocMemory: The result string could not be allocated.
 LockFailed:
-Search:          The given volume does not exist.
-FileNotFound:    The path was resolved, but the referenced file or folder does not exist (use NO_FILE_CHECK to avoid this error code).
-Loop:            The volume refers back to itself.
+Search:       The given volume does not exist.
+FileNotFound: The path was resolved, but the referenced file or folder does not exist (use `NO_FILE_CHECK` to avoid this error code).
+Loop:         The volume refers back to itself.
 
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR resolve(STRING, STRING, RSF);
-static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result);
+static ERR resolve(STRING, STRING, RSF);
+static ERR resolve_path_env(CSTRING RelativePath, STRING *Result);
 static THREADVAR bool tlClassLoaded;
 
-ERROR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
+ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
 {
    pf::Log log(__FUNCTION__);
    LONG i, loop;
@@ -71,7 +71,7 @@ ERROR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
 
    log.traceBranch("%s, Flags: $%.8x", Path, LONG(Flags));
 
-   if (!Path) return log.warning(ERR_NullArgs);
+   if (!Path) return log.warning(ERR::NullArgs);
 
    if (Result) *Result = NULL;
 
@@ -82,12 +82,12 @@ ERROR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
       Path++;
    }
 
-   if (!StrCompare("string:", Path, 7)) {
-      if ((*Result = StrClone(Path))) return ERR_Okay;
-      else return log.warning(ERR_AllocMemory);
+   if (startswith("string:", Path)) {
+      if ((*Result = StrClone(Path))) return ERR::Okay;
+      else return log.warning(ERR::AllocMemory);
    }
 
-   // Check if the Path argument contains a volume character.  If it does not, make a clone of the string and return it.
+   // Check if the Path parameter contains a volume character.  If it does not, make a clone of the string and return it.
 
    bool resolved = false;
 #ifdef _WIN32
@@ -113,7 +113,7 @@ ERROR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
    // (ideally with no leading folder references).
 
    if ((!resolved) and ((Flags & RSF::PATH) != RSF::NIL)) {
-      if (!resolve_path_env(Path, Result)) return ERR_Okay;
+      if (resolve_path_env(Path, Result) IS ERR::Okay) return ERR::Okay;
    }
 
    if (!resolved) {
@@ -124,48 +124,48 @@ ERROR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
    if (resolved) {
       if ((Flags & RSF::APPROXIMATE) != RSF::NIL) {
          StrCopy(Path, dest, sizeof(dest));
-         if (!test_path(dest, RSF::APPROXIMATE)) Path = dest;
-         else return ERR_FileNotFound;
+         if (test_path(dest, RSF::APPROXIMATE) IS ERR::Okay) Path = dest;
+         else return ERR::FileNotFound;
       }
       else if ((Flags & RSF::NO_FILE_CHECK) IS RSF::NIL) {
          StrCopy(Path, dest, sizeof(dest));
-         if (!test_path(dest, RSF::NIL)) Path = dest;
-         else return ERR_FileNotFound;
+         if (test_path(dest, RSF::NIL) IS ERR::Okay) Path = dest;
+         else return ERR::FileNotFound;
       }
 
-      if (!Result) return ERR_Okay;
-      else if ((*Result = cleaned_path(Path))) return ERR_Okay;
-      else if ((*Result = StrClone(Path))) return ERR_Okay;
-      else return log.warning(ERR_AllocMemory);
+      if (!Result) return ERR::Okay;
+      else if ((*Result = cleaned_path(Path))) return ERR::Okay;
+      else if ((*Result = StrClone(Path))) return ERR::Okay;
+      else return log.warning(ERR::AllocMemory);
    }
 
-   StrCopy(Path, src, sizeof(src)); // Copy the Path argument to our internal buffer
+   StrCopy(Path, src, sizeof(src)); // Copy the Path parameter to our internal buffer
 
    // Keep looping until the volume is resolved
 
    dest[0] = 0;
-   ERROR error = ERR_Failed;
+   ERR error = ERR::Failed;
    for (loop=10; loop > 0; loop--) {
       error = resolve(src, dest, Flags);
 
-      if (error IS ERR_VirtualVolume) {
+      if (error IS ERR::VirtualVolume) {
          log.trace("Detected virtual volume '%s'", dest);
 
-         // If RSF::CHECK_VIRTUAL is set, return ERR_VirtualVolume for reserved volume names.
+         // If RSF::CHECK_VIRTUAL is set, return ERR::VirtualVolume for reserved volume names.
 
-         if ((Flags & RSF::CHECK_VIRTUAL) IS RSF::NIL) error = ERR_Okay;
+         if ((Flags & RSF::CHECK_VIRTUAL) IS RSF::NIL) error = ERR::Okay;
 
          if (Result) {
             if ((Flags & RSF::APPROXIMATE) != RSF::NIL) { // Ensure that the resolved path is accurate
-               if (test_path(dest, RSF::APPROXIMATE)) error = ERR_FileNotFound;
+               if (test_path(dest, RSF::APPROXIMATE) != ERR::Okay) error = ERR::FileNotFound;
             }
 
-            if (!(*Result = StrClone(dest))) error = ERR_AllocMemory;
+            if (!(*Result = StrClone(dest))) error = ERR::AllocMemory;
          }
 
          break;
       }
-      else if (error) break;
+      else if (error != ERR::Okay) break;
       else {
          #ifdef _WIN32 // UNC network path check
             if (((dest[0] IS '\\') and (dest[1] IS '\\')) or ((dest[0] IS '/') and (dest[1] IS '/'))) {
@@ -184,7 +184,7 @@ ERROR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
          #endif
             // Copy the destination to the source buffer and repeat the resolution process.
 
-            if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) return ERR_Failed;
+            if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) return ERR::Failed;
             StrCopy(dest, src, sizeof(src));
             continue; // Keep resolving
          }
@@ -195,7 +195,7 @@ resolved_path:
 #endif
       if (Result) {
          if (!(*Result = cleaned_path(dest))) {
-            if (!(*Result = StrClone(dest))) error = ERR_AllocMemory;
+            if (!(*Result = StrClone(dest))) error = ERR::AllocMemory;
          }
       }
 
@@ -203,10 +203,10 @@ resolved_path:
    } // for()
 
    if (loop > 0) { // Note that loop starts at 10 and decrements to zero
-      if ((!error) and (!dest[0])) error = ERR_Failed;
+      if ((error IS ERR::Okay) and (!dest[0])) error = ERR::Failed;
       return error;
    }
-   else return ERR_Loop;
+   else return ERR::Loop;
 }
 
 //********************************************************************************************************************
@@ -214,7 +214,7 @@ resolved_path:
 
 #ifdef __unix__
 
-static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
+static ERR resolve_path_env(CSTRING RelativePath, STRING *Result)
 {
    pf::Log log("ResolvePath");
    struct stat64 info;
@@ -236,7 +236,7 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
          if (!stat64(src, &info)) {
             if (!S_ISDIR(info.st_mode)) { // Successfully identified file location
                if (Result) *Result = cleaned_path(src);
-               return ERR_Okay;
+               return ERR::Okay;
             }
          }
 
@@ -246,12 +246,12 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
    }
    else log.trace("Failed to read PATH environment variable.");
 
-   return ERR_NothingDone;
+   return ERR::NothingDone;
 }
 
 #elif _WIN32
 
-static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
+static ERR resolve_path_env(CSTRING RelativePath, STRING *Result)
 {
    pf::Log log("ResolvePath");
    struct stat64 info;
@@ -276,7 +276,7 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
          if (!stat64(src, &info)) {
             if (!S_ISDIR(info.st_mode)) { // Successfully identified file location
                if (Result) *Result = cleaned_path(src);
-               return ERR_Okay;
+               return ERR::Okay;
             }
          }
 
@@ -285,7 +285,7 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
    }
    else log.trace("Failed to read PATH environment variable.");
 
-   return ERR_NothingDone;
+   return ERR::NothingDone;
 }
 
 #endif
@@ -299,23 +299,23 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 ** Flags   - Optional RSF flags.
 */
 
-static ERROR resolve_object_path(STRING, STRING, STRING, LONG);
+static ERR resolve_object_path(STRING, STRING, STRING, LONG);
 
-static ERROR resolve(STRING Source, STRING Dest, RSF Flags)
+static ERR resolve(STRING Source, STRING Dest, RSF Flags)
 {
    pf::Log log("ResolvePath");
    char fullpath[MAX_FILENAME];
    char buffer[MAX_FILENAME];
    LONG j, k, pos, loop;
-   ERROR error;
+   ERR error;
 
    if (get_virtual(Source)) {
       StrCopy(Source, Dest);
-      return ERR_VirtualVolume;
+      return ERR::VirtualVolume;
    }
 
    for (pos=0; Source[pos] != ':'; pos++) {
-      if (!Source[pos]) return log.warning(ERR_InvalidData);
+      if (!Source[pos]) return log.warning(ERR::InvalidData);
    }
    pos++;
 
@@ -327,12 +327,12 @@ static ERROR resolve(STRING Source, STRING Dest, RSF Flags)
       }
       else fullpath[0] = 0;
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 
    if (!fullpath[0]) {
       log.msg("No matching volume for \"%s\".", Source);
       Source[pos-1] = ':'; // Put back the volume symbol
-      return ERR_Search;
+      return ERR::Search;
    }
 
    Source[pos-1] = ':'; // Restore the volume symbol
@@ -348,15 +348,15 @@ static ERROR resolve(STRING Source, STRING Dest, RSF Flags)
    // Check if the EXT: reference is used.  If so, respond by loading the module or class that handles the volume.
    // The loaded code should replace the volume with the correct information for discovery on the next resolution phase.
 
-   if (!StrCompare("EXT:", path, 4, STR::MATCH_CASE)) {
+   if (!strncmp("EXT:", path, 4)) {
       StrCopy(Source, Dest, MAX_FILENAME); // Return an exact duplicate of the original source string
 
       if (get_virtual(Source)) {
-         return ERR_VirtualVolume;
+         return ERR::VirtualVolume;
       }
 
       if (tlClassLoaded) { // Already attempted to load the module on a previous occasion - we must fail
-         return ERR_Failed;
+         return ERR::Failed;
       }
 
       // An external reference can refer to a module for auto-loading (preferred) or a class name.
@@ -365,7 +365,7 @@ static ERROR resolve(STRING Source, STRING Dest, RSF Flags)
       if (!mod.ok()) FindClass(ResolveClassName(path + 4));
 
       tlClassLoaded = true; // This setting will prevent recursion
-      return ERR_VirtualVolume;
+      return ERR::VirtualVolume;
    }
 
    while (*path) {
@@ -400,12 +400,12 @@ static ERROR resolve(STRING Source, STRING Dest, RSF Flags)
          for (j=0; (Dest[j]) and (Dest[j] != ':') and (Dest[j] != '/'); j++);
       #endif
 
-      error = -1;
+      error = ERR(-1);
       for (loop=10; loop > 0; loop--) {
          if ((Dest[j] IS ':') and (j > 1)) { // Remaining ':' indicates more path resolution is required.
             error = resolve(Dest, buffer, Flags);
 
-            if (!error) {
+            if (error IS ERR::Okay) {
                // Copy the result from buffer to Dest.
                for (j=0; buffer[j]; j++) Dest[j] = buffer[j];
                Dest[j] = 0;
@@ -420,21 +420,21 @@ static ERROR resolve(STRING Source, STRING Dest, RSF Flags)
 
       if (loop <= 0) {
          log.warning("Infinite loop on path '%s'", Dest);
-         return ERR_Loop;
+         return ERR::Loop;
       }
 
-      if (!error) return ERR_Okay;
+      if (error IS ERR::Okay) return ERR::Okay;
 
       // Return now if no file checking is to be performed
 
       if ((Flags & RSF::NO_FILE_CHECK) != RSF::NIL) {
          log.trace("No file check will be performed.");
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
-      if (!test_path(Dest, Flags)) {
+      if (test_path(Dest, Flags) IS ERR::Okay) {
          log.trace("File found, path resolved successfully.");
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       log.trace("File does not exist at %s", Dest);
@@ -448,28 +448,28 @@ static ERROR resolve(STRING Source, STRING Dest, RSF Flags)
    }
 
    log.trace("Resolved path but no matching file for %s\"%s\".", ((Flags & RSF::APPROXIMATE) != RSF::NIL) ? "~" : "", Source);
-   return ERR_FileNotFound;
+   return ERR::FileNotFound;
 }
 
 //********************************************************************************************************************
 // For cases such as ":SystemIcons", we find the referenced object and ask it to resolve the path for us.  (In effect,
 // the object will be used as a plugin for volume resolution).
 //
-// If the path is merely ":" or resolve_virtual() returns ERR_VirtualVolume, return the VirtualVolume error code to
+// If the path is merely ":" or resolve_virtual() returns ERR::VirtualVolume, return the VirtualVolume error code to
 // indicate that no further resolution is required.
 
-static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG PathSize)
+static ERR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG PathSize)
 {
    pf::Log log("ResolvePath");
-   ERROR (*resolve_virtual)(OBJECTPTR, STRING, STRING, LONG);
-   ERROR error = ERR_VirtualVolume;
+   ERR (*resolve_virtual)(OBJECTPTR, STRING, STRING, LONG);
+   ERR error = ERR::VirtualVolume;
 
    if (Path[0]) {
       OBJECTID volume_id;
-      if (!FindObject(Path, 0, FOF::NIL, &volume_id)) {
+      if (FindObject(Path, CLASSID::NIL, FOF::NIL, &volume_id) IS ERR::Okay) {
          OBJECTPTR object;
-         if (!AccessObject(volume_id, 5000, &object)) {
-            if ((!object->getPtr(FID_ResolvePath, &resolve_virtual)) and (resolve_virtual)) {
+         if (AccessObject(volume_id, 5000, &object) IS ERR::Okay) {
+            if ((object->getPtr(FID_ResolvePath, &resolve_virtual) IS ERR::Okay) and (resolve_virtual)) {
                error = resolve_virtual(object, Source, Dest, PathSize);
             }
             ReleaseObject(object);
@@ -477,10 +477,10 @@ static ERROR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG P
       }
    }
 
-   if (error IS ERR_VirtualVolume) { // Return an exact duplicate of the original source string
+   if (error IS ERR::VirtualVolume) { // Return an exact duplicate of the original source string
       StrCopy(Source, Dest);
-      return ERR_VirtualVolume;
+      return ERR::VirtualVolume;
    }
-   else if (error != ERR_Okay) return log.warning(error);
-   else return ERR_Okay;
+   else if (error != ERR::Okay) return log.warning(error);
+   else return ERR::Okay;
 }

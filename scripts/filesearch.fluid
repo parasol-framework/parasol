@@ -5,20 +5,19 @@ provided for both wildcard filters and content searching.
 This example searches for text files in the 'documents:' folder that include the word 'tennis':
 
    file.search("documents:", {
-      nameFilter    = "*.txt",
       nameWild      = true,
+      nameFilter    = "^.*%.xml$",
       contentFilter = "tennis",
       matchFeedback = function(Path, FileName, File)
          print(Path, " ", FileName)
       end
    })
 
-Valid options to use when creating the search object are as follows:
+Valid options to use when defining the search table are as follows:
 
   nameFilter:     Include file/folder names that match this filter.
   contentFilter:  Include files that contain this content.
-  nameWild:       Set to true to enable wildcard matching for file names, or 'lua' for Lua expression matching.
-  contentWild:    Set to true to enable wildcard matching for content, or 'lua' for LUa expression matching.
+  nameWild:       Set to true to enable wildcard matching for file names.
   caseSensitive:  All comparisons are case sensitive.
   matchFeedback:  Call this function each time that a matched file is discovered.  Returning ERR_Terminate will stop the search.  Synopsis: function(Path, File, Attributes)
   ignoreFeedback: Call this function each time that a file fails to pass filter matches.
@@ -28,7 +27,7 @@ Valid options to use when creating the search object are as follows:
   maxDate:        Filter out files with a modification time exceeding this timestamp.
   scanLinks:      Allows symbolically linked files and folders to be included in the file search.
   matchFolders:   Include matching folder names in the output of the search.
-  ignoreFiles:    Do not scan files (useful only in conjunction with MATCH_FOLDERS)."
+  ignoreFiles:    Do not scan files (useful only in conjunction with matchFolders).
 
 When searching files for content, it is strongly recommended that a filter or size limit is applied so that only a
 limited number of files are opened for searching.
@@ -137,11 +136,7 @@ file.search = function(Path, Options)
                cmpName = cmpName:lower()
             end
 
-            if (lOptions.nameWild == true) then
-               if (mSys.StrCompare(lOptions.nameFilter, cmpName, 0, STR_WILDCARD) != ERR_Okay) then
-                  match = false
-               end
-            elseif (lOptions.nameWild == 'lua') then
+            if lOptions.nameWild then
                if (string.find(cmpName, lOptions.nameFilter) == nil) then
                   match = false
                end

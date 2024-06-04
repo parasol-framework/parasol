@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      scintilla.h
-// Copyright: Paul Manias © 2005-2023
+// Copyright: Paul Manias © 2005-2024
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -86,83 +86,25 @@ DEFINE_ENUM_FLAG_OPERATORS(STF)
 
 // Scintilla methods
 
-#define MT_SciSetFont -1
-#define MT_SciReplaceText -2
-#define MT_SciDeleteLine -3
-#define MT_SciSelectRange -4
-#define MT_SciInsertText -5
-#define MT_SciGetLine -6
-#define MT_SciReplaceLine -7
-#define MT_SciGotoLine -8
-#define MT_SciTrimWhitespace -9
-#define MT_SciGetPos -10
-#define MT_SciReportEvent -11
+namespace sci {
+struct SetFont { CSTRING Face; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReplaceText { CSTRING Find; CSTRING Replace; STF Flags; LONG Start; LONG End; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DeleteLine { LONG Line; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectRange { LONG Start; LONG End; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertText { CSTRING String; LONG Pos; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetLine { LONG Line; STRING Buffer; LONG Length; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReplaceLine { LONG Line; CSTRING String; LONG Length; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GotoLine { LONG Line; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct TrimWhitespace { static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetPos { LONG Line; LONG Column; LONG Pos; static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReportEvent { static const ACTIONID id = -11; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ScrollToPoint { LONG X; LONG Y; static const ACTIONID id = -12; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
-struct sciSetFont { CSTRING Face;  };
-struct sciReplaceText { CSTRING Find; CSTRING Replace; STF Flags; LONG Start; LONG End;  };
-struct sciDeleteLine { LONG Line;  };
-struct sciSelectRange { LONG Start; LONG End;  };
-struct sciInsertText { CSTRING String; LONG Pos;  };
-struct sciGetLine { LONG Line; STRING Buffer; LONG Length;  };
-struct sciReplaceLine { LONG Line; CSTRING String; LONG Length;  };
-struct sciGotoLine { LONG Line;  };
-struct sciGetPos { LONG Line; LONG Column; LONG Pos;  };
+} // namespace
 
-INLINE ERROR sciSetFont(APTR Ob, CSTRING Face) {
-   struct sciSetFont args = { Face };
-   return(Action(MT_SciSetFont, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR sciReplaceText(APTR Ob, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End) {
-   struct sciReplaceText args = { Find, Replace, Flags, Start, End };
-   return(Action(MT_SciReplaceText, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR sciDeleteLine(APTR Ob, LONG Line) {
-   struct sciDeleteLine args = { Line };
-   return(Action(MT_SciDeleteLine, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR sciSelectRange(APTR Ob, LONG Start, LONG End) {
-   struct sciSelectRange args = { Start, End };
-   return(Action(MT_SciSelectRange, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR sciInsertText(APTR Ob, CSTRING String, LONG Pos) {
-   struct sciInsertText args = { String, Pos };
-   return(Action(MT_SciInsertText, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR sciGetLine(APTR Ob, LONG Line, STRING Buffer, LONG Length) {
-   struct sciGetLine args = { Line, Buffer, Length };
-   return(Action(MT_SciGetLine, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR sciReplaceLine(APTR Ob, LONG Line, CSTRING String, LONG Length) {
-   struct sciReplaceLine args = { Line, String, Length };
-   return(Action(MT_SciReplaceLine, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR sciGotoLine(APTR Ob, LONG Line) {
-   struct sciGotoLine args = { Line };
-   return(Action(MT_SciGotoLine, (OBJECTPTR)Ob, &args));
-}
-
-#define sciTrimWhitespace(obj) Action(MT_SciTrimWhitespace,(obj),0)
-
-INLINE ERROR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) {
-   struct sciGetPos args = { Line, Column, (LONG)0 };
-   ERROR error = Action(MT_SciGetPos, (OBJECTPTR)Ob, &args);
-   if (Pos) *Pos = args.Pos;
-   return(error);
-}
-
-#define sciReportEvent(obj) Action(MT_SciReportEvent,(obj),0)
-
-
-class objScintilla : public BaseClass {
+class objScintilla : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_SCINTILLA;
+   static constexpr CLASSID CLASS_ID = CLASSID::SCINTILLA;
    static constexpr CSTRING CLASS_NAME = "Scintilla";
 
    using create = pf::Create<objScintilla>;
@@ -170,10 +112,10 @@ class objScintilla : public BaseClass {
    objFont * Font;               // Refers to the font that is used for drawing text in the document.
    CSTRING   Path;               // Identifies the location of a text file to load.
    SEF       EventFlags;         // Specifies events that need to be reported from the Scintilla object.
-   OBJECTID  SurfaceID;          // Refers to the @Surface targeted by the Scintilla object.
+   OBJECTID  SurfaceID;          // Refers to the Surface targeted by the Scintilla object.
    SCIF      Flags;              // Optional flags.
    OBJECTID  FocusID;            // Defines the object that is monitored for user focus changes.
-   LONG      Visible;            // If TRUE, indicates the Scintilla object is visible in the target #Surface.
+   LONG      Visible;            // If TRUE, indicates the Scintilla object is visible in the target Surface.
    LONG      LeftMargin;         // The amount of white-space at the left side of the page.
    LONG      RightMargin;        // Defines the amount of white-space at the right side of the page.
    struct RGB8 LineHighlight;    // The colour to use when highlighting the line that contains the user's cursor.
@@ -189,217 +131,261 @@ class objScintilla : public BaseClass {
 
    // Action stubs
 
-   inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR clipboard(CLIPMODE Mode) {
+   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR clipboard(CLIPMODE Mode) noexcept {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
-   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }
-   inline ERROR enable() { return Action(AC_Enable, this, NULL); }
-   inline ERROR focus() { return Action(AC_Focus, this, NULL); }
-   inline ERROR hide() { return Action(AC_Hide, this, NULL); }
-   inline ERROR init() { return InitObject(this); }
-   inline ERROR redo(LONG Steps) {
+   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERR focus() noexcept { return Action(AC_Focus, this, NULL); }
+   inline ERR hide() noexcept { return Action(AC_Hide, this, NULL); }
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR redo(LONG Steps) noexcept {
       struct acRedo args = { Steps };
       return Action(AC_Redo, this, &args);
    }
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
-      struct acScrollToPoint args = { X, Y, Z, Flags };
-      return Action(AC_ScrollToPoint, this, &args);
-   }
-   inline ERROR show() { return Action(AC_Show, this, NULL); }
-   inline ERROR undo(LONG Steps) {
+   inline ERR show() noexcept { return Action(AC_Show, this, NULL); }
+   inline ERR undo(LONG Steps) noexcept {
       struct acUndo args = { Steps };
       return Action(AC_Undo, this, &args);
+   }
+   inline ERR setFont(CSTRING Face) noexcept {
+      struct sci::SetFont args = { Face };
+      return(Action(-1, this, &args));
+   }
+   inline ERR replaceText(CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End) noexcept {
+      struct sci::ReplaceText args = { Find, Replace, Flags, Start, End };
+      return(Action(-2, this, &args));
+   }
+   inline ERR deleteLine(LONG Line) noexcept {
+      struct sci::DeleteLine args = { Line };
+      return(Action(-3, this, &args));
+   }
+   inline ERR selectRange(LONG Start, LONG End) noexcept {
+      struct sci::SelectRange args = { Start, End };
+      return(Action(-4, this, &args));
+   }
+   inline ERR insertText(CSTRING String, LONG Pos) noexcept {
+      struct sci::InsertText args = { String, Pos };
+      return(Action(-5, this, &args));
+   }
+   inline ERR getLine(LONG Line, STRING Buffer, LONG Length) noexcept {
+      struct sci::GetLine args = { Line, Buffer, Length };
+      return(Action(-6, this, &args));
+   }
+   inline ERR replaceLine(LONG Line, CSTRING String, LONG Length) noexcept {
+      struct sci::ReplaceLine args = { Line, String, Length };
+      return(Action(-7, this, &args));
+   }
+   inline ERR gotoLine(LONG Line) noexcept {
+      struct sci::GotoLine args = { Line };
+      return(Action(-8, this, &args));
+   }
+   inline ERR trimWhitespace() noexcept {
+      return(Action(-9, this, NULL));
+   }
+   inline ERR getPos(LONG Line, LONG Column, LONG * Pos) noexcept {
+      struct sci::GetPos args = { Line, Column, (LONG)0 };
+      ERR error = Action(-10, this, &args);
+      if (Pos) *Pos = args.Pos;
+      return(error);
+   }
+   inline ERR reportEvent() noexcept {
+      return(Action(-11, this, NULL));
+   }
+   inline ERR scrollToPoint(LONG X, LONG Y) noexcept {
+      struct sci::ScrollToPoint args = { X, Y };
+      return(Action(-12, this, &args));
    }
 
    // Customised field setting
 
-   template <class T> inline ERROR setPath(T && Value) {
+   template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setEventFlags(const SEF Value) {
+   inline ERR setEventFlags(const SEF Value) noexcept {
       this->EventFlags = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setSurface(const OBJECTID Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setSurface(OBJECTID Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->SurfaceID = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setFlags(const SCIF Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setFlags(const SCIF Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Flags = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setFocus(const OBJECTID Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setFocus(OBJECTID Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->FocusID = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setVisible(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setVisible(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Visible = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setLeftMargin(const LONG Value) {
+   inline ERR setLeftMargin(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setRightMargin(const LONG Value) {
+   inline ERR setRightMargin(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setLineHighlight(const struct RGB8 * Value, LONG Elements) {
+   inline ERR setLineHighlight(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setSelectFore(const struct RGB8 * Value, LONG Elements) {
+   inline ERR setSelectFore(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x01081500, Value, Elements);
    }
 
-   inline ERROR setSelectBkgd(const struct RGB8 * Value, LONG Elements) {
+   inline ERR setSelectBkgd(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[33];
       return field->WriteValue(target, field, 0x01081500, Value, Elements);
    }
 
-   inline ERROR setBkgdColour(const struct RGB8 * Value, LONG Elements) {
+   inline ERR setBkgdColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setCursorColour(const struct RGB8 * Value, LONG Elements) {
+   inline ERR setCursorColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setTextColour(const struct RGB8 * Value, LONG Elements) {
+   inline ERR setTextColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setCursorRow(const LONG Value) {
+   inline ERR setCursorRow(const LONG Value) noexcept {
       this->CursorRow = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setCursorCol(const LONG Value) {
+   inline ERR setCursorCol(const LONG Value) noexcept {
       this->CursorCol = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR setLexer(const SCLEX Value) {
+   inline ERR setLexer(const SCLEX Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setModified(const LONG Value) {
+   inline ERR setModified(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setAllowTabs(const LONG Value) {
+   inline ERR setAllowTabs(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setAutoIndent(const LONG Value) {
+   inline ERR setAutoIndent(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFileDrop(FUNCTION Value) {
+   inline ERR setFileDrop(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setFoldingMarkers(const LONG Value) {
+   inline ERR setFoldingMarkers(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setLineNumbers(const LONG Value) {
+   inline ERR setLineNumbers(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   template <class T> inline ERROR setOrigin(T && Value) {
+   template <class T> inline ERR setOrigin(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setShowWhitespace(const LONG Value) {
+   inline ERR setShowWhitespace(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setEventCallback(FUNCTION Value) {
+   inline ERR setEventCallback(FUNCTION Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[35];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   template <class T> inline ERROR setString(T && Value) {
+   template <class T> inline ERR setString(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setSymbols(const LONG Value) {
+   inline ERR setSymbols(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setTabWidth(const LONG Value) {
+   inline ERR setTabWidth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setWordwrap(const LONG Value) {
+   inline ERR setWordwrap(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -413,39 +399,16 @@ class objScintilla : public BaseClass {
 
 // ScintillaSearch methods
 
-#define MT_SsNext -1
-#define MT_SsPrev -2
-#define MT_SsFind -3
+namespace ss {
+struct Next { LONG Pos; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Prev { LONG Pos; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Find { LONG Pos; STF Flags; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
-struct ssNext { LONG Pos;  };
-struct ssPrev { LONG Pos;  };
-struct ssFind { LONG Pos; STF Flags;  };
+} // namespace
 
-INLINE ERROR ssNext(APTR Ob, LONG * Pos) {
-   struct ssNext args = { (LONG)0 };
-   ERROR error = Action(MT_SsNext, (OBJECTPTR)Ob, &args);
-   if (Pos) *Pos = args.Pos;
-   return(error);
-}
-
-INLINE ERROR ssPrev(APTR Ob, LONG * Pos) {
-   struct ssPrev args = { (LONG)0 };
-   ERROR error = Action(MT_SsPrev, (OBJECTPTR)Ob, &args);
-   if (Pos) *Pos = args.Pos;
-   return(error);
-}
-
-INLINE ERROR ssFind(APTR Ob, LONG * Pos, STF Flags) {
-   struct ssFind args = { (LONG)0, Flags };
-   ERROR error = Action(MT_SsFind, (OBJECTPTR)Ob, &args);
-   if (Pos) *Pos = args.Pos;
-   return(error);
-}
-
-
-class objScintillaSearch : public BaseClass {
+class objScintillaSearch : public Object {
    public:
-   static constexpr CLASSID CLASS_ID = ID_SCINTILLASEARCH;
+   static constexpr CLASSID CLASS_ID = CLASSID::SCINTILLASEARCH;
    static constexpr CSTRING CLASS_NAME = "ScintillaSearch";
 
    using create = pf::Create<objScintillaSearch>;
@@ -455,24 +418,42 @@ class objScintillaSearch : public BaseClass {
    STF     Flags;               // Optional flags.
    LONG    Start;               // Start of the current/most recent selection
    LONG    End;                 // End of the current/most recent selection
+   inline ERR next(LONG * Pos) noexcept {
+      struct ss::Next args = { (LONG)0 };
+      ERR error = Action(-1, this, &args);
+      if (Pos) *Pos = args.Pos;
+      return(error);
+   }
+   inline ERR prev(LONG * Pos) noexcept {
+      struct ss::Prev args = { (LONG)0 };
+      ERR error = Action(-2, this, &args);
+      if (Pos) *Pos = args.Pos;
+      return(error);
+   }
+   inline ERR find(LONG * Pos, STF Flags) noexcept {
+      struct ss::Find args = { (LONG)0, Flags };
+      ERR error = Action(-3, this, &args);
+      if (Pos) *Pos = args.Pos;
+      return(error);
+   }
 
    // Customised field setting
 
-   inline ERROR setScintilla(objScintilla * Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
+   inline ERR setScintilla(objScintilla * Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
       this->Scintilla = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   template <class T> inline ERROR setText(T && Value) {
+   template <class T> inline ERR setText(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setFlags(const STF Value) {
+   inline ERR setFlags(const STF Value) noexcept {
       this->Flags = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
 };

@@ -31,6 +31,7 @@ For drag and drop operations, data can be requested from a source as follows:
 #include <parasol/main.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 #include <inttypes.h>
 
 extern "C" {
@@ -49,7 +50,7 @@ static void key_event(struct finput *, evKey *, LONG);
 
 //********************************************************************************************************************
 
-static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
+static ERR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -61,8 +62,8 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
    if (!list) {
       log.warning("Dangling input feed subscription %d", Handle);
-      gfxUnsubscribeInput(Handle);
-      return ERR_NotFound;
+      gfx::UnsubscribeInput(Handle);
+      return ERR::NotFound;
    }
 
    LONG branch = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
@@ -89,7 +90,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
    log.traceBranch("Collecting garbage.");
    lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -106,7 +107,7 @@ static int input_index(lua_State *Lua)
 
       log.trace("input.index(#%d, %s)", input->SurfaceID, field);
 
-      switch (StrHash(field, 0)) {
+      switch (strihash(field)) {
          case HASH_UNSUBSCRIBE:
             lua_pushvalue(Lua, 1); // Duplicate the interface reference
             lua_pushcclosure(Lua, input_unsubscribe, 1);
@@ -132,7 +133,7 @@ static int input_keyboard(lua_State *Lua)
    if ((obj = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) object_id = obj->UID;
    else object_id = lua_tointeger(Lua, 1);
 
-   if ((object_id) and (GetClassID(object_id) != ID_SURFACE)) luaL_argerror(Lua, 1, "Surface object required.");
+   if ((object_id) and (GetClassID(object_id) != CLASSID::SURFACE)) luaL_argerror(Lua, 1, "Surface object required.");
 
    LONG function_type = lua_type(Lua, 2);
    if ((function_type IS LUA_TFUNCTION) or (function_type IS LUA_TSTRING));
@@ -146,14 +147,11 @@ static int input_keyboard(lua_State *Lua)
    bool sub_keyevent = false;
    if (object_id) {
       if (!prv->FocusEventHandle) { // Monitor the focus state of the target surface with a global function.
-         auto callback = make_function_stdc(focus_event);
-         SubscribeEvent(EVID_GUI_SURFACE_FOCUS, &callback, Lua, &prv->FocusEventHandle);
+         SubscribeEvent(EVID_GUI_SURFACE_FOCUS, C_FUNCTION(focus_event), Lua, &prv->FocusEventHandle);
       }
 
-      objSurface *surface;
-      if (!AccessObject(object_id, 5000, &surface)) {
+      if (ScopedObjectLock<objSurface> surface(object_id, 5000); surface.granted()) {
          if (surface->hasFocus()) sub_keyevent = true;
-         ReleaseObject(surface);
       }
       else {
          luaL_error(Lua, "Failed to access surface #%d.", object_id);
@@ -168,10 +166,7 @@ static int input_keyboard(lua_State *Lua)
       lua_setmetatable(Lua, -2);
 
       APTR event = NULL;
-      if (sub_keyevent) {
-         auto callback = make_function_stdc(key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, input, &event);
-      }
+      if (sub_keyevent) SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), input, &event);
 
       input->InputHandle = 0;
       input->Script      = Lua->Script;
@@ -227,17 +222,17 @@ static int input_request_item(lua_State *Lua)
    DATA datatype;
    if (lua_isstring(Lua, 3)) {
       CSTRING dt = lua_tostring(Lua, 3);
-      if (!StrMatch("text", dt))              datatype = DATA::TEXT;
-      else if (!StrMatch("raw", dt))          datatype = DATA::RAW;
-      else if (!StrMatch("device_input", dt)) datatype = DATA::DEVICE_INPUT;
-      else if (!StrMatch("xml", dt))          datatype = DATA::XML;
-      else if (!StrMatch("audio", dt))        datatype = DATA::AUDIO;
-      else if (!StrMatch("record", dt))       datatype = DATA::RECORD;
-      else if (!StrMatch("image", dt))        datatype = DATA::IMAGE;
-      else if (!StrMatch("request", dt))      datatype = DATA::REQUEST;
-      else if (!StrMatch("receipt", dt))      datatype = DATA::RECEIPT;
-      else if (!StrMatch("file", dt))         datatype = DATA::FILE;
-      else if (!StrMatch("content", dt))      datatype = DATA::CONTENT;
+      if (pf::iequals("text", dt))              datatype = DATA::TEXT;
+      else if (pf::iequals("raw", dt))          datatype = DATA::RAW;
+      else if (pf::iequals("device_input", dt)) datatype = DATA::DEVICE_INPUT;
+      else if (pf::iequals("xml", dt))          datatype = DATA::XML;
+      else if (pf::iequals("audio", dt))        datatype = DATA::AUDIO;
+      else if (pf::iequals("record", dt))       datatype = DATA::RECORD;
+      else if (pf::iequals("image", dt))        datatype = DATA::IMAGE;
+      else if (pf::iequals("request", dt))      datatype = DATA::REQUEST;
+      else if (pf::iequals("receipt", dt))      datatype = DATA::RECEIPT;
+      else if (pf::iequals("file", dt))         datatype = DATA::FILE;
+      else if (pf::iequals("content", dt))      datatype = DATA::CONTENT;
       else {
          luaL_argerror(Lua, 3, "Unrecognised datatype");
          return 0;
@@ -261,24 +256,20 @@ static int input_request_item(lua_State *Lua)
       prv->Requests.emplace_back(source_id, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
 
-   struct dcRequest dcr;
-   dcr.Item          = item;
-   dcr.Preference[0] = UBYTE(datatype);
-   dcr.Preference[1] = 0;
-
-   struct acDataFeed dc = {
-      .Object   = Lua->Script,
-      .Datatype = DATA::REQUEST,
-      .Buffer   = &dcr,
-      .Size     = sizeof(dcr)
-   };
-
    {
       // The source will return a DATA::RECEIPT for the items that we've asked for (see the DataFeed action).
       pf::Log log("input.request_item");
       log.branch();
-      auto error = ActionMsg(AC_DataFeed, source_id, &dc);
-      if (error) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
+      pf::ScopedObjectLock src(source_id);
+      if (src.granted()) {
+         struct dcRequest dcr;
+         dcr.Item          = item;
+         dcr.Preference[0] = UBYTE(datatype);
+         dcr.Preference[1] = 0;
+
+         auto error = acDataFeed(*src, Lua->Script, DATA::REQUEST, &dcr, sizeof(dcr));
+         if (error != ERR::Okay) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
+      }
    }
 
    return 0;
@@ -287,7 +278,7 @@ static int input_request_item(lua_State *Lua)
 //********************************************************************************************************************
 // Usage: input = input.subscribe(MaskFlags (JTYPE), SurfaceFilter (Optional), DeviceFilter (Optional), Function)
 //
-// This functionality is a wrapper for the gfxSubscribeInput() function.
+// This functionality is a wrapper for the gfx::SubscribeInput() function.
 
 static int input_subscribe(lua_State *Lua)
 {
@@ -310,10 +301,10 @@ static int input_subscribe(lua_State *Lua)
       return 0;
    }
 
-   ERROR error;
+   ERR error;
    if (!modDisplay) {
       pf::SwitchContext context(modFluid);
-      if ((error = objModule::load("display", &modDisplay, &DisplayBase))) {
+      if ((error = objModule::load("display", &modDisplay, &DisplayBase)) != ERR::Okay) {
          luaL_error(Lua, "Failed to load display module.");
          return 0;
       }
@@ -347,8 +338,8 @@ static int input_subscribe(lua_State *Lua)
 
       prv->InputList = input;
 
-      auto callback = make_function_stdc(consume_input_events);
-      if ((error = gfxSubscribeInput(&callback, input->SurfaceID, mask, device_id, &input->InputHandle))) goto failed;
+      auto callback = C_FUNCTION(consume_input_events);
+      if ((error = gfx::SubscribeInput(&callback, input->SurfaceID, mask, device_id, &input->InputHandle)) != ERR::Okay) goto failed;
 
       return 1;
    }
@@ -375,7 +366,7 @@ static int input_unsubscribe(lua_State *Lua)
    if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
    if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
    if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }
-   if (input->InputHandle) { gfxUnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
+   if (input->InputHandle) { gfx::UnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
 
    input->Script = NULL;
    input->Mode   = 0;
@@ -394,7 +385,7 @@ static int input_destruct(lua_State *Lua)
       log.traceBranch("Surface: %d, CallbackRef: %d, KeyEvent: %p", input->SurfaceID, input->Callback, input->KeyEvent);
 
       if (input->SurfaceID)   input->SurfaceID = 0;
-      if (input->InputHandle) { gfxUnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
+      if (input->InputHandle) { gfx::UnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
       if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
       if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
       if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }
@@ -476,9 +467,8 @@ static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
 
       for (LONG i=0; i < Event->TotalWithFocus; i++) {
          if (input->SurfaceID IS Event->FocusList[i]) {
-            auto callback = make_function_stdc(key_event);
             log.trace("Focus notification received for key events on surface #%d.", input->SurfaceID);
-            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, input, &input->KeyEvent);
+            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), input, &input->KeyEvent);
             break;
          }
       }

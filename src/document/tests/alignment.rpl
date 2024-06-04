@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
+
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <image id="add" xlink:href="icons:items/add" width="32" height="32"/>
+  </defs>
+</svg>
+
+<body face="[@font:Noto Sans]" font-size="[@font-size:10pt]"/>
+
+<page name="Index">
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut nibh tortor, egestas sit amet metus at, fermentum gravida purus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse egestas nibh turpis, et faucibus risus varius quis. Mauris quis cursus sapien. Etiam eget dui id turpis molestie condimentum. Duis mollis erat vitae ante bibendum, ac pellentesque justo volutpat.</p>
+
+<image align="right" src="rgb(0,0,128)" width="64" height="128"/>
+
+<p align="right">Align this text to the right of the page.  Remember to check that word-wrapping works correctly.</p>
+
+<p align="center">These two lines must be aligned to the center of the page.<br/>Remember to check that word-wrapping works correctly.</p>
+
+<p align="center">Making changes to the <font face="courier" size="20">selected font must not</font> result in poor alignment.</p>
+
+<p align="center">This centered line contains <image src="url(#add)"/> an embedded image.</p>
+
+<p align="center">
+<list type="ordered">
+<li>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut nibh tortor, egestas sit amet metus at, fermentum gravida purus.<li>Embedded list item one.</li><li>Embedded list item two.</li></li>
+<li>Mauris quis cursus sapien.  Etiam eget dui id turpis molestie condimentum. Duis mollis erat vitae ante bibendum, ac pellentesque justo volutpat. Pellentesque blandit aliquam eros ut pulvinar. Phasellus malesuada pulvinar metus vel ullamcorper. Phasellus tristique, sapien non pharetra vehicula, massa lectus blandit lorem, eget consectetur felis massa sed quam.</li>
+<li>Etiam vel tempor massa. Integer quis nunc non risus malesuada pellentesque. Etiam pretium nunc nibh, sit amet tempor ipsum rhoncus a.</li>
+<li>Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet. Sed in tempor diam.</li>
+</list>
+</p>
+
+</page>

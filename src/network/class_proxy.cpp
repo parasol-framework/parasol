@@ -38,9 +38,9 @@ class extProxy : public objProxy {
 
 static objConfig *glConfig = NULL; // NOT THREAD SAFE
 
-static ERROR find_proxy(extProxy *);
+static ERR find_proxy(extProxy *);
 static void clear_values(extProxy *);
-static ERROR get_record(extProxy *);
+static ERR get_record(extProxy *);
 
 #ifdef _WIN32
 static LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
@@ -67,9 +67,9 @@ static void free_proxy(void)
 /*********************************************************************************************************************
 
 -METHOD-
-Delete: Removes a proxy from the database.
+DeleteRecord: Removes a proxy from the database.
 
-Call the Delete method to remove a proxy from the system.  The proxy will be permanently removed from the proxy
+Call the DeleteRecord() method to remove a proxy from the system.  The proxy will be permanently removed from the proxy
 database on the success of this function.
 
 -ERRORS-
@@ -78,11 +78,11 @@ Okay: Proxy deleted.
 
 *********************************************************************************************************************/
 
-static ERROR PROXY_Delete(extProxy *Self, APTR Void)
+static ERR PROXY_DeleteRecord(extProxy *Self)
 {
    pf::Log log;
 
-   if ((!Self->GroupName[0]) or (!Self->Record)) return log.error(ERR_Failed);
+   if ((!Self->GroupName[0]) or (!Self->Record)) return log.error(ERR::Failed);
 
    log.branch();
 
@@ -95,11 +95,11 @@ static ERROR PROXY_Delete(extProxy *Self, APTR Void)
    if (glConfig) { FreeResource(glConfig); glConfig = NULL; }
 
    if ((glConfig = objConfig::create::untracked(fl::Path("user:config/network/proxies.cfg")))) {
-      cfgDeleteGroup(glConfig, Self->GroupName);
+      glConfig->deleteGroup(Self->GroupName);
       acSaveSettings(glConfig);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -107,17 +107,17 @@ static ERROR PROXY_Delete(extProxy *Self, APTR Void)
 -ACTION-
 Disable: Marks a proxy as disabled.
 
-Calling the Disable action will mark the proxy as disabled.  Disabled proxies remain in the system but are ignored by
+Calling the Disable() action will mark the proxy as disabled.  Disabled proxies remain in the system but are ignored by
 programs that scan the database for active proxies.
 
 The change will not come into effect until the proxy record is saved.
 
 *********************************************************************************************************************/
 
-static ERROR PROXY_Disable(extProxy *Self, APTR Void)
+static ERR PROXY_Disable(extProxy *Self)
 {
    Self->Enabled = FALSE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -125,15 +125,15 @@ static ERROR PROXY_Disable(extProxy *Self, APTR Void)
 -ACTION-
 Enable: Enables a proxy.
 
-Calling the Enable action will mark the proxy as enabled.  The change will not come into effect until the proxy record
+Calling the Enable() action will mark the proxy as enabled.  The change will not come into effect until the proxy record
 is saved.
 
 *********************************************************************************************************************/
 
-static ERROR PROXY_Enable(extProxy *Self, APTR Void)
+static ERR PROXY_Enable(extProxy *Self)
 {
    Self->Enabled = TRUE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -146,17 +146,17 @@ The following example searches for all proxies available for use on port 80 (HTT
 <pre>
 objProxy::create proxy;
 if (proxy.ok()) {
-   if (!prxFind(*proxy, 80)) {
+   if (prxFind(*proxy, 80) IS ERR::Okay) {
       do {
          ...
-      } while (!prxFindNext(*proxy));
+      } while (prxFindNext(*proxy) IS ERR::Okay);
    }
 }
 </pre>
 
 -INPUT-
 int Port: The port number  to access.  If zero, all proxies will be returned if you perform a looped search.
-int Enabled: Set to TRUE to return only enabled proxies, FALSE for disabled proxies or -1 for all proxies.
+int Enabled: Set to `true` to return only enabled proxies, `false` for disabled proxies or `-1` for all proxies.
 
 -ERRORS-
 Okay: A proxy was discovered.
@@ -165,7 +165,7 @@ NoSearchResult: No matching proxy was discovered.
 
 *********************************************************************************************************************/
 
-static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
+static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
 {
    pf::Log log;
 
@@ -182,14 +182,14 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
          // Remove any existing host proxy settings
 
          ConfigGroups *groups;
-         if (!glConfig->getPtr(FID_Data, &groups)) {
+         if (glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) {
             std::stack <std::string> group_list;
             for (auto& [group, keys] : groups[0]) {
                if (keys.contains("Host")) group_list.push(group);
             }
 
             while (group_list.size() > 0) {
-               cfgDeleteGroup(glConfig, group_list.top().c_str());
+               glConfig->deleteGroup(group_list.top().c_str());
                group_list.pop();
             }
          }
@@ -199,18 +199,18 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
          CSTRING value;
          bool bypass = false;
          auto task = CurrentTask();
-         if (!taskGetEnv(task, HKEY_PROXY "ProxyEnable", &value)) {
+         if (task->getEnv(HKEY_PROXY "ProxyEnable", &value) IS ERR::Okay) {
             LONG enabled = StrToInt(value);
 
             // If ProxyOverride is set and == <local> then you should bypass the proxy for local addresses.
 
             CSTRING override;
-            if (!taskGetEnv(task, HKEY_PROXY "ProxyOverride", &override)) {
-               if (!StrMatch("<local>", override)) bypass = true;
+            if (task->getEnv(HKEY_PROXY "ProxyOverride", &override) IS ERR::Okay) {
+               if (pf::iequals("<local>", override)) bypass = true;
             }
 
             CSTRING servers;
-            if ((!taskGetEnv(task, HKEY_PROXY "ProxyServer", &servers)) and (servers[0])) {
+            if ((task->getEnv(HKEY_PROXY "ProxyServer", &servers) IS ERR::Okay) and (servers[0])) {
                log.msg("Host has defined default proxies: %s", servers);
 
                CSTRING name = NULL;
@@ -218,17 +218,17 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
                LONG i     = 0;
                LONG index = 0;
                while (true) {
-                  if (!StrCompare("ftp=", servers+i, 4)) {
+                  if (pf::startswith("ftp=", servers+i)) {
                      name = "Windows FTP";
                      port = 21;
                      index = i + 4;
                   }
-                  else if (!StrCompare("http=", servers+i, 5)) {
+                  else if (pf::startswith("http=", servers+i)) {
                      name = "Windows HTTP";
                      port = 80;
                      index = i + 5;
                   }
-                  else if (!StrCompare("https=", servers+i, 6)) {
+                  else if (pf::startswith("https=", servers+i)) {
                      name = "Windows HTTPS";
                      port = 443;
                      index = i + 6;
@@ -258,7 +258,7 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
                      char server[80];
 
                      id = 0;
-                     cfgRead(glConfig, "ID", "Value", &id);
+                     glConfig->read("ID", "Value", &id);
                      id = id + 1;
                      glConfig->write("ID", "Value", id);
 
@@ -312,7 +312,7 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 
       return find_proxy(Self);
    }
-   else return ERR_AccessObject;
+   else return ERR::AccessObject;
 }
 
 /*********************************************************************************************************************
@@ -321,8 +321,8 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 FindNext: Continues an initiated search.
 
 This method continues searches that have been initiated by the #Find() method. If a proxy is found that matches
-the filter, ERR_Okay is returned and the details of the proxy object will reflect the data of the discovered record.
-ERR_NoSearchResult is returned if there are no more matching proxies.
+the filter, `ERR::Okay` is returned and the details of the proxy object will reflect the data of the discovered record.
+`ERR::NoSearchResult` is returned if there are no more matching proxies.
 
 -ERRORS-
 Okay: A proxy was discovered.
@@ -331,16 +331,16 @@ NoSearchResult: No matching proxy was discovered.
 
 *********************************************************************************************************************/
 
-static ERROR PROXY_FindNext(extProxy *Self, APTR Void)
+static ERR PROXY_FindNext(extProxy *Self)
 {
-   if (!Self->Find) return ERR_NoSearchResult; // Ensure that Find() was used to initiate a search
+   if (!Self->Find) return ERR::NoSearchResult; // Ensure that Find() was used to initiate a search
 
    return find_proxy(Self);
 }
 
 //********************************************************************************************************************
 
-static ERROR find_proxy(extProxy *Self)
+static ERR find_proxy(extProxy *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -348,13 +348,13 @@ static ERROR find_proxy(extProxy *Self)
 
    if (!glConfig) {
       log.trace("Global config not loaded.");
-      return ERR_NoSearchResult;
+      return ERR::NoSearchResult;
    }
 
    if (!Self->Find) Self->Find = TRUE; // This is the start of the search
 
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups)) return ERR_NoData;
+   if (glConfig->getPtr(FID_Data, &groups) != ERR::Okay) return ERR::NoData;
 
    auto group = groups->begin();
 
@@ -382,7 +382,7 @@ static ERROR find_proxy(extProxy *Self)
 
             if (!port.compare("0")) { } // Port is set to 'All' (0) so the match is automatic.
             else {
-               if (StrCompare(port.c_str(), Self->FindPort, 0, STR::WILDCARD) != ERR_Okay) {
+               if (!pf::wildcmp(port, Self->FindPort)) {
                   log.trace("Port '%s' doesn't match requested port '%s'", port.c_str(), Self->FindPort);
                   match = false;
                }
@@ -422,32 +422,32 @@ static ERROR find_proxy(extProxy *Self)
    log.trace("No proxy matched.");
 
    Self->Find = FALSE;
-   return ERR_NoSearchResult;
+   return ERR::NoSearchResult;
 }
 
 //********************************************************************************************************************
 
-static ERROR PROXY_Free(extProxy *Self, APTR Void)
+static ERR PROXY_Free(extProxy *Self)
 {
    clear_values(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR PROXY_Init(extProxy *Self, APTR Void)
+static ERR PROXY_Init(extProxy *Self)
 {
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR PROXY_NewObject(extProxy *Self, APTR Void)
+static ERR PROXY_NewObject(extProxy *Self)
 {
    Self->GroupName[0] = 0;
    Self->Enabled = TRUE;
    Self->Port = 80;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -465,24 +465,24 @@ administrator to define proxy settings as the default for all users by copying t
 
 *********************************************************************************************************************/
 
-static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
+static ERR PROXY_SaveSettings(extProxy *Self)
 {
    pf::Log log;
 
-   if ((!Self->Server) or (!Self->ServerPort)) return log.error(ERR_FieldNotSet);
+   if ((!Self->Server) or (!Self->ServerPort)) return log.error(ERR::FieldNotSet);
 
    log.branch("Host: %d", Self->Host);
 
    if (Self->Host) {
       #ifdef _WIN32
-         OBJECTPTR task = CurrentTask();
+         objTask *task = CurrentTask();
 
-         if (Self->Enabled) taskSetEnv(task, HKEY_PROXY "ProxyEnable", "1");
-         else taskSetEnv(task, HKEY_PROXY "ProxyEnable", "0");
+         if (Self->Enabled) task->setEnv(HKEY_PROXY "ProxyEnable", "1");
+         else task->setEnv(HKEY_PROXY "ProxyEnable", "0");
 
          if ((!Self->Server) or (!Self->Server[0])) {
             log.trace("Clearing proxy server value.");
-            taskSetEnv(task, HKEY_PROXY "ProxyServer", "");
+            task->setEnv(HKEY_PROXY "ProxyServer", "");
          }
          else if (Self->Port IS 0) {
             // Proxy is for all ports
@@ -492,7 +492,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
             log.trace("Changing all-port proxy to: %s", buffer);
 
-            taskSetEnv(task, HKEY_PROXY "ProxyServer", buffer);
+            task->setEnv(HKEY_PROXY "ProxyServer", buffer);
          }
          else {
             char buffer[120];
@@ -509,7 +509,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
             if (portname) {
                CSTRING servers;
                char server_buffer[200];
-               taskGetEnv(task, HKEY_PROXY "ProxyServer", &servers);
+               task->getEnv(HKEY_PROXY "ProxyServer", &servers);
                if (!servers) servers = "";
                StrCopy(servers, server_buffer, sizeof(server_buffer));
 
@@ -529,7 +529,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
                len = snprintf(buffer, sizeof(buffer), "%s=%s:%d", portname, Self->Server, Self->ServerPort);
                end = StrLength(server_buffer);
-               if (!AllocMemory(end + len + 2, MEM::STRING|MEM::NO_CLEAR, &newlist)) {
+               if (AllocMemory(end + len + 2, MEM::STRING|MEM::NO_CLEAR, &newlist) IS ERR::Okay) {
                   if (end > 0) {
                      CopyMemory(server_buffer, newlist, end);
                      newlist[end++] = ';';
@@ -539,7 +539,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
                   // Save the new proxy list
 
-                  taskSetEnv(task, HKEY_PROXY "ProxyServer", newlist);
+                  task->setEnv(HKEY_PROXY "ProxyServer", newlist);
                   FreeResource(newlist);
                }
             }
@@ -548,16 +548,16 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
       #endif
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    objConfig::create config = { fl::Path("user:config/network/proxies.cfg") };
 
    if (config.ok()) {
-      if (Self->GroupName[0]) cfgDeleteGroup(*config, Self->GroupName);
+      if (Self->GroupName[0]) config->deleteGroup(Self->GroupName);
       else { // This is a new proxy
          LONG id = 0;
-         cfgRead(*config, "ID", "Value", &id);
+         config->read("ID", "Value", &id);
          id = id + 1;
          config->write("ID", "Value", id);
 
@@ -582,12 +582,12 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
       };
 
       if (file.ok()) return config->saveToObject(*file);
-      else return ERR_CreateObject;
+      else return ERR::CreateObject;
    }
-   else return ERR_CreateObject;
+   else return ERR::CreateObject;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 GatewayFilter: The IP address of the gateway that the proxy is limited to.
@@ -595,25 +595,25 @@ GatewayFilter: The IP address of the gateway that the proxy is limited to.
 The GatewayFilter defines the IP address of the gateway that this proxy is limited to. It is intended to limit the
 results of searches performed by the #Find() method.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_GatewayFilter(extProxy *Self, CSTRING Value)
+static ERR SET_GatewayFilter(extProxy *Self, CSTRING Value)
 {
    if (Self->GatewayFilter) { FreeResource(Self->GatewayFilter); Self->GatewayFilter = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->GatewayFilter = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->GatewayFilter = StrClone(Value))) return ERR::AllocMemory;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
-Host: If TRUE, the proxy settings are derived from the host operating system's default settings.
+Host: If `true`, the proxy settings are derived from the host operating system's default settings.
 
-If Host is set to TRUE, the proxy settings are derived from the host operating system's default settings.  Hosted
+If Host is set to `true`, the proxy settings are derived from the host operating system's default settings.  Hosted
 proxies are treated differently to user proxies - they have priority, and any changes are applied directly to the host
 system rather than the user's configuration.
 
@@ -622,18 +622,18 @@ Port: Defines the ports supported by this proxy.
 
 The Port defines the port that the proxy server is supporting, e.g. port 80 for HTTP.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_Port(extProxy *Self, LONG Value)
+static ERR SET_Port(extProxy *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->Port = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_OutOfRange;
+   else return ERR::OutOfRange;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 NetworkFilter: The name of the network that the proxy is limited to.
@@ -643,20 +643,20 @@ searches performed by the #Find() method.
 
 This filter must not be set if the proxy needs to work on an unnamed network.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_NetworkFilter(extProxy *Self, CSTRING Value)
+static ERR SET_NetworkFilter(extProxy *Self, CSTRING Value)
 {
    if (Self->NetworkFilter) { FreeResource(Self->NetworkFilter); Self->NetworkFilter = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->NetworkFilter = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->NetworkFilter = StrClone(Value))) return ERR::AllocMemory;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Username: The username to use when authenticating against the proxy server.
@@ -665,118 +665,118 @@ If the proxy requires authentication, the user name may be set here to enable an
 the username is not set, a dialog will be required to prompt the user for the user name before communicating with the
 proxy server.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_Username(extProxy *Self, CSTRING Value)
+static ERR SET_Username(extProxy *Self, CSTRING Value)
 {
    if (Self->Username) { FreeResource(Self->Username); Self->Username = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->Username = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->Username = StrClone(Value))) return ERR::AllocMemory;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Password: The password to use when authenticating against the proxy server.
 
-If the proxy requires authentication, the user password may be set here to enSable an automated authentication process.
+If the proxy requires authentication, the user password may be set here to enable an automated authentication process.
 If the password is not set, a dialog will need to be used to prompt the user for the password before communicating with
 the proxy.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_Password(extProxy *Self, CSTRING Value)
+static ERR SET_Password(extProxy *Self, CSTRING Value)
 {
    if (Self->Password) { FreeResource(Self->Password); Self->Password = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->Password = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->Password = StrClone(Value))) return ERR::AllocMemory;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ProxyName: A human readable name for the proxy server entry.
 
 A proxy can be given a human readable name by setting this field.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_ProxyName(extProxy *Self, CSTRING Value)
+static ERR SET_ProxyName(extProxy *Self, CSTRING Value)
 {
    if (Self->ProxyName) { FreeResource(Self->ProxyName); Self->ProxyName = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->ProxyName = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->ProxyName = StrClone(Value))) return ERR::AllocMemory;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Server: The destination address of the proxy server - may be an IP address or resolvable domain name.
 
 The domain name or IP address of the proxy server must be defined here.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_Server(extProxy *Self, CSTRING Value)
+static ERR SET_Server(extProxy *Self, CSTRING Value)
 {
    if (Self->Server) { FreeResource(Self->Server); Self->Server = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->Server = StrClone(Value))) return ERR_AllocMemory;
+      if (!(Self->Server = StrClone(Value))) return ERR::AllocMemory;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 ServerPort: The port that is used for proxy server communication.
 
 The port used to communicate with the proxy server must be defined here.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_ServerPort(extProxy *Self, LONG Value)
+static ERR SET_ServerPort(extProxy *Self, LONG Value)
 {
    pf::Log log;
    if ((Value > 0) and (Value <= 65536)) {
       Self->ServerPort = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.error(ERR_OutOfRange);
+   else return log.error(ERR::OutOfRange);
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
-Enabled: All proxies are enabled by default until this field is set to FALSE.
+Enabled: All proxies are enabled by default until this field is set to `false`.
 
-To disable a proxy, set this field to FALSE or call the #Disable() action.  This prevents the proxy from being
-discovered in searches unless
+To disable a proxy, set this field to `false` or call the #Disable() action.  This prevents the proxy from being
+discovered in searches.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_Enabled(extProxy *Self, LONG Value)
+static ERR SET_Enabled(extProxy *Self, LONG Value)
 {
    if (Value) Self->Enabled = TRUE;
    else Self->Enabled = FALSE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Record: The unique ID of the current proxy record.
@@ -784,26 +784,25 @@ Record: The unique ID of the current proxy record.
 The Record is set to the unique ID of the current proxy record.  If no record is indexed then the Record is set to
 zero.
 
-If you set the Record manually, the proxy object will attempt to lookup that record.  ERR_Okay will be returned if the
+If Record is set manually, the proxy object will attempt to lookup that record.  `ERR::Okay` will be returned if the
 record is found and all record fields will be updated to reflect the data of that proxy.
 -END-
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_Record(extProxy *Self, LONG Value)
+static ERR SET_Record(extProxy *Self, LONG Value)
 {
    clear_values(Self);
    IntToStr(Value, Self->GroupName, sizeof(Self->GroupName));
    return get_record(Self);
 }
 
-/****************************************************************************
-** The group field must be set to the record that you want before you call this function.
-**
-** Also not that you must have called clear_values() at some point before this function.
-*/
+//********************************************************************************************************************
+// The group field must be set to the record that you want before you call this function.
+//
+// Also not that you must have called clear_values() at some point before this function.
 
-static ERROR get_record(extProxy *Self)
+static ERR get_record(extProxy *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -812,23 +811,23 @@ static ERROR get_record(extProxy *Self)
    Self->Record = StrToInt(Self->GroupName);
 
    CSTRING str;
-   if (!cfgReadValue(glConfig, Self->GroupName, "Server", &str))   {
+   if (glConfig->readValue(Self->GroupName, "Server", &str) IS ERR::Okay)   {
       Self->Server = StrClone(str);
-      if (!cfgReadValue(glConfig, Self->GroupName, "NetworkFilter", &str)) Self->NetworkFilter = StrClone(str);
-      if (!cfgReadValue(glConfig, Self->GroupName, "GatewayFilter", &str)) Self->GatewayFilter = StrClone(str);
-      if (!cfgReadValue(glConfig, Self->GroupName, "Username", &str))      Self->Username = StrClone(str);
-      if (!cfgReadValue(glConfig, Self->GroupName, "Password", &str))      Self->Password = StrClone(str);
-      if (!cfgReadValue(glConfig, Self->GroupName, "Name", &str))          Self->ProxyName = StrClone(str);
-      cfgRead(glConfig, Self->GroupName, "Port", &Self->Port);
-      cfgRead(glConfig, Self->GroupName, "ServerPort", &Self->ServerPort);
-      cfgRead(glConfig, Self->GroupName, "Enabled", &Self->Enabled);
-      cfgRead(glConfig, Self->GroupName, "Host", &Self->Host);
-      return ERR_Okay;
+      if (glConfig->readValue(Self->GroupName, "NetworkFilter", &str) IS ERR::Okay) Self->NetworkFilter = StrClone(str);
+      if (glConfig->readValue(Self->GroupName, "GatewayFilter", &str) IS ERR::Okay) Self->GatewayFilter = StrClone(str);
+      if (glConfig->readValue(Self->GroupName, "Username", &str) IS ERR::Okay)      Self->Username = StrClone(str);
+      if (glConfig->readValue(Self->GroupName, "Password", &str) IS ERR::Okay)      Self->Password = StrClone(str);
+      if (glConfig->readValue(Self->GroupName, "Name", &str) IS ERR::Okay)          Self->ProxyName = StrClone(str);
+      glConfig->read(Self->GroupName, "Port", &Self->Port);
+      glConfig->read(Self->GroupName, "ServerPort", &Self->ServerPort);
+      glConfig->read(Self->GroupName, "Enabled", &Self->Enabled);
+      glConfig->read(Self->GroupName, "Host", &Self->Host);
+      return ERR::Okay;
    }
-   else return log.error(ERR_NotFound);
+   else return log.error(ERR::NotFound);
 }
 
-/***************************************************************************/
+//********************************************************************************************************************
 
 static void clear_values(extProxy *Self)
 {
@@ -849,7 +848,7 @@ static void clear_values(extProxy *Self)
    if (Self->Server)        { FreeResource(Self->Server);        Self->Server        = NULL; }
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 
 static const FieldDef clPorts[] = {
    { "FTP-Data",  20 },
@@ -888,7 +887,7 @@ static const FieldArray clProxyFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_proxy(void)
+ERR init_proxy(void)
 {
    clProxy = objMetaClass::create::global(
       fl::ClassVersion(VER_PROXY),
@@ -900,5 +899,5 @@ ERROR init_proxy(void)
       fl::Size(sizeof(extProxy)),
       fl::Path(MOD_PATH));
 
-   return clProxy ? ERR_Okay : ERR_AddClass;
+   return clProxy ? ERR::Okay : ERR::AddClass;
 }

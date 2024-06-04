@@ -4,16 +4,16 @@
 */
 
 int sndCheckActivity(struct PlatformData *);
-extern "C" const char * sndCreateBuffer(BaseClass *, void *, int, int, struct PlatformData *, int);
+extern "C" const char * sndCreateBuffer(Object *, void *, int, int, struct PlatformData *, int);
 void sndFree(struct PlatformData *);
 void sndFrequency(struct PlatformData *, int);
 void sndSetPosition(struct PlatformData *, int);
 const char * sndInitialiseAudio(void);
 void sndPan(struct PlatformData *, float);
-int sndPlay(struct PlatformData *, bool, int);
+__declspec(no_sanitize_address) int sndPlay(struct PlatformData *, bool, int);
 void sndReleaseAudio(void);
 void sndStop(struct PlatformData *);
 extern "C" int sndStreamAudio(struct PlatformData *);
 void sndVolume(struct PlatformData *, float);
 void sndLength(struct PlatformData *, int);
-extern "C" void end_of_stream(BaseClass *, int);
+extern "C" void end_of_stream(Object *, int);

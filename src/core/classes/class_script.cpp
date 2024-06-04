@@ -12,7 +12,7 @@ The Script class defines a common interface for the purpose of executing scripts
 not include a default parser or execution process of any kind.
 
 To execute a script file, choose a sub-class that matches the language and create the script object.  Set the #Path
-field and then #Activate() the script.  Global input parameters for the script can be defined via the #SetVar()
+field and then #Activate() the script.  Global input parameters for the script can be defined via the #SetKey()
 action.
 
 Note that client scripts may sometimes create objects that are unmanaged by the script object that created them.
@@ -25,18 +25,18 @@ Terminating the script will not remove objects that are outside its resource hie
 #include "../defs.h"
 #include <parasol/main.h>
 
-static ERROR GET_Results(objScript *, STRING **, LONG *);
+static ERR GET_Results(objScript *, STRING **, LONG *);
 
-static ERROR SET_Procedure(objScript *, CSTRING);
-static ERROR SET_Results(objScript *, CSTRING *, LONG);
-static ERROR SET_String(objScript *, CSTRING);
+static ERR SET_Procedure(objScript *, CSTRING);
+static ERR SET_Results(objScript *, CSTRING *, LONG);
+static ERR SET_String(objScript *, CSTRING);
 
-INLINE CSTRING check_bom(CSTRING Value)
+inline CSTRING check_bom(const unsigned char *Value)
 {
    if ((Value[0] IS 0xef) and (Value[1] IS 0xbb) and (Value[2] IS 0xbf)) Value += 3; // UTF-8 BOM
    else if ((Value[0] IS 0xfe) and (Value[1] IS 0xff)) Value += 2; // UTF-16 BOM big endian
    else if ((Value[0] IS 0xff) and (Value[1] IS 0xfe)) Value += 2; // UTF-16 BOM little endian
-   return Value;
+   return (CSTRING)Value;
 }
 
 /*********************************************************************************************************************
@@ -45,9 +45,9 @@ Activate: Executes the script.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SCRIPT_Activate(objScript *Self, APTR Void)
+static ERR SCRIPT_Activate(objScript *Self)
 {
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 }
 
 /*********************************************************************************************************************
@@ -56,9 +56,9 @@ DataFeed: Script source code can be passed to the object as XML or text via data
 -END-
 *********************************************************************************************************************/
 
-static ERROR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
+static ERR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if (Args->Datatype IS DATA::XML) {
       Self->setStatement((STRING)Args->Buffer);
@@ -67,7 +67,7 @@ static ERROR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
       Self->setStatement((STRING)Args->Buffer);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -91,10 +91,10 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERROR SCRIPT_DerefProcedure(objScript *Self, struct scDerefProcedure *Args)
+static ERR SCRIPT_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args)
 {
    // It is the responsibility of the sub-class to override this method with something appropriate.
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -106,9 +106,9 @@ Private
 
 -INPUT-
 large ProcedureID: An identifier for the target procedure.
-cstruct(*ScriptArg) Args: Optional CSV string containing arguments to pass to the procedure.
-int TotalArgs: The total number of arguments in the Args parameter.
-&int Error: The error code returned from the script, if any.
+cstruct(*ScriptArg) Args: Optional CSV string containing parameters to pass to the procedure.
+int TotalArgs: The total number of parameters in the Args parameter.
+&error Error: The error code returned from the script, if any.
 
 -ERRORS-
 Okay:
@@ -118,36 +118,36 @@ Args:
 
 *********************************************************************************************************************/
 
-static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
+static ERR SCRIPT_Callback(objScript *Self, struct sc::Callback *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if ((Args->TotalArgs < 0) or (Args->TotalArgs > 1024)) return log.warning(ERR_Args);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if ((Args->TotalArgs < 0) or (Args->TotalArgs > 1024)) return log.warning(ERR::Args);
 
-   LARGE save_id = Self->ProcedureID;
-   CSTRING save_name = Self->Procedure;
+   auto save_id      = Self->ProcedureID;
+   auto save_name    = Self->Procedure;
    Self->ProcedureID = Args->ProcedureID;
-   Self->Procedure = NULL;
+   Self->Procedure   = NULL;
 
-   const ScriptArg *saveargs = Self->ProcArgs;
+   const ScriptArg *save_args = Self->ProcArgs;
    Self->ProcArgs  = Args->Args;
 
-   LONG savetotal = Self->TotalArgs;
-   Self->TotalArgs = Args->TotalArgs;
+   auto save_total  = Self->TotalArgs;
+   Self->TotalArgs  = Args->TotalArgs;
    auto saved_error = Self->Error;
    auto saved_error_msg = Self->ErrorString;
    Self->ErrorString = NULL;
-   Self->Error = ERR_Okay;
+   Self->Error       = ERR::Okay;
 
-   ERROR error = acActivate(Self);
+   ERR error = acActivate(Self);
 
    Args->Error = Self->Error;
    Self->Error = saved_error;
    Self->ProcedureID = save_id;
-   Self->Procedure = save_name;
-   Self->ProcArgs  = saveargs;
-   Self->TotalArgs = savetotal;
+   Self->Procedure   = save_name;
+   Self->ProcArgs    = save_args;
+   Self->TotalArgs   = save_total;
    if (Self->ErrorString) FreeResource(Self->ErrorString);
    Self->ErrorString = saved_error_msg;
 
@@ -159,21 +159,13 @@ static ERROR SCRIPT_Callback(objScript *Self, struct scCallback *Args)
 -METHOD-
 Exec: Executes a procedure in the script.
 
-Use the Exec method to execute a named procedure in a script, optionally passing that procedure a series of arguments.
-This method has two different interfaces - one for scripting, which takes parameters as a CSV string, and another for
-C/C++, which takes parameters in a serialised array.
+Use the Exec() method to execute a named procedure in a script, optionally passing that procedure a series of
+parameters.
 
-The behaviour of the execution process matches that of the #Activate() action and will return the same error
-codes in the event of failure.  If the procedure returns results, they will be available from the #Results
-field after execution.
+The behaviour of this process matches that of the #Activate() action and will return the same error codes in the
+event of failure.  If the `Procedure` returns results, they will be available from the #Results field after execution.
 
-If parameters will be passed to the procedure in script (e.g. Fluid), they must be specified as a Comma Separated Value
-list in the Args string. Exec will interpret all the values as a string type.  Double or single quotes should be used to
-encapsulate string values (use two quotes in sequence as a means of an escape character).  Values should instead be
-set as named variables in the script object.
-
-If parameters will be passed to the procedure in C/C++ or similar compiled language, they must be specified as an array
-of ScriptArg structures.  The following example illustrates such a list:
+Parameter values must be specified as an array of ScriptArg structures.  The following example illustrates:
 
 <pre>
 struct ScriptArg args[] = {
@@ -198,58 +190,55 @@ struct ScriptArg {
 };
 </>
 
-The Field Descriptor (FD) specified in the Type must be a match to whatever value is defined in the union.  For instance
-if the Long field is defined then an FD_LONG Type must be used.  Supplementary field definition information, e.g.
-FD_OBJECT, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are
-documented in detail in the Class Development Guide.
-
-The C/C++ interface for Exec also requires a hidden third argument that is not specified in this documentation.  The
-argument, TotalArgs, must reflect the total number of entries in the Args array.
+The Field Descriptor `FD` specified in the `Type` must be a match to whatever value is defined in the union.  For instance
+if the `Long` field is defined then an `FD_LONG` `Type` must be used.  Supplementary field definition information, e.g.
+`FD_OBJECT`, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are
+documented in detail in the Parasol Wiki.
 
 -INPUT-
 cstr Procedure: The name of the procedure to execute, or NULL for the default entry point.
-cstruct(*ScriptArg) Args: Optional CSV string containing arguments to pass to the procedure (applies to script-based Exec only).
-int TotalArgs: Total number of script arguments provided.
+cstruct(*ScriptArg) Args: Optional parameters to pass to the procedure.
+int TotalArgs: Total number of `Args` provided.
 
 -ERRORS-
 Okay: The procedure was executed.
 NullArgs
-Args: The TotalArgs value is invalid.
+Args: The `TotalArgs` value is invalid.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR SCRIPT_Exec(objScript *Self, struct scExec *Args)
+static ERR SCRIPT_Exec(objScript *Self, struct sc::Exec *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if ((Args->TotalArgs < 0) or (Args->TotalArgs > 32)) return log.warning(ERR_Args);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if ((Args->TotalArgs < 0) or (Args->TotalArgs > 32)) return log.warning(ERR::Args);
 
-   LARGE save_id = Self->ProcedureID;
+   auto save_id = Self->ProcedureID;
    CSTRING save_name = Self->Procedure;
    Self->ProcedureID = 0;
    Self->Procedure = Args->Procedure;
 
-   const ScriptArg *saveargs = Self->ProcArgs;
+   const ScriptArg *save_args = Self->ProcArgs;
    Self->ProcArgs  = Args->Args;
 
-   LONG savetotal = Self->TotalArgs;
+   auto save_total = Self->TotalArgs;
    Self->TotalArgs = Args->TotalArgs;
 
-   ERROR error = acActivate(Self);
+   ERR error = acActivate(Self);
 
    Self->ProcedureID = save_id;
-   Self->Procedure = save_name;
-   Self->ProcArgs  = saveargs;
-   Self->TotalArgs = savetotal;
+   Self->Procedure   = save_name;
+   Self->ProcArgs    = save_args;
+   Self->TotalArgs   = save_total;
 
    return error;
 }
 
 //********************************************************************************************************************
 
-static ERROR SCRIPT_Free(objScript *Self, APTR Void)
+static ERR SCRIPT_Free(objScript *Self)
 {
    if (Self->CacheFile)   { FreeResource(Self->CacheFile);   Self->CacheFile = NULL; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
@@ -259,7 +248,7 @@ static ERROR SCRIPT_Free(objScript *Self, APTR Void)
    if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = NULL; }
    if (Self->Results)     { FreeResource(Self->Results);     Self->Results = NULL; }
    Self->~objScript();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -268,7 +257,7 @@ static ERROR SCRIPT_Free(objScript *Self, APTR Void)
 GetProcedureID: Converts a procedure name to an ID.
 
 This method will convert a procedure name to a unique reference that will be recognised by the script as a direct
-reference to that procedure.  The ID can be used to create new FUNCTION definitions, for example:
+reference to that procedure.  The ID can be used to create new `FUNCTION` definitions, for example:
 
 <pre>
 FUNCTION callback;
@@ -276,7 +265,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 </pre>
 
 Resolving a procedure will often result in the Script maintaining an ongoing reference for it.  To discard the
-reference, call <method>DerefProcedure</> once access to the procedure is no longer required.  Alternatively,
+reference, call #DerefProcedure() once access to the procedure is no longer required.  Alternatively,
 destroying the script will also dereference all procedures.
 
 -INPUT-
@@ -290,58 +279,58 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR SCRIPT_GetProcedureID(objScript *Self, struct scGetProcedureID *Args)
+static ERR SCRIPT_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR_NullArgs);
-   Args->ProcedureID = StrHash(Args->Procedure, 0);
-   return ERR_Okay;
+   if ((!Args) or (!Args->Procedure) or (!Args->Procedure[0])) return log.warning(ERR::NullArgs);
+   Args->ProcedureID = strihash(Args->Procedure);
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
-GetVar: Script parameters can be retrieved through this action.
+GetKey: Script parameters can be retrieved through this action.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SCRIPT_GetVar(objScript *Self, struct acGetVar *Args)
+static ERR SCRIPT_GetKey(objScript *Self, struct acGetKey *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Buffer) or (!Args->Field)) return ERR_NullArgs;
-   if (Args->Size < 2) return log.warning(ERR_Args);
+   if ((!Args) or (!Args->Value) or (!Args->Key)) return ERR::NullArgs;
+   if (Args->Size < 2) return log.warning(ERR::Args);
 
-   auto it = Self->Vars.find(Args->Field);
+   auto it = Self->Vars.find(Args->Key);
    if (it != Self->Vars.end()) {
-      StrCopy(it->second, Args->Buffer, Args->Size);
-      return ERR_Okay;
+      StrCopy(it->second, Args->Value, Args->Size);
+      return ERR::Okay;
    }
    else {
-      Args->Buffer[0] = 0;
-      return ERR_UnsupportedField;
+      Args->Value[0] = 0;
+      return ERR::UnsupportedField;
    }
 }
 
 //********************************************************************************************************************
 
-static ERROR SCRIPT_Init(objScript *Self, APTR Void)
+static ERR SCRIPT_Init(objScript *Self)
 {
    pf::Log log;
 
    if (!Self->TargetID) { // Define the target if it has not been set already
-      log.debug("Target not set, defaulting to owner #%d.", Self->ownerID());
+      log.detail("Target not set, defaulting to owner #%d.", Self->ownerID());
       Self->TargetID = Self->ownerID();
    }
 
-   if (Self->isSubClass()) return ERR_Okay; // Break here to let the sub-class continue initialisation
+   if (Self->isSubClass()) return ERR::Okay; // Break here to let the sub-class continue initialisation
 
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 }
 
 //********************************************************************************************************************
 
-static ERROR SCRIPT_NewObject(objScript *Self, APTR Void)
+static ERR SCRIPT_NewObject(objScript *Self)
 {
    new (Self) objScript;
 
@@ -356,37 +345,37 @@ static ERROR SCRIPT_NewObject(objScript *Self, APTR Void)
 
    StrCopy("lang", Self->LanguageDir, sizeof(Self->LanguageDir));
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 // If reset, the script will be reloaded from the original file location the next time an activation occurs.  All
-// arguments are also reset.
+// parameters are also reset.
 
-static ERROR SCRIPT_Reset(objScript *Self, APTR Void)
+static ERR SCRIPT_Reset(objScript *Self)
 {
    Self->Vars.clear();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
-SetVar: Script parameters can be set through this action.
+SetKey: Script parameters can be set through this action.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SCRIPT_SetVar(objScript *Self, struct acSetVar *Args)
+static ERR SCRIPT_SetKey(objScript *Self, struct acSetKey *Args)
 {
    pf::Log log;
 
    // It is acceptable to set zero-length string values (this has its uses in some scripts).
 
-   if ((!Args) or (!Args->Field) or (!Args->Value)) return ERR_NullArgs;
-   if (!Args->Field[0]) return ERR_NullArgs;
+   if ((!Args) or (!Args->Key) or (!Args->Value)) return ERR::NullArgs;
+   if (!Args->Key[0]) return ERR::NullArgs;
 
-   log.trace("%s = %s", Args->Field, Args->Value);
+   log.trace("%s = %s", Args->Key, Args->Value);
 
-   Self->Vars[Args->Field] = Args->Value;
-   return ERR_Okay;
+   Self->Vars[Args->Key] = Args->Value;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -403,17 +392,17 @@ date stamps on the original and cache files.
 
 *********************************************************************************************************************/
 
-static ERROR GET_CacheFile(objScript *Self, STRING *Value)
+static ERR GET_CacheFile(objScript *Self, STRING *Value)
 {
    *Value = Self->CacheFile;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_CacheFile(objScript *Self, CSTRING Value)
+static ERR SET_CacheFile(objScript *Self, CSTRING Value)
 {
    if (Self->CacheFile) { FreeResource(Self->CacheFile); Self->CacheFile = NULL; }
    if (Value) Self->CacheFile = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -430,7 +419,7 @@ will be set to -1.
 -FIELD-
 Error: If a script fails during execution, an error code may be readable here.
 
-On execution of a script, the Error value is reset to ERR_Okay and will be updated if the script fails.  Be mindful
+On execution of a script, the Error value is reset to ERR::Okay and will be updated if the script fails.  Be mindful
 that if a script is likely to be executed recursively then the first thrown error will have priority and be
 propagated through the call stack.
 
@@ -439,17 +428,17 @@ ErrorString: A human readable error string may be declared here following a scri
 
 *********************************************************************************************************************/
 
-static ERROR GET_ErrorString(objScript *Self, STRING *Value)
+static ERR GET_ErrorString(objScript *Self, STRING *Value)
 {
    *Value = Self->ErrorString;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_ErrorString(objScript *Self, CSTRING Value)
+static ERR SET_ErrorString(objScript *Self, CSTRING Value)
 {
    if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = NULL; }
    if (Value) Self->ErrorString = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -461,15 +450,15 @@ Lookup: SCF
 -FIELD-
 Language: Indicates the language (locale) that the source script is written in.
 
-The Language value indicates the language in which the source script was written.  The default setting is ENG, the
+The Language value indicates the language in which the source script was written.  The default setting is `ENG`, the
 code for international English.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Language(objScript *Self, STRING *Value)
+static ERR GET_Language(objScript *Self, STRING *Value)
 {
    *Value = Self->Language;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -481,38 +470,34 @@ The LineOffset is a value that is added to all line numbers that are referenced 
 primarily intended for internal usage only.
 
 -FIELD-
-Path: The location of the file that is to be processed as a script.
+Path: The location of a script file to be loaded.
 
-Script files can be loaded by a script object by setting the Path field to the path of the source file.  The
-source must be provided prior to the initialisation process or the script object will fail (as an alternative, the
-#Statement field can also be set).
+A script file can be loaded by setting the Path to its location.  The path must be defined prior to the initialisation
+process, or alternatively the client can define the #Statement field.
 
-Special parameters can also be passed to the script when setting the location.  The name of an executable procedure
-may be passed by following the location with a semicolon, then the name of the procedure to execute.  Arguments
-can also be passed to the script by following this with a second semicolon, then a sequence of arguments, each
-separated with a comma.  The following string illustrates the format used:
+Optional parameters can also be passed to the script via the Path string.  The name of a function is passed first,
+surrounded by semicolons.  Arguments can be passed to the function by appending them as a CSV list.  The following
+string illustrates the format used: `dir:location;procedure;arg1=val1,arg2,arg3=val2`
 
-<pre>dir:location;procedure;arg1=val1,arg2,arg3=val2</>
-
-A target for the script may be specified by using the 'target' argument in the parameter list (value must refer to a
+A target for the script may be specified by using the 'target' parameter in the parameter list (value must refer to a
 valid existing object).
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR GET_Path(objScript *Self, STRING *Value)
+static ERR GET_Path(objScript *Self, STRING *Value)
 {
    *Value = Self->Path;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Path(objScript *Self, CSTRING Value)
+static ERR SET_Path(objScript *Self, CSTRING Value)
 {
    if (Self->Path) {
-      // If the location has already been set, throw the value to SetVar instead.
+      // If the location has already been set, throw the value to SetKey instead.
 
       if ((Value) and (*Value)) {
-         return acSetVar(Self, "Path", Value);
+         return acSetKey(Self, "Path", Value);
       }
    }
    else {
@@ -520,90 +505,93 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
       if (Self->String)      { FreeResource(Self->String); Self->String = NULL; }
       if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
 
-      LONG i, j, len;
+      LONG i, len;
       if ((Value) and (*Value)) {
-         if (!StrCompare("STRING:", Value, 7)) {
+         for (len=0; (Value[len]) and (Value[len] != ';'); len++);
+
+         if (std::string_view(Value, len).starts_with("STRING:")) {
             return SET_String(Self, Value + 7);
          }
 
-         for (len=0; (Value[len]) and (Value[len] != ';'); len++);
-
-         if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, NULL)) {
+         if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, NULL) IS ERR::Okay) {
             for (i=0; i < len; i++) Self->Path[i] = Value[i];
             Self->Path[i] = 0;
 
             // If a semi-colon has been used, this indicates that a procedure follows the filename.
 
             if (Value[i] IS ';') {
-               char buffer[800], arg[100], argval[400];
-
                i++;
-               while ((Value[i]) and (Value[i] <= 0x20)) i++;
-               for (j=0; (Value[i]) and (Value[i] > 0x20) and (Value[i] != ';'); j++) buffer[j] = Value[i++];
-               buffer[j] = 0;
-               if (buffer[0]) SET_Procedure(Self, buffer);
+               while ((Value[i]) and (unsigned(Value[i]) <= 0x20)) i++;
+               auto start = i, end = i;
+               while ((Value[end]) and (unsigned(Value[end]) > 0x20) and (Value[end] != ';')) end++;
+               if (end > start) {
+                  std::string buffer;
+                  buffer.append(Value, start, end - start);
+                  SET_Procedure(Self, buffer.c_str());
+               }
 
-               // The presence of an opening bracket precedes a series of arguments
+               // Process optional parameters
 
-               if (Value[i] IS ';') {
-                  i++;
+               if (Value[end] IS ';') {
+                  char arg[100];
 
+                  i = end + 1;
                   while (Value[i]) {
-                     while ((Value[i]) and (Value[i] <= 0x20)) i++;
+                     while ((Value[i]) and (unsigned(Value[i]) <= 0x20)) i++;
                      while (Value[i] IS ',') {
                         i++;
-                        while ((Value[i]) and (Value[i] <= 0x20)) i++;
+                        while ((Value[i]) and (unsigned(Value[i]) <= 0x20)) i++;
                      }
 
                      // Extract arg name
 
-                     for (j=0; (Value[i] != ',') and (Value[i] != '=') and (Value[i] > 0x20); j++) arg[j] = Value[i++];
+                     LONG j;
+                     for (j=0; (Value[i] != ',') and (Value[i] != '=') and (unsigned(Value[i]) > 0x20); j++) arg[j] = Value[i++];
                      arg[j] = 0;
 
                      while ((Value[i]) and (Value[i] <= 0x20)) i++;
 
                      // Extract arg value
 
-                     argval[0] = '1';
-                     argval[1] = 0;
+                     std::string argval("1");
                      if (Value[i] IS '=') {
                         i++;
-                        while ((Value[i]) and (Value[i] <= 0x20)) i++;
+                        while ((Value[i]) and (unsigned(Value[i]) <= 0x20)) i++;
                         if (Value[i] IS '"') {
                            i++;
-                           for (j=0; (Value[i]) and (Value[i] != '"'); j++) argval[j] = Value[i++];
-                           argval[j] = 0;
+                           for (j=0; (Value[i+j]) and (Value[i+j] != '"'); j++);
+                           argval.assign(Value, i, j);
                         }
                         else {
-                           for (j=0; (Value[i]) and (Value[i] != ','); j++) argval[j] = Value[i++];
-                           argval[j] = 0;
+                           for (j=0; (Value[i+j]) and (Value[i+j] != ','); j++);
+                           argval.assign(Value, i, j);
                         }
                      }
 
-                     if (!StrMatch("target", arg)) Self->setTarget(StrToInt(argval));
-                     else acSetVar(Self, arg, argval);
+                     if (iequals("target", arg)) Self->setTarget(StrToInt(argval));
+                     else acSetKey(Self, arg, argval.c_str());
                   }
                }
             }
          }
-         else return ERR_AllocMemory;
+         else return ERR::AllocMemory;
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Internal: Name
 
-static ERROR SET_Name(objScript *Self, CSTRING Name)
+static ERR SET_Name(objScript *Self, CSTRING Name)
 {
    if (Name) {
       SetName(Self, Name);
-      struct acSetVar args = { .Field = "Name", .Value = Name };
-      return SCRIPT_SetVar(Self, &args);
+      struct acSetKey args("Name", Name);
+      return SCRIPT_SetKey(Self, &args);
    }
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -620,54 +608,54 @@ script activation - something to try when we have the time?
 
 *********************************************************************************************************************/
 
-static ERROR GET_Owner(objScript *Self, OBJECTID *Value)
+static ERR GET_Owner(objScript *Self, OBJECTID *Value)
 {
    if (Self->ScriptOwnerID) *Value = Self->ScriptOwnerID;
    else *Value = Self->ownerID();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Owner(objScript *Self, OBJECTID Value)
+static ERR SET_Owner(objScript *Self, OBJECTID Value)
 {
    pf::Log log;
 
    if (Value) {
       OBJECTPTR newowner;
-      if (!AccessObject(Value, 2000, &newowner)) {
+      if (AccessObject(Value, 2000, &newowner) IS ERR::Okay) {
          SetOwner(Self, newowner);
          ReleaseObject(newowner);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_ExclusiveDenied);
+      else return log.warning(ERR::ExclusiveDenied);
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
 
 -FIELD-
-Procedure: Allows you to specify a procedure to be executed from within a script.
+Procedure: Specifies a procedure to be executed from within a script.
 
 Sometimes scripts are split into several procedures or functions that can be executed independently from the 'main'
-area of the script.  If a script that you have loaded contains procedures, you can set the Procedure field to execute a
-specific routine whenever the script is activated with the Activate action.
+area of the script.  If a loaded script contains procedures, the client can set the Procedure field to execute a
+specific routine whenever the script is activated with the #Activate() action.
 
 If this field is not set, the first procedure in the script, or the 'main' procedure (as defined by the script type) is
 executed by default.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Procedure(objScript *Self, CSTRING *Value)
+static ERR GET_Procedure(objScript *Self, CSTRING *Value)
 {
    *Value = Self->Procedure;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Procedure(objScript *Self, CSTRING Value)
+static ERR SET_Procedure(objScript *Self, CSTRING Value)
 {
    if (Self->Procedure) { FreeResource(Self->Procedure); Self->Procedure = NULL; }
    if (Value) Self->Procedure = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -682,21 +670,21 @@ For maximum compatibility in type conversion, the results are stored as an array
 
 *********************************************************************************************************************/
 
-static ERROR GET_Results(objScript *Self, STRING **Value, LONG *Elements)
+static ERR GET_Results(objScript *Self, STRING **Value, LONG *Elements)
 {
    if (Self->Results) {
       *Value = Self->Results;
       *Elements = Self->ResultsTotal;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Value = NULL;
       *Elements = 0;
-      return ERR_FieldNotSet;
+      return ERR::FieldNotSet;
    }
 }
 
-static ERROR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
+static ERR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
 {
    pf::Log log;
 
@@ -707,12 +695,12 @@ static ERROR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
    if (Value) {
       LONG len = 0;
       for (LONG i=0; i < Elements; i++) {
-         if (!Value[i]) return log.warning(ERR_InvalidData);
+         if (!Value[i]) return log.warning(ERR::InvalidData);
          len += StrLength(Value[i]) + 1;
       }
       Self->ResultsTotal = Elements;
 
-      if (!AllocMemory((sizeof(CSTRING) * (Elements+1)) + len, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Results, NULL)) {
+      if (AllocMemory((sizeof(CSTRING) * (Elements+1)) + len, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Results, NULL) IS ERR::Okay) {
          STRING str = (STRING)(Self->Results + Elements + 1);
          LONG i;
          for (i=0; Value[i]; i++) {
@@ -720,11 +708,11 @@ static ERROR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
             str += StrCopy(Value[i], str) + 1;
          }
          Self->Results[i] = NULL;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_AllocMemory;
+      else return ERR::AllocMemory;
    }
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -738,19 +726,19 @@ It is also commonly used for executing scripts that have been embedded into prog
 
 *********************************************************************************************************************/
 
-static ERROR GET_String(objScript *Self, CSTRING *Value)
+static ERR GET_String(objScript *Self, CSTRING *Value)
 {
    *Value = Self->String;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_String(objScript *Self, CSTRING Value)
+static ERR SET_String(objScript *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; } // Path removed when a statement string is being set
    if (Self->String) { FreeResource(Self->String); Self->String = NULL; }
 
-   if (Value) Self->String = StrClone(check_bom(Value));
-   return ERR_Okay;
+   if (Value) Self->String = StrClone(check_bom((const unsigned char *)Value));
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -762,27 +750,27 @@ This field can refer to the target object that new objects at the root of the sc
 field is not set, the root-level objects in the script will be initialised to the script's owner.
 
 -FIELD-
-TotalArgs: Reflects the total number of arguments used in a script object.
+TotalArgs: Reflects the total number of parameters used in a script object.
 
-The total number of arguments that have been set in a script object through the unlisted field mechanism are reflected
-in the value of this field.  If you have not set any arguments then the field value will be zero.
+The total number of parameters that have been set in a script object through the unlisted field mechanism are reflected
+in the value of this field.
 -END-
 *********************************************************************************************************************/
 
-static ERROR GET_TotalArgs(objScript *Self, LONG *Value)
+static ERR GET_TotalArgs(objScript *Self, LONG *Value)
 {
    *Value = Self->Vars.size();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 PRIVATE: Variables
 *********************************************************************************************************************/
 
-static ERROR GET_Variables(objScript *Self, std::map<std::string, std::string> **Value)
+static ERR GET_Variables(objScript *Self, std::map<std::string, std::string> **Value)
 {
    *Value = &Self->Vars;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -796,31 +784,29 @@ loaded, without the file name.  If this cannot be determined then the working pa
 
 The working path is always fully qualified with a slash or colon at the end of the string.
 
-You can manually change the working path by setting this field with a custom string.
+A client can manually change the working path by setting this field with a custom string.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
+static ERR GET_WorkingPath(objScript *Self, STRING *Value)
 {
    pf::Log log;
-
-   // The working path is determined when the first attempt to read it is made.
 
    if (!Self->WorkingPath) {
       if (!Self->Path) {
          log.warning("Script has no defined Path.");
-         return ERR_MissingPath;
+         return ERR::MissingPath;
       }
 
       // Determine if an absolute path has been indicated
 
-      UBYTE path = FALSE;
-      if (Self->Path[0] IS '/') path = TRUE;
+      bool path = false;
+      if (Self->Path[0] IS '/') path = true;
       else {
         for (LONG j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
             if (Self->Path[j] IS ':') {
-               path = TRUE;
+               path = true;
                break;
             }
          }
@@ -832,7 +818,6 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
       }
 
-      STRING workingpath;
       if (path) { // Extract absolute path
          pf::SwitchContext ctx(Self);
          char save = Self->Path[j];
@@ -840,36 +825,32 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          Self->WorkingPath = StrClone(Self->Path);
          Self->Path[j] = save;
       }
-      else if ((!CurrentTask()->get(FID_Path, &workingpath)) and (workingpath)) {
-         char buf[1024];
+      else {
+         STRING working_path;
+         if ((CurrentTask()->get(FID_Path, &working_path) IS ERR::Okay) and (working_path)) {
+            // Using ResolvePath() can help to determine relative paths such as "../path/file"
 
-         // Using ResolvePath() can help to determine relative paths such as "../path/file"
+            std::string buf = working_path;
+            if (j > 0) buf.append(Self->Path, 0, j);
 
-         if (j > 0) {
-            char save = Self->Path[j];
-            Self->Path[j] = 0;
-            snprintf(buf, sizeof(buf), "%s%s", workingpath, Self->Path);
-            Self->Path[j] = save;
+            pf::SwitchContext ctx(Self);
+            if (ResolvePath(buf.c_str(), RSF::APPROXIMATE, &Self->WorkingPath) != ERR::Okay) {
+               Self->WorkingPath = StrClone(working_path);
+            }
          }
-         else snprintf(buf, sizeof(buf), "%s", workingpath);
-
-         pf::SwitchContext ctx(Self);
-         if (ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
-            Self->WorkingPath = StrClone(workingpath);
-         }
+         else log.warning("No working path.");
       }
-      else log.warning("No working path.");
    }
 
    *Value = Self->WorkingPath;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_WorkingPath(objScript *Self, STRING Value)
+static ERR SET_WorkingPath(objScript *Self, STRING Value)
 {
    if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
    if (Value) Self->WorkingPath = StrClone(Value);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -903,7 +884,7 @@ static const FieldArray clScriptFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERROR add_script_class(void)
+extern "C" ERR add_script_class(void)
 {
    glScriptClass = extMetaClass::create::global(
       fl::ClassVersion(VER_SCRIPT),
@@ -915,5 +896,5 @@ extern "C" ERROR add_script_class(void)
       fl::Size(sizeof(objScript)),
       fl::Path("modules:core"));
 
-   return glScriptClass ? ERR_Okay : ERR_AddClass;
+   return glScriptClass ? ERR::Okay : ERR::AddClass;
 }

@@ -12,7 +12,7 @@
     <idstring>ID_VECTOR</idstring>
     <category>Graphics</category>
     <include>modules/vector.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>Vector is an abstract class that is used as a blueprint for other vector classes that provide specific functionality for a vector scene.  At this time the classes are <class name="VectorClip">VectorClip</class>, <class name="VectorEllipse">VectorEllipse</class>, <class name="VectorGroup">VectorGroup</class>, <class name="VectorPath">VectorPath</class>, <class name="VectorPolygon">VectorPolygon</class>, <class name="VectorRectangle">VectorRectangle</class>, <class name="VectorSpiral">VectorSpiral</class>, <class name="VectorText">VectorText</class>, <class name="VectorViewport">VectorViewport</class> and <class name="VectorWave">VectorWave</class>.</p>
 <p>The majority of sub-classes support all of the functionality provided by Vector.  The general exception is that graphics functions will not be supported by non-graphical classes, for instance <class name="VectorGroup">VectorGroup</class> and <class name="VectorViewport">VectorViewport</class> do not produce a vector path and therefore cannot be rendered.</p>
@@ -26,11 +26,19 @@
     <action>
       <name>Disable</name>
       <comment>Disabling a vector can be used to trigger style changes and prevent user input.</comment>
+      <prototype>ERR acDisable(*Object)</prototype>
     </action>
 
     <action>
       <name>Draw</name>
       <comment>Draws the surface associated with the vector.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
       <description>
 <p>Calling the Draw action on a vector will schedule a redraw of the scene graph if it is associated with a <class name="Surface">Surface</class>. Internally, drawing is scheduled for the next frame and is not immediate.</p>
       </description>
@@ -39,26 +47,31 @@
     <action>
       <name>Enable</name>
       <comment>Reverses the effects of disabling the vector.</comment>
+      <prototype>ERR acEnable(*Object)</prototype>
     </action>
 
     <action>
       <name>Hide</name>
       <comment>Changes the vector's visibility setting to hidden.</comment>
+      <prototype>ERR acHide(*Object)</prototype>
     </action>
 
     <action>
       <name>MoveToBack</name>
       <comment>Move a vector to the back of its stack.</comment>
+      <prototype>ERR acMoveToBack(*Object)</prototype>
     </action>
 
     <action>
       <name>MoveToFront</name>
       <comment>Move a vector to the front of its stack.</comment>
+      <prototype>ERR acMoveToFront(*Object)</prototype>
     </action>
 
     <action>
       <name>Show</name>
       <comment>Changes the vector's visibility setting to visible.</comment>
+      <prototype>ERR acShow(*Object)</prototype>
     </action>
 
   </actions>
@@ -67,7 +80,7 @@
     <method>
       <name>Debug</name>
       <comment>Internal functionality for debugging.</comment>
-      <prototype>ERROR vecDebug(OBJECTPTR Object)</prototype>
+      <prototype>ERR vec::Debug(OBJECTPTR Object)</prototype>
       <description>
 <p>This internal method prints comprehensive debugging information to the log.</p>
       </description>
@@ -79,7 +92,7 @@
     <method>
       <name>FreeMatrix</name>
       <comment>Remove an allocated VectorMatrix structure.</comment>
-      <prototype>ERROR vecFreeMatrix(OBJECTPTR Object, struct VectorMatrix * Matrix)</prototype>
+      <prototype>ERR vec::FreeMatrix(OBJECTPTR Object, struct VectorMatrix * Matrix)</prototype>
       <input>
         <param type="struct VectorMatrix *" name="Matrix">Reference to the structure that requires removal.</param>
       </input>
@@ -95,7 +108,7 @@
     <method>
       <name>GetBoundary</name>
       <comment>Returns the graphical boundary of a vector.</comment>
-      <prototype>ERROR vecGetBoundary(OBJECTPTR Object, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height)</prototype>
+      <prototype>ERR vec::GetBoundary(OBJECTPTR Object, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height)</prototype>
       <input>
         <param type="VBF" name="Flags" lookup="VBF">Optional flags.</param>
         <param type="DOUBLE *" name="X">The left-most position of the boundary is returned here.</param>
@@ -120,9 +133,10 @@
     <method>
       <name>NewMatrix</name>
       <comment>Returns a VectorMatrix structure that allows transformations to be applied to the vector.</comment>
-      <prototype>ERROR vecNewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform)</prototype>
+      <prototype>ERR vec::NewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform, LONG End)</prototype>
       <input>
         <param type="struct VectorMatrix **" name="Transform">A reference to the new transform structure is returned here.</param>
+        <param type="LONG" name="End">If <code>true</code>, the matrix priority is lowered by inserting it at the end of the transform list.</param>
       </input>
       <description>
 <p>Call NewMatrix() to allocate a transformation matrix that allows transforms to be applied to a vector.  Manipulating the transformation matrix is supported by functions in the Vector module, such as <function module="Vector">Scale</function> and <function module="Vector">Rotate</function>.</p>
@@ -138,7 +152,7 @@
     <method>
       <name>PointInPath</name>
       <comment>Checks if point at (X,Y) is within a vector's path.</comment>
-      <prototype>ERROR vecPointInPath(OBJECTPTR Object, DOUBLE X, DOUBLE Y)</prototype>
+      <prototype>ERR vec::PointInPath(OBJECTPTR Object, DOUBLE X, DOUBLE Y)</prototype>
       <input>
         <param type="DOUBLE" name="X">The X coordinate of the point.</param>
         <param type="DOUBLE" name="Y">The Y coordinate of the point.</param>
@@ -158,13 +172,13 @@
     <method>
       <name>Push</name>
       <comment>Push a vector to a new position within its area of the vector stack.</comment>
-      <prototype>ERROR vecPush(OBJECTPTR Object, LONG Position)</prototype>
+      <prototype>ERR vec::Push(OBJECTPTR Object, LONG Position)</prototype>
       <input>
         <param type="LONG" name="Position">Specify a relative position index here (-ve to move backwards, +ve to move forwards)</param>
       </input>
       <description>
 <p>This method moves the position of a vector within its branch of the vector stack.  Repositioning is relative to the current position of the vector.  Every unit specified in the Position parameter will move the vector by one index in the stack frame.  Negative values will move the vector backwards; positive values move it forward.</p>
-<p>It is not possible for an vector to move outside of its branch, i.e. it cannot change its parent.  If the vector reaches the edge of its branch with excess units remaining, the method will return immediately with an ERR_Okay error code.</p>
+<p>It is not possible for an vector to move outside of its branch, i.e. it cannot change its parent.  If the vector reaches the edge of its branch with excess units remaining, the method will return immediately with an <code>ERR::Okay</code> error code.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -175,17 +189,15 @@
     <method>
       <name>SubscribeFeedback</name>
       <comment>Subscribe to events that relate to the vector.</comment>
-      <prototype>ERROR vecSubscribeFeedback(OBJECTPTR Object, FM Mask, FUNCTION * Callback)</prototype>
+      <prototype>ERR vec::SubscribeFeedback(OBJECTPTR Object, FM Mask, FUNCTION * Callback)</prototype>
       <input>
-        <param type="FM" name="Mask" lookup="FM">Defines the feedback events required by the client.  Set to 0xffffffff if all messages are required.</param>
+        <param type="FM" name="Mask" lookup="FM">Defines the feedback events required by the client.  Set to <code>0xffffffff</code> if all messages are required.</param>
         <param type="FUNCTION *" name="Callback">The function that will receive feedback events.</param>
       </input>
       <description>
 <p>Use this method to receive feedback for events that have affected the state of a vector.</p>
-<p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the callback function return <code>ERR_Terminate</code>.</p>
-<p>The synopsis for the Callback is:</p>
-<p>
-<code/><code> ERROR callback(*Vector, LONG Event) </code><code/></p>
+<p>To remove an existing subscription, call this method again with the same <code>Callback</code> and an empty <code>Mask</code>. Alternatively have the callback function return <code>ERR::Terminate</code>.</p>
+<p>The prototype for the <code>Callback</code> is <code>ERR callback(*Vector, FM Event)</code></p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -196,66 +208,67 @@
     <method>
       <name>SubscribeInput</name>
       <comment>Create a subscription for input events that relate to the vector.</comment>
-      <prototype>ERROR vecSubscribeInput(OBJECTPTR Object, JTYPE Mask, FUNCTION * Callback)</prototype>
+      <prototype>ERR vec::SubscribeInput(OBJECTPTR Object, JTYPE Mask, FUNCTION * Callback)</prototype>
       <input>
-        <param type="JTYPE" name="Mask">Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.</param>
+        <param type="JTYPE" name="Mask" lookup="JTYPE">Combine <code>JTYPE</code> flags to define the input messages required by the client.  Set to zero to remove an existing subscription.</param>
         <param type="FUNCTION *" name="Callback">Reference to a function that will receive input messages.</param>
       </input>
       <description>
-<p>The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target vector.  The original events are transferred with some modifications - <code>X</code>, <code>Y</code>, <code>AbsX</code> and <code>AbsY</code> are converted to the vector's coordinate system, and <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> events are triggered during passage through the clipping area.</p>
+<p>The SubscribeInput method filters events from <function module="Display">SubscribeInput</function> by limiting their relevance to that of the target vector.  The original events are transferred with some modifications - <code>X</code>, <code>Y</code>, <code>AbsX</code> and <code>AbsY</code> are converted to the vector's coordinate system, and <code>CROSSED_IN</code> and <code>CROSSED_OUT</code> events are triggered during passage through the clipping area.</p>
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
-<p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the function return <code>ERR_Terminate</code>.</p>
-<p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>
-<p>The synopsis for the Callback is:</p>
-<p>
-<code/><code> ERROR callback(*Vector, *InputEvent) </code><code/></p>
+<p>To remove an existing subscription, call this method again with the same <code>Callback</code> and an empty <code>Mask</code>. Alternatively have the function return <code>ERR::Terminate</code>.</p>
+<p>Please refer to <function module="Display">SubscribeInput</function> for further information on event management and message handling.</p>
+<p>The prototype for the <code>Callback</code> is <code>ERR callback(*Vector, *InputEvent)</code></p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Function">A call to gfxSubscribeInput() failed.</error>
+        <error code="Function">A call to <function module="Display">SubscribeInput</function> failed.</error>
       </result>
     </method>
 
     <method>
       <name>SubscribeKeyboard</name>
       <comment>Create a subscription for input events that relate to the vector.</comment>
-      <prototype>ERROR vecSubscribeKeyboard(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <prototype>ERR vec::SubscribeKeyboard(OBJECTPTR Object, FUNCTION * Callback)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       </input>
       <description>
-<p>The SubscribeKeyboard method provides a callback mechanism for handling keyboard events.  Events are reported when the vector or one of its children has the user focus.  It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
-<p>The prototype for the callback is as follows, whereby Qualifers are <code>KQ</code> flags and the Code is a <code>K</code> constant representing the raw key value.  The Unicode value is the resulting character when the qualifier and code are translated through the user's keymap.</p>
+<p>The SubscribeKeyboard() method provides a callback mechanism for handling keyboard events.  Events are reported when the vector or one of its children has the user focus.  It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
+<p>The prototype for the callback is as follows, whereby <code>Qualifers</code> are <code>KQ</code> flags and the Code is a <code>K</code> constant representing the raw key value.  The <code>Unicode</code> value is the resulting character when the qualifier and code are translated through the user's keymap.</p>
 <p>
-<code/><code> ERROR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode); </code><code/></p>
-<p>If the callback returns <code>ERR_Terminate</code> then the subscription will be ended.  All other error codes are ignored.</p>
+<code>ERR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode);</code></p>
+<p>If the callback returns <code>ERR::Terminate</code> then the subscription will be ended.  All other error codes are ignored.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="FieldNotSet">The VectorScene has no reference to a Surface.</error>
+        <error code="FieldNotSet">The <class name="VectorScene" field="Surface">VectorScene.Surface</class> field has not been defined.</error>
         <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
-        <error code="Function">A call to gfxSubscribeInput() failed.</error>
+        <error code="Function">A call to <function module="Display">SubscribeInput</function> failed.</error>
       </result>
     </method>
 
     <method>
-      <name>TracePath</name>
+      <name>Trace</name>
       <comment>Returns the coordinates for a vector path, using callbacks.</comment>
-      <prototype>ERROR vecTracePath(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <prototype>ERR vec::Trace(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</prototype>
       <input>
-        <param type="FUNCTION *" name="Callback">The function to call with each coordinate of the path.</param>
+        <param type="FUNCTION *" name="Callback">A function to call with the path coordinates.</param>
+        <param type="DOUBLE" name="Scale">Set to <code>1.0</code> (recommended) to trace the path at a scale of 1 to 1.</param>
+        <param type="LONG" name="Transform">Set to <code>true</code> if all transforms applicable to the vector should be applied to the path.</param>
       </input>
       <description>
-<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path for each pixel that would be drawn if the path were to be rendered with a stroke size of 1.  The prototype of the callback function is <code>ERROR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y)</code>.</p>
-<p>The Vector parameter refers to the vector targeted by the method.  The Index is an incrementing counter that reflects the currently plotted point.  The X and Y parameters reflect the coordinate of a point on the path.</p>
-<p>If the Callback returns <code>ERR_Terminate</code>, then no further coordinates will be processed.</p>
+<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the path from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, DOUBLE X, DOUBLE Y, APTR Meta)</code>.</p>
+<p>The <code>Vector</code> parameter refers to the vector targeted by the method.  The <code>Index</code> is an incrementing counter that reflects the currently plotted point.  The <code>X</code> and <code>Y</code> parameters reflect the coordinate of a point on the path.</p>
+<p>If the <code>Callback</code> returns <code>ERR::Terminate</code>, then no further coordinates will be processed.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="NoData">The vector does not define a path.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -264,8 +277,21 @@
 
   <fields>
     <field>
+      <name>AppendPath</name>
+      <comment>Experimental.  Append the path of the referenced vector during path generation.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>The path of an external Vector can be appended to the base path in real-time by making a reference to that vector here.  The operation is completed immediately after the generation of the client vector's base path, prior to any transforms.</p>
+<p>It is strongly recommended that the appended vector has its <fl>Visibility</fl> set to <code>HIDDEN</code>.  Any direct transform that is applied to the vector will be utilised, but inherited transforms and placement information will be ignored.</p>
+<p>If it is necessary for the two paths to flow from one to the other, set <code>VF::JOIN_PATHS</code> in the <fl>Flags</fl> field.</p>
+<p>Note: Appended paths are not compliant with SVG and this feature is considered experimental.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Child</name>
-      <comment>The first child vector, or NULL.</comment>
+      <comment>The first child vector, or <code>NULL</code>.</comment>
       <access read="R">Read</access>
       <type class="Vector">*Vector</type>
       <description>
@@ -279,7 +305,7 @@
       <access read="G" write="S">Get/Set</access>
       <type lookup="VFR">INT</type>
       <description>
-<p>The ClipRule attribute only applies to vector shapes when they are contained within a <class name="VectorClip">VectorClip</class> object.  In terms of outcome, the ClipRule works similarly to <field>FillRule</field>.</p>
+<p>The ClipRule attribute only applies to vector shapes when they are contained within a <class name="VectorClip">VectorClip</class> object.  In terms of outcome, the ClipRule works similarly to <fl>FillRule</fl>.</p>
 <types lookup="VFR"/>
       </description>
     </field>
@@ -323,7 +349,17 @@
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The DashOffset can be set in conjunction with the <field>DashArray</field> to shift the dash pattern to the left.  If the offset is negative then the shift will be to the right.</p>
+<p>The DashOffset can be set in conjunction with the <fl>DashArray</fl> to shift the dash pattern to the left.  If the offset is negative then the shift will be to the right.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DisplayScale</name>
+      <comment>Returns the scale of the vector as it appears on the display.</comment>
+      <access read="G">Get</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The DisplayScale field will return the scale factor of the vector's path as it appears in the final rendering.  For instance if the vector is the child of a viewport scaled down to 50%, the resulting value would be <code>0.5</code>.</p>
       </description>
     </field>
 
@@ -333,7 +369,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The EnableBkgd option must be set to true if a section of the vector tree uses filters that have 'BackgroundImage' or 'BackgroundAlpha' as a source.  If it is not set, then filters using BackgroundImage and BackgroundAlpha references will not produce the expected behaviour.</p>
+<p>The EnableBkgd option must be set to true if a section of the vector tree uses filters that have <code>BackgroundImage</code> or <code>BackgroundAlpha</code> as a source.  If it is not set, then filters using <code>BackgroundImage</code> and <code>BackgroundAlpha</code> references will not produce the expected behaviour.</p>
 <p>The EnableBkgd option can be enabled on Vector sub-classes <class name="VectorGroup">VectorGroup</class>, <class name="VectorPattern">VectorPattern</class> and <class name="VectorViewport">VectorViewport</class>.  All other sub-classes will ignore the option if used.</p>
       </description>
     </field>
@@ -344,7 +380,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The painter used for filling a vector path can be defined through this field.  The string is parsed through the <function module="Vector">ReadPainter</function> function in the Vector module.  Please refer to it for further details on valid formatting.</p>
+<p>The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The string is parsed through the <function module="Vector">ReadPainter</function> function.  Please refer to it for further details on valid formatting.</p>
+<p>It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by separating them with a semi-colon <code>;</code> character.  This feature makes it easy to use a common background fill and follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this feature is intended for programmed use-cases and is not SVG compliant.</p>
       </description>
     </field>
 
@@ -365,7 +402,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The FillOpacity value is used by the painting algorithm when it is rendering a filled vector.  It is multiplied with the <field>Opacity</field> to determine a final opacity value for the render.</p>
+<p>The FillOpacity value is used by the painting algorithm when it is rendering a filled vector.  It is multiplied with the <fl>Opacity</fl> to determine a final opacity value for the render.</p>
       </description>
     </field>
 
@@ -385,8 +422,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field assigns a graphics filter to the rendering pipeline of the vector.  The filter must initially be created using the <class name="VectorFilter">VectorFilter</class> class and added to a VectorScene using <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class>.  The filter can then be referenced by ID in the Filter field of any vector object.  Please refer to the <class name="VectorFilter">VectorFilter</class> class for further details on filter configuration.</p>
-<p>The Filter value can be in the format <code>ID</code> or <code>url(<field>ID</field>)</code> according to client preference.</p>
+<p>This field assigns a graphics filter to the rendering pipeline of the vector.  The filter must initially be created using the <class name="VectorFilter">VectorFilter</class> class and added to a VectorScene using <class name="VectorScene" method="AddDef">VectorScene.AddDef()</class>.  The filter can then be referenced by ID in the Filter field of any vector object.  Please refer to the <class name="VectorFilter">VectorFilter</class> class for further details on filter configuration.</p>
+<p>The Filter value can be in the format <code>ID</code> or <code>url(<fl>ID</fl>)</code> according to client preference.</p>
       </description>
     </field>
 
@@ -460,7 +497,7 @@
       <access read="R">Read</access>
       <type>struct VectorMatrix *</type>
       <description>
-<p>All transforms that have been allocated via <function module="Vector">NewMatrix</function> can be read from the Matrices field.  Each transform is represented by the <code>VectorMatrix</code> structure, and are linked in the order in which they are added to the vector.</p>
+<p>All transforms that have been allocated via <function module="Vector">NewMatrix</function> can be read from the Matrices field.  Each transform is represented by the <st>VectorMatrix</st> structure, and are linked in the order in which they are added to the vector.</p>
 <struct lookup="VectorMatrix"/>
       </description>
     </field>
@@ -471,8 +508,8 @@
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>When two line segments meet at a sharp angle and miter joins have been specified in <field>LineJoin</field>, it is possible for the miter to extend far beyond the thickness of the line stroking the path. The MiterLimit imposes a limit on the ratio of the miter length to the <field>StrokeWidth</field>. When the limit is exceeded, the join is converted from a miter to a bevel.</p>
-<p>The ratio of miter length (distance between the outer tip and the inner corner of the miter) to <field>StrokeWidth</field> is directly related to the angle (theta) between the segments in user space by the formula: <code>MiterLength / StrokeWidth = 1 / sin ( theta / 2 )</code>.</p>
+<p>When two line segments meet at a sharp angle and miter joins have been specified in <fl>LineJoin</fl>, it is possible for the miter to extend far beyond the thickness of the line stroking the path. The MiterLimit imposes a limit on the ratio of the miter length to the <fl>StrokeWidth</fl>. When the limit is exceeded, the join is converted from a miter to a bevel.</p>
+<p>The ratio of miter length (distance between the outer tip and the inner corner of the miter) to <fl>StrokeWidth</fl> is directly related to the angle (theta) between the segments in user space by the formula: <code>MiterLength / StrokeWidth = 1 / sin ( theta / 2 )</code>.</p>
 <p>For example, a miter limit of 1.414 converts miters to bevels for theta less than 90 degrees, a limit of 4.0 converts them for theta less than approximately 29 degrees, and a limit of 10.0 converts them for theta less than approximately 11.5 degrees.</p>
       </description>
     </field>
@@ -501,8 +538,8 @@
       <access read="R" write="S">Read/Set</access>
       <type class="Vector">*Vector</type>
       <description>
-<p>The Next value refers to the next vector in the branch.  If the value is NULL, the vector is positioned at the end of the branch.</p>
-<p>The Next value can be set to another vector at any time, on the condition that both vectors share the same owner.  If this is not true, change the current owner before setting the Next field.  Changing the Next value will result in updates to the <field>Parent</field> and <field>Prev</field> fields.</p>
+<p>The Next value refers to the next vector in the branch.  If the value is <code>NULL</code>, the vector is positioned at the end of the branch.</p>
+<p>The Next value can be set to another vector at any time, on the condition that both vectors share the same owner.  If this is not true, change the current owner before setting the Next field.  Changing the Next value will result in updates to the <fl>Parent</fl> and <fl>Prev</fl> fields.</p>
       </description>
     </field>
 
@@ -512,8 +549,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the <field>ID</field> field if that has been defined previously.</p>
-<p>If NumericID is set by the client, then any value in <field>ID</field> will be immediately cleared.</p>
+<p>This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the <fl>ID</fl> field if that has been defined previously.</p>
+<p>If NumericID is set by the client, then any value in <fl>ID</fl> will be immediately cleared.</p>
       </description>
     </field>
 
@@ -524,7 +561,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The overall opacity of a vector can be defined here using a value between 0 and 1.0.  The value will be multiplied with other opacity settings as required during rendering.  For instance, when filling a vector the opacity will be calculated as <code>
-<field>FillOpacity</field> * Opacity</code>.</p>
+<fl>FillOpacity</fl> * Opacity</code>.</p>
       </description>
     </field>
 
@@ -534,7 +571,7 @@
       <access read="R">Read</access>
       <type>OBJECTPTR</type>
       <description>
-<p>The Parent value will refer to the owner of the vector within its respective branch.  To check if the vector is at the top or bottom of its branch, please refer to the <field>Prev</field> and <field>Next</field> fields.</p>
+<p>The Parent value will refer to the owner of the vector within its respective branch.  To check if the vector is at the top or bottom of its branch, please refer to the <fl>Prev</fl> and <fl>Next</fl> fields.</p>
       </description>
     </field>
 
@@ -550,13 +587,23 @@
     </field>
 
     <field>
+      <name>PathTimestamp</name>
+      <comment>This counter is modified each time the path is regenerated.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>The PathTimestamp can be used as a basic means of recording the state of the vector's path, and checking that state for changes at a later time.  For more active monitoring and response, clients should subscribe to the <code>PATH_CHANGED</code> event.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Prev</name>
-      <comment>The previous vector in the branch, or NULL.</comment>
+      <comment>The previous vector in the branch, or <code>NULL</code>.</comment>
       <access read="R" write="S">Read/Set</access>
       <type class="Vector">*Vector</type>
       <description>
-<p>The Prev value refers to the previous vector in the branch.  If the value is NULL, then the vector is positioned at the top of the branch.</p>
-<p>The Prev value can be set to another vector at any time, on the condition that both vectors share the same owner.  If this is not true, change the current owner before setting the Prev field.  Changing the value will result in updates to the <field>Parent</field> and <field>Next</field> values.</p>
+<p>The Prev value refers to the previous vector in the branch.  If the value is <code>NULL</code>, then the vector is positioned at the top of the branch.</p>
+<p>The Prev value can be set to another vector at any time, on the condition that both vectors share the same owner.  If this is not true, change the current owner before setting the Prev field.  Changing the value will result in updates to the <fl>Parent</fl> and <fl>Next</fl> values.</p>
       </description>
     </field>
 
@@ -566,11 +613,9 @@
       <access write="S">Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Use ResizeEvent to receive feedback when the viewport that hosts the vector is resized.  The function prototype is as follows:</p>
-<pre>void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
-</pre>
+<p>Use ResizeEvent to receive feedback when the viewport that hosts the vector is resized.  The function prototype is <code>void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Meta)</code></p>
 <p>The dimension values refer to the current location and size of the viewport.</p>
-<p>Note that this callback feature is provided for convenience, and only one subscription to the viewport is possible at any time.  The conventional means for monitoring the size and position of any vector is to subscribe to the <code>PATH_CHANGED</code> event.</p>
+<p>Note that this callback feature is provided for convenience.  Only one subscription to the viewport is possible at any time.  The conventional means for monitoring the size and position of any vector is to subscribe to the <code>PATH_CHANGED</code> event.</p>
       </description>
     </field>
 
@@ -613,7 +658,7 @@ Z: Close Path
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The stroker used for rendering a vector path can be defined through this field.  The string is parsed through the <function module="Vector">ReadPainter</function> function in the Vector module.  Please refer to it for further details on valid formatting.</p>
+<p>The stroker used for rendering a vector path can be defined through this field.  The string is parsed through the <function>ReadPainter</function> function in the Vector module.  Please refer to it for further details on valid formatting.</p>
       </description>
     </field>
 
@@ -624,7 +669,7 @@ Z: Close Path
       <type>FLOAT []</type>
       <description>
 <p>This field defines the colour that will be used in stroking a path, and is comprised of floating point RGBA values. The intensity of each component is measured from 0 - 1.0.  Stroking is disabled if the alpha value is 0.</p>
-<p>This field is complemented by the <field>StrokeOpacity</field> and <field>Stroke</field> fields.</p>
+<p>This field is complemented by the <fl>StrokeOpacity</fl> and <fl>Stroke</fl> fields.</p>
       </description>
     </field>
 
@@ -645,7 +690,7 @@ Z: Close Path
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The StrokeWidth defines the pixel width of a path when it is stroked.  The path will not be stroked if the value is zero.  A percentage can be used to define the stroke width if it should be relative to the size of the viewbox (along its diagonal).  Note that this incurs a slight computational penalty when drawing.</p>
+<p>The StrokeWidth defines the pixel width of a path when it is stroked.  The path will not be stroked if the value is zero.  A percentage can be used to define the stroke width if it should be scaled to the size of the viewbox (along its diagonal).  Note that this incurs a slight computational penalty when drawing.</p>
 <p>The size of the stroke is also affected by scaling factors imposed by transforms and viewports.</p>
       </description>
     </field>
@@ -712,6 +757,7 @@ Z: Close Path
     <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">
       <const name="DISABLED">The vector is disabled and user input should be ignored.</const>
       <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
+      <const name="JOIN_PATHS">When appending a new path, use a join operation to connect the tail end to the head.</const>
     </constants>
 
     <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">
@@ -739,7 +785,7 @@ Z: Close Path
       <const name="BUTT">The default.  The line is sharply squared off at its exact end point.</const>
       <const name="INHERIT">The cap type is inherited from the parent (defaults to butt if unspecified).</const>
       <const name="ROUND">The line cap is a half-circle and the line's end-point forms the center point.</const>
-      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by 'StrokeWidth / 2'.</const>
+      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by <code>StrokeWidth / 2</code>.</const>
     </constants>
 
     <constants lookup="VLJ" comment="Options for the look of line joins.">
@@ -747,7 +793,7 @@ Z: Close Path
       <const name="INHERIT">Inherit the join option from the parent.</const>
       <const name="MITER">The default.  The join will form a pointed edge.</const>
       <const name="MITER_REVERT"/>
-      <const name="MITER_ROUND">Default to MITER, but switch to ROUND if the miter limit is exceeded.</const>
+      <const name="MITER_ROUND">Default to <code>MITER</code>, but switch to <code>ROUND</code> if the miter limit is exceeded.</const>
       <const name="ROUND">The join is rounded.</const>
     </constants>
 
@@ -762,6 +808,7 @@ Z: Close Path
       <field name="ScaleY" type="DOUBLE">Matrix value D</field>
       <field name="TranslateX" type="DOUBLE">Matrix value E</field>
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+      <field name="Tag" type="LONG">An optional tag value defined by the client for matrix identification.</field>
     </struct>
 
   </structs>

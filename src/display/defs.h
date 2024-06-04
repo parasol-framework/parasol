@@ -14,6 +14,8 @@
 //#define DBG_LAYERS
 #define FOCUSMSG(...) //LogF(NULL, __VA_ARGS__)
 
+#include <parasol/system/errors.h>
+
 #ifdef DBG_LAYERS
 #include <stdio.h>
 #endif
@@ -61,8 +63,6 @@
  #ifdef XRANDR_ENABLED
   #include <X11/extensions/Xrandr.h> // Requires libxrandr-dev
  #endif
-
- #include <parasol/modules/xrandr.h>
 #endif
 
 #ifdef _GLES_
@@ -96,10 +96,6 @@
 #define BLEND_MAX_THRESHOLD 255
 #define BLEND_MIN_THRESHOLD 1
 
-#ifndef PI
-#define PI (3.141592653589793238462643383279f)
-#endif
-
 #define ALIGN32(a) (((a) + 3) & (~3))
 
 #define SURFACE_READ      (0x0001)   // Read access
@@ -108,7 +104,9 @@
 
 #include <parasol/modules/display.h>
 #include <parasol/modules/xml.h>
+#include <parasol/strings.hpp>
 #include "../link/linear_rgb.h"
+#include "../link/unicode.h"
 
 using namespace pf;
 class extBitmap;
@@ -162,26 +160,26 @@ struct SurfaceRecord {
 typedef std::vector<SurfaceRecord> SURFACELIST;
 extern std::recursive_mutex glSurfaceLock;
 
-class WindowHook {
+class WinHook {
 public:
    OBJECTID SurfaceID;
    WH Event;
 
-   WindowHook(OBJECTID aSurfaceID, WH aEvent) : SurfaceID(aSurfaceID), Event(aEvent) { };
+   WinHook(OBJECTID aSurfaceID, WH aEvent) : SurfaceID(aSurfaceID), Event(aEvent) { };
 
-   bool operator== (const WindowHook &rhs) const {
+   bool operator== (const WinHook &rhs) const {
       return (SurfaceID == rhs.SurfaceID) and (Event == rhs.Event);
    }
 
-   bool operator() (const WindowHook &lhs, const WindowHook &rhs) const {
+   bool operator() (const WinHook &lhs, const WinHook &rhs) const {
        if (lhs.SurfaceID == rhs.SurfaceID) return UBYTE(lhs.Event) < UBYTE(rhs.Event);
        else return lhs.SurfaceID < rhs.SurfaceID;
    }
 };
 
 namespace std {
-   template <> struct hash<WindowHook> {
-      std::size_t operator()(const WindowHook &k) const {
+   template <> struct hash<WinHook> {
+      std::size_t operator()(const WinHook &k) const {
          return ((std::hash<OBJECTID>()(k.SurfaceID)
             ^ (std::hash<UBYTE>()(UBYTE(k.Event)) << 1)) >> 1);
       }
@@ -201,14 +199,14 @@ enum {
 struct ptrSetWinCursor { PTC Cursor;  };
 struct ptrGrabX11Pointer { OBJECTID SurfaceID;  };
 
-INLINE ERROR ptrSetWinCursor(OBJECTPTR Ob, PTC Cursor) {
+INLINE ERR ptrSetWinCursor(OBJECTPTR Ob, PTC Cursor) {
    struct ptrSetWinCursor args = { Cursor };
    return Action(MT_PtrSetWinCursor, Ob, &args);
 }
 
 #define ptrUngrabX11Pointer(obj) Action(MT_PtrUngrabX11Pointer,(obj),0)
 
-INLINE ERROR ptrGrabX11Pointer(OBJECTPTR Ob, OBJECTID SurfaceID) {
+INLINE ERR ptrGrabX11Pointer(OBJECTPTR Ob, OBJECTID SurfaceID) {
    struct ptrGrabX11Pointer args = { SurfaceID };
    return Action(MT_PtrGrabX11Pointer, Ob, &args);
 }
@@ -358,13 +356,10 @@ class extSurface : public objSurface {
    OBJECTID BitmapOwnerID;        // The surface object that owns the root bitmap
    OBJECTID RevertFocusID;
    LONG     LineWidth;            // Bitmap line width, in bytes
-   LONG     ScrollToX, ScrollToY;
-   LONG     ScrollFromX, ScrollFromY;
    LONG     ListIndex;            // Last known list index
    LONG     InputHandle;          // Input handler for dragging of surfaces
    SWIN     WindowType;           // See SWIN constants
    TIMER    RedrawTimer;          // For ScheduleRedraw()
-   TIMER    ScrollTimer;
    SurfaceCallback CallbackCache[4];
    WORD     ScrollProgress;
    WORD     Opacity;
@@ -397,6 +392,7 @@ class extDisplay : public objDisplay {
       APTR   WindowHandle;
       Window XWindowHandle;
    };
+   Pixmap XPixmap;
    #elif __ANDROID__
       ANativeWindow *WindowHandle;
    #else
@@ -420,43 +416,45 @@ class extDisplay : public objDisplay {
    #endif
 };
 
-extern ERROR create_bitmap_class(void);
-extern ERROR create_clipboard_class(void);
-extern ERROR create_display_class(void);
-extern ERROR create_pointer_class(void);
-extern ERROR create_surface_class(void);
-extern ERROR get_surface_abs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
-extern void  input_event_loop(HOSTHANDLE, APTR);
-extern ERROR lock_surface(extBitmap *, WORD);
-extern ERROR unlock_surface(extBitmap *);
-extern ERROR get_display_info(OBJECTID, DISPLAYINFO *, LONG);
-extern void  resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
-extern void  forbidDrawing(void);
-extern void  forbidExpose(void);
-extern void  permitDrawing(void);
-extern void  permitExpose(void);
-extern ERROR apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
-extern ERROR load_styles(void);
-extern LONG  find_bitmap_owner(const SURFACELIST &, LONG);
-extern void  move_layer(extSurface *, LONG, LONG);
-extern void  move_layer_pos(SURFACELIST &, LONG, LONG);
-extern void  prepare_background(extSurface *, const SURFACELIST &, LONG, extBitmap *, const ClipRectangle &, BYTE);
-extern void  process_surface_callbacks(extSurface *, extBitmap *);
-extern void  refresh_pointer(extSurface *Self);
-extern ERROR track_layer(extSurface *);
-extern void  untrack_layer(OBJECTID);
-extern BYTE  restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle &, bool);
-extern ERROR load_style_values(void);
-extern ERROR resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
-extern void  redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, IRF, EXF);
-extern ERROR _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, EXF);
-extern ERROR _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, IRF);
-extern void  _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, IRF);
-extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
-extern ERROR update_surface_copy(extSurface *);
-extern ERROR update_display(extDisplay *, extBitmap *, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+extern void clean_clipboard(void);
+extern ERR  create_bitmap_class(void);
+extern ERR  create_clipboard_class(void);
+extern ERR  create_display_class(void);
+extern ERR  create_pointer_class(void);
+extern ERR  create_surface_class(void);
+extern ERR  get_surface_abs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
+extern void input_event_loop(HOSTHANDLE, APTR);
+extern ERR  lock_surface(extBitmap *, WORD);
+extern ERR  unlock_surface(extBitmap *);
+extern ERR  get_display_info(OBJECTID, DISPLAYINFO *, LONG);
+extern void resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
+extern void forbidDrawing(void);
+extern void forbidExpose(void);
+extern void permitDrawing(void);
+extern void permitExpose(void);
+extern ERR  apply_style(OBJECTPTR, OBJECTPTR, CSTRING);
+extern ERR  load_styles(void);
+extern LONG find_bitmap_owner(const SURFACELIST &, LONG);
+extern void move_layer(extSurface *, LONG, LONG);
+extern void move_layer_pos(SURFACELIST &, LONG, LONG);
+extern void prepare_background(extSurface *, const SURFACELIST &, LONG, extBitmap *, const ClipRectangle &, BYTE);
+extern void process_surface_callbacks(extSurface *, extBitmap *);
+extern void refresh_pointer(extSurface *Self);
+extern ERR  track_layer(extSurface *);
+extern void untrack_layer(OBJECTID);
+extern BYTE restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle &, bool);
+extern ERR  load_style_values(void);
+extern ERR  resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
+extern void redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, IRF, EXF);
+extern ERR  _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, EXF);
+extern ERR  _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, IRF);
+extern void _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, IRF);
+extern void check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
+extern ERR  update_surface_copy(extSurface *);
+extern ERR  update_display(extDisplay *, extBitmap *, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+extern void get_resolutions(extDisplay *);
 
-extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
+extern ERR RedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
 
 #ifdef DBG_LAYERS
 extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
@@ -468,7 +466,7 @@ extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface;
 extern OBJECTID glPointerID;
 extern DISPLAYINFO glDisplayInfo;
 extern APTR glDither;
-extern OBJECTPTR glCompress;
+extern objCompression *glCompress;
 extern struct CoreBase *CoreBase;
 extern ColourFormat glColourFormat;
 extern bool glHeadless;
@@ -485,9 +483,9 @@ extern UBYTE *glDemultiply;
 extern std::array<UBYTE, 256 * 256> glAlphaLookup;
 extern std::list<ClipRecord> glClips;
 
-extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
+extern std::unordered_map<WinHook, FUNCTION> glWindowHooks;
 extern std::vector<OBJECTID> glFocusList;
-extern std::mutex glFocusLock;
+extern std::recursive_mutex glFocusLock;
 extern std::recursive_mutex glSurfaceLock;
 extern std::recursive_mutex glInputLock;
 
@@ -509,7 +507,7 @@ extern const CSTRING glInputNames[LONG(JET::END)];
 #ifdef _GLES_ // OpenGL related prototypes
 GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID);
 void refresh_display_from_egl(objDisplay *Self);
-ERROR init_egl(void);
+ERR init_egl(void);
 void free_egl(void);
 #endif
 
@@ -554,13 +552,14 @@ extern void handle_motion_notify(XMotionEvent *);
 extern void handle_stack_change(XCirculateEvent *);
 extern void init_xcursors(void);
 extern void free_xcursors(void);
+extern ERR resize_pixmap(extDisplay *, LONG, LONG);
+extern ERR xr_set_display_mode(LONG *, LONG *);
 
 extern WORD glDGAAvailable;
 extern APTR glDGAMemory;
 extern XVisualInfo glXInfoAlpha;
 extern X11Globals glX11;
 extern _XDisplay *XDisplay;
-extern struct XRandRBase *XRandRBase;
 extern bool glX11ShmImage;
 extern bool glXCompositeSupported;
 extern UBYTE KeyHeld[LONG(KEY::LIST_END)];
@@ -575,6 +574,7 @@ extern Cursor C_Default;
 extern OBJECTPTR modXRR;
 extern WORD glPlugin;
 extern APTR glDGAVideo;
+extern bool glXRRAvailable;
 
 #endif
 
@@ -643,7 +643,7 @@ inline LONG find_surface_list(OBJECTID SurfaceID, LONG Limit = -1)
 
 inline LONG find_parent_list(const SURFACELIST &list, extSurface *Self)
 {
-   if ((Self->ListIndex < LONG(list.size())) and (list[Self->ListIndex].SurfaceID IS Self->UID)) {
+   if ((Self->ListIndex < std::ssize(list)) and (list[Self->ListIndex].SurfaceID IS Self->UID)) {
       for (LONG i=Self->ListIndex-1; i >= 0; i--) {
          if (list[i].SurfaceID IS Self->ParentID) return i;
       }
@@ -666,11 +666,13 @@ class extBitmap : public objBitmap {
    LONG   prvAFlags;                  // Private allocation flags
    #ifdef __xwindows__
       struct {
+         Window window;
          XImage   ximage;
          Drawable drawable;
          XImage   *readable;
          XShmSegmentInfo ShmInfo;
          GC gc;
+         LONG pix_width, pix_height;
          bool XShmImage;
       } x11;
 

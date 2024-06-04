@@ -11,10 +11,10 @@ FDEF maBlockingResolveName[] = { { "HostName", FD_STR }, { 0, 0 } };
 FDEF maBlockingResolveAddress[] = { { "Address", FD_STR }, { 0, 0 } };
 
 static const struct MethodEntry clNetLookupMethods[] = {
-   { -1, (APTR)NETLOOKUP_ResolveName, "ResolveName", maResolveName, sizeof(struct nlResolveName) },
-   { -2, (APTR)NETLOOKUP_ResolveAddress, "ResolveAddress", maResolveAddress, sizeof(struct nlResolveAddress) },
-   { -3, (APTR)NETLOOKUP_BlockingResolveName, "BlockingResolveName", maBlockingResolveName, sizeof(struct nlBlockingResolveName) },
-   { -4, (APTR)NETLOOKUP_BlockingResolveAddress, "BlockingResolveAddress", maBlockingResolveAddress, sizeof(struct nlBlockingResolveAddress) },
+   { -1, (APTR)NETLOOKUP_ResolveName, "ResolveName", maResolveName, sizeof(struct nl::ResolveName) },
+   { -2, (APTR)NETLOOKUP_ResolveAddress, "ResolveAddress", maResolveAddress, sizeof(struct nl::ResolveAddress) },
+   { -3, (APTR)NETLOOKUP_BlockingResolveName, "BlockingResolveName", maBlockingResolveName, sizeof(struct nl::BlockingResolveName) },
+   { -4, (APTR)NETLOOKUP_BlockingResolveAddress, "BlockingResolveAddress", maBlockingResolveAddress, sizeof(struct nl::BlockingResolveAddress) },
    { 0, 0, 0, 0, 0 }
 };
 

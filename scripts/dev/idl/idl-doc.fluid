@@ -1,4 +1,4 @@
--- Extended documentation parsing functionality for idl-c
+-- Extended documentation parsing functionality; included by idl-c
 
    require 'common'
 
@@ -18,58 +18,319 @@ glIgnoreList[AC_NewChild] = true
 glIgnoreList[AC_NewObject] = true
 glIgnoreList[AC_NewOwner] = true
 
-glActionComments = { }
-glActionComments[AC_Activate]       = 'Performs the native action of the object.'
-glActionComments[AC_Clear]          = 'Clears an object\'s data.'
-glActionComments[AC_Clipboard]      = 'Copy and paste information to and from clipboard objects.'
-glActionComments[AC_CopyData]       = 'Copies one object\'s data to another.'
-glActionComments[AC_Custom]         = 'Allows customised messages to be passed through the action system.'
-glActionComments[AC_DataFeed]       = 'Provides a mechanism for feeding data to objects.'
-glActionComments[AC_Deactivate]     = 'Stops an object from performing its native activities.'
-glActionComments[AC_Disable]        = 'Disables an object.'
-glActionComments[AC_DragDrop]       = 'Manages drag and drop from one object to another.'
-glActionComments[AC_Draw]           = 'Draws object graphics to drawable areas.'
-glActionComments[AC_Enable]         = 'Restore the state of a disabled object.'
-glActionComments[AC_Flush]          = 'Flush buffered data from an object.'
-glActionComments[AC_Focus]          = 'Focus on this object in the user interface.'
-glActionComments[AC_FreeWarning]    = 'Used for receiving an early warning before an object is removed.'
-glActionComments[AC_Free]           = 'Removes the object and its resources.'
-glActionComments[AC_GetVar]         = 'This action retrieves field values that are not defined by an object\'s structure.'
-glActionComments[AC_Hide]           = 'Hides a visible object from the view of the user.'
-glActionComments[AC_Init]           = 'Initialises an object so that it is ready for active use.'
-glActionComments[AC_Lock]           = "Lock the underlying data or representation of the object."
-glActionComments[AC_LostFocus]      = 'This internal action is called when an object loses the user focus.'
-glActionComments[AC_MoveToBack]     = 'Move an object to the back of its current location.'
-glActionComments[AC_MoveToFront]    = 'Move an object to the front of its current location.'
-glActionComments[AC_MoveToPoint]    = 'Moves the coordinates of an object to a new position.'
-glActionComments[AC_Move]           = 'Moves the physical representation of an object to a new location.'
-glActionComments[AC_NewChild]       = 'Used by classes that need to be alerted when an object receives a new child.'
-glActionComments[AC_NewObject]      = 'Called when a new object has been created from a base class.'
-glActionComments[AC_NewOwner]       = 'Called when the owner of an object is about to change.'
-glActionComments[AC_Next]           = 'Move to the next record.'
-glActionComments[AC_Prev]           = 'Move to the previous record.'
-glActionComments[AC_Query]          = 'Retrieves the latest information from an object.'
-glActionComments[AC_Read]           = 'Reads raw data information from objects.'
-glActionComments[AC_Redimension]    = 'Repositions and resizes the target object.'
-glActionComments[AC_Redo]           = 'Reverse a previous call to the Undo action.'
-glActionComments[AC_Refresh]        = 'Refreshes the state of an object.'
-glActionComments[AC_Rename]         = 'Renames an object.'
-glActionComments[AC_Reset]          = 'Resets an object to its original state.'
-glActionComments[AC_Resize]         = 'Resizes objects that are represented by  two or three dimensional graphics.'
-glActionComments[AC_SaveImage]      = 'Saves an object\'s image to a destination object.'
-glActionComments[AC_SaveSettings]   = 'Saves object settings to a physical storage location.'
-glActionComments[AC_SaveToObject]   = 'Saves an object\'s data to a destination object.'
-glActionComments[AC_ScrollToPoint]  = 'Scrolls the graphics of the targetted object to a specific point inside the parent view.'
-glActionComments[AC_Scroll]         = 'Scroll the contents of a container.'
-glActionComments[AC_Seek]           = 'Move the read/write marker to a new position.'
-glActionComments[AC_SelectArea]     = 'Selects a specific region within an object\'s graphical area.'
-glActionComments[AC_SetField]       = 'Private.  For use by the Core only.'
-glActionComments[AC_SetVar]         = 'This action sets field values that are not defined by an object\'s structure.'
-glActionComments[AC_Show]           = 'Makes an object visible to the user.'
-glActionComments[AC_Sort]           = 'Sorts object content into ascending order (by default).'
-glActionComments[AC_Undo]           = 'Reverses the last operation.'
-glActionComments[AC_Unlock]         = 'Remove a lock from an object.'
-glActionComments[AC_Write]          = 'Writes data to objects that provide storage or output services.'
+function setAction(Action, Options)
+   for k, v in pairs(Options) do
+      glActions[Action][k] = v
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+setAction('Activate', {
+   comment   = 'Performs the native action of the object.',
+   prototype = 'ERR acActivate(*Object)'
+})
+
+setAction('Clear', {
+   comment   = 'Clears an object\'s data.',
+   prototype = 'ERR acClear(*Object)'
+})
+
+setAction('Clipboard', {
+   comment   = 'Copy and paste information to and from clipboard objects.',
+   prototype = 'ERR acClipboard(*Object, OBJECTID Clipboard, CLIPMODE Mode)',
+   params    = {
+      { name='Mode', type='CLIPMODE', lookup='CLIPMODE', comment='The mode that will be used to shift data between the target object and clipboard system.' }
+   }
+})
+
+setAction('CopyData', {
+   comment   = 'Copies one object\'s data to another.',
+   prototype = 'ERR acCopyData(*Object, OBJECTID Dest)',
+   params    = {
+      { name='Dest', type='OBJECTID', comment='The unique ID of the destination object.' }
+   }
+})
+
+setAction('DataFeed', {
+   comment   = 'Provides a mechanism for feeding data to objects.',
+   prototype = 'ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, LONG Size)',
+   params    = {
+      { name='Object', type='OBJECTID', comment='Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.' },
+      { name='Datatype', type='DATA', lookup='DATA', comment='The type of data being sent.' },
+      { name='Buffer', type='APTR', comment='The data being sent to the target object.' },
+      { name='Size', type='LONG', comment='The size of the data in Buffer.' }
+   }
+})
+
+setAction('Deactivate', {
+   comment   = 'Stops an object from performing its native activities.',
+   prototype = 'ERR acDeactivate(*Object)'
+})
+
+setAction('Disable', {
+   comment   = 'Disables an object.',
+   prototype = 'ERR acDisable(*Object)'
+})
+
+setAction('DragDrop', {
+   comment   = 'Manages drag and drop from one object to another.',
+   prototype = 'ERR acDragDrop(*Object, OBJECTID Source, LONG Item, DATA Datatype)',
+   params    = {
+      { name='Source', type='OBJECTID', comment='Refers to the object containing the source data.' },
+      { name='Item', type='LONG', comment='An item ID, relevant to the source object.' },
+      { name='Datatype', type='DATA', lookup='DATA', comment='The type of data represented by the source item.' }
+   }
+})
+
+setAction('Draw', {
+   comment   = 'Draws object graphics to drawable areas.',
+   prototype = 'ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)',
+   params    = {
+      { name='X', type='LONG', comment='The X position of the region to be drawn.' },
+      { name='Y', type='LONG', comment='The Y position of the region to be drawn.' },
+      { name='Width', type='LONG', comment='The width of the region to be drawn.' },
+      { name='Height', type='LONG', comment='The height of the region to be drawn.' }
+   }
+})
+
+setAction('Enable', {
+   comment   = 'Restore the state of a disabled object.',
+   prototype = 'ERR acEnable(*Object)'
+})
+
+setAction('Flush', {
+   comment   = 'Flush buffered data from an object.',
+   prototype = 'ERR acFlush(*Object)'
+})
+
+setAction('Focus', {
+   comment   = 'Focus on this object in the user interface.',
+   prototype = 'ERR acFocus(*Object)'
+})
+
+setAction('FreeWarning', {
+   comment = 'Used for receiving an early warning before an object is removed.'
+})
+
+setAction('Free', {
+   comment   = 'Removes the object and its resources.',
+   prototype = 'ERR FreeResource(*Object)'
+})
+
+setAction('GetKey', {
+   comment   = 'Retrieves custom key values that are not defined by an object\'s structure.',
+   prototype = 'ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)',
+   params    = {
+      { name='Key', type='CSTRING', comment='The name of a key value.' },
+      { name='Value', type='STRING', comment='Pointer to a buffer space large enough to hold the retrieved value.' },
+      { name='Size', type='LONG', comment='Indicates the byte size of the Buffer.' }
+   }
+})
+
+setAction('Hide', {
+   comment   = 'Hides a visible object from the view of the user.',
+   prototype = 'ERR acHide(*Object)'
+})
+
+setAction('Init', {
+   comment   = 'Initialises an object so that it is ready for active use.',
+   prototype = 'ERR InitObject(*Object)'
+})
+
+setAction('Lock', {
+   comment   = "Lock the underlying data or representation of the object.",
+   prototype = 'ERR acLock(*Object)'
+})
+
+setAction('LostFocus', {
+   comment   = 'This internal action is called when an object loses the user focus.',
+   prototype = 'ERR acLostFocus(*Object)'
+})
+
+setAction('Move', {
+   comment   = 'Moves the physical representation of an object to a new location.',
+   prototype = 'ERR acMove(*Object, DOUBLE DeltaX, DOUBLE DeltaY, DOUBLE DeltaZ)',
+   params    = {
+      { name='DeltaX', type='DOUBLE', comment='The number of units to move along the X axis.' },
+      { name='DeltaY', type='DOUBLE', comment='The number of units to move along the Y axis.' },
+      { name='DeltaZ', type='DOUBLE', comment='The number of units to move along the Z axis.' }
+   }
+})
+
+setAction('MoveToBack', {
+   comment   = 'Move an object to the back of its current location.',
+   prototype = 'ERR acMoveToBack(*Object)'
+})
+
+setAction('MoveToFront', {
+   comment   = 'Move an object to the front of its current location.',
+   prototype = 'ERR acMoveToFront(*Object)'
+})
+
+setAction('MoveToPoint', {
+   comment   = 'Moves the coordinates of an object to a new position.',
+   prototype = 'ERR acMoveToPoint(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags)',
+   params    = {
+      { name='X', type='DOUBLE', comment='The new X position to move the object to.' },
+      { name='Y', type='DOUBLE', comment='The new Y position to move the object to.' },
+      { name='Z', type='DOUBLE', comment='The new Z position to move the object to.' },
+      { name='Flags', type='MTF', lookup='MTF', comment='Set the relevant MTF flag for each provided parameter.' }
+   }
+})
+
+setAction('NewChild', {
+   comment = 'Used by classes that need to be alerted when an object receives a new child.'
+})
+
+setAction('NewObject', {
+   comment = 'Called when a new object has been created from a base class.'
+})
+
+setAction('NewOwner', {
+   comment = 'Called when the owner of an object is about to change.'
+})
+
+setAction('Next', {
+   comment   = 'Move to the next record.',
+   prototype = 'ERR acNext(*Object)'
+})
+
+setAction('Prev', {
+   comment   = 'Move to the previous record.',
+   prototype = 'ERR acPrev(*Object)'
+})
+
+setAction('Query', {
+   comment   = 'Retrieves the latest information from an object.',
+   prototype = 'ERR acQuery(*Object)'
+})
+
+setAction('Read', {
+   comment   = 'Reads raw data information from objects.',
+   prototype = 'ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)',
+   params    = {
+      { name='Buffer', type='APTR', comment='Points a buffer that will receive the data.' },
+      { name='Length', type='LONG', comment='The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.' },
+      { name='Result', type='LONG', comment='The Read action will write this parameter with the total number of bytes read into the Buffer.' }
+   }
+})
+
+setAction('Redimension', {
+   comment   = 'Repositions and resizes the target object.',
+   prototype = 'ERR acRedimension(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth)',
+   params    = {
+      { name='X', type='DOUBLE', comment='The new X position to apply to the target object.' },
+      { name='Y', type='DOUBLE', comment='The new Y position to apply to the target object.' },
+      { name='Z', type='DOUBLE', comment='The new Z position to apply to the target object.' },
+      { name='Width', type='DOUBLE', comment='The new width of the target object.' },
+      { name='Height', type='DOUBLE', comment='The new height of the target object.' },
+      { name='Depth', type='DOUBLE', comment='The new depth of the target object.' }
+   }
+})
+
+setAction('Redo', {
+   comment   = 'Reverse a previous call to the Undo action.',
+   prototype = 'ERR acRedo(*Object)'
+})
+
+setAction('Refresh', {
+   comment   = 'Refreshes the state of an object.',
+   prototype = 'ERR acRefresh(*Object)'
+})
+
+setAction('Rename', {
+   comment   = 'Renames an object.',
+   prototype = 'ERR acRename(*Object, CSTRING Name)',
+   params    = {
+      { name='Name', type='CSTRING', comment='The new name for the object.' }
+   }
+})
+
+setAction('Reset', {
+   comment   = 'Resets an object to its original state.',
+   prototype = 'ERR acRefresh(*Object)'
+})
+
+setAction('Resize', {
+   comment   = 'Resizes objects that are represented by two or three dimensional graphics.',
+   prototype = 'ERR acResize(*Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)',
+   params    = {
+      { name='Width', type='DOUBLE', comment='The new width of the object.' },
+      { name='Height', type='DOUBLE', comment='The new height of the object.' },
+      { name='Depth', type='DOUBLE', comment='The new depth of the object.' }
+   }
+})
+
+setAction('SaveImage', {
+   comment   = 'Saves an object\'s image to a destination object.',
+   prototype = 'ERR acSaveImage(*Object, OBJECTID Dest, CLASSID ClassID)',
+   params    = {
+      { name='Dest', type='OBJECTID', comment='Refers to an object that will receive the encoded image data.' },
+      { name='ClassID', type='CLASSID', comment='The Picture class to use for encoding the image data.' }
+   }
+})
+
+setAction('SaveSettings', {
+   comment   = 'Saves object settings to a physical storage location.',
+   prototype = 'ERR acSaveSettings(*Object)'
+})
+
+setAction('SaveToObject', {
+   comment   = 'Saves an object\'s data to a destination object.',
+   prototype = 'ERR acSaveToObject(*Object, OBJECTID Dest, CLASSID ClassID)',
+   params    = {
+      { name='Dest', type='OBJECTID', comment='Refers to an object that will receive the encoded data.' },
+      { name='ClassID', type='CLASSID', comment='Can refer to a sub-class that should be used when encoding the data.' }
+   }
+})
+
+setAction('Seek', {
+   comment   = 'Move the read/write marker to a new position.',
+   prototype = 'ERR acSeek(*Object, DOUBLE Offset, LONG Position)',
+   params    = {
+      { name='Offset', type='DOUBLE', comment='The desired offset to seek to, relative to the Position parameter.' },
+      { name='Position', type='POS', comment='The position that defines the starting point for Offset.' }
+   }
+})
+
+setAction('SetField', {
+   comment = 'Private.  For use by the Core to manage context.'
+})
+
+setAction('SetKey', {
+   comment   = 'Sets custom key values that are not defined by an object\'s structure.',
+   prototype = 'ERR acSetKey(*Object, CSTRING Key, CSTRING Value)',
+   params    = {
+      { name='Key', type='CSTRING', comment='The name of the target key.' },
+      { name='Value', type='CSTRING', comment='The string value to associate with Key.' }
+   }
+})
+
+setAction('Show', {
+   comment   = 'Makes an object visible to the user.',
+   prototype = 'ERR acShow(*Object)'
+})
+
+setAction('Undo', {
+   comment   = 'Reverses the last operation.',
+   prototype = 'ERR acUndo(*Object)'
+})
+
+setAction('Unlock', {
+   comment   = 'Remove a lock from an object.',
+   prototype = 'ERR acUnlock(*Object)'
+})
+
+setAction('Write', {
+   comment   = 'Writes data to objects that provide storage or output services.',
+   prototype = 'ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)',
+   params    = {
+      { name='Buffer', type='APTR', comment='A buffer containing the data that will be written to the object.' },
+      { name='Length', type='LONG', comment='The total number of bytes to write to the object.' },
+      { name='Result', type='LONG', comment='This parameter with be updated with the total number of bytes written from the Buffer.' }
+   }
+})
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -164,9 +425,9 @@ function extractParagraph(Input, Caller, References)
       local line = string.trim(lines[i])
       if nz(line) then
          local action
-         if (line:match('^&(%w*)$') != nil) then
+         if (line:match('^!(%w*)$') != nil) then
             action = 'insert'
-            line = line:gsub('&(%w*)', function(Lookup)
+            line = line:gsub('!(%w*)', function(Lookup)
                if (glStructures[Lookup]) then
                   if References then
                      References['STRUCT:' .. Lookup] = 1
@@ -179,6 +440,7 @@ function extractParagraph(Input, Caller, References)
                   return '<types lookup="' .. Lookup .. '"/>'
                else
                   print('Unrecognised struct or constant "' .. Lookup .. '"')
+                  --print(debug.traceback())
                end
             end)
          elseif (line:match('^<pre>.-') != nil) or (line:match('^<h%d>.-') != nil) or
@@ -248,21 +510,25 @@ end
 -- Use # to refer to class actions, fields, methods.
 -- Use ~ for external function and module references.
 -- Use @ to refer to external classes and items.
--- Use & to refer to constants and struct definitions.  Note that if declared as a single-line paragraph, the entire
+-- Use ! to refer to constants and struct definitions.  Note that if declared as a single-line paragraph, the entire
 --   definition will be pulled in to that section.
 
 function substituteReferences(String, Class)
    -- Substitute struct insertion requests
 
-   String = String:gsub('&([A-Z]%w*)', function(Lookup)
+   String = String:gsub('!([A-Z]%w*)([,\n%s])', function(Lookup, Whitespace)
       if (glStructures[Lookup]) then
+         if (glStructures[Lookup].restrict == 'c') then return Lookup .. Whitespace end
+
          if Class then Class.references['STRUCT:' .. Lookup] = 1 end
-         return '<struct>' .. Lookup .. '</struct>'
+
+         return '<st>' .. Lookup .. '</st>' .. Whitespace
       elseif (glCustomTypes[Lookup]) then
          if Class then Class.references['TYPE:' .. Lookup] = 1 end
-         return '<type>' .. Lookup .. '</type>'
+         return '<lk>' .. Lookup .. '</lk>' .. Whitespace
       else
-         print('Unrecognised struct or constant "' .. Lookup .. '"')
+         print('Unrecognised struct or constant "!' .. Lookup .. '"')
+         --print(debug.traceback())
       end
    end)
 
@@ -280,7 +546,7 @@ function substituteReferences(String, Class)
       end
    end)
 
-   -- Substitute field references, identified as #FieldName.
+   -- Substitute field references, identified as #Field.
 
    String = String:gsub('#([A-Z]%w*)', function(Field)
       if (Class == nil) then
@@ -289,9 +555,9 @@ function substituteReferences(String, Class)
             if (Field:match('[A-Z0-9]+') != nil) then return end
          end
 
-         return '<field>_' .. Field .. '_</field>'
+         return '<fl>' .. Field .. '</fl>'
       elseif (Class.lookupFields) and (Class.lookupFields[Field]) then
-         return '<field>' .. Field .. '</field>'
+         return '<fl>' .. Field .. '</fl>'
       else
          -- Don't print errors regarding hexadecimal colours.
          if (Field:len() == 6) or (Field:len() == 8) then
@@ -312,11 +578,7 @@ function substituteReferences(String, Class)
 
    String = String:gsub('~([A-Z]%w+)%(%)', function(FunctionName)
       if (glFunctionLookup[FunctionName] != nil) then
-         if nz(glModule.name) then
-            return '<function module="' .. glModule.name .. '">' .. FunctionName .. '</function>'
-         else
-            return '<function>' .. FunctionName .. '</function>'
-         end
+         return '<function>' .. FunctionName .. '</function>'
       else
          print('Unrecognised function reference ~' .. FunctionName .. '()')
       end
@@ -325,25 +587,25 @@ function substituteReferences(String, Class)
    -- Substitute external method/action references, identified as @File.Init()
 
    String = String:gsub('@([A-Z]%w+)%.([A-Z]%w+)%(%)', function(ClassName, MethodName)
-      if mSys.FindClass(mSys.StrHash(ClassName, false), 0) then
-         -- TODO: Check that the method name is valid according to the class blueprint
-         return '<class name="' .. ClassName .. '" index="' .. MethodName .. '()">' .. ClassName .. ':' .. MethodName .. '()</class>'
+      if mSys.FindClass(ClassName:hash(), 0) then
+         -- TODO: Check that the method name is valid according to the class spec
+         return '<class name="' .. ClassName .. '" method="' .. MethodName .. '">' .. ClassName .. '.' .. MethodName .. '()</class>'
       else
          print('Unrecognised method/action reference @' .. ClassName .. '.' .. MethodName .. '()')
       end
    end)
 
-   -- Substitute external field references, identified as @File.Size
+   -- Substitute external field references, identified as @File.Size or #File.Size
 
-   String = String:gsub('@([A-Z]%w+)%.([A-Z]%w+)', function(ClassName, FieldName)
-      local meta = mSys.FindClass(mSys.StrHash(ClassName, false), 0)
+   String = String:gsub('[@#]([A-Z]%w+)%.([A-Z]%w+)', function(ClassName, FieldName)
+      local meta = mSys.FindClass(ClassName:hash(), 0)
       if (meta) then
-         local err, field, src = meta.mtFindField(mSys.StrHash(FieldName))
+         local err, field, src = meta.mtFindField(FieldName:hash())
          if (field != nil) then
-            return '<class name="' .. ClassName .. '" index="' .. FieldName .. '">' .. ClassName .. ':' .. FieldName .. '</class>'
+            return '<class name="' .. ClassName .. '" field="' .. FieldName .. '">' .. ClassName .. '.' .. FieldName .. '</class>'
          else
             print('Failed to find field ' .. ClassName .. '.' .. FieldName)
-            return '<class name="' .. ClassName .. '" index="' .. FieldName .. '">_' .. ClassName .. ':' .. FieldName .. '_</class>'
+            return '<class name="' .. ClassName .. '" field="' .. FieldName .. '">_' .. ClassName .. '.' .. FieldName .. '_</class>'
          end
       else
          print('Unrecognised field reference @' .. ClassName .. '.' .. FieldName)
@@ -353,12 +615,14 @@ function substituteReferences(String, Class)
    -- Substitute class references, identified as @File
 
    String = String:gsub('@([A-Z]%w+)', function(ClassName)
-      if mSys.FindClass(mSys.StrHash(ClassName, false), 0) then
+      if mSys.FindClass(ClassName:hash(), 0) then
          return '<class name="' .. ClassName .. '">' .. ClassName .. '</class>'
       else
          print('Unrecognised class name reference @' .. ClassName)
       end
    end)
+
+   String = String:gsub('`(.-)`', '<code>%1</code>')
 
    return String
 end
@@ -386,7 +650,7 @@ function docClass(Class)
    if nz(meta.fileExtension) then out = out .. '    <fileExtension>' .. meta.fileExtension .. '</fileExtension>\n' end
    if nz(meta.fileDescription) then out = out .. '    <fileDescription>' .. meta.fileDescription:escXML() .. '</fileDescription>\n' end
    out = out .. '    <version>' .. nz(meta.classVersion,1) .. '</version>\n'
-   local class_hash = string.format('%08x', mSys.StrHash(Class.name, false)):sub(-8)
+   local class_hash = string.format('%08x', Class.name:hash()):sub(-8)
    out = out .. '    <id>' .. class_hash .. '</id>\n'
    out = out .. '    <idstring>ID_' .. Class.name:upper() .. '</idstring>\n'
    out = out .. '    <category>' .. nz(meta.get('$category'),'') .. '</category>\n'
@@ -414,22 +678,37 @@ function docClass(Class)
       out = out .. "\n  <actions>\n"
       for _, a in ipairs(Class.sortedActions) do
          if (ignoreAction(glActions[a.name].id) != true) or nz(a.description) then
-            out = out .. "    <action>\n"
-            out = out .. "      <name>" .. a.name .. "</name>\n"
+            out = out .. '    <action>\n'
+            out = out .. '      <name>' .. a.name .. '</name>\n'
 
-            if a.comment == nil then a.comment = glActionComments[glActions[a.name].id] end
-            if nz(a.comment) then out = out .. "      <comment>" .. substituteReferences(a.comment:escXML(), Class) .. "</comment>\n" end
+            if a.comment == nil then a.comment = glActions[a.name].comment end
+            if nz(a.comment) then out = out .. '      <comment>' .. substituteReferences(a.comment:escXML(), Class) .. '</comment>\n' end
+
+            if nz(glActions[a.name].prototype) then
+               out = out .. '      <prototype>' .. glActions[a.name].prototype:escXML() .. '</prototype>\n'
+            end
+
+            if nz(glActions[a.name].params) then
+               out = out .. '      <input>\n'
+               for _, param in ipairs(glActions[a.name].params) do
+                  local ref = ''
+                  if nz(param.lookup) then ref = ' lookup="' .. param.lookup .. '"' end
+                  if (param.comment == nil) then error('No comment provided for ' .. Class.name .. '.' .. a.name .. '()\'s parameter "' .. param.name .. '"') end
+                  out = out .. "        <param type=\"" .. param.type:escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
+               end
+               out = out .. '      </input>\n'
+            end
 
             if nz(a.description) then
-               out = out .. "      <description>\n"
+               out = out .. '      <description>\n'
                out = out .. extractParagraph(a.description, Class, Class.references)
-               out = out .. "\n      </description>\n"
+               out = out .. '\n      </description>\n'
             end
 
             if nz(a.results) then
                local results = ''
                for _, result in ipairs(a.results) do
-                  results = results .. "        <error code=\"" .. result.codeName .. "\">" .. substituteReferences(result.msg:escXML(), Class) .. "</error>\n"
+                  results = results .. '        <error code="' .. result.codeName .. '">' .. substituteReferences(result.msg:escXML(), Class) .. '</error>\n'
                end
 
                if nz(results) then
@@ -550,7 +829,7 @@ function docClass(Class)
                if (f.lookup != nil) then
                   local lookup = '<types lookup="' .. f.lookup .. '"/>'
                   if (description) then
-                     if not (description:find(lookup)) then
+                     if not (description:find('<types lookup="' .. f.lookup .. '"')) then
                         description = description .. '\n' .. lookup
                      end
                   else
@@ -645,7 +924,7 @@ function docFunction(Function)
    if nz(Function.category)  then out = out .. '    <category>' .. Function.category .. '</category>\n' end
    if nz(Function.version)   then out = out .. '    <version>' .. Function.version .. '</version>\n' end
    if nz(Function.synonym)   then out = out .. '    <synonym>' .. Function.synonym .. '</synonym>\n' end
-   if nz(Function.comment)   then out = out .. '    <comment>' .. Function.comment:escXML() .. '</comment>\n' end
+   if nz(Function.comment)   then out = out .. '    <comment>' .. substituteReferences(Function.comment:escXML()) .. '</comment>\n' end
    if nz(Function.prototype) then out = out .. '    <prototype>' .. Function.docPrototype:escXML() .. '</prototype>\n' end
    if nz(Function.id)        then out = out .. '    <id>' .. Function.id .. '</id>\n' end
 
@@ -692,7 +971,7 @@ function docFunction(Function)
          end
 
          if nz(errors) then
-            out = out .. "    <result type=\"ERROR\">\n" .. errors .. "    </result>\n"
+            out = out .. "    <result type=\"ERR\">\n" .. errors .. "    </result>\n"
          end
       elseif nz(Function.result.comment) then
          local ref = ''
@@ -751,7 +1030,7 @@ function docTypes(References)
                if (v.comment:find('^Internal')) or (v.comment:find('^Private')) then
                   -- Ignore internal/private types
                else
-                  out = out .. "      <const name=\"" .. v.name .. "\">" .. v.comment:escXML() .. "</const>\n"
+                  out = out .. "      <const name=\"" .. v.name .. "\">" .. substituteReferences(v.comment:escXML()) .. "</const>\n"
                end
             else
                out = out .. "      <const name=\"" .. v.name .. "\"/>\n"
@@ -783,10 +1062,10 @@ function docStructures(References)
    for _, struct in ipairs(sortedStructs) do
       if nz(struct.restrict) then
          -- Don't output restricted structures.
-         if (glFeedback == 'verbose') then print(struct.name .. ' is restricted.') end
+         --if (glFeedback == 'verbose') then print(struct.name .. ' is restricted.') end
       elseif References and (References['STRUCT:' .. struct.name] == nil) then
          -- Don't output unreferenced structures.
-         if (glFeedback == 'verbose') then print(struct.name .. ' is unreferenced.') end
+         --if (glFeedback == 'verbose') then print(struct.name .. ' is unreferenced.') end
       else
          local comment = ''
          local typeName = ''
@@ -809,7 +1088,7 @@ function docStructures(References)
             end
 
             out = out .. "      <field name=\"" .. f.name .. "\" type=\"" .. type:escXML() .. '"' .. prototype .. ref .. arraySize .. ">"
-            if nz(f.comment) then out = out .. f.comment:escXML() end
+            if nz(f.comment) then out = out .. substituteReferences(f.comment:escXML()) end
             out = out .. '</field>\n'
          end
          out = out .. '    </struct>\n\n'

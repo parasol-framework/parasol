@@ -20,24 +20,24 @@ Following initialisation, all meta fields describing the volume are readable for
 #define PRV_FILESYSTEM
 #include "../defs.h"
 
-static ERROR STORAGE_Free(extStorageDevice *, APTR);
-static ERROR STORAGE_Init(extStorageDevice *, APTR);
+static ERR STORAGE_Free(extStorageDevice *);
+static ERR STORAGE_Init(extStorageDevice *);
 
 //********************************************************************************************************************
 
-static ERROR STORAGE_Free(extStorageDevice *Self, APTR Void)
+static ERR STORAGE_Free(extStorageDevice *Self)
 {
    if (Self->Volume) { FreeResource(Self->Volume); Self->Volume = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR STORAGE_Init(extStorageDevice *Self, APTR Void)
+static ERR STORAGE_Init(extStorageDevice *Self)
 {
    pf::Log log;
 
-   if (!Self->Volume) return log.warning(ERR_FieldNotSet);
+   if (!Self->Volume) return log.warning(ERR::FieldNotSet);
 
    const virtual_drive *vd = get_fs(Self->Volume);
 
@@ -48,7 +48,7 @@ static ERROR STORAGE_Init(extStorageDevice *Self, APTR Void)
    Self->DeviceSize = -1;
 
    if (vd->GetDeviceInfo) return vd->GetDeviceInfo(Self->Volume, Self);
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -65,21 +65,21 @@ mean that this field will be a multiple of 512.  Two files of 1 byte each on suc
 bytes of space and not 2.
 
 -FIELD-
-DeviceID: A unique ID for the mounted device (platform dependent, NULL if unavailable).
+DeviceID: A unique ID for the mounted device (platform dependent, `NULL` if unavailable).
 
 If a volume expresses a unique device identifier such as a factory serial number, it will be readable from this field.
 
 *********************************************************************************************************************/
 
-static ERROR GET_DeviceID(extStorageDevice *Self, STRING *Value)
+static ERR GET_DeviceID(extStorageDevice *Self, STRING *Value)
 {
    if (Self->DeviceID) {
       *Value = Self->DeviceID;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Value = NULL;
-      return ERR_FieldNotSet;
+      return ERR::FieldNotSet;
    }
 }
 
@@ -98,29 +98,29 @@ Lookup: DEVICE
 Volume: The volume name of the device to query.
 
 Set the Volume field prior to initialisation for that volume to be queried by the object.  The standard volume string
-format is 'name:', but omitting the colon or defining complete file system paths when writing this field is also
+format is `name:`, but omitting the colon or defining complete file system paths when writing this field is also
 acceptable.  Any characters following a colon will be stripped automatically with no ongoing functional impact.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR GET_Volume(extStorageDevice *Self, STRING *Value)
+static ERR GET_Volume(extStorageDevice *Self, STRING *Value)
 {
    if (Self->Volume) {
       *Value = Self->Volume;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       *Value = NULL;
-      return ERR_FieldNotSet;
+      return ERR::FieldNotSet;
    }
 }
 
-static ERROR SET_Volume(extStorageDevice *Self, CSTRING Value)
+static ERR SET_Volume(extStorageDevice *Self, CSTRING Value)
 {
    pf::Log log;
 
-   if (Self->initialised()) return log.warning(ERR_Immutable);
+   if (Self->initialised()) return log.warning(ERR::Immutable);
 
    if ((Value) and (*Value)) {
       LONG len;
@@ -128,15 +128,15 @@ static ERROR SET_Volume(extStorageDevice *Self, CSTRING Value)
 
       if (Self->Volume) FreeResource(Self->Volume);
 
-      if (!AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Volume, NULL)) {
+      if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Volume, NULL) IS ERR::Okay) {
          CopyMemory(Value, Self->Volume, len);
          Self->Volume[len] = ':';
          Self->Volume[len+1] = 0;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_AllocMemory);
+      else return log.warning(ERR::AllocMemory);
    }
-   else return ERR_Okay;
+   else return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -167,7 +167,7 @@ static const FieldArray clFields[] = {
    { "BytesUsed",   FDF_LARGE|FDF_R },
    // Virtual fields
    { "DeviceID",    FDF_STRING|FDF_R, GET_DeviceID },
-   { "Volume",      FDF_STRING|FDF_REQUIRED|FDF_RI, GET_Volume, SET_Volume },
+   { "Volume",      FDF_STRING|FDF_RI, GET_Volume, SET_Volume },
     END_FIELD
 };
 
@@ -179,10 +179,10 @@ static const ActionArray clActions[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERROR add_storage_class(void)
+extern "C" ERR add_storage_class(void)
 {
    glStorageClass = extMetaClass::create::global(
-      fl::BaseClassID(ID_STORAGEDEVICE),
+      fl::BaseClassID(CLASSID::STORAGEDEVICE),
       fl::ClassVersion(VER_STORAGEDEVICE),
       fl::Name("StorageDevice"),
       fl::Category(CCF::SYSTEM),
@@ -191,5 +191,5 @@ extern "C" ERROR add_storage_class(void)
       fl::Size(sizeof(extStorageDevice)),
       fl::Path("modules:core"));
 
-   return glStorageClass ? ERR_Okay : ERR_AddClass;
+   return glStorageClass ? ERR::Okay : ERR::AddClass;
 }

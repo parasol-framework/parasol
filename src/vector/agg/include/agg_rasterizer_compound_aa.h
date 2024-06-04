@@ -2,24 +2,24 @@
 // Anti-Grain Geometry - Version 2.3
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 //
 //----------------------------------------------------------------------------
 //
-// The author gratefully acknowleges the support of David Turner, 
-// Robert Wilhelm, and Werner Lemberg - the authors of the FreeType 
+// The author gratefully acknowleges the support of David Turner,
+// Robert Wilhelm, and Werner Lemberg - the authors of the FreeType
 // libray - in producing this work. See http://www.freetype.org for details.
 
 //
-// Adaptation for 32-bit screen coordinates has been sponsored by 
+// Adaptation for 32-bit screen coordinates has been sponsored by
 // Liberty Technology Systems, Inc., visit http://lib-sys.com
 //
 // Liberty Technology Systems, Inc. is the provider of
 // PostScript and PDF technology for software developers.
-// 
+//
 //----------------------------------------------------------------------------
 #ifndef AGG_RASTERIZER_COMPOUND_AA_INCLUDED
 #define AGG_RASTERIZER_COMPOUND_AA_INCLUDED
@@ -31,8 +31,8 @@ namespace agg
 {
 
     //-----------------------------------------------------------cell_style_aa
-    // A pixel cell. There're no constructors defined and it was done 
-    // intentionally in order to avoid extra overhead when allocating an 
+    // A pixel cell. There're no constructors defined and it was done
+    // intentionally in order to avoid extra overhead when allocating an
     // array of cells.
     struct cell_style_aa
     {
@@ -77,8 +77,8 @@ namespace agg
     //==================================================rasterizer_compound_aa
     template<class Clip=rasterizer_sl_clip_int> class rasterizer_compound_aa
     {
-        struct style_info 
-        { 
+        struct style_info
+        {
             unsigned start_cell;
             unsigned num_cells;
             int      last_x;
@@ -86,7 +86,7 @@ namespace agg
 
         struct cell_info
         {
-            int x, area, cover; 
+            int x, area, cover;
         };
 
     public:
@@ -104,14 +104,14 @@ namespace agg
         };
 
         //--------------------------------------------------------------------
-        rasterizer_compound_aa() : 
+        rasterizer_compound_aa() :
             m_outline(),
             m_clipper(),
             m_filling_rule(fill_non_zero),
             m_layer_order(layer_direct),
             m_styles(),  // Active Styles
             m_ast(),     // Active Style Table (unique values)
-            m_asm(),     // Active Style Mask 
+            m_asm(),     // Active Style Mask
             m_cells(),
             m_cover_buf(),
             m_master_alpha(),
@@ -125,7 +125,7 @@ namespace agg
         {}
 
         //--------------------------------------------------------------------
-        void reset(); 
+        void reset();
         void reset_clipping();
         void clip_box(double x1, double y1, double x2, double y2);
         void filling_rule(filling_rule_e filling_rule);
@@ -159,7 +159,7 @@ namespace agg
             }
         }
 
-        
+
         //--------------------------------------------------------------------
         int min_x()     const { return m_outline.min_x(); }
         int min_y()     const { return m_outline.min_y(); }
@@ -179,7 +179,7 @@ namespace agg
         cover_type* allocate_cover_buffer(unsigned len);
 
         //--------------------------------------------------------------------
-        bool navigate_scanline(int y); 
+        bool navigate_scanline(int y);
         bool hit_test(int tx, int ty);
 
         //--------------------------------------------------------------------
@@ -200,8 +200,8 @@ namespace agg
         }
 
         //--------------------------------------------------------------------
-        // Sweeps one scanline with one style index. The style ID can be 
-        // determined by calling style(). 
+        // Sweeps one scanline with one style index. The style ID can be
+        // determined by calling style().
         template<class Scanline> bool sweep_scanline(Scanline& sl, int style_idx)
         {
             int scan_y = m_scan_y - 1;
@@ -211,11 +211,11 @@ namespace agg
 
             unsigned master_alpha = aa_mask;
 
-            if(style_idx < 0) 
+            if(style_idx < 0)
             {
                 style_idx = 0;
             }
-            else 
+            else
             {
                 style_idx++;
                 master_alpha = m_master_alpha[m_ast[style_idx] + m_min_style - 1];
@@ -268,7 +268,7 @@ namespace agg
         //--------------------------------------------------------------------
         // Disable copying
         rasterizer_compound_aa(const rasterizer_compound_aa<Clip>&);
-        const rasterizer_compound_aa<Clip>& 
+        const rasterizer_compound_aa<Clip>&
         operator = (const rasterizer_compound_aa<Clip>&);
 
     private:
@@ -278,7 +278,7 @@ namespace agg
         layer_order_e          m_layer_order;
         pod_vector<style_info> m_styles;  // Active Styles
         pod_vector<unsigned>   m_ast;     // Active Style Table (unique values)
-        pod_vector<int8u>      m_asm;     // Active Style Mask 
+        pod_vector<int8u>      m_asm;     // Active Style Mask
         pod_vector<cell_info>  m_cells;
         pod_vector<cover_type> m_cover_buf;
         pod_bvector<unsigned>  m_master_alpha;
@@ -440,18 +440,18 @@ namespace agg
     }
 
     //------------------------------------------------------------------------
-    template<class Clip> 
+    template<class Clip>
     AGG_INLINE void rasterizer_compound_aa<Clip>::sort()
     {
         m_outline.sort_cells();
     }
 
     //------------------------------------------------------------------------
-    template<class Clip> 
+    template<class Clip>
     AGG_INLINE bool rasterizer_compound_aa<Clip>::rewind_scanlines()
     {
         m_outline.sort_cells();
-        if(m_outline.total_cells() == 0) 
+        if(m_outline.total_cells() == 0)
         {
             return false;
         }
@@ -466,7 +466,7 @@ namespace agg
     }
 
     //------------------------------------------------------------------------
-    template<class Clip> 
+    template<class Clip>
     AGG_INLINE void rasterizer_compound_aa<Clip>::add_style(int style_id)
     {
         if(style_id < 0) style_id  = 0;
@@ -489,7 +489,7 @@ namespace agg
 
     //------------------------------------------------------------------------
     // Returns the number of styles
-    template<class Clip> 
+    template<class Clip>
     unsigned rasterizer_compound_aa<Clip>::sweep_styles()
     {
         for(;;)
@@ -512,7 +512,7 @@ namespace agg
             {
                 // Pre-add zero (for no-fill style, that is, -1).
                 // We need that to ensure that the "-1 style" would go first.
-                m_asm[0] |= 1; 
+                m_asm[0] |= 1;
                 m_ast.add(0);
                 style = &m_styles[0];
                 style->start_cell = 0;
@@ -545,7 +545,7 @@ namespace agg
                 while(num_cells--)
                 {
                     curr_cell = *cells++;
-                    style_id = (curr_cell->left < 0) ? 0 : 
+                    style_id = (curr_cell->left < 0) ? 0 :
                                 curr_cell->left - m_min_style + 1;
 
                     style = &m_styles[style_id];
@@ -565,7 +565,7 @@ namespace agg
                         style->num_cells++;
                     }
 
-                    style_id = (curr_cell->right < 0) ? 0 : 
+                    style_id = (curr_cell->right < 0) ? 0 :
                                 curr_cell->right - m_min_style + 1;
 
                     style = &m_styles[style_id];
@@ -610,12 +610,12 @@ namespace agg
         return m_ast[style_idx + 1] + m_min_style - 1;
     }
 
-    //------------------------------------------------------------------------ 
-    template<class Clip> 
+    //------------------------------------------------------------------------
+    template<class Clip>
     AGG_INLINE bool rasterizer_compound_aa<Clip>::navigate_scanline(int y)
     {
         m_outline.sort_cells();
-        if(m_outline.total_cells() == 0) 
+        if(m_outline.total_cells() == 0)
         {
             return false;
         }
@@ -623,7 +623,7 @@ namespace agg
         {
             return false;
         }
-        if(y < m_outline.min_y() || y > m_outline.max_y()) 
+        if(y < m_outline.min_y() || y > m_outline.max_y())
         {
             return false;
         }
@@ -632,17 +632,17 @@ namespace agg
         allocate_master_alpha();
         return true;
     }
-    
-    //------------------------------------------------------------------------ 
-    template<class Clip> 
+
+    //------------------------------------------------------------------------
+    template<class Clip>
     bool rasterizer_compound_aa<Clip>::hit_test(int tx, int ty)
     {
-        if(!navigate_scanline(ty)) 
+        if(!navigate_scanline(ty))
         {
             return false;
         }
 
-        unsigned num_styles = sweep_styles(); 
+        unsigned num_styles = sweep_styles();
         if(num_styles <= 0)
         {
             return false;
@@ -653,16 +653,16 @@ namespace agg
         return sl.hit();
     }
 
-    //------------------------------------------------------------------------ 
-    template<class Clip> 
+    //------------------------------------------------------------------------
+    template<class Clip>
     cover_type* rasterizer_compound_aa<Clip>::allocate_cover_buffer(unsigned len)
     {
         m_cover_buf.allocate(len, 256);
         return &m_cover_buf[0];
     }
 
-    //------------------------------------------------------------------------ 
-    template<class Clip> 
+    //------------------------------------------------------------------------
+    template<class Clip>
     void rasterizer_compound_aa<Clip>::allocate_master_alpha()
     {
         while((int)m_master_alpha.size() <= m_max_style)
@@ -671,8 +671,8 @@ namespace agg
         }
     }
 
-    //------------------------------------------------------------------------ 
-    template<class Clip> 
+    //------------------------------------------------------------------------
+    template<class Clip>
     void rasterizer_compound_aa<Clip>::master_alpha(int style, double alpha)
     {
         if(style >= 0)

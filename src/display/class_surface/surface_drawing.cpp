@@ -1,21 +1,20 @@
 
 void copy_bkgd(const SURFACELIST &, LONG, LONG, LONG, ClipRectangle &, extBitmap *, extBitmap *, WORD, bool);
 
-ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)
+ERR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)
 {
    pf::Log log("expose_surface");
-   extBitmap *bitmap;
    LONG i, j;
    bool skip;
    OBJECTID parent_id;
 
-   if ((Width < 1) or (Height < 1)) return ERR_Okay;
-   if (!SurfaceID) return log.warning(ERR_NullArgs);
-   if (index >= LONG(List.size())) return log.warning(ERR_OutOfRange);
+   if ((Width < 1) or (Height < 1)) return ERR::Okay;
+   if (!SurfaceID) return log.warning(ERR::NullArgs);
+   if (index >= LONG(List.size())) return log.warning(ERR::OutOfRange);
 
    if (List[index].invisible() or (List[index].Width < 1) or (List[index].Height < 1)) {
       log.trace("Surface %d invisible or too small to draw.", SurfaceID);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    // Calculate the absolute coordinates of the exposed area
@@ -58,7 +57,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
    // restrict the exposed dimensions.  NOTE: This loop looks strange but is both correct & fast.  Don't alter it!
 
    for (i=index, parent_id = SurfaceID; ;) {
-      if (List[i].invisible()) return ERR_Okay;
+      if (List[i].invisible()) return ERR::Okay;
       auto area = List[i].area();
       clip_rectangle(abs, area);
       if (!(parent_id = List[i].ParentID)) break;
@@ -66,14 +65,14 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
       while (List[i].SurfaceID != parent_id) i--;
    }
 
-   if ((abs.Left >= abs.Right) or (abs.Top >= abs.Bottom)) return ERR_Okay;
+   if ((abs.Left >= abs.Right) or (abs.Top >= abs.Bottom)) return ERR::Okay;
 
    // Check that the expose area actually overlaps the target surface
 
-   if (abs.Left   >= List[index].Right) return ERR_Okay;
-   if (abs.Top    >= List[index].Bottom) return ERR_Okay;
-   if (abs.Right  <= List[index].Left) return ERR_Okay;
-   if (abs.Bottom <= List[index].Top) return ERR_Okay;
+   if (abs.Left   >= List[index].Right) return ERR::Okay;
+   if (abs.Top    >= List[index].Bottom) return ERR::Okay;
+   if (abs.Right  <= List[index].Left) return ERR::Okay;
+   if (abs.Bottom <= List[index].Top) return ERR::Okay;
 
    // Cursor split routine.  The purpose of this is to eliminate as much flicker as possible from the cursor when
    // exposing large areas.
@@ -92,7 +91,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
             log.traceBranch("Splitting cursor.");
             _expose_surface(SurfaceID, List, index, abs.Left, abs.Top, abs.Right, List[cursor].Bottom, EXF::CURSOR_SPLIT|EXF::ABSOLUTE|Flags);
             _expose_surface(SurfaceID, List, index, abs.Left, List[cursor].Bottom, abs.Right, abs.Bottom, EXF::CURSOR_SPLIT|EXF::ABSOLUTE|Flags);
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
    }
@@ -154,22 +153,20 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
 
       // Do the expose
 
-      ERROR error;
-      if (!(error = AccessObject(List[i].BitmapID, 2000, &bitmap))) {
-         expose_buffer(List, List.size(), i, i, childexpose.Left, childexpose.Top, childexpose.Right, childexpose.Bottom, List[index].DisplayID, bitmap);
-         ReleaseObject(bitmap);
+      if (ScopedObjectLock<extBitmap> bitmap(List[i].BitmapID, 2000); bitmap.granted()) {
+         expose_buffer(List, List.size(), i, i, childexpose.Left, childexpose.Top, childexpose.Right, childexpose.Bottom, List[index].DisplayID, *bitmap);
       }
       else {
-         log.trace("Unable to access internal bitmap, sending delayed expose message.  Error: %s", GetErrorMsg(error));
+         log.trace("Unable to access internal bitmap, sending delayed expose message.  Error: %s", GetErrorMsg(bitmap.error));
 
-         struct drwExpose expose = {
-            .X      = childexpose.Left   - List[i].Left,
-            .Y      = childexpose.Top    - List[i].Top,
-            .Width  = childexpose.Right  - childexpose.Left,
-            .Height = childexpose.Bottom - childexpose.Top,
-            .Flags  = EXF::NIL
+         struct drw::ExposeToDisplay expose {
+            childexpose.Left   - List[i].Left,
+            childexpose.Top    - List[i].Top,
+            childexpose.Right  - childexpose.Left,
+            childexpose.Bottom - childexpose.Top,
+            EXF::NIL
          };
-         QueueAction(MT_DrwExpose, List[i].SurfaceID, &expose);
+         QueueAction(drw::ExposeToDisplay::id, List[i].SurfaceID, &expose);
       }
    }
 
@@ -259,7 +256,7 @@ ERROR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, LONG index, L
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -292,7 +289,7 @@ the surface area first).</li>
 
 *********************************************************************************************************************/
 
-ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
+ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 {
    pf::Log log;
 
@@ -300,12 +297,12 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
    if (Self->invisible() or (tlNoDrawing) or (Self->Width < 1) or (Self->Height < 1)) {
       log.trace("Not drawing (invisible or tlNoDrawing set).");
-      return ERR_Okay|ERF_Notified;
+      return ERR::Okay|ERR::Notified;
    }
 
    // Do not perform manual redraws when a redraw is scheduled.
 
-   if (Self->RedrawScheduled) return ERR_Okay|ERF_Notified;
+   if (Self->RedrawScheduled) return ERR::Okay|ERR::Notified;
 
    LONG x, y, width, height;
    if (!Args) {
@@ -327,12 +324,12 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
    UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
    LONG msgindex = 0;
-   while (!ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
+   while (ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-      if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
+      if ((action->ActionID IS drw::InvalidateRegion::id) and (action->ObjectID IS Self->UID)) {
          if (!action->SendArgs) {
-            return ERR_Okay|ERF_Notified;
+            return ERR::Okay|ERR::Notified;
          }
       }
       else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->UID)) {
@@ -361,24 +358,24 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
             // We do nothing here because the next draw message will draw everything.
          }
 
-         return ERR_Okay|ERF_Notified;
+         return ERR::Okay|ERR::Notified;
       }
    }
 
 
    log.traceBranch("%dx%d,%dx%d", x, y, width, height);
-   gfxRedrawSurface(Self->UID, x, y, width, height, IRF::RELATIVE|IRF::IGNORE_CHILDREN);
-   gfxExposeSurface(Self->UID, x, y, width, height, EXF::REDRAW_VOLATILE);
-   return ERR_Okay|ERF_Notified;
+   RedrawSurface(Self->UID, x, y, width, height, IRF::RELATIVE|IRF::IGNORE_CHILDREN);
+   gfx::ExposeSurface(Self->UID, x, y, width, height, EXF::REDRAW_VOLATILE);
+   return ERR::Okay|ERR::Notified;
 }
 
 /*********************************************************************************************************************
 
 -METHOD-
-Expose: Redraws a surface region to the display, preferably from its graphics buffer.
+ExposeToDisplay: Redraws a surface region to the display, preferably from its graphics buffer.
 
-Call the Expose method to copy a surface region to the display.  The functionality is identical to that of the
-ExposeSurface() function in the Surface module.  Please refer to it for further documentation.
+Call the ExposeToDisplay() method to copy a surface region to the display.  The functionality is identical to that of the
+~Surface.ExposeSurface() function.  Please refer to it for further documentation.
 
 -INPUT-
 int X: X coordinate of the expose area.
@@ -393,20 +390,20 @@ Okay
 
 *********************************************************************************************************************/
 
-static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
+static ERR SURFACE_ExposeToDisplay(extSurface *Self, struct drw::ExposeToDisplay *Args)
 {
-   if (tlNoExpose) return ERR_Okay;
+   if (tlNoExpose) return ERR::Okay;
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwExpose)];
+   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
    LONG msgindex = 0;
-   while (!ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
+   while (ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-      if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->UID)) {
+      if ((action->ActionID IS drw::ExposeToDisplay::id) and (action->ObjectID IS Self->UID)) {
          if (action->SendArgs) {
-            auto msgexpose = (struct drwExpose *)(action + 1);
+            auto msgexpose = (struct drw::ExposeToDisplay *)(action + 1);
 
             if (!Args) {
                // Invalidate everything
@@ -435,20 +432,20 @@ static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
                msgexpose->Flags  |= Args->Flags;
             }
 
-            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drwExpose));
+            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drw::ExposeToDisplay));
          }
          else {
             // We do nothing here because the next expose message will draw everything.
          }
 
-         return ERR_Okay|ERF_Notified;
+         return ERR::Okay|ERR::Notified;
       }
    }
 
 
-   ERROR error;
-   if (Args) error = gfxExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
-   else error = gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::NIL);
+   ERR error;
+   if (Args) error = gfx::ExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
+   else error = gfx::ExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::NIL);
 
    return error;
 }
@@ -466,7 +463,7 @@ To quickly redraw an entire surface object's content, call this method directly 
 If you want to redraw a surface object and ignore all of its surface children then you should use the Draw action
 instead of this method.
 
-If you want to refresh a surface area to the display then you should use the #Expose() method instead.  Exposing
+If you want to refresh a surface area to the display then you should use the #ExposeToDisplay() method instead.  Exposing
 will use the graphics buffer to refresh the graphics, thus avoiding the speed loss of a complete redraw.
 
 -INPUT-
@@ -482,25 +479,25 @@ AccessMemory: Failed to access the internal surface list.
 
 *********************************************************************************************************************/
 
-static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegion *Args)
+static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drw::InvalidateRegion *Args)
 {
    if (Self->invisible() or (tlNoDrawing) or (Self->Width < 1) or (Self->Height < 1)) {
-      return ERR_Okay|ERF_Notified;
+      return ERR::Okay|ERR::Notified;
    }
 
    // Do not perform manual redraws when a redraw is scheduled.
 
-   if (Self->RedrawTimer) return ERR_Okay|ERF_Notified;
+   if (Self->RedrawTimer) return ERR::Okay|ERR::Notified;
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
    LONG msgindex = 0;
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
-   while (!ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
+   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
+   while (ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
-      if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
+      if ((action->ActionID IS drw::InvalidateRegion::id) and (action->ObjectID IS Self->UID)) {
          if (action->SendArgs IS TRUE) {
-            auto msginvalid = (struct drwInvalidateRegion *)(action + 1);
+            auto msginvalid = (struct drw::InvalidateRegion *)(action + 1);
 
             if (!Args) { // Invalidate everything
                action->SendArgs = FALSE;
@@ -518,25 +515,25 @@ static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegi
                msginvalid->Height = bottom - msginvalid->Y;
             }
 
-            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion));
+            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drw::InvalidateRegion));
          }
          else { } // We do nothing here because the next invalidation message will draw everything.
 
-         return ERR_Okay|ERF_Notified;
+         return ERR::Okay|ERR::Notified;
       }
    }
 
 
    if (Args) {
-      gfxRedrawSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, IRF::RELATIVE);
-      gfxExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
+      RedrawSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, IRF::RELATIVE);
+      gfx::ExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
    }
    else {
-      gfxRedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF::RELATIVE);
-      gfxExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
+      RedrawSurface(Self->UID, 0, 0, Self->Width, Self->Height, IRF::RELATIVE);
+      gfx::ExposeSurface(Self->UID, 0, 0, Self->Width, Self->Height, EXF::CHILDREN|EXF::REDRAW_VOLATILE_OVERLAP);
    }
 
-   return ERR_Okay|ERF_Notified;
+   return ERR::Okay|ERR::Notified;
 }
 
 //********************************************************************************************************************
@@ -558,21 +555,16 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
    // This subroutine is used if the surface object is display-based
 
    if (!Self->ParentID) {
-      objDisplay *display;
-      if (!AccessObject(Self->DisplayID, 2000, &display)) {
+      if (ScopedObjectLock<objDisplay> display(Self->DisplayID, 2000); display.granted()) {
          // Subtract the host window's LeftMargin and TopMargin as MoveToPoint() is based on the coordinates of the window frame.
 
-         LONG left_margin = display->LeftMargin;
-         LONG top_margin = display->TopMargin;
-         ReleaseObject(display);
-
-         if (!acMoveToPoint(display, X - left_margin, Y - top_margin, 0, MTF::X|MTF::Y)) {
+         if (acMoveToPoint(*display, X - display->LeftMargin, Y - display->TopMargin, 0, MTF::X|MTF::Y) IS ERR::Okay) {
             Self->X = X;
             Self->Y = Y;
             UpdateSurfaceRecord(Self);
          }
       }
-      else log.warning(ERR_AccessObject);
+      else log.warning(ERR::AccessObject);
 
       return;
    }
@@ -717,22 +709,18 @@ void prepare_background(extSurface *Self, const SURFACELIST &List, LONG Index, e
 
       bool pervasive = ((List[Index].Flags & RNF::PERVASIVE_COPY) != RNF::NIL) and (Stage IS STAGE_AFTERCOPY);
 
-      extBitmap *bitmap;
-      ERROR error;
-      if (!(error = AccessObject(List[i].BitmapID, 2000, &bitmap))) {
-         copy_bkgd(List, i, end, master, expose, DestBitmap, bitmap, opaque, pervasive);
-         ReleaseObject(bitmap);
+      if (ScopedObjectLock<extBitmap> bitmap(List[i].BitmapID, 2000); bitmap.granted()) {
+         copy_bkgd(List, i, end, master, expose, DestBitmap, *bitmap, opaque, pervasive);
       }
       else {
-         log.warning("prepare_bkgd: %d failed to access bitmap #%d of surface #%d (error %d).", List[Index].SurfaceID, List[i].BitmapID, List[i].SurfaceID, error);
+         log.warning("prepare_bkgd: %d failed to access bitmap #%d of surface #%d (error %d).", List[Index].SurfaceID, List[i].BitmapID, List[i].SurfaceID, LONG(bitmap.error));
          break;
       }
    }
 }
 
-/*********************************************************************************************************************
-** Coordinates are absolute.
-*/
+//********************************************************************************************************************
+// Coordinates are absolute.
 
 void copy_bkgd(const SURFACELIST &List, LONG Index, LONG End, LONG Master, ClipRectangle &Area,
    extBitmap *DestBitmap, extBitmap *SrcBitmap, WORD Opacity, bool Pervasive)
@@ -806,7 +794,7 @@ void copy_bkgd(const SURFACELIST &List, LONG Index, LONG End, LONG Master, ClipR
 
    if (Opacity < 255) SrcBitmap->Opacity = 255 - Opacity;
 
-   gfxCopyArea(SrcBitmap, DestBitmap, BAF::BLEND, expose.Left - List[owner].Left, expose.Top - List[owner].Top,
+   gfx::CopyArea(SrcBitmap, DestBitmap, BAF::BLEND, expose.Left - List[owner].Left, expose.Top - List[owner].Top,
       expose.Right - expose.Left, expose.Bottom - expose.Top, expose.Left - List[Master].Left, expose.Top - List[Master].Top);
 
    SrcBitmap->Opacity = 255;

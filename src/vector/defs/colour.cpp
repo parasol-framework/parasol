@@ -3,9 +3,9 @@
 -CLASS-
 VectorColour: This is a stub class for use with the Vector module's DrawPath() function.
 
-VectorColour is a stub class for exclusive use with the Vector module's DrawPath() function, for use in either the
-StrokeStyle or FillStyle parameters.  VectorColour allows the path to be drawn with a solid colour, as specified in the
-Red, Green, Blue and Alpha fields.
+VectorColour is a stub class for exclusive use with the Vector module's ~Vector.DrawPath() function, for use in 
+either the `StrokeStyle` or `FillStyle` parameters.  VectorColour allows the path to be drawn with a solid colour, 
+as specified in the #Red, #Green, #Blue and #Alpha fields.
 
 -FIELD-
 Red: The red component value.
@@ -30,10 +30,10 @@ The alpha component value, measured from 0 to 1.0.  The default is 1.0.
 
 *********************************************************************************************************************/
 
-static ERROR COLOUR_NewObject(objVectorColour *Self, APTR Void)
+static ERR COLOUR_NewObject(objVectorColour *Self)
 {
    Self->Alpha = 1.0;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 static const ActionArray clColourActions[] = {
@@ -51,10 +51,10 @@ static const FieldArray clColourFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_colour(void)
+ERR init_colour(void)
 {
    clVectorColour = objMetaClass::create::global(
-      fl::BaseClassID(ID_VECTORCOLOUR),
+      fl::BaseClassID(CLASSID::VECTORCOLOUR),
       fl::Name("VectorColour"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clColourActions),
@@ -62,7 +62,7 @@ ERROR init_colour(void)
       fl::Size(sizeof(objVectorColour)),
       fl::Path(MOD_PATH));
 
-   return clVectorColour ? ERR_Okay : ERR_AddClass;
+   return clVectorColour ? ERR::Okay : ERR::AddClass;
 }
 
 

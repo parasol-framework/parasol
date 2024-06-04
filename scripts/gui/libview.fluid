@@ -4,13 +4,9 @@
    require 'gui'
    require 'gui/scrollbar'
 
-   if (not mFont) then mFont = mod.load('font') end
    if (not mGfx) then mGfx = mod.load('display') end
    if (not mVec) then mVec = mod.load('vector') end
 
-   local lColBackground      = 'rgb(255,255,255)'
-   local lColBorder          = 'rgb(160,160,160)'
-   local lColBorderHighlight = 'rgb(160,160,160)'
    local lItemCounter   = 1
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -228,7 +224,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.disabled = false
    end
 
-   -- Add a monitored click zone.
+   -- Add a monitored click zone.  Not for client use.
    -- If Width is nil then the click zone will span the entire width of the page and X is ignored.
 
    vw.addZone = function(X, Y, Width, Height, Item, HoverCallback)
@@ -479,7 +475,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    vw.bkgd = vw.viewport.new('VectorRectangle', {
       name   = 'view_bkgd',
-      fill   = lColBackground,
+      fill   = gui.colours.background,
       width  = '100%',
       height = '100%'
    })
@@ -491,7 +487,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       name   = 'view_border',
       width  = '100%',
       height = '100%',
-      stroke = lColBorder,
+      stroke = gui.colours.border,
       strokeWidth = 1.5
    })
 
@@ -522,11 +518,11 @@ gui.initView = function(Options, BuildUI, NewItems)
    vw.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
       if (Event == FM_LOST_FOCUS) then
          vw.hasFocus = false
-         vw.border.stroke = lColBorder
+         vw.border.stroke = gui.colours.border
          if vw.events.lostFocus then vw.events.lostFocus(vw) end
       else
          vw.hasFocus = true
-         vw.border.stroke = lColBorderHighlight
+         vw.border.stroke = gui.colours.borderFocus
          if vw.events.focus then vw.events.focus(vw) end
       end
       vw.viewport.acDraw()
@@ -562,25 +558,19 @@ gui.initView = function(Options, BuildUI, NewItems)
       end
    end)
 
-   vw.page.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_FEEDBACK, JTYPE_EXT_MOVEMENT), function(Viewport, Events)
+   vw.page.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_CROSSING, JTYPE_EXT_MOVEMENT), function(Viewport, Events)
       local ev = Events
       while (ev) do
-         if (ev.type == JET_ENTERED_SURFACE) then
+         if (ev.type == JET_CROSSED_IN) then
             vw.cursorX = ev.x
             vw.cursorY = ev.y
             checkCursorImage(vw)
-         elseif (ev.type == JET_LEFT_SURFACE) then
+         elseif (ev.type == JET_CROSSED_OUT) then
             vw.cursorX = nil
             vw.cursorY = nil
             checkCursorImage(vw)
             if vw.hItem then
                highlightItem(vw, nil)
-            end
-         elseif (ev.type == JET_WHEEL) then
-            local length = vw.page.height - vw.window.height
-            if (length > 0) then
-               if (length > vw.window.height) then length = vw.window.height end
-               vw.scrollbar.scrollPage(0, -ev.value * length * 0.06)
             end
          elseif (ev.type == JET_BUTTON_1) then
             if (bit.band(ev.flags, JTYPE_REPEATED) != 0) then
@@ -624,7 +614,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
                vw.scene.surface.mtScheduleRedraw()
             end
-         elseif (ev.type == JET_ABS_X) or (ev.type == JET_ABS_Y) then
+         elseif (ev.type == JET_ABS_XY) then
             if vw.activeZone and vw.activeZone.clickMove then
                vw.activeZone.clickMove(ev)
             end

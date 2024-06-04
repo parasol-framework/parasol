@@ -1,0 +1,19 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<svg width="800px" height="800px" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <linearGradient id="LinearGradient">
+      <stop offset="45%" stop-color="rgb(0,0,255)"/>
+      <stop offset="55%" stop-color="#ff0000"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="50" y="50" height="110" width="110" style="stroke:#000000; fill: url(#LinearGradient)">
+    <!-- Wait 2 seconds, then perform the animation over a 10 second period and repeat forever -->
+    <animateTransform attributeName="transform"
+      begin="2s" dur="10s"
+      type="rotate" values="0 105 105; 45 105 105; 360 105 105"
+      repeatCount="indefinite"/>
+  </rect>
+</svg>

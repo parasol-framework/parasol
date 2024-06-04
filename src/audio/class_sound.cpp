@@ -8,16 +8,16 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 Sound: Plays and records sound samples in a variety of different data formats.
 
-The Sound class provides a simple API for programs to load and play audio sample files. By default all
-loading and saving of sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound
-class extensions, if available.
+The Sound class provides an interface for the playback of audio sample files. By default, all loading and saving of
+sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound class extensions,
+if available.
 
 Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum
 buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the #Stream
 field.
 
 The following example illustrates playback of a sound sample that is one octave higher than its normal frequency.
-The subscription to the OnStop callback will result in the program waking once the sample has finished
+The subscription to the #OnStop callback will result in the program waking once the sample has finished
 playback.
 
 <pre>
@@ -39,7 +39,7 @@ proc.sleep()
 **********************************************************************************************************************
 
 NOTE: Ideally individual samples should always be played through the host's audio capabilities and not our internal
-mixer.  The mixer is buffered and therefore always has a delay, whereas the host drivers should be able to play
+mixer.  Our mixer is buffered and therefore always has a delay, whereas the host drivers should be able to play
 individual samples with more immediacy.
 
 *********************************************************************************************************************/
@@ -50,9 +50,9 @@ individual samples with more immediacy.
 
 #define SIZE_RIFF_CHUNK 12
 
-static ERROR SOUND_GET_Active(extSound *, LONG *);
+static ERR SOUND_GET_Active(extSound *, LONG *);
 
-static ERROR SOUND_SET_Note(extSound *, CSTRING);
+static ERR SOUND_SET_Note(extSound *, CSTRING);
 
 static const std::array<DOUBLE, 12> glScale = {
    1.0,         // C
@@ -71,9 +71,9 @@ static const std::array<DOUBLE, 12> glScale = {
 
 static OBJECTPTR clSound = NULL;
 
-static ERROR find_chunk(extSound *, objFile *, CSTRING);
+static ERR find_chunk(extSound *, objFile *, std::string_view);
 #ifdef USE_WIN32_PLAYBACK
-static ERROR win32_audio_stream(extSound *, LARGE, LARGE);
+static ERR win32_audio_stream(extSound *, LARGE, LARGE);
 #endif
 
 //********************************************************************************************************************
@@ -81,20 +81,13 @@ static ERROR win32_audio_stream(extSound *, LARGE, LARGE);
 
 static void sound_stopped_event(extSound *Self)
 {
-   if (Self->OnStop.Type IS CALL_STDC) {
-      pf::SwitchContext context(Self->OnStop.StdC.Context);
-      auto routine = (void (*)(extSound *))Self->OnStop.StdC.Routine;
-      routine(Self);
+   if (Self->OnStop.isC()) {
+      pf::SwitchContext context(Self->OnStop.Context);
+      auto routine = (void (*)(extSound *, APTR))Self->OnStop.Routine;
+      routine(Self, Self->OnStop.Meta);
    }
-   else if (Self->OnStop.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Self->OnStop.Script.Script)) {
-         const ScriptArg args[] = {
-            { "Sound",  FD_OBJECTPTR, { .Address = Self } }
-         };
-         ERROR error;
-         scCallback(script, Self->OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
-      }
+   else if (Self->OnStop.isScript()) {
+      sc::Call(Self->OnStop, std::to_array<ScriptArg>({ { "Sound", Self, FD_OBJECTPTR } }));
    }
 }
 
@@ -127,14 +120,14 @@ static void onstop_event(LONG SampleHandle)
 // Called when the estimated time for playback is over.
 
 #ifdef _WIN32
-static ERROR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    pf::Log log;
    log.trace("Sound streaming completed.");
    sound_stopped_event(Self);
    Self->PlaybackTimer = 0;
    // NB: We don't manually stop the audio streamer, it will automatically stop once buffers are clear.
-   return ERR_Terminate;
+   return ERR::Terminate;
 }
 #endif
 
@@ -143,9 +136,9 @@ static ERROR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTi
 // in determining playback length.
 
 #ifdef USE_WIN32_PLAYBACK
-static ERROR set_playback_trigger(extSound *Self)
+static ERR set_playback_trigger(extSound *Self)
 {
-   if (Self->OnStop.Type) {
+   if (Self->OnStop.defined()) {
       pf::Log log(__FUNCTION__);
       const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
       const DOUBLE playback_time = DOUBLE((Self->Length - Self->Position) / bytes_per_sample) / DOUBLE(Self->Playback);
@@ -157,21 +150,20 @@ static ERROR set_playback_trigger(extSound *Self)
          log.trace("Playback time period set to %.2fs", playback_time);
          if (Self->PlaybackTimer) return UpdateTimer(Self->PlaybackTimer, playback_time + 0.01);
          else {
-            auto call = make_function_stdc(&timer_playback_ended);
-            return SubscribeTimer(playback_time + 0.01, &call, &Self->PlaybackTimer);
+            return SubscribeTimer(playback_time + 0.01, C_FUNCTION(timer_playback_ended), &Self->PlaybackTimer);
          }
       }
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 #endif
 
 #ifdef _WIN32
 extern "C" void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
 {
-   if (Object->Class->BaseClassID IS ID_SOUND) {
+   if (Object->Class->BaseClassID IS CLASSID::SOUND) {
       auto Self = (extSound *)Object;
-      if (Self->OnStop.Type) {
+      if (Self->OnStop.defined()) {
          pf::Log log(__FUNCTION__);
          pf::SwitchContext context(Object);
          const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
@@ -183,8 +175,7 @@ extern "C" void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
             }
             else {
                log.trace("Remaining time period set to %.2fs", playback_time);
-               auto call = make_function_stdc(&timer_playback_ended);
-               SubscribeTimer(playback_time, &call, &Self->PlaybackTimer);
+               SubscribeTimer(playback_time, C_FUNCTION(timer_playback_ended), &Self->PlaybackTimer);
             }
          }
       }
@@ -209,34 +200,34 @@ static SFM sample_format(extSound *Self)
    return SFM::NIL;
 }
 
-static ERROR snd_init_audio(extSound *Self) __attribute__((unused));
-static ERROR snd_init_audio(extSound *Self)
+static ERR snd_init_audio(extSound *Self) __attribute__((unused));
+static ERR snd_init_audio(extSound *Self)
 {
    pf::Log log;
 
-   if (!FindObject("SystemAudio", ID_AUDIO, FOF::NIL, &Self->AudioID)) return ERR_Okay;
+   if (FindObject("SystemAudio", CLASSID::AUDIO, FOF::NIL, &Self->AudioID) IS ERR::Okay) return ERR::Okay;
 
    extAudio *audio;
-   ERROR error;
-   if (!(error = NewObject(ID_AUDIO, NF::NIL, &audio))) {
+   ERR error;
+   if ((error = NewObject(CLASSID::AUDIO, &audio)) IS ERR::Okay) {
       SetName(audio, "SystemAudio");
       SetOwner(audio, CurrentTask());
 
-      if (!InitObject(audio)) {
-         if (!(error = audio->activate())) {
+      if (InitObject(audio) IS ERR::Okay) {
+         if ((error = audio->activate()) IS ERR::Okay) {
             Self->AudioID = audio->UID;
          }
          else FreeResource(audio);
       }
       else {
          FreeResource(audio);
-         error = ERR_Init;
+         error = ERR::Init;
       }
    }
-   else if (error IS ERR_ObjectExists) return ERR_Okay;
-   else error = ERR_NewObject;
+   else if (error IS ERR::ObjectExists) return ERR::Okay;
+   else error = ERR::NewObject;
 
-   if (error) return log.warning(ERR_CreateObject);
+   if (error != ERR::Okay) return log.warning(ERR::CreateObject);
 
    return error;
 }
@@ -247,13 +238,13 @@ Activate: Plays the audio sample.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOUND_Activate(extSound *Self, APTR Void)
+static ERR SOUND_Activate(extSound *Self)
 {
    pf::Log log;
 
    log.traceBranch("Position: %" PF64, Self->Position);
 
-   if (!Self->Length) return log.warning(ERR_FieldNotSet);
+   if (!Self->Length) return log.warning(ERR::FieldNotSet);
 
 #ifdef USE_WIN32_PLAYBACK
    // Optimised playback for Windows - this does not use our internal mixer.
@@ -299,7 +290,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
       if (strerr) {
          log.warning("Failed to create audio buffer, reason: %s (sample length %d)", strerr, Self->Length);
-         return ERR_Failed;
+         return ERR::Failed;
       }
 
       Self->Active = true;
@@ -317,13 +308,12 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
    sndPan((PlatformData *)Self->PlatformData, Self->Pan);
 
    if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
-      auto call = make_function_stdc(win32_audio_stream);
-      if (SubscribeTimer(0.25, &call, &Self->StreamTimer)) return log.warning(ERR_Failed);
+      if (SubscribeTimer(0.25, C_FUNCTION(win32_audio_stream), &Self->StreamTimer) != ERR::Okay) return log.warning(ERR::Failed);
    }
-   else if (set_playback_trigger(Self)) return log.warning(ERR_Failed);
+   else if (set_playback_trigger(Self) != ERR::Okay) return log.warning(ERR::Failed);
 
    auto response = sndPlay((PlatformData *)Self->PlatformData, ((Self->Flags & SDF::LOOP) != SDF::NIL) ? TRUE : FALSE, Self->Position);
-   return response ? log.warning(ERR_Failed) : ERR_Okay;
+   return response ? log.warning(ERR::Failed) : ERR::Okay;
 #else
 
    if (!Self->Active) {
@@ -339,7 +329,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          else sampleformat = SFM::S16_BIT_MONO;
       }
 
-      if (sampleformat IS SFM::NIL) return log.warning(ERR_InvalidData);
+      if (sampleformat IS SFM::NIL) return log.warning(ERR::InvalidData);
 
       // Create the audio buffer and fill it with sample data
 
@@ -350,7 +340,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
       if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
          log.msg("Streaming enabled for playback in format $%.8x; Length: %d", LONG(sampleformat), Self->Length);
 
-         struct sndAddStream stream;
+         struct snd::AddStream stream;
          AudioLoop loop;
          if ((Self->Flags & SDF::LOOP) != SDF::NIL) {
             loop.LoopMode   = LOOP::SINGLE;
@@ -367,33 +357,39 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             stream.LoopSize = 0;
          }
 
-         if (Self->OnStop.Type) stream.OnStop = make_function_stdc(&onstop_event);
-         else stream.OnStop.Type = CALL_NONE;
+         if (Self->OnStop.defined()) stream.OnStop = C_FUNCTION(onstop_event);
+         else stream.OnStop.clear();
 
          stream.PlayOffset   = Self->Position;
-         stream.Callback     = make_function_stdc(&read_stream);
+         stream.Callback     = C_FUNCTION(read_stream);
          stream.SampleFormat = sampleformat;
          stream.SampleLength = Self->Length;
 
-         if (!ActionMsg(MT_SndAddStream, Self->AudioID, &stream)) {
-            Self->Handle = stream.Result;
+         pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
+         if (audio.granted()) {
+            if (Action(snd::AddStream::id, *audio, &stream) IS ERR::Okay) {
+               Self->Handle = stream.Result;
+            }
+            else {
+               log.warning("Failed to add sample to the Audio device.");
+               return ERR::Failed;
+            }
          }
-         else {
-            log.warning("Failed to add sample to the Audio device.");
-            return ERR_Failed;
-         }
+         else return ERR::AccessObject;
       }
-      else if (!AllocMemory(Self->Length, MEM::DATA|MEM::NO_CLEAR, &buffer)) {
+      else if (AllocMemory(Self->Length, MEM::DATA|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
+         auto dc = deferred_call([&buffer] { FreeResource(buffer); });
+
          auto client_pos = Self->Position;
          if (Self->Position) Self->seekStart(0); // Ensure we're reading the entire sample from the start
 
          LONG result;
-         if (!Self->read(buffer, Self->Length, &result)) {
+         if (Self->read(buffer, Self->Length, &result) IS ERR::Okay) {
             if (result != Self->Length) log.warning("Expected %d bytes, read %d", Self->Length, result);
 
             Self->seekStart(client_pos);
 
-            struct sndAddSample add;
+            struct snd::AddSample add;
             AudioLoop loop;
 
             if ((Self->Flags & SDF::LOOP) != SDF::NIL) {
@@ -411,29 +407,28 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
                add.LoopSize = 0;
             }
 
-            if (Self->OnStop.Type) add.OnStop = make_function_stdc(&onstop_event);
-            else add.OnStop.Type = CALL_NONE;
+            if (Self->OnStop.defined()) add.OnStop = C_FUNCTION(onstop_event);
+            else add.OnStop.clear();
 
             add.SampleFormat = sampleformat;
             add.Data         = buffer;
             add.DataSize     = Self->Length;
-            if (!ActionMsg(MT_SndAddSample, Self->AudioID, &add)) {
-               Self->Handle = add.Result;
 
-               FreeResource(buffer);
+            pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 250);
+            if (audio.granted()) {
+               if (Action(snd::AddSample::id, *audio, &add) IS ERR::Okay) {
+                  Self->Handle = add.Result;
+               }
+               else {
+                  log.warning("Failed to add sample to the Audio device.");
+                  return ERR::Failed;
+               }
             }
-            else {
-               FreeResource(buffer);
-               log.warning("Failed to add sample to the Audio device.");
-               return ERR_Failed;
-            }
+            else return log.warning(ERR::AccessObject);
          }
-         else {
-            FreeResource(buffer);
-            return log.warning(ERR_Read);
-         }
+         else return log.warning(ERR::Read);
       }
-      else return log.warning(ERR_AllocMemory);
+      else return log.warning(ERR::AllocMemory);
    }
 
    Self->Active = true;
@@ -471,35 +466,35 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          if (i >= audio->MaxChannels) {
             if (!(channel = priority)) {
                log.msg("Audio channel not available for playback.");
-               return ERR_Failed;
+               return ERR::Failed;
             }
          }
       }
 
-      sndMixStop(*audio, Self->ChannelIndex);
+      snd::MixStop(*audio, Self->ChannelIndex);
 
-      if (!sndMixSample(*audio, Self->ChannelIndex, Self->Handle)) {
-         if (sndMixVolume(*audio, Self->ChannelIndex, Self->Volume)) return log.warning(ERR_Failed);
-         if (sndMixPan(*audio, Self->ChannelIndex, Self->Pan)) return log.warning(ERR_Failed);
-         if (sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback)) return log.warning(ERR_Failed);
-         if (sndMixPlay(*audio, Self->ChannelIndex, Self->Position)) return log.warning(ERR_Failed);
+      if (snd::MixSample(*audio, Self->ChannelIndex, Self->Handle) IS ERR::Okay) {
+         if (snd::MixVolume(*audio, Self->ChannelIndex, Self->Volume) != ERR::Okay) return log.warning(ERR::Failed);
+         if (snd::MixPan(*audio, Self->ChannelIndex, Self->Pan) != ERR::Okay) return log.warning(ERR::Failed);
+         if (snd::MixFrequency(*audio, Self->ChannelIndex, Self->Playback) != ERR::Okay) return log.warning(ERR::Failed);
+         if (snd::MixPlay(*audio, Self->ChannelIndex, Self->Position) != ERR::Okay) return log.warning(ERR::Failed);
 
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else {
          log.warning("Failed to set sample %d to channel $%.8x", Self->Handle, Self->ChannelIndex);
-         return ERR_Failed;
+         return ERR::Failed;
       }
    }
-   else return log.warning(ERR_AccessObject);
+   else return log.warning(ERR::AccessObject);
 #endif
 }
 
 //********************************************************************************************************************
 
-static void notify_onstop_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_onstop_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   ((extSound *)CurrentContext())->OnStop.Type = CALL_NONE;
+   ((extSound *)CurrentContext())->OnStop.clear();
 }
 
 /*********************************************************************************************************************
@@ -508,7 +503,7 @@ Deactivate: Stops the audio sample and resets the playback position.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
+static ERR SOUND_Deactivate(extSound *Self)
 {
    pf::Log log;
 
@@ -526,14 +521,14 @@ static ERROR SOUND_Deactivate(extSound *Self, APTR Void)
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) { // Stop the sample if it's live.
          if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-            if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
+            if (channel->SampleHandle IS Self->Handle) snd::MixStop(*audio, Self->ChannelIndex);
          }
       }
-      else return log.warning(ERR_AccessObject);
+      else return log.warning(ERR::AccessObject);
    }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -542,7 +537,7 @@ Disable: Disable playback of an active audio sample, equivalent to pausing.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOUND_Disable(extSound *Self, APTR Void)
+static ERR SOUND_Disable(extSound *Self)
 {
    pf::Log log;
 
@@ -551,18 +546,18 @@ static ERROR SOUND_Disable(extSound *Self, APTR Void)
 #ifdef USE_WIN32_PLAYBACK
    sndStop((PlatformData *)Self->PlatformData);
 #else
-   if (!Self->ChannelIndex) return ERR_Okay;
+   if (!Self->ChannelIndex) return ERR::Okay;
 
    pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SampleHandle IS Self->Handle) sndMixStop(*audio, Self->ChannelIndex);
+         if (channel->SampleHandle IS Self->Handle) snd::MixStop(*audio, Self->ChannelIndex);
       }
    }
-   else return log.warning(ERR_AccessObject);
+   else return log.warning(ERR::AccessObject);
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -571,7 +566,7 @@ Enable: Continues playing a sound if it has been disabled.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOUND_Enable(extSound *Self, APTR Void)
+static ERR SOUND_Enable(extSound *Self)
 {
    pf::Log log;
    log.branch();
@@ -583,30 +578,30 @@ static ERROR SOUND_Enable(extSound *Self, APTR Void)
       else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
    }
 #else
-   if (!Self->ChannelIndex) return ERR_Okay;
+   if (!Self->ChannelIndex) return ERR::Okay;
 
    pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 5000);
    if (audio.granted()) {
       if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
-         if (channel->SampleHandle IS Self->Handle) sndMixContinue(*audio, Self->ChannelIndex);
+         if (channel->SampleHandle IS Self->Handle) snd::MixContinue(*audio, Self->ChannelIndex);
       }
    }
-   else return log.warning(ERR_AccessObject);
+   else return log.warning(ERR::AccessObject);
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR SOUND_Free(extSound *Self, APTR Void)
+static ERR SOUND_Free(extSound *Self)
 {
    if (Self->StreamTimer)   { UpdateTimer(Self->StreamTimer, 0); Self->StreamTimer = 0; }
    if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
 
-   if (Self->OnStop.Type IS CALL_SCRIPT) {
-      UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
-      Self->OnStop.Type = CALL_NONE;
+   if (Self->OnStop.isScript()) {
+      UnsubscribeAction(Self->OnStop.Context, AC_Free);
+      Self->OnStop.clear();
    }
 
 #if defined(USE_WIN32_PLAYBACK)
@@ -618,7 +613,7 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    if ((Self->Handle) and (Self->AudioID)) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID);
       if (audio.granted()) {
-         sndRemoveSample(*audio, Self->Handle);
+         audio->removeSample(Self->Handle);
          Self->Handle = 0;
       }
    }
@@ -627,14 +622,14 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    if (Self->File) { FreeResource(Self->File); Self->File = NULL; }
 
    Self->~extSound();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
-GetVar: Retrieve custom tag values.
+GetKey: Retrieve custom key values.
 
-The following custom tag values are formally recognised and may be defined automatically when loading sample files:
+The following custom key values are formally recognised and may be defined automatically when loading sample files:
 
 <types type="Tag">
 <type name="Author">The name of the person or organisation that created the sound sample.</type>
@@ -648,16 +643,16 @@ The following custom tag values are formally recognised and may be defined autom
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_GetVar(extSound *Self, struct acGetVar *Args)
+static ERR SOUND_GetKey(extSound *Self, struct acGetKey *Args)
 {
-   if ((!Args) or (!Args->Field)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Key)) return ERR::NullArgs;
 
-   std::string name(Args->Field);
+   std::string name(Args->Key);
    if (Self->Tags.contains(name)) {
-      StrCopy(Self->Tags[name].c_str(), Args->Buffer, Args->Size);
-      return ERR_Okay;
+      StrCopy(Self->Tags[name].c_str(), Args->Value, Args->Size);
+      return ERR::Okay;
    }
-   else return ERR_UnsupportedField;
+   else return ERR::UnsupportedField;
 }
 
 /*********************************************************************************************************************
@@ -668,16 +663,16 @@ Init: Prepares a sound object for usage.
 
 #ifdef USE_WIN32_PLAYBACK
 
-static ERROR SOUND_Init(extSound *Self, APTR Void)
+static ERR SOUND_Init(extSound *Self)
 {
    pf::Log log;
    LONG id, len;
-   ERROR error;
+   ERR error;
 
    // Find the local audio object or create one to ease the developer's workload.
 
    if (!Self->AudioID) {
-      if ((error = snd_init_audio(Self))) return error;
+      if ((error = snd_init_audio(Self)) != ERR::Okay) return error;
    }
 
    // Open channels for sound sample playback.
@@ -685,75 +680,75 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (!sndOpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex)) {
+         if (audio->openChannels(audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
             log.warning("Failed to open audio channels.");
-            return ERR_Failed;
+            return ERR::Failed;
          }
       }
-      else return log.warning(ERR_AccessObject);
+      else return log.warning(ERR::AccessObject);
    }
 
    STRING path;
-   if (((Self->Flags & SDF::NEW) != SDF::NIL) or (Self->get(FID_Path, &path) != ERR_Okay) or (!path)) {
+   if (((Self->Flags & SDF::NEW) != SDF::NIL) or (Self->get(FID_Path, &path) != ERR::Okay) or (!path)) {
       // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to record
       // audio to disk).
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    // Load the sound file's header and test it to see if it matches our supported file format.
 
    if (!Self->File) {
-      if (!(Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
-         return log.warning(ERR_File);
+      if (!(Self->File = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
+         return log.warning(ERR::File);
       }
    }
    else Self->File->seekStart(0);
 
    Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
 
-   if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR::CASE) != ERR_Okay) or
-       (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR::CASE) != ERR_Okay)) {
+   if ((std::string_view((char *)Self->Header, 4) != "RIFF") or
+       (std::string_view((char *)Self->Header + 8, 4) != "WAVE")) {
       FreeResource(Self->File);
       Self->File = NULL;
-      return ERR_NoSupport;
+      return ERR::NoSupport;
    }
 
    // Read the RIFF header
 
    Self->File->seekStart(12);
-   if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
-   if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
+   if (fl::ReadLE(Self->File, &id) != ERR::Okay) return ERR::Read; // Contains the characters "fmt "
+   if (fl::ReadLE(Self->File, &len) != ERR::Okay) return ERR::Read; // Length of data in this chunk
 
    WAVEFormat WAVE;
    LONG result;
-   if (Self->File->read(&WAVE, len, &result) or (result != len)) {
-      return log.warning(ERR_Read);
+   if ((Self->File->read(&WAVE, len, &result) != ERR::Okay) or (result != len)) {
+      return log.warning(ERR::Read);
    }
 
    // Check the format of the sound file's data
 
    if ((WAVE.Format != WAVE_ADPCM) and (WAVE.Format != WAVE_RAW)) {
       log.msg("This file's WAVE data format is not supported (type %d).", WAVE.Format);
-      return ERR_InvalidData;
+      return ERR::InvalidData;
    }
 
    // Look for the "data" chunk
 
-   if (find_chunk(Self, Self->File, "data") != ERR_Okay) {
-      return log.warning(ERR_Read);
+   if (find_chunk(Self, Self->File, "data") != ERR::Okay) {
+      return log.warning(ERR::Read);
    }
 
-   if (flReadLE(Self->File, &Self->Length)) return ERR_Read; // Length of audio data in this chunk
+   if (fl::ReadLE(Self->File, &Self->Length) != ERR::Okay) return ERR::Read; // Length of audio data in this chunk
 
    if (Self->Length & 1) Self->Length++;
 
    // Setup the sound structure
 
-   Self->File->get(FID_Position, &Self->DataOffset);
+   Self->DataOffset = Self->File->get<LONG>(FID_Position);
 
    Self->Format         = WAVE.Format;
    Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
@@ -769,19 +764,19 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    log.trace("Bits: %d, Freq: %d, KBPS: %d, ByteLength: %d, DataOffset: %d", Self->BitsPerSample, Self->Frequency, Self->BytesPerSecond, Self->Length, Self->DataOffset);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 #else // Use the internal mixer
 
-static ERROR SOUND_Init(extSound *Self, APTR Void)
+static ERR SOUND_Init(extSound *Self)
 {
    pf::Log log;
    LONG id, len, result, pos;
-   ERROR error;
+   ERR error;
 
    if (!Self->AudioID) {
-      if ((error = snd_init_audio(Self))) return error;
+      if ((error = snd_init_audio(Self)) != ERR::Okay) return error;
    }
 
    // Open channels for sound sample playback.
@@ -789,19 +784,18 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
    if (!(Self->ChannelIndex = glSoundChannels[Self->AudioID])) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 3000);
       if (audio.granted()) {
-         if (!sndOpenChannels(*audio, audio->MaxChannels, &Self->ChannelIndex)) {
+         if (audio->openChannels(audio->MaxChannels, &Self->ChannelIndex) IS ERR::Okay) {
             glSoundChannels[Self->AudioID] = Self->ChannelIndex;
          }
          else {
             log.warning("Failed to open audio channels.");
-            return ERR_Failed;
+            return ERR::Failed;
          }
       }
-      else return log.warning(ERR_AccessObject);
+      else return log.warning(ERR::AccessObject);
    }
 
-   STRING path = NULL;
-   Self->get(FID_Path, &path);
+   auto path = Self->get<STRING>(FID_Path);
 
    if (((Self->Flags & SDF::NEW) != SDF::NIL) or (!path)) {
       log.msg("Sample created as new (without sample data).");
@@ -809,58 +803,58 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
       // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to
       // record audio to disk).
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    // Load the sound file's header and test it to see if it matches our supported file format.
 
    if (!Self->File) {
-      if (!(Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
-         return log.warning(ERR_File);
+      if (!(Self->File = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
+         return log.warning(ERR::File);
       }
    }
    else Self->File->seekStart(0);
 
    Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
 
-   if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR::CASE) != ERR_Okay) or
-       (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR::CASE) != ERR_Okay)) {
+   if ((std::string_view((char *)Self->Header, 4) != "RIFF") or
+       (std::string_view((char *)Self->Header + 8, 4) != "WAVE")) {
       FreeResource(Self->File);
       Self->File = NULL;
-      return ERR_NoSupport;
+      return ERR::NoSupport;
    }
 
    // Read the FMT header
 
    Self->File->seek(12, SEEK::START);
-   if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
-   if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
+   if (fl::ReadLE(Self->File, &id) != ERR::Okay) return ERR::Read; // Contains the characters "fmt "
+   if (fl::ReadLE(Self->File, &len) != ERR::Okay) return ERR::Read; // Length of data in this chunk
 
    WAVEFormat WAVE;
-   if (Self->File->read(&WAVE, len, &result) or (result < len)) {
+   if ((Self->File->read(&WAVE, len, &result) != ERR::Okay) or (result < len)) {
       log.warning("Failed to read WAVE format header (got %d, expected %d)", result, len);
-      return ERR_Read;
+      return ERR::Read;
    }
 
    // Check the format of the sound file's data
 
    if ((WAVE.Format != WAVE_ADPCM) and (WAVE.Format != WAVE_RAW)) {
       log.warning("This file's WAVE data format is not supported (type %d).", WAVE.Format);
-      return ERR_InvalidData;
+      return ERR::InvalidData;
    }
 
    // Look for the cue chunk for loop information
 
-   Self->File->get(FID_Position, &pos);
+   pos = Self->File->get<LONG>(FID_Position);
 #if 0
-   if (find_chunk(Self, Self->File, "cue ") IS ERR_Okay) {
+   if (find_chunk(Self, Self->File, "cue ") IS ERR::Okay) {
       data_p += 32;
-      flReadLE(Self->File, &info.loopstart);
+      fl::ReadLE(Self->File, &info.loopstart);
       // if the next chunk is a LIST chunk, look for a cue length marker
-      if (find_chunk(Self, Self->File, "LIST") IS ERR_Okay) {
+      if (find_chunk(Self, Self->File, "LIST") IS ERR::Okay) {
          if (!strncmp (data_p + 28, "mark", 4)) {
             data_p += 24;
-            flReadLE(Self->File, &i);	// samples in loop
+            fl::ReadLE(Self->File, &i);	// samples in loop
             info.samples = info.loopstart + i;
          }
       }
@@ -870,15 +864,15 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Look for the "data" chunk
 
-   if (find_chunk(Self, Self->File, "data") != ERR_Okay) {
-      return log.warning(ERR_Read);
+   if (find_chunk(Self, Self->File, "data") != ERR::Okay) {
+      return log.warning(ERR::Read);
    }
 
    // Setup the sound structure
 
-   flReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
+   fl::ReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
 
-   Self->File->get(FID_Position, &Self->DataOffset);
+   Self->DataOffset = Self->File->get<LONG>(FID_Position);
 
    Self->Format         = WAVE.Format;
    Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
@@ -894,17 +888,17 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    if ((Self->BitsPerSample != 8) and (Self->BitsPerSample != 16)) {
       log.warning("Bits-Per-Sample of %d not supported.", Self->BitsPerSample);
-      return ERR_InvalidData;
+      return ERR::InvalidData;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 #endif
 
 //********************************************************************************************************************
 
-static ERROR SOUND_NewObject(extSound *Self, APTR Void)
+static ERR SOUND_NewObject(extSound *Self)
 {
    new (Self) extSound;
 
@@ -914,7 +908,7 @@ static ERROR SOUND_NewObject(extSound *Self, APTR Void)
    Self->Playback    = 0;
    Self->Note        = NOTE_C; // Standard pitch
    Self->Stream      = STREAM::SMART;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -928,31 +922,31 @@ is determined by the #Position value.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOUND_Read(extSound *Self, struct acRead *Args)
+static ERR SOUND_Read(extSound *Self, struct acRead *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Length: %d, Offset: %" PF64, Args->Length, Self->Position);
 
    if (Args->Length <= 0) {
       Args->Result = 0;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    // Don't read more than the known raw sample length
 
    LONG result;
    if (Self->Position + Args->Length > Self->Length) {
-      if (auto error = Self->File->read(Args->Buffer, Self->Length - Self->Position, &result)) return error;
+      if (auto error = Self->File->read(Args->Buffer, Self->Length - Self->Position, &result); error != ERR::Okay) return error;
    }
-   else if (auto error = Self->File->read(Args->Buffer, Args->Length, &result)) return error;
+   else if (auto error = Self->File->read(Args->Buffer, Args->Length, &result); error != ERR::Okay) return error;
 
    Self->Position += result;
    Args->Result = result;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -961,23 +955,23 @@ SaveToObject: Saves audio sample data to an object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
+static ERR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
    // This routine is used if the developer is trying to save the sound data as a specific subclass type.
 
-   if ((Args->ClassID) and (Args->ClassID != ID_SOUND)) {
+   if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SOUND)) {
       auto mclass = (objMetaClass *)FindClass(Args->ClassID);
 
-      ERROR (**routine)(OBJECTPTR, APTR);
-      if ((!mclass->getPtr(FID_ActionTable, (APTR *)&routine)) and (routine)) {
+      ERR (**routine)(OBJECTPTR, APTR);
+      if ((mclass->getPtr(FID_ActionTable, (APTR *)&routine) IS ERR::Okay) and (routine)) {
          if (routine[AC_SaveToObject]) {
             return routine[AC_SaveToObject](Self, Args);
          }
-         else return log.warning(ERR_NoSupport);
+         else return log.warning(ERR::NoSupport);
       }
-      else return log.warning(ERR_GetField);
+      else return log.warning(ERR::GetField);
    }
 
    // TODO: Save the sound data as a wave file
@@ -985,7 +979,7 @@ static ERROR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
 
 
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -998,20 +992,20 @@ Read action.  If the sample is in active playback at the time of the call, the p
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
+static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
 {
    pf::Log log;
 
    // NB: Sub-classes may divert their functionality to this routine if the sample is fully buffered.
 
-   if (!Args) return log.warning(ERR_NullArgs);
-   if (!Self->initialised()) return log.warning(ERR_NotInitialised);
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
    if (Args->Position IS SEEK::START)         Self->Position = F2T(Args->Offset);
    else if (Args->Position IS SEEK::END)      Self->Position = Self->Length - F2T(Args->Offset);
    else if (Args->Position IS SEEK::CURRENT)  Self->Position += F2T(Args->Offset);
    else if (Args->Position IS SEEK::RELATIVE) Self->Position = Self->Length * Args->Offset;
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 
    if (Self->Position < 0) Self->Position = 0;
    else if (Self->Position > Self->Length) Self->Position = Self->Length;
@@ -1043,7 +1037,7 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
                if (Self->ChannelIndex) {
                   if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
                      if (!channel->isStopped()) {
-                        sndMixPlay(*audio, Self->ChannelIndex, Self->Position);
+                        snd::MixPlay(*audio, Self->ChannelIndex, Self->Position);
                      }
                   }
                }
@@ -1051,32 +1045,32 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
          }
       #endif
    }
-   else return log.warning(ERR_AccessObject);
+   else return log.warning(ERR::AccessObject);
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
-SetVar: Define custom tags that will be saved with the sample data.
+SetKey: Define custom tags that will be saved with the sample data.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOUND_SetVar(extSound *Self, struct acSetVar *Args)
+static ERR SOUND_SetKey(extSound *Self, struct acSetKey *Args)
 {
-   if ((!Args) or (!Args->Field) or (!Args->Field[0])) return ERR_NullArgs;
+   if ((!Args) or (!Args->Key) or (!Args->Key[0])) return ERR::NullArgs;
 
-   Self->Tags[std::string(Args->Field)] = Args->Value;
-   return ERR_Okay;
+   Self->Tags[std::string(Args->Key)] = Args->Value;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -FIELD-
-Active: Returns TRUE if the sound sample is being played back.
+Active: Returns `true` if the sound sample is being played back.
 -END-
 *********************************************************************************************************************/
 
-static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
+static ERR SOUND_GET_Active(extSound *Self, LONG *Value)
 {
 #ifdef USE_WIN32_PLAYBACK
    pf::Log log;
@@ -1093,7 +1087,7 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
    }
    else *Value = FALSE;
 
-   return ERR_Okay;
+   return ERR::Okay;
 #else
    *Value = FALSE;
 
@@ -1104,11 +1098,11 @@ static ERROR SOUND_GET_Active(extSound *Self, LONG *Value)
             if (!channel->isStopped()) *Value = TRUE;
          }
       }
-      else return ERR_AccessObject;
+      else return ERR::AccessObject;
    }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1119,7 +1113,7 @@ Audio: Refers to the audio object/device to use for playback.
 Set this field if a specific @Audio object should be targeted when playing the sound sample.
 
 -FIELD-
-BitsPerSample: Indicates the sample rate of the audio sample, typically 8 or 16 bit.
+BitsPerSample: Indicates the sample rate of the audio sample, typically `8` or `16` bit.
 
 -FIELD-
 BytesPerSecond: The flow of bytes-per-second when the sample is played at normal frequency.
@@ -1145,14 +1139,14 @@ Duration: Returns the duration of the sample, measured in seconds.
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_GET_Duration(extSound *Self, DOUBLE *Value)
+static ERR SOUND_GET_Duration(extSound *Self, DOUBLE *Value)
 {
    if (Self->Length) {
       const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
       *Value = DOUBLE(Self->Length / bytes_per_sample) / DOUBLE(Self->Playback ? Self->Playback : Self->Frequency);
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
 /*********************************************************************************************************************
@@ -1163,10 +1157,10 @@ Lookup: SDF
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_SET_Flags(extSound *Self, LONG Value)
+static ERR SOUND_SET_Flags(extSound *Self, LONG Value)
 {
    Self->Flags = SDF((LONG(Self->Flags) & 0xffff0000) | (Value & 0x0000ffff));
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1190,11 +1184,11 @@ The buffer that is referred to by the Header field is not populated until the In
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_GET_Header(extSound *Self, BYTE **Value, LONG *Elements)
+static ERR SOUND_GET_Header(extSound *Self, BYTE **Value, LONG *Elements)
 {
    *Value = (BYTE *)Self->Header;
    *Elements = ARRAYSIZE(Self->Header);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1206,7 +1200,7 @@ value by the #BytesPerSecond field.
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_SET_Length(extSound *Self, LONG Value)
+static ERR SOUND_SET_Length(extSound *Self, LONG Value)
 {
    pf::Log log;
    if (Value >= 0) {
@@ -1216,19 +1210,19 @@ static ERROR SOUND_SET_Length(extSound *Self, LONG Value)
          if (Self->initialised()) {
             sndLength((PlatformData *)Self->PlatformData, Value);
          }
-         return ERR_Okay;
+         return ERR::Okay;
       #else
          if ((Self->Handle) and (Self->AudioID)) {
             pf::ScopedObjectLock<objAudio> audio(Self->AudioID);
             if (audio.granted()) {
-               return sndSetSampleLength(*audio, Self->Handle, Value);
+               return audio->setSampleLength(Self->Handle, Value);
             }
-            else return log.warning(ERR_AccessObject);
+            else return log.warning(ERR::AccessObject);
          }
-         else return ERR_Okay;
+         else return ERR::Okay;
       #endif
    }
-   else return log.warning(ERR_InvalidValue);
+   else return log.warning(ERR::InvalidValue);
 }
 
 /*********************************************************************************************************************
@@ -1270,7 +1264,7 @@ and the lowest is 0.  Use either the `S` character or the `#` character for refe
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_GET_Note(extSound *Self, CSTRING *Value)
+static ERR SOUND_GET_Note(extSound *Self, CSTRING *Value)
 {
    switch(Self->Note) {
       case NOTE_C:  Self->NoteString[0] = 'C';
@@ -1330,14 +1324,14 @@ static ERROR SOUND_GET_Note(extSound *Self, CSTRING *Value)
    }
    *Value = Self->NoteString;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
+static ERR SOUND_SET_Note(extSound *Self, CSTRING Value)
 {
    pf::Log log;
 
-   if (!*Value) return ERR_Okay;
+   if (!*Value) return ERR::Okay;
 
    LONG i, note;
    for (i=0; (Value[i]) and (i < 3); i++) Self->NoteString[i] = Value[i];
@@ -1367,7 +1361,7 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
       if ((*str IS 'S') or (*str IS 's') or (*str IS '#')) note++; // Sharp note
    }
 
-   if ((note > NOTE_OCTAVE * 5) or (note < -(NOTE_OCTAVE * 5))) return log.warning(ERR_OutOfRange);
+   if ((note > NOTE_OCTAVE * 5) or (note < -(NOTE_OCTAVE * 5))) return log.warning(ERR::OutOfRange);
 
    Self->Flags |= SDF::NOTE;
 
@@ -1387,7 +1381,7 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    // Return if there is no frequency setting yet
 
-   if (!Self->Frequency) return ERR_Okay;
+   if (!Self->Frequency) return ERR::Okay;
 
    // Get the default frequency and adjust it to suit the requested octave/scale
    Self->Playback = Self->Frequency;
@@ -1412,13 +1406,13 @@ static ERROR SOUND_SET_Note(extSound *Self, CSTRING Value)
    if (Self->ChannelIndex) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback);
+         snd::MixFrequency(*audio, Self->ChannelIndex, Self->Playback);
       }
-      else return ERR_AccessObject;
+      else return ERR::AccessObject;
    }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1427,14 +1421,14 @@ Octave: The octave to use for sample playback.
 
 The Octave field determines the octave to use when playing back a sound sample.  The default setting is zero, which
 represents the octave at which the sound was sampled.  Setting a negative octave will lower the playback rate, while
-positive values raise the playback rate.  The minimum octave setting is -5 and the highest setting is +5.
+positive values raise the playback rate.  The minimum octave setting is `-5` and the highest setting is `+5`.
 
 The octave can also be adjusted by setting the #Note field.  Setting the Octave field directly is useful if
 you need to quickly double or halve the playback rate.
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_SET_Octave(extSound *Self, LONG Value)
+static ERR SOUND_SET_Octave(extSound *Self, LONG Value)
 {
    if ((Value < -10) or (Value > 10))
    Self->Octave = Value;
@@ -1446,39 +1440,34 @@ static ERROR SOUND_SET_Octave(extSound *Self, LONG Value)
 -FIELD-
 OnStop: This callback is triggered when sample playback stops.
 
-Set OnStop to a callback function to receive an event trigger when sample playback stops.  The synopsis for the
-function is as follows:
-
-<pre>
-void OnStop(*Sound)
-</pre>
+Set OnStop to a callback function to receive an event trigger when sample playback stops.  The prototype for the
+function is `void OnStop(*Sound)`.
 
 The timing of this event does not guarantee precision, but should be accurate to approximately 1/100th of a second
 in most cases.
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_GET_OnStop(extSound *Self, FUNCTION **Value)
+static ERR SOUND_GET_OnStop(extSound *Self, FUNCTION **Value)
 {
-   if (Self->OnStop.Type != CALL_NONE) {
+   if (Self->OnStop.defined()) {
       *Value = &Self->OnStop;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SOUND_SET_OnStop(extSound *Self, FUNCTION *Value)
+static ERR SOUND_SET_OnStop(extSound *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->OnStop.Type IS CALL_SCRIPT) UnsubscribeAction(Self->OnStop.Script.Script, AC_Free);
+      if (Self->OnStop.isScript()) UnsubscribeAction(Self->OnStop.Context, AC_Free);
       Self->OnStop = *Value;
-      if (Self->OnStop.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_onstop_free);
-         SubscribeAction(Self->OnStop.Script.Script, AC_Free, &callback);
+      if (Self->OnStop.isScript()) {
+         SubscribeAction(Self->OnStop.Context, AC_Free, C_FUNCTION(notify_onstop_free));
       }
    }
-   else Self->OnStop.Type = CALL_NONE;
-   return ERR_Okay;
+   else Self->OnStop.clear();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1487,11 +1476,11 @@ Pan: Determines the horizontal position of a sound when played through stereo sp
 
 The Pan field adjusts the "horizontal position" of a sample that is being played through stereo speakers.
 The default value for this field is zero, which plays the sound through both speakers at an equal level.  The minimum
-value is -1.0 to force play through the left speaker and the maximum value is 1.0 for the right speaker.
+value is `-1.0` to force play through the left speaker and the maximum value is `1.0` for the right speaker.
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
+static ERR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
 {
    Self->Pan = Value;
 
@@ -1506,13 +1495,13 @@ static ERROR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
    if (Self->ChannelIndex) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         sndMixPan(*audio, Self->ChannelIndex, Self->Pan);
+         snd::MixPan(*audio, Self->ChannelIndex, Self->Pan);
       }
-      else return ERR_AccessObject;
+      else return ERR::AccessObject;
    }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1525,13 +1514,13 @@ with the `SDF::NEW` flag, it is not necessary to define a file source.
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_GET_Path(extSound *Self, STRING *Value)
+static ERR SOUND_GET_Path(extSound *Self, STRING *Value)
 {
-   if ((*Value = Self->Path)) return ERR_Okay;
-   else return ERR_FieldNotSet;
+   if ((*Value = Self->Path)) return ERR::Okay;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
+static ERR SOUND_SET_Path(extSound *Self, CSTRING Value)
 {
    pf::Log log;
 
@@ -1539,13 +1528,13 @@ static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
 
    if ((Value) and (*Value)) {
       LONG i = strlen(Value);
-      if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path)) {
+      if (AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path) IS ERR::Okay) {
          for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
          Self->Path[i] = 0;
       }
-      else return log.warning(ERR_AllocMemory);
+      else return log.warning(ERR::AllocMemory);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1558,11 +1547,11 @@ any time, including during audio playback if real-time adjustments to a sample's
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
+static ERR SOUND_SET_Playback(extSound *Self, LONG Value)
 {
    pf::Log log;
 
-   if ((Value < 0) or (Value > 500000)) return ERR_OutOfRange;
+   if ((Value < 0) or (Value > 500000)) return ERR::OutOfRange;
 
    Self->Playback = Value;
    Self->Flags &= ~SDF::NOTE;
@@ -1576,13 +1565,13 @@ static ERROR SOUND_SET_Playback(extSound *Self, LONG Value)
    if (Self->ChannelIndex) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         sndMixFrequency(*audio, Self->ChannelIndex, Self->Playback);
+         snd::MixFrequency(*audio, Self->ChannelIndex, Self->Playback);
       }
-      else return log.warning(ERR_AccessObject);
+      else return log.warning(ERR::AccessObject);
    }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1594,7 +1583,7 @@ playback position, either when the sample is next played, or immediately if it i
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_SET_Position(extSound *Self, LARGE Value)
+static ERR SOUND_SET_Position(extSound *Self, LARGE Value)
 {
    return Self->seekStart(Value);
 }
@@ -1611,12 +1600,12 @@ The minimum priority value allowed is -100, the maximum is 100.
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_SET_Priority(extSound *Self, LONG Value)
+static ERR SOUND_SET_Priority(extSound *Self, LONG Value)
 {
    Self->Priority = Value;
    if (Self->Priority < -100) Self->Priority = -100;
    else if (Self->Priority > 100) Self->Priority = 100;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1634,7 +1623,7 @@ playback will dynamically alter the volume.
 
 *********************************************************************************************************************/
 
-static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
+static ERR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
 {
    if (Value < 0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
@@ -1651,29 +1640,29 @@ static ERROR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
    if (Self->ChannelIndex) {
       pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 200);
       if (audio.granted()) {
-         sndMixVolume(*audio, Self->ChannelIndex, Self->Volume);
+         snd::MixVolume(*audio, Self->ChannelIndex, Self->Volume);
       }
-      else return ERR_AccessObject;
+      else return ERR::AccessObject;
    }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR find_chunk(extSound *Self, objFile *File, CSTRING ChunkName)
+static ERR find_chunk(extSound *Self, objFile *File, std::string_view ChunkName)
 {
-   while (1) {
+   while (true) {
       char chunk[4];
       LONG len;
-      if (File->read(chunk, sizeof(chunk), &len) or (len != sizeof(chunk))) {
-         return ERR_Read;
+      if ((File->read(chunk, sizeof(chunk), &len) != ERR::Okay) or (len != sizeof(chunk))) {
+         return ERR::Read;
       }
 
-      if (!StrCompare(ChunkName, chunk, 4, STR::CASE)) return ERR_Okay;
+      if (ChunkName IS std::string_view(chunk, 4)) return ERR::Okay;
 
-      flReadLE(Self->File, &len); // Length of data in this chunk
+      fl::ReadLE(Self->File, &len); // Length of data in this chunk
       Self->File->seekCurrent(len);
    }
 }
@@ -1681,11 +1670,11 @@ static ERROR find_chunk(extSound *Self, objFile *File, CSTRING ChunkName)
 //********************************************************************************************************************
 
 #ifdef USE_WIN32_PLAYBACK
-static ERROR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 
-   // See sndStreamAudio() for further information on streaming in Win32
+   // See snd::StreamAudio() for further information on streaming in Win32
 
    auto response = sndStreamAudio((PlatformData *)Self->PlatformData);
    if (response IS -1) {
@@ -1693,14 +1682,14 @@ static ERROR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime
       sound_stopped_event(Self);
       if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
       Self->StreamTimer = 0;
-      return ERR_Terminate;
+      return ERR::Terminate;
    }
    else if (response IS 1) {
       Self->StreamTimer = 0;
-      return ERR_Terminate;
+      return ERR::Terminate;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 #endif
 
@@ -1757,22 +1746,22 @@ static const ActionArray clActions[] = {
    { AC_Disable,       SOUND_Disable },
    { AC_Enable,        SOUND_Enable },
    { AC_Free,          SOUND_Free },
-   { AC_GetVar,        SOUND_GetVar },
+   { AC_GetKey,        SOUND_GetKey },
    { AC_Init,          SOUND_Init },
    { AC_NewObject,     SOUND_NewObject },
    { AC_Read,          SOUND_Read },
    { AC_SaveToObject,  SOUND_SaveToObject },
    { AC_Seek,          SOUND_Seek },
-   { AC_SetVar,        SOUND_SetVar },
+   { AC_SetKey,        SOUND_SetKey },
    { 0, NULL }
 };
 
 //********************************************************************************************************************
 
-ERROR add_sound_class(void)
+ERR add_sound_class(void)
 {
    clSound = objMetaClass::create::global(
-      fl::BaseClassID(ID_SOUND),
+      fl::BaseClassID(CLASSID::SOUND),
       fl::ClassVersion(VER_SOUND),
       fl::FileExtension("*.wav|*.wave|*.snd"),
       fl::FileDescription("Sound Sample"),
@@ -1784,7 +1773,7 @@ ERROR add_sound_class(void)
       fl::Size(sizeof(extSound)),
       fl::Path(MOD_PATH));
 
-   return clSound ? ERR_Okay : ERR_AddClass;
+   return clSound ? ERR::Okay : ERR::AddClass;
 }
 
 void free_sound_class(void)

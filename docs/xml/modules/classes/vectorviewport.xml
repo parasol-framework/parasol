@@ -12,11 +12,11 @@
     <idstring>ID_VECTORVIEWPORT</idstring>
     <category>Graphics</category>
     <include>modules/vectorviewport.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>This class is used to declare a viewport within a vector scene graph.  A master viewport is required as the first object in a <class name="VectorScene">VectorScene</class> and it must contain all vector graphics content.</p>
-<p>The size of the viewport is initially set to <code>(0,0,100%,100%)</code> so as to be all inclusive.  Setting the <field>X</field>, <field>Y</field>, <field>Width</field> and <field>Height</field> fields will determine the position and clipping of the displayed content (the 'target area').  The <field>ViewX</field>, <field>ViewY</field>, <field>ViewWidth</field> and <field>ViewHeight</field> fields declare the viewbox ('source area') that will be sampled for the target.</p>
-<p>To configure the scaling and alignment method that is applied to the viewport content, set the <field>AspectRatio</field> field.</p></description>
+<p>The size of the viewport is initially set to <code>(0,0,100%,100%)</code> so as to be all inclusive.  Setting the <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl> fields will determine the position and clipping of the displayed content (the 'target area').  The <fl>ViewX</fl>, <fl>ViewY</fl>, <fl>ViewWidth</fl> and <fl>ViewHeight</fl> fields declare the viewbox ('source area') that will be sampled for the target.</p>
+<p>To configure the scaling and alignment method that is applied to the viewport content, set the <fl>AspectRatio</fl> field.</p></description>
     <source>
       <file path="vectors/">viewport.cpp</file>
     </source>
@@ -26,26 +26,55 @@
     <action>
       <name>Clear</name>
       <comment>Free all child objects contained by the viewport.</comment>
+      <prototype>ERR acClear(*Object)</prototype>
     </action>
 
     <action>
       <name>Move</name>
       <comment>Move the position of the viewport by delta X, Y.</comment>
+      <prototype>ERR acMove(*Object, DOUBLE DeltaX, DOUBLE DeltaY, DOUBLE DeltaZ)</prototype>
+      <input>
+        <param type="DOUBLE" name="DeltaX">The number of units to move along the X axis.</param>
+        <param type="DOUBLE" name="DeltaY">The number of units to move along the Y axis.</param>
+        <param type="DOUBLE" name="DeltaZ">The number of units to move along the Z axis.</param>
+      </input>
     </action>
 
     <action>
       <name>MoveToPoint</name>
       <comment>Move the position of the viewport to a fixed point.</comment>
+      <prototype>ERR acMoveToPoint(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags)</prototype>
+      <input>
+        <param type="DOUBLE" name="X">The new X position to move the object to.</param>
+        <param type="DOUBLE" name="Y">The new Y position to move the object to.</param>
+        <param type="DOUBLE" name="Z">The new Z position to move the object to.</param>
+        <param type="MTF" name="Flags" lookup="MTF">Set the relevant MTF flag for each provided parameter.</param>
+      </input>
     </action>
 
     <action>
       <name>Redimension</name>
       <comment>Reposition and resize a viewport to a fixed size.</comment>
+      <prototype>ERR acRedimension(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <input>
+        <param type="DOUBLE" name="X">The new X position to apply to the target object.</param>
+        <param type="DOUBLE" name="Y">The new Y position to apply to the target object.</param>
+        <param type="DOUBLE" name="Z">The new Z position to apply to the target object.</param>
+        <param type="DOUBLE" name="Width">The new width of the target object.</param>
+        <param type="DOUBLE" name="Height">The new height of the target object.</param>
+        <param type="DOUBLE" name="Depth">The new depth of the target object.</param>
+      </input>
     </action>
 
     <action>
       <name>Resize</name>
       <comment>Resize a viewport to a fixed size.</comment>
+      <prototype>ERR acResize(*Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>
+      <input>
+        <param type="DOUBLE" name="Width">The new width of the object.</param>
+        <param type="DOUBLE" name="Height">The new height of the object.</param>
+        <param type="DOUBLE" name="Depth">The new depth of the object.</param>
+      </input>
     </action>
 
   </actions>
@@ -53,21 +82,21 @@
   <fields>
     <field>
       <name>AbsX</name>
-      <comment>The horizontal position of the viewport, relative to (0,0).</comment>
+      <comment>The horizontal position of the viewport, relative to <code>(0, 0)</code>.</comment>
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>This field will return the left-most boundary of the viewport, relative to point (0,0) of the scene graph.  Transforms are taken into consideration when calculating this value.</p>
+<p>This field will return the left-most boundary of the viewport, relative to point <code>(0, 0)</code> of the scene graph.  Transforms are taken into consideration when calculating this value.</p>
       </description>
     </field>
 
     <field>
       <name>AbsY</name>
-      <comment>The vertical position of the viewport, relative to (0,0).</comment>
+      <comment>The vertical position of the viewport, relative to <code>(0, 0)</code>.</comment>
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>This field will return the top-most boundary of the viewport, relative to point (0,0) of the scene graph.  Transforms are taken into consideration when calculating this value.</p>
+<p>This field will return the top-most boundary of the viewport, relative to point <code>(0, 0)</code> of the scene graph.  Transforms are taken into consideration when calculating this value.</p>
       </description>
     </field>
 
@@ -84,7 +113,7 @@
 
     <field>
       <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or scaled values.</comment>
       <access read="G" write="S">Get/Set</access>
       <type lookup="DMF">INT</type>
       <description>
@@ -98,11 +127,11 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Set the DragCallback field with a callback function to receive drag requests from the viewport's user input.  When the user drags the viewport, the callback will receive the user's desired (X, Y) target coordinates.  For unimpeded dragging, have the callback set the viewport's X and Y values to match the incoming coordinates, then redraw the scene.</p>
-<p>The prototype for the callback function is as follows, where OriginX and OriginY refer to the (X,Y) position of the vector at initiation of the drag.</p>
+<p>Set the DragCallback field with a callback function to receive drag requests from the viewport's user input.  When the user drags the viewport, the callback will receive the user's desired <code>(X, Y)</code> target coordinates.  For unimpeded dragging, have the callback set the viewport's <fl>X</fl> and <fl>Y</fl> values to match the incoming coordinates, then redraw the scene.</p>
+<p>The prototype for the callback function is as follows, where <code>OriginX</code> and <code>OriginY</code> refer to the (<fl>X</fl>,<fl>Y</fl>) position of the vector at initiation of the drag.</p>
 <p>
 <code>void function(*VectorViewport, DOUBLE X, DOUBLE Y, DOUBLE OriginX, DOUBLE OriginY)</code></p>
-<p>Setting this field to NULL will turn off the callback.</p>
+<p>Setting this field to <code>NULL</code> will turn off the callback.</p>
 <p>It is required that the parent <class name="VectorScene">VectorScene</class> is associated with a <class name="Surface">Surface</class> for this feature to work.</p>
       </description>
     </field>
@@ -113,7 +142,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for full coverage.</p>
+<p>The height of the viewport's target area is defined here as a fixed or scaled value.  The default value is <code>100%</code> for full coverage.</p>
 <p>The fixed value is always returned when retrieving the height.</p>
       </description>
     </field>
@@ -124,8 +153,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. Altering the overflow state affects both the X and Y axis.  To set either axis independently, set <field>OverflowX</field> and <field>OverflowY</field>.</p>
-<p>If the viewport's <field>AspectRatio</field> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
+<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. Altering the overflow state affects both the X and Y axis.  To set either axis independently, set <fl>OverflowX</fl> and <fl>OverflowY</fl>.</p>
+<p>If the viewport's <fl>AspectRatio</fl> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
       </description>
     </field>
 
@@ -135,7 +164,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. If the viewport's <field>AspectRatio</field> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
+<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. If the viewport's <fl>AspectRatio</fl> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
 <p>This option controls the x axis only.</p>
       </description>
     </field>
@@ -146,7 +175,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. If the viewport's <field>AspectRatio</field> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
+<p>Choose an overflow option to enforce or disable clipping of the viewport's content.  The default state is <code>VISIBLE</code>. If the viewport's <fl>AspectRatio</fl> is set to <code>SLICE</code> then it will have priority over the overflow setting.</p>
 <p>This option controls the y axis only.</p>
       </description>
     </field>
@@ -157,7 +186,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (X,Y) and (Width,Height).</p>
+<p>The area defined by (<fl>ViewX</fl>,<fl>ViewY</fl>) and (<fl>ViewWidth</fl>,<fl>ViewHeight</fl>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by <code>(X,Y)</code> and <code>(Width,Height)</code>.</p>
       </description>
     </field>
 
@@ -167,7 +196,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<field>X</field>,<field>Y</field>) and (<field>Width</field>,<field>Height</field>).</p>
+<p>The area defined by (<fl>ViewX</fl>,<fl>ViewY</fl>) and (<fl>ViewWidth</fl>,<fl>ViewHeight</fl>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<fl>X</fl>,<fl>Y</fl>) and (<fl>Width</fl>,<fl>Height</fl>).</p>
       </description>
     </field>
 
@@ -177,7 +206,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<field>X</field>,<field>Y</field>) and (<field>Width</field>,<field>Height</field>).</p>
+<p>The area defined by (<fl>ViewX</fl>,<fl>ViewY</fl>) and (<fl>ViewWidth</fl>,<fl>ViewHeight</fl>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<fl>X</fl>,<fl>Y</fl>) and (<fl>Width</fl>,<fl>Height</fl>).</p>
       </description>
     </field>
 
@@ -187,7 +216,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The area defined by (<field>ViewX</field>,<field>ViewY</field>) and (<field>ViewWidth</field>,<field>ViewHeight</field>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<field>X</field>,<field>Y</field>) and (<field>Width</field>,<field>Height</field>).</p>
+<p>The area defined by (<fl>ViewX</fl>,<fl>ViewY</fl>) and (<fl>ViewWidth</fl>,<fl>ViewHeight</fl>) declare the source area covered by the viewport.  The rendered graphics in the source area will be repositioned and scaled to the area defined by (<fl>X</fl>,<fl>Y</fl>) and (<fl>Width</fl>,<fl>Height</fl>).</p>
       </description>
     </field>
 
@@ -197,7 +226,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for full coverage.</p>
+<p>The width of the viewport's target area is defined here as a fixed or scaled value.  The default value is <code>100%</code> for full coverage.</p>
       </description>
     </field>
 
@@ -207,8 +236,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <field>XOffset</field> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
+<p>The display position targeted by the viewport is declared by the (<fl>X</fl>,<fl>Y</fl>) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>XOffset</fl> field must be defined.  If a X and <fl>XOffset</fl> value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
 
@@ -218,8 +247,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <field>XOffset</field> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
+<p>The display position targeted by the viewport is declared by the (<fl>X</fl>,<fl>Y</fl>) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>XOffset</fl> field must be defined.  If the <fl>X</fl> and XOffset values are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
 
@@ -229,8 +258,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <field>YOffset</field> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
+<p>The display position targeted by the viewport is declared by the (<fl>X</fl>,<fl>Y</fl>) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>YOffset</fl> must be defined.  If the Y and <fl>YOffset</fl> values are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
       </description>
     </field>
 
@@ -240,16 +269,16 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
-<p>If an offset from the edge of the parent is desired, the <field>YOffset</field> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
+<p>The display position targeted by the viewport is declared by the (<fl>X</fl>,<fl>Y</fl>) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
+<p>If an offset from the edge of the parent is desired, the <fl>YOffset</fl> must be defined.  If a <fl>Y</fl> and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
       </description>
     </field>
 
   </fields>
   <types>
     <constants lookup="ARC" comment="Options for drawing arcs.">
-      <const name="LARGE"/>
-      <const name="SWEEP"/>
+      <const name="LARGE">The arc will take the longest available drawing path rather than the shortest.</const>
+      <const name="SWEEP">Inverts the default behaviour in generating the arc path (go clockwise).</const>
     </constants>
 
     <constants lookup="ARF" comment="Aspect ratios control alignment, scaling and clipping.">
@@ -264,8 +293,44 @@
       <const name="Y_MIN">Align to the top.</const>
     </constants>
 
+    <constants lookup="DMF">
+      <const name="FIXED_CENTER_X">The CenterX field is a fixed size.</const>
+      <const name="FIXED_CENTER_Y">The CenterY field is a fixed size.</const>
+      <const name="FIXED_DEPTH">The Depth field is a fixed size.</const>
+      <const name="FIXED_HEIGHT">The Height field is a fixed size.</const>
+      <const name="FIXED_RADIUS_X">The RadiusX field is a fixed size.</const>
+      <const name="FIXED_RADIUS_Y">The RadiusY field is a fixed size.</const>
+      <const name="FIXED_WIDTH">The Width field is a fixed suze.</const>
+      <const name="FIXED_X">The X field is a fixed coordinate.</const>
+      <const name="FIXED_X_OFFSET">The XOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
+      <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
+      <const name="SCALED_CENTER_X">The CenterX field is scaled to this object's parent.</const>
+      <const name="SCALED_CENTER_Y">The CenterY field is scaled to this object's parent.</const>
+      <const name="SCALED_DEPTH">The Depth field is scaled to this object's parent.</const>
+      <const name="SCALED_HEIGHT">The Height field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_X">The RadiusX field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_Y">The RadiusY field is a scaled size to this object's parent.</const>
+      <const name="SCALED_WIDTH">The Width field is scaled to this object's parent.</const>
+      <const name="SCALED_X">The X field is scaled to this object's parent.</const>
+      <const name="SCALED_X_OFFSET">The XOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Y">The Y field is scaled to this object's parent.</const>
+      <const name="SCALED_Y_OFFSET">The YOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Z">The Z field is a scaled coordinate to this object's parent.</const>
+      <const name="STATUS_CHANGE_H"/>
+      <const name="STATUS_CHANGE_V"/>
+    </constants>
+
   </types>
   <structs>
+    <struct name="FontMetrics" comment="Font metrics, measured in pixels relative to the display">
+      <field name="Height" type="LONG">Capitalised font height</field>
+      <field name="LineSpacing" type="LONG">Vertical advance from one line to the next</field>
+      <field name="Ascent" type="LONG">Height from the baseline to the top of the font, including accents.</field>
+      <field name="Descent" type="LONG">Height from the baseline to the bottom of the font</field>
+    </struct>
+
     <struct name="VectorMatrix" comment="Vector transformation matrix.">
       <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
       <field name="Vector" type="objVector *">The vector associated with the transform.</field>
@@ -275,6 +340,14 @@
       <field name="ScaleY" type="DOUBLE">Matrix value D</field>
       <field name="TranslateX" type="DOUBLE">Matrix value E</field>
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+      <field name="Tag" type="LONG">An optional tag value defined by the client for matrix identification.</field>
+    </struct>
+
+    <struct name="VectorPainter" comment="Deserialised painter information; compliant with SVG painter definitions.">
+      <field name="Pattern" type="objVectorPattern *">A <class name="VectorPattern">VectorPattern</class> object, suitable for pattern based fills.</field>
+      <field name="Image" type="objVectorImage *">A <class name="VectorImage">VectorImage</class> object, suitable for image fills.</field>
+      <field name="Gradient" type="objVectorGradient *">A <class name="VectorGradient">VectorGradient</class> object, suitable for gradient fills.</field>
+      <field name="Colour" type="struct FRGB">A single RGB colour definition, suitable for block colour fills.</field>
     </struct>
 
   </structs>

@@ -1,5 +1,5 @@
 
-const CSTRING glMessages[ERR_END+1] = {
+const CSTRING glMessages[LONG(ERR::END)+1] = {
  "Operation successful.",
  "The result is false.",
  "Limited success.",
@@ -182,7 +182,7 @@ const CSTRING glMessages[ERR_END+1] = {
  "It is not possible to perform the requested operation.",
  "Failed to resolve a linked library symbol.",
  "A function call failed.",
- "Attempted to change a value that cannot be redefined.",
+ "Re-definition is not permitted.",
  "Attempted to set a numeric field with an incompatible value.",
  "Attempted to set a string field with an incompatible value.",
  "Attempted to set an object field with an incompatible value.",

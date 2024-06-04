@@ -44,12 +44,13 @@ its low-level mixer capabilities only if your needs are not met by the @Sound cl
 
 #include <parasol/main.h>
 #include <parasol/modules/audio.h>
+#include <parasol/strings.hpp>
 #include <sstream>
 #include <algorithm>
 
-static ERROR CMDInit(OBJECTPTR, struct CoreBase *);
-static ERROR CMDExpunge(void);
-static ERROR CMDOpen(OBJECTPTR);
+static ERR MODInit(OBJECTPTR, struct CoreBase *);
+static ERR MODExpunge(void);
+static ERR MODOpen(OBJECTPTR);
 
 #include "module_def.c"
 
@@ -59,18 +60,18 @@ static OBJECTPTR clAudio = 0;
 static std::unordered_map<OBJECTID, LONG> glSoundChannels;
 class extAudio;
 
-ERROR add_audio_class(void);
-ERROR add_sound_class(void);
+ERR add_audio_class(void);
+ERR add_sound_class(void);
 void free_audio_class(void);
 void free_sound_class(void);
 
 extern "C" void end_of_stream(OBJECTPTR, LONG);
 
 static void audio_stopped_event(extAudio &, LONG);
-static ERROR set_channel_volume(extAudio *, struct AudioChannel *);
+static ERR set_channel_volume(extAudio *, struct AudioChannel *);
 static void load_config(extAudio *);
-static ERROR init_audio(extAudio *);
-static ERROR audio_timer(extAudio *, LARGE, LARGE);
+static ERR init_audio(extAudio *);
+static ERR audio_timer(extAudio *, LARGE, LARGE);
 
 #include "audio.h"
 
@@ -99,7 +100,7 @@ static const WORD glAlsaConvert[6] = {
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log;
 
@@ -111,41 +112,41 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       CSTRING errstr;
       if ((errstr = dsInitDevice(44100))) {
          log.warning("DirectSound Failed: %s", errstr);
-         return ERR_NoSupport;
+         return ERR::NoSupport;
       }
    }
 #elif ALSA_ENABLED
    // Nothing required for ALSA
 #else
    log.warning("No audio support available.");
-   return ERR_Failed;
+   return ERR::Failed;
 #endif
 
-   if (add_audio_class() != ERR_Okay) return ERR_AddClass;
-   if (add_sound_class() != ERR_Okay) return ERR_AddClass;
-   return ERR_Okay;
+   if (add_audio_class() != ERR::Okay) return ERR::AddClass;
+   if (add_sound_class() != ERR::Okay) return ERR::AddClass;
+   return ERR::Okay;
 }
 
-static ERROR CMDOpen(OBJECTPTR Module)
+static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    for (auto& [id, handle] : glSoundChannels) {
       // NB: Most Audio objects will be disposed of prior to this module being expunged.
       if (handle) {
          pf::ScopedObjectLock<extAudio> audio(id, 3000);
-         if (audio.granted()) sndCloseChannels(*audio, handle);
+         if (audio.granted()) audio->closeChannels(handle);
       }
    }
    glSoundChannels.clear();
 
    free_audio_class();
    free_sound_class();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -165,5 +166,5 @@ static STRUCTS glStructures = {
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_audio_module() { return &ModHeader; }

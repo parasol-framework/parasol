@@ -3,76 +3,91 @@
 -CLASS-
 Document: Provides document display and editing facilities.
 
-The Document class is a complete Page Layout Engine, providing rich text display
-features for creating complex documents and manuals.
+The Document class offers a complete page layout engine, providing rich text display features for creating complex
+documents and text-based interfaces.  Internally, document data is maintained as a serial byte stream and all
+object model information from the source is discarded.  This simplification of the data makes it possible to
+edit the document in-place, much the same as any word processor.  Alternatively it can be used for presentation
+purposes only, similarly to PDF or HTML formats.  Presentation is achieved by building a vector scene graph in
+conjunction with the @Vector module.  This means that the output is compatible with SVG and can be manipulated in
+detail with our existing vector API.  Consequently, document formatting is closely integrated with SVG concepts
+and seamlessly inherits SVG functionality such as filling and stroking commands.
+
+<header>Safety</>
+
+The Document class is intended to be safe to use when loading content from an unknown source.  Processing will be
+aborted if a problem is found or the document appears to be unrenderable.  It is however, not guaranteed that
+exploits are impossible.  Consideration should also be given to the possibility of exploits that target third party
+libraries such as libpng and libjpeg for instance.
+
+By default, script execution is not enabled when parsing a document source.  If support for scripts is enabled,
+there is no meaningful level of safety on offer when the document is processed.  This feature should not be
+used unless the source document has been written by the client, or has otherwise been received from a trusted source.
+
+To mitigate security problems, we recommend that the application is built with some form of sandbox that will stop
+the system being compromised by bad actors.  Utilising a project such as Win32 App Isolation
+https://github.com/microsoft/win32-app-isolation is one potential way of doing this.
 
 -END-
 
 *********************************************************************************************************************/
-/*
-   else if (Args->ActionID IS MT_DrwInheritedFocus) {
-      // Check that the FocusIndex is accurate (it may have changed if the user clicked on a gadget).
 
-      struct drwInheritedFocus *inherit = (struct drwInheritedFocus *)(Args->Args);
-      for (LONG i=0; i < Self->TabIndex; i++) {
-         if (Self->Tabs[i].XRef IS inherit->FocusID) {
-            Self->FocusIndex = i;
-            acDrawID(Self->PageID);
-            break;
-         }
-      }
-   }
-*/
-
-static void notify_disable_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_disable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   if (!Result) acDisable(CurrentContext());
+   if (Result IS ERR::Okay) acDisable(CurrentContext());
 }
 
-static void notify_enable_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_enable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   if (!Result) acEnable(CurrentContext());
+   if (Result IS ERR::Okay) acEnable(CurrentContext());
 }
 
-static void notify_focus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extDocument *)CurrentContext();
+   Self->Scene = NULL;
+   Self->Viewport = NULL;
+
+   // If the viewport is being forcibly terminated (e.g. by window closure) then the cleanest way to deal with
+   // lingering page resources is to remove them now.
+
+   Self->Resources.clear();
+}
+
+// Used by EventCallback for subscribers that disappear without notice.
+
+static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extDocument *)CurrentContext();
+   Self->EventCallback.clear();
+}
+
+//********************************************************************************************************************
+
+static void notify_focus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
 
-   if (Result) return;
+   if (Result != ERR::Okay) return;
 
-   Self->HasFocus = TRUE;
-
-   if (!Self->prvKeyEvent) {
-      auto callback = make_function_stdc(key_event);
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
-   }
+   Self->HasFocus = true;
 
    if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "FocusNotify");
 }
 
-static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   ((extDocument *)CurrentContext())->EventCallback.Type = CALL_NONE;
-}
+   if (Result != ERR::Okay) return;
 
-static void notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
-{
-   pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
-
-   if (Result) return;
-
-   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-
-   Self->HasFocus = FALSE;
+   Self->HasFocus = false;
 
    // Redraw any selected link so that it is unhighlighted
 
-   if ((Self->FocusIndex >= 0) and (Self->FocusIndex < Self->TabIndex)) {
-      if (Self->Tabs[Self->FocusIndex].Type IS TT_LINK) {
-         for (LONG i=0; i < Self->TotalLinks; i++) {
-            if ((Self->Links[i].EscapeCode IS ESC_LINK) and (Self->Links[i].Link->ID IS Self->Tabs[Self->FocusIndex].Ref)) {
-               acDrawArea(Self->PageID, Self->Links[i].X, Self->Links[i].Y, Self->Links[i].Width, Self->Links[i].Height);
+   if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
+      if (Self->Tabs[Self->FocusIndex].type IS TT::LINK) {
+         for (auto &link : Self->Links) {
+            if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Self->FocusIndex].ref)) {
+               Self->Page->draw();
                break;
             }
          }
@@ -80,51 +95,49 @@ static void notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR 
    }
 }
 
-static void notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args)
+//********************************************************************************************************************
+// Receiver for events from Self->View.  Bear in mind that the XOffset and YOffset of the document's View must
+// be zero initially, and will be controlled by the scrollbar.  For that reason we don't need to do much here other
+// than respond by updating the layout of the page.
+
+static ERR feedback_view(objVectorViewport *View, FM Event)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
-   gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, NULL, &Self->SurfaceWidth, &Self->SurfaceHeight);
+   auto width  = View->get<DOUBLE>(FID_Width);
+   auto height = View->get<DOUBLE>(FID_Height);
 
-   log.traceBranch("Redimension: %dx%d", Self->SurfaceWidth, Self->SurfaceHeight);
+   if ((Self->VPWidth IS width) and (Self->VPHeight IS height)) return ERR::Okay;
 
-   Self->AreaX = (Self->BorderEdge & DBE_LEFT) ? BORDER_SIZE : 0;
-   Self->AreaY = (Self->BorderEdge & DBE_TOP) ? BORDER_SIZE : 0;
-   Self->AreaWidth  = Self->SurfaceWidth - (((Self->BorderEdge & DBE_RIGHT) ? BORDER_SIZE : 0)<<1);
-   Self->AreaHeight = Self->SurfaceHeight - (((Self->BorderEdge & DBE_BOTTOM) ? BORDER_SIZE : 0)<<1);
+   log.traceBranch("Redimension: %gx%g -> %gx%g", Self->VPWidth, Self->VPHeight, width, height);
 
-   acRedimension(Self->ViewID, Self->AreaX, Self->AreaY, 0, Self->AreaWidth, Self->AreaHeight, 0);
+   Self->VPWidth = width;
+   Self->VPHeight = height;
 
-   DocTrigger *trigger;
-   for (trigger=Self->Triggers[DRT_BEFORE_LAYOUT]; trigger; trigger=trigger->Next) {
-      if (trigger->Function.Type IS CALL_SCRIPT) {
+   for (auto &trigger : Self->Triggers[LONG(DRT::BEFORE_LAYOUT)]) {
+      if (trigger.isScript()) {
          // The resize event is triggered just prior to the layout of the document.  This allows the trigger
          // function to resize elements on the page in preparation of the new layout.
 
-         OBJECTPTR script;
-         if ((script = trigger->Function.Script.Script)) {
-            const ScriptArg args[] = {
-               { "ViewWidth",  FD_LONG, { .Long = Self->AreaWidth } },
-               { "ViewHeight", FD_LONG, { .Long = Self->AreaHeight } }
-            };
-            scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
+         sc::Call(trigger, std::to_array<ScriptArg>({ { "ViewWidth",  Self->VPWidth }, { "ViewHeight", Self->VPHeight } }));
       }
-      else if (trigger->Function.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, extDocument *, LONG Width, LONG Height))trigger->Function.StdC.Routine;
-         if (routine) {
-            pf::SwitchContext context(trigger->Function.StdC.Context);
-            routine(trigger->Function.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight);
-         }
+      else if (trigger.isC()) {
+         auto routine = (void (*)(APTR, extDocument *, LONG, LONG, APTR))trigger.Routine;
+         pf::SwitchContext context(trigger.Context);
+         routine(trigger.Context, Self, Self->VPWidth, Self->VPHeight, trigger.Meta);
       }
    }
 
-   Self->UpdateLayout = TRUE;
+   Self->UpdatingLayout = true;
 
-   AdjustLogLevel(2);
+#ifndef RETAIN_LOG_LEVEL
+   pf::LogLevel level(2);
+#endif
+
    layout_doc(Self);
-   AdjustLogLevel(-2);
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -132,22 +145,24 @@ static void notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERRO
 -ACTION-
 Activate: Opens the current document selection.
 
-Calling the Activate action on a document object will cause it to send Activate messages to the child objects that
-belong to the document object.
+Calling the Activate() action on a document object will forward Activate() calls to its child objects.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Activate(extDocument *Self)
 {
    pf::Log log;
    log.branch();
 
    pf::vector<ChildEntry> list;
-   if (!ListChildren(Self->UID, &list)) {
-      for (unsigned i=0; i < list.size(); i++) acActivate(list[i].ObjectID);
+   if (ListChildren(Self->UID, &list) IS ERR::Okay) {
+      for (unsigned i=0; i < list.size(); i++) {
+         pf::ScopedObjectLock obj(list[i].ObjectID);
+         if (obj.granted()) acActivate(*obj);
+      }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -155,30 +170,30 @@ static ERROR DOCUMENT_Activate(extDocument *Self, APTR Void)
 -METHOD-
 AddListener: Adds a listener to a document trigger for receiving special callbacks.
 
-Use the AddListener method to receive feedback whenever a document event is triggered.  Triggers are a fundamental part
-of document page development, accessible through the &lt;trigger/&gt; tag.  Triggers are normally configured within the
-document's page code, however if you need to monitor triggers from outside the loaded document's code, then AddTrigger
+Use the AddListener() method to receive feedback whenever a document event is triggered.  Triggers are a fundamental part
+of document page development, accessible through the `&lt;trigger/&gt;` tag.  Triggers are normally configured within the
+document's page code, however if you need to monitor triggers from outside the loaded document's code, then AddListener()
 will give you that option.
 
 The following triggers are supported:
 
 <types lookup="DRT">
-<type name="BEFORE_LAYOUT">Document layout is about to be processed.  C/C++: void BeforeLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight)</>
-<type name="AFTER_LAYOUT">Document layout has been processed.  C/C++: void AfterLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight, LONG PageWidth, LONG PageHeight)</>
+<type name="BEFORE_LAYOUT">Document layout is about to be processed.  C/C++: `void BeforeLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight)`</>
+<type name="AFTER_LAYOUT">Document layout has been processed.  C/C++: `void AfterLayout(*Caller, *Document, LONG ViewWidth, LONG ViewHeight, LONG PageWidth, LONG PageHeight)`</>
 <type name="USER_CLICK">User has clicked the document.</>
 <type name="USER_CLICK_RELEASE">User click has been released.</>
 <type name="USER_MOVEMENT">User is moving the pointer over the document.</>
-<type name="REFRESH">Page has been refreshed.  C/C++: void Refresh(*Caller, *Document)</>
-<type name="GOT_FOCUS">The document has received the focus.  C/C++: void GotFocus(*Caller, *Document)</>
-<type name="LOST_FOCUS">The document has lost the focus.  C/C++: void LostFocus(*Caller, *Document)</>
-<type name="LEAVING_PAGE">The currently loaded page is closing (either a new page is being loaded, or the document object is being freed).  C/C++: void LeavingPage(*Caller, *Document)</>
+<type name="REFRESH">Page has been refreshed.  C/C++: `void Refresh(*Caller, *Document)`</>
+<type name="GOT_FOCUS">The document has received the focus.  C/C++: `void GotFocus(*Caller, *Document)`</>
+<type name="LOST_FOCUS">The document has lost the focus.  C/C++: `void LostFocus(*Caller, *Document)`</>
+<type name="LEAVING_PAGE">The currently loaded page is closing (either a new page is being loaded, or the document object is being freed).  C/C++: `void LeavingPage(*Caller, *Document)`</>
 </type>
 
-A listener can be manually removed by calling #RemoveListener(), however this is normally unnecessary. Your
-listener will be removed automatically if a new document source is loaded or the document object is terminated.
+A listener can be removed by calling #RemoveListener(), however this is normally unnecessary. Listeners are removed
+automatically if a new document source is loaded, or the document object is terminated.
 
-Please note that a trigger can have multiple listeners attached to it, so a new subscription will not replace any prior
-subscriptions, nor is their any detection for multiple copies of a subscription against a trigger.
+Note that a trigger can have multiple listeners attached to it, so a new subscription will not replace any prior
+subscriptions, nor is there any handling for multiple copies of a subscription to a trigger.
 
 -INPUT-
 int(DRT) Trigger: The unique identifier for the trigger.
@@ -191,63 +206,12 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args)
+static ERR DOCUMENT_AddListener(extDocument *Self, struct doc::AddListener *Args)
 {
-   DocTrigger *trigger;
+   if ((!Args) or (Args->Trigger IS DRT::NIL) or (!Args->Function)) return ERR::NullArgs;
 
-   if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
-
-   if (!AllocMemory(sizeof(DocTrigger), MEM::DATA|MEM::NO_CLEAR, &trigger)) {
-      trigger->Function = *Args->Function;
-      trigger->Next = Self->Triggers[Args->Trigger];
-      Self->Triggers[Args->Trigger] = trigger;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-ApplyFontStyle: Applies DocStyle information to a font.
-
-This method applies font information from DocStyle structures to new @Font objects.  The Font object
-should be uninitialised as it is not possible to apply changes to the font face, style or size after initialisation.
-
--INPUT-
-struct(*DocStyle) Style: Pointer to a DocStyle structure.
-obj(Font) Font:  Pointer to a Font object that the style information will be applied to.
-
--ERRORS-
-Okay
-NullArgs
--END-
-
-*********************************************************************************************************************/
-
-static ERROR DOCUMENT_ApplyFontStyle(extDocument *Self, struct docApplyFontStyle *Args)
-{
-   pf::Log log;
-   objFont *font;
-   DOCSTYLE *style;
-
-   if ((!Args) or (!(style = Args->Style)) or (!(font = Args->Font))) return log.warning(ERR_NullArgs);
-
-   log.traceBranch("Apply font styling - Face: %s, Style: %s", style->Font->Face, style->Font->Style);
-
-   if (font->initialised()) {
-      font->Colour = style->FontColour;
-      font->Underline = style->FontUnderline;
-   }
-   else {
-      font->setFace(style->Font->Face);
-      font->setStyle(style->Font->Style);
-      font->Point     = style->Font->Point;
-      font->Colour    = style->FontColour;
-      font->Underline = style->FontUnderline;
-   }
-
-   return ERR_Okay;
+   Self->Triggers[LONG(Args->Trigger)].push_back(*Args->Function);
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -257,17 +221,17 @@ CallFunction: Executes any registered function in the currently open document.
 
 This method will execute any registered function in the currently open document.  The name of the function must be
 specified in the first parameter and that function must exist in the document's default script.  If the document
-contains multiple scripts, then a specific script can be referenced by using the name format 'script.function' where
-'script' is the name of the script that contains the function.
+contains multiple scripts, then a specific script can be referenced by using the name format `script.function` where
+`script` is the name of the script that contains the function.
 
-Arguments can be passed to the function by setting the Args and TotalArgs parameters.  These need to be specially
+Arguments can be passed to the function by setting the `Args` and `TotalArgs` parameters.  These need to be specially
 formatted - please refer to the @Script class' Exec method for more information on how to configure these
 parameters.
 
 -INPUT-
 cstr Function:  The name of the function that will be called.
-struct(*ScriptArg) Args: Pointer to an optional list of arguments to pass to the procedure.
-int TotalArgs: The total number of entries in the Args array.
+struct(*ScriptArg) Args: Pointer to an optional list of parameters to pass to the procedure.
+int TotalArgs: The total number of entries in the `Args` array.
 
 -ERRORS-
 Okay
@@ -275,19 +239,18 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Args)
+static ERR DOCUMENT_CallFunction(extDocument *Self, struct doc::CallFunction *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Function)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Function)) return log.warning(ERR::NullArgs);
 
    // Function is in the format 'function()' or 'script.function()'
 
-   OBJECTPTR script;
-   CSTRING function_name;
-   ERROR error;
-   if (!(error = extract_script(Self, Args->Function, &script, &function_name, NULL))) {
-      return scExec(script, function_name, Args->Args, Args->TotalArgs);
+   objScript *script;
+   std::string function_name, args;
+   if (auto error = extract_script(Self, Args->Function, &script, function_name, args); error IS ERR::Okay) {
+      return script->exec(function_name.c_str(), Args->Args, Args->TotalArgs);
    }
    else return error;
 }
@@ -297,20 +260,19 @@ static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Ar
 -ACTION-
 Clear: Clears all content from the object.
 
-You can delete all of the document information from a document object by calling the Clear action.  All of the document
-data will be deleted from the object and the graphics will be automatically updated as a result of calling this action.
+Using the Clear() action will delete all of the document's content.  The UI will be updated to reflect a clear
+document.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Clear(extDocument *Self)
 {
    pf::Log log;
 
    log.branch();
-   unload_doc(Self, 0);
-   if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
-   redraw(Self, FALSE);
-   return ERR_Okay;
+   unload_doc(Self);
+   redraw(Self, false);
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -321,13 +283,11 @@ Clipboard: Full support for clipboard activity is provided through this action.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
+static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 {
    pf::Log log;
-   STRING buffer;
-   LONG size;
 
-   if ((!Args) or (!Args->Mode)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (Args->Mode IS CLIPMODE::NIL)) return log.warning(ERR::NullArgs);
 
    if ((Args->Mode IS CLIPMODE::CUT) or (Args->Mode IS CLIPMODE::COPY)) {
       if (Args->Mode IS CLIPMODE::CUT) log.branch("Operation: Cut");
@@ -336,77 +296,59 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
       // Calculate the length of the highlighted document
 
       if (Self->SelectEnd != Self->SelectStart) {
-         if (!AllocMemory(Self->SelectEnd - Self->SelectStart + 1, MEM::STRING|MEM::NO_CLEAR, &buffer)) {
-            // Copy the selected area into the buffer
+         auto buffer = stream_to_string(Self->Stream, Self->SelectStart, Self->SelectEnd);
 
-            LONG i = Self->SelectStart;
-            LONG pos = 0;
-            if (auto str = Self->Stream) {
-               while (str[i]) {
-                  NEXT_CHAR(str, i);
+         // Send the document to the clipboard object
+
+         objClipboard::create clipboard = { };
+         if (clipboard.ok()) {
+            if (clipboard->addText(buffer.c_str()) IS ERR::Okay) {
+               // Delete the highlighted document if the CUT mode was used
+               if (Args->Mode IS CLIPMODE::CUT) {
+                  //delete_selection(Self);
                }
             }
-
-            buffer[pos] = 0;
-
-            // Send the document to the clipboard object
-
-            objClipboard::create clipboard = { };
-            if (clipboard.ok()) {
-               if (!clipAddText(*clipboard, buffer)) {
-                  // Delete the highlighted document if the CUT mode was used
-                  if (Args->Mode IS CLIPMODE::CUT) {
-                     //delete_selection(Self);
-                  }
-               }
-               else error_dialog("Clipboard Error", "Failed to add document to the system clipboard.", 0);
-            }
-
-            FreeResource(buffer);
+            else error_dialog("Clipboard Error", "Failed to add document to the system clipboard.");
          }
-         else return ERR_AllocMemory;
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else if (Args->Mode IS CLIPMODE::PASTE) {
       log.branch("Operation: Paste");
 
-      if (!(Self->Flags & DCF_EDIT)) {
+      if ((Self->Flags & DCF::EDIT) IS DCF::NIL) {
          log.warning("Edit mode is not enabled, paste operation aborted.");
-         return ERR_Failed;
+         return ERR::Failed;
       }
 
       objClipboard::create clipboard = { };
       if (clipboard.ok()) {
-         struct clipGetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
-         if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
-            objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
+         CSTRING *files;
+         if (clipboard->getFiles(CLIPTYPE::TEXT, 0, NULL, &files, NULL) IS ERR::Okay) {
+            objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
-               if ((!file->get(FID_Size, &size)) and (size > 0)) {
+               LONG size;
+               if ((file->get(FID_Size, &size) IS ERR::Okay) and (size > 0)) {
                   if (auto buffer = new (std::nothrow) char[size+1]) {
                      LONG result;
-                     if (!file->read(buffer, size, &result)) {
+                     if (file->read(buffer, size, &result) IS ERR::Okay) {
                         buffer[result] = 0;
                         acDataText(Self, buffer);
                      }
-                     else error_dialog("Clipboard Paste Error", NULL, ERR_Read);
+                     else error_dialog("Clipboard Paste Error", ERR::Read);
                      delete[] buffer;
                   }
-                  else error_dialog("Clipboard Paste Error", NULL, ERR_AllocMemory);
+                  else error_dialog("Clipboard Paste Error", ERR::AllocMemory);
                }
             }
-            else {
-               char msg[200];
-               snprintf(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", get.Files[0]);
-               error_dialog("Paste Error", msg, 0);
-            }
+            else error_dialog("Paste Error", "Failed to load clipboard file \"" + std::string(files[0]) + "\"");
          }
       }
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -415,9 +357,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 DataFeed: Document data can be sent and consumed via feeds.
 
 Appending content to an active document can be achieved via the data feed feature.  The Document class currently
-supports the DATA_DOCUMENT and DATA_XML types for this purpose.
-
-The surface that is associated with the Document object will be redrawn as a result of calling this action.
+supports the `DATA::TEXT` and `DATA::XML` types for this purpose.
 
 -ERRORS-
 Okay
@@ -428,72 +368,74 @@ Mismatch:    The data type that was passed to the action is not supported by the
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
+static ERR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
 
-   if ((Args->Datatype IS DATA_TEXT) or (Args->Datatype IS DATA_XML)) {
+   if ((Args->Datatype IS DATA::TEXT) or (Args->Datatype IS DATA::XML)) {
       // Incoming data is translated on the fly and added to the end of the current document page.  The original XML
       // information is retained in case of refresh.
       //
-      // Note that in the case of incoming text identified by DATA_TEXT, it is assumed to be in XML format.
+      // NOTE: Content identified by DATA::TEXT is assumed to be in a serialised XML format.
 
-      if (Self->Processing) return log.warning(ERR_Recursion);
+      if (!Self->initialised()) return log.warning(ERR::NotInitialised);
+      if (Self->Processing) return log.warning(ERR::Recursion);
 
-      if (!Self->XML) {
-         if (!(Self->XML = objXML::create::integral(fl::Flags(XMF_ALL_CONTENT|XMF_PARSE_HTML|XMF_STRIP_HEADERS)))) {
-            return log.warning(ERR_CreateObject);
+      objXML::create xml = {
+         fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
+         fl::Statement(CSTRING(Args->Buffer)),
+         fl::ReadOnly(true)
+      };
+
+      if (xml.ok()) {
+         if (Self->Stream.data.empty()) {
+            // If the document is empty then we use the same process as load_doc()
+            parser parse(Self, &Self->Stream);
+            parse.process_page(*xml);
          }
+         else Self->Error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, Self->Stream.size(), STYLE::NIL);
+
+         Self->UpdatingLayout = true;
+         if (Self->initialised()) redraw(Self, true);
+
+         #ifdef DBG_STREAM
+            print_stream(Self->Stream);
+         #endif
+         return Self->Error;
       }
-
-      log.trace("Appending data to XML #%d at tag index %d.", Self->XML->UID, Self->XML->TagCount);
-
-      if (acDataXML(Self->XML, Args->Buffer) != ERR_Okay) {
-         return log.warning(ERR_SetField);
-      }
-
-      if (Self->initialised()) {
-         // Document is initialised.  Refresh the document from the XML source.
-
-         acRefresh(Self);
-      }
-      else {
-         // Document is not yet initialised.  Processing of the XML will be handled in Init() as required.
-
-      }
-
-      return ERR_Okay;
+      else return log.warning(ERR::CreateObject);
    }
-   else {
-      log.msg("Datatype %d not supported.", Args->Datatype);
-      return ERR_Mismatch;
-   }
+   else return log.warning(ERR::Mismatch);
 }
 
 /*********************************************************************************************************************
 -ACTION-
-Disable: Disables object functionality.
+Disable: Disables user interactivity.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Disable(extDocument *Self)
 {
-   Self->Flags |= DCF_DISABLED;
-   return ERR_Okay;
+   Self->Flags |= DCF::DISABLED;
+   return ERR::Okay;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+-ACTION-
+Draw: Force a page layout update (if changes are pending) and redraw to the display.
+-END-
+*********************************************************************************************************************/
 
-static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Draw(extDocument *Self)
 {
-   if (Self->SurfaceID) {
-      if (Self->Processing) QueueAction(AC_Draw, Self->UID);
-      else redraw(Self, FALSE);
-      return ERR_Okay;
+   if (Self->Viewport) {
+      if (Self->Processing) Self->Viewport->draw();
+      else redraw(Self, false);
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
 /*********************************************************************************************************************
@@ -501,10 +443,10 @@ static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
 -METHOD-
 Edit: Activates a user editing section within a document.
 
-The Edit method will manually activate an editable section in the document.  This results in the text cursor being
+The Edit() method will manually activate an editable section in the document.  This results in the text cursor being
 placed at the start of the editable section, where the user may immediately begin editing the section via the keyboard.
 
-If the editable section is associated with an OnEnter trigger, the trigger will be called when the Edit method is
+If the editable section is associated with an `OnEnter` trigger, the trigger will be called when the Edit method is
 invoked.
 
 -INPUT-
@@ -519,23 +461,19 @@ Search: The cell was not found.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
+static ERR DOCUMENT_Edit(extDocument *Self, struct doc::Edit *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
    if (!Args->Name) {
-      if ((Self->CursorIndex IS -1) or (!Self->ActiveEditDef)) return ERR_Okay;
-      deactivate_edit(Self, TRUE);
-      return ERR_Okay;
+      if ((!Self->CursorIndex.valid()) or (!Self->ActiveEditDef)) return ERR::Okay;
+      deactivate_edit(Self, true);
+      return ERR::Okay;
    }
-   else {
-      LONG cellindex;
-      ULONG hashname = StrHash(Args->Name, 0);
-      if ((cellindex = find_cell(Self, 0, hashname)) >= 0) {
-         return activate_edit(Self, cellindex, 0);
-      }
-      else return ERR_Search;
+   else if (auto cellindex = Self->Stream.find_editable_cell(Args->Name); cellindex >= 0) {
+      return activate_cell_edit(Self, cellindex, stream_char(0,0));
    }
+   else return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -544,10 +482,10 @@ Enable: Enables object functionality.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Enable(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Enable(extDocument *Self)
 {
-   Self->Flags &= ~DCF_DISABLED;
-   return ERR_Okay;
+   Self->Flags &= ~DCF::DISABLED;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -566,19 +504,19 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
+static ERR DOCUMENT_FeedParser(extDocument *Self, struct doc::FeedParser *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->String)) return ERR_NullArgs;
+   if ((!Args) or (!Args->String)) return ERR::NullArgs;
 
-   if (!Self->Processing) return log.warning(ERR_Failed);
-
-
+   if (!Self->Processing) return log.warning(ERR::Failed);
 
 
 
-   return ERR_NoSupport;
+
+
+   return ERR::NoSupport;
 }
 
 /*********************************************************************************************************************
@@ -586,14 +524,14 @@ static ERROR DOCUMENT_FeedParser(extDocument *Self, struct docFeedParser *Args)
 -METHOD-
 FindIndex: Searches the document stream for an index, returning the start and end points if found.
 
-Use the FindIndex method to search for indexes that have been declared in a loaded document.  Indexes are declared
-using the &lt;index/&gt; tag and must be given a unique name.  They are useful for marking areas of interest - such as
+Use the FindIndex() method to search for indexes that have been declared in a loaded document.  Indexes are declared
+using the `&lt;index/&gt;` tag and must be given a unique name.  They are useful for marking areas of interest - such as
 a section of content that may change during run-time viewing, or as place-markers for rapid scrolling to an exact
 document position.
 
 If the named index exists, then the start and end points (as determined by the opening and closing of the index tag)
-will be returned as byte indexes in the document stream.  The starting byte will refer to an ESC_INDEX_START code and
-the end byte will refer to an ESC_INDEX_END code.
+will be returned as byte indexes in the document stream.  The starting byte will refer to an `SCODE::INDEX_START` code and
+the end byte will refer to an `SCODE::INDEX_END` code.
 
 -INPUT-
 cstr Name:  The name of the index to search for.
@@ -601,58 +539,45 @@ cstr Name:  The name of the index to search for.
 &int End:   The byte position at which the index ends is returned in this parameter.
 
 -ERRORS-
-Okay: The index was found and the Start and End parameters reflect its position.
+Okay: The index was found and the `Start` and `End` parameters reflect its position.
 NullArgs:
 Search: The index was not found.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
+static ERR DOCUMENT_FindIndex(extDocument *Self, struct doc::FindIndex *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
-
-   auto stream = Self->Stream;
-   if (!stream) return ERR_Search;
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
    log.trace("Name: %s", Args->Name);
 
-   ULONG name_hash = StrHash(Args->Name, 0);
-   LONG i = 0;
-   while (stream[i]) {
-      if (stream[i] IS CTRL_CODE) {
-         if (ESCAPE_CODE(stream, i) IS ESC_INDEX_START) {
-            auto index = escape_data<escIndex>(stream, i);
-            if (name_hash IS index->NameHash) {
-               LONG end_id = index->ID;
-               Args->Start = i;
+   auto name_hash = strihash(Args->Name);
+   for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
+      if (Self->Stream[i].code IS SCODE::INDEX_START) {
+         auto &index = Self->Stream.lookup<bc_index>(i);
+         if (name_hash IS index.name_hash) {
+            auto end_id = index.id;
+            Args->Start = i;
 
-               NEXT_CHAR(stream, i);
+            // Search for the end (ID match)
 
-               // Search for the end (ID match)
-
-               while (stream[i]) {
-                  if (stream[i] IS CTRL_CODE) {
-                     if (ESCAPE_CODE(stream, i) IS ESC_INDEX_END) {
-                        auto end = escape_data<escIndexEnd>(stream, i);
-                        if (end_id IS end->ID) {
-                           Args->End = i;
-                           log.trace("Found index at range %d - %d", Args->Start, Args->End);
-                           return ERR_Okay;
-                        }
-                     }
+            for (++i; i < INDEX(Self->Stream.size()); i++) {
+               if (Self->Stream[i].code IS SCODE::INDEX_END) {
+                  if (end_id IS Self->Stream.lookup<bc_index_end>(i).id) {
+                     Args->End = i;
+                     log.trace("Found index at range %d - %d", Args->Start, Args->End);
+                     return ERR::Okay;
                   }
-                  NEXT_CHAR(stream, i);
                }
             }
          }
       }
-      NEXT_CHAR(stream, i);
    }
 
-   log.extmsg("Failed to find index '%s'", Args->Name);
-   return ERR_Search;
+   log.detail("Failed to find index '%s'", Args->Name);
+   return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -661,209 +586,147 @@ Focus: Sets the user focus on the document page.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
+static ERR DOCUMENT_Focus(extDocument *Self, APTR Args)
 {
-   acFocus(Self->PageID);
-   return ERR_Okay;
+   acFocus(Self->Page);
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Free(extDocument *Self)
 {
-   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->FlashTimer)  { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
-   if (Self->PageID)    { FreeResource(Self->PageID); Self->PageID = 0; }
-   if (Self->ViewID)    { FreeResource(Self->ViewID); Self->ViewID = 0; }
-   if (Self->InsertXML) { FreeResource(Self->InsertXML); Self->InsertXML = NULL; }
+   Self->Page = NULL; // Page and View are freed by their parent Viewport.
+   Self->View = NULL;
 
-   if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
-      OBJECTPTR object;
-      if (!AccessObject(Self->FocusID, 5000, &object)) {
-         UnsubscribeAction(object, 0);
-         ReleaseObject(object);
-      }
+   if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
+
+   if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
+
+   if (Self->Viewport) UnsubscribeAction(Self->Viewport, 0);
+
+   if (Self->EventCallback.isScript()) {
+      UnsubscribeAction(Self->EventCallback.Context, AC_Free);
+      Self->EventCallback.clear();
    }
 
-   if (Self->SurfaceID) {
-      OBJECTPTR object;
-      if (!AccessObject(Self->SurfaceID, 5000, &object)) {
-         drwRemoveCallback(object, NULL);
-         UnsubscribeAction(object, 0);
-         ReleaseObject(object);
-      }
-   }
+   unload_doc(Self, ULD::TERMINATE);
 
-   if (Self->PointerLocked) {
-      gfxRestoreCursor(PTR_DEFAULT, Self->UID);
-      Self->PointerLocked = FALSE;
-   }
-
-   if (Self->PageName) { FreeResource(Self->PageName); Self->PageName = NULL; }
-   if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
-
-   unload_doc(Self, ULD_TERMINATE);
-
-   if (Self->TBuffer)     { FreeResource(Self->TBuffer); Self->TBuffer = NULL; }
-   if (Self->Path)        { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->XML)         { FreeResource(Self->XML); Self->XML = NULL; }
-   if (Self->FontFace)    { FreeResource(Self->FontFace); Self->FontFace = NULL; }
-   if (Self->Buffer)      { FreeResource(Self->Buffer); Self->Buffer = NULL; }
-   if (Self->Temp)        { FreeResource(Self->Temp); Self->Temp = NULL; }
-   if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
-   if (Self->Templates)   { FreeResource(Self->Templates); Self->Templates = NULL; }
-   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; };
+   if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = NULL; }
 
    Self->~extDocument();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
-GetVar: Script arguments can be retrieved through this action.
+GetKey: Retrieves script parameters.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_GetVar(extDocument *Self, struct acGetVar *Args)
+static ERR DOCUMENT_GetKey(extDocument *Self, struct acGetKey *Args)
 {
-   if ((!Args) or (!Args->Buffer) or (!Args->Field) or (Args->Size < 2)) return ERR_Args;
+   if ((!Args) or (!Args->Value) or (!Args->Key) or (Args->Size < 2)) return ERR::Args;
 
-   if (Self->Vars.contains(Args->Field)) {
-      StrCopy(Self->Vars[Args->Field], Args->Buffer, Args->Size);
-      return ERR_Okay;
+   if (Self->Vars.contains(Args->Key)) {
+      StrCopy(Self->Vars[Args->Key], Args->Value, Args->Size);
+      return ERR::Okay;
    }
-   else if (Self->Params.contains(Args->Field)) {
-      StrCopy(Self->Params[Args->Field], Args->Buffer, Args->Size);
-      return ERR_Okay;
+   else if (Self->Params.contains(Args->Key)) {
+      StrCopy(Self->Params[Args->Key], Args->Value, Args->Size);
+      return ERR::Okay;
    }
 
-   Args->Buffer[0] = 0;
-   return ERR_UnsupportedField;
+   Args->Value[0] = 0;
+   return ERR::UnsupportedField;
 }
 
 //********************************************************************************************************************
 
-static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Init(extDocument *Self)
 {
    pf::Log log;
 
-   if (!Self->SurfaceID) return log.warning(ERR_UnsupportedOwner);
-
-   if (!Self->FocusID) Self->FocusID = Self->SurfaceID;
-
-   objSurface *surface;
-   if (!AccessObject(Self->FocusID, 5000, &surface)) {
-      if (surface->ClassID != ID_SURFACE) {
-         ReleaseObject(surface);
-         return log.warning(ERR_WrongObjectType);
+   if (!Self->Viewport) {
+      if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::VECTORVIEWPORT)) {
+         Self->Viewport = (objVectorViewport *)Self->Owner;
       }
-
-      if (surface->Flags & RNF_HAS_FOCUS) {
-         Self->HasFocus = true;
-
-         auto call = make_function_stdc(key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &call, Self, &Self->prvKeyEvent);
-      }
-
-      auto callback = make_function_stdc(notify_focus_surface);
-      SubscribeAction(surface, AC_Focus, &callback);
-
-      callback = make_function_stdc(notify_lostfocus_surface);
-      SubscribeAction(surface, AC_LostFocus, &callback);
-
-      ReleaseObject(surface);
+      else return log.warning(ERR::UnsupportedOwner);
    }
 
-   // Setup the target surface
+   if (!Self->Focus) Self->Focus = Self->Viewport;
 
-   if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
-      Self->SurfaceWidth = surface->Width;
-      Self->SurfaceHeight = surface->Height;
-
-      surface->setColour("255,255,255");
-
-      auto callback = make_function_stdc(notify_disable_surface);
-      SubscribeAction(surface, AC_Disable, &callback);
-
-      callback = make_function_stdc(notify_enable_surface);
-      SubscribeAction(surface, AC_Enable, &callback);
-
-      callback = make_function_stdc(notify_redimension_surface);
-      SubscribeAction(surface, AC_Redimension, &callback);
-
-      if (Self->Border.Alpha > 0) {
-         if (!Self->BorderEdge) Self->BorderEdge = DBE_TOP|DBE_BOTTOM|DBE_RIGHT|DBE_LEFT;
-         drwAddCallback(surface, (APTR)&draw_border);
-      }
-
-      Self->AreaX = (Self->BorderEdge & DBE_LEFT) ? BORDER_SIZE : 0;
-      Self->AreaY = (Self->BorderEdge & DBE_TOP) ? BORDER_SIZE : 0;
-      Self->AreaWidth  = Self->SurfaceWidth - (((Self->BorderEdge & DBE_RIGHT) ? BORDER_SIZE : 0)<<1);
-      Self->AreaHeight = Self->SurfaceHeight - (((Self->BorderEdge & DBE_BOTTOM) ? BORDER_SIZE : 0)<<1);
-
-      ReleaseObject(surface);
+   if (Self->Focus->classID() != CLASSID::VECTORVIEWPORT) {
+      return log.warning(ERR::WrongObjectType);
    }
-   else return ERR_AccessObject;
+
+   if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
+
+   if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
+      Self->Viewport->subscribeKeyboard(C_FUNCTION(key_event));
+      SubscribeAction(Self->Focus, AC_Focus, C_FUNCTION(notify_focus_viewport));
+      SubscribeAction(Self->Focus, AC_LostFocus, C_FUNCTION(notify_lostfocus_viewport));
+      SubscribeAction(Self->Viewport, AC_Disable, C_FUNCTION(notify_disable_viewport));
+      SubscribeAction(Self->Viewport, AC_Enable, C_FUNCTION(notify_enable_viewport));
+   }
+
+   SubscribeAction(Self->Viewport, AC_Free, C_FUNCTION(notify_free_viewport));
+
+   Self->VPWidth  = Self->Viewport->get<DOUBLE>(FID_Width);
+   Self->VPHeight = Self->Viewport->get<DOUBLE>(FID_Height);
+
+   FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
+   Self->Viewport->setFillColour(bkgd, 4);
 
    // Allocate the view and page areas
 
-   if (auto surface = objSurface::create::integral(
-         fl::Name("rgnDocView"),   // Do not change this name - it can be used by objects to detect if they are placed in a document
-         fl::Parent(Self->SurfaceID),
-         fl::X(Self->AreaX), fl::Y(Self->AreaY),
-         fl::Width(Self->AreaWidth), fl::Height(Self->AreaHeight))) {
+   //if ((Self->Scene = objVectorScene::create::local(
+   //      fl::Name("docScene"),
+   //      fl::Owner(Self->Viewport->UID)))) {
+   //}
+   //else return ERR::CreateObject;
 
-      Self->ViewID = surface->UID;
-      drwAddCallback(surface, (APTR)&draw_background);
-   }
-   else return ERR_CreateObject;
+   Self->Scene = Self->Viewport->Scene;
 
-   if (auto surface = objSurface::create::integral(
-         fl::Name("rgnDocPage"),  // Do not change this name - it can be used by objects to detect if they are placed in a document
-         fl::Parent(Self->ViewID),
+   if ((Self->View = objVectorViewport::create::global(
+         fl::Name("docView"),
+         fl::Owner(Self->Viewport->UID),
+         fl::Overflow(VOF::HIDDEN),
          fl::X(0), fl::Y(0),
-         fl::MaxWidth(0x7fffffff), fl::MaxHeight(0x7fffffff),
-         fl::Width(MAX_PAGEWIDTH), fl::Height(MAX_PAGEHEIGHT),
-         fl::Flags(RNF_TRANSPARENT|RNF_GRAB_FOCUS))) {
-
-      drwAddCallback(surface, (APTR)&draw_document);
-      auto callback = make_function_stdc(consume_input_events);
-      gfxSubscribeInput(&callback, Self->PageID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle);
-      Self->PageID = surface->UID;
+         fl::XOffset(0), fl::YOffset(0)))) {
    }
-   else return ERR_CreateObject;
+   else return ERR::CreateObject;
 
-   acShow(Self->ViewID);
-   acShow(Self->PageID);
+   if ((Self->Page = objVectorViewport::create::global(
+         fl::Name("docPage"),
+         fl::Owner(Self->View->UID),
+         fl::X(0), fl::Y(0),
+         fl::Width(MAX_PAGE_WIDTH), fl::Height(MAX_PAGE_HEIGHT)))) {
 
-   // TODO: Launch the scrollbar script with references to our Target, Page and View viewports
-
-   if (!(Self->Flags & DCF_NO_SCROLLBARS)) {
-
-
+      // Recent changes mean that page input handling could be merged with inputevent_cell()
+      // if necessary (VectorScene already manages existing use-cases).
+      //if (Self->Page->Scene->SurfaceID) {
+      //   vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(consume_input_events));
+      //}
    }
+   else return ERR::CreateObject;
+
+   Self->View->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_view));
 
    // Flash the cursor via the timer
 
-   if (Self->Flags & DCF_EDIT) {
-      auto call = make_function_stdc(flash_cursor);
-      SubscribeTimer(0.5, &call, &Self->FlashTimer);
+   if ((Self->Flags & DCF::EDIT) != DCF::NIL) {
+      SubscribeTimer(0.5, C_FUNCTION(flash_cursor), &Self->FlashTimer);
    }
 
    // Load a document file into the line array if required
 
-   Self->UpdateLayout = TRUE;
-   if (Self->XML) { // If XML data is already present, it's probably come in through the data channels.
-      log.trace("XML data already loaded.");
-      if (Self->Path) process_parameters(Self, Self->Path);
-      AdjustLogLevel(2);
-      process_page(Self, Self->XML);
-      AdjustLogLevel(-2);
-   }
-   else if (Self->Path) {
+   Self->UpdatingLayout = true;
+   if (!Self->Path.empty()) {
       if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
-         if (auto error = load_doc(Self, Self->Path, FALSE, 0)) {
+         if (auto error = load_doc(Self, Self->Path, false); error != ERR::Okay) {
             return error;
          }
       }
@@ -874,8 +737,9 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       }
    }
 
-   redraw(Self, TRUE);
-   return ERR_Okay;
+   redraw(Self, true);
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -883,9 +747,9 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 -METHOD-
 HideIndex: Hides the content held within a named index.
 
-The HideIndex and ShowIndex methods allow the display of document content to be controlled at code level.  To control
-content visibility, start by encapsulating the content in the source document with an &lt;index&gt; tag and ensure that
-it is named.  Then make calls to HideIndex and ShowIndex with the index name to manipulate visibility.
+The HideIndex() and #ShowIndex() methods allow the display of document content to be controlled at code level.  To control
+content visibility, start by encapsulating the content in the source document with an `&lt;index&gt;` tag and ensure that
+it is named.  Then make calls to HideIndex() and #ShowIndex() with the index name to manipulate visibility.
 
 The document layout is automatically updated and pushed to the display when this method is called.
 
@@ -900,75 +764,71 @@ Search
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
+static ERR DOCUMENT_HideIndex(extDocument *Self, struct doc::HideIndex *Args)
 {
    pf::Log log(__FUNCTION__);
    LONG tab;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
    log.msg("Index: %s", Args->Name);
 
-   auto stream = Self->Stream;
-   if (!stream) return ERR_Search;
+   auto &stream = Self->Stream;
+   auto name_hash = strihash(Args->Name);
+   for (INDEX i=0; i < INDEX(stream.size()); i++) {
+      if (stream[i].code IS SCODE::INDEX_START) {
+         auto &index = Self->Stream.lookup<bc_index>(i);
+         if (name_hash IS index.name_hash) {
+            if (!index.visible) return ERR::Okay; // It's already invisible!
 
-   ULONG name_hash = StrHash(Args->Name, 0);
-   LONG i = 0;
-   while (stream[i]) {
-      if (stream[i] IS CTRL_CODE) {
-         if (ESCAPE_CODE(stream, i) IS ESC_INDEX_START) {
-            auto index = escape_data<escIndex>(stream, i);
-            if (name_hash IS index->NameHash) {
-               if (!index->Visible) return ERR_Okay; // It's already invisible!
+            index.visible = false;
 
-               index->Visible = FALSE;
+            {
+               #ifndef RETAIN_LOG_LEVEL
+               pf::LogLevel level(2);
+               #endif
+               Self->UpdatingLayout = true;
+               layout_doc(Self);
+            }
 
-                  AdjustLogLevel(2);
-                  Self->UpdateLayout = TRUE;
-                  layout_doc(Self);
-                  AdjustLogLevel(-2);
+            // Any objects within the index will need to be hidden.  Also, set ParentVisible markers to false.
 
-                  // Any objects within the index will need to be hidden.  Also, set ParentVisible markers to FALSE.
-
-                  NEXT_CHAR(stream, i);
-                  while (stream[i]) {
-                     if (stream[i] IS CTRL_CODE) {
-                        UBYTE code = ESCAPE_CODE(stream, i);
-                        if (code IS ESC_INDEX_END) {
-                           auto end = escape_data<escIndexEnd>(stream, i);
-                           if (index->ID IS end->ID) break;
-                        }
-                        else if (code IS ESC_OBJECT) {
-                           auto escobj = escape_data<escObject>(stream, i);
-                           if (escobj->ObjectID) acHide(escobj->ObjectID);
-
-                           if ((tab = find_tabfocus(Self, TT_OBJECT, escobj->ObjectID)) >= 0) {
-                              Self->Tabs[tab].Active = FALSE;
-                           }
-                        }
-                        else if (code IS ESC_LINK) {
-                           auto esclink = escape_data<escLink>(stream, i);
-                           if ((tab = find_tabfocus(Self, TT_LINK, esclink->ID)) >= 0) {
-                              Self->Tabs[tab].Active = FALSE;
-                           }
-                        }
-                        else if (code IS ESC_INDEX_START) {
-                           auto index = escape_data<escIndex>(stream, i);
-                           index->ParentVisible = FALSE;
-                        }
-                     }
-                     NEXT_CHAR(stream, i);
+            for (++i; i < INDEX(stream.size()); i++) {
+               auto code = stream[i].code;
+               if (code IS SCODE::INDEX_END) {
+                  auto &end = Self->Stream.lookup<bc_index_end>(i);
+                  if (index.id IS end.id) break;
+               }
+               else if (code IS SCODE::IMAGE) {
+                  auto &vec = Self->Stream.lookup<bc_image>(i);
+                  if (!vec.rect.empty()) {
+                     pf::ScopedObjectLock obj(vec.rect->UID);
+                     if (obj.granted()) acHide(*obj);
                   }
 
-               DRAW_PAGE(Self);
-               return ERR_Okay;
+                  if (auto tab = find_tabfocus(Self, TT::VECTOR, vec.rect->UID); tab >= 0) {
+                     Self->Tabs[tab].active = false;
+                  }
+               }
+               else if (code IS SCODE::LINK) {
+                  auto &esclink = Self->Stream.lookup<bc_link>(i);
+                  if ((tab = find_tabfocus(Self, TT::LINK, esclink.uid)) >= 0) {
+                     Self->Tabs[tab].active = false;
+                  }
+               }
+               else if (code IS SCODE::INDEX_START) {
+                  auto &index = Self->Stream.lookup<bc_index>(i);
+                  index.parent_visible = false;
+               }
             }
+
+            Self->Viewport->draw();
+            return ERR::Okay;
          }
       }
-      NEXT_CHAR(stream, i);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -976,7 +836,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 -METHOD-
 InsertXML: Inserts new content into a loaded document (XML format).
 
-Use the InsertXML method to insert new content into an initialised document.
+Use the InsertXML() method to insert new content into an initialised document.
 
 Caution must be exercised when inserting document content.  Inserting an image in-between a set of table rows for
 instance, would cause unknown results.  Corruption of the document data may lead to a program crash when the document
@@ -992,61 +852,36 @@ int Index: The byte position at which to insert the new content.
 -ERRORS-
 Okay
 NullArgs
+NoData
+CreateObject
+OutOfRange
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
+static ERR DOCUMENT_InsertXML(extDocument *Self, struct doc::InsertXML *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->XML)) return log.warning(ERR_NullArgs);
-   if ((Args->Index < -1) or (Args->Index > Self->StreamLen)) return log.warning(ERR_OutOfRange);
+   if ((!Args) or (!Args->XML)) return log.warning(ERR::NullArgs);
+   if ((Args->Index < -1) or (Args->Index > LONG(Self->Stream.size()))) return log.warning(ERR::OutOfRange);
 
-   if (!Self->Stream) return ERR_NoData;
+   if (Self->Stream.data.empty()) return ERR::NoData;
 
-   ERROR error = ERR_Okay;
-   if (!Self->InsertXML) {
-      if (!(Self->InsertXML = objXML::create::integral(fl::Statement(Args->XML)))) error = ERR_CreateObject;
+   objXML::create xml = {
+      fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS),
+      fl::Statement(Args->XML)
+   };
+
+   if (!xml.ok()) {
+      Self->UpdatingLayout = true;
+
+      ERR error = insert_xml(Self, &Self->Stream, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, STYLE::NIL);
+      if (error != ERR::Okay) log.warning("Insert failed for: %s", Args->XML);
+
+      return error;
    }
-   else error = Self->InsertXML->setStatement(Args->XML);
-
-   if (!error) {
-      if (!Self->Buffer) {
-         Self->BufferSize = 65536;
-         if (AllocMemory(Self->BufferSize, MEM::NO_CLEAR, &Self->Buffer) != ERR_Okay) {
-            return ERR_AllocMemory;
-         }
-      }
-
-      if (!Self->Temp) {
-         Self->TempSize = 65536;
-         if (AllocMemory(Self->TempSize, MEM::NO_CLEAR, &Self->Temp) != ERR_Okay) {
-            return ERR_AllocMemory;
-         }
-      }
-
-      if (!Self->VArg) {
-         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM::NO_CLEAR, &Self->VArg) != ERR_Okay) {
-            return ERR_AllocMemory;
-         }
-      }
-
-      Self->UpdateLayout = TRUE;
-
-      Self->ParagraphDepth++; // We have to override the paragraph-content sanity check since we're inserting content on post-processing of the original XML
-
-      if (!(error = insert_xml(Self, Self->InsertXML, Self->InsertXML->Tags[0], (Args->Index IS -1) ? Self->StreamLen : Args->Index, IXF_SIBLINGS|IXF_CLOSESTYLE))) {
-
-      }
-      else log.warning("Insert failed for: %s", Args->XML);
-
-      Self->ParagraphDepth--;
-
-      acClear(Self->InsertXML); // Reduce memory usage
-   }
-
-   return error;
+   else return ERR::CreateObject;
 }
 
 /*********************************************************************************************************************
@@ -1054,7 +889,7 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 -METHOD-
 InsertText: Inserts new content into a loaded document (raw text format).
 
-Use the InsertXML method to insert new content into an initialised document.
+Use the InsertText() method to insert new content into an initialised document.
 
 Caution must be exercised when inserting document content.  Inserting an image in-between a set of table rows for
 instance, would cause unknown results.  Corruption of the document data may lead to a program crash when the document
@@ -1065,78 +900,38 @@ to the document are complete.
 
 -INPUT-
 cstr Text: A UTF-8 text string.
-int Index: The byte position at which to insert the new content.  If -1, the text will be inserted at the end of the document stream.
-int Preformat: If TRUE, the text will be treated as pre-formatted (all whitespace, including consecutive whitespace will be recognised).
+int Index: Reference to a `TEXT` control code that will receive the content.  If `-1`, the text will be inserted at the end of the document stream.
+int Char: A character offset within the `TEXT` control code that will be injected with content.  If `-1`, the text will be injected at the end of the target string.
+int Preformat: If `true`, the text will be treated as pre-formatted (all whitespace, including consecutive whitespace will be recognised).
 
 -ERRORS-
 Okay
 NullArgs
+OutOfRange
+Failed
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
+static ERR DOCUMENT_InsertText(extDocument *Self, struct doc::InsertText *Args)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Args) or (!Args->Text)) return log.warning(ERR_NullArgs);
-   if ((Args->Index < -1) or (Args->Index > Self->StreamLen)) return log.warning(ERR_OutOfRange);
-
-   if (!Self->Stream) return ERR_NoData;
+   if ((!Args) or (!Args->Text)) return log.warning(ERR::NullArgs);
+   if ((Args->Index < -1) or (Args->Index > std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
 
    log.traceBranch("Index: %d, Preformat: %d", Args->Index, Args->Preformat);
 
-   Self->UpdateLayout = TRUE;
+   Self->UpdatingLayout = true;
 
-   LONG index = Args->Index;
-   if (index < 0) index = Self->StreamLen;
+   INDEX index = Args->Index;
+   if (index < 0) index = Self->Stream.size();
 
-   // Clear the font style
-
-   ClearMemory(&Self->Style, sizeof(Self->Style));
-   Self->Style.FontStyle.Index = -1;
-   Self->Style.FontChange = FALSE;
-   Self->Style.StyleChange = FALSE;
-
-   // Find the most recent style at the insertion point
-
-   auto str = Self->Stream;
-   LONG i   = Args->Index;
-   PREV_CHAR(str, i);
-   while (i > 0) {
-      if ((str[i] IS CTRL_CODE) and (ESCAPE_CODE(str, i) IS ESC_FONT)) {
-         CopyMemory(escape_data<UBYTE>(str, i), &Self->Style.FontStyle, sizeof(escFont));
-         log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
-         break;
-      }
-      PREV_CHAR(str, i);
-   }
-
-   // If no style is available, we need to create a default font style and insert it at the start of the stream.
-
-   if (Self->Style.FontStyle.Index IS -1) {
-      if ((Self->Style.FontStyle.Index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
-         if ((Self->Style.FontStyle.Index = create_font("Open Sans", "Regular", 12)) IS -1) {
-            return ERR_Failed;
-         }
-      }
-
-      Self->Style.FontStyle.Colour = Self->FontColour;
-      Self->Style.FontChange = TRUE;
-   }
-
-   objFont *font;
-   if ((font = lookup_font(Self->Style.FontStyle.Index, "insert_xml"))) {
-      StrCopy(font->Face, Self->Style.Face, sizeof(Self->Style.Face));
-      Self->Style.Point = font->Point;
-   }
-
-   // Insert the text
-
-   ERROR error = insert_text(Self, &index, Args->Text, StrLength(Args->Text), Args->Preformat);
+   stream_char sc(index, 0);
+   ERR error = insert_text(Self, &Self->Stream, sc, std::string(Args->Text), Args->Preformat);
 
    #ifdef DBG_STREAM
-      print_stream(Self, Self->Stream);
+      print_stream(Self->Stream);
    #endif
 
    return error;
@@ -1144,27 +939,11 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 
 //********************************************************************************************************************
 
-static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
+static ERR DOCUMENT_NewObject(extDocument *Self)
 {
    new (Self) extDocument;
-   Self->UniqueID = 1000;
-   unload_doc(Self, 0);
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
-{
-   if (!Self->initialised()) {
-      OBJECTID owner_id = Args->NewOwner->UID;
-      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
-         owner_id = GetOwnerID(owner_id);
-      }
-      if (owner_id) Self->SurfaceID = owner_id;
-   }
-
-   return ERR_Okay;
+   unload_doc(Self);
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1172,15 +951,15 @@ static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
 -METHOD-
 ReadContent: Returns selected content from the document, either as plain text or original byte code.
 
-The ReadContent method extracts content from the document stream, covering a specific area.  It can return the data in
-its original RIPPLE based format or translate the content into plain-text (control codes are removed).
+The ReadContent() method extracts content from the document stream, covering a specific area.  It can return the data as
+a RIPL binary stream, or translate the content into plain-text (control codes are removed).
 
 If data is extracted in its original format, no post-processing is performed to fix validity errors that may arise from
 an invalid data range.  For instance, if an opening paragraph code is not closed with a matching paragraph end point,
 this will remain the case in the resulting data.
 
 -INPUT-
-int Format: Set to DATA_TEXT to receive plain-text, or DATA_RAW to receive the original byte-code.
+int(DATA) Format: Set to `TEXT` to receive plain-text, or `RAW` to receive the original byte-code.
 int Start:  An index in the document stream from which data will be extracted.
 int End:    An index in the document stream at which extraction will stop.
 !str Result: The data is returned in this parameter as an allocated string.
@@ -1194,53 +973,43 @@ NoData: Operation successful, but no data was present for extraction.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args)
+static ERR DOCUMENT_ReadContent(extDocument *Self, struct doc::ReadContent *Args)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    Args->Result = NULL;
 
-   if ((Args->Start < 0) or (Args->Start >= Self->StreamLen)) return log.warning(ERR_OutOfRange);
-   if ((Args->End < 0) or (Args->End >= Self->StreamLen)) return log.warning(ERR_OutOfRange);
-   if (Args->End <= Args->Start) return log.warning(ERR_Args);
+   if ((Args->Start < 0) or (Args->Start >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
+   if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
+   if (Args->End <= Args->Start) return log.warning(ERR::Args);
 
-   if (Args->Format IS DATA_TEXT) {
-      STRING output;
-      if (!AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output)) {
-         LONG j = 0;
-         LONG i = Args->Start;
-         while (i < Args->End) {
-            if (Self->Stream[i] IS CTRL_CODE) {
-               // Ignore escape codes
-            }
-            else output[j++] = Self->Stream[i];
-            NEXT_CHAR(Self->Stream, i);
+   if (Args->Format IS DATA::TEXT) {
+      std::ostringstream buffer;
+
+      for (INDEX i=Args->Start; i < Args->End; i++) {
+         if (Self->Stream[i].code IS SCODE::TEXT) {
+            buffer << Self->Stream.lookup<bc_text>(i).text;
          }
-         output[j] = 0;
-
-         if (!j) {
-            FreeResource(output);
-            return ERR_NoData;
-         }
-
-         Args->Result = output;
-         return ERR_Okay;
       }
-      else return log.warning(ERR_AllocMemory);
+
+      auto str = buffer.str();
+      if (str.empty()) return ERR::NoData;
+      if ((Args->Result = StrClone(str.c_str()))) return ERR::Okay;
+      else return log.warning(ERR::AllocMemory);
    }
-   else if (Args->Format IS DATA_RAW) {
+   else if (Args->Format IS DATA::RAW) {
       STRING output;
-      if (!AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output)) {
-         CopyMemory(Self->Stream + Args->Start, output, Args->End - Args->Start);
+      if (AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output) IS ERR::Okay) {
+         CopyMemory(Self->Stream.data.data() + Args->Start, output, Args->End - Args->Start);
          output[Args->End - Args->Start] = 0;
          Args->Result = output;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_AllocMemory);
+      else return log.warning(ERR::AllocMemory);
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -1249,63 +1018,43 @@ Refresh: Reloads the document data from the original source location.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
+static ERR DOCUMENT_Refresh(extDocument *Self)
 {
    pf::Log log;
 
    if (Self->Processing) {
       log.msg("Recursion detected - refresh will be delayed.");
       QueueAction(AC_Refresh, Self->UID);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    Self->Processing++;
 
-   for (auto trigger=Self->Triggers[DRT_REFRESH]; trigger; trigger=trigger->Next) {
-      if (trigger->Function.Type IS CALL_SCRIPT) {
-         // The refresh trigger can return ERR_Skip to prevent a complete reload of the document.
+   for (auto &trigger : Self->Triggers[LONG(DRT::REFRESH)]) {
+      if (trigger.isScript()) {
+         // The refresh trigger can return ERR::Skip to prevent a complete reload of the document.
 
-         OBJECTPTR script;
-         if ((script = trigger->Function.Script.Script)) {
-            ERROR error;
-            if (!scCallback(script, trigger->Function.Script.ProcedureID, NULL, 0, &error)) {
-               if (error IS ERR_Skip) {
-                  log.msg("The refresh request has been handled by an event trigger.");
-                  return ERR_Okay;
-               }
+         ERR error;
+         if (sc::Call(trigger, error) IS ERR::Okay) {
+            if (error IS ERR::Skip) {
+               log.msg("The refresh request has been handled by an event trigger.");
+               return ERR::Okay;
             }
          }
       }
-      else if (trigger->Function.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, extDocument *))trigger->Function.StdC.Routine;
-         if (routine) {
-            pf::SwitchContext context(trigger->Function.StdC.Context);
-            routine(trigger->Function.StdC.Context, Self);
-         }
+      else if (trigger.isC()) {
+         auto routine = (void (*)(APTR, extDocument *))trigger.Routine;
+         pf::SwitchContext context(trigger.Context);
+         routine(trigger.Context, Self);
       }
    }
 
-   ERROR error;
-   if ((Self->Path) and (Self->Path[0] != '#') and (Self->Path[0] != '?')) {
-      log.branch("Refreshing from path '%s'", Self->Path);
-      error = load_doc(Self, Self->Path, TRUE, ULD_REFRESH);
+   ERR error = ERR::Okay;
+   if ((!Self->Path.empty()) and (Self->Path[0] != '#') and (Self->Path[0] != '?')) {
+      log.branch("Refreshing from path '%s'", Self->Path.c_str());
+      error = load_doc(Self, Self->Path, true, ULD::REFRESH);
    }
-   else if (Self->XML) {
-      log.branch("Refreshing from preloaded XML data.");
-
-      AdjustLogLevel(2);
-      unload_doc(Self, ULD_REFRESH);
-      process_page(Self, Self->XML);
-      AdjustLogLevel(-2);
-
-      if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "Refresh-XML");
-
-      error = ERR_Okay;
-   }
-   else {
-      log.msg("No location or XML data is present in the document.");
-      error = ERR_Okay;
-   }
+   else log.msg("No source Path defined in the document.");
 
    Self->Processing--;
 
@@ -1317,7 +1066,7 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 -METHOD-
 RemoveContent: Removes content from a loaded document.
 
-This method will remove all document content between the Start and End indexes provided as parameters.  The document
+This method will remove all document content between the `Start` and `End` indexes provided as parameters.  The document
 layout will also be marked for an update for the next redraw.
 
 -INPUT-
@@ -1332,21 +1081,21 @@ Args
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *Args)
+static ERR DOCUMENT_RemoveContent(extDocument *Self, struct doc::RemoveContent *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
-   if ((Args->Start < 0) or (Args->Start >= Self->StreamLen)) return log.warning(ERR_OutOfRange);
-   if ((Args->End < 0) or (Args->End >= Self->StreamLen)) return log.warning(ERR_OutOfRange);
-   if (Args->End <= Args->Start) return log.warning(ERR_Args);
+   if ((Args->Start < 0) or (Args->Start >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
+   if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
+   if (Args->End <= Args->Start) return log.warning(ERR::Args);
 
-   CopyMemory(Self->Stream + Args->End, Self->Stream + Args->Start, Self->StreamLen - Args->End);
-   Self->StreamLen -= Args->End - Args->Start;
+   CopyMemory(Self->Stream.data.data() + Args->End, Self->Stream.data.data() + Args->Start, Self->Stream.data.size() - Args->End);
+   Self->Stream.data.resize(Self->Stream.data.size() - Args->End - Args->Start);
 
-   Self->UpdateLayout = TRUE;
-   return ERR_Okay;
+   Self->UpdatingLayout = true;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1367,82 +1116,47 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *Args)
+static ERR DOCUMENT_RemoveListener(extDocument *Self, struct doc::RemoveListener *Args)
 {
-   if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
+   if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR::NullArgs;
 
-   DocTrigger *prev = NULL;
-   if (Args->Function->Type IS CALL_STDC) {
-      for (auto trigger=Self->Triggers[Args->Trigger]; trigger; trigger=trigger->Next) {
-         if ((trigger->Function.Type IS CALL_STDC) and (trigger->Function.StdC.Routine IS Args->Function->StdC.Routine)) {
-            if (prev) prev->Next = trigger->Next;
-            else Self->Triggers[Args->Trigger] = trigger->Next;
-            FreeResource(trigger);
-            return ERR_Okay;
+   if (Args->Function->isC()) {
+      for (auto it = Self->Triggers[Args->Trigger].begin(); it != Self->Triggers[Args->Trigger].end(); it++) {
+         if ((it->isC()) and (it->Routine IS Args->Function->Routine)) {
+            Self->Triggers[Args->Trigger].erase(it);
+            return ERR::Okay;
          }
-         prev = trigger;
       }
    }
-   else if (Args->Function->Type IS CALL_SCRIPT) {
-      for (auto trigger=Self->Triggers[Args->Trigger]; trigger; trigger=trigger->Next) {
-         if ((trigger->Function.Type IS CALL_SCRIPT) and
-             (trigger->Function.Script.Script IS Args->Function->Script.Script) and
-             (trigger->Function.Script.ProcedureID IS Args->Function->Script.ProcedureID)) {
-            if (prev) prev->Next = trigger->Next;
-            else Self->Triggers[Args->Trigger] = trigger->Next;
-            FreeResource(trigger);
-            return ERR_Okay;
+   else if (Args->Function->isScript()) {
+      for (auto it = Self->Triggers[Args->Trigger].begin(); it != Self->Triggers[Args->Trigger].end(); it++) {
+         if ((it->isScript()) and
+             (it->Context IS Args->Function->Context) and
+             (it->ProcedureID IS Args->Function->ProcedureID)) {
+            Self->Triggers[Args->Trigger].erase(it);
+            return ERR::Okay;
          }
-         prev = trigger;
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
 SaveToObject: Use this action to save edited information as an XML document file.
--END-
+
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
+static ERR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
-   log.branch("Destination: %d, Lines: %d", Args->Dest->UID, Self->SegCount);
+   log.branch("Destination: %d", Args->Dest->UID);
    acWrite(Args->Dest, "Save not supported.", 0, NULL);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
--ACTION-
-ScrollToPoint: Scrolls a document object's graphical content.
--END-
-*********************************************************************************************************************/
-
-static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *Args)
-{
-   if (!Args) return ERR_NullArgs;
-
-   if (Args->Flags & STP_X) Self->XPosition = -Args->X;
-   if (Args->Flags & STP_Y) Self->YPosition = -Args->Y;
-
-   // Validation: coordinates must be negative offsets
-
-   if (-Self->YPosition  > Self->PageHeight - Self->AreaHeight) {
-      Self->YPosition = -(Self->PageHeight - Self->AreaHeight);
-   }
-
-   if (Self->YPosition > 0) Self->YPosition = 0;
-   if (Self->XPosition > 0) Self->XPosition = 0;
-
-   //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
-
-   acMoveToPoint(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF::X|MTF::Y);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1456,13 +1170,13 @@ hyperlink is selected, that link will be activated.
 
 Selecting a link may also enable drag and drop functionality for that link.
 
-Links are referenced either by their Index in the links array, or by name for links that have named references.  It
+Links are referenced either by their `Index` in the links array, or by name for links that have named references.  It
 should be noted that objects that can receive the focus - such as input boxes and buttons - are also treated as
 selectable links due to the nature of their functionality.
 
 -INPUT-
-int Index: Index to a link (links are in the order in which they are created in the document, zero being the first link).  Ignored if the Name parameter is set.
-cstr Name: The name of the link to select (set to NULL if an Index is defined).
+int Index: Index to a link (links are in the order in which they are created in the document, zero being the first link).  Ignored if the `Name` parameter is set.
+cstr Name: The name of the link to select (set to `NULL` if an `Index` is defined).
 
 -ERRORS-
 Okay
@@ -1472,54 +1186,54 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
+static ERR DOCUMENT_SelectLink(extDocument *Self, struct doc::SelectLink *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR::NullArgs);
 
    if ((Args->Name) and (Args->Name[0])) {
 /*
       LONG i;
-      for (i=0; i < Self->TabIndex; i++) {
-         if (Self->Tabs[i].Type IS TT_OBJECT) {
+      for (i=0; i < Self->Tabs.size(); i++) {
+         if (Self->Tabs[i].Type IS TT::OBJECT) {
             name = GetObjectName(?)
-            if (!(StrMatch(Args->Name, name))) {
+            if (iequals(args->name, name)) {
 
             }
          }
-         else if (Self->Tabs[i].Type IS TT_LINK) {
+         else if (Self->Tabs[i].Type IS TT::LINK) {
 
          }
       }
 */
 
-      return log.warning(ERR_NoSupport);
+      return log.warning(ERR::NoSupport);
    }
-   else if ((Args->Index >= 0) and (Args->Index < Self->TabIndex)) {
+   else if ((Args->Index >= 0) and (Args->Index < std::ssize(Self->Tabs))) {
       Self->FocusIndex = Args->Index;
       set_focus(Self, Args->Index, "SelectLink");
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.warning(ERR_OutOfRange);
+   else return log.warning(ERR::OutOfRange);
 }
 
 /*********************************************************************************************************************
 -ACTION-
-SetVar: Passes variable parameters to loaded documents.
+SetKey: Passes variable parameters to loaded documents.
 -END-
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
+static ERR DOCUMENT_SetKey(extDocument *Self, struct acSetKey *Args)
 {
-   // Please note that it is okay to set zero-length arguments
+   // Please note that it is okay to set zero-length parameters
 
-   if ((!Args) or (!Args->Field)) return ERR_NullArgs;
-   if (!Args->Field[0]) return ERR_Args;
+   if ((!Args) or (!Args->Key)) return ERR::NullArgs;
+   if (!Args->Key[0]) return ERR::Args;
 
-   Self->Vars[Args->Field] = Args->Value;
+   Self->Vars[Args->Key] = Args->Value;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1527,9 +1241,9 @@ static ERROR DOCUMENT_SetVar(extDocument *Self, struct acSetVar *Args)
 -METHOD-
 ShowIndex: Shows the content held within a named index.
 
-The HideIndex and ShowIndex methods allow the display of document content to be controlled at code level.  To control
-content visibility, start by encapsulating the content in the source document with an &lt;index&gt; tag and ensure that
-it is named.  Then make calls to HideIndex and ShowIndex with the index name to manipulate visibility.
+The #HideIndex() and ShowIndex() methods allow the display of document content to be controlled at code level.  To control
+content visibility, start by encapsulating the content in the source document with an `&lt;index&gt;` tag and ensure that
+it is named.  Then make calls to #HideIndex() and ShowIndex() with the index name to manipulate visibility.
 
 The document layout is automatically updated and pushed to the display when this method is called.
 
@@ -1544,104 +1258,74 @@ Search: The index could not be found.
 
 *********************************************************************************************************************/
 
-static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
+static ERR DOCUMENT_ShowIndex(extDocument *Self, struct doc::ShowIndex *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
    log.branch("Index: %s", Args->Name);
 
-   auto stream = Self->Stream;
-   if (!stream) return ERR_Search;
+   auto &stream = Self->Stream;
+   auto name_hash = strihash(Args->Name);
+   for (INDEX i=0; i < INDEX(stream.size()); i++) {
+      if (stream[i].code IS SCODE::INDEX_START) {
+         auto &index = Self->Stream.lookup<bc_index>(i);
+         if (name_hash != index.name_hash) continue;
+         if (index.visible) return ERR::Okay; // It's already visible!
 
-   ULONG name_hash = StrHash(Args->Name, 0);
-   LONG i = 0;
-   while (stream[i]) {
-      if (stream[i] IS CTRL_CODE) {
-         if (ESCAPE_CODE(stream, i) IS ESC_INDEX_START) {
-            auto index = escape_data<escIndex>(stream, i);
-            if (name_hash IS index->NameHash) {
+         index.visible = true;
+         if (index.parent_visible) { // We are visible, but parents must also be visible to show content
+            // Show all objects and manage the ParentVisible status of any child indexes
 
-               if (index->Visible) return ERR_Okay; // It's already visible!
-
-               index->Visible = TRUE;
-               if (index->ParentVisible) { // We are visible, but parents must also be visible to show content
-                  // Show all objects and manage the ParentVisible status of any child indexes
-
-                     AdjustLogLevel(2);
-                     Self->UpdateLayout = TRUE;
-                     layout_doc(Self);
-                     AdjustLogLevel(-2);
-
-                     NEXT_CHAR(stream, i);
-                     while (stream[i]) {
-                        if (stream[i] IS CTRL_CODE) {
-                           UBYTE code = ESCAPE_CODE(stream, i);
-                           if (code IS ESC_INDEX_END) {
-                              auto end = escape_data<escIndexEnd>(stream, i);
-                              if (index->ID IS end->ID) break;
-                           }
-                           else if (code IS ESC_OBJECT) {
-                              auto escobj = escape_data<escObject>(stream, i);
-                              if (escobj->ObjectID) acShow(escobj->ObjectID);
-
-                              LONG tab;
-                              if ((tab = find_tabfocus(Self, TT_OBJECT, escobj->ObjectID)) >= 0) {
-                                 Self->Tabs[tab].Active = TRUE;
-                              }
-                           }
-                           else if (code IS ESC_LINK) {
-                              auto esclink = escape_data<escLink>(stream, i);
-
-                              LONG tab;
-                              if ((tab = find_tabfocus(Self, TT_LINK, esclink->ID)) >= 0) {
-                                 Self->Tabs[tab].Active = TRUE;
-                              }
-                           }
-                           else if (code IS ESC_INDEX_START) {
-                              auto index = escape_data<escIndex>(stream, i);
-                              index->ParentVisible = TRUE;
-
-                              if (!index->Visible) {
-                                 // The child index is not visible, so skip to the end of it before continuing this
-                                 // process.
-
-                                 NEXT_CHAR(stream, i);
-                                 while (stream[i]) {
-                                    if (stream[i] IS CTRL_CODE) {
-                                       if (ESCAPE_CODE(stream, i) IS ESC_INDEX_END) {
-                                          auto end = escape_data<escIndexEnd>(stream, i);
-                                          if (index->ID IS end->ID) {
-                                             NEXT_CHAR(stream, i);
-                                             break;
-                                          }
-                                       }
-                                    }
-
-                                    NEXT_CHAR(stream, i);
-                                 }
-
-                                 continue; // Needed to avoid the NEXT_CHAR at the end of the while
-                              }
-                           }
-                        }
-
-                        NEXT_CHAR(stream, i);
-                     } // while
-
-                  DRAW_PAGE(Self);
-               }
-
-               return ERR_Okay;
+            {
+               #ifndef RETAIN_LOG_LEVEL
+               pf::LogLevel level(2);
+               #endif
+               Self->UpdatingLayout = true;
+               layout_doc(Self);
             }
+
+            for (++i; i < INDEX(stream.size()); i++) {
+               auto code = stream[i].code;
+               if (code IS SCODE::INDEX_END) {
+                  if (index.id IS Self->Stream.lookup<bc_index_end>(i).id) break;
+               }
+               else if (code IS SCODE::IMAGE) {
+                  auto &img = Self->Stream.lookup<bc_image>(i);
+                  if (!img.rect.empty()) acShow(*img.rect);
+
+                  if (auto tab = find_tabfocus(Self, TT::VECTOR, img.rect->UID); tab >= 0) {
+                     Self->Tabs[tab].active = true;
+                  }
+               }
+               else if (code IS SCODE::LINK) {
+                  if (auto tab = find_tabfocus(Self, TT::LINK, Self->Stream.lookup<bc_link>(i).uid); tab >= 0) {
+                     Self->Tabs[tab].active = true;
+                  }
+               }
+               else if (code IS SCODE::INDEX_START) {
+                  auto &index = Self->Stream.lookup<bc_index>(i);
+                  index.parent_visible = true;
+
+                  if (!index.visible) {
+                     for (++i; i < INDEX(stream.size()); i++) {
+                        if (stream[i].code IS SCODE::INDEX_END) {
+                           if (index.id IS Self->Stream.lookup<bc_index_end>(i).id) break;
+                        }
+                     }
+                  }
+               }
+            }
+
+            Self->Viewport->draw();
          }
-         if (stream[i]) NEXT_CHAR(stream, i);
+
+         return ERR::Okay;
       }
-      else NEXT_CHAR(stream, i);
    }
 
-   return ERR_Search;
+   return ERR::Search;
 }
 
 //********************************************************************************************************************
@@ -1649,42 +1333,28 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 #include "document_def.c"
 
 static const FieldArray clFields[] = {
-   { "EventMask",    FDF_LARGE|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
    { "Description",  FDF_STRING|FDF_R },
-   { "FontFace",     FDF_STRING|FDF_RW, NULL, SET_FontFace },
-   { "Title",        FDF_STRING|FDF_RW, NULL, SET_Title },
-   { "Author",       FDF_STRING|FDF_RW, NULL, SET_Author },
-   { "Copyright",    FDF_STRING|FDF_RW, NULL, SET_Copyright },
-   { "Keywords",     FDF_STRING|FDF_RW, NULL, SET_Keywords },
+   { "Title",        FDF_STRING|FDF_R },
+   { "Author",       FDF_STRING|FDF_R },
+   { "Copyright",    FDF_STRING|FDF_R },
+   { "Keywords",     FDF_STRING|FDF_R },
+   { "Viewport",     FDF_OBJECT|FDF_RW, NULL, SET_Viewport, CLASSID::VECTORVIEWPORT },
+   { "Focus",        FDF_OBJECT|FDF_RI, NULL, NULL, CLASSID::VECTORVIEWPORT },
+   { "View",         FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::VECTORVIEWPORT },
+   { "Page",         FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::VECTORVIEWPORT },
    { "TabFocus",     FDF_OBJECTID|FDF_RW },
-   { "Surface",      FDF_OBJECTID|FDF_RW, NULL, SET_Surface, ID_SURFACE },
-   { "Focus",        FDF_OBJECTID|FDF_RI },
+   { "EventMask",    FDF_LONGFLAGS|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
    { "Flags",        FDF_LONGFLAGS|FDF_RI, NULL, SET_Flags, &clDocumentFlags },
-   { "LeftMargin",   FDF_LONG|FDF_RI },
-   { "TopMargin",    FDF_LONG|FDF_RI },
-   { "RightMargin",  FDF_LONG|FDF_RI },
-   { "BottomMargin", FDF_LONG|FDF_RI },
-   { "FontSize",     FDF_LONG|FDF_RW, NULL, SET_FontSize },
-   { "PageHeight",   FDF_LONG|FDF_R, NULL, NULL },
-   { "BorderEdge",   FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clDocumentBorderEdge },
-   { "LineHeight",   FDF_LONG|FDF_R },
+   { "PageHeight",   FDF_LONG|FDF_R },
    { "Error",        FDF_LONG|FDF_R },
-   { "FontColour",   FDF_RGB|FDF_RW },
-   { "Highlight",    FDF_RGB|FDF_RW },
-   { "Background",   FDF_RGB|FDF_RW },
-   { "CursorColour", FDF_RGB|FDF_RW },
-   { "LinkColour",   FDF_RGB|FDF_RW },
-   { "VLinkColour",  FDF_RGB|FDF_RW },
-   { "SelectColour", FDF_RGB|FDF_RW },
-   { "Border",       FDF_RGB|FDF_RW },
    // Virtual fields
-   { "DefaultScript", FDF_OBJECT|FDF_I,       NULL, SET_DefaultScript },
-   { "EventCallback", FDF_FUNCTIONPTR|FDF_RW, GET_EventCallback, SET_EventCallback },
-   { "Path",         FDF_STRING|FDF_RW,       GET_Path, SET_Path },
-   { "Origin",       FDF_STRING|FDF_RW,       GET_Path, SET_Origin },
-   { "PageWidth",    FDF_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_PageWidth, SET_PageWidth },
-   { "Src",          FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "UpdateLayout", FDF_LONG|FDF_W,     NULL, SET_UpdateLayout },
-   { "WorkingPath",  FDF_STRING|FDF_R,     GET_WorkingPath, NULL },
+   { "ClientScript",  FDF_OBJECT|FDF_I,        NULL, SET_ClientScript },
+   { "EventCallback", FDF_FUNCTIONPTR|FDF_RW,  GET_EventCallback, SET_EventCallback },
+   { "Path",          FDF_STRING|FDF_RW,       GET_Path, SET_Path },
+   { "Origin",        FDF_STRING|FDF_RW,       GET_Path, SET_Origin },
+   { "PageWidth",     FDF_UNIT|FDF_LONG|FDF_SCALED|FDF_RW, GET_PageWidth, SET_PageWidth },
+   { "Pretext",       FDF_STRING|FDF_W,        NULL, SET_Pretext },
+   { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
+   { "WorkingPath",   FDF_STRING|FDF_R,        GET_WorkingPath, NULL },
    END_FIELD
 };

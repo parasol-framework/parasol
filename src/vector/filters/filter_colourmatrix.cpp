@@ -172,7 +172,7 @@ public:
    }
 
    void rotateHue(DOUBLE degrees) {
-      if (!initHue()) {
+      if (initHue() IS ERR::Okay) {
          apply(preHue->matrix);
          rotateBlue(degrees);
          apply(postHue->matrix);
@@ -285,14 +285,14 @@ public:
       values[3] = a;
    }
 
-   ERROR initHue() {
+   ERR initHue() {
       const DOUBLE greenRotation = 39.182655;
       UBYTE init = false;
 
       if (!init) {
          preHue = new (std::nothrow) ColourMatrix();
          postHue = new (std::nothrow) ColourMatrix();
-         if ((!preHue) or (!postHue)) return ERR_AllocMemory;
+         if ((!preHue) or (!postHue)) return ERR::AllocMemory;
 
          preHue->rotateRed(45);
          preHue->rotateGreen(-greenRotation);
@@ -311,7 +311,7 @@ public:
 
          init = true;
       }
-      return ERR_Okay;
+      return ERR::Okay;
    }
 };
 
@@ -319,7 +319,7 @@ public:
 
 class extColourFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_COLOURFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::COLOURFX;
    static constexpr CSTRING CLASS_NAME = "ColourFX";
    using create = pf::Create<extColourFX>;
 
@@ -335,10 +335,10 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
+static ERR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
 {
-   if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
-   if (!Self->Matrix) return ERR_Failed;
+   if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
+   if (!Self->Matrix) return ERR::Failed;
 
    const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
    const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
@@ -348,7 +348,7 @@ static ERROR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
    ColourMatrix &matrix = *Self->Matrix;
 
    objBitmap *inBmp;
-   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
+   if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
 
    auto out_line = Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth);
    auto in_line  = inBmp->Data + (inBmp->Clip.Left<<2) + (inBmp->Clip.Top * inBmp->LineWidth);
@@ -389,24 +389,24 @@ static ERROR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
       in_line += inBmp->LineWidth;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR COLOURFX_Free(extColourFX *Self, APTR Void)
+static ERR COLOURFX_Free(extColourFX *Self)
 {
    if (Self->Matrix) { delete Self->Matrix; Self->Matrix = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR COLOURFX_Init(extColourFX *Self, APTR Void)
+static ERR COLOURFX_Init(extColourFX *Self)
 {
    pf::Log log;
 
-   if (Self->SourceType IS VSF::NIL) return log.warning(ERR_UndefinedField);
+   if (Self->SourceType IS VSF::NIL) return log.warning(ERR::UndefinedField);
 
    // If a special colour mode was selected, convert the provided value(s) to the matrix format.
 
@@ -462,22 +462,22 @@ static ERROR COLOURFX_Init(extColourFX *Self, APTR Void)
          break;
    }
 
-   if (!matrix) return log.warning(ERR_AllocMemory);
+   if (!matrix) return log.warning(ERR::AllocMemory);
    else Self->Matrix = matrix;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR COLOURFX_NewObject(extColourFX *Self, APTR Void)
+static ERR COLOURFX_NewObject(extColourFX *Self)
 {
    // Configure identity matrix
    Self->Values[0] = 1;
    Self->Values[6] = 1;
    Self->Values[12] = 1;
    Self->Values[18] = 1;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -488,16 +488,16 @@ Lookup: CM
 
 *********************************************************************************************************************/
 
-static ERROR COLOURFX_GET_Mode(extColourFX *Self, CM *Value)
+static ERR COLOURFX_GET_Mode(extColourFX *Self, CM *Value)
 {
    *Value = Self->Mode;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR COLOURFX_SET_Mode(extColourFX *Self, CM Value)
+static ERR COLOURFX_SET_Mode(extColourFX *Self, CM Value)
 {
    Self->Mode = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -512,19 +512,19 @@ When values are not defined, they default to 0.
 
 *********************************************************************************************************************/
 
-static ERROR COLOURFX_GET_Values(extColourFX *Self, DOUBLE **Array, LONG *Elements)
+static ERR COLOURFX_GET_Values(extColourFX *Self, DOUBLE **Array, LONG *Elements)
 {
    *Array = Self->Values;
    *Elements = Self->TotalValues;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR COLOURFX_SET_Values(extColourFX *Self, DOUBLE *Array, LONG Elements)
+static ERR COLOURFX_SET_Values(extColourFX *Self, DOUBLE *Array, LONG Elements)
 {
-   if (Elements > ARRAYSIZE(Self->Values)) return ERR_InvalidValue;
+   if (Elements > ARRAYSIZE(Self->Values)) return ERR::InvalidValue;
    if (Array) CopyMemory(Array, Self->Values, Elements * sizeof(DOUBLE));
    ClearMemory(Self->Values + Elements, (ARRAYSIZE(Self->Values) - Elements) * sizeof(DOUBLE));
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -535,14 +535,14 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR COLOURFX_GET_XMLDef(extColourFX *Self, STRING *Value)
+static ERR COLOURFX_GET_XMLDef(extColourFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
    stream << "feColorMatrix";
 
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -571,11 +571,11 @@ static const FieldArray clColourFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_colourfx(void)
+ERR init_colourfx(void)
 {
    clColourFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_COLOURFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::COLOURFX),
       fl::Name("ColourFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clColourFXActions),
@@ -583,5 +583,5 @@ ERROR init_colourfx(void)
       fl::Size(sizeof(extColourFX)),
       fl::Path(MOD_PATH));
 
-   return clColourFX ? ERR_Okay : ERR_AddClass;
+   return clColourFX ? ERR::Okay : ERR::AddClass;
 }

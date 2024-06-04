@@ -147,12 +147,6 @@ end
 function testSorting()
    local cfg = newConfig()
 
-   local err = cfg.acSort()
-   assert(err == ERR_Okay, 'Sort() returned ' .. mSys.GetErrorMsg(err))
-
-   local err, groupName = cfg.mtGetGroupFromIndex(0)
-   assert(groupName == 'Alpha', 'First group is incorrect, returned ' .. groupName)
-
    local err = cfg.mtSortByKey('Sort', true)
    assert(err == ERR_Okay, 'SortByKey() returned ' .. mSys.GetErrorMsg(err))
 
@@ -193,8 +187,11 @@ Styles = Bold,Bold Italic,Italic,Regular
 
       assert(buf:len() == expected_output:len(), 'Wrote ' .. file.size .. ' bytes, expected ' .. expected_output:len())
 
-      local match = mSys.StrCompare(buf, expected_output, 0, STR_MATCH_CASE)
-      assert(match == ERR_Okay, 'Written output is invalid:\n---\n' .. buf .. '---\n' .. expected_output .. '---\n')
+      for i=1,buf:len() do
+         if (buf:byte(i) != expected_output:byte(i)) then
+            error('Written output is invalid:\n---\n' .. buf .. '---\n' .. expected_output .. '---\n')
+         end
+      end
    end
 end
 

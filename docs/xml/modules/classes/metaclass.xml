@@ -12,11 +12,12 @@
     <idstring>ID_METACLASS</idstring>
     <category>System</category>
     <include>modules/metaclass.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
-<p>The MetaClass is at the root of the Core's object oriented design and is responsible for managing the construction of new classes.  All classes that are created within the system at run-time are represented by a MetaClass object.  Each MetaClass object can be inspected to discover detailed information about the class that has been declared.  Most of the interesting structural data can be gleaned from the <field>Fields</field> array.</p>
-<p>A number of functions are available in the Core for the purpose of class management.  The Core maintains its own list of MetaClass objects, which you can search by calling the <function module="Core">FindClass</function> function.  The <function module="Core">CheckAction</function> function provides a way of checking if a particular pre-defined action is supported by a class.</p>
-<p>Classes are almost always encapsulated by shared modules, although it is possible to create private classes inside executable programs.  For information on the creation of classes, refer to the Class Development Guide for a complete run-down on class development.</p></description>
+<p>The MetaClass is responsible for managing the construction of new classes.  Each MetaClass object remains active for the lifetime of the running program, and provides the benefit of run-time introspection so that detailed class information can be retrieved at any time.  This enables scripting languages such as Fluid to interact with all class types without needing active knowledge of their capabilities.</p>
+<p>A number of additional functions are available in the Core for the purpose of class management and introspection. <function>FindClass</function> allows all registered classes to be scanned.  <function>CheckAction</function> verifies if a specific action is supported by a class.  <function>FindField</function> confirms if a specific field is declared in the class specification.</p>
+<p>Classes are typically declared in modules, but if a class is intended to be private for an executable then declaring it within the application code is feasible also.</p>
+<p>Further discussion on classes and their technical aspects can be found in the Parasol Wiki.</p></description>
     <source>
       <file path="../classes/">class_metaclass.cpp</file>
     </source>
@@ -26,15 +27,15 @@
     <method>
       <name>FindField</name>
       <comment>Search a class definition for a specific field.</comment>
-      <prototype>ERROR mcFindField(OBJECTPTR Object, LONG ID, struct Field ** Field, objMetaClass ** Source)</prototype>
+      <prototype>ERR mc::FindField(OBJECTPTR Object, LONG ID, struct Field ** Field, objMetaClass ** Source)</prototype>
       <input>
-        <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <function module="Core">StrHash</function> function.</param>
-        <param type="struct Field **" name="Field">Pointer to the field if discovered, otherwise NULL.</param>
-        <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the field (which can match the caller), or NULL if the field was not found.</param>
+        <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <code>strihash()</code> function.</param>
+        <param type="struct Field **" name="Field">Pointer to the <st>Field</st> if discovered, otherwise <code>NULL</code>.</param>
+        <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the <code>Field</code> (which can match the caller), or <code>NULL</code> if the field was not found.</param>
       </input>
       <description>
-<p>This method checks if a class has defined a given field by scanning its blueprint for a matching ID.</p>
-<p>If the field is present in an integral class, a reference to that class will be returned in the Source parameter.</p>
+<p>This method checks if a class has defined a given field by scanning its blueprint for a matching <code>ID</code>.  If found, a direct pointer to the <code>Field</code> struct will be returned to the client.</p>
+<p>In some clases the field might not be present in the main class spec, but does appear in an integral class.  In that case, a reference to the class will be returned in the <code>Source</code> parameter.</p>
       </description>
     </method>
 
@@ -48,7 +49,7 @@
       <type>APTR []</type>
       <description>
 <p>This field retrieves the internal action table of a class. The action table is arranged into a jump table of action routines, with each routine pointing directly to the object support functions.  The size of the jump table is defined by the global constant <code>AC_END</code>.  The table is sorted by action ID.</p>
-<p>It is possible to check if an action is supported by a class by looking up its index within the ActionTable, for example <code>Routine[AC_Read]</code>.  Calling an action routine directly is an illegal operation unless A) The call is made from an action support function in a class module and B) Special circumstances allow for such a call, as documented in the Action Support Guide.</p>
+<p>It is possible to check if an action is supported by a class by looking up its index within the ActionTable, for example <code>Routine[AC_Read]</code>.  Calling an action routine directly from client code is an illegal operation.</p>
       </description>
     </field>
 
@@ -58,8 +59,9 @@
       <access write="I">Init</access>
       <type>APTR</type>
       <description>
-<p>It is common practice when developing classes to write code for actions that will enhance class functionality. Action support is defined by listing a series of action ID's paired with customised routines.  The list will be copied to a jump table that is used internally.  After this operation, the original action list will serve no further purpose.</p>
-<p>The following example shows an action list array borrowed from the <class name="Picture">Picture</class> class:</p>
+<p>Action routines are associated with a new class by referring to a list of <st>ActionArray</st> items in this field. Each provided action ID must be paired with its associated routine.</p>
+<p>Internally, the provided list is copied to the <fl>ActionTable</fl> and the original values will serve no further purpose.</p>
+<p>The following example shows a list of <st>ActionArray</st> structures borrowed from the <class name="Picture">Picture</class> class.  Note that such lists can also be auto-generated using our IDL scripts - an approach that we strongly recommend.</p>
 <pre>ActionArray clActions[] = {
    { AC_Free,          PIC_Free },
    { AC_NewObject,     PIC_NewObject },
@@ -72,7 +74,7 @@
    { 0, NULL }
 };
 </pre>
-<p>Never define method ID's in an action list - the <field>Methods</field> field is provided for this purpose.</p>
+<p>Note: Never refer to method ID's in an action list - the <fl>Methods</fl> field is provided for this purpose.</p>
       </description>
     </field>
 
@@ -82,7 +84,8 @@
       <access read="R" write="I">Read/Init</access>
       <type>CLASSID</type>
       <description>
-<p>Prior to the initialisation of a MetaClass object, this field must be set to the base class ID that the class will represent.  Class ID's are generated as a hash from the class <field>Name</field>, so if this field is undefined then it is generated from the Name automatically.</p>
+<p>The BaseClassID must always be set prior to the initialisation of a new MetaClass object unless <fl>ClassName</fl> is considered sufficient.  If the BaseClassID is zero then the hash of <fl>ClassName</fl> is computed and set as the value of BaseClassID.</p>
+<p>When defining a sub-class, it is required that the BaseClassID refers to the class that is being supported.</p>
       </description>
     </field>
 
@@ -103,7 +106,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>CLASSID</type>
       <description>
-<p>The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined to be a sub-class.  The ClassID must be a value that is hashed from the class <field>Name</field> using <function module="Core">StrHash</function>.</p>
+<p>The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined to be a sub-class.  The ClassID value always reflects the <code>strihash()</code> computation of the <fl>ClassName</fl>, and is automatically set on initialisation if not already set by the client.</p>
       </description>
     </field>
 
@@ -123,8 +126,8 @@
       <access read="R" write="I">Read/Init</access>
       <type>DOUBLE</type>
       <description>
-<p>This field value must reflect the version of the class structure.  Legal version numbers start from 1.0 and ascend.  Revision numbers can be used to indicate bug-fixes or very minor changes.</p>
-<p>If declaring a sub-class then this value can be 0, but base classes must set a value here.</p>
+<p>This field value must reflect the version of the class structure.  Legal version numbers start from 1.0 and ascend. Revision numbers can be used to indicate bug-fixes or very minor changes.</p>
+<p>If declaring a sub-class then this value can be <code>0</code>, but base classes must set a value here.</p>
       </description>
     </field>
 
@@ -140,12 +143,12 @@
 
     <field>
       <name>Fields</name>
-      <comment>Points to a field array that describes the class' object structure.</comment>
+      <comment>Points to a <st>FieldArray</st> that describes the class' object structure.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>const struct FieldArray *</type>
       <description>
-<p>This field points to an array that describes the structural arrangement of the objects that will be generated from the class.  If creating a base class then it must be provided, while sub-classes will inherit this array from their base.</p>
-<p>The Class Development Guide has a section devoted to the configuration of this array. Please read the guide for more information.</p>
+<p>This field points to an array that describes the structure of objects that will be generated for this class.  It is compulsory that base classes define this array.  Sub-classes will inherit the structure of their base, but they may set Fields with additional virtual fields if desired.</p>
+<p>Refer to the Parasol Wiki on class development for more information.</p>
       </description>
     </field>
 
@@ -155,7 +158,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>CSTRING</type>
       <description>
-<p>This field allows you to specify a description of the class' file type, if the class is designed to be file related. This setting can be important, as it helps to distinguish your class from the other file based classes.  Always make sure that your file description is short, descriptive and unique.  A file description such as "JPEG" is not acceptable, but "JPEG Picture" would be appropriate.</p>
+<p>This field allows you to specify a description of the class' file type, if the class is designed to be file related. This setting can be important, as it helps to distinguish your class from the other file based classes.  Always make sure that your file description is short, descriptive and unique.  A file description such as <code>JPEG</code> is not acceptable, but <code>JPEG Picture</code> would be appropriate.</p>
       </description>
     </field>
 
@@ -210,8 +213,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRUCT []</type>
       <description>
-<p>If a class design will include support for methods, create a MethodEntry and set this field prior to initialisation. A method array provides information on each method's ID, name, arguments, and structure size.</p>
-<p>The Class Development Guide has a section devoted to method configuration.  Please read the guide for further information.</p>
+<p>If a class design will include support for methods, create a MethodEntry list and set this field prior to initialisation.  The array must provide information on each method's ID, name, parameters, and structure size.</p>
+<p>Note that method lists can be auto-generated using our IDL scripts - an approach that we strongly recommend.</p>
       </description>
     </field>
 
@@ -223,12 +226,23 @@
     </field>
 
     <field>
+      <name>Objects</name>
+      <comment>Returns an allocated list of all objects that belong to this class.</comment>
+      <access read="G">Get</access>
+      <type>LONG []</type>
+      <description>
+<p>This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
+<p>The resulting array must be terminated with <function>FreeResource</function> after use.</p>
+      </description>
+    </field>
+
+    <field>
       <name>OpenCount</name>
       <comment>The total number of active objects that are linked back to the MetaClass.</comment>
       <access read="R">Read</access>
       <type>INT</type>
       <description>
-<p>Reading this field will reveal how many objects are currently using the class.  This figure will fluctuate over time as new objects are created and old ones are destroyed.  When the OpenCount reaches zero, the system may flush the <class name="Module">Module</class> that the class is related to, so long as no more programs are using it or any other classes created by the module.</p>
+<p>This field reveals the total number of objects that reference the class.  This figure will fluctuate over time as new objects are created and old ones are destroyed.  When the OpenCount reaches zero, the Core may flush the <class name="Module">Module</class> that the class is related to, so long as no more programs are using it or any other classes created by the module.</p>
       </description>
     </field>
 
@@ -239,17 +253,6 @@
       <type>CSTRING</type>
       <description>
 <p>The Path field must be set on initialisation and refers to the default location of the class' module binary, for example <code>modules:display</code>. For reasons of platform portability, the file extension must not be specified at the end of the file name.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>PrivateObjects</name>
-      <comment>Returns an allocated list of all objects that belong to this class.</comment>
-      <access read="G">Get</access>
-      <type>LONG []</type>
-      <description>
-<p>This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
-<p>The resulting array must be terminated with <function module="Core">FreeResource</function> after use.</p>
       </description>
     </field>
 
@@ -277,42 +280,45 @@
       <const name="AUDIO">Audio classes interface with audio hardware and drivers for audio playback and recording purposes.</const>
       <const name="COMMAND">Command classes perform specific procedures, like copying or moving a file, managing volumes or executing a program.</const>
       <const name="DATA">Data classes parse, query and manipulate data.</const>
-      <const name="DRAWABLE">Drawable classes provide graphical areas that are designed to be drawn to.</const>
-      <const name="EFFECT">Effect classes draw graphics and/or play audio for non-productive demonstration purposes.</const>
       <const name="FILESYSTEM">FileSystem classes are based on file management and interaction with file based data.</const>
-      <const name="GRAPHICS">Graphics classes provide graphical manipulation and drawing services to developers.</const>
+      <const name="GRAPHICS">Graphics classes provide graphics management and drawing services.</const>
       <const name="GUI">GUI classes are used in the development of graphical user interfaces.</const>
-      <const name="IO">IO classes manage hardware and software based input and output.</const>
+      <const name="IO">I/O classes manage hardware and software based input and output.</const>
       <const name="MISC">Miscellaneous classes do not fit into any of the other available categories.</const>
-      <const name="MULTIMEDIA"/>
-      <const name="NETWORK">Network classes interface with network drivers to simplify network communications for the developer.</const>
+      <const name="MULTIMEDIA">Classes that represent more than one media type, e.g. video files.</const>
+      <const name="NETWORK">Network classes interface with system drivers to simplify network communications.</const>
       <const name="SYSTEM">System classes are designed to provide low-level services related to system management.</const>
-      <const name="TOOL">Tool classes are focussed on providing interactive services to the user.</const>
+      <const name="TOOL">Tools provide interactive services for the user.</const>
     </constants>
 
     <constants lookup="CLF" comment="Flags for the MetaClass.">
-      <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).</const>
-      <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
+      <const name="INHERIT_LOCAL">Inherit the functionality of local objects defined in the class spec.</const>
+      <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (<function module="Core">SetOwner</function> will not work either).</const>
     </constants>
 
   </types>
   <structs>
+    <struct name="ActionArray">
+      <field name="Routine" type="APTR">Pointer to the function entry point</field>
+      <field name="ActionCode" type="LONG">Action identifier</field>
+    </struct>
+
     <struct name="Field" comment="Used to describe the public fields of a class.">
       <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
-      <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
+      <field name="GetValue" type="FUNCTION *" prototype="ERR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
       <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
-      <field name="WriteValue" type="FUNCTION *" prototype="ERROR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
-      <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
-      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
+      <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
+      <field name="Name" type="CSTRING">The English name for the field, e.g. <code>Width</code></field>
+      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. <code>FID_Width</code></field>
       <field name="Offset" type="UWORD">Field offset within the object</field>
       <field name="Index" type="UWORD">Field array index</field>
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
-      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
-      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
+      <field name="Name" type="CSTRING">The name of the field, e.g. <code>Width</code></field>
+      <field name="GetField" type="APTR"><code>void GetField(*Object, APTR Result);</code></field>
+      <field name="SetField" type="APTR"><code>ERR SetField(*Object, APTR Value);</code></field>
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="19 19 34 39" preserveAspectRatio="xMidyMid meet">
-	<path fill="#000000" fill-opacity="1" d="M 53,19L 19,19L 19,25L 53,25L 53,19 Z M 49,52L 19,52L 19,58L 49,58L 49,52 Z M 38,41L 19,41L 19,47L 38,47L 38,41 Z M 44,30L 19,30L 19,36L 44,36L 44,30 Z "/>
+	<path d="M 53,19L 19,19L 19,25L 53,25L 53,19 Z M 49,52L 19,52L 19,58L 49,58L 49,52 Z M 38,41L 19,41L 19,47L 38,47L 38,41 Z M 44,30L 19,30L 19,36L 44,36L 44,30 Z "/>
 </svg>

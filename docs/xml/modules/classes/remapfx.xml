@@ -12,9 +12,9 @@
     <idstring>ID_REMAPFX</idstring>
     <category>Graphics</category>
     <include>modules/remapfx.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
-<p>The RemapFX class provides an implementation of the feComponentTransfer functionality in SVG.</p>
+<p>The RemapFX class provides an implementation of the <code>feComponentTransfer</code> functionality in SVG.</p>
 <p>Internally the pixel rendering process is implemented using pixel lookup tables.  As such this particular effect carries minimal overhead compared to most other effect classes.</p></description>
     <source>
       <file path="filters/">filter_remap.cpp</file>
@@ -25,6 +25,13 @@
     <action>
       <name>Draw</name>
       <comment>Render the effect to the target bitmap.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
     </action>
 
   </actions>
@@ -33,11 +40,11 @@
     <method>
       <name>SelectDiscrete</name>
       <comment>Apply the discrete function to a pixel component.</comment>
-      <prototype>ERROR rfSelectDiscrete(OBJECTPTR Object, CMP Component, DOUBLE * Values, LONG Size)</prototype>
+      <prototype>ERR rf::SelectDiscrete(OBJECTPTR Object, CMP Component, DOUBLE * Values, LONG Size)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the discrete function must be applied.</param>
         <param type="DOUBLE *" name="Values">A list of values for the discrete function.</param>
-        <param type="LONG" name="Size">Total number of elements in the value list.</param>
+        <param type="LONG" name="Size">Total number of elements in the <code>Values</code> list.</param>
       </input>
       <description>
 <p>This method will apply the table function to a selected RGBA pixel component.  A list of values is required with a minimum size of 1.</p>
@@ -47,7 +54,7 @@
     <method>
       <name>SelectGamma</name>
       <comment>Apply the gamma function to a pixel component.</comment>
-      <prototype>ERROR rfSelectGamma(OBJECTPTR Object, CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent)</prototype>
+      <prototype>ERR rf::SelectGamma(OBJECTPTR Object, CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the gamma function must be applied.</param>
         <param type="DOUBLE" name="Amplitude">The amplitude of the gamma function.</param>
@@ -62,7 +69,7 @@
     <method>
       <name>SelectIdentity</name>
       <comment>Apply the identity function to a pixel component.</comment>
-      <prototype>ERROR rfSelectIdentity(OBJECTPTR Object, CMP Component)</prototype>
+      <prototype>ERR rf::SelectIdentity(OBJECTPTR Object, CMP Component)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the identity function must be applied.</param>
       </input>
@@ -74,7 +81,7 @@
     <method>
       <name>SelectInvert</name>
       <comment>Apply the invert function to a pixel component.</comment>
-      <prototype>ERROR rfSelectInvert(OBJECTPTR Object, CMP Component)</prototype>
+      <prototype>ERR rf::SelectInvert(OBJECTPTR Object, CMP Component)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the function must be applied.</param>
       </input>
@@ -87,7 +94,7 @@
     <method>
       <name>SelectLinear</name>
       <comment>Apply the linear function to a pixel component.</comment>
-      <prototype>ERROR rfSelectLinear(OBJECTPTR Object, CMP Component, DOUBLE Slope, DOUBLE Intercept)</prototype>
+      <prototype>ERR rf::SelectLinear(OBJECTPTR Object, CMP Component, DOUBLE Slope, DOUBLE Intercept)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the function must be applied.</param>
         <param type="DOUBLE" name="Slope">The slope of the linear function.</param>
@@ -101,7 +108,7 @@
     <method>
       <name>SelectMask</name>
       <comment>Apply the mask function to a pixel component.</comment>
-      <prototype>ERROR rfSelectMask(OBJECTPTR Object, CMP Component, LONG Mask)</prototype>
+      <prototype>ERR rf::SelectMask(OBJECTPTR Object, CMP Component, LONG Mask)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the function must be applied.</param>
         <param type="LONG" name="Mask">The bit mask to be AND'd with each value.</param>
@@ -115,7 +122,7 @@
     <method>
       <name>SelectTable</name>
       <comment>Apply the table function to a pixel component.</comment>
-      <prototype>ERROR rfSelectTable(OBJECTPTR Object, CMP Component, DOUBLE * Values, LONG Size)</prototype>
+      <prototype>ERR rf::SelectTable(OBJECTPTR Object, CMP Component, DOUBLE * Values, LONG Size)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the table function must be applied.</param>
         <param type="DOUBLE *" name="Values">A list of values for the table function.</param>

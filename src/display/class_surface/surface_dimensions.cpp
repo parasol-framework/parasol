@@ -11,34 +11,32 @@ It is possible to set this field, but only after initialisation of the surface o
 
 *********************************************************************************************************************/
 
-static ERROR GET_AbsX(extSurface *Self, LONG *Value)
+static ERR GET_AbsX(extSurface *Self, LONG *Value)
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-   LONG i;
-   if ((i = find_surface_list(Self)) != -1) {
+   if (auto i = find_surface_list(Self); i != -1) {
       *Value = glSurfaces[i].Left;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_Search;
+   else return ERR::Search;
 }
 
-static ERROR SET_AbsX(extSurface *Self, LONG Value)
+static ERR SET_AbsX(extSurface *Self, LONG Value)
 {
    pf::Log log;
 
    if (Self->initialised()) {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      LONG parent, x;
-      if ((parent = find_parent_list(glSurfaces, Self)) != -1) {
-         x = Value - glSurfaces[parent].Left;
+      if (auto parent = find_parent_list(glSurfaces, Self); parent != -1) {
+         LONG x = Value - glSurfaces[parent].Left;
          move_layer(Self, x, Self->Y);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_Search);
+      else return log.warning(ERR::Search);
    }
-   else return log.warning(ERR_NotInitialised);
+   else return log.warning(ERR::NotInitialised);
 }
 
 /*********************************************************************************************************************
@@ -53,35 +51,33 @@ It is possible to set this field, but only after initialisation of the surface o
 
 *********************************************************************************************************************/
 
-static ERROR GET_AbsY(extSurface *Self, LONG *Value)
+static ERR GET_AbsY(extSurface *Self, LONG *Value)
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-   LONG i;
-   if ((i = find_surface_list(Self)) != -1) {
+   if (auto i = find_surface_list(Self); i != -1) {
       *Value = glSurfaces[i].Top;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_Search;
+   else return ERR::Search;
 }
 
-static ERROR SET_AbsY(extSurface *Self, LONG Value)
+static ERR SET_AbsY(extSurface *Self, LONG Value)
 {
    pf::Log log;
 
    if (Self->initialised()) {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      LONG parent, y;
-      if ((parent = find_parent_list(glSurfaces, Self)) != -1) {
-         y = Value - glSurfaces[parent].Top;
+      if (auto parent = find_parent_list(glSurfaces, Self); parent != -1) {
+         LONG y = Value - glSurfaces[parent].Top;
          move_layer(Self, Self->X, y);
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
-      return log.warning(ERR_Search);
+      return log.warning(ERR::Search);
    }
-   else return log.warning(ERR_NotInitialised);
+   else return log.warning(ERR::NotInitialised);
 }
 
 /*********************************************************************************************************************
@@ -95,14 +91,14 @@ by existing dimension fields.  Note that setting the alignment overrides any set
 Valid alignment flags are `BOTTOM`, `CENTER/MIDDLE`, `LEFT`, `HORIZONTAL`, `RIGHT`, `TOP`, `VERTICAL`.
 
 -FIELD-
-Bottom: Returns the bottom-most coordinate of a surface object (Y + Height).
+Bottom: Returns the bottom-most coordinate of a surface object, `Y + Height`.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Bottom(extSurface *Self, LONG *Bottom)
+static ERR GET_Bottom(extSurface *Self, LONG *Bottom)
 {
    *Bottom = Self->Y + Self->Height;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -114,15 +110,15 @@ A client can prevent a surface object from moving beyond a given point at the bo
 If for example you were to set the BottomLimit to 5, then any attempt to move the surface object into or beyond the 5
 units at the bottom of its container would fail.
 
-Limits only apply to movement, as induced through the Move() action.  This means that limits can be over-ridden by
+Limits only apply to movement, as induced through the #Move() action.  This means that limits can be over-ridden by
 setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
 
-static ERROR SET_BottomLimit(extSurface *Self, LONG Value)
+static ERR SET_BottomLimit(extSurface *Self, LONG Value)
 {
    Self->BottomLimit = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -132,18 +128,18 @@ BottomMargin: Manipulates the bottom margin of a surface object.
 
 The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin
 values have no significant meaning or effect on a surface object itself, but they are often used by other objects and
-can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space
+can be helpful in interface construction.  For instance, the Window script uses margins to indicate the space
 available for placing graphics and other surface objects inside of it.
 
 By default, all margins are set to zero when a new surface object is created.
 
 *********************************************************************************************************************/
 
-static ERROR SET_BottomMargin(extSurface *Self, LONG Value)
+static ERR SET_BottomMargin(extSurface *Self, LONG Value)
 {
    if (Value < 0) Self->BottomMargin = -Value;
    else Self->BottomMargin = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -157,78 +153,80 @@ are in use, and whether the values are fixed or relative.
 
 It is strongly recommended that this field is never set manually, because the flags are automatically managed for the
 client when setting fields such as #X and #Width.  If circumstances require manual configuration, take care to ensure
-that the flags do not conflict.  For instance, `FIXED_X` and `RELATIVE_X` cannot be paired, nor could `FIXED_X`,
+that the flags do not conflict.  For instance, `FIXED_X` and `SCALED_X` cannot be paired, nor could `FIXED_X`,
 `FIXED_XOFFSET` and `FIXED_WIDTH` simultaneously.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Dimensions(extSurface *Self, LONG Value)
+static ERR SET_Dimensions(extSurface *Self, DMF Value)
 {
    SURFACEINFO *parent;
+   const auto HORIZONTAL_FLAGS = DMF::FIXED_WIDTH|DMF::SCALED_WIDTH|DMF::FIXED_X_OFFSET|DMF::SCALED_X_OFFSET|DMF::FIXED_X|DMF::SCALED_X;
+   const auto VERTICAL_FLAGS   = DMF::FIXED_HEIGHT|DMF::SCALED_HEIGHT|DMF::FIXED_Y_OFFSET|DMF::SCALED_Y_OFFSET|DMF::FIXED_Y|DMF::SCALED_Y;
 
-   if (!gfxGetSurfaceInfo(Self->ParentID, &parent)) {
-      if (Value & DMF_Y) {
-         if ((Value & DMF_HEIGHT) or (Value & DMF_Y_OFFSET)) {
-            Self->Dimensions &= ~DMF_VERTICAL_FLAGS;
-            Self->Dimensions |= Value & DMF_VERTICAL_FLAGS;
+   if (gfx::GetSurfaceInfo(Self->ParentID, &parent) IS ERR::Okay) {
+      if (dmf::hasAnyY(Value)) {
+         if (dmf::hasAnyHeight(Value) or dmf::hasAnyYOffset(Value)) {
+            Self->Dimensions &= ~VERTICAL_FLAGS;
+            Self->Dimensions |= Value & VERTICAL_FLAGS;
          }
       }
-      else if ((Value & DMF_HEIGHT) and (Value & DMF_Y_OFFSET)) {
-         Self->Dimensions &= ~DMF_VERTICAL_FLAGS;
-         Self->Dimensions |= Value & DMF_VERTICAL_FLAGS;
+      else if (dmf::hasAnyHeight(Value) and dmf::hasAnyYOffset(Value)) {
+         Self->Dimensions &= ~VERTICAL_FLAGS;
+         Self->Dimensions |= Value & VERTICAL_FLAGS;
       }
 
-      if (Value & DMF_X) {
-         if ((Value & DMF_WIDTH) or (Value & DMF_X_OFFSET)) {
-            Self->Dimensions &= ~DMF_HORIZONTAL_FLAGS;
-            Self->Dimensions |= Value & DMF_HORIZONTAL_FLAGS;
+      if (dmf::hasAnyX(Value)) {
+         if (dmf::hasAnyWidth(Value) or dmf::hasAnyXOffset(Value)) {
+            Self->Dimensions &= ~HORIZONTAL_FLAGS;
+            Self->Dimensions |= Value & HORIZONTAL_FLAGS;
          }
       }
-      else if ((Value & DMF_WIDTH) and (Value & DMF_X_OFFSET)) {
-         Self->Dimensions &= ~DMF_HORIZONTAL_FLAGS;
-         Self->Dimensions |= Value & DMF_HORIZONTAL_FLAGS;
+      else if (dmf::hasAnyWidth(Value) and dmf::hasAnyXOffset(Value)) {
+         Self->Dimensions &= ~HORIZONTAL_FLAGS;
+         Self->Dimensions |= Value & HORIZONTAL_FLAGS;
       }
 
       struct acRedimension resize;
-      if (Self->Dimensions & DMF_FIXED_X) resize.X = Self->X;
-      else if (Self->Dimensions & DMF_RELATIVE_X) resize.X = (parent->Width * F2I(Self->XPercent));
-      else if (Self->Dimensions & DMF_FIXED_X_OFFSET) resize.X = parent->Width - Self->XOffset;
-      else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) resize.X = parent->Width - ((parent->Width * F2I(Self->XOffsetPercent)));
+      if (dmf::hasX(Self->Dimensions)) resize.X = Self->X;
+      else if (dmf::hasScaledX(Self->Dimensions)) resize.X = parent->Width * F2I(Self->XPercent);
+      else if (dmf::hasXOffset(Self->Dimensions)) resize.X = parent->Width - Self->XOffset;
+      else if (dmf::hasScaledXOffset(Self->Dimensions)) resize.X = parent->Width - ((parent->Width * F2I(Self->XOffsetPercent)));
       else resize.X = 0;
 
-      if (Self->Dimensions & DMF_FIXED_Y) resize.Y = Self->Y;
-      else if (Self->Dimensions & DMF_RELATIVE_Y) resize.Y = (parent->Height * F2I(Self->YPercent));
-      else if (Self->Dimensions & DMF_FIXED_Y_OFFSET) resize.Y = parent->Height - Self->YOffset;
-      else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) resize.Y = parent->Height - ((parent->Height * F2I(Self->YOffsetPercent)));
+      if (dmf::hasY(Self->Dimensions)) resize.Y = Self->Y;
+      else if (dmf::hasScaledY(Self->Dimensions)) resize.Y = parent->Height * F2I(Self->YPercent);
+      else if (dmf::hasYOffset(Self->Dimensions)) resize.Y = parent->Height - Self->YOffset;
+      else if (dmf::hasScaledYOffset(Self->Dimensions)) resize.Y = parent->Height - ((parent->Height * F2I(Self->YOffsetPercent)));
       else resize.Y = 0;
 
-      if (Self->Dimensions & DMF_FIXED_WIDTH) resize.Width = Self->Width;
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) resize.Width = (parent->Width * F2I(Self->WidthPercent));
+      if (dmf::hasWidth(Self->Dimensions)) resize.Width = Self->Width;
+      else if (dmf::hasScaledWidth(Self->Dimensions)) resize.Width = parent->Width * F2I(Self->WidthPercent);
       else {
-         if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) resize.Width = parent->Width - (parent->Width * F2I(Self->XOffsetPercent));
+         if (dmf::hasScaledXOffset(Self->Dimensions)) resize.Width = parent->Width - (parent->Width * F2I(Self->XOffsetPercent));
          else resize.Width = parent->Width - Self->XOffset;
 
-         if (Self->Dimensions & DMF_RELATIVE_X) resize.Width = resize.Width - ((parent->Width * F2I(Self->XPercent)));
+         if (dmf::hasScaledX(Self->Dimensions)) resize.Width = resize.Width - ((parent->Width * F2I(Self->XPercent)));
          else resize.Width = resize.Width - Self->X;
       }
 
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) resize.Height = Self->Height;
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) resize.Height = (parent->Height * F2I(Self->HeightPercent));
+      if (dmf::hasHeight(Self->Dimensions)) resize.Height = Self->Height;
+      else if (dmf::hasScaledHeight(Self->Dimensions)) resize.Height = parent->Height * F2I(Self->HeightPercent);
       else {
-         if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) resize.Height = parent->Height - (parent->Height * F2I(Self->YOffsetPercent));
+         if (dmf::hasScaledYOffset(Self->Dimensions)) resize.Height = parent->Height - (parent->Height * F2I(Self->YOffsetPercent));
          else resize.Height = parent->Height - Self->YOffset;
 
-         if (Self->Dimensions & DMF_RELATIVE_Y) resize.Height = resize.Height - ((parent->Height * F2I(Self->YPercent)));
+         if (dmf::hasScaledY(Self->Dimensions)) resize.Height = resize.Height - ((parent->Height * F2I(Self->YPercent)));
          else resize.Height = resize.Height - Self->Y;
       }
 
       resize.Z = 0;
       resize.Depth  = 0;
-      Action(AC_Redimension, Self, &resize);
+      Action(acRedimension::id, Self, &resize);
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_Search;
+   else return ERR::Search;
 }
 
 /*********************************************************************************************************************
@@ -236,92 +234,80 @@ static ERROR SET_Dimensions(extSurface *Self, LONG Value)
 -FIELD-
 Height: Defines the height of a surface object.
 
-The height of a surface object is manipulated through this field, although you can also use the Resize() action, which
-is faster if you need to set both the Width and the Height.  A client can set the Height as a fixed value by default, or as
-a relative value if you set the `FD_PERCENT` marker. Relative heights are always calculated in relationship to a surface
-object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will
-be 160 pixels high.
+The height of a surface object is manipulated through this field.  Alternatively, use the #Resize() action to adjust the
+Width and Height at the same time.  A client can set the Height as a fixed value by default, or as a scaled value in
+conjunction with the `FD_SCALED` flag.  Scaled values are multiplied by the height of their parent container.
 
 Setting the Height while a surface object is on display causes an immediate graphical update to reflect the change.
 Any objects that are within the surface area will be re-drawn and resized as necessary.
 
 If a value less than zero is passed to an initialised surface, the height will be 'turned off' - this is convenient
-for pairing the Y and YOffset fields together for dynamic height adjustment.
+for pairing the #Y and #YOffset fields together for dynamic height adjustment.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Height(extSurface *Self, Variable *Value)
+static ERR GET_Height(extSurface *Self, Unit *Value)
 {
-   if (Value->Type & FD_PERCENTAGE) {
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT) {
-         Value->Double = Self->HeightPercent;
-         Value->Large  = F2I(Self->HeightPercent);
-         return ERR_Okay;
+   if (Value->scaled()) {
+      if (dmf::hasScaledHeight(Self->Dimensions)) {
+         Value->set(Self->HeightPercent);
+         return ERR::Okay;
       }
-      else return ERR_Failed;
+      else return ERR::FieldTypeMismatch;
    }
    else {
-      Value->Double  = Self->Height;
-      Value->Large   = Self->Height;
-      return ERR_Okay;
+      Value->set(Self->Height);
+      return ERR::Okay;
    }
 }
 
-static ERROR SET_Height(extSurface *Self, Variable *Value)
+static ERR SET_Height(extSurface *Self, Unit *Value)
 {
    pf::Log log;
-   DOUBLE value;
 
-   if (Value->Type & FD_DOUBLE)      value = Value->Double;
-   else if (Value->Type & FD_LARGE)  value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
-   else return log.warning(ERR_SetValueNotNumeric);
+   auto value = Value->Value;
 
    if (value <= 0) {
-      if (Self->initialised()) return ERR_InvalidDimension;
+      if (Self->initialised()) return ERR::InvalidDimension;
       else {
-         Self->Dimensions &= ~(DMF_HEIGHT);
-         return ERR_Okay;
+         Self->Dimensions &= ~(DMF::FIXED_HEIGHT|DMF::SCALED_HEIGHT);
+         return ERR::Okay;
       }
    }
    if (value > 0x7fffffff) value = 0x7fffffff;
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->scaled()) {
       if (Self->ParentID) {
-         extSurface *parent;
-         if (!AccessObject(Self->ParentID, 500, &parent)) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->HeightPercent = value;
-            Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
+            Self->Dimensions = (Self->Dimensions & (~DMF::FIXED_HEIGHT)) | DMF::SCALED_HEIGHT;
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height * value, 0, 0, 0, 0, 0);
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return log.warning(ERR::AccessObject);
       }
       else {
          Self->HeightPercent = value;
-         Self->Dimensions    = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
+         Self->Dimensions    = (Self->Dimensions & (~DMF::FIXED_HEIGHT)) | DMF::SCALED_HEIGHT;
       }
    }
    else {
       if (value != Self->Height) resize_layer(Self, Self->X, Self->Y, 0, value, 0, 0, 0, 0, 0);
 
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_HEIGHT) | DMF_FIXED_HEIGHT;
+      Self->Dimensions = (Self->Dimensions & (~DMF::SCALED_HEIGHT)) | DMF::FIXED_HEIGHT;
 
       // If the offset flags are used, adjust the vertical position
 
-      if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) {
-         Variable var;
-         var.Type   = FD_DOUBLE|FD_PERCENTAGE;
-         var.Double = Self->YOffsetPercent;
+      if (dmf::hasScaledYOffset(Self->Dimensions)) {
+         auto var = Unit(Self->YOffsetPercent, FD_SCALED);
          SET_YOffset(Self, &var);
       }
-      else if (Self->Dimensions & DMF_FIXED_Y_OFFSET) {
-         Variable var(Self->YOffset);
+      else if (dmf::hasYOffset(Self->Dimensions)) {
+         Unit var(Self->YOffset);
          SET_YOffset(Self, &var);
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -329,26 +315,26 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
 -FIELD-
 InsideHeight: Defines the amount of space between the vertical margins.
 
-A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the
-result of calculating this formula: `Height - TopMargin - BottomMargin`.
+A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value
+is the result of calculating this formula: `Height - TopMargin - BottomMargin`.
 
-If the TopMargin and BottomMargin fields are not set, the returned value will be equal to the surface object's
+If the #TopMargin and #BottomMargin fields are not set, the returned value will be equal to the surface object's
 height.
 
 *********************************************************************************************************************/
 
-static ERROR GET_InsideHeight(extSurface *Self, LONG *Value)
+static ERR GET_InsideHeight(extSurface *Self, LONG *Value)
 {
    *Value = Self->Height - Self->TopMargin - Self->BottomMargin;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_InsideHeight(extSurface *Self, LONG Value)
+static ERR SET_InsideHeight(extSurface *Self, LONG Value)
 {
    LONG height = Value + Self->TopMargin + Self->BottomMargin;
    if (height < Self->MinHeight) height = Self->MinHeight;
    Self->setHeight(height);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -359,22 +345,22 @@ InsideWidth: Defines the amount of space between the horizontal margins.
 A client can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the
 result of calculating this formula: `Width - LeftMargin - RightMargin`.
 
-If the LeftMargin and RightMargin fields are not set, the returned value will be equal to the surface object's width.
+If the #LeftMargin and #RightMargin fields are not set, the returned value will be equal to the surface object's width.
 
 *********************************************************************************************************************/
 
-static ERROR GET_InsideWidth(extSurface *Self, LONG *Value)
+static ERR GET_InsideWidth(extSurface *Self, LONG *Value)
 {
    *Value = Self->Width - Self->LeftMargin - Self->RightMargin;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_InsideWidth(extSurface *Self, LONG Value)
+static ERR SET_InsideWidth(extSurface *Self, LONG Value)
 {
    LONG width = Value + Self->LeftMargin + Self->RightMargin;
    if (width < Self->MinWidth) width = Self->MinWidth;
    Self->setWidth(width);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -391,10 +377,10 @@ setting the coordinate fields directly.
 
 *********************************************************************************************************************/
 
-static ERROR SET_LeftLimit(extSurface *Self, LONG Value)
+static ERR SET_LeftLimit(extSurface *Self, LONG Value)
 {
    Self->LeftLimit = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -421,22 +407,19 @@ to the inside-height of the surface area, thus the overall maximum height will i
 
 *********************************************************************************************************************/
 
-static ERROR SET_MaxHeight(extSurface *Self, LONG Value)
+static ERR SET_MaxHeight(extSurface *Self, LONG Value)
 {
    Self->MaxHeight = Value;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      struct gfxSizeHints hints = {
-         .MinWidth  = -1,
-         .MinHeight = -1,
-         .MaxWidth  = Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
-         .MaxHeight = Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
-         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
-      };
-      ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
+      pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
+      if (display.granted()) display->sizeHints(-1, -1,
+         Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
+         Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
+         (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -445,30 +428,28 @@ static ERROR SET_MaxHeight(extSurface *Self, LONG Value)
 MaxWidth: Prevents the width of a surface object from exceeding a certain value.
 
 A client can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making
-it impossible to use the Resize() action to extend beyond the width you specify.
+it impossible to use the #Resize() action to extend beyond the width you specify.
 
 It is possible to circumvent the MaxWidth by setting the Width field directly.  Note that the MaxWidth value refers to
-the inside-width of the surface area, thus the overall maximum width will include both the LeftMargin and RightMargin
+the inside-width of the surface area, thus the overall maximum width will include both the #LeftMargin and #RightMargin
 values.
 
 *********************************************************************************************************************/
 
-static ERROR SET_MaxWidth(extSurface *Self, LONG Value)
+static ERR SET_MaxWidth(extSurface *Self, LONG Value)
 {
    Self->MaxWidth = Value;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      struct gfxSizeHints hints = {
-         .MinWidth  = -1,
-         .MinHeight = -1,
-         .MaxWidth  = Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
-         .MaxHeight = Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
-         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
-      };
-      ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
+      if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
+         display->sizeHints(-1, -1,
+            Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
+            Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
+            (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
+      }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -484,23 +465,20 @@ It is possible to circumvent the MinHeight by setting the #Height field directly
 
 *********************************************************************************************************************/
 
-static ERROR SET_MinHeight(extSurface *Self, LONG Value)
+static ERR SET_MinHeight(extSurface *Self, LONG Value)
 {
    Self->MinHeight = Value;
    if (Self->MinHeight < 1) Self->MinHeight = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      struct gfxSizeHints hints = {
-         .MinWidth  = Self->MinWidth + Self->LeftMargin + Self->RightMargin,
-         .MinHeight = Self->MinHeight + Self->TopMargin + Self->BottomMargin,
-         .MaxWidth  = -1,
-         .MaxHeight = -1,
-         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
-      };
-      ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
+      if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
+         display->sizeHints(Self->MinWidth + Self->LeftMargin + Self->RightMargin,
+            Self->MinHeight + Self->TopMargin + Self->BottomMargin,
+            -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
+      }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -509,43 +487,40 @@ static ERROR SET_MinHeight(extSurface *Self, LONG Value)
 MinWidth: Prevents the width of a surface object from shrinking beyond a certain value.
 
 A client can prevent the width of a surface object from shrinking too far by setting this field.  This feature specifically
-affects resizing, making it impossible to use the Resize() action to shrink the width of a surface object to a value
+affects resizing, making it impossible to use the #Resize() action to shrink the width of a surface object to a value
 less than the one you specify.
 
-It is possible to circumvent the MinWidth by setting the Width field directly.
+It is possible to circumvent the MinWidth by setting the #Width field directly.
 
 *********************************************************************************************************************/
 
-static ERROR SET_MinWidth(extSurface *Self, LONG Value)
+static ERR SET_MinWidth(extSurface *Self, LONG Value)
 {
    Self->MinWidth = Value;
    if (Self->MinWidth < 1) Self->MinWidth = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      struct gfxSizeHints hints = {
-         .MinWidth  = Self->MinWidth + Self->LeftMargin + Self->RightMargin,
-         .MinHeight = Self->MinHeight + Self->TopMargin + Self->BottomMargin,
-         .MaxWidth  = -1,
-         .MaxHeight = -1,
-         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
-      };
-      ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
+      if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
+         display->sizeHints(Self->MinWidth + Self->LeftMargin + Self->RightMargin,
+            Self->MinHeight + Self->TopMargin + Self->BottomMargin,
+            -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
+      }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 
 -FIELD-
-Right: Returns the right-most coordinate of a surface object (X + Width).
+Right: Returns the right-most coordinate of a surface object, `X + Width`.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Right(extSurface *Self, LONG *Value)
+static ERR GET_Right(extSurface *Self, LONG *Value)
 {
    *Value = Self->X + Self->Width;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -562,10 +537,10 @@ setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
 
-static ERROR SET_RightLimit(extSurface *Self, LONG Value)
+static ERR SET_RightLimit(extSurface *Self, LONG Value)
 {
    Self->RightLimit = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -582,11 +557,11 @@ By default, all margins are set to zero when a new surface object is created.
 
 *********************************************************************************************************************/
 
-static ERROR SET_RightMargin(extSurface *Self, LONG Value)
+static ERR SET_RightMargin(extSurface *Self, LONG Value)
 {
    if (Value < 0) Self->RightMargin = -Value;
    else Self->RightMargin = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -598,15 +573,15 @@ A client can prevent a surface object from moving beyond a given point at the to
 If for example you were to set the TopLimit to 10, then any attempt to move the surface object into or beyond the 10
 units at the top of its container would fail.
 
-Limits only apply to movement, as induced through the Move() action.  This means that limits can be over-ridden by
+Limits only apply to movement, as induced through the #Move() action.  This means that limits can be over-ridden by
 setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
 
-static ERROR SET_TopLimit(extSurface *Self, LONG Value)
+static ERR SET_TopLimit(extSurface *Self, LONG Value)
 {
    Self->TopLimit = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -624,7 +599,7 @@ By default, all margins are set to zero when a new surface object is created.
 -FIELD-
 VisibleHeight: The visible height of the surface area, relative to its parents.
 
-To determine the visible area of a surface, read the VisibleX, VisibleY, VisibleWidth and VisibleHeight fields.
+To determine the visible area of a surface, read the #VisibleX, #VisibleY, #VisibleWidth and VisibleHeight fields.
 
 The 'visible area' is determined by the position of the surface relative to its parents.  For example, if the surface
 is 100 pixels across and smallest parent is 50 pixels across, the number of pixels visible to the user must be 50
@@ -634,22 +609,22 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERROR GET_VisibleHeight(extSurface *Self, LONG *Value)
+static ERR GET_VisibleHeight(extSurface *Self, LONG *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       WORD i;
-      if ((i = find_surface_list(Self)) IS -1) return ERR_Search;
+      if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
 
       auto clip = glSurfaces[i].area();
       restrict_region_to_parents(glSurfaces, i, clip, false);
       *Value = clip.height();
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
@@ -668,22 +643,22 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERROR GET_VisibleWidth(extSurface *Self, LONG *Value)
+static ERR GET_VisibleWidth(extSurface *Self, LONG *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       WORD i;
-      if ((i = find_surface_list(Self)) IS -1) return ERR_Search;
+      if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
 
       auto clip = glSurfaces[i].area();
       restrict_region_to_parents(glSurfaces, i, clip, false);
       *Value = clip.width();
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
@@ -692,7 +667,7 @@ static ERROR GET_VisibleWidth(extSurface *Self, LONG *Value)
 -FIELD-
 VisibleX: The first visible X coordinate of the surface area, relative to its parents.
 
-To determine the visible area of a surface, read the VisibleX, VisibleY, VisibleWidth and VisibleHeight fields.
+To determine the visible area of a surface, read the VisibleX, #VisibleY, #VisibleWidth and #VisibleHeight fields.
 
 The 'visible area' is determined by the position of the surface relative to its parents.  For example, if the surface
 is 100 pixels across and smallest parent is 50 pixels across, the number of pixels visible to the user must be 50
@@ -702,23 +677,23 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERROR GET_VisibleX(extSurface *Self, LONG *Value)
+static ERR GET_VisibleX(extSurface *Self, LONG *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       WORD i;
-      if ((i = find_surface_list(Self)) IS -1) return ERR_Search;
+      if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
 
       auto clip = glSurfaces[i].area();
       restrict_region_to_parents(glSurfaces, i, clip, false);
 
       *Value = clip.Left - glSurfaces[i].Left;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
@@ -727,7 +702,7 @@ static ERROR GET_VisibleX(extSurface *Self, LONG *Value)
 -FIELD-
 VisibleY: The first visible Y coordinate of the surface area, relative to its parents.
 
-To determine the visible area of a surface, read the VisibleX, VisibleY, VisibleWidth and VisibleHeight fields.
+To determine the visible area of a surface, read the #VisibleX, VisibleY, #VisibleWidth and #VisibleHeight fields.
 
 The 'visible area' is determined by the position of the surface relative to its parents.  For example, if the surface
 is 100 pixels across and smallest parent is 50 pixels across, the number of pixels visible to the user must be 50
@@ -737,22 +712,22 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERROR GET_VisibleY(extSurface *Self, LONG *Value)
+static ERR GET_VisibleY(extSurface *Self, LONG *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       WORD i;
-      if ((i = find_surface_list(Self)) IS -1) return ERR_Search;
+      if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
 
       auto clip = glSurfaces[i].area();
       restrict_region_to_parents(glSurfaces, i, clip, false);
       *Value = clip.Top - glSurfaces[i].Top;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
@@ -761,88 +736,72 @@ static ERROR GET_VisibleY(extSurface *Self, LONG *Value)
 -FIELD-
 Width: Defines the width of a surface object.
 
-The width of a surface object is manipulated through this field, although you can also use the Resize() action, which
-is faster if you need to set both the Width and the Height.  A client can set the Width as a fixed value by default, or as a
-relative value if you set the `FD_PERCENT` field.  Relative widths are always calculated in relationship to a surface
-object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be
-160 pixels wide.
+The width of a surface object is manipulated through this field.  Alternatively, use the #Resize() action to adjust the
+Width and #Height at the same time.  A client can set the Width as a fixed value by default, or as a scaled value in
+conjunction with the `FD_SCALED` flag.  Scaled values are multiplied by the width of their parent container.
 
 Setting the Width while a surface object is on display causes an immediate graphical update to reflect the change.  Any
 objects that are within the surface area will be re-drawn and resized as necessary.
 
-Width values of 0 or less are illegal, and will result in an `ERR_OutOfRange` error-code.
+Width values of 0 or less are illegal, and will result in an `ERR::OutOfRange` error-code.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Width(extSurface *Self, Variable *Value)
+static ERR GET_Width(extSurface *Self, Unit *Value)
 {
-   if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_PERCENTAGE) {
-         if (Self->Dimensions & DMF_RELATIVE_WIDTH) {
-            Value->Double = Self->WidthPercent;
-         }
-         else return ERR_Failed;
+   if (Value->scaled()) {
+      if (dmf::hasScaledWidth(Self->Dimensions)) {
+         Value->set(Self->WidthPercent);
       }
-      else Value->Double = Self->Width;
+      else return ERR::FieldTypeMismatch;
    }
-   else Value->Large = Self->Width;
-   return ERR_Okay;
+   else Value->set(Self->Width);
+   return ERR::Okay;
 }
 
-static ERROR SET_Width(extSurface *Self, Variable *Value)
+static ERR SET_Width(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
-   Variable var;
-   extSurface *parent;
-   DOUBLE value;
-
-   if (Value->Type & FD_DOUBLE)      value = Value->Double;
-   else if (Value->Type & FD_LARGE)  value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
-   else return log.warning(ERR_SetValueNotNumeric);
+   auto value = Value->Value;
 
    if (value <= 0) {
-      if (Self->initialised()) return ERR_InvalidDimension;
+      if (Self->initialised()) return ERR::InvalidDimension;
       else {
-         Self->Dimensions &= ~(DMF_WIDTH);
-         return ERR_Okay;
+         Self->Dimensions &= ~(DMF::FIXED_WIDTH|DMF::SCALED_WIDTH);
+         return ERR::Okay;
       }
    }
    if (value > 0x7fffffff) value = 0x7fffffff;
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->scaled()) {
       if (Self->ParentID) {
-         if (!AccessObject(Self->ParentID, 500, &parent)) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->WidthPercent = value;
-            Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_RELATIVE_WIDTH;
+            Self->Dimensions   = (Self->Dimensions & (~DMF::FIXED_WIDTH)) | DMF::SCALED_WIDTH;
             resize_layer(Self, Self->X, Self->Y, parent->Width * value, 0, 0, 0, 0, 0, 0);
-            ReleaseObject(parent);
          }
-         else return ERR_AccessObject;
+         else return ERR::AccessObject;
       }
       else {
          Self->WidthPercent = value;
-         Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_RELATIVE_WIDTH;
+         Self->Dimensions   = (Self->Dimensions & (~DMF::FIXED_WIDTH)) | DMF::SCALED_WIDTH;
       }
    }
    else {
       if (value != Self->Width) resize_layer(Self, Self->X, Self->Y, value, 0, 0, 0, 0, 0, 0);
 
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_WIDTH) | DMF_FIXED_WIDTH;
+      Self->Dimensions = (Self->Dimensions & (~DMF::SCALED_WIDTH)) | DMF::FIXED_WIDTH;
 
       // If the offset flags are used, adjust the horizontal position
-      if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) {
-         var.Type = FD_DOUBLE|FD_PERCENTAGE;
-         var.Double = Self->XOffsetPercent;
-         SET_XOffset(Self, &var);
+      if (dmf::hasScaledXOffset(Self->Dimensions)) {
+         auto val = Unit(Self->XOffsetPercent, FD_SCALED);
+         SET_XOffset(Self, &val);
       }
-      else if (Self->Dimensions & DMF_FIXED_X_OFFSET) {
-         var.Type = FD_DOUBLE;
-         var.Double = Self->XOffset;
-         SET_XOffset(Self, &var);
+      else if (dmf::hasXOffset(Self->Dimensions)) {
+         auto val = Unit(Self->XOffset);
+         SET_XOffset(Self, &val);
       }
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -851,68 +810,48 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
 X: Determines the horizontal position of a surface object.
 
 The horizontal position of a surface object can be set through this field.  You have the choice of setting a fixed
-coordinate (the default) or a relative coordinate if you use the `FD_PERCENT` flag.
+coordinate (the default) or a scaled coordinate if you use the `FD_SCALED` flag.
 
 If you set the X while the surface object is on display, the position of the surface area will be updated
 immediately.
 
 *********************************************************************************************************************/
 
-static ERROR GET_XCoord(extSurface *Self, Variable *Value)
+static ERR GET_XCoord(extSurface *Self, Unit *Value)
 {
-   if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_PERCENTAGE) Value->Double = Self->XPercent;
-      else Value->Double = Self->X;
-   }
-   else if (Value->Type & FD_LARGE) {
-      if (Value->Type & FD_PERCENTAGE) Value->Large = F2I(Self->XPercent);
-      else Value->Large = Self->X;
-   }
-   else {
-      pf::Log log;
-      return log.warning(ERR_FieldTypeMismatch);
-   }
-   return ERR_Okay;
+   Value->set(Value->scaled() ? Self->XPercent : Self->X);
+   return ERR::Okay;
 }
 
-static ERROR SET_XCoord(extSurface *Self, Variable *Value)
+static ERR SET_XCoord(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
-   extSurface *parent;
-   DOUBLE value;
+   auto value = Value->Value;
 
-   if (Value->Type & FD_DOUBLE)      value = Value->Double;
-   else if (Value->Type & FD_LARGE)  value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
-   else return log.warning(ERR_SetValueNotNumeric);
-
-   if (Value->Type & FD_PERCENTAGE) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X) | DMF_RELATIVE_X;
+   if (Value->scaled()) {
+      Self->Dimensions = (Self->Dimensions & (~DMF::FIXED_X)) | DMF::SCALED_X;
       Self->XPercent   = value;
       if (Self->ParentID) {
-         if (AccessObject(Self->ParentID, 500, &parent) IS ERR_Okay) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             move_layer(Self, parent->Width * value, Self->Y);
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return ERR::AccessObject;
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_X) | DMF_FIXED_X;
+      Self->Dimensions = (Self->Dimensions & (~DMF::SCALED_X)) | DMF::FIXED_X;
       move_layer(Self, value, Self->Y);
 
       // If our right-hand side is relative, we need to resize our surface to counteract the movement.
 
-      if ((Self->ParentID) and (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET))) {
-         if (!AccessObject(Self->ParentID, 1000, &parent)) {
+      if ((Self->ParentID) and (dmf::hasAnyXOffset(Self->Dimensions))) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return ERR::AccessObject;
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -920,106 +859,86 @@ static ERROR SET_XCoord(extSurface *Self, Variable *Value)
 -FIELD-
 XOffset: Determines the horizontal offset of a surface object.
 
-The XOffset has a dual purpose depending on whether or not it is set in conjunction with the X or Width fields.
+The XOffset has a dual purpose depending on whether or not it is set in conjunction with the #X or #Width fields.
 
-If set in conjunction with the X field, the width of the surface object will be from that X coordinate up to the width
+If set in conjunction with the #X field, the width of the surface object will be from that X coordinate up to the width
 of the container, minus the value given in the XOffset.  This means that the width of the surface object is dynamically
 calculated in relation to the width of its container.
 
-If the XOffset field is set in conjunction with a fixed or relative width then the surface object will be positioned at
+If the XOffset field is set in conjunction with a fixed or scaled width then the surface object will be positioned at
 an X coordinate calculated from the formula `X = ContainerWidth - SurfaceWidth - XOffset`.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR GET_XOffset(extSurface *Self, Variable *Value)
+static ERR GET_XOffset(extSurface *Self, Unit *Value)
 {
    pf::Log log;
-   Variable xoffset;
-   extSurface *parent;
    DOUBLE value;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      xoffset.Type = FD_DOUBLE;
-      xoffset.Double = 0;
-      if (GET_XOffset(Self, &xoffset) IS ERR_Okay) {
-         value = xoffset.Double / Self->Width;
+   if (Value->scaled()) {
+      Unit xoffset;
+      if (GET_XOffset(Self, &xoffset) IS ERR::Okay) {
+         value = xoffset / Self->Width;
       }
       else value = 0;
    }
    else {
-      if (Self->Dimensions & DMF_X_OFFSET) {
+      if (dmf::hasAnyXOffset(Self->Dimensions)) {
          value = Self->XOffset;
       }
-      else if ((Self->Dimensions & DMF_WIDTH) and
-               (Self->Dimensions & DMF_X) and
-               (Self->ParentID)) {
-         if (!AccessObject(Self->ParentID, 1000, &parent)) {
+      else if ((dmf::hasAnyWidth(Self->Dimensions)) and (dmf::hasAnyX(Self->Dimensions)) and (Self->ParentID)) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             value = parent->Width - Self->X - Self->Width;
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return log.warning(ERR::AccessObject);
       }
       else value = 0;
    }
 
-   if (Value->Type & FD_DOUBLE)     Value->Double = value;
-   else if (Value->Type & FD_LARGE) Value->Large  = value;
-   else return log.warning(ERR_FieldTypeMismatch);
-
-   return ERR_Okay;
+   Value->set(value);
+   return ERR::Okay;
 }
 
-static ERROR SET_XOffset(extSurface *Self, Variable *Value)
+static ERR SET_XOffset(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
-   extSurface *parent;
-   DOUBLE value;
-
-   if (Value->Type & FD_DOUBLE)      value = Value->Double;
-   else if (Value->Type & FD_LARGE)  value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
-   else return log.warning(ERR_SetValueNotNumeric);
-
+   auto value = Value->Value;
    if (value < 0) value = -value;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X_OFFSET) | DMF_RELATIVE_X_OFFSET;
+   if (Value->scaled()) {
+      Self->Dimensions = (Self->Dimensions & (~DMF::FIXED_X_OFFSET)) | DMF::SCALED_X_OFFSET;
       Self->XOffsetPercent = value;
 
       if (Self->ParentID) {
-         if (!AccessObject(Self->ParentID, 500, &parent)) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->XOffset = parent->Width * F2I(Self->XOffsetPercent);
-            if (!(Self->Dimensions & DMF_X)) Self->X = parent->Width - Self->XOffset - Self->Width;
-            if (!(Self->Dimensions & DMF_WIDTH)) {
+            if (!dmf::hasAnyX(Self->Dimensions)) Self->X = parent->Width - Self->XOffset - Self->Width;
+            if (!dmf::hasAnyWidth(Self->Dimensions)) {
                resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
             }
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return ERR::AccessObject;
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_X_OFFSET) | DMF_FIXED_X_OFFSET;
+      Self->Dimensions = (Self->Dimensions & (~DMF::SCALED_X_OFFSET)) | DMF::FIXED_X_OFFSET;
       Self->XOffset = value;
 
-      if ((Self->Dimensions & DMF_WIDTH) and (Self->ParentID)) {
-         if (!AccessObject(Self->ParentID, 1000, &parent)) {
+      if (dmf::hasAnyWidth(Self->Dimensions) and Self->ParentID) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             move_layer(Self, parent->Width - Self->XOffset - Self->Width, Self->Y);
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return ERR::AccessObject;
       }
-      else if ((Self->Dimensions & DMF_X) and (Self->ParentID)) {
-         if (!AccessObject(Self->ParentID, 1000, &parent)) {
+      else if (dmf::hasAnyX(Self->Dimensions) and Self->ParentID) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return ERR::AccessObject;
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1028,57 +947,36 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
 Y: Determines the vertical position of a surface object.
 
 The vertical position of a surface object can be set through this field.  You have the choice of setting a fixed
-coordinate (the default) or a relative coordinate if you use the FD_PERCENT flag.
+coordinate (the default) or a scaled coordinate if you use the `FD_SCALED` flag.
 
 If the value is changed while the surface is on display, its position will be updated immediately.
 
 *********************************************************************************************************************/
 
-static ERROR GET_YCoord(extSurface *Self, Variable *Value)
+static ERR GET_YCoord(extSurface *Self, Unit *Value)
 {
-   if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_PERCENTAGE) Value->Double = Self->YPercent;
-      else Value->Double = Self->Y;
-   }
-   else if (Value->Type & FD_LARGE) {
-      if (Value->Type & FD_PERCENTAGE) Value->Large = F2I(Self->YPercent);
-      else Value->Large = Self->Y;
-   }
-   else {
-      pf::Log log;
-      return log.warning(ERR_FieldTypeMismatch);
-   }
-   return ERR_Okay;
+   Value->set(Value->scaled() ? Self->YPercent : Self->Y);
+   return ERR::Okay;
 }
 
-static ERROR SET_YCoord(extSurface *Self, Variable *Value)
+static ERR SET_YCoord(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
-   extSurface *parent;
-   DOUBLE value;
-
-   if (Value->Type & FD_DOUBLE)     value = Value->Double;
-   else if (Value->Type & FD_LARGE) value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
-   else return log.warning(ERR_SetValueNotNumeric);
-
-   if (Value->Type & FD_PERCENTAGE) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y) | DMF_RELATIVE_Y;
-      Self->YPercent = value;
+   if (Value->scaled()) {
+      Self->Dimensions = (Self->Dimensions & (~DMF::FIXED_Y)) | DMF::SCALED_Y;
+      Self->YPercent = Value->Value;
       if (Self->ParentID) {
-         if (!AccessObject(Self->ParentID, 500, &parent)) {
-            move_layer(Self, Self->X, parent->Height * value);
-            ReleaseObject(parent);
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
+            move_layer(Self, Self->X, parent->Height * Value->Value);
          }
-         else return log.warning(ERR_AccessObject);
+         else return ERR::AccessObject;
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_Y) | DMF_FIXED_Y;
-      move_layer(Self, Self->X, value);
+      Self->Dimensions = (Self->Dimensions & (~DMF::SCALED_Y)) | DMF::FIXED_Y;
+      move_layer(Self, Self->X, Value->Value);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1086,106 +984,86 @@ static ERROR SET_YCoord(extSurface *Self, Variable *Value)
 -FIELD-
 YOffset: Determines the vertical offset of a surface object.
 
-The YOffset has a dual purpose depending on whether or not it is set in conjunction with the Y or Height fields.
+The YOffset has a dual purpose depending on whether or not it is set in conjunction with the #Y or #Height fields.
 
-If set in conjunction with the Y field, the height of the surface object will be from that Y coordinate up to the
+If set in conjunction with the #Y field, the height of the surface object will be from that Y coordinate up to the
 height of the container, minus the value given in the YOffset.  This means that the height of the surface object is
 dynamically calculated in relation to the height of its container.
 
-If the YOffset field is set in conjunction with a fixed or relative height then the surface object will be positioned
-at a Y coordinate calculated from the formula "Y = ContainerHeight - SurfaceHeight - YOffset".
+If the YOffset field is set in conjunction with a fixed or scaled height then the surface object will be positioned
+at a Y coordinate calculated from the formula `Y = ContainerHeight - SurfaceHeight - YOffset`.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR GET_YOffset(extSurface *Self, Variable *Value)
+static ERR GET_YOffset(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
-   Variable yoffset;
-   extSurface *parent;
    DOUBLE value;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      yoffset.Type = FD_DOUBLE;
-      yoffset.Double = 0;
-      if (!GET_YOffset(Self, &yoffset)) {
-         value = yoffset.Double / Self->Height;
-      }
+   if (Value->scaled()) {
+      Unit yoffset;
+      if (GET_YOffset(Self, &yoffset) IS ERR::Okay) value = yoffset / Self->Height;
       else value = 0;
    }
    else {
-      if (Self->Dimensions & DMF_Y_OFFSET) {
+      if (dmf::hasAnyYOffset(Self->Dimensions)) {
          value = Self->YOffset;
       }
-      else if ((Self->Dimensions & DMF_HEIGHT) and (Self->Dimensions & DMF_Y) and (Self->ParentID)) {
-         if (!AccessObject(Self->ParentID, 1000, &parent)) {
+      else if (dmf::hasAnyHeight(Self->Dimensions) and dmf::hasY(Self->Dimensions) and Self->ParentID) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             value = parent->Height - Self->Y - Self->Height;
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return ERR::AccessObject;
       }
       else value = 0;
    }
 
-   if (Value->Type & FD_DOUBLE)     Value->Double = value;
-   else if (Value->Type & FD_LARGE) Value->Large  = value;
-   else return log.warning(ERR_FieldTypeMismatch);
-
-   return ERR_Okay;
+   Value->set(value);
+   return ERR::Okay;
 }
 
-static ERROR SET_YOffset(extSurface *Self, Variable *Value)
+static ERR SET_YOffset(extSurface *Self, Unit *Value)
 {
-   pf::Log log;
-   extSurface *parent;
-   DOUBLE value;
-
-   if (Value->Type & FD_DOUBLE)      value = Value->Double;
-   else if (Value->Type & FD_LARGE)  value = Value->Large;
-   else if (Value->Type & FD_STRING) value = StrToInt((CSTRING)Value->Pointer);
-   else return log.warning(ERR_SetValueNotNumeric);
+   auto value = Value->Value;
 
    if (value < 0) value = -value;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y_OFFSET) | DMF_RELATIVE_Y_OFFSET;
+   if (Value->scaled()) {
+      Self->Dimensions = (Self->Dimensions & (~DMF::FIXED_Y_OFFSET)) | DMF::SCALED_Y_OFFSET;
       Self->YOffsetPercent = value;
 
       if (Self->ParentID) {
-         if (!AccessObject(Self->ParentID, 500, &parent)) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->YOffset = parent->Height * F2I(Self->YOffsetPercent);
-            if (!(Self->Dimensions & DMF_Y))Self->Y = parent->Height - Self->YOffset - Self->Height;
-            if (!(Self->Dimensions & DMF_HEIGHT)) {
+            if (!dmf::hasAnyY(Self->Dimensions)) Self->Y = parent->Height - Self->YOffset - Self->Height;
+            if (!dmf::hasAnyHeight(Self->Dimensions)) {
                resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
             }
             else move_layer(Self, Self->X, parent->Height - Self->YOffset - Self->Height);
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return ERR::AccessObject;
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_Y_OFFSET) | DMF_FIXED_Y_OFFSET;
+      Self->Dimensions = (Self->Dimensions & (~DMF::SCALED_Y_OFFSET)) | DMF::FIXED_Y_OFFSET;
       Self->YOffset = value;
 
-      if ((Self->Dimensions & DMF_HEIGHT) and (Self->ParentID)) {
-         if (!AccessObject(Self->ParentID, 1000, &parent)) {
-            if (!(Self->Dimensions & DMF_HEIGHT)) {
+      if (dmf::hasAnyHeight(Self->Dimensions) and Self->ParentID) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
+            if (!dmf::hasAnyHeight(Self->Dimensions)) {
                resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
             }
             else move_layer(Self, Self->X, parent->Height - Self->YOffset - Self->Height);
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return ERR::AccessObject;
       }
-      else if ((Self->Dimensions & DMF_Y) and (Self->ParentID)) {
-         if (!AccessObject(Self->ParentID, 1000, &parent)) {
+      else if (dmf::hasAnyY(Self->Dimensions) and Self->ParentID) {
+         if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
-            ReleaseObject(parent);
          }
-         else return log.warning(ERR_AccessObject);
+         else return ERR::AccessObject;
       }
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 

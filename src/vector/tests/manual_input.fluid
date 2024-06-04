@@ -65,11 +65,11 @@
 
    for _, vector in pairs(vectors) do
       vector.opacity = 0.3
-      vector.mtInputSubscription(bit.bor(JTYPE_MOVEMENT, JTYPE_FEEDBACK), function(Vector, Msg)
+      vector.mtInputSubscription(bit.bor(JTYPE_MOVEMENT, JTYPE_CROSSING), function(Vector, Msg)
          while (Msg) do
-            if Msg.type == JET_ENTERED_SURFACE then
+            if Msg.type == JET_CROSSED_IN then
                Vector.opacity = 1.0
-            elseif Msg.type == JET_LEFT_SURFACE then
+            elseif Msg.type == JET_CROSSED_OUT then
                Vector.opacity = 0.2
             end
             Msg = Msg.next

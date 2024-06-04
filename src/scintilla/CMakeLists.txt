@@ -3,7 +3,7 @@
 set (MOD scintilla)
 set (INC_MOD_SCINTILLA TRUE PARENT_SCOPE)
 
-idl_all ("${MOD}.fdl"
+idl_gen ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    ARGS "output-defs=module_def.c" "output-proto=module_def.c" "prototypes=static"
@@ -73,6 +73,7 @@ endif ()
 add_compile_definitions ("SCI_NAMESPACE" "__PARASOL__" "SCI_LEXER")
 
 add_library (scintilla)
+target_link_libraries (${MOD} PUBLIC unicode)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")

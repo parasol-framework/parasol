@@ -14,11 +14,11 @@
     <idstring>ID_TASK</idstring>
     <category>System</category>
     <include>modules/task.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object, it is possible to execute a program from within the host system.</p>
-<p>To execute a compiled program, set the <field>Location</field> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <field>Parameters</field> field.  Once the task object is successfully initialised, use the <action>Activate</action> action to run the executable.  If the file executes successfully, a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object immediately afterwards).  If the <action>Activate</action> action returns with ERR_Okay then the executable program was run successfully.</p>
-<p>To find the task object that represents the active process, use the <function module="Core">CurrentTask</function> function to quickly retrieve it.</p></description>
+<p>To execute a compiled program, set the <fl>Location</fl> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <fl>Parameters</fl> field.  After initialising the task, use the <action>Activate</action> action to run the executable.  If the program executes successfully, the task object can be removed and this will not impact the running program.</p>
+<p>The task object that represents the active process can be acquired from <function>CurrentTask</function>.</p></description>
     <source>
       <file path="../classes/">class_task.cpp</file>
     </source>
@@ -28,37 +28,55 @@
     <action>
       <name>Activate</name>
       <comment>Activating a task object will execute it.</comment>
+      <prototype>ERR acActivate(*Object)</prototype>
       <description>
-<p>Activating a task results in the execution of the file referenced in the <field>Location</field> field.</p>
+<p>Activating a task results in the execution of the file referenced in the <fl>Location</fl> field.</p>
 <p>On successful execution, the ProcessID will refer to the ID of the executed process.  This ID is compatible with the hosting platform's unique process numbers.</p>
-<p>If the <code>WAIT</code> flag is specified, this action will not return until the executed process has returned or the <field>TimeOut</field> (if specified) has expired.  Messages are processed as normal during this time, ensuring that your process remains responsive while waiting.</p>
-<p>The process' return code can be read from the <field>ReturnCode</field> field after the process has completed its execution.</p>
+<p>If the <code>WAIT</code> flag is specified, this action will not return until the executed process has returned or the <fl>TimeOut</fl> (if specified) has expired.  Messages are processed as normal during this time, ensuring that your process remains responsive while waiting.</p>
+<p>The process' return code can be read from the <fl>ReturnCode</fl> field after the process has completed its execution.</p>
 <p>In Microsoft Windows, output can be redirected to a file if the redirection symbol is used to direct output in one of the task arguments.  For instance <code>&gt;C:\output.txt</code> will redirect both stderr and stdout to <code>c:\output.txt</code>.  The use of <code>1&gt;</code> to redirect stdout and <code>2&gt;</code> to redirect stderr independently of each other is also acceptable.</p>
-<p>When running a DOS program in Microsoft Windows, the SHELL flag can be set in the <field>Flags</field> field to prevent the DOS window from appearing.  The DOS window will also be hidden if the stdout or stderr pipes are redirected.</p>
+<p>When running a DOS program in Microsoft Windows, the <code>SHELL</code> flag can be set in the <fl>Flags</fl> field to prevent the DOS window from appearing.  The DOS window will also be hidden if the stdout or stderr pipes are redirected.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="Failed">General failure.</error>
-        <error code="TimeOut">Can be returned if the WAIT flag is used.  Indicates that the process was launched, but the timeout expired before the process returned.</error>
+        <error code="TimeOut">Can be returned if the <code>WAIT</code> flag is used.  Indicates that the process was launched, but the timeout expired before the process returned.</error>
         <error code="FieldNotSet">The Location field has not been set.</error>
       </result>
     </action>
 
     <action>
-      <name>GetVar</name>
-      <comment>Retrieves variable field values.</comment>
+      <name>GetKey</name>
+      <comment>Retrieves custom key values.</comment>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of a key value.</param>
+        <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
+        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+      </input>
     </action>
 
     <action>
-      <name>SetVar</name>
+      <name>SetKey</name>
       <comment>Variable fields are supported for the general storage of program variables.</comment>
+      <prototype>ERR acSetKey(*Object, CSTRING Key, CSTRING Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of the target key.</param>
+        <param type="CSTRING" name="Value">The string value to associate with Key.</param>
+      </input>
     </action>
 
     <action>
       <name>Write</name>
       <comment>Send raw data to a launched process' stdin descriptor.</comment>
+      <prototype>ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)</prototype>
+      <input>
+        <param type="APTR" name="Buffer">A buffer containing the data that will be written to the object.</param>
+        <param type="LONG" name="Length">The total number of bytes to write to the object.</param>
+        <param type="LONG" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
+      </input>
       <description>
-<p>If a process is successfully launched with the <code>PIPE</code> set in <field>Flags</field>, data can be sent to its stdin pipe by calling the Write action.  Setting the Buffer parameter to NULL will result in the pipe being closed (this will signal to the process that no more data is incoming).</p>
+<p>If a process is successfully launched with the <code>PIPE</code> set in <fl>Flags</fl>, data can be sent to its stdin pipe by calling the Write() action.  Setting the <code>Buffer</code> parameter to <code>NULL</code> will result in the pipe being closed (this will signal to the process that no more data is incoming).</p>
       </description>
     </action>
 
@@ -68,12 +86,12 @@
     <method>
       <name>AddArgument</name>
       <comment>Adds a new argument to the Parameters field.</comment>
-      <prototype>ERROR taskAddArgument(OBJECTPTR Object, CSTRING Argument)</prototype>
+      <prototype>ERR task::AddArgument(OBJECTPTR Object, CSTRING Argument)</prototype>
       <input>
         <param type="CSTRING" name="Argument">The new argument string.</param>
       </input>
       <description>
-<p>This method will add a new argument to the end of the <field>Parameters</field> field array.  If the string is surrounded by quotes, they will be removed automatically.</p>
+<p>This method will add a new argument to the end of the <fl>Parameters</fl> field array.  If the string is surrounded by quotes, they will be removed automatically.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -84,9 +102,9 @@
     <method>
       <name>Expunge</name>
       <comment>Forces a Task to expunge unused code.</comment>
-      <prototype>ERROR taskExpunge(OBJECTPTR Object)</prototype>
+      <prototype>ERR task::Expunge(OBJECTPTR Object)</prototype>
       <description>
-<p>The Expunge method releases all loaded libraries that are no longer in use by the active process.</p>
+<p>The Expunge() method releases all loaded libraries that are no longer in use by the active process.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -96,13 +114,13 @@
     <method>
       <name>GetEnv</name>
       <comment>Retrieves environment variables for the active process.</comment>
-      <prototype>ERROR taskGetEnv(OBJECTPTR Object, CSTRING Name, CSTRING * Value)</prototype>
+      <prototype>ERR task::GetEnv(OBJECTPTR Object, CSTRING Name, CSTRING * Value)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the environment variable to retrieve.</param>
         <param type="CSTRING *" name="Value">The value of the environment variable is returned in this parameter.</param>
       </input>
       <description>
-<p>On platforms that support environment variables, GetEnv() returns the value of the environment variable matching the Name string.  If there is no matching variable, <code>ERR_DoesNotExist</code> is returned.</p>
+<p>On platforms that support environment variables, GetEnv() returns the value of the environment variable matching the <code>Name</code> string.  If there is no matching variable, <code>ERR::DoesNotExist</code> is returned.</p>
 <p>In Windows, it is possible to look up registry keys if the string starts with one of the following (in all other cases, the system's environment variables are queried):</p>
 <pre>\HKEY_LOCAL_MACHINE\
 \HKEY_CURRENT_USER\
@@ -123,9 +141,9 @@
     <method>
       <name>Quit</name>
       <comment>Sends a quit message to a task.</comment>
-      <prototype>ERROR taskQuit(OBJECTPTR Object)</prototype>
+      <prototype>ERR task::Quit(OBJECTPTR Object)</prototype>
       <description>
-<p>The Quit method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the <code>MSGID_QUIT</code> message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.  A task can be killed outright with the Free action.</p>
+<p>The Quit() method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the <code>MSGID_QUIT</code> message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -135,13 +153,13 @@
     <method>
       <name>SetEnv</name>
       <comment>Sets environment variables for the active process.</comment>
-      <prototype>ERROR taskSetEnv(OBJECTPTR Object, CSTRING Name, CSTRING Value)</prototype>
+      <prototype>ERR task::SetEnv(OBJECTPTR Object, CSTRING Name, CSTRING Value)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the environment variable to set.</param>
         <param type="CSTRING" name="Value">The value to assign to the environment variable.</param>
       </input>
       <description>
-<p>On platforms that support environment variables, SetEnv() is used for defining values for named variables.  A Name and accompanying Value string are required.  If the Value is NULL, the environment variable is removed if it already exists.</p>
+<p>On platforms that support environment variables, SetEnv() is used for defining values for named variables.  A <code>Name</code> and accompanying <code>Value</code> string are required.  If the <code>Value</code> is <code>NULL</code>, the environment variable is removed if it already exists.</p>
 <p>In Windows, it is possible to set registry keys if the string starts with one of the following (in all other cases, the system's environment variables are queried):</p>
 <pre>\HKEY_LOCAL_MACHINE\
 \HKEY_CURRENT_USER\
@@ -166,8 +184,8 @@
       <access read="G">Get</access>
       <type>APTR</type>
       <description>
-<p>This field provides direct access to the actions of a task.  You can use it in the development of an executable program to hook into the Core action system.  This allows you to create a program that blends in seamlessly with the system's object oriented design.</p>
-<p>The Actions field itself points to a list of action routines that are arranged into a lookup table, sorted by action ID. You can hook into an action simply by writing to its index in the table with a pointer to the routine that you want to use for that action.  For example:</p>
+<p>This field provides direct access to the actions of a task, and is intended for use with the active task object returned from <function>CurrentTask</function>.  Hooking into the action table allows the running executable to 'blend-in' with Parasol's object oriented design.</p>
+<p>The Actions field points to a lookup table of ActionEntry items.  Hooking into an action involves writing its <code>AC</code> index in the table with a pointer to the action routine.  For example:</p>
 <pre>if (!AccessObject(CurrentTask(), 5000, &amp;task)) {
    task-&gt;getPtr(FID_Actions, &amp;actions);
    actions[AC_Seek] = PROGRAM_Seek;
@@ -183,7 +201,7 @@
       <access write="S">Set</access>
       <type>STRING</type>
       <description>
-<p>This field allows command line arguments to be set using a single string, whereby each value is separated by whitespace. The string will be disassembled and the arguments will be available to read from the <field>Parameters</field> field.</p>
+<p>This field allows command line arguments to be set using a single string, whereby each value is separated by whitespace. The string will be disassembled and the arguments will be available to read from the <fl>Parameters</fl> field.</p>
 <p>If an argument needs to include whitespace, use double-quotes to encapsulate the value.</p>
       </description>
     </field>
@@ -194,8 +212,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The ErrorCallback field can be set with a function reference that will be called when an active process sends data via STDERR.  The callback must follow the synopsis <code>Function(*Task, APTR Data, LONG Size)</code></p>
-<p>The information read from STDERR will be returned in the Data pointer and the byte-length of the data will be indicated by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.</p>
+<p>The ErrorCallback field can be set with a function reference that will be called when an active process sends data via STDERR.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size)</code></p>
+<p>The information read from STDERR will be returned in the Data pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The data pointer is temporary and will be invalid once the callback function has returned.</p>
       </description>
     </field>
 
@@ -205,8 +223,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The ExitCallback field can be set with a function reference that will be called when the executed process is terminated.  The callback must follow the synopsis <code>Function(*Task)</code>.</p>
-<p>Please keep in mind that if the Task is freed when the process is still executing, the ExitCallback routine will not be called on termination because the Task object no longer exists for the control of the process.</p>
+<p>The ExitCallback field can be set with a function reference that will be called when the executed process is terminated.  The callback must follow the prototype <code>Function(*Task)</code>.</p>
+<p>Please keep in mind that if the <code>Task</code> is freed when the process is still executing, the ExitCallback routine will not be called on termination because the <code>Task</code> object no longer exists for the control of the process.</p>
       </description>
     </field>
 
@@ -226,9 +244,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The InputCallback field is available for use only when the Task object represents the current process. The referenced function will be called when process receives data from STDIN.  The callback must follow the synopsis <code>Function(*Task, APTR Data, LONG Size, ERROR Status)</code></p>
-<p>The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated by the Size.  The data buffer is temporary and will be invalid once the callback function has returned.</p>
-<p>A status of ERR_Finished is sent if the stdinput handle has been closed.</p>
+<p>The InputCallback field is available for use only when the task object represents the current process. The referenced function will be called when process receives data from STDIN.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size, ERR Status)</code></p>
+<p>The information read from STDOUT will be returned in the <code>Data</code> pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The data buffer is temporary and will be invalid once the callback function has returned.</p>
+<p>A status of <code>ERR::Finished</code> is sent if the stdinput handle has been closed.</p>
       </description>
     </field>
 
@@ -238,7 +256,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Use the LaunchPath field to specify the folder that a launched executable will start in when the task object is activated.  This will override all other path options, such as the RESET_PATH flag.</p>
+<p>Use the LaunchPath field to specify the folder that a launched executable will start in when the task object is activated.  This will override all other path options, such as the <code>RESET_PATH</code> flag.</p>
       </description>
     </field>
 
@@ -259,7 +277,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This field specifies the name of the Task or program that has been initialised. It is up to the developer of the program to set the Name which will appear in this field.  If there is no name for the task then the system may assign a randomly generated name.</p>
+<p>This field specifies the name of the task or program that has been initialised. It is up to the developer of the program to set the Name which will appear in this field.  If there is no name for the task then the system may assign a randomly generated name.</p>
       </description>
     </field>
 
@@ -269,8 +287,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The OutputCallback field can be set with a function reference that will be called when an active process sends data via STDOUT.  The callback must follow the synopsis <code>Function(*Task, APTR Data, LONG Size)</code></p>
-<p>The information read from STDOUT will be returned in the Data pointer and the byte-length of the data will be indicated by the Size.  The data pointer is temporary and will be invalid once the callback function has returned.</p>
+<p>The OutputCallback field can be set with a function reference that will be called when an active process sends data via STDOUT.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size)</code></p>
+<p>The information read from STDOUT will be returned in the <code>Data</code> pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The <code>Data</code> pointer is temporary and will be invalid once the callback function has returned.</p>
       </description>
     </field>
 
@@ -321,7 +339,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>If a task object launches an executable file via Activate(), the ProcessID will be set to the 'pid' that was assigned to the new process by the host system.  At all other times the ProcessID is set to zero.</p>
+<p>If a task object launches an executable file via <action>Activate</action>, the ProcessID will be set to the 'pid' that was assigned to the new process by the host system.  At all other times the ProcessID is set to zero.</p>
       </description>
     </field>
 
@@ -342,7 +360,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Once a process has completed execution then its return code can be read from this field.  If process is still running, the error code ERR_TaskStillExists will be returned.</p>
+<p>Once a process has completed execution then its return code can be read from this field.  If process is still running, the error code <code>ERR::TaskStillExists</code> will be returned.</p>
       </description>
     </field>
 
@@ -365,7 +383,7 @@
       <const name="LOG_ALL">Additional debug messages will be printed during normal usage of the task class when this flag is set.</const>
       <const name="PIPE">Enable the output pipe to the launched process so that it can read data.</const>
       <const name="PRIVILEGED">During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.</const>
-      <const name="QUIET">Setting this flag will divert all process output to /dev/null or the nearest equivalent for non-Unix systems.</const>
+      <const name="QUIET">Setting this flag will divert all process output to <code>/dev/null</code> or the nearest equivalent for non-Unix systems.</const>
       <const name="RESET_PATH">If set, the executed process will start in its own folder rather than the folder of the parent process.</const>
       <const name="SHELL">Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.</const>
       <const name="WAIT">This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.</const>

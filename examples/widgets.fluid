@@ -22,8 +22,8 @@ A demonstration of standard widgets
    local win = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400, center=true })
    local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
-function itemCallback(ID, Name)
-   print('Callback: ' .. ID .. ', ' .. Name)
+function itemCallback(Bar, Item)
+   print('Callback: ' .. Item.id .. ', ' .. Item.name)
 end
 
 -- This callback is activated whenever a menu is activated by the user.
@@ -45,7 +45,8 @@ function widgetFocus(Widget)
    --end)
 end
 
-   local menubar = gui.menubar(viewport, {
+   local menubar = gui.menubar({
+      target = viewport,
       createItems = function(Bar)
          Bar.addItem(1, 'File', 'devices/harddisk', menuCallback, {
             { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=itemClicked },
@@ -74,7 +75,8 @@ end
 
    local y = menubar.viewport.height
 
-   lToolbar = gui.toolbar(viewport, {
+   lToolbar = gui.toolbar({
+      target      = viewport,
       xOffset     = 0,
       y           = y,
       iconSize    = 22,
@@ -125,10 +127,10 @@ end
    end)
 
    local text = viewport.new('vectortext', {
-      x=win.margins.left, y=y, string='Parasol interfaces are drawn using real-time vector graphics', face='Open Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
+      x=win.margins.left, y=y, string='Parasol interfaces are drawn using real-time vector graphics', face='Noto Sans', fontSize=20, fill='rgb(0,0,0)', textflags='!editable'
    })
-   text.y = y + text.font.height
-   y = y + text.font.height + 14
+   text.y = y + text.fontSize
+   y = y + text.fontSize + 14
 
    local msgButton = gui.button({
       target = viewport,
@@ -140,7 +142,7 @@ end
          activate = function(Widget)
             gui.dialog.message({
                modal         = true,
-               image         = 'icons:items/warning',
+               image         = 'items/warning',
                title         = 'Hamlet has a question',
                message       = 'To be or not to be?',
                userInput     = 'That is the question',
@@ -211,7 +213,7 @@ end
                   if (not Accepted) then
                      print('Dialog was cancelled.')
                   else
-                     print("The user selected '" .. Dialog.face .. "', size " .. Dialog.size .. ", style '" .. Dialog.style .. "'")
+                     print("The user selected '" .. Dialog.face .. "', size " .. Dialog.pointSize .. ", style '" .. Dialog.style .. "'")
                      print("This can be compacted to '" .. Dialog.compactFace .. "'")
                   end
                end

@@ -3,7 +3,6 @@
 
 //#define DEBUG
 //#define DBGMSG
-//#define DBGMOUSE
 
 #define _WIN32_WINNT 0x0600 // Allow Windows Vista function calls
 #define WINVER 0x0600
@@ -20,6 +19,7 @@
 #include <winuser.h>
 #include <shlobj.h>
 #include <objidl.h>
+#include <map>
 
 #include <parasol/system/errors.h>
 
@@ -59,6 +59,7 @@ typedef long long LARGE;
 #define WIN_RMB 0x0002
 #define WIN_MMB 0x0004
 #define WIN_DBL 0x8000
+#define WIN_NONCLIENT 0x4000
 
 #define BORDERSIZE 6
 #define WM_ICONNOTIFY (WM_USER + 101)
@@ -83,11 +84,7 @@ HCURSOR glCurrentCursor = 0;
 static BYTE glScreenClassInit = 0;
 
 #ifdef DBGMSG
-static struct {
-   int code;
-   char *name;
-} wincmd[] = {
-#ifdef DBGMOUSE
+static std::map<int, const char *> glCmd = { {
  { WM_SETCURSOR, "WM_SETCURSOR" },
  { WM_NCMOUSEHOVER, "WM_NCMOUSEHOVER" },
  { WM_NCMOUSELEAVE, "WM_NCMOUSELEAVE" }, { WM_NCMOUSEMOVE, "WM_NCMOUSEMOVE" },
@@ -96,7 +93,6 @@ static struct {
  { WM_MBUTTONDBLCLK, "WM_MBUTTONDBLCLK" }, { WM_MOUSEWHEEL, "WM_MOUSEWHEEL" }, { WM_MOUSEFIRST, "WM_MOUSEFIRST" }, { WM_XBUTTONDOWN, "WM_XBUTTONDOWN" },
  { WM_XBUTTONUP, "WM_XBUTTONUP" }, { WM_XBUTTONDBLCLK, "WM_XBUTTONDBLCLK" }, { WM_MOUSELAST, "WM_MOUSELAST" }, { WM_MOUSEHOVER, "WM_MOUSEHOVER" }, { WM_MOUSELEAVE, "WM_MOUSELEAVE" },
  { WM_NCHITTEST, "WM_NCHITTEST" }, { WM_NCLBUTTONDBLCLK, "WM_NCLBUTTONDBLCLK" }, { WM_NCLBUTTONDOWN, "WM_NCLBUTTONDOWN" },
-#endif
  { WM_APP, "WM_APP" }, { WM_ACTIVATE, "WM_ACTIVATE" }, { WM_ACTIVATEAPP, "WM_ACTIVATEAPP" }, { WM_AFXFIRST, "WM_AFXFIRST" }, { WM_MOVE, "WM_MOVE" },
  { WM_AFXLAST, "WM_AFXLAST" }, { WM_ASKCBFORMATNAME, "WM_ASKCBFORMATNAME" }, { WM_CANCELJOURNAL, "WM_CANCELJOURNAL" }, { WM_CANCELMODE, "WM_CANCELMODE" },
  { WM_CAPTURECHANGED, "WM_CAPTURECHANGED" }, { WM_CHANGECBCHAIN, "WM_CHANGECBCHAIN" }, { WM_CHAR, "WM_CHAR" }, { WM_CHARTOITEM, "WM_CHARTOITEM" },
@@ -136,9 +132,8 @@ static struct {
  { WM_SYSCOMMAND, "WM_SYSCOMMAND" }, { WM_SYSDEADCHAR, "WM_SYSDEADCHAR" }, { WM_SYSKEYDOWN, "WM_SYSKEYDOWN" }, { WM_SYSKEYUP, "WM_SYSKEYUP" }, { WM_TCARD, "WM_TCARD" },
  { WM_TIMECHANGE, "WM_TIMECHANGE" }, { WM_TIMER, "WM_TIMER" }, { WM_UNDO, "WM_UNDO" }, { WM_USER, "WM_USER" }, { WM_USERCHANGED, "WM_USERCHANGED" }, { WM_VKEYTOITEM, "WM_VKEYTOITEM" },
  { WM_VSCROLL, "WM_VSCROLL" }, { WM_VSCROLLCLIPBOARD, "WM_VSCROLLCLIPBOARD" }, { WM_WINDOWPOSCHANGED, "WM_WINDOWPOSCHANGED" }, { WM_WINDOWPOSCHANGING, "WM_WINDOWPOSCHANGING" },
- { WM_WININICHANGE, "WM_WININICHANGE" }, { WM_KEYFIRST, "WM_KEYFIRST" }, { WM_KEYLAST, "WM_KEYLAST" }, { WM_SYNCPAINT, "WM_SYNCPAINT" },
- { 0, 0 }
-};
+ { WM_WININICHANGE, "WM_WININICHANGE" }, { WM_KEYFIRST, "WM_KEYFIRST" }, { WM_KEYLAST, "WM_KEYLAST" }, { WM_SYNCPAINT, "WM_SYNCPAINT" }
+} };
 #endif
 
 int winLookupSurfaceID(HWND Window)
@@ -538,9 +533,11 @@ int winGetWindowInfo(HWND Window, int *X, int *Y, int *Width, int *Height, int *
 
 //********************************************************************************************************************
 
-static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam)
+static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam, bool NonClient)
 {
-   if (glCursorEntry == FALSE) {
+   // Note that if the movement is in the non-client portion of the window, we can't mess with the cursor image.
+
+   if ((glCursorEntry == FALSE) and (!NonClient)) {
       winSetCursor(glDefaultCursor);
       glCursorEntry = TRUE;
 
@@ -561,7 +558,7 @@ static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam)
    if (auto surface_id = winLookupSurfaceID(window)) {
       POINT point;
       GetCursorPos(&point);
-      MsgMovement(surface_id, point.x, point.y, (int)(lparam & 0xffff), (lparam>>16) & 0xffff);
+      MsgMovement(surface_id, point.x, point.y, (int)(lparam & 0xffff), (lparam>>16) & 0xffff, NonClient);
    }
 }
 
@@ -709,16 +706,11 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
    RECT winrect, client;
 
 #ifdef DBGMSG
-   int i;
-   for (i=0; wincmd[i].code; i++) {
-      if (msgcode == wincmd[i].code) {
-         fprintf(stderr, "WinProc: %s, $%.8x, $%.8x, Window: %p\n", wincmd[i].name, (int)wParam, (int)lParam, window);
-         break;
-      }
+   if (glCmd.contains(msgcode)) {
+      fprintf(stderr, "WinProc: %s, $%.8x, $%.8x, Window: %p\n", glCmd[msgcode], (int)wParam, (int)lParam, window);
    }
-
-   if (!wincmd[i].code) {
-      fprintf(stderr, "WinProc: %d, $%.8x, $%.8x, Window: %p\n", msgcode, (int)wParam, (int)lParam, window);
+   else {
+      fprintf(stderr, "WinProc: 0x%x, $%.8x, $%.8x, Window: %p\n", msgcode, (int)wParam, (int)lParam, window);
    }
 #endif
 
@@ -915,7 +907,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
                              else HandleKeyRelease(wParam);
                              return 0;
 
-      case WM_MOUSEMOVE:     HandleMovement(window, wParam, lParam); return 0;
+      case WM_MOUSEMOVE:     HandleMovement(window, wParam, lParam, false); return 0;
 
       case WM_MOUSELEAVE:    glCursorEntry = FALSE;
                              return 0;
@@ -931,6 +923,22 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_LBUTTONUP:     HandleButtonRelease(window, WIN_LMB); return 0;
       case WM_RBUTTONUP:     HandleButtonRelease(window, WIN_RMB); return 0;
       case WM_MBUTTONUP:     HandleButtonRelease(window, WIN_MMB); return 0;
+
+      case WM_NCMOUSEMOVE: 
+         HandleMovement(window, wParam, lParam, true); 
+         return DefWindowProc(window, msgcode, wParam, lParam);
+ 
+      case WM_NCLBUTTONDOWN: 
+         // Click detected on the titlebar or resize area.  Quirks in the way that Windows manages
+         // mouse input mean that we need to signal a button press and release consecutively.
+         MsgButtonPress(WIN_LMB|WIN_NONCLIENT, 1);
+         MsgButtonPress(WIN_LMB|WIN_NONCLIENT, 0);
+         return DefWindowProc(window, msgcode, wParam, lParam);
+
+      case WM_NCLBUTTONDBLCLK: // Double-click detected on the titlebar
+         MsgButtonPress(WIN_DBL|WIN_LMB|WIN_NONCLIENT, 1);
+         MsgButtonPress(WIN_DBL|WIN_LMB|WIN_NONCLIENT, 0);
+         return DefWindowProc(window, msgcode, wParam, lParam); 
 
       case WM_ICONNOTIFY:
          if (lParam == WM_LBUTTONDOWN) {
@@ -1526,9 +1534,9 @@ int winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphamas
    }
 
    if (mred) {
-      *redmask = mred;
+      *redmask   = mred;
       *greenmask = mgreen;
-      *bluemask = mblue;
+      *bluemask  = mblue;
       *alphamask = malpha;
       return 0;
    }
@@ -1540,20 +1548,6 @@ int winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphamas
 void winGetError(int Error, char *Buffer, int BufferSize)
 {
    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error, 0, Buffer, BufferSize, 0);
-}
-
-//********************************************************************************************************************
-
-void winDrawLine(HDC hdc, int x1, int y1, int x2, int y2, UBYTE *rgb)
-{
-   if (auto pen = CreatePen(PS_SOLID, 1, RGB(rgb[0], rgb[1], rgb[2]))) {
-      if (auto oldpen = SelectObject(hdc, pen)) {
-         MoveToEx(hdc, x1, y1, NULL);
-         LineTo(hdc, x2, y2);
-         SelectObject(hdc, oldpen);
-      }
-      DeleteObject(pen);
-   }
 }
 
 //********************************************************************************************************************
@@ -1571,25 +1565,6 @@ void winDrawRectangle(HDC hdc, int x, int y, int width, int height, UBYTE red, U
    DeleteObject(brush);
 }
 
-/*********************************************************************************************************************
-** Sets a new clipping region for a DC.
-*/
-
-int winSetClipping(HDC hdc, int left, int top, int right, int bottom)
-{
-   if ((!right) or (!bottom)) {
-      SelectClipRgn(hdc, NULL);
-      return 1;
-   }
-
-   if (auto region = CreateRectRgn(left, top, right, bottom)) {
-      SelectClipRgn(hdc, region);
-      DeleteObject(region);
-      return 1;
-   }
-   return 0;
-}
-
 //********************************************************************************************************************
 
 int winBlit(HDC dest, int xdest, int ydest, int width, int height, HDC src, int x, int y)
@@ -1605,13 +1580,6 @@ int winBlit(HDC dest, int xdest, int ydest, int width, int height, HDC src, int 
 void * winCreateCompatibleDC(void)
 {
    return CreateCompatibleDC(NULL);
-}
-
-//********************************************************************************************************************
-
-void winDeleteObject(void *Object)
-{
-   DeleteObject(Object);
 }
 
 //********************************************************************************************************************
@@ -1661,34 +1629,9 @@ void winDeleteDC(HDC hdc)
 
 //********************************************************************************************************************
 
-void winGetPixel(HDC hdc, int x, int y, UBYTE *rgb)
-{
-   COLORREF col;
-   col = GetPixel(hdc, x, y);
-   rgb[0] = GetRValue(col);
-   rgb[1] = GetGValue(col);
-   rgb[2] = GetBValue(col);
-}
-
-//********************************************************************************************************************
-
 HBITMAP winCreateBitmap(int width, int height, int bpp)
 {
    return CreateBitmap(width, height, 1, bpp, NULL);
-}
-
-//********************************************************************************************************************
-// This masking technique works so long as the source graphic uses a clear background after determining its original
-// mask shape.
-
-void winDrawTransparentBitmap(HDC hdcDest, HDC hdcSrc, HBITMAP hBitmap,
-        int x, int y, int xsrc, int ysrc, int width, int height,
-        int maskx, int masky, HDC hdcMask)
-{
-   if ((!hdcMask) or (!hdcDest) or (!hdcSrc)) return;
-
-   BitBlt(hdcDest, x, y, width, height, hdcMask, maskx, masky, SRCAND);   // Mask out the places where the bitmap will be placed.
-   BitBlt(hdcDest, x, y, width, height, hdcSrc, xsrc, ysrc, SRCPAINT);    // XOR the bitmap with the background on the destination DC.
 }
 
 //********************************************************************************************************************

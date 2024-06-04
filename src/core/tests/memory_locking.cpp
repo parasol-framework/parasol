@@ -11,6 +11,9 @@ This program tests the locking of memory between threads.
 
 #include <pthread.h>
 #include <parasol/startup.h>
+#include <parasol/strings.hpp>
+
+using namespace pf;
 
 CSTRING ProgName = "MemoryLocking";
 static volatile MEMORYID glMemoryID = 0;
@@ -40,7 +43,7 @@ static void * test_locking(void *Arg)
       //log.branch("Attempt %d.%d: Acquiring the memory.", info->index, i);
 
       BYTE *memory;
-      if (auto error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, &memory); !error) {
+      if (auto error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, (APTR *)&memory); error IS ERR::Okay) {
          memory[0]++;
          log.msg("%d.%d: Memory acquired.", info->index, i);
          WaitTime(0, 2000);
@@ -112,22 +115,22 @@ int main(int argc, CSTRING *argv)
    }
 
    pf::vector<std::string> *args;
-   if ((!CurrentTask()->getPtr(FID_Parameters, &args)) and (args)) {
+   if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR::Okay) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
-         if (!StrMatch(args[0][i], "-threads")) {
+         if (iequals(args[0][i], "-threads")) {
             if (++i < args->size()) glTotalThreads = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[0][i], "-attempts")) {
+         else if (iequals(args[0][i], "-attempts")) {
             if (++i < args->size()) glLockAttempts = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[0][i], "-gap")) {
+         else if (iequals(args[0][i], "-gap")) {
             if (++i < args->size()) glAccessGap = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[0][i], "-terminate")) glTerminateMemory = true;
-         else if (!StrMatch(args[0][i], "-alloc")) glTestAllocation = true;
+         else if (iequals(args[0][i], "-terminate")) glTerminateMemory = true;
+         else if (iequals(args[0][i], "-alloc")) glTestAllocation = true;
       }
    }
 

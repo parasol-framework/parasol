@@ -1,5 +1,9 @@
 
 agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma(2.2);
+DOUBLE glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
+
+static HSV rgb_to_hsl(FRGB Colour) __attribute__((unused));
+static FRGB hsl_to_rgb(HSV Colour) __attribute__((unused));
 
 //********************************************************************************************************************
 
@@ -52,39 +56,110 @@ const FieldDef clAspectRatio[] = {
 
 //********************************************************************************************************************
 
+static HSV rgb_to_hsl(FRGB Colour)
+{
+   DOUBLE vmax = std::ranges::max({ Colour.Red, Colour.Green, Colour.Blue });
+   DOUBLE vmin = std::ranges::min({ Colour.Red, Colour.Green, Colour.Blue });
+   DOUBLE light = (vmax + vmin) * 0.5;
+
+   if (vmax IS vmin) return HSV { 0, 0, light };
+
+   DOUBLE sat = light, hue = light;
+   DOUBLE d = vmax - vmin;
+   sat = light > 0.5 ? d / (2 - vmax - vmin) : d / (vmax + vmin);
+   if (vmax IS Colour.Red)   hue = (Colour.Green - Colour.Blue) / d + (Colour.Green < Colour.Blue ? 6.0 : 0.0);
+   if (vmax IS Colour.Green) hue = (Colour.Blue  - Colour.Red) / d + 2.0;
+   if (vmax IS Colour.Blue)  hue = (Colour.Red   - Colour.Green) / d + 4.0;
+   hue /= 6.0;
+
+   return HSV { hue, sat, light, Colour.Alpha };
+}
+
+//********************************************************************************************************************
+
+static FRGB hsl_to_rgb(HSV Colour)
+{
+   auto hueToRgb = [](FLOAT p, FLOAT q, FLOAT t) -> FLOAT {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+      if (t < 1.0/2.0) return q;
+      if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+      return p;
+   };
+
+   if (Colour.Saturation == 0) {
+      return { FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Alpha) };
+   }
+   else {
+      const DOUBLE q = (Colour.Value < 0.5) ? Colour.Value * (1.0 + Colour.Saturation) : Colour.Value + Colour.Saturation - Colour.Value * Colour.Saturation;
+      const DOUBLE p = 2.0 * Colour.Value - q;
+      return {
+         hueToRgb(p, q, Colour.Hue + 1.0/3.0),
+         hueToRgb(p, q, Colour.Hue),
+         hueToRgb(p, q, Colour.Hue - 1.0/3.0),
+         FLOAT(Colour.Alpha)
+      };
+   }
+}
+
+//********************************************************************************************************************
+
 CSTRING get_name(OBJECTPTR Vector)
 {
    if (!Vector) return "NULL";
 
-   switch(Vector->Class->ClassID) {
-      case ID_VECTORCLIP:      return "Clip";
-      case ID_VECTORRECTANGLE: return "Rectangle";
-      case ID_VECTORELLIPSE:   return "Ellipse";
-      case ID_VECTORPATH:      return "Path";
-      case ID_VECTORPOLYGON:   return "Polygon";
-      case ID_VECTORTEXT:      return "Text";
-      case ID_VECTORFILTER:    return "Filter";
-      case ID_VECTORGROUP:     return "Group";
-      case ID_VECTORVIEWPORT:  return "Viewport";
-      case ID_VECTORWAVE:      return "Wave";
+   switch(Vector->classID()) {
+      case CLASSID::VECTORCLIP:      return "Clip";
+      case CLASSID::VECTORRECTANGLE: return "Rectangle";
+      case CLASSID::VECTORELLIPSE:   return "Ellipse";
+      case CLASSID::VECTORPATH:      return "Path";
+      case CLASSID::VECTORPOLYGON:   return "Polygon";
+      case CLASSID::VECTORTEXT:      return "Text";
+      case CLASSID::VECTORFILTER:    return "Filter";
+      case CLASSID::VECTORGROUP:     return "Group";
+      case CLASSID::VECTORVIEWPORT:  return "Viewport";
+      case CLASSID::VECTORWAVE:      return "Wave";
+      default: break;
    }
 
-   switch(Vector->Class->BaseClassID) {
-      case ID_VECTORCOLOUR:    return "Colour";
-      case ID_VECTORFILTER:    return "Filter";
-      case ID_VECTORGRADIENT:  return "Gradient";
-      case ID_VECTORPATTERN:   return "Pattern";
-      case ID_VECTOR:          return "Vector";
-      case ID_VECTORSCENE:     return "Scene";
+   switch(Vector->baseClassID()) {
+      case CLASSID::VECTORCOLOUR:    return "Colour";
+      case CLASSID::VECTORFILTER:    return "Filter";
+      case CLASSID::VECTORGRADIENT:  return "Gradient";
+      case CLASSID::VECTORPATTERN:   return "Pattern";
+      case CLASSID::VECTOR:          return "Vector";
+      case CLASSID::VECTORSCENE:     return "Scene";
+      default: break;
    }
 
    return "Unknown";
 }
 
 //********************************************************************************************************************
+
+static void update_dpi(void)
+{
+   static LARGE last_update = -0x7fffffff;
+   LARGE current_time = PreciseTime();
+
+   if (current_time - last_update > 3000000LL) {
+      DISPLAYINFO *display;
+      if (gfx::GetDisplayInfo(0, &display) IS ERR::Okay) {
+         last_update = PreciseTime();
+         if ((display->VDensity >= 72) and (display->HDensity >= 72)) {
+            glDisplayVDPI = display->VDensity;
+            glDisplayHDPI = display->HDensity;
+            glDisplayDPI = (glDisplayVDPI + glDisplayHDPI) * 0.5;
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
 // Read a string-based series of vector commands and add them to Path.
 
-ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
+ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 {
    pf::Log log(__FUNCTION__);
 
@@ -98,79 +173,70 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
       else if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-') or (*Value IS '+')); // Use the previous command
       else { Value++; continue; }
 
-      ClearMemory(&path, sizeof(path));
-
       switch (cmd) {
          case 'M': case 'm': // MoveTo
-            Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
+            read_numseq_zero(Value, { &path.X, &path.Y });
             if (cmd IS 'M') {
                path.Type = PE::Move;
-               cmd = 'L'; // This is because the SVG standard requires that sequential coordinate pairs will be interpreted as line-to commands.
+               cmd = 'L'; // This is because the SVG standard requires that uninterrupted coordinate pairs are interpreted as line-to commands.
             }
             else {
                path.Type = PE::MoveRel;
                cmd = 'l';
             }
-            path.Curved = FALSE;
             break;
 
          case 'L': case 'l': // LineTo
-            Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
+            read_numseq_zero(Value, { &path.X, &path.Y });
             if (cmd IS 'L') path.Type = PE::Line;
             else path.Type = PE::LineRel;
-            path.Curved = FALSE;
             break;
 
          case 'V': case 'v': // Vertical LineTo
-            Value = read_numseq(Value, &path.Y, TAGEND);
+            path.X = 0; // Needs to be zero to satisfy any curve instructions that might follow
+            read_numseq_zero(Value, { &path.Y });
             if (cmd IS 'V') path.Type = PE::VLine;
             else path.Type = PE::VLineRel;
-            path.Curved = FALSE;
             break;
 
          case 'H': case 'h': // Horizontal LineTo
-            Value = read_numseq(Value, &path.X, TAGEND);
+            path.Y = 0; // Needs to be zero to satisfy any curve instructions that might follow
+            read_numseq_zero(Value, { &path.X });
             if (cmd IS 'H') path.Type = PE::HLine;
             else path.Type = PE::LineRel;
-            path.Curved = FALSE;
             break;
 
          case 'Q': case 'q': // Quadratic Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            read_numseq_zero(Value, { &path.X2, &path.Y2, &path.X, &path.Y });
             if (cmd IS 'Q') path.Type = PE::QuadCurve;
             else path.Type = PE::QuadCurveRel;
-            path.Curved = TRUE;
             break;
 
          case 'T': case 't': // Quadratic Smooth Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            read_numseq_zero(Value, { &path.X2, &path.Y2, &path.X, &path.Y });
             if (cmd IS 'T') path.Type = PE::QuadSmooth;
             else path.Type = PE::QuadSmoothRel;
-            path.Curved = TRUE;
            break;
 
          case 'C': case 'c': // Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X3, &path.Y3, &path.X, &path.Y, TAGEND);
+            read_numseq_zero(Value, { &path.X2, &path.Y2, &path.X3, &path.Y3, &path.X, &path.Y });
             if (cmd IS 'C') path.Type = PE::Curve;
             else path.Type = PE::CurveRel;
-            path.Curved = TRUE;
             break;
 
          case 'S': case 's': // Smooth Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            read_numseq_zero(Value, { &path.X2, &path.Y2, &path.X, &path.Y });
             if (cmd IS 'S') path.Type = PE::Smooth;
             else path.Type = PE::SmoothRel;
-            path.Curved = TRUE;
             break;
 
          case 'A': case 'a': { // Arc
             DOUBLE largearc, sweep;
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y, TAGEND);
+            read_numseq_zero(Value, { &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y });
             path.LargeArc = F2T(largearc);
             path.Sweep = F2T(sweep);
             if (cmd IS 'A') path.Type = PE::Arc;
             else path.Type = PE::ArcRel;
-            path.Curved = TRUE;
             break;
          }
 
@@ -184,30 +250,30 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
          case 'Z': case 'z': { // Close Path
             path.Type = PE::ClosePath;
-            path.Curved = FALSE;
             break;
          }
 
          default: {
             log.warning("Invalid path command '%c'", *Value);
-            return ERR_Failed;
+            return ERR::Failed;
          }
       }
 
       if (--max_cmds == 0) {
          Path.clear();
-         return log.warning(ERR_BufferOverflow);
+         return log.warning(ERR::BufferOverflow);
       }
 
       Path.push_back(path);
    }
 
-   return (Path.size() >= 2) ? ERR_Okay : ERR_Failed;
+   return (Path.size() >= 2) ? ERR::Okay : ERR::Failed;
 }
 
 //********************************************************************************************************************
 // Calculate the target X/Y for a vector path based on an aspect ratio and source/target dimensions.
-// Source* defines size of the source area and Target* defines the size of the projection to the display.
+// Source* defines size of the source area (in SVG, the 'viewbox')
+// Target* defines the size of the projection to the display.
 
 void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
    DOUBLE TargetWidth, DOUBLE TargetHeight,
@@ -219,13 +285,13 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
    // Prevent division by zero errors.  Note that the client can legitimately set these values to zero, so we cannot
    // treat such situations as an error on the client's part.
 
-   if (TargetWidth <= 0.000001) TargetWidth = 0.1;
-   if (TargetHeight <= 0.000001) TargetHeight = 0.1;
+   if (TargetWidth <= DBL_MIN) TargetWidth = 0.1;
+   if (TargetHeight <= DBL_MIN) TargetHeight = 0.1;
 
    // A Source size of 0 is acceptable and will be treated as equivalent to the target.
 
-   if (SourceWidth <= 0.000001) SourceWidth = TargetWidth;
-   if (SourceHeight <= 0.000001) SourceHeight = TargetHeight;
+   if (SourceWidth <= DBL_MIN) SourceWidth = TargetWidth;
+   if (SourceHeight <= DBL_MIN) SourceHeight = TargetHeight;
 
    if ((AspectRatio & (ARF::MEET|ARF::SLICE)) != ARF::NIL) {
       DOUBLE xScale = TargetWidth / SourceWidth;
@@ -272,106 +338,62 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
 // Calculate the boundaries for a branch of the tree, including transforms, and return the combined maximum bound
 // values.  NOTE: This function performs a full traversal (siblings and children) and this may extend beyond the
 // viewport's visible boundary.
+//
+// See also VECTOR_GetBoundary(), for which this function is intended, and set_clip_region() for filters.
 
-void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool IncludeSiblings, bool IncludeTransforms)
+void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool IncludeSiblings, bool IncludeTransforms, bool IncludeStrokes)
 {
    if (!Vector) return;
 
    for (; Vector; Vector=(extVector *)Vector->Next) {
       if (Vector->dirty()) gen_vector_path(Vector);
 
-      if (Vector->Class->ClassID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
-         DOUBLE bx1, by1, bx2, by2;
-
-         if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {
+      if (Vector->classID() != CLASSID::VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
+         if (Vector->BasePath.total_vertices()) {
+            DOUBLE stroke = 0;
             if (IncludeTransforms) {
-               agg::conv_transform<agg::path_storage, agg::trans_affine> path(*Vector->ClipMask->ClipPath, Vector->Transform);
-               bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
-            }
-            else bounding_rect_single(*Vector->ClipMask->ClipPath, 0, &bx1, &by1, &bx2, &by2);
+               if ((IncludeStrokes) and (Vector->Stroked)) {
+                  stroke = Vector->fixed_stroke_width() * Vector->Transform.scale() * 0.5;
+               }
 
-            if (bx1 < Bounds[0]) Bounds[0] = bx1;
-            if (by1 < Bounds[1]) Bounds[1] = by1;
-            if (bx2 > Bounds[2]) Bounds[2] = bx2;
-            if (by2 > Bounds[3]) Bounds[3] = by2;
-         }
-         else if (Vector->BasePath.total_vertices()) {
-            if (IncludeTransforms) {
                if (Vector->Transform.is_complex()) {
-                  auto simple_path = basic_path(Vector->BX1, Vector->BY1, Vector->BX2, Vector->BY2);
+                  auto simple_path = Vector->Bounds.as_path();
                   agg::conv_transform<agg::path_storage, agg::trans_affine> path(Vector->BasePath, Vector->Transform);
-                  bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
-
-                  if (bx1 < Bounds[0]) Bounds[0] = bx1;
-                  if (by1 < Bounds[1]) Bounds[1] = by1;
-                  if (bx2 > Bounds[2]) Bounds[2] = bx2;
-                  if (by2 > Bounds[3]) Bounds[3] = by2;
+                  auto pb = get_bounds(path);
+                  if (pb.left   - stroke < Bounds.left)   Bounds.left   = pb.left - stroke;
+                  if (pb.top    - stroke < Bounds.top)    Bounds.top    = pb.top - stroke;
+                  if (pb.right  + stroke > Bounds.right)  Bounds.right  = pb.right + stroke;
+                  if (pb.bottom + stroke > Bounds.bottom) Bounds.bottom = pb.bottom + stroke;
                }
                else {
-                  if (Vector->BX1 + Vector->Transform.tx < Bounds[0]) Bounds[0] = Vector->BX1 + Vector->Transform.tx;
-                  if (Vector->BY1 + Vector->Transform.ty < Bounds[1]) Bounds[1] = Vector->BY1 + Vector->Transform.ty;
-                  if (Vector->BX2 + Vector->Transform.tx > Bounds[2]) Bounds[2] = Vector->BX2 + Vector->Transform.tx;
-                  if (Vector->BY2 + Vector->Transform.ty > Bounds[3]) Bounds[3] = Vector->BY2 + Vector->Transform.ty;
+                  if (Vector->Bounds.left   - stroke + Vector->Transform.tx < Bounds.left)   Bounds.left   = Vector->Bounds.left + Vector->Transform.tx - stroke;
+                  if (Vector->Bounds.top    - stroke + Vector->Transform.ty < Bounds.top)    Bounds.top    = Vector->Bounds.top + Vector->Transform.ty - stroke;
+                  if (Vector->Bounds.right  + stroke + Vector->Transform.tx > Bounds.right)  Bounds.right  = Vector->Bounds.right + Vector->Transform.tx + stroke;
+                  if (Vector->Bounds.bottom + stroke + Vector->Transform.ty > Bounds.bottom) Bounds.bottom = Vector->Bounds.bottom + Vector->Transform.ty + stroke;
                }
             }
             else {
-               if (Vector->BX1 < Bounds[0]) Bounds[0] = Vector->BX1;
-               if (Vector->BY1 < Bounds[1]) Bounds[1] = Vector->BY1;
-               if (Vector->BX2 > Bounds[2]) Bounds[2] = Vector->BX2;
-               if (Vector->BY2 > Bounds[3]) Bounds[3] = Vector->BY2;
+               if ((IncludeStrokes) and (Vector->Stroked)) stroke = Vector->fixed_stroke_width() * 0.5;
+
+               if (Vector->Bounds.left   - stroke < Bounds.left)   Bounds.left   = Vector->Bounds.left - stroke;
+               if (Vector->Bounds.top    - stroke < Bounds.top)    Bounds.top    = Vector->Bounds.top - stroke;
+               if (Vector->Bounds.right  + stroke > Bounds.right)  Bounds.right  = Vector->Bounds.right + stroke;
+               if (Vector->Bounds.bottom + stroke > Bounds.bottom) Bounds.bottom = Vector->Bounds.bottom + stroke;
             }
          }
       }
 
-      if (Vector->Child) calc_full_boundary((extVector *)Vector->Child, Bounds, true, IncludeTransforms);
+      if (Vector->Child) calc_full_boundary((extVector *)Vector->Child, Bounds, true, IncludeTransforms, IncludeStrokes);
 
       if (!IncludeSiblings) break;
    }
 }
 
 //********************************************************************************************************************
-// For debugging next/prev/child pointers in the scene graph
-//
-// LONG level = 0;
-// debug_branch("Debug", &Self->Head, &level);
-
-static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level) __attribute__ ((unused));
-
-static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
-{
-   pf::Log log(Header);
-   auto spacing = std::make_unique<UBYTE[]>(*Level + 1);
-   LONG i;
-
-   *Level = *Level + 1;
-   for (i=0; i < *Level; i++) spacing[i] = ' '; // Indenting
-   spacing[i] = 0;
-
-   while (Vector) {
-      if (Vector->Class->ClassID IS ID_VECTORSCENE) {
-         log.msg("Scene: %p", Vector);
-         if (((objVectorScene *)Vector)->Viewport) debug_tree_ptrs(Header, (((objVectorScene *)Vector)->Viewport), Level);
-         break;
-      }
-      else if (Vector->Class->BaseClassID IS ID_VECTOR) {
-         auto shape = (objVector *)Vector;
-         log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing.get(), get_name(shape));
-         if (shape->Child) debug_tree_ptrs(Header, shape->Child, Level);
-         Vector = shape->Next;
-      }
-      else break;
-   }
-
-   *Level = *Level - 1;
-}
-
-//********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-DOUBLE read_unit(CSTRING Value, bool &Percent)
+DOUBLE read_unit(CSTRING &Value, bool &Percent)
 {
-   bool isnumber = true;
-
    Percent = false;
 
    while ((*Value) and (*Value <= 0x20)) Value++;
@@ -379,7 +401,7 @@ DOUBLE read_unit(CSTRING Value, bool &Percent)
    CSTRING str = Value;
    if ((*str IS '-') or (*str IS '+')) str++;
 
-   if ((((*str >= '0') and (*str <= '9')))) {
+   if ((*str >= '0') and (*str <= '9')) {
       while ((*str >= '0') and (*str <= '9')) str++;
 
       if (*str IS '.') {
@@ -387,61 +409,230 @@ DOUBLE read_unit(CSTRING Value, bool &Percent)
          if ((*str >= '0') and (*str <= '9')) {
             while ((*str >= '0') and (*str <= '9')) str++;
          }
-         else isnumber = false;
       }
 
       DOUBLE multiplier = 1.0;
-      DOUBLE dpi = 96.0;
+      DOUBLE dpi = DISPLAY_DPI;
 
       if (*str IS '%') {
          Percent = true;
          multiplier = 0.01;
          str++;
       }
-      else if ((str[0] IS 'p') and (str[1] IS 'x')); // Pixel.  This is the default type
-      else if ((str[0] IS 'e') and (str[1] IS 'm')) multiplier = 12.0 * (4.0 / 3.0); // Multiply the current font's pixel height by the provided em value
-      else if ((str[0] IS 'e') and (str[1] IS 'x')) multiplier = 6.0 * (4.0 / 3.0); // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
-      else if ((str[0] IS 'i') and (str[1] IS 'n')) multiplier = dpi; // Inches
-      else if ((str[0] IS 'c') and (str[1] IS 'm')) multiplier = (1.0 / 2.56) * dpi; // Centimetres
-      else if ((str[0] IS 'm') and (str[1] IS 'm')) multiplier = (1.0 / 20.56) * dpi; // Millimetres
-      else if ((str[0] IS 'p') and (str[1] IS 't')) multiplier = (4.0 / 3.0); // Points.  A point is 4/3 of a pixel
-      else if ((str[0] IS 'p') and (str[1] IS 'c')) multiplier = (4.0 / 3.0) * 12.0; // Pica.  1 Pica is equal to 12 Points
+      else if ((str[0] IS 'p') and (str[1] IS 'x')) str += 2; // Pixel.  This is the default type
+      else if ((str[0] IS 'e') and (str[1] IS 'm')) { str += 2; multiplier = (12.0 / 72.0) * dpi; } // Multiply the current font's pixel height by the provided em value
+      else if ((str[0] IS 'e') and (str[1] IS 'x')) { str += 2; multiplier = (6.0 / 72.0) * dpi; } // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
+      else if ((str[0] IS 'i') and (str[1] IS 'n')) { str += 2; multiplier = dpi; } // Inches
+      else if ((str[0] IS 'c') and (str[1] IS 'm')) { str += 2; multiplier = (1.0 / 2.56) * dpi; } // Centimetres
+      else if ((str[0] IS 'm') and (str[1] IS 'm')) { str += 2; multiplier = (1.0 / 20.56) * dpi; } // Millimetres
+      else if ((str[0] IS 'p') and (str[1] IS 't')) { str += 2; multiplier = (1.0 / 72.0) * dpi; } // Points.  A point is 1/72 of an inch
+      else if ((str[0] IS 'p') and (str[1] IS 'c')) { str += 2; multiplier = (12.0 / 72.0) * dpi; } // Pica.  1 Pica is equal to 12 Points
 
-      return StrToFloat(Value) * multiplier;
+      auto result = StrToFloat(Value) * multiplier;
+
+      Value = str;
+      return result;
    }
    else return 0;
 }
 
 //********************************************************************************************************************
-// The parser will break once the string value terminates, or an invalid character is encountered.  All unparseable
-// result values will be set to zero.
+
+std::string weight_to_style(CSTRING Style, LONG Weight)
+{
+   std::string weight_name;
+
+   if (Weight >= 700) weight_name = "Extra Bold";
+   else if (Weight >= 500) weight_name = "Bold";
+   else if (Weight <= 200) weight_name = "Extra Light";
+   else if (Weight <= 300) weight_name = "Light";
+
+   if (iequals("Italic", Style)) {
+      if (weight_name.empty()) return "Italic";
+      else return weight_name + " Italic";
+   }
+   else if (!weight_name.empty()) return weight_name;
+   else return "Regular";
+}
+
+//********************************************************************************************************************
+
+ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size, common_font **Handle)
+{
+   Log.branch("Family: %s, Style: %s, Weight: %d, Size: %d", Family, Style, Weight, Size);
+
+   if (!Style) return Log.warning(ERR::NullArgs);
+
+   const std::lock_guard lock{glFontMutex};
+
+   std::string family(Family ? Family : "*");
+   if (!family.ends_with("*")) family.append(",*");
+   CSTRING final_name;
+   if (fnt::ResolveFamilyName(family.c_str(), &final_name) IS ERR::Okay) family.assign(final_name);
+
+   std::string style(Style);
+   if ((Weight) and (Weight != 400)) {
+      // If a weight value is specified and is anything other than "Normal"/400 then it will
+      // override the named Style completely.
+      style = weight_to_style(Style, Weight);
+   }
+
+   const LONG point_size = std::round(Size * (72.0 / DISPLAY_DPI));
+   CSTRING location = NULL;
+   FMETA meta = FMETA::NIL;
+   if (auto error = fnt::SelectFont(family.c_str(), style.c_str(), &location, &meta); error IS ERR::Okay) {
+      LocalResource loc(location);
+
+      if ((meta & FMETA::SCALED) IS FMETA::NIL) { // Bitmap font
+         auto key = strihash(style + ":" + std::to_string(point_size) + ":" + location);
+
+         if (glBitmapFonts.contains(key)) {
+            *Handle = &glBitmapFonts[key];
+            return ERR::Okay;
+         }
+         else if (auto font = objFont::create::global(fl::Name("vector_cached_font"),
+               fl::Owner(glVectorModule->UID),
+               fl::Face(family),
+               fl::Style(style),
+               fl::Point(point_size),
+               fl::Path(location))) {
+            glBitmapFonts.emplace(key, font);
+            *Handle = &glBitmapFonts[key];
+            return ERR::Okay;
+         }
+         else return ERR::CreateObject;
+      }
+      else {
+         // For scalable fonts the key is made from the location only, ensuring that the face file is loaded
+         // only once.  If the file is variable, it will contain multiple styles.  Otherwise, assume the file
+         // represents one type of style.
+
+         auto key = strihash(location);
+
+         if (!glFreetypeFonts.contains(key)) {
+            STRING resolved;
+            if (ResolvePath(location, RSF::NIL, &resolved) IS ERR::Okay) {
+               FT_Face ftface;
+               FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = resolved };
+               if (FT_Open_Face(glFTLibrary, &openargs, 0, &ftface)) {
+                  Log.warning("Fatal error in attempting to load font \"%s\".", resolved);
+                  FreeResource(resolved);
+                  return ERR::Failed;
+               }
+
+               freetype_font::METRIC_TABLE metrics;
+               freetype_font::STYLE_CACHE styles;
+
+               if (FT_HAS_MULTIPLE_MASTERS(ftface)) {
+                  FT_MM_Var *mvar;
+                  if (!FT_Get_MM_Var(ftface, &mvar)) {
+                     FT_UInt index;
+                     if (!FT_Get_Default_Named_Instance(ftface, &index)) {
+                        auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
+                        for (FT_UInt s=0; s < mvar->num_namedstyles; s++) {
+                           for (LONG n=name_table_size-1; n >= 0; n--) {
+                              FT_SfntName sft_name;
+                              if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
+                                 if (sft_name.name_id IS mvar->namedstyle[s].strid) {
+                                    // Decode UTF16 Big Endian
+                                    char buffer[100];
+                                    LONG out = 0;
+                                    auto str = (UWORD *)sft_name.string;
+                                    UWORD prev_unicode = 0;
+                                    for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
+                                       UWORD unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
+                                       if ((unicode >= 'A') and (unicode <= 'Z')) {
+                                          if ((i > 0) and (prev_unicode >= 'a') and (prev_unicode <= 'z')) {
+                                             buffer[out++] = ' ';
+                                          }
+                                       }
+                                       out += UTF8WriteValue(unicode, buffer+out, std::ssize(buffer)-out);
+                                       prev_unicode = unicode;
+                                    }
+                                    buffer[out] = 0;
+                                    freetype_font::METRIC_GROUP set;
+                                    for (unsigned m=0; m < mvar->num_axis; m++) {
+                                       set.push_back(mvar->namedstyle[s].coords[m]);
+                                    }
+                                    metrics.try_emplace(buffer, set);
+                                    styles.try_emplace(buffer);
+                                    break;
+                                 }
+                              }
+                           }
+                        }
+                     }
+                     FT_Done_MM_Var(glFTLibrary, mvar);
+                  }
+               }
+               else styles.try_emplace(style);
+
+               glFreetypeFonts.try_emplace(key, ftface, styles, metrics, meta);
+               FreeResource(resolved);
+            }
+            else return Log.warning(ERR::ResolvePath);
+         }
+
+         auto &font = glFreetypeFonts[key];
+         if (auto cache = font.style_cache.find(style); cache != font.style_cache.end()) {
+            freetype_font::SIZE_CACHE &sz = cache->second;
+            if (auto size = sz.find(Size); size IS sz.end()) {
+               // New font size entry required
+
+               if (font.metrics.contains(style)) {
+                  auto new_size = sz.try_emplace(Size, font, font.metrics[style], Size);
+                  if (!new_size.first->second.ft_size) return ERR::Failed; // Verify success
+                  *Handle = &new_size.first->second;
+                  return ERR::Okay;
+               }
+               else {
+                  if (!font.metrics.empty()) Log.warning("Font metrics do not support style '%s'", style.c_str());
+                  auto new_size = sz.try_emplace(Size, font, Size);
+                  if (!new_size.first->second.ft_size) return ERR::Failed; // Verify success
+                  *Handle = &new_size.first->second;
+                  return ERR::Okay;
+               }
+            }
+            else {
+               *Handle = &size->second;
+               return ERR::Okay;
+            }
+         }
+         else return ERR::Search;
+      }
+   }
+   else return error;
+}
+
+//********************************************************************************************************************
+// The parser will break once the string value terminates, or an invalid character is encountered.
+//
+// There are two variants - the first aborts if an unparseable value is encountered.  The second will set all
+// unparseable result values to zero.
 //
 // Parsed characters include: 0 - 9 , ( ) - + SPACE
 
-CSTRING read_numseq(CSTRING Value, ...)
+void read_numseq(CSTRING &String, std::initializer_list<DOUBLE *> Value)
 {
-   va_list list;
-   DOUBLE *result;
-
-   if ((!Value) or (!Value[0])) return Value;
-
-   va_start(list, Value);
-
-   while ((result = va_arg(list, DOUBLE *))) {
-      while ((*Value) and ((*Value <= 0x20) or (*Value IS ',') or (*Value IS '(') or (*Value IS ')'))) Value++;
-      if (!Value[0]) break;
-
+   for (DOUBLE *v : Value) {
       STRING next = NULL;
-      DOUBLE num = strtod(Value, &next);
-      if ((!num) and ((!next) or (Value IS next))) {  // Invalid character or end-of-stream check.
-         Value = next;
-         break;
+      next_value(String);
+      DOUBLE num = strtod(String, &next);
+      if ((!num) and ((!next) or (String IS next))) {  // Invalid character or end-of-stream check.
+         String = next;
+         return;
       }
-
-      *result = num;
-      Value = next;
+      String = next;
+      *v = num;
    }
+}
 
-   va_end(list);
-   return Value;
+void read_numseq_zero(CSTRING &String, std::initializer_list<DOUBLE *> Value)
+{
+   for (DOUBLE *v : Value) {
+      STRING next = (STRING)String;
+      next_value(String);
+      *v = strtod(String, &next);
+      String = next;
+   }
 }

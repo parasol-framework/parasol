@@ -1,28 +1,5 @@
 --[[
-The MenuBar interface creates and manages the use of items and groups of items in the UI, typically using icons, text
-or both for item representation.  Each item performs a specific application function that is activated via a callback
-mechanism.
-
-The following example illustrates basic usage:
-
-   gui.menubar(viewport, {
-      x=0, y=0, xOffset=0,
-      createItems = function(Bar)
-         Bar.addItem(10, 'Rename', 'layout/interface_textbox', function()
-            print('rename')
-         end)
-         Bar.addItem(11, 'Delete', 'tools/eraser', function()
-            print('delete')
-         end)
-      end
-   })
-
-The first parameter is the target viewport for the MenuBar graphic.  Valid options to use when creating the menubar are
-as follows:
-
-  createItems: Required.  A function that will define the items to display in the menubar.
-  x, y:        The x and y coordinates of the menubar.
-  xOffset:     Optional x offset (defaults to 0).
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
@@ -30,8 +7,6 @@ as follows:
    require 'gui/menu'
    require 'translate'
    include 'vector'
-
-   if (not mFont) then mFont = mod.load('font') end
 
 local lColours = {
    textFill      = 'rgb(255,255,255)',
@@ -59,6 +34,11 @@ local function activateItem(self) -- Activate the current menu item.
 
    local menu = self._currentItem.menu
    if not menu then
+      if not (#self._currentItem.menuConfig > 0) then 
+         if self._lastMenu then self._lastMenu.hide() end
+         return
+      end
+
       menu = gui.menu({
          client       = self.viewport,
          relative     = self.viewport,
@@ -159,15 +139,16 @@ local function arrangeItems(self)
       if nz(item.displayName) then
          item.vectorText = self._vg.new('VectorText', {
             x        = x + iconWidth + VMARGIN,
-            face     = 'Source Sans Pro',
+            face     = 'Source Sans Pro,*',
             fontSize = FONT_SIZE,
             fill     = lColours.textFill,
             string   = item.displayName
          })
 
-         item.gfxWidth = iconWidth + mFont.StringWidth(item.vectorText.font, item.displayName, -1) + (VMARGIN * 2)
+         local err, bx, by, bw, bh = item.vectorText.mtGetBoundary(0)
+         item.gfxWidth = iconWidth + bw + (VMARGIN * 2)
          item.width = item.gfxWidth + GAP
-         item.vectorText.y = (self.viewport.height * 0.5) + (item.vectorText.font.height * 0.5)
+         item.vectorText.y = math.floor((self.viewport.height + item.vectorText.displaySize) * 0.5)
 
          if self._disabled or item.disabled then
             item.vectorText.opacity = 0.5
@@ -183,7 +164,7 @@ local function arrangeItems(self)
    self._arranged = true
 end
 
-gui.menubar = function(HostVP, Options)
+gui.menubar = function(Options)
    local self = { -- Public variables
       host = nil,
       viewport = nil,
@@ -263,18 +244,6 @@ gui.menubar = function(HostVP, Options)
       end
    end
 
-   -- Remove an item from the menubar.
-
-   self.removeItem = function(ID)
-      local item = self._lookup[ID]
-      self._lookup[ID] = nil
-      if item.prev then item.prev.next = item.next end
-      if item.next then item.next.prev = item.prev end
-      if (item == self._first) then self._first = item.next end
-      if (item == self._last) then self._last = item.prev end
-      if (item == self._currentItem) then self._currentItem = nil end
-   end
-
    local function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.
       if (self._currentItem == Item) and (StateChanged != true) then return end
 
@@ -296,9 +265,9 @@ gui.menubar = function(HostVP, Options)
    -- Main entry point
 
    catch(function()
-      if (not HostVP) then error('A target viewport is required.') end
+      if (not Options.target) then error('A target viewport is required.') end
 
-      self.viewport = HostVP.new('vectorviewport')
+      self.viewport = Options.target.new('vectorviewport')
       self.viewport.x      = nz(Options.x, 0)
       self.viewport.y      = nz(Options.y, 0)
       self.viewport.height = 1
@@ -337,12 +306,12 @@ gui.menubar = function(HostVP, Options)
          self.viewport.acDraw()
       end
 
-      self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), function(Viewport, Events)
+      self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_CROSSING), function(Viewport, Events)
          local ev = Events
          while ev do
-            if (ev.type == JET_ENTERED_SURFACE) then
+            if (ev.type == JET_CROSSED_IN) then
 
-            elseif (ev.type == JET_LEFT_SURFACE) then
+            elseif (ev.type == JET_CROSSED_OUT) then
                if self._currentItem then
                   hoverUpdate(nil)
                end

@@ -10,7 +10,8 @@ static const struct FieldDef clVectorTextVTXF[] = {
    { "AreaSelected", 0x00000020 },
    { "NoSysKeys", 0x00000040 },
    { "Overwrite", 0x00000080 },
-   { "Raster", 0x00000100 },
+   { "Secret", 0x00000100 },
+   { "Raster", 0x00000200 },
    { NULL, 0 }
 };
 
@@ -33,7 +34,7 @@ static const struct FieldDef clVectorTextVTS[] = {
 FDEF maDeleteLine[] = { { "Line", FD_LONG }, { 0, 0 } };
 
 static const struct MethodEntry clVectorTextMethods[] = {
-   { -30, (APTR)VECTORTEXT_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct vtDeleteLine) },
+   { -30, (APTR)VECTORTEXT_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct vt::DeleteLine) },
    { 0, 0, 0, 0, 0 }
 };
 

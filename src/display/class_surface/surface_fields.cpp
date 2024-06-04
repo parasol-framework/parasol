@@ -9,20 +9,20 @@ the display and as such is not recommended.
 
 *********************************************************************************************************************/
 
-static ERROR GET_BitsPerPixel(extSurface *Self, LONG *Value)
+static ERR GET_BitsPerPixel(extSurface *Self, LONG *Value)
 {
    SURFACEINFO *info;
-   if (!gfxGetSurfaceInfo(Self->UID, &info)) {
+   if (gfx::GetSurfaceInfo(Self->UID, &info) IS ERR::Okay) {
       *Value = info->BitsPerPixel;
    }
    else *Value = 0;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_BitsPerPixel(extSurface *Self, LONG Value)
+static ERR SET_BitsPerPixel(extSurface *Self, LONG Value)
 {
    Self->BitsPerPixel = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -41,14 +41,14 @@ have no impact on the display.
 Colour: String-based field for setting the background colour.
 
 If the surface object should have a plain background colour, set this field to the colour value that you want to use.
-The colour must be specified in the standard format of '#RRGGBB' for hexadecimal or 'Red,Green,Blue' for a decimal
-colour.
+The colour must be specified in the standard format of `#RRGGBB` for hexadecimal or `Red,Green,Blue` for decimal
+components.
 
 Surface objects that do not have a colour will not be cleared when being drawn.  The background will thus consist of
 'junk' graphics and the background will need to be drawn using another method.  This gives your the power to choose the
 fastest drawing model to suit your needs.
 
-If you set the Colour and later want to turn the background colour off, write a NULL value to the Colour field or set
+If you set the Colour and later want to turn the background colour off, write a `NULL` value to the Colour field or set
 the Alpha component to zero.  Changing the Colour field does not cause a graphics redraw.
 
 -FIELD-
@@ -63,17 +63,18 @@ The Cursor field may be written with valid cursor names or their ID's, as you pr
 
 *********************************************************************************************************************/
 
-static ERROR SET_Cursor(extSurface *Self, PTC Value)
+static ERR SET_Cursor(extSurface *Self, PTC Value)
 {
    Self->Cursor = Value;
    if (Self->initialised()) {
       UpdateSurfaceField(Self, &SurfaceRecord::Cursor, (BYTE)Self->Cursor);
-      OBJECTID pointer_id;
-      if (!FindObject("SystemPointer", ID_POINTER, FOF::NIL, &pointer_id)) {
-         acRefresh(pointer_id);
+
+      if (auto pointer = gfx::AccessPointer()) {
+         acRefresh(pointer);
+         ReleaseObject(pointer);
       }
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -98,20 +99,20 @@ To turn off dragging, set the field to zero.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Drag(extSurface *Self, OBJECTID Value)
+static ERR SET_Drag(extSurface *Self, OBJECTID Value)
 {
    if (Value) {
-      auto callback = make_function_stdc(consume_input_events);
-      if (!gfxSubscribeInput(&callback, Self->UID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle)) {
+      auto callback = C_FUNCTION(consume_input_events);
+      if (gfx::SubscribeInput(&callback, Self->UID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle) IS ERR::Okay) {
          Self->DragID = Value;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_Failed;
+      else return ERR::Failed;
    }
    else {
-      if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
+      if (Self->InputHandle) { gfx::UnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
       Self->DragID = 0;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
@@ -131,7 +132,7 @@ field so that existing flags are not overwritten.  To not do so can produce unex
 
 *********************************************************************************************************************/
 
-static ERROR SET_Flags(extSurface *Self, RNF Value)
+static ERR SET_Flags(extSurface *Self, RNF Value)
 {
    auto flags = (Self->Flags & RNF::READ_ONLY) | (Value & (~RNF::READ_ONLY));
 
@@ -142,31 +143,31 @@ static ERROR SET_Flags(extSurface *Self, RNF Value)
       UpdateSurfaceField(Self, &SurfaceRecord::Flags, flags);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -FIELD-
 Modal: Sets the surface as modal (prevents user interaction with other surfaces).
 
-If TRUE, the surface will become the modal surface for the program when it is shown.  This prevents interaction with
+If `true`, the surface will become the modal surface for the program when it is shown.  This prevents interaction with
 other surfaces until the modal surface is either hidden or destroyed.  Children of the modal surface may be interacted
 with normally.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Modal(extSurface *Self, LONG Value)
+static ERR SET_Modal(extSurface *Self, LONG Value)
 {
    if ((!Value) and (Self->Modal)) {
       if (Self->PrevModalID) {
-         gfxSetModalSurface(Self->PrevModalID);
+         gfx::SetModalSurface(Self->PrevModalID);
          Self->PrevModalID = 0;
       }
-      else if (gfxGetModalSurface() IS Self->UID) gfxSetModalSurface(0);
+      else if (gfx::GetModalSurface() IS Self->UID) gfx::SetModalSurface(0);
    }
 
    Self->Modal = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -182,7 +183,7 @@ setting the coordinate fields directly.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Movement(extSurface *Self, LONG Flags)
+static ERR SET_Movement(extSurface *Self, LONG Flags)
 {
    if (Flags IS MOVE_HORIZONTAL) Self->Flags = (Self->Flags & RNF::NO_HORIZONTAL) | RNF::NO_VERTICAL;
    else if (Flags IS MOVE_VERTICAL) Self->Flags = (Self->Flags & RNF::NO_VERTICAL) | RNF::NO_HORIZONTAL;
@@ -190,7 +191,7 @@ static ERROR SET_Movement(extSurface *Self, LONG Flags)
    else Self->Flags |= RNF::NO_HORIZONTAL|RNF::NO_VERTICAL;
 
    UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -209,13 +210,13 @@ Please note that the use of translucency is realised at a significant cost to CP
 
 *********************************************************************************************************************/
 
-static ERROR GET_Opacity(extSurface *Self, DOUBLE *Value)
+static ERR GET_Opacity(extSurface *Self, DOUBLE *Value)
 {
    *Value = Self->Opacity * 100 / 255;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Opacity(extSurface *Self, DOUBLE Value)
+static ERR SET_Opacity(extSurface *Self, DOUBLE Value)
 {
    LONG opacity;
 
@@ -224,13 +225,13 @@ static ERROR SET_Opacity(extSurface *Self, DOUBLE Value)
 
    if (Value >= 100) {
       opacity = 255;
-      if (opacity IS Self->Opacity) return ERR_Okay;
+      if (opacity IS Self->Opacity) return ERR::Okay;
       Self->Flags &= ~RNF::AFTER_COPY;
    }
    else {
       if (Value < 0) opacity = 0;
       else opacity = (Value * 255) / 100;
-      if (opacity IS Self->Opacity) return ERR_Okay;
+      if (opacity IS Self->Opacity) return ERR::Okay;
       Self->Flags |= RNF::AFTER_COPY; // See PrepareBackground() to see what these flags are for
 
       // NB: Currently the combination of PRECOPY and AFTERCOPY at the same time is permissible,
@@ -240,7 +241,7 @@ static ERROR SET_Opacity(extSurface *Self, DOUBLE Value)
    Self->Opacity = opacity;
    UpdateSurfaceRecord(Self); // Update Opacity, Flags
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -253,14 +254,14 @@ a surface object.  This behaviour can be switched off by setting a Parent of zer
 
 *********************************************************************************************************************/
 
-static ERROR SET_Parent(extSurface *Self, LONG Value)
+static ERR SET_Parent(extSurface *Self, LONG Value)
 {
    // To change the parent post-initialisation, we have to re-track the surface so that it is correctly repositioned
    // within the surface lists.
 
    if (Self->initialised()) {
-      if (!Self->ParentID) return ERR_Failed; // Top level surfaces cannot be re-parented
-      if (Self->ParentID IS Value) return ERR_Okay;
+      if (!Self->ParentID) return ERR::Failed; // Top level surfaces cannot be re-parented
+      if (Self->ParentID IS Value) return ERR::Okay;
 
       acHide(Self);
 
@@ -288,7 +289,7 @@ static ERROR SET_Parent(extSurface *Self, LONG Value)
       Self->ParentDefined = true;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -302,40 +303,38 @@ other surfaces created by the current program.
 Setting the PopOver field to zero will return the surface to its normal state.
 
 If an object that does not belong to the Surface class is detected, an attempt will be made to read that object's
-Surface field, if available.  If this does not yield a valid surface then ERR_InvalidObject is returned.
+Surface field, if available.  If this does not yield a valid surface then `ERR::InvalidObject` is returned.
 
 *********************************************************************************************************************/
 
-static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
+static ERR SET_PopOver(extSurface *Self, OBJECTID Value)
 {
    pf::Log log;
 
-   if (Value IS Self->UID) return ERR_Okay;
+   if (Value IS Self->UID) return ERR::Okay;
 
-   if (Self->initialised()) return log.warning(ERR_Immutable);
+   if (Self->initialised()) return log.warning(ERR::Immutable);
 
    if (Value) {
       CLASSID class_id = GetClassID(Value);
-      if (class_id != ID_SURFACE) {
-         OBJECTPTR obj;
-         if (!AccessObject(Value, 3000, &obj)) {
-            obj->get(FID_Surface, &Value);
-            ReleaseObject(obj);
+      if (class_id != CLASSID::SURFACE) {
+         if (ScopedObjectLock obj(Value, 3000); obj.granted()) {
+            Value = obj->get<OBJECTID>(FID_Surface);
          }
-         else return ERR_AccessObject;
+         else return ERR::AccessObject;
 
-         if (class_id != ID_SURFACE) return log.warning(ERR_InvalidObject);
+         if (class_id != CLASSID::SURFACE) return log.warning(ERR::InvalidObject);
       }
    }
 
    Self->PopOverID = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_RevertFocus(extSurface *Self, OBJECTID Value)
+static ERR SET_RevertFocus(extSurface *Self, OBJECTID Value)
 {
    Self->RevertFocusID = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -345,11 +344,11 @@ RootLayer: Private
 
 *********************************************************************************************************************/
 
-static ERROR SET_RootLayer(extSurface *Self, OBJECTID Value)
+static ERR SET_RootLayer(extSurface *Self, OBJECTID Value)
 {
    Self->RootID = Value;
    UpdateSurfaceField(Self, &SurfaceRecord::RootID, Value); // Update RootLayer
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -357,15 +356,15 @@ static ERROR SET_RootLayer(extSurface *Self, OBJECTID Value)
 -FIELD-
 UserFocus: Refers to the surface object that has the current focus.
 
-Returns the surface object that has the primary user focus.  Returns NULL if no object has the focus.
+Returns the surface object that has the primary user focus.  Returns zero if no object has the focus.
 
 *********************************************************************************************************************/
 
-static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
+static ERR GET_UserFocus(extSurface *Self, OBJECTID *Value)
 {
-   const std::lock_guard<std::mutex> lock(glFocusLock);
+   const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
    *Value = glFocusList[0];
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -373,28 +372,29 @@ static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
 -FIELD-
 Visible: Indicates the visibility of a surface object.
 
-If you need to know if a surface object is visible or hidden, you can read this field to find out either way.  A TRUE
-value is returned if the object is visible and FALSE is returned if the object is invisible.  Note that visibility is
+If you need to know if a surface object is visible or hidden, you can read this field to find out either way.  A `true`
+value is returned if the object is visible and `false` is returned if the object is invisible.  Note that visibility is
 subject to the properties of the container that the surface object resides in.  For example, if a surface object is
 visible but is contained within a surface object that is invisible, the end result is that both objects are actually
 invisible.
 
-Visibility is directly affected by the Hide and Show actions if you wish to change the visibility of a surface object.
+Visibility is directly affected by the #Hide() and #Show() actions if you wish to change the visibility of a
+surface object.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Visible(extSurface *Self, LONG *Value)
+static ERR GET_Visible(extSurface *Self, LONG *Value)
 {
    if (Self->visible()) *Value = TRUE;
    else *Value = FALSE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_Visible(extSurface *Self, LONG Value)
+static ERR SET_Visible(extSurface *Self, LONG Value)
 {
    if (Value) acShow(Self);
    else acHide(Self);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -412,25 +412,24 @@ custom surfaces.
 
 *********************************************************************************************************************/
 
-static ERROR GET_WindowType(extSurface *Self, SWIN *Value)
+static ERR GET_WindowType(extSurface *Self, SWIN *Value)
 {
    *Value = Self->WindowType;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_WindowType(extSurface *Self, SWIN Value)
+static ERR SET_WindowType(extSurface *Self, SWIN Value)
 {
    if (Self->initialised()) {
       pf::Log log;
 
       if (Self->WindowType IS Value) {
          log.trace("WindowType == %d", Value);
-         return ERR_Okay;
+         return ERR::Okay;
       }
 
       if (Self->DisplayID) {
-         objDisplay *display;
-         if (!AccessObject(Self->DisplayID, 2000, &display)) {
+         if (ScopedObjectLock<objDisplay> display(Self->DisplayID, 2000); display.granted()) {
             log.trace("Changing window type to %d.", Value);
 
             bool border;
@@ -458,15 +457,14 @@ static ERROR SET_WindowType(extSurface *Self, SWIN Value)
             }
 
             Self->WindowType = Value;
-            ReleaseObject(display);
          }
-         else return ERR_AccessObject;
+         else return ERR::AccessObject;
       }
-      else return log.warning(ERR_NoSupport);
+      else return log.warning(ERR::NoSupport);
    }
    else Self->WindowType = Value;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -484,16 +482,16 @@ window that already exists.
 
 *********************************************************************************************************************/
 
-static ERROR GET_WindowHandle(extSurface *Self, APTR *Value)
+static ERR GET_WindowHandle(extSurface *Self, APTR *Value)
 {
    *Value = (APTR)Self->DisplayWindow;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR SET_WindowHandle(extSurface *Self, APTR Value)
+static ERR SET_WindowHandle(extSurface *Self, APTR Value)
 {
-   if (Self->initialised()) return ERR_Failed;
+   if (Self->initialised()) return ERR::Failed;
    if (Value) Self->DisplayWindow = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 

@@ -61,23 +61,23 @@ FDEF maCompressStreamEnd[] = { { "Callback", FD_FUNCTIONPTR }, { "Output", FD_BU
 FDEF maDecompressStreamEnd[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maDecompressObject[] = { { "Path", FD_STR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maScan[] = { { "Folder", FD_STR }, { "Filter", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF maFind[] = { { "Path", FD_STR }, { "Flags", FD_LONG }, { "CompressedItem:Item", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
+FDEF maFind[] = { { "Path", FD_STR }, { "CaseSensitive", FD_LONG }, { "Wildcard", FD_LONG }, { "CompressedItem:Item", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clCompressionMethods[] = {
-   { -1, (APTR)COMPRESSION_CompressBuffer, "CompressBuffer", maCompressBuffer, sizeof(struct cmpCompressBuffer) },
-   { -2, (APTR)COMPRESSION_CompressFile, "CompressFile", maCompressFile, sizeof(struct cmpCompressFile) },
-   { -3, (APTR)COMPRESSION_DecompressBuffer, "DecompressBuffer", maDecompressBuffer, sizeof(struct cmpDecompressBuffer) },
-   { -4, (APTR)COMPRESSION_DecompressFile, "DecompressFile", maDecompressFile, sizeof(struct cmpDecompressFile) },
-   { -5, (APTR)COMPRESSION_RemoveFile, "RemoveFile", maRemoveFile, sizeof(struct cmpRemoveFile) },
-   { -6, (APTR)COMPRESSION_CompressStream, "CompressStream", maCompressStream, sizeof(struct cmpCompressStream) },
-   { -7, (APTR)COMPRESSION_DecompressStream, "DecompressStream", maDecompressStream, sizeof(struct cmpDecompressStream) },
+   { -1, (APTR)COMPRESSION_CompressBuffer, "CompressBuffer", maCompressBuffer, sizeof(struct cmp::CompressBuffer) },
+   { -2, (APTR)COMPRESSION_CompressFile, "CompressFile", maCompressFile, sizeof(struct cmp::CompressFile) },
+   { -3, (APTR)COMPRESSION_DecompressBuffer, "DecompressBuffer", maDecompressBuffer, sizeof(struct cmp::DecompressBuffer) },
+   { -4, (APTR)COMPRESSION_DecompressFile, "DecompressFile", maDecompressFile, sizeof(struct cmp::DecompressFile) },
+   { -5, (APTR)COMPRESSION_RemoveFile, "RemoveFile", maRemoveFile, sizeof(struct cmp::RemoveFile) },
+   { -6, (APTR)COMPRESSION_CompressStream, "CompressStream", maCompressStream, sizeof(struct cmp::CompressStream) },
+   { -7, (APTR)COMPRESSION_DecompressStream, "DecompressStream", maDecompressStream, sizeof(struct cmp::DecompressStream) },
    { -8, (APTR)COMPRESSION_CompressStreamStart, "CompressStreamStart", 0, 0 },
-   { -9, (APTR)COMPRESSION_CompressStreamEnd, "CompressStreamEnd", maCompressStreamEnd, sizeof(struct cmpCompressStreamEnd) },
-   { -10, (APTR)COMPRESSION_DecompressStreamEnd, "DecompressStreamEnd", maDecompressStreamEnd, sizeof(struct cmpDecompressStreamEnd) },
+   { -9, (APTR)COMPRESSION_CompressStreamEnd, "CompressStreamEnd", maCompressStreamEnd, sizeof(struct cmp::CompressStreamEnd) },
+   { -10, (APTR)COMPRESSION_DecompressStreamEnd, "DecompressStreamEnd", maDecompressStreamEnd, sizeof(struct cmp::DecompressStreamEnd) },
    { -11, (APTR)COMPRESSION_DecompressStreamStart, "DecompressStreamStart", 0, 0 },
-   { -12, (APTR)COMPRESSION_DecompressObject, "DecompressObject", maDecompressObject, sizeof(struct cmpDecompressObject) },
-   { -13, (APTR)COMPRESSION_Scan, "Scan", maScan, sizeof(struct cmpScan) },
-   { -14, (APTR)COMPRESSION_Find, "Find", maFind, sizeof(struct cmpFind) },
+   { -12, (APTR)COMPRESSION_DecompressObject, "DecompressObject", maDecompressObject, sizeof(struct cmp::DecompressObject) },
+   { -13, (APTR)COMPRESSION_Scan, "Scan", maScan, sizeof(struct cmp::Scan) },
+   { -14, (APTR)COMPRESSION_Find, "Find", maFind, sizeof(struct cmp::Find) },
    { 0, 0, 0, 0, 0 }
 };
 

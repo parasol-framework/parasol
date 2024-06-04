@@ -68,13 +68,8 @@ extern void winGetError(int, char *, int);
 extern void * winCreateCompatibleDC(void);
 extern HBITMAP winCreateBitmap(int width, int height, int bpp);
 extern void winDeleteDC(void *);
-extern void winDeleteObject(void *);
-extern void winDrawLine(void *, int, int, int, int, unsigned char *);
 extern void winDrawRectangle(void *, int, int, int, int, unsigned char, unsigned char, unsigned char);
-extern void winGetPixel(void *, int, int, unsigned char *);
 extern int winGetPixelFormat(int *, int *, int *, int *);
-extern void * winSelectObject(void *, void *);
-extern int winSetClipping(HDC, int, int, int, int);
 extern void winSetDIBitsToDevice(void *, int, int, int, int, int, int, int, int, int, void *, int, int, int);
 
 extern void win32RedrawWindow(HWND, HDC, int X, int Y, int Width,
@@ -83,7 +78,7 @@ extern void win32RedrawWindow(HWND, HDC, int X, int Y, int Width,
 
 extern void MsgKeyPress(int, int, int);
 extern void MsgKeyRelease(int, int);
-extern void MsgMovement(int, double, double, int, int);
+extern void MsgMovement(int, double, double, int, int, bool);
 extern void MsgWheelMovement(int, float);
 extern void MsgButtonPress(int, int);
 extern void MsgFocusState(int SurfaceID, int State);

@@ -32,8 +32,8 @@ using namespace pf;
 AllocMemory: Allocates a new memory block on the heap.
 
 The AllocMemory() function will allocate a new block of memory on the program's heap.  The client will need to define
-the minimum byte Size, optional Flags and a variable to store the resulting Address and/or ID of the memory block.
-Here is an example:
+the minimum byte `Size`, optional `Flags` and a variable to store the resulting `Address` and/or `ID` of the memory block.
+For example:
 
 <pre>
 APTR address;
@@ -60,8 +60,8 @@ blocks it may be wise to turn off this feature, achieved by setting the `MEM::NO
 -INPUT-
 int Size:     The size of the memory block.
 int(MEM) Flags: Optional flags.
-&ptr Address: Set this argument to refer to an APTR type to store an address reference to the allocated memory block.
-&mem ID:      Set this argument to refer to a MEMORYID type to store a unique ID reference to the allocated memory block.
+&ptr Address: Refer to an `APTR` to store the address of the allocated memory block.
+&mem ID:      Refer to a `MEMORYID` to store the UID of the allocated memory block.
 
 -ERRORS-
 Okay:
@@ -73,13 +73,13 @@ AccessMemory:  The block was allocated but access to it was not granted, causing
 
 *********************************************************************************************************************/
 
-ERROR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
+ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
    if ((Size <= 0) or ((!Address) and (!MemoryID))) {
       log.warning("Bad args - Size %d, Address %p, MemoryID %p", Size, Address, MemoryID);
-      return ERR_Args;
+      return ERR::Args;
    }
 
    if (MemoryID) *MemoryID = 0;
@@ -106,7 +106,7 @@ ERROR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 
    if (!start_mem) {
       log.warning("Could not allocate %d bytes.", Size);
-      return ERR_AllocMemory;
+      return ERR::AllocMemory;
    }
 
    APTR data_start = (char *)start_mem + sizeof(LONG) + sizeof(LONG); // Skip MEMH and unique ID.
@@ -146,9 +146,9 @@ ERROR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 
       if ((MemoryID) and (Address)) {
          if ((Flags & MEM::NO_LOCK) != MEM::NIL) *Address = data_start;
-         else if (AccessMemory(unique_id, MEM::READ_WRITE, 2000, Address) != ERR_Okay) {
+         else if (AccessMemory(unique_id, MEM::READ_WRITE, 2000, Address) != ERR::Okay) {
             log.warning("Memory block %d stolen during allocation!", *MemoryID);
-            return ERR_AccessMemory;
+            return ERR::AccessMemory;
          }
          *MemoryID = unique_id;
       }
@@ -158,11 +158,11 @@ ERROR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
       }
 
       if (glShowPrivate) log.pmsg("AllocMemory(%p/#%d, %d, $%.8x, Owner: #%d)", data_start, unique_id, Size, LONG(Flags), object_id);
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       freemem(start_mem);
-      return ERR_SystemLocked;
+      return ERR::SystemLocked;
    }
 }
 
@@ -171,7 +171,7 @@ ERROR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 -FUNCTION-
 CheckMemoryExists: Checks if a memory block still exists.
 
-Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its ID.
+Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its `ID`.
 
 -INPUT-
 mem ID: The ID of the memory block that will be checked.
@@ -183,12 +183,12 @@ False: The block does not exist.
 
 *********************************************************************************************************************/
 
-ERROR CheckMemoryExists(MEMORYID MemoryID)
+ERR CheckMemoryExists(MEMORYID MemoryID)
 {
    if (auto lock = std::unique_lock{glmMemory}) {
-      if (glPrivateMemory.contains(MemoryID)) return ERR_True;
+      if (glPrivateMemory.contains(MemoryID)) return ERR::True;
    }
-   return ERR_False;
+   return ERR::False;
 }
 
 /*********************************************************************************************************************
@@ -196,9 +196,9 @@ ERROR CheckMemoryExists(MEMORYID MemoryID)
 -FUNCTION-
 FreeResource: Frees resources originating from AllocMemory().
 
-This function will free any resource that originates from AllocMemory(), using its ID for identification.  C++ headers
-also include a variant of this function that allows a direct memory pointer to be used as the identifier (however we
-do recommend the use of IDs to improve memory safety).
+This function will free any resource that originates from AllocMemory(), using its `ID` for identification.  C++
+headers also include a variant of this function that allows a direct memory pointer to be used as the identifier
+(however we do recommend the use of IDs to improve memory safety).
 
 In some circumstances the termination of the block will not take place immediately.  If the block is locked then
 it will be marked for deletion and not be collected until the lock count reaches zero.
@@ -219,7 +219,7 @@ MemoryDoesNotExist
 
 *********************************************************************************************************************/
 
-ERROR FreeResource(MEMORYID MemoryID)
+ERR FreeResource(MEMORYID MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
@@ -229,7 +229,7 @@ ERROR FreeResource(MEMORYID MemoryID)
          auto &mem = it->second;
 
          if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, LONG(mem.Flags), mem.OwnerID);
-         ERROR error = ERR_Okay;
+         ERR error = ERR::Okay;
          if (mem.AccessCount > 0) {
             log.msg("Private memory ID #%d marked for deletion (open count %d).", MemoryID, mem.AccessCount);
             mem.Flags |= MEM::DELETE;
@@ -242,9 +242,9 @@ ERROR FreeResource(MEMORYID MemoryID)
                start_mem -= sizeof(ResourceManager *);
                if (!glCrashStatus) { // Resource managers are not considered safe in an uncontrolled shutdown
                   auto rm = ((ResourceManager **)start_mem)[0];
-                  if (rm->Free((APTR)mem.Address) IS ERR_InUse) {
+                  if (rm->Free((APTR)mem.Address) IS ERR::InUse) {
                      // Memory block is in use - the manager will be entrusted to handle this situation appropriately.
-                     return ERR_Okay;
+                     return ERR::Okay;
                   }
                }
             }
@@ -253,12 +253,12 @@ ERROR FreeResource(MEMORYID MemoryID)
 
             if (((LONG *)mem.Address)[-1] != CODE_MEMH) {
                log.warning("Bad header on block #%d, address %p, size %d.", MemoryID, mem.Address, mem.Size);
-               error = ERR_InvalidData;
+               error = ERR::InvalidData;
             }
 
             if (((LONG *)mem_end)[0] != CODE_MEMT) {
                log.warning("Bad tail on block #%d, address %p, size %d.", MemoryID, mem.Address, mem.Size);
-               error = ERR_InvalidData;
+               error = ERR::InvalidData;
                DEBUG_BREAK
             }
 
@@ -279,10 +279,10 @@ ERROR FreeResource(MEMORYID MemoryID)
 
          return error;
       }
-      log.warning("Memory ID #%d does not exist.", MemoryID);
-      return ERR_MemoryDoesNotExist;
+      log.traceWarning("Memory ID #%d does not exist.", MemoryID);
+      return ERR::MemoryDoesNotExist;
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -291,7 +291,7 @@ ERROR FreeResource(MEMORYID MemoryID)
 MemoryIDInfo: Returns information on memory ID's.
 
 This function returns the attributes of a memory block, including the start address, parent object, memory ID, size
-and flags.  The following code segment illustrates correct use of this function:
+and flags.  The following example illustrates correct use of this function:
 
 <pre>
 MemInfo info;
@@ -300,12 +300,12 @@ if (!MemoryIDInfo(memid, &info)) {
 }
 </pre>
 
-If the call fails, the MemInfo structure's fields will be driven to NULL and an error code is returned.
+If the call fails, the !MemInfo structure's fields will be driven to `NULL` and an error code is returned.
 
 -INPUT-
 mem ID: Pointer to a valid memory ID.
-buf(struct(MemInfo)) MemInfo:  Pointer to a MemInfo structure.
-structsize Size: Size of the MemInfo structure.
+buf(struct(MemInfo)) MemInfo:  Pointer to a !MemInfo structure.
+structsize Size: Size of the !MemInfo structure.
 
 -ERRORS-
 Okay
@@ -317,12 +317,12 @@ SystemLocked
 
 *********************************************************************************************************************/
 
-ERROR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, LONG Size)
+ERR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, LONG Size)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!MemInfo) or (!MemoryID)) return log.warning(ERR_NullArgs);
-   if ((size_t)Size < sizeof(MemInfo)) return log.warning(ERR_Args);
+   if ((!MemInfo) or (!MemoryID)) return log.warning(ERR::NullArgs);
+   if ((size_t)Size < sizeof(MemInfo)) return log.warning(ERR::Args);
 
    ClearMemory(MemInfo, Size);
 
@@ -335,11 +335,11 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, LONG Size)
          MemInfo->AccessCount = mem->second.AccessCount;
          MemInfo->Flags       = mem->second.Flags;
          MemInfo->MemoryID    = mem->second.MemoryID;
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return ERR_MemoryDoesNotExist;
+      else return ERR::MemoryDoesNotExist;
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -358,7 +358,7 @@ if (!MemoryPtrInfo(ptr, &info)) {
 }
 </pre>
 
-If the call to MemoryPtrInfo() fails then the MemInfo structure's fields will be driven to NULL and an error code
+If the call to MemoryPtrInfo() fails then the !MemInfo structure's fields will be driven to `NULL` and an error code
 will be returned.
 
 Please note that referencing by a pointer requires a slow reverse-lookup to be employed in this function's search
@@ -366,8 +366,8 @@ routine.  We recommend that calls to this function are avoided unless circumstan
 
 -INPUT-
 ptr Address:  Pointer to a valid memory area.
-buf(struct(MemInfo)) MemInfo: Pointer to a MemInfo structure to be filled out.
-structsize Size: Size of the MemInfo structure.
+buf(struct(MemInfo)) MemInfo: Pointer to a !MemInfo structure to be populated.
+structsize Size: Size of the !MemInfo structure.
 
 -ERRORS-
 Okay
@@ -376,12 +376,12 @@ MemoryDoesNotExist
 
 *********************************************************************************************************************/
 
-ERROR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
+ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!MemInfo) or (!Memory)) return log.warning(ERR_NullArgs);
-   if ((size_t)Size < sizeof(MemInfo)) return log.warning(ERR_Args);
+   if ((!MemInfo) or (!Memory)) return log.warning(ERR::NullArgs);
+   if ((size_t)Size < sizeof(MemInfo)) return log.warning(ERR::Args);
 
    ClearMemory(MemInfo, Size);
 
@@ -398,13 +398,13 @@ ERROR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
             MemInfo->AccessCount = mem.AccessCount;
             MemInfo->Flags       = mem.Flags;
             MemInfo->MemoryID    = mem.MemoryID;
-            return ERR_Okay;
+            return ERR::Okay;
          }
       }
       log.warning("Private memory address %p is not valid.", Memory);
-      return ERR_MemoryDoesNotExist;
+      return ERR::MemoryDoesNotExist;
    }
-   else return log.warning(ERR_SystemLocked);
+   else return log.warning(ERR::SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -412,19 +412,19 @@ ERROR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
 -FUNCTION-
 ReallocMemory: Reallocates memory blocks.
 
-This function is used to reallocate memory blocks to new lengths. You can shrink or expand a memory block as you wish.
-The data of your original memory block will be copied over to the new block.  If the new block is of a larger size, the
-left-over bytes will be filled with zero-byte values. If the new block is smaller, you will lose some of the original
-data.
+This function is used to reallocate memory blocks to new lengths. You can shrink or expand a memory block as you
+wish.  The data of your original memory block will be copied over to the new block.  If the new block is of a
+larger size, the left-over bytes will be populated with zero-byte values. If the new block is smaller, you will
+lose some of the original data.
 
 The original block will be destroyed as a result of calling this function unless the reallocation process fails, in
 which case your existing memory block will remain valid.
 
 -INPUT-
-ptr Memory:   Pointer to a memory block obtained from AllocMemory().
+ptr Memory:   Pointer to a memory block obtained from ~AllocMemory().
 uint Size:    The size of the new memory block.
-!ptr Address: Point to an APTR variable to store the resulting pointer to the new memory block.
-&mem ID:      Point to a MEMORYID variable to store the resulting memory block's unique ID.
+!ptr Address: Point to an `APTR` variable to store the resulting pointer to the new memory block.
+&mem ID:      Point to a `MEMORYID` variable to store the resulting memory block's unique ID.
 
 -ERRORS-
 Okay
@@ -436,7 +436,7 @@ Memory: The memory block to be re-allocated is invalid.
 
 *********************************************************************************************************************/
 
-ERROR ReallocMemory(APTR Address, ULONG NewSize, APTR *Memory, MEMORYID *MemoryID)
+ERR ReallocMemory(APTR Address, ULONG NewSize, APTR *Memory, MEMORYID *MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
@@ -444,29 +444,29 @@ ERROR ReallocMemory(APTR Address, ULONG NewSize, APTR *Memory, MEMORYID *MemoryI
 
    if ((!Address) or (NewSize <= 0)) {
       log.function("Address: %p, NewSize: %d, &Memory: %p, &MemoryID: %p", Address, NewSize, Memory, MemoryID);
-      return log.warning(ERR_Args);
+      return log.warning(ERR::Args);
    }
 
    if ((!Memory) and (!MemoryID)) {
       log.function("Address: %p, NewSize: %d, &Memory: %p, &MemoryID: %p", Address, NewSize, Memory, MemoryID);
-      return log.warning(ERR_NullArgs);
+      return log.warning(ERR::NullArgs);
    }
 
    // Check the validity of what we have been sent
 
    MemInfo meminfo;
-   if (MemoryIDInfo(GetMemoryID(Address), &meminfo, sizeof(meminfo)) != ERR_Okay) {
+   if (MemoryIDInfo(GetMemoryID(Address), &meminfo, sizeof(meminfo)) != ERR::Okay) {
       log.warning("MemoryPtrInfo() failed for address %p.", Address);
-      return ERR_Memory;
+      return ERR::Memory;
    }
 
-   if (meminfo.Size IS NewSize) return ERR_Okay;
+   if (meminfo.Size IS NewSize) return ERR::Okay;
 
    if (glShowPrivate) log.branch("Address: %p, NewSize: %d", Address, NewSize);
 
    // Allocate the new memory block and copy the data across
 
-   if (!AllocMemory(NewSize, meminfo.Flags, Memory, MemoryID)) {
+   if (AllocMemory(NewSize, meminfo.Flags, Memory, MemoryID) IS ERR::Okay) {
       auto copysize = (NewSize < meminfo.Size) ? NewSize : meminfo.Size;
       CopyMemory(Address, *Memory, copysize);
 
@@ -475,9 +475,9 @@ ERROR ReallocMemory(APTR Address, ULONG NewSize, APTR *Memory, MEMORYID *MemoryI
       if (meminfo.AccessCount > 0) ReleaseMemory(Address);
       FreeResource(Address);
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return log.error(ERR_AllocMemory);
+   else return log.error(ERR::AllocMemory);
 }
 
 //********************************************************************************************************************

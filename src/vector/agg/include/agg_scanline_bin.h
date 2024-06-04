@@ -1,4 +1,3 @@
-//----------------------------------------------------------------------------
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
@@ -7,18 +6,9 @@
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
-//
-// Class scanline_bin - binary scanline.
-//
-//----------------------------------------------------------------------------
-//
-// Adaptation for 32-bit screen coordinates (scanline32_bin) has been sponsored by 
-// Liberty Technology Systems, Inc., visit http://lib-sys.com
-//
-// Liberty Technology Systems, Inc. is the provider of
-// PostScript and PDF technology for software developers.
-// 
-//----------------------------------------------------------------------------
+// This is binary scaline container which supports the interface 
+// used in the rasterizer::render(). See description of agg_scanline_u8 
+// for details.
 
 #ifndef AGG_SCANLINE_BIN_INCLUDED
 #define AGG_SCANLINE_BIN_INCLUDED
@@ -27,56 +17,30 @@
 
 namespace agg
 {
-
-    //=============================================================scanline_bin
-    // 
-    // This is binary scaline container which supports the interface 
-    // used in the rasterizer::render(). See description of agg_scanline_u8 
-    // for details.
-    // 
-    //------------------------------------------------------------------------
-    class scanline_bin
-    {
+    class scanline_bin {
     public:
         typedef int32 coord_type;
 
-        struct span
-        {
+        struct span {
             int16 x;
             int16 len;
         };
 
         typedef const span* const_iterator;
 
-        //--------------------------------------------------------------------
-        scanline_bin() :
-            m_last_x(0x7FFFFFF0),
-            m_spans(),
-            m_cur_span(0)
-        {
-        }
+        scanline_bin() : m_last_x(0x7FFFFFF0), m_spans(), m_cur_span(0) { }
 
-        //--------------------------------------------------------------------
-        void reset(int min_x, int max_x)
-        {
+        void reset(int min_x, int max_x) {
             unsigned max_len = max_x - min_x + 3;
-            if(max_len > m_spans.size())
-            {
-                m_spans.resize(max_len);
-            }
+            if (max_len > m_spans.size()) m_spans.resize(max_len);
             m_last_x   = 0x7FFFFFF0;
             m_cur_span = &m_spans[0];
         }
 
-        //--------------------------------------------------------------------
         void add_cell(int x, unsigned)
         {
-            if(x == m_last_x+1)
-            {
-                m_cur_span->len++;
-            }
-            else
-            {
+            if (x == m_last_x+1) m_cur_span->len++;
+            else {
                 ++m_cur_span;
                 m_cur_span->x = (int16)x;
                 m_cur_span->len = 1;
@@ -84,15 +48,9 @@ namespace agg
             m_last_x = x;
         }
 
-        //--------------------------------------------------------------------
-        void add_span(int x, unsigned len, unsigned)
-        {
-            if(x == m_last_x+1)
-            {
-                m_cur_span->len = (int16)(m_cur_span->len + len);
-            }
-            else
-            {
+        void add_span(int x, unsigned len, unsigned) {
+            if(x == m_last_x+1) m_cur_span->len = (int16)(m_cur_span->len + len);
+            else {
                 ++m_cur_span;
                 m_cur_span->x = (int16)x;
                 m_cur_span->len = (int16)len;
@@ -100,26 +58,19 @@ namespace agg
             m_last_x = x + len - 1;
         }
 
-        //--------------------------------------------------------------------
-        void add_cells(int x, unsigned len, const void*)
-        {
+        void add_cells(int x, unsigned len, const void*) {
             add_span(x, len, 0);
         }
 
-        //--------------------------------------------------------------------
-        void finalize(int y) 
-        { 
+        void finalize(int y)  { 
             m_y = y; 
         }
 
-        //--------------------------------------------------------------------
-        void reset_spans()
-        {
+        void reset_spans() {
             m_last_x    = 0x7FFFFFF0;
             m_cur_span  = &m_spans[0];
         }
 
-        //--------------------------------------------------------------------
         int            y()         const { return m_y; }
         unsigned       num_spans() const { return unsigned(m_cur_span - &m_spans[0]); }
         const_iterator begin()     const { return &m_spans[1]; }
@@ -134,20 +85,11 @@ namespace agg
         span*           m_cur_span;
     };
 
-
-
-
-
-
-    //===========================================================scanline32_bin
-    class scanline32_bin
-    {
+    class scanline32_bin {
     public:
         typedef int32 coord_type;
 
-        //--------------------------------------------------------------------
-        struct span
-        {
+        struct span {
             span() {}
             span(coord_type x_, coord_type len_) : x(x_), len(len_) {}
 
@@ -156,10 +98,7 @@ namespace agg
         };
         typedef pod_bvector<span, 4> span_array_type;
 
-
-        //--------------------------------------------------------------------
-        class const_iterator
-        {
+        class const_iterator {
         public:
             const_iterator(const span_array_type& spans) :
                 m_spans(spans),
@@ -176,65 +115,38 @@ namespace agg
             unsigned               m_span_idx;
         };
 
-
-        //--------------------------------------------------------------------
         scanline32_bin() : m_max_len(0), m_last_x(0x7FFFFFF0) {}
 
-        //--------------------------------------------------------------------
-        void reset(int min_x, int max_x)
-        {
+        void reset(int min_x, int max_x) {
             m_last_x = 0x7FFFFFF0;
             m_spans.remove_all();
         }
 
-        //--------------------------------------------------------------------
-        void add_cell(int x, unsigned)
-        {
-            if(x == m_last_x+1)
-            {
-                m_spans.last().len++;
-            }
-            else
-            {
-                m_spans.add(span(coord_type(x), 1));
-            }
+        void add_cell(int x, unsigned) {
+            if(x == m_last_x+1) m_spans.last().len++;
+            else m_spans.add(span(coord_type(x), 1));
             m_last_x = x;
         }
 
-        //--------------------------------------------------------------------
-        void add_span(int x, unsigned len, unsigned)
-        {
-            if(x == m_last_x+1)
-            {
-                m_spans.last().len += coord_type(len);
-            }
-            else
-            {
-                m_spans.add(span(coord_type(x), coord_type(len)));
-            }
+        void add_span(int x, unsigned len, unsigned) {
+            if(x == m_last_x+1) m_spans.last().len += coord_type(len);
+            else m_spans.add(span(coord_type(x), coord_type(len)));
             m_last_x = x + len - 1;
         }
 
-        //--------------------------------------------------------------------
-        void add_cells(int x, unsigned len, const void*)
-        {
+        void add_cells(int x, unsigned len, const void*) {
             add_span(x, len, 0);
         }
 
-        //--------------------------------------------------------------------
-        void finalize(int y) 
-        { 
+        void finalize(int y) { 
             m_y = y; 
         }
 
-        //--------------------------------------------------------------------
-        void reset_spans()
-        {
+        void reset_spans() {
             m_last_x = 0x7FFFFFF0;
             m_spans.remove_all();
         }
 
-        //--------------------------------------------------------------------
         int            y()         const { return m_y; }
         unsigned       num_spans() const { return m_spans.size(); }
         const_iterator begin()     const { return const_iterator(m_spans); }
@@ -248,11 +160,6 @@ namespace agg
         int             m_y;
         span_array_type m_spans;
     };
-
-
-
-
-
 }
 
 

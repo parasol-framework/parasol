@@ -11,6 +11,7 @@ static const struct FieldDef clVectorVisibility[] = {
 static const struct FieldDef clVectorFlags[] = {
    { "Disabled", 0x00000001 },
    { "HasFocus", 0x00000002 },
+   { "JoinPaths", 0x00000004 },
    { NULL, 0 }
 };
 
@@ -60,26 +61,26 @@ static const struct FieldDef clVectorColourSpace[] = {
 };
 
 FDEF maPush[] = { { "Position", FD_LONG }, { 0, 0 } };
-FDEF maTracePath[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
+FDEF maTrace[] = { { "Callback", FD_FUNCTIONPTR }, { "Scale", FD_DOUBLE }, { "Transform", FD_LONG }, { 0, 0 } };
 FDEF maGetBoundary[] = { { "Flags", FD_LONG }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { "Width", FD_DOUBLE|FD_RESULT }, { "Height", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
 FDEF maPointInPath[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { 0, 0 } };
 FDEF maSubscribeInput[] = { { "Mask", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maSubscribeKeyboard[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maSubscribeFeedback[] = { { "Mask", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF maNewMatrix[] = { { "VectorMatrix:Transform", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { 0, 0 } };
+FDEF maNewMatrix[] = { { "VectorMatrix:Transform", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { "End", FD_LONG }, { 0, 0 } };
 FDEF maFreeMatrix[] = { { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { 0, 0 } };
 
 static const struct MethodEntry clVectorMethods[] = {
-   { -1, (APTR)VECTOR_Push, "Push", maPush, sizeof(struct vecPush) },
-   { -2, (APTR)VECTOR_TracePath, "TracePath", maTracePath, sizeof(struct vecTracePath) },
-   { -3, (APTR)VECTOR_GetBoundary, "GetBoundary", maGetBoundary, sizeof(struct vecGetBoundary) },
-   { -4, (APTR)VECTOR_PointInPath, "PointInPath", maPointInPath, sizeof(struct vecPointInPath) },
-   { -5, (APTR)VECTOR_SubscribeInput, "SubscribeInput", maSubscribeInput, sizeof(struct vecSubscribeInput) },
-   { -6, (APTR)VECTOR_SubscribeKeyboard, "SubscribeKeyboard", maSubscribeKeyboard, sizeof(struct vecSubscribeKeyboard) },
-   { -7, (APTR)VECTOR_SubscribeFeedback, "SubscribeFeedback", maSubscribeFeedback, sizeof(struct vecSubscribeFeedback) },
+   { -1, (APTR)VECTOR_Push, "Push", maPush, sizeof(struct vec::Push) },
+   { -2, (APTR)VECTOR_Trace, "Trace", maTrace, sizeof(struct vec::Trace) },
+   { -3, (APTR)VECTOR_GetBoundary, "GetBoundary", maGetBoundary, sizeof(struct vec::GetBoundary) },
+   { -4, (APTR)VECTOR_PointInPath, "PointInPath", maPointInPath, sizeof(struct vec::PointInPath) },
+   { -5, (APTR)VECTOR_SubscribeInput, "SubscribeInput", maSubscribeInput, sizeof(struct vec::SubscribeInput) },
+   { -6, (APTR)VECTOR_SubscribeKeyboard, "SubscribeKeyboard", maSubscribeKeyboard, sizeof(struct vec::SubscribeKeyboard) },
+   { -7, (APTR)VECTOR_SubscribeFeedback, "SubscribeFeedback", maSubscribeFeedback, sizeof(struct vec::SubscribeFeedback) },
    { -8, (APTR)VECTOR_Debug, "Debug", 0, 0 },
-   { -9, (APTR)VECTOR_NewMatrix, "NewMatrix", maNewMatrix, sizeof(struct vecNewMatrix) },
-   { -10, (APTR)VECTOR_FreeMatrix, "FreeMatrix", maFreeMatrix, sizeof(struct vecFreeMatrix) },
+   { -9, (APTR)VECTOR_NewMatrix, "NewMatrix", maNewMatrix, sizeof(struct vec::NewMatrix) },
+   { -10, (APTR)VECTOR_FreeMatrix, "FreeMatrix", maFreeMatrix, sizeof(struct vec::FreeMatrix) },
    { 0, 0, 0, 0, 0 }
 };
 

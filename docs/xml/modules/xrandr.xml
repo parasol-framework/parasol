@@ -36,7 +36,7 @@
   <function>
     <name>SetDisplayMode</name>
     <comment>Change the width and height of the display.</comment>
-    <prototype>ERROR xrSetDisplayMode(LONG * Width, LONG * Height)</prototype>
+    <prototype>ERR xrSetDisplayMode(LONG * Width, LONG * Height)</prototype>
     <input>
       <param type="LONG *" name="Width">The required width of the display.</param>
       <param type="LONG *" name="Height">The required height of the display.</param>
@@ -44,7 +44,7 @@
     <description>
 <p>This function changes the width and height of the display to that indicated by the Width and Height parameters.  If the requested size does not match a known mode, the closest matching mode will be chosen.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
     </result>
   </function>

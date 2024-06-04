@@ -26,6 +26,7 @@
 #ifdef PARASOL_STATIC
 #cmakedefine INC_MOD_AUDIO
 #cmakedefine INC_MOD_DISPLAY
+#cmakedefine INC_MOD_DOCUMENT
 #cmakedefine INC_MOD_FLUID
 #cmakedefine INC_MOD_FONT
 #cmakedefine INC_MOD_HTTP
@@ -71,8 +72,10 @@ typedef unsigned int       ULONG;    // Unsigned 32-bit quantity
 
 #if defined(_MSC_VER)
 typedef __int64            LARGE;
+typedef __int64            BIGINT;
 #else
-typedef long long          LARGE;    // Signed 64-bit quantity
+typedef long long          LARGE;
+typedef long long          BIGINT;
 #endif
 
 #ifdef _WIN32
@@ -111,7 +114,6 @@ typedef LONG ERROR;     // Standard error code
 typedef LONG OBJECTID;  // 32-bit object ID
 #endif
 typedef LONG MEMORYID;  // 32-bit memory ID
-typedef ULONG CLASSID;  // 32-bit class ID
 typedef LONG ACTIONID;  // 32-bit action ID
 typedef LARGE FIELD;    // 64-bit field ID - used for flag combos
 
@@ -129,19 +131,19 @@ typedef char * STRING;         // string pointer (NULL terminated)
 typedef char * SSTRING;        // signed string pointer (NULL terminated)
 typedef const char * CSTRING;
 typedef void * OBJECT;           // Object pointer
-typedef struct BaseClass * OBJECTPTR; // Object pointer
+typedef struct Object * OBJECTPTR; // Object pointer
 typedef LARGE EVENTID;
 
 #if _WIN32
 typedef void * APTR64;    // 64-bit untyped pointer
 typedef char * STRING64;  // 64-bit string pointer (NULL terminated)
 typedef void * OBJECT64;  // 64-bit untyped object pointer
-typedef struct BaseClass * OBJECTPTR64; // 64-bit typed object pointer
+typedef struct Object * OBJECTPTR64; // 64-bit typed object pointer
 #else
 typedef void * APTR64 __attribute__ ((aligned (8)));    // 64-bit untyped pointer
 typedef char * STRING64 __attribute__ ((aligned (8)));  // 64-bit string pointer (NULL terminated)
 typedef void * OBJECT64 __attribute__ ((aligned (8)));  // 64-bit untyped object pointer
-typedef struct BaseClass * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit typed object pointer
+typedef struct Object * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit typed object pointer
 #endif
 
 #ifdef _MSC_VER

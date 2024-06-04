@@ -1,34 +1,7 @@
 --[[
 The gui.combobox API creates and manages combobox boxes in the user interface.
 
-Basic template for creating a new combobox:
-
-   require 'gui/combobox'
-   my_button = gui.combobox({ Options... })
-
-Valid options to use when creating the combobox box are as follows:
-
-  target:        Required.  Refers to a viewport that will contain the combobox box.
-  items:         Required.  List of menu items (refer to gui.menu for formatting)
-  events:        A table of event triggers.  Supported events: activate, show, focus, lostFocus, enable, disable
-  flushEdges:    Set to true if the box needs to be squared off for flush edges.
-  text:          A preset string to display in the box.  If not set, defaults to first entry in items.
-  vfx:           A special effect to apply to the combobox box on its creation.
-  showIcons:     If true, show icons in the dropdown list.
-  allowCustom:   If true, the user can enter enter text that isn't in the combobox list.
-  noTranslation: Do not translate combobox strings or the drop-down menu to the user's native language.
-  width:         Width of the box (including any label).
-  x:             The x coordinate of the box.
-  xOffset:       X offset, if not defining x.
-  y:             The y coordinate of the box.
-  yOffset:       Y offset, if not defining y.
-
-  :disable()
-    Disable user interactivity.
-
-  :enable()
-    Enable user interactivity.
-
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
@@ -52,7 +25,7 @@ end
 local function reportFeedback(self)
    if not self.events.activate then return end
    local text = self.text.string
-   local hash = mSys.StrHash(text)
+   local hash = string.hash(text)
    if (hash != self.hash) then
       self.hash = hash
       self.events.activate(self, text)
@@ -87,7 +60,7 @@ gui.combobox = function(Options)
       self.disabled = true
       self.viewport.acDisable()
       self.text.opacity = 0.5
-      self.bkgd.fill = gui.colours.rgb('widgetBkgd')
+      self.bkgd.fill = gui.colours['widgetBkgd']
       if self.events.disable then self.events.disable(self) end
       self.viewport.acDraw()
    end
@@ -96,7 +69,7 @@ gui.combobox = function(Options)
       self.disabled = false
       self.viewport.acDisable()
       self.text.opacity = 1.0
-      self.bkgd.fill = gui.colours.rgb('widgetBkgd')
+      self.bkgd.fill = gui.colours['widgetBkgd']
       if self.events.enable then self.events.enable(self) end
       self.viewport.acDraw()
    end
@@ -148,7 +121,7 @@ gui.combobox = function(Options)
          y        = FONT_HEIGHT + math.floor((BOX_HEIGHT - FONT_HEIGHT) * 0.5),
          face     = gui.fonts.widget.face,
          fontSize = string.format('%.2fpt', gui.fonts.widget.size),
-         fill     = gui.colours.rgb('windowText'),
+         fill     = gui.colours['windowText'],
          string   = self.label,
          lineLimit = 1
       })
@@ -161,7 +134,7 @@ gui.combobox = function(Options)
    end
 
    self.bkgd = self.inputViewport.new('VectorRectangle', {
-      fill   = gui.colours.rgb('widgetBkgd'),
+      fill   = gui.colours['widgetBkgd'],
       x      = 0,
       y      = 0,
       width  = '100%',
@@ -169,7 +142,7 @@ gui.combobox = function(Options)
    })
 
    local ICON_SIZE = FONT_HEIGHT
-   self.arrowIcon = gui.createIcon(self.viewport.scene, 'arrows/down', ICON_SIZE, iconTheme())
+   gui.createIcon(self.viewport.scene, 'arrows/down', ICON_SIZE, iconTheme())
 
    self.iconRender = self.viewport.new('VectorViewport', {
       xOffset = MARGIN,
@@ -180,7 +153,7 @@ gui.combobox = function(Options)
    })
 
    if not Options.flushEdges then
-      self.bkgd.stroke      = gui.colours.rgb('widgetStroke')
+      self.bkgd.stroke      = gui.colours['widgetStroke']
       self.bkgd.strokeWidth = STROKE_WIDTH
       self.bkgd.roundX      = STROKE_WIDTH * 2
       self.bkgd.roundY      = STROKE_WIDTH * 2
@@ -203,7 +176,7 @@ gui.combobox = function(Options)
       y         = FONT_HEIGHT + math.floor((BOX_HEIGHT - FONT_HEIGHT - STROKE_WIDTH - STROKE_WIDTH) * 0.5),
       face      = gui.fonts.widget.face,
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
-      fill      = gui.colours.rgb('widgetText'),
+      fill      = gui.colours['widgetText'],
       string    = defaultText,
       lineLimit = 1,
       textFlags = (function()
@@ -219,7 +192,7 @@ gui.combobox = function(Options)
 
    self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
       if (Event == FM_LOST_FOCUS) then
-         self.bkgd.stroke = gui.colours.rgb('widgetStroke')
+         self.bkgd.stroke = gui.colours['widgetStroke']
          if self.events.lostFocus then self.events.lostFocus(self) end
          if self.allowCustom then
             reportFeedback(self)
@@ -229,9 +202,9 @@ gui.combobox = function(Options)
       else
          self._lastGoodInput = self.text.string
          if self.disabled then
-            self.bkgd.stroke = gui.colours.rgb('widgetStroke')
+            self.bkgd.stroke = gui.colours['widgetStroke']
          else
-            self.bkgd.stroke = gui.colours.rgb('widgetStrokeFocus')
+            self.bkgd.stroke = gui.colours['widgetStrokeFocus']
             if self.events.focus then self.events.focus(self) end
          end
       end
@@ -267,6 +240,7 @@ gui.combobox = function(Options)
       lineLimit = 8,
       feedback = function(Menu, Item)
          self.text.string = Item.item
+         reportFeedback(self)
          self.viewport.acDraw()
       end
    })

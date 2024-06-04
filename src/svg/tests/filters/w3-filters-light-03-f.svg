@@ -69,9 +69,5 @@
       <circle cx="30" cy="30" r="5" fill="white"/>
     </g>
   </g>
-
-  <g font-family="SVGFreeSansASCII,sans-serif" font-size="16">
-    <text id="revision" x="10" y="340" stroke="none" fill="black">$Revision: 1.10 $</text>
-  </g>
 </svg>
 

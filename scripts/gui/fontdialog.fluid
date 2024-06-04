@@ -1,36 +1,5 @@
 --[[
-To create a dialog box:
-
-   gui.dialog.font({ Options... })
-
-If the dialog box is modal, the call will not return until the user has responded to the dialog.
-
-To receive feedback from the dialog box, set the feedback option with a function that follows this prototype:
-
-   function feedback(Dialog, Font)
-
-Whereby Dialog refers to the dialog object and Font refers to font meta data.  In the event that the dialog is
-cancelled, the Font is set to nil.
-
-Note that the dialog box should be managed as a dynamic resource, i.e. created as necessary and deallocated once the
-user has responded (i.e. set all references to nil).  Retaining dialog boxes in memory will provide no descernible
-speed improvement to the user.
-
-Valid options to use when creating the dialog are as follows:
-
-   popOver:    Place the dialog window over the referenced surface.
-   target:     Open the dialog window within the referenced surface.
-   modal:      Set to true if the dialog box needs to be modal (prevents interaction with other windows).
-   okText:     Text to display in the OK button.
-   cancelText: Text to display in the Cancel button.
-   path:       The initial selection path.
-   feedback:   Refers to a Fluid function that will receive the user's response to the dialog.
-   style:      Preset the font's style, e.g. 'Bold Italic'.  The default is 'Regular'.
-   size:       Preset the font's point size, must be between 4 and 256.  The default is 12.
-   face:       Preset the font's face.  Defaults to 'Open Sans'.
-   example:    Overrides the example text normally printed in the dialog.
-   colour:     Change the default font colour to something other than black.
-
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
@@ -45,23 +14,23 @@ gui.dialog.font = function(Options)
 
    local self = { -- Public variables
       windowID    = nil,
-      face        = 'Open Sans',
-      size        = 12,
+      face        = 'Noto Sans',
+      pointSize   = 12,
       style       = 'Regular',
       compactFace = nil,
       colour      = { r=0, g=0, b=0, a=255 }
    }
 
    local lLongText = [[
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas varius dignissim sapien eu pellentesque. Etiam libero velit, vehicula nec ante non, sodales ultricies metus. Phasellus commodo dolor turpis. Aliquam sed pellentesque magna, non luctus sapien. Etiam molestie dui nibh, nec finibus velit molestie non. Ut feugiat maximus elit nec mattis. Suspendisse porta vestibulum faucibus. Sed iaculis placerat justo id lobortis. Interdum et malesuada fames ac ante ipsum primis in faucibus.
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas varius dignissim sapien eu pellentesque. Ètiam libero velit, vehicula nec ante non, sodales ultricies metus. Phasellus commodo dolor turpis. Âliquam sed pellentesque magna, non luctus sapien. Ètiam molestie dui nibh, nec finibus velit molestie non. Ut feugiat maximus elit nec mattis. Suspendisse porta vestibulum faucibus. Sed iaculis placerat justo id lobortis. Interdum et malesuada fames ac ante ipsum primis in faucibus.
 
 Morbi tincidunt varius ante sit amet pulvinar. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Nulla ante orci, faucibus non odio viverra, tempus rutrum ex. Mauris sit amet hendrerit quam. Vestibulum tincidunt magna suscipit ultrices congue. Aliquam et blandit tellus, ut porta libero. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Cras vulputate congue eros sed placerat. Nunc eleifend nec felis sit amet fermentum. Cras suscipit ullamcorper eros, id consectetur quam blandit ac.
 
 Suspendisse sed diam ut sem euismod accumsan commodo vehicula sapien. Nullam nisl augue, suscipit vitae posuere sit amet, porttitor et ex. Duis at elit pellentesque, placerat risus in, placerat mauris. Nam in metus sed dui iaculis aliquam sed ut sem. In varius euismod quam, sed lobortis sem. Aliquam nec dui magna. Suspendisse lobortis enim vitae vestibulum accumsan. Pellentesque ac tincidunt est. Ut porta, arcu eu ornare placerat, urna urna venenatis est, at imperdiet lectus justo vel neque. Sed congue dolor eget erat dignissim sollicitudin. Aliquam mollis massa in est gravida faucibus.
 
-Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas non nisi vehicula, aliquam turpis in, mattis lectus. Donec magna metus, tempor fringilla metus ac, ultricies efficitur ante. Quisque at semper elit. Ut in purus in est venenatis interdum. Curabitur a dui mauris. Suspendisse potenti. Suspendisse tempus dictum ipsum, id condimentum nulla fermentum sed. Etiam mattis ligula lacus, a tempor felis sodales fermentum. Donec in risus vulputate, tempor neque vel, volutpat mauris. Integer placerat a nunc a aliquet. Phasellus quis porta leo. Etiam et arcu ex. Nunc dictum at ipsum eu dapibus.
+Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas non nisi vehicula, aliquam turpis in, mattis lectus. Dõnec magna metus, tempor fringilla metus ac, ultricies efficitur ante. Quisque at semper elit. Ut in purus in est venenatis interdum. Curabitur a dui mauris. Suspendisse potenti. Suspendisse tempus dictum ipsum, id condimentum nulla fermentum sed. Etiam mattis ligula lacus, a tempor felis sodales fermentum. Donec in risus vulputate, tempor neque vel, volutpat mauris. Integer placerat a nunc a aliquet. Phasellus quis porta leo. Etiam et arcu ex. Nunc dictum at ipsum eu dapibus.
 
-Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla eget ornare ante, ac efficitur turpis. Proin venenatis eget sapien vitae volutpat. In interdum id ante in aliquet. Quisque convallis lacus in gravida fringilla. Nam porta pellentesque turpis, ut efficitur neque suscipit vel. Morbi vitae consequat nisl. Donec turpis lorem, dapibus eget scelerisque quis, porttitor bibendum leo.
+Ĉras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla eget ornare ante, ac efficitur turpis. Proin venenatis eget sapien vitae volutpat. In interdum id ante in aliquet. Quisque convallis lacus in gravida fringilla. Nam porta pellentesque turpis, ut efficitur neque suscipit vel. Morbi vitae consequat nisl. Donec turpis lorem, dapibus eget scelerisque quis, porttitor bibendum leo.
 ]]
 
    local lWindow, lFonts, vwSize, vwStyle, vwFace
@@ -76,7 +45,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
    local function sendFeedback(Accepted)
       local colour = self.colour.r .. ',' .. self.colour.g .. ',' .. self.colour.b .. ',' .. self.colour.a
-      self.compactFace = self.face .. ':' .. self.size .. ':' .. self.style .. ':' .. colour
+      self.compactFace = self.face .. ':' .. self.pointSize .. ':' .. self.style .. ':' .. colour
 
       if (lOptions.feedback != nil) then
          lOptions.feedback(self, Accepted)
@@ -87,22 +56,24 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    end
 
    local function refreshGuidelines()
-      local seq = ''
-      local gap = exampleMargin()
-      local spacing = self.font.lineSpacing
-      local pageWidth = self.examplePage.width
-
-      local x1 = gap
-      local x2 = pageWidth - gap
-      for y = gap + self.font.height, self.examplePage.height, spacing do
-         seq = seq .. string.format('M%f,%f L%f,%f ', x1, y, x2, y)
-      end
-      self.guidelines.sequence = seq
-
       if self.exampleText then
+         local seq = ''
+         local gap       = exampleMargin()
+         local spacing   = self.exampleText.lineSpacing
+         local pageWidth = self.examplePage.width
+         local baseline  = self.exampleText.y
+
+         local x1 = gap
+         local x2 = pageWidth - gap
+         for y = baseline, self.examplePage.height, spacing do
+            seq = seq .. string.format('M%f,%f L%f,%f ', x1, y, x2, y)
+         end
+         self.guidelines.sequence = seq
+
          self.exampleText.inlineSize = x2 - x1
          self.exampleText.x = gap
-         self.exampleText.y = gap + self.font.height
+      else
+         self.guidelines.sequence = 'M-1,-1 Z'
       end
    end
 
@@ -112,36 +83,34 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       end
 
       local pageWidth = self.examplePage.width
-      local newStyle = self.face .. '+' .. self.size .. '+' .. self.style
-      if newStyle == self.currentStyle then return end
-      self.currentStyle = newStyle
-
-      self.font = obj.new('font', {
-         face   = self.face,
-         point  = self.size,
-         style  = self.style,
-         string = nz(lOptions.example, lLongText)
-      })
-
       local gap = exampleMargin()
-
-      refreshGuidelines()
 
       if self.exampleText then
          self.exampleText.free()
+         self.exampleText = nil
       end
 
-      self.exampleText = self.examplePage.new('VectorText', {
-         x          = gap,
-         y          = gap + self.font.height,
-         fill       = 'rgb(0,0,0)',
-         inlineSize = pageWidth - (gap * 2),
-         face       = self.face,
-         fontSize   = self.size .. 'pt',
-         fontStyle  = self.font.style,
-         string     = lLongText,
-         textFlags  = VTXF_RASTER
-      })
+      catch(function()
+         self.exampleText = self.examplePage.new('VectorText', {
+            x          = gap,
+            fill       = 'rgb(0,0,0)',
+            inlineSize = pageWidth - (gap * 2),
+            face       = self.face,
+            fontSize   = self.pointSize .. 'pt',
+            fontStyle  = self.style,
+            string     = lLongText,
+            textFlags  = VTXF_RASTER
+         })
+      end,
+      function()
+         msg('Failed to create example text for ' .. self.face .. ' ' .. nz(self.style,'NIL'))
+      end)
+
+      if self.exampleText then
+         self.exampleText.y = math.floor(gap + self.exampleText.displaySize)
+      end
+
+      refreshGuidelines()
 
       collectgarbage()
       self.viewport.acDraw()
@@ -161,12 +130,16 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
          lFonts[font.name] = { }
          lFonts[font.name].order  = index
          lFonts[font.name].name   = font.name
+         lFonts[font.name].alias  = font.alias
          lFonts[font.name].styles = string.split(font.styles, ',')
          lFonts[font.name].sizes  = font.points
+         lFonts[font.name].hidden = font.hidden
          if nz(font.scalable) then
             lFonts[font.name].scalable = true
          end
-         table.insert(lFontsSorted, lFonts[font.name])
+         if not nz(font.hidden) then
+            table.insert(lFontsSorted, lFonts[font.name])
+         end
          index = index + 1
          font = font.next
       end
@@ -184,6 +157,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
    local function showStyles(Face)
       local styles = { }
+      if nz(lFonts[Face].alias) then Face = lFonts[Face].alias end
       local font_styles = nz(lFonts[Face].styles, { 'Regular' })
       for _, v in ipairs(font_styles) do
          table.insert(styles, { id=v, name=v })
@@ -214,7 +188,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    if (lOptions.face) then
       local s = string.split(face, ':') -- FaceName, Size, Style, Colour
       if (s[1]) then lOptions.face = s[1] end
-      if (s[2]) then lOptions.size = s[2] end
+      if (s[2]) then lOptions.pointSize = s[2] end
       if (s[3]) then lOptions.style = s[3] end
       if (s[4]) then lOptions.colour = s[4] end
    end
@@ -255,7 +229,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
    lCancelButton = gui.button({
       target  = self.viewport,
-      text    = nz(lOptions.cancelText, 'Cancel'),
+      text    = 'Cancel',
       xOffset = WIDGET_GAP,
       yOffset = footer,
       icon    = 'items/cancel',
@@ -268,7 +242,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
    lOkayButton = gui.button({
       target  = self.viewport,
-      text    = nz(lOptions.okText, 'OK'),
+      text    = 'OK',
       xOffset = lCancelButton.viewport.width + (WIDGET_GAP * 2),
       yOffset = footer,
       icon    = 'items/checkmark',
@@ -324,11 +298,11 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       textAttrib = 'name',
       itemSelected = function(View, Reason, Item)
          local selection = Item.name
-         self.size = tonumber(selection)
-         if (self.size < 4) then
-            self.size = 4
-         elseif (self.size > 400) then
-            self.size = 400
+         self.pointSize = tonumber(selection)
+         if (self.pointSize < 4) then
+            self.pointSize = 4
+         elseif (self.pointSize > 400) then
+            self.pointSize = 400
          end
          collectgarbage()
          refreshExample()
@@ -378,13 +352,25 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
          -- Highlight the correct style, trying to keep the current setting if possible.
 
-         if not self.style then
+         if self.style and lFonts[self.face] then
+            local supported = false
+            for _, v in ipairs(lFonts[self.face].styles) do
+               if (v == self.style) then
+                  supported = true
+                  break
+               end
+            end
+
+            if not supported then self.style = 'Regular' end
+         else
             self.style = 'Regular'
          end
 
          vwStyle.selectItems(function(Item)
             if (Item.id == self.style) then return true end
          end)
+
+         refreshExample()
 
          local sizes = lFonts[Item.name].sizes
          if (lFonts[Item.name].scalable) or (sizes == nil) or (#sizes == 0) then
@@ -393,16 +379,17 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
 
          showFontSizes(sizes)
 
-         if (sizes[1] > self.size) then self.size = sizes[1] end
-         highlightSize(self.size)
-
-         refreshExample()
+         if (sizes[1] > self.pointSize) then self.pointSize = sizes[1] end
+         highlightSize(self.pointSize)
       end
    })
 
    local faces = { }
    for _, font in ipairs(lFontsSorted) do
       local new_font = { id=font.name, name=font.name }
+
+      if nz(font.alias) then font = lFonts[font.alias] end
+
       if (font.scalable) then
          new_font.icon = 'items/font'
       else
@@ -415,14 +402,14 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
    -- Preselect list items based on the preferences supplied by the client.
 
    vwFace.selectItems(function(Item)
-      if Item.id == nz(lOptions.face, 'Open Sans') then return true end
+      if Item.id == nz(lOptions.face, 'Noto Sans') then return true end
    end)
 
    vwStyle.selectItems(function(Item)
       if Item.id == nz(lOptions.style, 'Regular') then return true end
    end)
 
-   highlightSize(self.size)
+   highlightSize(self.pointSize)
 
    lWindow:moveToFront()
    lWindow:show()

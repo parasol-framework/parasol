@@ -7,7 +7,7 @@ Use MergeFX to composite multiple input sources so that they are rendered on top
 sequence.
 
 Many effects produce a number of intermediate layers in order to create the final output image.  This filter allows
-us to collapse those into a single image.  Although this could be done by using n-1 Composite-filters, it is more
+us to collapse those into a single image.  Although this could be done by using `n-1` Composite-filters, it is more
 convenient to have  this common operation available in this form, and offers the implementation some additional
 flexibility.
 
@@ -26,7 +26,7 @@ its vector description on top.
 
 class extMergeFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_MERGEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::MERGEFX;
    static constexpr CSTRING CLASS_NAME = "MergeFX";
    using create = pf::Create<extMergeFX>;
 
@@ -39,7 +39,7 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
+static ERR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
 {
    objBitmap *bmp;
    BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
@@ -48,29 +48,29 @@ static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
       else bmp = get_source_graphic(Self->Filter);
       if (!bmp) continue;
 
-      gfxCopyArea(bmp, Self->Target, copy_flags, 0, 0, bmp->Width, bmp->Height, 0, 0);
+      gfx::CopyArea(bmp, Self->Target, copy_flags, 0, 0, bmp->Width, bmp->Height, 0, 0);
 
       copy_flags |= BAF::BLEND|BAF::COPY; // Any subsequent copies are to be blended
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR MERGEFX_Free(extMergeFX *Self, APTR Void)
+static ERR MERGEFX_Free(extMergeFX *Self)
 {
    Self->~extMergeFX();
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR MERGEFX_NewObject(extMergeFX *Self, APTR Void)
+static ERR MERGEFX_NewObject(extMergeFX *Self)
 {
    new (Self) extMergeFX;
    Self->SourceType = VSF::IGNORE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -85,23 +85,23 @@ direct pointer to the referenced effect in the Effect field, or an error will be
 
 *********************************************************************************************************************/
 
-static ERROR MERGEFX_SET_SourceList(extMergeFX *Self, MergeSource *Value, LONG Elements)
+static ERR MERGEFX_SET_SourceList(extMergeFX *Self, MergeSource *Value, LONG Elements)
 {
    if ((!Value) or (Elements <= 0)) {
       Self->List.clear();
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    for (LONG i=0; i < Elements; i++) {
       if (Value[i].SourceType IS VSF::REFERENCE) {
          if (Value[i].Effect) ((extFilterEffect *)Value[i].Effect)->UsageCount++;
-         else return ERR_InvalidData;
+         else return ERR::InvalidData;
       }
 
       Self->List.push_back(Value[i]);
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -112,10 +112,10 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 *********************************************************************************************************************/
 
-static ERROR MERGEFX_GET_XMLDef(extMergeFX *Self, STRING *Value)
+static ERR MERGEFX_GET_XMLDef(extMergeFX *Self, STRING *Value)
 {
    *Value = StrClone("feMerge");
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -130,11 +130,11 @@ static const FieldArray clMergeFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_mergefx(void)
+ERR init_mergefx(void)
 {
    clMergeFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_MERGEFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::MERGEFX),
       fl::Name("MergeFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clMergeFXActions),
@@ -142,5 +142,5 @@ ERROR init_mergefx(void)
       fl::Size(sizeof(extMergeFX)),
       fl::Path(MOD_PATH));
 
-   return clMergeFX ? ERR_Okay : ERR_AddClass;
+   return clMergeFX ? ERR::Okay : ERR::AddClass;
 }

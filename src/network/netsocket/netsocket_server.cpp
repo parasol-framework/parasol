@@ -86,7 +86,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 
    if (Self->TotalClients >= Self->ClientLimit) {
       CLOSESOCKET(clientfd);
-      log.error(ERR_ArrayFull);
+      log.error(ERR::ArrayFull);
       return;
    }
 
@@ -99,7 +99,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
 
    if (!client_ip) {
-      if (AllocMemory(sizeof(struct NetClient), MEM::DATA, &client_ip) != ERR_Okay) {
+      if (AllocMemory(sizeof(struct NetClient), MEM::DATA, &client_ip) != ERR::Okay) {
          CLOSESOCKET(clientfd);
          return;
       }
@@ -130,7 +130,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    // Socket Management
 
    extClientSocket *client_socket;
-   if (!NewObject(ID_CLIENTSOCKET, &client_socket)) {
+   if (NewObject(CLASSID::CLIENTSOCKET, &client_socket) IS ERR::Okay) {
       client_socket->Handle = clientfd;
       client_socket->Client = client_ip;
       InitObject(client_socket);
@@ -141,20 +141,17 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       return;
    }
 
-   if (Self->Feedback.Type IS CALL_STDC) {
-      pf::SwitchContext context(Self->Feedback.StdC.Context);
-      auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC))Self->Feedback.StdC.Routine;
-      if (routine) routine(Self, client_socket, NTC::CONNECTED);
+   if (Self->Feedback.isC()) {
+      pf::SwitchContext context(Self->Feedback.Context);
+      auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
+      if (routine) routine(Self, client_socket, NTC::CONNECTED, Self->Feedback.Meta);
    }
-   else if (Self->Feedback.Type IS CALL_SCRIPT) {
-      const ScriptArg args[] = {
-         { "NetSocket",    FD_OBJECTPTR, { .Address = Self } },
-         { "ClientSocket", FD_OBJECTPTR, { .Address = client_socket } },
-         { "State",        FD_LONG,      { .Long = LONG(NTC::CONNECTED) } }
-      };
-
-      auto script = Self->Feedback.Script.Script;
-      scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+   else if (Self->Feedback.isScript()) {
+      sc::Call(Self->Feedback, std::to_array<ScriptArg>({
+         { "NetSocket",    Self, FD_OBJECTPTR },
+         { "ClientSocket", client_socket, FD_OBJECTPTR },
+         { "State",        LONG(NTC::CONNECTED) }
+      }));
    }
 
    log.trace("Total clients: %d", Self->TotalClients);
@@ -203,9 +200,8 @@ static void free_client(extNetSocket *Self, struct NetClient *Client)
    recursive--;
 }
 
-/*********************************************************************************************************************
-** Terminates the connection to the client and removes associated resources.
-*/
+//********************************************************************************************************************
+// Terminates the connection to the client and removes associated resources.
 
 static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSocket, BYTE Signal)
 {
@@ -215,21 +211,18 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
 
    log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->UID, ClientSocket->UID);
 
-   if ((Signal) and (Socket->Feedback.Type)) {
-      if (Socket->Feedback.Type IS CALL_STDC) {
-         pf::SwitchContext context(Socket->Feedback.StdC.Context);
-         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC))Socket->Feedback.StdC.Routine;
-         if (routine) routine(Socket, ClientSocket, NTC::DISCONNECTED);
+   if (Signal) {
+      if (Socket->Feedback.isC()) {
+         pf::SwitchContext context(Socket->Feedback.Context);
+         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Socket->Feedback.Routine;
+         if (routine) routine(Socket, ClientSocket, NTC::DISCONNECTED, Socket->Feedback.Meta);
       }
-      else if (Socket->Feedback.Type IS CALL_SCRIPT) {
-         const ScriptArg args[] = {
-            { "NetSocket",    FD_OBJECTPTR, { .Address = Socket } },
-            { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } },
-            { "State",        FD_LONG,      { .Long = LONG(NTC::DISCONNECTED) } }
-         };
-
-         auto script = Socket->Feedback.Script.Script;
-         scCallback(script, Socket->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+      else if (Socket->Feedback.isScript()) {
+         sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
+            { "NetSocket",    Socket, FD_OBJECTPTR },
+            { "ClientSocket", ClientSocket, FD_OBJECTPTR },
+            { "State",        LONG(NTC::DISCONNECTED) }
+         }));
       }
    }
 

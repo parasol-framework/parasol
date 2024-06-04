@@ -17,8 +17,7 @@ Log levels are:
 3  Application log message, level 1
 4  INFO Application log message, level 2
 5  API Top-level API messages, e.g. function entry points (default)
-6  EXTAPI Extended API messages.  For messages within functions, and entry-points for minor functions.
-7  DEBUG More detailed API messages.
+6  DETAIL Detailed API messages.  For messages within functions, and entry-points for minor functions.
 8  TRACE Extremely detailed API messages suitable for intensive debugging only.
 9  Noisy debug messages that will appear frequently, e.g. being used in inner loops.
 
@@ -63,31 +62,31 @@ static THREADVAR LONG tlBaseLine = 0;
 -FUNCTION-
 AdjustLogLevel: Adjusts the base-line of all log messages.
 
-This function adjusts the detail level of all outgoing log messages.  To illustrate by example, setting the Adjust
-value to 1 would result in level 5 log messages being bumped to level 6.  If the user's maximum log level output is
-5, no further log messages will be output until the base-line is reduced to normal.
+This function adjusts the detail level of all outgoing log messages.  To illustrate, setting the `Delta`
+value to 1 would result in level 5 (API) log messages being bumped to level 6.  If the user's maximum log level
+output is 5, no further API messages will be output until the base-line is reduced to normal.
 
 The main purpose of AdjustLogLevel() is to reduce log noise.  For instance, creating a new desktop window will result
-in a large number of new log messages.  Raising the base-line by 2 before creating the window would be a reasonable
-means of eliminating that noise if the user has the log level set to 5 (API level).  If there is a need to see the
-messages, re-running the program with a deeper log level of 7 or more would make them visible.
+in a large number of new log messages.  Raising the base-line by 2 before creating the window would eliminate the
+noise if the user has the log level set to 5 (API).  Re-running the program with a log level of 7 or more would
+make the messages visible again.
 
 Adjustments to the base-line are accumulative, so small increments of 1 or 2 are encouraged.  To revert logging to the
 previous base-line, call this function again with a negation of the previously passed value.
 
 -INPUT-
-int Adjust: The level of adjustment to make to new log messages.  Zero is the default (no change).  The maximum level is 6.
+int Delta: The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 6.
 
 -RESULT-
 int: Returns the absolute base-line value that was active prior to calling this function.
 
 *********************************************************************************************************************/
 
-LONG AdjustLogLevel(LONG BaseLine)
+LONG AdjustLogLevel(LONG Delta)
 {
    if (glLogLevel >= 9) return tlBaseLine; // Do nothing if trace logging is active.
    LONG old_level = tlBaseLine;
-   if ((BaseLine >= -6) and (BaseLine <= 6)) tlBaseLine += BaseLine;
+   if ((Delta >= -6) and (Delta <= 6)) tlBaseLine += Delta;
    return old_level;
 }
 
@@ -101,12 +100,12 @@ Status: Internal
 This function manages the output of application log messages by sending them through a log filter, which must be
 enabled by the user.  If no logging is enabled or if the filter is not passed, the function does nothing.
 
-Log message formatting follows the same guidelines as the printf() function.
+Log message formatting follows the same guidelines as the `printf()` function.
 
-The following example will print the default width of a Display object to the log.
+The following example will print the default width of a @Display object to the log.
 
 <pre>
-if (!NewObject(ID_DISPLAY, 0, &display)) {
+if (!NewObject(CLASSID::DISPLAY, &display)) {
    if (!display->init(display)) {
       VLogF(VLF::API, "Demo","The width of the display is: %d", display-&gt;Width);
    }
@@ -116,9 +115,9 @@ if (!NewObject(ID_DISPLAY, 0, &display)) {
 
 -INPUT-
 int(VLF) Flags: Optional flags
-cstr Header: A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.
+cstr Header: A short name for the first column.  Typically function names are placed here, so that the origin of the message is obvious.
 cstr Message: A formatted message to print.
-va_list Args: A va_list corresponding to the arguments referenced in Message.
+va_list Args: A `va_list` corresponding to the arguments referenced in `Message`.
 -END-
 
 *********************************************************************************************************************/
@@ -134,10 +133,10 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
       VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
       VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::TRACE|VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
-      VLF::TRACE|VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL
+      VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::TRACE|VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::TRACE|VLF::DETAIL|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL
    };
 
    if ((Flags & VLF::CRITICAL) != VLF::NIL) { // Print the message irrespective of the log level
@@ -213,7 +212,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       // If no header is provided, make one to match the current context
 
       auto ctx = tlContext;
-      auto obj = tlContext->object();
+      auto obj = ctx->object();
       if (ctx->Action > 0) action = ActionTable[ctx->Action].Name;
       else if (ctx->Action < 0) {
          if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
@@ -265,8 +264,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
          }
 
          if (obj->Class) {
-            if (obj->Name[0]) name = obj->Name;
-            else name = obj->Class->ClassName;
+            name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
             if (glLogLevel > 5) {
                if (ctx->Field) {
@@ -309,7 +307,7 @@ FuncError: Sends basic error messages to the application log.
 Status: Internal
 
 This function outputs a message to the application log.  It uses the codes listed in the system/errors.h file to
-display the correct string to the user.  The following example `FuncError(ERR_Write)` would produce input such
+display the correct string to the user.  The following example `FuncError(ERR::Write)` would produce input such
 as the following: `WriteFile: Error writing data to file.`.
 
 Notice that the Header parameter is not provided in the example.  It is not necessary to supply this parameter in
@@ -317,14 +315,14 @@ C/C++ as the function name is automatically entered by the C pre-processor.
 
 -INPUT-
 cstr Header: A short string that names the function that is making the call.
-error Error: An error code from the "system/errors.h" include file.  Valid error codes and their descriptions can be found in the Parasol SDK manual.
+error Error: An error code from the `system/errors.h` include file.  Valid error codes and their descriptions can be found in the Parasol Wiki.
 
 -RESULT-
-error: Returns the same code that was specified in the Error parameter.
+error: Returns the same code that was specified in the `Error` parameter.
 
 *********************************************************************************************************************/
 
-ERROR FuncError(CSTRING Header, ERROR Code)
+ERR FuncError(CSTRING Header, ERR Code)
 {
    if (tlLogStatus <= 0) return Code;
    if (glLogLevel < 2) return Code;
@@ -372,11 +370,11 @@ ERROR FuncError(CSTRING Header, ERROR Code)
          CSTRING name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
          if (ctx->Field) {
-            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->Field->Name, glMessages[Code], hiend);
+            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->Field->Name, glMessages[LONG(Code)], hiend);
          }
-         else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[Code], hiend);
+         else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[LONG(Code)], hiend);
       }
-      else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[Code], hiend);
+      else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[LONG(Code)], hiend);
 
       #if defined(__unix__) && !defined(__ANDROID__)
          if (glSync) { fflush(0); fsync(STDERR_FILENO); }

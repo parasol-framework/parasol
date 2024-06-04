@@ -25,12 +25,12 @@ FDEF maReadMsg[] = { { "Message", FD_PTR|FD_RESULT }, { "Length", FD_LONG|FD_RES
 FDEF maWriteMsg[] = { { "Message", FD_BUFFER|FD_PTR }, { "Length", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 
 static const struct MethodEntry clNetSocketMethods[] = {
-   { -1, (APTR)NETSOCKET_Connect, "Connect", maConnect, sizeof(struct nsConnect) },
-   { -2, (APTR)NETSOCKET_GetLocalIPAddress, "GetLocalIPAddress", maGetLocalIPAddress, sizeof(struct nsGetLocalIPAddress) },
-   { -3, (APTR)NETSOCKET_DisconnectClient, "DisconnectClient", maDisconnectClient, sizeof(struct nsDisconnectClient) },
-   { -4, (APTR)NETSOCKET_DisconnectSocket, "DisconnectSocket", maDisconnectSocket, sizeof(struct nsDisconnectSocket) },
-   { -5, (APTR)NETSOCKET_ReadMsg, "ReadMsg", maReadMsg, sizeof(struct nsReadMsg) },
-   { -6, (APTR)NETSOCKET_WriteMsg, "WriteMsg", maWriteMsg, sizeof(struct nsWriteMsg) },
+   { -1, (APTR)NETSOCKET_Connect, "Connect", maConnect, sizeof(struct ns::Connect) },
+   { -2, (APTR)NETSOCKET_GetLocalIPAddress, "GetLocalIPAddress", maGetLocalIPAddress, sizeof(struct ns::GetLocalIPAddress) },
+   { -3, (APTR)NETSOCKET_DisconnectClient, "DisconnectClient", maDisconnectClient, sizeof(struct ns::DisconnectClient) },
+   { -4, (APTR)NETSOCKET_DisconnectSocket, "DisconnectSocket", maDisconnectSocket, sizeof(struct ns::DisconnectSocket) },
+   { -5, (APTR)NETSOCKET_ReadMsg, "ReadMsg", maReadMsg, sizeof(struct ns::ReadMsg) },
+   { -6, (APTR)NETSOCKET_WriteMsg, "WriteMsg", maWriteMsg, sizeof(struct ns::WriteMsg) },
    { 0, 0, 0, 0, 0 }
 };
 

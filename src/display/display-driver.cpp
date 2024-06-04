@@ -11,8 +11,8 @@ that is distributed with this package.  Please refer to it for further informati
 using namespace display;
 #endif
 
-ERROR GET_HDensity(extDisplay *Self, LONG *Value);
-ERROR GET_VDensity(extDisplay *Self, LONG *Value);
+ERR GET_HDensity(extDisplay *Self, LONG *Value);
+ERR GET_VDensity(extDisplay *Self, LONG *Value);
 
 //********************************************************************************************************************
 
@@ -36,7 +36,6 @@ void handle_stack_change(XCirculateEvent *);
 
 X11Globals glX11;
 _XDisplay *XDisplay = 0;
-struct XRandRBase *XRandRBase = 0;
 XVisualInfo glXInfoAlpha;
 bool glX11ShmImage = false;
 bool glXCompositeSupported = false;
@@ -52,6 +51,11 @@ Cursor C_Default;
 OBJECTPTR modXRR = NULL;
 WORD glPlugin = FALSE;
 APTR glDGAVideo = NULL;
+
+#ifdef XRANDR_ENABLED
+bool glXRRAvailable = false;
+#endif
+
 #endif
 
 #ifdef _WIN32
@@ -101,8 +105,7 @@ static void android_term_window(LONG);
 
 const InputType glInputType[LONG(JET::END)] = {
    { JTYPE::NIL, JTYPE::NIL },                                         // UNUSED
-   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET::DIGITAL_X
-   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET::DIGITAL_Y
+   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET::DIGITAL_XY
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_1
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_2
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_3
@@ -121,31 +124,25 @@ const InputType glInputType[LONG(JET::END)] = {
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_2
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_1
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_2
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_X
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_Y
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_XY
    { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_Z
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_X
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_Y
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_XY
    { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_Z
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL_TILT
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_VERTICAL
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_HORIZONTAL
-   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET::ABS_X
-   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET::ABS_Y
-   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK },    // JET::ENTER_SURFACE
-   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK },    // JET::LEAVE_SURFACE
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_XY
+   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET::ABS_XY
+   { JTYPE::CROSSING,               JTYPE::CROSSING },    // JET::CROSSING_IN
+   { JTYPE::CROSSING,               JTYPE::CROSSING },    // JET::CROSSING_OUT
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PRESSURE
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_X
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_Y
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_XY
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_Z
-   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK }     // JET::DISPLAY_EDGE
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }     // JET::DISPLAY_EDGE
 };
 
 const CSTRING glInputNames[LONG(JET::END)] = {
    "",
-   "DIGITAL_X",
-   "DIGITAL_Y",
+   "DIGITAL_XY",
    "BUTTON_1",
    "BUTTON_2",
    "BUTTON_3",
@@ -164,23 +161,18 @@ const CSTRING glInputNames[LONG(JET::END)] = {
    "LEFT_BUMPER_2",
    "RIGHT_BUMPER_1",
    "RIGHT_BUMPER_2",
-   "ANALOG_X",
-   "ANALOG_Y",
+   "ANALOG_XY",
    "ANALOG_Z",
-   "ANALOG2_X",
-   "ANALOG2_Y",
+   "ANALOG2_XY",
    "ANALOG2_Z",
    "WHEEL",
    "WHEEL_TILT",
-   "PEN_TILT_VERTICAL",
-   "PEN_TILT_HORIZONTAL",
-   "ABS_X",
-   "ABS_Y",
-   "ENTERED_SURFACE",
-   "LEFT_SURFACE",
+   "PEN_TILT_XY",
+   "ABS_XY",
+   "CROSSING_IN",
+   "CROSSING_OUT",
    "PRESSURE",
-   "DEVICE_TILT_X",
-   "DEVICE_TILT_Y",
+   "DEVICE_TILT_XY",
    "DEVICE_TILT_Z",
    "DISPLAY_EDGE"
 };
@@ -200,9 +192,16 @@ static LONG glLockCount = 0;
 static OBJECTID glActiveDisplayID = 0;
 #endif
 
+#ifdef XRANDR_ENABLED
+static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 1024,768,0,0 }, { 1280,1024,0,0 } };
+static XRRScreenSize *glSizes = glCustomSizes;
+static LONG glSizeCount = ARRAYSIZE(glCustomSizes);
+static LONG glActualCount = 0;
+#endif
+
 std::recursive_mutex glInputLock;
 
-OBJECTPTR glCompress = NULL;
+objCompression *glCompress = NULL;
 static objCompression *glIconArchive = NULL;
 struct CoreBase *CoreBase;
 ColourFormat glColourFormat;
@@ -213,7 +212,6 @@ OBJECTID glPointerID = 0;
 DISPLAYINFO glDisplayInfo;
 APTR glDither = NULL;
 bool glSixBitDisplay = false;
-static MsgHandler *glExposeHandler = NULL;
 TIMER glRefreshPointerTimer = 0;
 extBitmap *glComposite = NULL;
 static auto glDisplayType = DT::NATIVE;
@@ -226,7 +224,7 @@ char glpDPMS[20] = "Standby";
 UBYTE *glDemultiply = NULL;
 
 std::vector<OBJECTID> glFocusList;
-std::mutex glFocusLock;
+std::recursive_mutex glFocusLock;
 std::recursive_mutex glSurfaceLock;
 
 THREADVAR WORD tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
@@ -235,12 +233,112 @@ THREADVAR OBJECTID tlFreeExpose = 0;
 //********************************************************************************************************************
 // Alpha blending data.
 
-INLINE UBYTE clipByte(LONG value)
+inline UBYTE clipByte(LONG value)
 {
    value = (0 & (-(WORD)(value < 0))) | (value & (-(WORD)!(value < 0)));
    value = (255 & (-(WORD)(value > 255))) | (value & (-(WORD)!(value > 255)));
    return value;
 }
+
+//********************************************************************************************************************
+// Build a list of valid resolutions.
+
+void get_resolutions(extDisplay *Self)
+{
+#if defined(__xwindows__) && defined(XRANDR_ENABLED)
+   pf::Log log(__FUNCTION__);
+
+   if (glXRRAvailable) {
+      if (!Self->Resolutions.empty()) return;
+
+      if (!glActualCount) {
+         for (LONG i=0; i < glSizeCount; i++) {
+            if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
+               glActualCount++;
+            }
+         }
+      }
+
+      auto get_mode = [&Self, &log](LONG Index) {
+         for (LONG i=0; i < glSizeCount; i++) {
+            if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
+               if (!Index) {
+                  Self->Resolutions.emplace_back(glSizes[i].width, glSizes[i].height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
+                  return;
+               }
+               Index--;
+            }
+         }
+      };
+
+      for (LONG i=0; i < glActualCount; i++) {
+         get_mode(i);
+      }
+   }
+   else {
+      log.msg("RandR extension not available.");
+      Self->Resolutions.emplace_back(glRootWindow.width, glRootWindow.height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
+   }
+#else
+   Self->Resolutions = {
+      { 640, 480, 32 },
+      { 800, 600, 32 },
+      { 1024, 768, 32 },
+      { 1152, 864, 32 },
+      { 1280, 960, 32 },
+      { 0, 0, 0 }
+   };
+#endif
+}
+
+//********************************************************************************************************************
+
+#ifdef XRANDR_ENABLED
+ERR xr_set_display_mode(LONG *Width, LONG *Height)
+{
+   pf::Log log(__FUNCTION__);
+   LONG count, i;
+   LONG width = *Width;
+   LONG height = *Height;
+
+   XRRScreenSize *sizes;
+   if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
+      WORD index    = -1;
+      LONG bestweight = 0x7fffffff;
+
+      for (i=0; i < count; i++) {
+         LONG weight = std::abs(sizes[i].width - width) + std::abs(sizes[i].height - height);
+         if (weight < bestweight) {
+            index = i;
+            bestweight = weight;
+         }
+      }
+
+      if (index IS -1) {
+         log.warning("No support for requested screen mode %dx%d", width, height);
+         return ERR::NoSupport;
+      }
+
+      if (auto scrconfig = XRRGetScreenInfo(XDisplay, DefaultRootWindow(XDisplay))) {
+         if (!XRRSetScreenConfig(XDisplay, scrconfig, DefaultRootWindow(XDisplay), index, RR_Rotate_0, CurrentTime)) {
+            *Width = sizes[index].width;
+            *Height = sizes[index].height;
+
+            log.msg("New mode: %dx%d (index %d/%d) from request %dx%d", sizes[index].width, sizes[index].height, index, count, width, height);
+
+            XRRFreeScreenConfigInfo(scrconfig);
+            return ERR::Okay;
+         }
+         else {
+            XRRFreeScreenConfigInfo(scrconfig);
+            return log.warning(ERR::SystemCall);
+         }
+      }
+      else return log.warning(ERR::SystemCall);
+   }
+   else return log.warning(ERR::SystemCall);
+}
+#endif // XRANDR_ENABLED
 
 //********************************************************************************************************************
 // GLES specific functions
@@ -291,7 +389,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *mutex, int Timeout)
 // display is unavailable then this function will fail even if the lock could otherwise be granted.
 
 #ifdef _GLES_
-ERROR lock_graphics_active(CSTRING Caller)
+ERR lock_graphics_active(CSTRING Caller)
 {
    pf::Log log(__FUNCTION__);
 
@@ -307,23 +405,23 @@ ERROR lock_graphics_active(CSTRING Caller)
       if ((glEGLState != EGL_INITIALISED) or (glEGLDisplay IS EGL_NO_DISPLAY)) {
          pthread_mutex_unlock(&glGraphicsMutex);
          //log.trace("EGL not initialised.");
-         return ERR_NotInitialised;
+         return ERR::NotInitialised;
       }
 
       if ((glEGLContext != EGL_NO_CONTEXT) and (!glLockCount)) {
          // eglMakeCurrent() allows our thread to use OpenGL.
          if (eglMakeCurrent(glEGLDisplay, glEGLSurface, glEGLSurface, glEGLContext) == EGL_FALSE) { // Failure probably indicates that a power management event has occurred (requires re-initialisation).
             pthread_mutex_unlock(&glGraphicsMutex);
-            return ERR_NotInitialised;
+            return ERR::NotInitialised;
          }
       }
 
       glLockCount++;
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
       log.warning("Failed to get lock for %s.  Locked by %s.  Error: %s", Caller, glLastLock, strerror(errno));
-      return ERR_TimeOut;
+      return ERR::TimeOut;
    }
 }
 
@@ -365,8 +463,7 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
       glDGAAvailable = FALSE;
 
       displayname = XDisplayName(NULL);
-      if ((!StrCompare(displayname, ":", 1)) or
-          (!StrCompare(displayname, "unix:", 5)) ) {
+      if ((startswith(displayname, ":")) or (startswith(displayname, "unix:")) ) {
          LONG events, errors, major, minor, screen;
 
          if (XDGAQueryExtension(XDisplay, &events, &errors) and XDGAQueryVersion(XDisplay, &major, &minor)) {
@@ -470,30 +567,56 @@ int CatchXIOError(Display *XDisplay)
    return 0;
 }
 
+//********************************************************************************************************************
+// Resize the pixmap buffer for a window, but only if the new dimensions exceed the existing values.
+
+extern ERR resize_pixmap(extDisplay *Self, LONG Width, LONG Height)
+{
+   auto bmp = (extBitmap *)Self->Bitmap;
+   if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) return ERR::Okay; // Composite window
+
+   if ((bmp->x11.pix_width > Width) and (bmp->x11.pix_height > Height)) return ERR::Okay;
+
+   if (Width  > bmp->x11.pix_width)  bmp->x11.pix_width  = Width;
+   if (Height > bmp->x11.pix_height) bmp->x11.pix_height = Height;
+
+   auto xbpp = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
+
+   if ((bmp->Flags & BMF::FIXED_DEPTH) != BMF::NIL) xbpp = bmp->BitsPerPixel;
+
+   if (auto pixmap = XCreatePixmap(XDisplay, Self->XWindowHandle, bmp->x11.pix_width, bmp->x11.pix_height, xbpp)) {
+      XSetWindowBackgroundPixmap(XDisplay, Self->XWindowHandle, pixmap);
+      if (Self->XPixmap) XFreePixmap(XDisplay, Self->XPixmap);
+      Self->XPixmap = pixmap;
+      bmp->x11.drawable = pixmap;
+      return ERR::Okay;
+   }
+   else return ERR::AllocMemory;
+}
+
 #endif
 
 //********************************************************************************************************************
 
-ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
+ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 {
    pf::Log log(__FUNCTION__);
 
   //log.traceBranch("Display: %d, Info: %p, Size: %d", DisplayID, Info, InfoSize);
 
-   if (!Info) return log.warning(ERR_NullArgs);
+   if (!Info) return log.warning(ERR::NullArgs);
 
    if (InfoSize != sizeof(DisplayInfoV3)) {
       log.error("Invalid InfoSize of %d (V3: %d)", InfoSize, (LONG)sizeof(DisplayInfoV3));
-      return log.warning(ERR_Args);
+      return log.warning(ERR::Args);
    }
 
-   extDisplay *display;
    if (DisplayID) {
       if (glDisplayInfo.DisplayID IS DisplayID) {
          CopyMemory(&glDisplayInfo, Info, InfoSize);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else if (!AccessObject(DisplayID, 5000, &display)) {
+      else if (ScopedObjectLock<extDisplay> display(DisplayID, 5000); display.granted()) {
          Info->DisplayID     = DisplayID;
          Info->Flags         = display->Flags;
          Info->Width         = display->Width;
@@ -501,8 +624,8 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          Info->BitsPerPixel  = display->Bitmap->BitsPerPixel;
          Info->BytesPerPixel = display->Bitmap->BytesPerPixel;
          Info->AmtColours    = display->Bitmap->AmtColours;
-         GET_HDensity(display, &Info->HDensity);
-         GET_VDensity(display, &Info->VDensity);
+         GET_HDensity(*display, &Info->HDensity);
+         GET_VDensity(*display, &Info->VDensity);
 
          #ifdef __xwindows__
             Info->AccelFlags = ACF(-1);
@@ -525,11 +648,9 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          Info->PixelFormat.GreenPos   = display->Bitmap->ColourFormat->GreenPos;
          Info->PixelFormat.BluePos    = display->Bitmap->ColourFormat->BluePos;
          Info->PixelFormat.AlphaPos   = display->Bitmap->ColourFormat->AlphaPos;
-
-         ReleaseObject(display);
-         return ERR_Okay;
+         return ERR::Okay;
       }
-      else return log.warning(ERR_AccessObject);
+      else return log.warning(ERR::AccessObject);
    }
    else {
       // If no display is specified, return default display settings for the main monitor and availability flags.
@@ -652,20 +773,20 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          }
          else {
             adUnlockAndroid();
-            return log.warning(ERR_SystemCall);
+            return log.warning(ERR::SystemCall);
          }
 
          adUnlockAndroid();
       }
-      else return log.warning(ERR_TimeOut);
+      else return log.warning(ERR::TimeOut);
 
       CopyMemory(glDisplayInfo, Info, InfoSize);
-      return ERR_Okay;
+      return ERR::Okay;
 #else
 
       if (glDisplayInfo.DisplayID) {
          CopyMemory(glDisplayInfo, Info, InfoSize);
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else {
          Info->Width         = 1024;
@@ -701,13 +822,13 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       else Info->AmtColours = 1<<Info->BitsPerPixel;
 
       log.trace("%dx%dx%d", Info->Width, Info->Height, Info->BitsPerPixel);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 }
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log(__FUNCTION__);
 
@@ -726,13 +847,13 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       create_bitmap_class();
       create_clipboard_class();
       create_surface_class();
-      return ERR_Okay;
+      return ERR::Okay;
    }
 #endif
 
    if (auto driver_name = (CSTRING)GetResourcePtr(RES::DISPLAY_DRIVER)) {
       log.msg("User requested display driver '%s'", driver_name);
-      if ((!StrMatch(driver_name, "none")) or (!StrMatch(driver_name, "headless"))) {
+      if ((iequals(driver_name, "none")) or (iequals(driver_name, "headless"))) {
          glHeadless = true;
       }
    }
@@ -751,7 +872,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    #ifdef __ANDROID__
       if (GetResource(RES::SYSTEM_STATE) >= 0) {
-         if (objModule::load("android", (OBJECTPTR *)&modAndroid, &AndroidBase) != ERR_Okay) return ERR_InitModule;
+         if (objModule::load("android", (OBJECTPTR *)&modAndroid, &AndroidBase) != ERR::Okay) return ERR::InitModule;
 
          FUNCTION fInitWindow, fTermWindow;
          SET_CALLBACK_STDC(fInitWindow, &android_init_window); // Sets EGL for re-initialisation and draws the display.
@@ -759,8 +880,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
          if (adAddCallbacks(ACB_INIT_WINDOW, &fInitWindow,
                             ACB_TERM_WINDOW, &fTermWindow,
-                            TAGEND) != ERR_Okay) {
-            return ERR_SystemCall;
+                            TAGEND) != ERR::Okay) {
+            return ERR::SystemCall;
          }
       }
    #endif
@@ -789,25 +910,12 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
          if (!getenv("PARASOL_XDISPLAY")) setenv("PARASOL_XDISPLAY", strdisplay, FALSE);
 
-         XSync(XDisplay, False);
+         XSync(XDisplay, 0);
 
          XSetErrorHandler((XErrorHandler)CatchXError);
          XSetIOErrorHandler(CatchXIOError);
       }
-      else return ERR_Failed;
-
-      // Try to load XRandR if we are the display manager, but it's okay if not available
-
-      if ((glX11.Manager) and (!NewObject(ID_MODULE, &modXRR))) {
-         char buffer[32];
-         IntToStr((MAXINT)XDisplay, buffer, sizeof(buffer));
-         acSetVar(modXRR, "XDisplay", buffer);
-         modXRR->set(FID_Name, "xrandr");
-         if (!InitObject(modXRR)) {
-            if (modXRR->getPtr(FID_ModBase, &XRandRBase) != ERR_Okay) XRandRBase = NULL;
-         }
-      }
-      else XRandRBase = NULL;
+      else return ERR::Failed;
 
       // Get the X11 file descriptor (for incoming events) and tell the Core to listen to it when the task is sleeping.
       // The FD is currently marked as a dummy because processes aren't being woken from select() if the X11 FD already
@@ -868,13 +976,103 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       // Set the DISPLAY variable for clients to :10, which is the default X11 display for the rootless X Server.
 
       if (glX11.Manager) setenv("DISPLAY", ":10", TRUE);
+
+#ifdef XRANDR_ENABLED
+      WORD i;
+      XRRScreenSize *sizes;
+      XPixmapFormatValues *list;
+      LONG errors, count;
+      char buffer[512];
+
+      LONG events;
+      if ((glX11.Manager) and (XRRQueryExtension(XDisplay, &events, &errors))) {
+         glXRRAvailable = true;
+         if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
+            glSizes = sizes;
+            glSizeCount = count;
+         }
+         else log.msg("XRRSizes() failed.");
+
+         // Build the screen.xml file if this is the first task to initialise the RandR extension.
+
+         auto file = objFile::create { fl::Path("user:config/screen.xml"), fl::Flags(FL::NEW|FL::WRITE) };
+
+         if (file.ok()) {
+            auto write_string = [](objFile *File, CSTRING String) {
+               struct acWrite write = { .Buffer = String, .Length = StrLength(String) };
+               Action(AC_Write, File, &write);
+            };
+
+            write_string(*file, "<?xml version=\"1.0\"?>\n\n");
+            write_string(*file, "<displayinfo>\n");
+            write_string(*file, "  <manufacturer value=\"XFree86\"/>\n");
+            write_string(*file, "  <chipset value=\"X11\"/>\n");
+            write_string(*file, "  <dac value=\"N/A\"/>\n");
+            write_string(*file, "  <clock value=\"N/A\"/>\n");
+            write_string(*file, "  <version value=\"1.00\"/>\n");
+            write_string(*file, "  <certified value=\"February 2023\"/>\n");
+            write_string(*file, "  <monitor_mfr value=\"Unknown\"/>\n");
+            write_string(*file, "  <monitor_model value=\"Unknown\"/>\n");
+            write_string(*file, "  <scanrates minhscan=\"0\" maxhscan=\"0\" minvscan=\"0\" maxvscan=\"0\"/>\n");
+            write_string(*file, "  <gfx_output unknown/>\n");
+            write_string(*file, "</displayinfo>\n\n");
+
+            WORD xbpp = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
+
+            WORD xbytes;
+            if (xbpp <= 8) xbytes = 1;
+            else if (xbpp <= 16) xbytes = 2;
+            else if (xbpp <= 24) xbytes = 3;
+            else xbytes = 4;
+
+            if ((list = XListPixmapFormats(XDisplay, &count))) {
+               for (i=0; i < count; i++) {
+                  if (list[i].depth IS xbpp) {
+                     xbytes = list[i].bits_per_pixel;
+                     if (list[i].bits_per_pixel <= 8) xbytes = 1;
+                     else if (list[i].bits_per_pixel <= 16) xbytes = 2;
+                     else if (list[i].bits_per_pixel <= 24) xbytes = 3;
+                     else xbytes = 4;
+                  }
+               }
+            }
+
+            if (xbytes IS 4) xbpp = 32;
+
+            LONG xcolours;
+            switch(xbpp) {
+               case 1:  xcolours = 2; break;
+               case 8:  xcolours = 256; break;
+               case 15: xcolours = 32768; break;
+               case 16: xcolours = 65536; break;
+               default: xcolours = 16777216; break;
+            }
+
+            for (i=0; i < glSizeCount; i++) {
+               if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
+                  snprintf(buffer, sizeof(buffer), "<screen name=\"%dx%d\" width=\"%d\" height=\"%d\" depth=\"%d\" colours=\"%d\"\n",
+                     glSizes[i].width, glSizes[i].height, glSizes[i].width, glSizes[i].height, xbpp, xcolours);
+                  write_string(*file, buffer);
+
+                  snprintf(buffer, sizeof(buffer), "  bytes=\"%d\" defaultrefresh=\"0\" minrefresh=\"0\" maxrefresh=\"0\">\n", xbytes);
+                  write_string(*file, buffer);
+
+                  write_string(*file, "</screen>\n\n");
+               }
+            }
+         }
+      }
+      else log.msg("XRRQueryExtension() failed.");
+#endif // XRANDR_ENABLED
+
    }
+
 #elif _WIN32
 
    if ((glInstance = winGetModuleHandle())) {
-      if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
+      if (!winCreateScreenClass()) return log.warning(ERR::SystemCall);
    }
-   else return log.warning(ERR_SystemCall);
+   else return log.warning(ERR::SystemCall);
 
    winDisableBatching();
 
@@ -882,11 +1080,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #endif
 
-   if (create_pointer_class() != ERR_Okay) return log.warning(ERR_AddClass);
-   if (create_display_class() != ERR_Okay) return log.warning(ERR_AddClass);
-   if (create_bitmap_class() != ERR_Okay) return log.warning(ERR_AddClass);
-   if (create_clipboard_class() != ERR_Okay) return log.warning(ERR_AddClass);
-   if (create_surface_class() != ERR_Okay) return log.warning(ERR_AddClass);
+   if (create_pointer_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_display_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_bitmap_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_clipboard_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_surface_class() != ERR::Okay) return log.warning(ERR::AddClass);
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.
 
@@ -898,7 +1096,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
    }
 
-   glDisplayType = gfxGetDisplayType();
+   glDisplayType = gfx::GetDisplayType();
 
 #ifdef __ANDROID__
       glpFullScreen = TRUE;
@@ -911,62 +1109,62 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          glpDisplayDepth  = info.BitsPerPixel;
       }
 #else
-   objConfig::create config = { fl::Path("user:config/display.cfg") };
+   auto config = objConfig::create { fl::Path("user:config/display.cfg") };
 
    if (config.ok()) {
-      cfgRead(*config, "DISPLAY", "Maximise", &glpMaximise);
+      config->read("DISPLAY", "Maximise", &glpMaximise);
 
       if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINGDI)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
-         if ((cfgRead(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
-            cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);
+         if ((config->read("DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR::Okay) or (!glpDisplayWidth)) {
+            config->read("DISPLAY", "Width", &glpDisplayWidth);
          }
 
-         if ((cfgRead(*config, "DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR_Okay) or (!glpDisplayHeight)) {
-            cfgRead(*config, "DISPLAY", "Height", &glpDisplayHeight);
+         if ((config->read("DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR::Okay) or (!glpDisplayHeight)) {
+            config->read("DISPLAY", "Height", &glpDisplayHeight);
          }
 
-         cfgRead(*config, "DISPLAY", "WindowX", &glpDisplayX);
-         cfgRead(*config, "DISPLAY", "WindowY", &glpDisplayY);
-         cfgRead(*config, "DISPLAY", "FullScreen", &glpFullScreen);
+         config->read("DISPLAY", "WindowX", &glpDisplayX);
+         config->read("DISPLAY", "WindowY", &glpDisplayY);
+         config->read("DISPLAY", "FullScreen", &glpFullScreen);
       }
       else {
-         cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);
-         cfgRead(*config, "DISPLAY", "Height", &glpDisplayHeight);
-         cfgRead(*config, "DISPLAY", "XCoord", &glpDisplayX);
-         cfgRead(*config, "DISPLAY", "YCoord", &glpDisplayY);
-         cfgRead(*config, "DISPLAY", "Depth", &glpDisplayDepth);
+         config->read("DISPLAY", "Width", &glpDisplayWidth);
+         config->read("DISPLAY", "Height", &glpDisplayHeight);
+         config->read("DISPLAY", "XCoord", &glpDisplayX);
+         config->read("DISPLAY", "YCoord", &glpDisplayY);
+         config->read("DISPLAY", "Depth", &glpDisplayDepth);
          log.msg("Using default display dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
       }
 
-      cfgRead(*config, "DISPLAY", "RefreshRate", &glpRefreshRate);
-      cfgRead(*config, "DISPLAY", "GammaRed", &glpGammaRed);
-      cfgRead(*config, "DISPLAY", "GammaGreen", &glpGammaGreen);
-      cfgRead(*config, "DISPLAY", "GammaBlue", &glpGammaBlue);
+      config->read("DISPLAY", "RefreshRate", &glpRefreshRate);
+      config->read("DISPLAY", "GammaRed", &glpGammaRed);
+      config->read("DISPLAY", "GammaGreen", &glpGammaGreen);
+      config->read("DISPLAY", "GammaBlue", &glpGammaBlue);
       CSTRING dpms;
-      if (!cfgReadValue(*config, "DISPLAY", "DPMS", &dpms)) {
+      if (config->readValue("DISPLAY", "DPMS", &dpms) IS ERR::Okay) {
          StrCopy(dpms, glpDPMS, sizeof(glpDPMS));
       }
    }
 #endif
 
    STRING icon_path;
-   if (ResolvePath("iconsource:", RSF::NIL, &icon_path) != ERR_Okay) { // The client can set iconsource: to redefine the icon origins
+   if (ResolvePath("iconsource:", RSF::NIL, &icon_path) != ERR::Okay) { // The client can set iconsource: to redefine the icon origins
       icon_path = StrClone("styles:icons/");
    }
 
    // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
 
    auto src = std::string(icon_path) + "Default.zip";
-   if (!(glIconArchive = objCompression::create::integral(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
-      return ERR_CreateObject;
+   if (!(glIconArchive = objCompression::create::local(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
+      return ERR::CreateObject;
    }
 
    FreeResource(icon_path);
 
    // The icons: special volume is a simple reference to the archive path.
 
-   if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN)) return ERR_SetVolume;
+   if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return ERR::SetVolume;
 
 #ifdef _WIN32 // Get any existing Windows clipboard content
 
@@ -976,27 +1174,28 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CMDOpen(OBJECTPTR Module)
+static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    pf::Log log(__FUNCTION__);
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
+
+   clean_clipboard();
 
    glClips.clear();
    if (glDither)              { FreeResource(glDither); glDither = NULL; }
-   if (glExposeHandler)       { FreeResource(glExposeHandler); glExposeHandler = NULL; }
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
    if (glComposite)           { FreeResource(glComposite); glComposite = NULL; }
    if (glCompress)            { FreeResource(glCompress); glCompress = NULL; }
@@ -1032,7 +1231,7 @@ static ERROR CMDExpunge(void)
       // termination.  In order to resolve this problem we return DoNotExpunge to prevent the removal of X11
       // dependent code.
 
-      error = ERR_DoNotExpunge;
+      error = ERR::DoNotExpunge;
    }
 
 #elif __ANDROID__
@@ -1113,7 +1312,7 @@ GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
 ** PLEASE NOTE: EGL's design for embedded devices means that only one Display object can be active at any time.
 */
 
-ERROR init_egl(void)
+ERR init_egl(void)
 {
    pf::Log log(__FUNCTION__);
    EGLint format;
@@ -1123,7 +1322,7 @@ ERROR init_egl(void)
 
    if (glEGLDisplay != EGL_NO_DISPLAY) {
       log.msg("EGL display is already initialised.");
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
    depth = glEGLPreferredDepth;
@@ -1169,13 +1368,13 @@ ERROR init_egl(void)
       glEGLContext = eglCreateContext(glEGLDisplay, config, NULL, NULL);
    }
    else {
-      log.warning(ERR_SystemCall);
-      return ERR_SystemCall;
+      log.warning(ERR::SystemCall);
+      return ERR::SystemCall;
    }
 
    if (eglMakeCurrent(glEGLDisplay, glEGLSurface, glEGLSurface, glEGLContext) == EGL_FALSE) {
-      log.warning(ERR_SystemCall);
-      return ERR_SystemCall;
+      log.warning(ERR::SystemCall);
+      return ERR::SystemCall;
    }
 
    eglQuerySurface(glEGLDisplay, glEGLSurface, EGL_WIDTH, &glEGLWidth);
@@ -1211,13 +1410,13 @@ ERROR init_egl(void)
             log.msg("Click-slop calculated as %d.", pointer->ClickSlop);
             ReleaseObject(pointer);
          }
-         else log.warning(ERR_AccessObject);
+         else log.warning(ERR::AccessObject);
       }
       else log.warning("Failed to get Android Config object.");
    }
 
    glEGLState = EGL_INITIALISED;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1277,7 +1476,7 @@ void free_egl(void)
 
       pthread_mutex_unlock(&glGraphicsMutex);
    }
-   else log.warning(ERR_LockFailed);
+   else log.warning(ERR::LockFailed);
 
    log.msg("EGL successfully terminated.");
 }
@@ -1286,7 +1485,7 @@ void free_egl(void)
 //********************************************************************************************************************
 // Updates the display using content from a source bitmap.
 
-ERROR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
+ERR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
 {
 #ifdef _WIN32
    auto dest   = Self->Bitmap;
@@ -1301,33 +1500,33 @@ ERROR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG W
 
    if ((xdest < dest->Clip.Left)) {
       width = width - (dest->Clip.Left - xdest);
-      if (width < 1) return ERR_Okay;
+      if (width < 1) return ERR::Okay;
       x = x + (dest->Clip.Left - xdest);
       xdest = dest->Clip.Left;
    }
-   else if (xdest >= dest->Clip.Right) return ERR_Okay;
+   else if (xdest >= dest->Clip.Right) return ERR::Okay;
 
    if ((ydest < dest->Clip.Top)) {
       height = height - (dest->Clip.Top - ydest);
-      if (height < 1) return ERR_Okay;
+      if (height < 1) return ERR::Okay;
       y = y + (dest->Clip.Top - ydest);
       ydest = dest->Clip.Top;
    }
-   else if (ydest >= dest->Clip.Bottom) return ERR_Okay;
+   else if (ydest >= dest->Clip.Bottom) return ERR::Okay;
 
    // Check if the source that we are copying from is within its own drawable area.
 
    if (x < 0) {
-      if ((width += x) < 1) return ERR_Okay;
+      if ((width += x) < 1) return ERR::Okay;
       x = 0;
    }
-   else if (x >= Bitmap->Width) return ERR_Okay;
+   else if (x >= Bitmap->Width) return ERR::Okay;
 
    if (y < 0) {
-      if ((height += y) < 1) return ERR_Okay;
+      if ((height += y) < 1) return ERR::Okay;
       y = 0;
    }
-   else if (y >= Bitmap->Height) return ERR_Okay;
+   else if (y >= Bitmap->Height) return ERR::Okay;
 
    // Clip the Width and Height
 
@@ -1337,8 +1536,8 @@ ERROR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG W
    if ((x + width)  >= Bitmap->Width)  width  = Bitmap->Width - x;
    if ((y + height) >= Bitmap->Height) height = Bitmap->Height - y;
 
-   if (width < 1) return ERR_Okay;
-   if (height < 1) return ERR_Okay;
+   if (width < 1) return ERR::Okay;
+   if (height < 1) return ERR::Okay;
 
    // Adjust coordinates by offset values
 
@@ -1361,9 +1560,9 @@ ERROR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG W
       Bitmap->ColourFormat->BlueMask  << Bitmap->ColourFormat->BluePos,
       ((Self->Flags & SCR::COMPOSITE) != SCR::NIL) ? (Bitmap->ColourFormat->AlphaMask << Bitmap->ColourFormat->AlphaPos) : 0,
       Self->Opacity);
-   return ERR_Okay;
+   return ERR::Okay;
 #else
-   return(gfxCopyArea(Bitmap, (extBitmap *)Self->Bitmap, BAF::NIL, X, Y, Width, Height, XDest, YDest));
+   return(gfx::CopyArea(Bitmap, (extBitmap *)Self->Bitmap, BAF::NIL, X, Y, Width, Height, XDest, YDest));
 #endif
 }
 
@@ -1392,6 +1591,6 @@ static STRUCTS glStructures = {
    { "SurfaceInfo",   sizeof(SurfaceInfoV2) }
 };
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_display_module() { return &ModHeader; }
 

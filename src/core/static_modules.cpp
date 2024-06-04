@@ -3,6 +3,7 @@
 
 extern "C" ModHeader * register_audio_module();
 extern "C" ModHeader * register_display_module();
+extern "C" ModHeader * register_document_module();
 extern "C" ModHeader * register_fluid_module();
 extern "C" ModHeader * register_font_module();
 extern "C" ModHeader * register_http_module();
@@ -15,7 +16,6 @@ extern "C" ModHeader * register_scintilla_module();
 extern "C" ModHeader * register_svg_module();
 extern "C" ModHeader * register_vector_module();
 extern "C" ModHeader * register_xml_module();
-extern "C" ModHeader * register_xrandr_module();
 
 //********************************************************************************************************************
 // Register all static modules that were compiled into this build.
@@ -28,6 +28,10 @@ static void register_static_modules(void)
 
    #ifdef INC_MOD_DISPLAY
    glStaticModules["display"] = register_display_module();
+   #endif
+
+   #ifdef INC_MOD_DOCUMENT
+   glStaticModules["document"] = register_document_module();
    #endif
 
    #ifdef INC_MOD_FLUID
@@ -76,10 +80,6 @@ static void register_static_modules(void)
 
    #ifdef INC_MOD_XML
    glStaticModules["xml"] = register_xml_module();
-   #endif
-
-   #ifdef INC_MOD_XRANDR
-   glStaticModules["xrandr"] = register_xrandr_module();
    #endif
 }
 

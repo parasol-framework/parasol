@@ -1,0 +1,4 @@
+All SVG tests are public domain unless otherwise marked.  W3C tests are
+Copyright 2009 World Wide Web Consortium, (Massachusetts Institute of
+Technology, European Research Consortium for Informatics and Mathematics
+(ERCIM), Keio University).  See http://www.w3.org/Consortium/Legal/.

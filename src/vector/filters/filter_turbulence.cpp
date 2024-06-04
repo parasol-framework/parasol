@@ -38,7 +38,7 @@ and A.
 
 class extTurbulenceFX : public extFilterEffect {
    public:
-   static constexpr CLASSID CLASS_ID = ID_TURBULENCEFX;
+   static constexpr CLASSID CLASS_ID = CLASSID::TURBULENCEFX;
    static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
    using create = pf::Create<extTurbulenceFX>;
 
@@ -182,9 +182,9 @@ Draw: Render the effect to the target bitmap.
 -END-
 *********************************************************************************************************************/
 
-static ERROR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
+static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
 {
-   if (Self->Target->BytesPerPixel != 4) return ERR_Failed;
+   if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
 
    const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
    const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
@@ -197,10 +197,10 @@ static ERROR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
    const LONG width = Self->Target->Clip.Right - Self->Target->Clip.Left;
 
    if (Self->Stitch) {
-      std::array<DOUBLE, 4> bounds = { Self->Filter->ClientViewport->vpFixedWidth, Self->Filter->ClientViewport->vpFixedHeight, 0, 0 };
+      TClipRectangle<DOUBLE> bounds = { Self->Filter->ClientViewport->vpFixedWidth, Self->Filter->ClientViewport->vpFixedHeight, 0, 0 };
       calc_full_boundary(Self->Filter->ClientVector, bounds, false, false);
-      const DOUBLE tile_width  = bounds[2] - bounds[0];
-      const DOUBLE tile_height = bounds[3] - bounds[1];
+      const DOUBLE tile_width  = bounds.width();
+      const DOUBLE tile_height = bounds.height();
 
       // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
 
@@ -246,12 +246,12 @@ static ERROR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR TURBULENCEFX_Init(extTurbulenceFX *Self, APTR Void)
+static ERR TURBULENCEFX_Init(extTurbulenceFX *Self)
 {
    LONG lSeed = setup_seed(Self->Seed);
    auto &gradient = Self->Gradient;
@@ -286,12 +286,12 @@ static ERROR TURBULENCEFX_Init(extTurbulenceFX *Self, APTR Void)
       }
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR TURBULENCEFX_NewObject(extTurbulenceFX *Self, APTR Void)
+static ERR TURBULENCEFX_NewObject(extTurbulenceFX *Self)
 {
    Self->Octaves    = 1;
    Self->Stitch     = false;
@@ -300,7 +300,7 @@ static ERROR TURBULENCEFX_NewObject(extTurbulenceFX *Self, APTR Void)
    Self->FX         = 0;
    Self->FY         = 0;
    Self->SourceType = VSF::NONE;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -312,19 +312,19 @@ A negative value for base frequency is an error.  The default value is zero.
 
 *********************************************************************************************************************/
 
-static ERROR TURBULENCEFX_GET_FX(extTurbulenceFX *Self, DOUBLE *Value)
+static ERR TURBULENCEFX_GET_FX(extTurbulenceFX *Self, DOUBLE *Value)
 {
    *Value = Self->FX;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TURBULENCEFX_SET_FX(extTurbulenceFX *Self, DOUBLE Value)
+static ERR TURBULENCEFX_SET_FX(extTurbulenceFX *Self, DOUBLE Value)
 {
    if (Value >= 0) {
       Self->FX = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -336,19 +336,19 @@ A negative value for base frequency is an error.  The default value is zero.
 
 *********************************************************************************************************************/
 
-static ERROR TURBULENCEFX_GET_FY(extTurbulenceFX *Self, DOUBLE *Value)
+static ERR TURBULENCEFX_GET_FY(extTurbulenceFX *Self, DOUBLE *Value)
 {
    *Value = Self->FY;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TURBULENCEFX_SET_FY(extTurbulenceFX *Self, DOUBLE Value)
+static ERR TURBULENCEFX_SET_FY(extTurbulenceFX *Self, DOUBLE Value)
 {
    if (Value >= 0) {
       Self->FY = Value;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_InvalidValue;
+   else return ERR::InvalidValue;
 }
 
 /*********************************************************************************************************************
@@ -356,20 +356,20 @@ static ERROR TURBULENCEFX_SET_FY(extTurbulenceFX *Self, DOUBLE Value)
 -FIELD-
 Octaves: The numOctaves parameter for the noise function.
 
-Defaults to 1 if not specified.
+Defaults to `1` if not specified.
 
 *********************************************************************************************************************/
 
-static ERROR TURBULENCEFX_GET_Octaves(extTurbulenceFX *Self, LONG *Value)
+static ERR TURBULENCEFX_GET_Octaves(extTurbulenceFX *Self, LONG *Value)
 {
    *Value = Self->Octaves;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TURBULENCEFX_SET_Octaves(extTurbulenceFX *Self, LONG Value)
+static ERR TURBULENCEFX_SET_Octaves(extTurbulenceFX *Self, LONG Value)
 {
    Self->Octaves = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -377,30 +377,30 @@ static ERROR TURBULENCEFX_SET_Octaves(extTurbulenceFX *Self, LONG Value)
 -FIELD-
 Seed: The starting number for the pseudo random number generator.
 
-If the value is undefined, the effect is as if a value of 0 were specified.  When the seed number is handed over to
+If the value is undefined, the effect is as if a value of `0` were specified.  When the seed number is handed over to
 the algorithm it must first be truncated, i.e. rounded to the closest integer value towards zero.
 
 *********************************************************************************************************************/
 
-static ERROR TURBULENCEFX_GET_Seed(extTurbulenceFX *Self, LONG *Value)
+static ERR TURBULENCEFX_GET_Seed(extTurbulenceFX *Self, LONG *Value)
 {
    *Value = Self->Seed;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TURBULENCEFX_SET_Seed(extTurbulenceFX *Self, LONG Value)
+static ERR TURBULENCEFX_SET_Seed(extTurbulenceFX *Self, LONG Value)
 {
    Self->Seed = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 
 -FIELD-
-Stitch: If TRUE, stitching will be enabled at the tile's edges.
+Stitch: If `TRUE`, stitching will be enabled at the tile's edges.
 
 By default, the turbulence algorithm will sometimes show discontinuities at the tile borders.  If Stitch is set to
-TRUE then the algorithm will automatically adjust base frequency values such that the node's width and height
+`TRUE` then the algorithm will automatically adjust base frequency values such that the node's width and height
 (i.e., the width and height of the current subregion) contains an integral number of the Perlin tile width and height
 for the first octave.
 
@@ -413,16 +413,16 @@ cases, copy the lattice vector from the opposite edge of the active area.
 
 *********************************************************************************************************************/
 
-static ERROR TURBULENCEFX_GET_Stitch(extTurbulenceFX *Self, LONG *Value)
+static ERR TURBULENCEFX_GET_Stitch(extTurbulenceFX *Self, LONG *Value)
 {
    *Value = Self->Stitch;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TURBULENCEFX_SET_Stitch(extTurbulenceFX *Self, LONG Value)
+static ERR TURBULENCEFX_SET_Stitch(extTurbulenceFX *Self, LONG Value)
 {
    Self->Stitch = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -433,16 +433,16 @@ Type: Can be set to 'noise' or 'turbulence'.
 
 *********************************************************************************************************************/
 
-static ERROR TURBULENCEFX_GET_Type(extTurbulenceFX *Self, TB *Value)
+static ERR TURBULENCEFX_GET_Type(extTurbulenceFX *Self, TB *Value)
 {
    *Value = Self->Type;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR TURBULENCEFX_SET_Type(extTurbulenceFX *Self, TB Value)
+static ERR TURBULENCEFX_SET_Type(extTurbulenceFX *Self, TB Value)
 {
    Self->Type = Value;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -453,14 +453,14 @@ XMLDef: Returns an SVG compliant XML string that describes the effect.
 
 *********************************************************************************************************************/
 
-static ERROR TURBULENCEFX_GET_XMLDef(extTurbulenceFX *Self, STRING *Value)
+static ERR TURBULENCEFX_GET_XMLDef(extTurbulenceFX *Self, STRING *Value)
 {
    std::stringstream stream;
 
    stream << "feTurbulence";
 
    *Value = StrClone(stream.str().c_str());
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -485,11 +485,11 @@ static const FieldArray clTurbulenceFXFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_turbulencefx(void)
+ERR init_turbulencefx(void)
 {
    clTurbulenceFX = objMetaClass::create::global(
-      fl::BaseClassID(ID_FILTEREFFECT),
-      fl::ClassID(ID_TURBULENCEFX),
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::TURBULENCEFX),
       fl::Name("TurbulenceFX"),
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clTurbulenceFXActions),
@@ -497,5 +497,5 @@ ERROR init_turbulencefx(void)
       fl::Size(sizeof(extTurbulenceFX)),
       fl::Path(MOD_PATH));
 
-   return clTurbulenceFX ? ERR_Okay : ERR_AddClass;
+   return clTurbulenceFX ? ERR::Okay : ERR::AddClass;
 }

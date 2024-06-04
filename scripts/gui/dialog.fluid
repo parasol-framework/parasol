@@ -1,72 +1,11 @@
 --[[
-To display a dialog box:
+Display a dialog message to the user.
 
-   gui.dialog.message({ Parameters... })
-
-If the dialog box is modal, the call will not return until the user has responded to the dialog.
-
-To receive feedback from the dialog box, set the feedback option with a function that follows this prototype:
-
-   function feedback(Dialog, Response, State)
-
-Whereby Dialog refers to the dialog object and Response refers to a table item provided by the caller in the 'options'
-parameter.  If the dialog was cancelled then the Response is null.  The State parameter will be set if the userInput or
-checkboxLabel options were defined when the dialog was created.  The State table will contain 'input' and 'checkbox'
-values that indicate their state at the time.
-
-Note that the dialog box should be managed as a dynamic resource, i.e. created as necessary and deallocated once the
-user has responded (i.e. set all references to nil).  Retaining dialog boxes in memory will provide no descernible
-speed improvement to the user.
-
-Valid options to use when creating the dialog are as follows:
-
-   options:       An array of clickable user responses that will be listed in the dialog.  Each entry must include a
-                  'text' label and 'icon' for display.
-   title:         A title for the dialog window.
-   popover:       Place the dialog window over the surface referenced here.
-   target:        Open the dialog window within the surface referenced here.
-   modal:         Set to true if the dialog box needs to be modal (prevents interaction with other windows).
-   message:       A plain message string to display in the dialog.
-   fmtMessage:    A tag formatted message string to display in the dialog.
-   checkboxLabel: Enables a user checkbox in the dialog when set with a label name.
-   checkboxState: If true, the checkbox will be pre-selected.
-   icon:          Window icon, in the format 'category/name'
-   image:         An icon to display alongside the dialog message, in the format 'category/name'
-   userInput:     Set to true if the user can enter custom text.  Set to a string if the input box must be pre-filled.
-   secret:        Set to true if the userInput string should be kept secret (e.g. a password).
-   feedback:      Refers to a Fluid function that will receive the user's response to the dialog.
-   type:          Categorise the dialog as one of the following:
-      message   - The default setting.
-      critical  - A highly critical error is being reported to the user.
-      error     - An error is being reported to the user.
-      warning   - A warning message is being reported to the user.
-      attention - The dialog requests the user's immediate attention.
-      alarm     - The dialog is presented as a response to a preset alarm.
-      help      - Help text is being presented in the dialog.
-      info      - The dialog is providing the user with specific information on a topic.
-      question  - A question is being asked of the user.
-      request   - A request is being made (e.g. dialog requires user to type in input).
-      temporary - The dialog box will disappear after a short time-out period has expired.
-
-Example usage:
-
-   gui.dialog.message({
-      modal     = true,
-      image     = 'icons:items/warning',
-      title     = 'Hamlet has a question',
-      message   = 'To be or not to be?',
-      userInput = 'That is the question',
-      checkboxLabel = '\'Tis nobler to suffer',
-      options = {
-         { id=1, text='To be', icon='items/checkmark' },
-         { id=2, text='Not to be', icon='items/cancel' }
-      },
-      feedback = function(Dialog, Response, State)
-      end
-   })
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
+   require 'gui/window'
 
    if (gui == nil) then gui = { } end
    if (gui.dialog == nil) then gui.dialog = { } end
@@ -85,10 +24,10 @@ local function defaultIcon(self)
          info      = 'info'
       }
       for k,v in pairs(icons) do
-         if self.type == k then return 'icons:items/' .. v end
+         if self.type == k then return 'items/' .. v end
       end
    end
-   return 'icons:items/question'
+   return 'items/question'
 end
 
 gui.dialog.message = function(Options)
@@ -99,7 +38,7 @@ gui.dialog.message = function(Options)
       feedback = Options.feedback,
       inputRequired = Options.inputRequired,
       message    = Options.message,
-      fmtMessage = nz(Options.message, Options.fmtMessage)
+      fmtMessage = Options.fmtMessage
    }
 
    -- Change the message in the dialog
@@ -122,22 +61,25 @@ gui.dialog.message = function(Options)
       processMessages(-1)
    end
 
-   local function matchWindowToDocSize(Window, Document)
+   local function matchWindowToDocSize(self, Document)
       local page_width  = Document.pageWidth
       local page_height = Document.pageHeight
 
-      Window.surface.maxHeight    = page_height
-      Window.surface.minHeight    = page_height
-      Window.surface.insideHeight = page_height
-      Window.surface.maxWidth     = page_width
-      Window.surface.minWidth     = page_width
-      Window.surface.insideWidth  = page_width
+      if (page_width < 100) then page_width = 100 end
+      if (page_height < 100) then page_height = 100 end
+
+      self.window:sizeHints(page_width, page_height, page_width * 3, page_height * 3, false)
+      self.window.surface.insideWidth  = page_width
+      self.window.surface.insideHeight = page_height
+
+      self.viewport.viewWidth  = page_width
+      self.viewport.viewHeight = page_height
    end
 
    local function docEvent(Document, EventFlag, Parameters)
       if bit.band(EventFlag, DEF_LINK_ACTIVATED) != 0 then
          if self.feedback then
-            local responseIndex = tonumber(mSys.VarGetString(Parameters.parameters, 'response'))
+            local responseIndex = tonumber(Parameters.response)
             local response = self.options[responseIndex]
             local state = { }
 
@@ -167,10 +109,32 @@ gui.dialog.message = function(Options)
    end
 
    local function buildDocument()
+      local option_icons = ''
+
+      // At minimum, there must be an OK option.
+
+      if not ((type(self.options) == 'table') and (#self.options > 0)) then
+         self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
+      end
+
+      for i, option in ipairs(self.options) do
+         if option['icon'] then
+            if nz(option_icons) then option_icons = option_icons .. '\n' end
+            option_icons = option_icons .. '    <image id="' .. option.icon .. '" xlink:href="icons:' .. option.icon .. '" width="16" height="16"/>\n'
+         end
+      end
+
       local doc = [[
 <?xml version="1.0"?>
-<body leftmargin="10" topmargin="10" bottommargin="18" rightmargin="10" face="Open Sans" fontsize="10" link="70,70,120"
-  colour="240,240,250" fontcolour="0,0,0" selectcolour="80,160,80"/>
+
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <image id="icon" xlink:href="icons:]] .. nz(Options.image, defaultIcon(self)) .. [[" width="48" height="48"/>]]
+    .. option_icons .. [[
+  </defs>
+</svg>
+
+<body margins="10 10 18 10"/>
 ]]
 
       if Options.envTemplate then
@@ -184,22 +148,21 @@ gui.dialog.message = function(Options)
          doc = doc .. '<include src="' .. options.template .. '"/>\n'
       end
 
-      image = nz(Options.image, defaultIcon(self))
-      if image:startsWith('icons:') then
-         image = image:gsub('^icons:(%w+)/(%w+)', 'icons:%1/%2(48)')
-      else
-         image = image:gsub('^(%w+)/(%w+)', 'icons:%1/%2(48)')
+      icon = nz(Options.image, defaultIcon(self))
+      icon = icon:gsub('^(%w+)/(%w+)', '%1/%2')
+      local msg = self.fmtMessage
+      if not nz(msg) then
+         msg = string.escXML(nz(self.message, ''))
+         msg = string.gsub(msg, '\n', '<br/>')
       end
 
       doc = doc .. [[
 <page name="Index">
   <table columns="48,0" width="100%">
     <row>
+      <cell><image src="url(#icon)" width="48" height="48" padding="0 8 18 0"/></cell>
       <cell>
-        <image src="]] .. image .. [[" align="left" eastgap="18"/>
-      </cell>
-      <cell>
-        <p>]] .. nz(self.fmtMessage, string.escXML(nz(self.message,''))) .. [[</p>
+        <p>]] .. msg .. [[</p>
 ]]
 
       if Options.userInput then
@@ -215,7 +178,7 @@ gui.dialog.message = function(Options)
             msg = ''
          end
 
-         doc = doc .. '<p><input name="inDialog" flags="' .. inputFlags .. '" width="200" string="' .. msg .. '"/></p>\n'
+         doc = doc .. '<p><input name="inDialog" flags="' .. inputFlags .. '" width="200" value="' .. msg .. '"/></p>\n'
       end
 
       if Options.checkboxLabel then
@@ -228,17 +191,10 @@ gui.dialog.message = function(Options)
          doc = doc .. Options.inject
       end
 
-      // Build the clickable options/buttons.  At minimum, there must be an OK option.
-
-      if not ((type(self.options) == 'table') and (#self.options > 0)) then
-         self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
-      end
-
-      doc = doc .. '<p><box height="1" colour="0,0,0,50"/></p>\n<p nowrap>'
-
+      doc = doc .. '<p no-wrap>'
       for i, option in ipairs(self.options) do
          if option['icon'] then
-            doc = doc .. '<image src="icons:' .. option.icon .. '(16)" eastgap="4"/>\n'
+            doc = doc .. '<image src="url(#' .. option.icon .. ')" width="16" height="16" padding="0 0 4 0"/>\n'
          end
 
          doc = doc .. '<a @response="' .. i .. '">' .. option.text .. '</a>\n'
@@ -247,7 +203,6 @@ gui.dialog.message = function(Options)
             doc = doc .. '<advance x="30"/>'
          end
       end
-
       doc = doc .. '</p>'
 
       doc = doc .. [[
@@ -290,6 +245,7 @@ gui.dialog.message = function(Options)
       center       = true,
       popover      = Options.popover,
       parent       = Options.target,
+      aspectRatio  = true,
       icon         = nz(Options.icon, 'items/question'),
       title        = nz(Options.title, 'Confirmation Required'),
       modal        = nz(Options.modal, false),
@@ -305,12 +261,14 @@ gui.dialog.message = function(Options)
       }
    })
 
-   lDoc = self.window:clientViewport().new('document', {
+   self.viewport = self.window:clientViewport()
+
+   lDoc = self.viewport.new('document', {
       eventMask     = 'LinkActivated',
       eventCallback = docEvent,
       path          = '#Index',
       flags         = 'Unrestricted|NoScrollbars',
-      defaultScript = obj.find('self')
+      clientScript  = obj.find('self')
    })
 
    lDoc.acDataFeed(0, DATA_XML, buildDocument())
@@ -322,13 +280,10 @@ gui.dialog.message = function(Options)
       self.input.textinput.mtSelectArea(0, 0, 20000, 20000)
    end
 
-   matchWindowToDocSize(self.window, lDoc)
-
-   self.window.userFocus = lDocSurface.id
+   matchWindowToDocSize(self, lDoc)
 
    self.window:moveToFront()
    self.window:show()
-   lDocSurface.acFocus()
 
    self.document = lDoc
 

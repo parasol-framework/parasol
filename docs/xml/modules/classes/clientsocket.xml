@@ -12,7 +12,7 @@
     <idstring>ID_CLIENTSOCKET</idstring>
     <category>Network</category>
     <include>modules/clientsocket.h</include>
-    <copyright>Paul Manias © 2005-2023</copyright>
+    <copyright>Paul Manias © 2005-2024</copyright>
     <description>
 <p>If a <class name="Netsocket">Netsocket</class> is running in server mode then it will create a new ClientSocket object every time that a new connection is opened by a client.  This is a very simple class that assists in the management of I/O between the client and server.</p></description>
     <source>
@@ -24,8 +24,14 @@
     <action>
       <name>Read</name>
       <comment>Read incoming data from a client socket.</comment>
+      <prototype>ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)</prototype>
+      <input>
+        <param type="APTR" name="Buffer">Points a buffer that will receive the data.</param>
+        <param type="LONG" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
+        <param type="LONG" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
+      </input>
       <description>
-<p>The Read action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure, and the socket connection will be closed when the action returns.</p>
+<p>The Read() action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure, and the socket connection will be closed when the action returns.</p>
       </description>
       <result>
         <error code="Okay">Read successful (if no data was on the socket, success is still indicated).</error>
@@ -38,8 +44,14 @@
     <action>
       <name>Write</name>
       <comment>Writes data to the socket.</comment>
+      <prototype>ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)</prototype>
+      <input>
+        <param type="APTR" name="Buffer">A buffer containing the data that will be written to the object.</param>
+        <param type="LONG" name="Length">The total number of bytes to write to the object.</param>
+        <param type="LONG" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
+      </input>
       <description>
-<p>Write raw data to a client socket with this action.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the #MsgLimit field setting.</p>
+<p>Write raw data to a client socket with this action.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the <class name="NetSocket" field="MsgLimit">NetSocket.MsgLimit</class> value.</p>
       </description>
     </action>
 
@@ -49,7 +61,7 @@
     <method>
       <name>ReadClientMsg</name>
       <comment>Read a message from the socket.</comment>
-      <prototype>ERROR csReadClientMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
+      <prototype>ERR cs::ReadClientMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
       <input>
         <param type="APTR *" name="Message">A pointer to the message buffer will be placed here if a message has been received.</param>
         <param type="LONG *" name="Length">The length of the message is returned here.</param>
@@ -57,7 +69,7 @@
         <param type="LONG *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
       </input>
       <description>
-<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the WriteClientMsg method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
+<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the <method>WriteClientMsg</method> method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
 <p>This method never returns a successful error code unless an entire message has been received from the sender.</p>
       </description>
       <result>
@@ -74,13 +86,13 @@
     <method>
       <name>WriteClientMsg</name>
       <comment>Writes a message to the socket.</comment>
-      <prototype>ERROR csWriteClientMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
+      <prototype>ERR cs::WriteClientMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
       <input>
         <param type="APTR" name="Message">Pointer to the message to send.</param>
-        <param type="LONG" name="Length">The length of the message.</param>
+        <param type="LONG" name="Length">The length of the <code>Message</code>.</param>
       </input>
       <description>
-<p>Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with <method>ReadClientMsg</method>.  The message data is sent through the <action>Write</action> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
+<p>Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with <method>ReadClientMsg</method>. The message data is sent through the <action>Write</action> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -97,6 +109,13 @@
       <comment>Parent client structure</comment>
       <access read="R">Read</access>
       <type>struct NetClient *</type>
+    </field>
+
+    <field>
+      <name>ClientData</name>
+      <comment>Free for user data storage.</comment>
+      <access read="R">Read</access>
+      <type>APTR</type>
     </field>
 
     <field>
@@ -148,13 +167,6 @@
       <type>INT</type>
     </field>
 
-    <field>
-      <name>UserData</name>
-      <comment>Free for user data storage.</comment>
-      <access read="R">Read</access>
-      <type>APTR</type>
-    </field>
-
   </fields>
   <structs>
     <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
@@ -163,7 +175,7 @@
       <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
       <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
       <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
-      <field name="UserData" type="APTR">Free for user data storage.</field>
+      <field name="ClientData" type="APTR">Free for user data storage.</field>
       <field name="TotalSockets" type="LONG">Count of all created sockets</field>
     </struct>
 

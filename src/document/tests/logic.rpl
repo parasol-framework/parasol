@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
+
+<info>
+ <title>Logic Tests</title>
+ <author>Paul Manias</author>
+ <keywords>logic, test</keywords>
+ <description>Runs basic logic tests against the parser.</description>
+</info>
+
+<body font-size="10pt"/>
+
+<page name="Index">
+
+<h1>If Statement Tests</h1>
+
+<p>There should be five successful tests following this paragraph.</p>
+
+<if statement="1 > 0">
+  <p>1. If statement satisfied.</p>
+</if>
+<else>
+  <p>1. If statement failed.</p>
+</else>
+
+<if statement="1 < 0">
+  <p>2. If statement failed.</p>
+</if>
+<else>
+  <p>2. Else condition satisfied.</p>
+</else>
+
+<if statement="1 < 0">
+  <p>3. If statement failed.</p>
+</if>
+<elseif statement="1 > 0">
+  <p>3. Else-If statement satisfied.</p>
+</elseif>
+<else>
+  <p>3. If statement failed.</p>
+</else>
+
+<if notnull="true">
+  <p>4. If-NotNull satisfied.</p>
+</if>
+
+<if null="0">
+  <p>5. If-Null conditional satisfied.</p>
+</if>
+
+<h2>Repeat Tests</h2>
+
+<p>This repeating section will print numbers from 1 to 10.</p>
+
+<p indent="40"><repeat start="0" end="10"><print value="[%index]"/> </repeat></p>
+
+<p>This while loop will print numbers from 1 to 5.</p>
+
+<p indent="40"><while statement="[%index] < 5"><print value="[%index]"/> </while></p>
+
+<h2>Special Variable Tests</h2>
+
+<font face="courier">
+<p>Current font: <print value="[%font]; Face: [%font-face]; Size: [%font-size]; Fill: [%font-fill]"/></p>
+<!-- The following features can't appear in the test suite because they'll cause a hash mismatch between runs
+<p>Date: <print value="[%tm-day]-[%tm-month]-[%tm-year]"/></p>
+<p>Time: <print value="[%tm-hour]:[%tm-minute]:[%tm-second]"/></p>
+<p>Random Digits: <print value="[%random]"/></p>
+<p>Path: <print value="[%path]"/></p>
+<p>Platform: <print value="[%platform]"/></p>
+-->
+<p>Line Number: <print value="[%line-no]"/></p>
+<p>Page Name: <print value="[%current-page]"/></p>
+<p>Viewport size: <print value="[%view-width] x [%view-height]"/></p>
+</font>
+
+<h2>Escape Codes</h2>
+
+<p>The line below should print left and right square brackets, substituted from &amp;lsqr; and &amp;rsqr, which are not regular XML escape codes:</p>
+
+<p indent>Left bracket: <print value="&lsqr;"/></p>
+<p indent>Right bracket: <print value="&rsqr;"/></p>
+
+<p>The line below tests use of the '$' character to prevent translation of attribute values.  The string should be printed complete with untranslated object, argument and bracket references.</p>
+
+<p indent><print $value="&lsqr; &rsqr; [%author]"/></p>
+
+<p>Here is the same string, translated:</p>
+
+<p indent><print value="&lsqr; &rsqr; [%author]"/></p>
+
+</page>

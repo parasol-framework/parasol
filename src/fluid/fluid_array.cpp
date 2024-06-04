@@ -32,6 +32,7 @@ To convert the C array values to a Lua table:
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 
 extern "C" {
  #include "lauxlib.h"
@@ -137,7 +138,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
       if (!List) {
          Cache = false;
          alloc = true;
-         if (AllocMemory(array_size, MEM::DATA, &List) != ERR_Okay) {
+         if (AllocMemory(array_size, MEM::DATA, &List) != ERR::Okay) {
             lua_pushnil(Lua);
             return;
          }
@@ -222,10 +223,10 @@ static int array_new(lua_State *Lua)
       pf::Log log(__FUNCTION__);
 
       log.trace("");
-      if (!StrMatch("bytestring", type)) { // Represent a string as an array of bytes
+      if (iequals("bytestring", type)) { // Represent a string as an array of bytes
          size_t len;
          if (auto str = lua_tolstring(Lua, 1, &len)) {
-            MSG("Generating byte array from string of length %d: %.30s", (int)len, str);
+            log.trace("Generating byte array from string of length %d: %.30s", (int)len, str);
 
             if (auto a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + len + 1)) {
                a->Total   = len;
@@ -247,7 +248,7 @@ static int array_new(lua_State *Lua)
       else if (auto total = lua_tointeger(Lua, 1)) {
          LONG fieldtype;
          CSTRING s_name = NULL;
-         switch (StrHash(type)) {
+         switch (strihash(type)) {
             case HASH_LONG:
             case HASH_INTEGER: fieldtype = FD_LONG; break;
             case HASH_STRING:  fieldtype = FD_STRING; break;
@@ -283,7 +284,7 @@ static int array_new(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: string = array:getstring(start, len)
+// Usage: string = array.getstring(start, len)
 //
 // Creates a string from a byte array.  If len is nil, the entire buffer from the starting index up to the end of the
 // byte array is returned.
@@ -292,7 +293,7 @@ static int array_getstring(lua_State *Lua)
 {
    auto a = (struct array *)get_meta(Lua, lua_upvalueindex(1), "Fluid.array");
    if (!a) {
-      luaL_error(Lua, "Expected array in upvalue.");
+      luaL_error(Lua, "Expected array.");
       return 0;
    }
 
@@ -313,7 +314,7 @@ static int array_getstring(lua_State *Lua)
 
    if (lua_isnumber(Lua,2)) {
       len = lua_tointeger(Lua, 2);
-      if ((len < 1) or (start+len > a->Total)) {
+      if ((len < 0) or (start+len > a->Total)) {
          luaL_error(Lua, "Invalid length: Index %d < %d < %d", start, start+len, a->Total);
          return 0;
       }
@@ -327,7 +328,7 @@ static int array_getstring(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Any Read accesses to the object will pass through here.
+// Any Read accesses will pass through here.
 
 static int array_get(lua_State *Lua)
 {
@@ -349,7 +350,7 @@ static int array_get(lua_State *Lua)
             case FD_STRUCT: {
                // Arrays of structs are presumed to be in sequence, as opposed to an array of pointers to structs.
                std::vector<lua_ref> ref;
-               if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrByte + (index * a->AlignedSize)) != ERR_Okay) {
+               if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrByte + (index * a->AlignedSize)) != ERR::Okay) {
                   lua_pushnil(Lua);
                }
                break;
@@ -373,14 +374,14 @@ static int array_get(lua_State *Lua)
       else if ((field = luaL_checkstring(Lua, 2))) {
          log.trace("Field: %s", field);
 
-         if (!StrMatch("table", field)) { // Convert the array to a standard Lua table.
+         if (std::string_view("table") == field) { // Convert the array to a standard Lua table.
             lua_createtable(Lua, a->Total, 0); // Create a new table on the stack.
             switch(a->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
                case FD_STRUCT:  {
                   std::vector<lua_ref> ref;
                   for (LONG i=0; i < a->Total; i++) {
                      lua_pushinteger(Lua, i);
-                     if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrPointer[i]) != ERR_Okay) lua_pushnil(Lua);
+                     if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrPointer[i]) != ERR::Okay) lua_pushnil(Lua);
                      lua_settable(Lua, -3);
                   }
                   break;
@@ -397,12 +398,12 @@ static int array_get(lua_State *Lua)
 
             return 1;
          }
-         else if (!StrMatch("getstring", field)) {
+         else if (std::string_view("getstring") == field) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_getstring, 1);
             return 1;
          }
-         else if (!StrMatch("copy", field)) {
+         else if (std::string_view("copy") == field) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_copy, 1);
             return 1;
@@ -468,9 +469,9 @@ static int array_set(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: string = array:copy(source, [DestIndex], [Total])
+// Usage: array.copy(source, [DestIndex], [Total])
 //
-// Copies a string or data sequence to the memory block.
+// Copies a string or data sequence to the array.
 
 static int array_copy(lua_State *Lua)
 {
@@ -553,7 +554,7 @@ static int array_copy(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Garbage collecter.
+// Garbage collector.
 
 static int array_destruct(lua_State *Lua)
 {
@@ -582,6 +583,18 @@ static int array_len(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+
+static int array_tostring(lua_State *Lua)
+{
+   auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array");
+   if ((a) and (a->Type IS FD_BYTE)) {
+      lua_pushlstring(Lua, CSTRING(a->ptrByte), a->ArraySize);
+   }
+   else lua_pushstring(Lua, "[INVALID TYPE]");
+   return 1;
+}
+
+//********************************************************************************************************************
 // Register the array interface.
 
 void register_array_class(lua_State *Lua)
@@ -598,6 +611,7 @@ void register_array_class(lua_State *Lua)
       { "__newindex", array_set },
       { "__len",      array_len },
       { "__gc",       array_destruct },
+      { "__tostring", array_tostring },
       { NULL, NULL }
    };
 
@@ -605,7 +619,7 @@ void register_array_class(lua_State *Lua)
 
    luaL_newmetatable(Lua, "Fluid.array");
    lua_pushstring(Lua, "__index");
-   lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
+   lua_pushvalue(Lua, -2);  // Push the Fluid.array metatable
    lua_settable(Lua, -3);   // metatable.__index = metatable
    luaL_openlib(Lua, NULL, methods, 0);
 

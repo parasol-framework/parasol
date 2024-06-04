@@ -7,11 +7,11 @@ FDEF maGetCommand[] = { { "Index", FD_LONG }, { "PathCommand:Command", FD_PTR|FD
 FDEF maSetCommandList[] = { { "Commands", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 
 static const struct MethodEntry clVectorPathMethods[] = {
-   { -30, (APTR)VECTORPATH_AddCommand, "AddCommand", maAddCommand, sizeof(struct vpAddCommand) },
-   { -31, (APTR)VECTORPATH_RemoveCommand, "RemoveCommand", maRemoveCommand, sizeof(struct vpRemoveCommand) },
-   { -32, (APTR)VECTORPATH_SetCommand, "SetCommand", maSetCommand, sizeof(struct vpSetCommand) },
-   { -33, (APTR)VECTORPATH_GetCommand, "GetCommand", maGetCommand, sizeof(struct vpGetCommand) },
-   { -34, (APTR)VECTORPATH_SetCommandList, "SetCommandList", maSetCommandList, sizeof(struct vpSetCommandList) },
+   { -30, (APTR)VECTORPATH_AddCommand, "AddCommand", maAddCommand, sizeof(struct vp::AddCommand) },
+   { -31, (APTR)VECTORPATH_RemoveCommand, "RemoveCommand", maRemoveCommand, sizeof(struct vp::RemoveCommand) },
+   { -32, (APTR)VECTORPATH_SetCommand, "SetCommand", maSetCommand, sizeof(struct vp::SetCommand) },
+   { -33, (APTR)VECTORPATH_GetCommand, "GetCommand", maGetCommand, sizeof(struct vp::GetCommand) },
+   { -34, (APTR)VECTORPATH_SetCommandList, "SetCommandList", maSetCommandList, sizeof(struct vp::SetCommandList) },
    { 0, 0, 0, 0, 0 }
 };
 

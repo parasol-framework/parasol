@@ -12,7 +12,7 @@
     <idstring>ID_POINTER</idstring>
     <category>Graphics</category>
     <include>modules/pointer.h</include>
-    <copyright>Paul Manias 2003-2023</copyright>
+    <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>The Pointer class provides the user with a means of interacting with the graphical interface.  On a host system such as Windows, the pointer functionality will hook into the host's capabilities.  If the display is native then the pointer service will manage its own cursor exclusively.</p>
 <p>Internally, a system-wide pointer object is automatically created with a name of <code>SystemPointer</code>.  This should be used for all interactions with this service.</p></description>
@@ -39,7 +39,7 @@
       <access read="R">Read</access>
       <type>OBJECTID</type>
       <description>
-<p>If the pointer is anchored to a surface through <function module="Display">SetCursor</function>, this field will refer to the surface that holds the anchor.</p>
+<p>If the pointer is anchored to a surface through <function>SetCursor</function>, this field will refer to the surface that holds the anchor.</p>
       </description>
     </field>
 
@@ -49,7 +49,7 @@
       <access read="R">Read</access>
       <type class="Bitmap">*Bitmap</type>
       <description>
-<p>The pointer graphic can be changed to a custom image if the <code>PTC::CUSTOM</code> <field>CursorID</field> type is defined and an image is drawn to the <class name="Bitmap">Bitmap</class> object referenced by this field.</p>
+<p>The pointer graphic can be changed to a custom image if the <code>PTC::CUSTOM</code> <fl>CursorID</fl> type is defined and an image is drawn to the <class name="Bitmap">Bitmap</class> object referenced by this field.</p>
       </description>
     </field>
 
@@ -72,7 +72,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>You can read this field at any time to get an indication of the buttons that are currently being held by the user.  The flags returned by this field are <code>JD_LMB</code>, <code>JD_RMB</code> and <code>JD_MMB</code> indicating left, right and middle mouse buttons respectively.</p>
+<p>This field returns the state of mouse input buttons as bit-flags, sorted by order of their importance.  A bit flag of <code>1</code> indicates that the user is holding the button down.  The bit order is <code>LMB</code>, <code>RMB</code>, <code>MMB</code>, with the <code>LMB</code> starting at bit position zero.  Additional buttons are supported but their exact order will depend on the device that is in use, and the configuration of their order may be further customised by the user.</p>
       </description>
     </field>
 
@@ -98,7 +98,7 @@
 
     <field>
       <name>CursorOwner</name>
-      <comment>The current owner of the cursor, as defined by SetCursor().</comment>
+      <comment>The current owner of the cursor, as defined by <function module="Display">SetCursor</function>.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>OBJECTID</type>
       <description>
@@ -118,22 +118,22 @@
 
     <field>
       <name>DragItem</name>
-      <comment>The currently dragged item, as defined by StartCursorDrag().</comment>
+      <comment>The currently dragged item, as defined by <function module="Display">StartCursorDrag</function>.</comment>
       <access read="R">Read</access>
       <type>INT</type>
       <description>
-<p>When the pointer is in drag-mode, the custom item number that was defined in the initial call to StartCursorDrag() will be defined here.  At all other times this field will be set to zero.</p>
+<p>When the pointer is in drag-mode, the custom item number that was defined in the initial call to <function module="Display">StartCursorDrag</function> will be defined here.  At all other times this field will be set to zero.</p>
       </description>
     </field>
 
     <field>
       <name>DragSource</name>
-      <comment>The object managing the current drag operation, as defined by StartCursorDrag().</comment>
+      <comment>The object managing the current drag operation, as defined by <function module="Display">StartCursorDrag</function>.</comment>
       <access read="R">Read</access>
       <type>OBJECTID</type>
       <description>
 <p>When the pointer is in drag-mode, the object that is managing the source data will be referenced in this field.  At all other times this field will be set to zero.</p>
-<p>Item dragging is managed by the StartCursorDrag() function.</p>
+<p>Item dragging is managed by the <function module="Display">StartCursorDrag</function> function.</p>
       </description>
     </field>
 
@@ -173,27 +173,27 @@
       <access read="R">Read</access>
       <type>OBJECTID</type>
       <description>
-<p>This field returns a reference to the object directly under the pointer's hot-spot.  NULL can be returned if there is no surface object under the pointer.</p>
+<p>This field returns a reference to the object directly under the pointer's hot-spot.  <code>NULL</code> can be returned if there is no surface object under the pointer.</p>
       </description>
     </field>
 
     <field>
       <name>OverX</name>
-      <comment>The horizontal position of the Pointer with respect to the object underneath the hot-spot.</comment>
+      <comment>The horizontal position of the pointer with respect to the object underneath the hot-spot.</comment>
       <access read="R">Read</access>
       <type>DOUBLE</type>
       <description>
-<p>The OverX field provides other classes with a means of finding out exactly where the pointer is positioned over their display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where affected, the OverX and OverY fields can be polled to determine the exact position of the user click.</p>
+<p>The OverX field provides other classes with a means of finding out exactly where the pointer is positioned over their display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where affected, the OverX and <fl>OverY</fl> fields can be polled to determine the exact position of the user click.</p>
       </description>
     </field>
 
     <field>
       <name>OverY</name>
-      <comment>The vertical position of the Pointer with respect to the object underneath the hot-spot.</comment>
+      <comment>The vertical position of the pointer with respect to the object underneath the hot-spot.</comment>
       <access read="R">Read</access>
       <type>DOUBLE</type>
       <description>
-<p>The OverY field provides other classes with a means of finding out exactly where the pointer is positioned over their display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where affected, the OverX and OverY fields can be polled to determine the exact position of the user click.</p>
+<p>The OverY field provides other classes with a means of finding out exactly where the pointer is positioned over their display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where affected, the <fl>OverX</fl> and OverY fields can be polled to determine the exact position of the user click.</p>
       </description>
     </field>
 
@@ -213,17 +213,17 @@
       <access read="R">Read</access>
       <type>OBJECTID</type>
       <description>
-<p>If the pointer has been restricted to a surface through SetCursor(), this field refers to the ID of that surface.  If the pointer is not restricted, this field is set to zero.</p>
+<p>If the pointer has been restricted to a surface through <function module="Display">SetCursor</function>, this field refers to the ID of that surface.  If the pointer is not restricted, this field is set to zero.</p>
       </description>
     </field>
 
     <field>
       <name>Speed</name>
-      <comment>Speed multiplier for Pointer movement.</comment>
+      <comment>Speed multiplier for pointer movement.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>DOUBLE</type>
       <description>
-<p>The speed at which the pointer moves can be adjusted with this field.  To lower the speed, use a value between 0 and 100%.  To increase the speed, use a value between 100 and 1000%.  The Speed of the Pointer is complemented by the MaxSpeed field, which restricts the maximum amount of pixels that a Pointer can move each time the input device is polled.</p>
+<p>The speed at which the pointer moves can be adjusted with this field.  To lower the speed, use a value between 0 and 100%.  To increase the speed, use a value between 100 and 1000%.  The speed of the pointer is complemented by the <fl>MaxSpeed</fl> field, which restricts the maximum amount of pixels that a pointer can move each time the input device is polled.</p>
       </description>
     </field>
 
@@ -267,6 +267,35 @@
       <const name="ANCHOR">Allow the pointer to be anchored.</const>
       <const name="UNUSED"/>
       <const name="VISIBLE">Indicates that the pointer is currently visible.  Read-only.</const>
+    </constants>
+
+    <constants lookup="PTC" comment="Predefined cursor styles">
+      <const name="CROSSHAIR">The cross hair is used for targeting specific pixel points (common in paint programs).</const>
+      <const name="CUSTOM">Works in conjunction with the SetCustomCursor() function to represent a program defined bitmap.</const>
+      <const name="DEFAULT">The default cursor (usually an arrow pointing to the upper left).</const>
+      <const name="DRAGGABLE">Used to indicate that a surface or object can be dragged by the user.</const>
+      <const name="END"/>
+      <const name="HAND">The hand cursor is often used for indicating click-able content (hyper-links, icons etc).</const>
+      <const name="HAND_LEFT">Similar to the standard hand cursor, but points to the left.</const>
+      <const name="HAND_RIGHT">Similar to the standard hand cursor, but points to the right.</const>
+      <const name="INVISIBLE">The cursor graphic is invisible (but will continue to operate as normal in all other respects).</const>
+      <const name="MAGNIFIER">Represents a magnifying glass.</const>
+      <const name="NO_CHANGE"/>
+      <const name="PAINTBRUSH">The paintbrush cursor is typically employed by paint programs.</const>
+      <const name="SIZE_BOTTOM">Sizing cursor - for resizing the bottom edge of any rectangular area.</const>
+      <const name="SIZE_BOTTOM_LEFT">Sizing cursor - for resizing the bottom left corner of any rectangular area.</const>
+      <const name="SIZE_BOTTOM_RIGHT">Sizing cursor - for resizing the bottom right corner of any rectangular area.</const>
+      <const name="SIZE_LEFT">Sizing cursor - for resizing the left edge of any rectangular area.</const>
+      <const name="SIZE_RIGHT">Sizing cursor - for resizing the right edge of any rectangular area.</const>
+      <const name="SIZE_TOP">Sizing cursor - for resizing the top edge of any rectangular area.</const>
+      <const name="SIZE_TOP_LEFT">Sizing cursor - for resizing the top left corner of any rectangular area.</const>
+      <const name="SIZE_TOP_RIGHT">Sizing cursor - for resizing the top right corner of any rectangular area.</const>
+      <const name="SIZING">Multi-directional sizing cursor - for resizing in any direction.</const>
+      <const name="SLEEP">The sleep cursor is used to inform the user that the computer is busy.</const>
+      <const name="SPLIT_HORIZONTAL">The horizontal split cursor is typically used for splitting rectangles in half, or dragging a horizontal split within a large rectangular space.</const>
+      <const name="SPLIT_VERTICAL">The vertical split cursor is typically used for splitting rectangles in half, or dragging a vertical split within a large rectangular space.</const>
+      <const name="STOP">The stop cursor is used to inform the user that an operation is not possible (e.g. drag and drop to an unsupported object area).</const>
+      <const name="TEXT">The text cursor is popular for the precise positioning of text cursors.</const>
     </constants>
 
   </types>

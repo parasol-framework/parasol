@@ -28,7 +28,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       log.traceBranch("Attempting SSL handshake.");
 
       sslConnect(Self);
-      if (Self->Error) return;
+      if (Self->Error != ERR::Okay) return;
 
       if (Self->State IS NTC::CONNECTING_SSL) {
          RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
@@ -44,13 +44,13 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       return;
    }
    else {
-      FMSG("client_connect","getsockopt() result %d", result);
+      log.trace("getsockopt() result %d", result);
 
-      if (result IS ECONNREFUSED)      Self->Error = ERR_ConnectionRefused;
-      else if (result IS ENETUNREACH)  Self->Error = ERR_NetworkUnreachable;
-      else if (result IS EHOSTUNREACH) Self->Error = ERR_HostUnreachable;
-      else if (result IS ETIMEDOUT)    Self->Error = ERR_TimeOut;
-      else Self->Error = ERR_Failed;
+      if (result IS ECONNREFUSED)      Self->Error = ERR::ConnectionRefused;
+      else if (result IS ENETUNREACH)  Self->Error = ERR::NetworkUnreachable;
+      else if (result IS EHOSTUNREACH) Self->Error = ERR::HostUnreachable;
+      else if (result IS ETIMEDOUT)    Self->Error = ERR::TimeOut;
+      else Self->Error = ERR::Failed;
 
       log.error(Self->Error);
 
@@ -110,20 +110,18 @@ restart:
    Self->ReadCalled = FALSE;
 
    LONG result;
-   ERROR error = ERR_Okay;
-   if (Self->Incoming.Type) {
-      if (Self->Incoming.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extNetSocket *))Self->Incoming.StdC.Routine;
-         pf::SwitchContext context(Self->Incoming.StdC.Context);
-         error = routine(Self);
+   ERR error = ERR::Okay;
+   if (Self->Incoming.defined()) {
+      if (Self->Incoming.isC()) {
+         auto routine = (ERR (*)(extNetSocket *, APTR))Self->Incoming.Routine;
+         pf::SwitchContext context(Self->Incoming.Context);
+         error = routine(Self, Self->Incoming.Meta);
       }
-      else if (Self->Incoming.Type IS CALL_SCRIPT) {
-         const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
-         auto script = Self->Incoming.Script.Script;
-         if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+      else if (Self->Incoming.isScript()) {
+         if (sc::Call(Self->Incoming, std::to_array<ScriptArg>({ { "NetSocket", Self, FD_OBJECTPTR } }), error) != ERR::Okay) error = ERR::Terminate;
       }
 
-      if (error IS ERR_Terminate) log.trace("Termination of socket requested by channel subscriber.");
+      if (error IS ERR::Terminate) log.trace("Termination of socket requested by channel subscriber.");
       else if (!Self->ReadCalled) log.warning("[NetSocket:%d] Subscriber did not call Read()", Self->UID);
    }
 
@@ -136,10 +134,10 @@ restart:
          total += result;
       } while (result > 0);
 
-      if (error) error = ERR_Terminate;
+      if (error != ERR::Okay) error = ERR::Terminate;
    }
 
-   if (error IS ERR_Terminate) {
+   if (error IS ERR::Terminate) {
       log.traceBranch("Socket %d will be terminated.", FD);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
    }
@@ -195,7 +193,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    Self->InUse++;
    Self->OutgoingRecursion++;
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    // Send out remaining queued data before getting new data to send
 
@@ -210,7 +208,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
 
          if (len > 0) {
             error = SEND(Self, Self->SocketHandle, (BYTE *)Self->WriteQueue.Buffer + Self->WriteQueue.Index, &len, 0);
-            if ((error) or (!len)) break;
+            if ((error != ERR::Okay) or (!len)) break;
             log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->UID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
             Self->WriteQueue.Index += len;
          }
@@ -229,25 +227,23 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    // Before feeding new data into the queue, the current buffer must be empty.
 
    if ((!Self->WriteQueue.Buffer) or (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
-      if (Self->Outgoing.Type) {
-         if (Self->Outgoing.Type IS CALL_STDC) {
-            auto routine = (ERROR (*)(extNetSocket *))Self->Outgoing.StdC.Routine;
-            pf::SwitchContext context(Self->Outgoing.StdC.Context);
-            error = routine(Self);
+      if (Self->Outgoing.defined()) {
+         if (Self->Outgoing.isC()) {
+            auto routine = (ERR (*)(extNetSocket *, APTR))Self->Outgoing.Routine;
+            pf::SwitchContext context(Self->Outgoing.Context);
+            error = routine(Self, Self->Outgoing.Meta);
          }
-         else if (Self->Outgoing.Type IS CALL_SCRIPT) {
-            const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
-            auto script = Self->Outgoing.Script.Script;
-            if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
+         else if (Self->Outgoing.isScript()) {
+            if (sc::Call(Self->Outgoing, std::to_array<ScriptArg>({ { "NetSocket", Self, FD_OBJECTPTR } }), error) != ERR::Okay) error = ERR::Terminate;
          }
 
-         if (error) Self->Outgoing.Type = CALL_NONE;
+         if (error != ERR::Okay) Self->Outgoing.clear();
       }
 
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
       // we don't tax the system resources.
 
-      if ((Self->Outgoing.Type IS CALL_NONE) and (!Self->WriteQueue.Buffer)) {
+      if ((!Self->Outgoing.defined()) and (!Self->WriteQueue.Buffer)) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->UID, Self->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, NULL, NULL);

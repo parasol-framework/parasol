@@ -289,7 +289,7 @@ LONG feedback_delete(struct FileFeedback *Feedback)
 
    if (Self->ProgressDialog) {
       char response[20];
-      if (!acGetVar(Self->ProgressDialog, "response", response, sizeof(response))) {
+      if (!acGetKey(Self->ProgressDialog, "response", response, sizeof(response))) {
          if (response[0] IS '1') return FFR_ABORT;
          else if (response[0] IS '2') {
             // If the window was closed then continue deleting files, don't bother the user with further messages.

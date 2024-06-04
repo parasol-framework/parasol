@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status="stable", prefix="gfx" }, function()
+module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status="stable", prefix="gfx" }, function()
 
   restrict(function()
     loadFile(glPath .. 'common.fdl')
@@ -42,7 +42,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "IGNORE_NV_CHILDREN: Do not draw child surfaces unless they are volatile.",
     "IGNORE_CHILDREN: Do not draw child surfaces (this includes volatile children).",
     "SINGLE_BITMAP: Only draw children and/or siblings when they share our bitmap space.",
-    "RELATIVE: Coordinate arguments are expressed in relative format.  Right and Bottom reflect Width and Height respectively.",
+    "RELATIVE: Coordinate parameters are expressed in relative format.  Right and Bottom reflect Width and Height respectively.",
     "FORCE_DRAW: Forces redrawing to the surface buffer (overrides visibility checks).",
     "REDRAWS_CHILDREN: Private.")
 
@@ -64,7 +64,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "TRANSPARENT: Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.",
     "STICK_TO_BACK: Enable if the surface object must stick to the back of its container.",
     "STICK_TO_FRONT: Enable if the surface object must stick to the front of its container.",
-    "VISIBLE: If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.",
+    "VISIBLE: If a surface object is visible to the user, the `VISIBLE` flag will be set.  If the flag is not set, the surface object is hidden.",
     "STICKY: Prevents any response to the Move action.  It can be circumvented by writing to coordinate fields directly.",
     "GRAB_FOCUS: Helps application windows manage the user's focus within the window",
     "HAS_FOCUS: Read-only.  If set, this flag indicates that the surface object currently has the focus.",
@@ -73,12 +73,11 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "HOST: Define host on initialisation to create a container that can host surfaces from other processes.",
     "PRECOPY: Enables pre-copy mode, which means that all graphics behind the surface object are copied into the bitmap buffer prior to any redraw.  This mode can have a noticable impact on CPU time when drawing.",
     "VIDEO|WRITE_ONLY: Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.",
-    "NO_HORIZONTAL: Turns off all horizontal movement (applies to the Move action only).",
-    "NO_VERTICAL: Turns off all vertical movement (applies to the Move action only).",
+    "NO_HORIZONTAL: Turns off all horizontal movement (applies to the `Move()` action only).",
+    "NO_VERTICAL: Turns off all vertical movement (applies to the `Move()` action only).",
     "CURSOR|POINTER: Private - Surface is a mouse cursor",
-    "SCROLL_CONTENT: If set, the surface object will send Move and MoveToPoint messages if the Scroll and ScrollToPoint actions are ever called on the object.",
     "AFTER_COPY: Read-only.  Indicates that after-copy mode has been enabled.",
-    "FIXED_BUFFER: Passes the NEVER_SHRINK option to the surface bitmap",
+    "FIXED_BUFFER: Passes the `NEVER_SHRINK` option to the surface bitmap",
     "PERVASIVE_COPY: This flag can be set in conjunction with after-copy mode.  It forces the after-copy support routine to copy graphics over the entire surface area, rather than avoiding the graphics of child surfaces.",
     "NO_FOCUS: Prevents any kind of focussing on this object; no circumvention is possible",
     "FIXED_DEPTH: The target buffer always remains at the same depth",
@@ -86,7 +85,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "COMPOSITE|NO_PRECOMPOSITE|POST_COMPOSITE: Do not copy background information into the surface buffer - composite on the fly instead",
     "FULL_SCREEN: Allow the surface to open as a new screen display",
     "IGNORE_FOCUS: Focus is diverted directly to the parent",
-    "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.",
+    "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by @Surface.MinWidth and @Surface.MinHeight.",
     { VOLATILE = "PRECOPY|AFTER_COPY|CURSOR" },
     { READ_ONLY = "HAS_FOCUS|CURSOR|AFTER_COPY" },
     { INIT_ONLY = "HOST|TRANSPARENT|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
@@ -113,25 +112,25 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
      "MMB: Release the cursor after the middle mouse button is held and released.",
      "RMB: Release the cursor after the right mouse button is held and released.",
      "RESTRICT: Similar to the anchor option, but allows the pointer to move within the surface referred to by ObjectID.",
-     "BUFFER: Use of the BUFFER option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the SetCursor() function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the ANCHOR option.",
-     "NO_BUTTONS: Set the cursor only on the condition that the user is not holding down any buttons.  ERR_NothingDone is returned if the user has a button held down."
+     "BUFFER: Use of the `BUFFER` option allows the cursor request to be buffered in the event that the cursor is locked at the time of calling the ~Display.SetCursor() function.  Use of this flag is highly recommended in most circumstances, but may not be used in conjunction with the `ANCHOR` option.",
+     "NO_BUTTONS: Set the cursor only on the condition that the user is not holding down any buttons.  `ERR::NothingDone` is returned if the user has a button held down."
   )
 
   flags("BAF", { comment="Instructions for basic graphics operations." },
     { DITHER = "0x1: Perform dithering if the colour formats differ between the source and destination." },
     { BLEND  = "0x2: Enable alpha blending to the destination if the source supports an alpha channel." },
-    { FILL   = "0x1: For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture." },
-    { COPY   = "0x4: Special CopyArea() option that avoids blending when the destination pixel is empty." },
+    { FILL   = "0x1: For primitive operations such as ~Display.DrawRectangle(), this will fill the shape with a solid colour or texture." },
+    { COPY   = "0x4: Special ~Display.CopyArea() option that avoids blending when the destination pixel is empty." },
     { LINEAR = "0x8: Use linear interpolation to improve the quality of alpha blending." }
   )
 
   flags("CSRF", { comment="Flags for CopySurface()." },
-    "TRANSPARENT: Enable transparent copying, whereby colours matching the source's Colour field will be ignored.",
+    "TRANSPARENT: Enable transparent copying, whereby colours matching the source's `Colour` field will be ignored.",
     "ALPHA: Enable alpha blending if the source is in 32-bit colour format with an alpha channel.",
-    "TRANSLUCENT: Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.",
-    "DEFAULT_FORMAT: Ignore the colour format defined in the source surface (if any) and generate a default format based on the BitsPerPixel value.",
+    "TRANSLUCENT: Perform a translucent copy operation, using the strength value specified in the @Surface.Opacity field.",
+    "DEFAULT_FORMAT: Ignore the colour format defined in the source surface (if any) and generate a default format based on the `BitsPerPixel` value.",
     "CLIP: Enable clipping of the source coordinates.",
-    "OFFSET: Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.")
+    "OFFSET: Adjust X and Y coordinates by the offset values defined in the @Surface.XOffset and @Surface.YOffset fields.")
 
   enum("BMP", { type="int", start=2, comment="Bitmap types" },
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
@@ -141,10 +140,10 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "BLANK_PALETTE: Forces a blank/black palette on initialisation.",
     "COMPRESSED: The bitmap data is compressed.",
     "NO_DATA: Do not allocate memory in the Data field on initialisation.",
-    "TRANSPARENT: Indicates that the bitmap utilises a transparent colour.  This is automatically set if the ColourRGB field is set and support exists in functions such as CopyArea().",
-    "MASK: Declare the Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the BitsPerPixel field on initialisation.",
+    "TRANSPARENT: Indicates that the bitmap utilises a transparent colour.  This is automatically set if the @Bitmap.TransIndex or @Bitmap.TransColour is defined, and support exists in functions such as ~Display.CopyArea().",
+    "MASK: Declare the @Bitmap as a 1 or 8 bit mask.  Must be set in conjunction with the @Bitmap.BitsPerPixel field on initialisation.",
     "INVERSE_ALPHA: Indicates reverse alpha blending, higher values are transparent.",
-    "QUERIED: Automatically set after a Query on the bitmap.",
+    "QUERIED: Automatically set after a `Query()` on the bitmap.",
     "CLEAR: Clear graphics on initialisation and when resizing.",
     "USER: This user flag can be used to tag bitmaps with special meaning.  Not used internally.",
     "ACCELERATED_2D: 2D video acceleration is available.",
@@ -152,7 +151,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "ALPHA_CHANNEL: For 32-bit images, indicates that an alpha channel is present.",
     "NEVER_SHRINK: Ignore resize requests that would shrink the size of the bitmap.",
     "X11_DGA: Private DGA indicator.",
-    "FIXED_DEPTH: Prevent changing of bitmap depth after initialisation (e.g. via acResize()).",
+    "FIXED_DEPTH: Prevent changing of bitmap depth after initialisation (e.g. via `Resize()`).",
     "NO_BLEND: Drawing routines that support this flag will not blend pixels.",
     "PREMUL: The RGB values are premultiplied (32-bit only)."
   )
@@ -171,13 +170,13 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "ALPHA_BLEND|COMPOSITE: Enables alpha channel blending (if display is hosted and 32-bit).",
     { MAXIMISE        = "0x80000000: Special win32 flag." },
     { CUSTOM_WINDOW   = "0x40000000: The display has been created with a custom window reference." },
-    { FLIPPABLE       = "0x20000000: If SCR::BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer." },
+    { FLIPPABLE       = "0x20000000: If `SCR::BUFFER` is used, this flag may be set by the display manager if it is possible to flip the buffer." },
     { GTF_ENABLED     = "0x10000000: GTF frequency timings are supported." },
     { DPMS_ENABLED    = "0x08000000: Power saving through DPMS is supported." },
     { POWERSAVE       = "0x04000000: Power saving is active (read-only)." },
     { HOSTED          = "0x02000000: The display is a desktop hosted window." },
-    { MAXSIZE         = "0x00100000: For GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size." },
-    { REFRESH         = "0x00200000: For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required." },
+    { MAXSIZE         = "0x00100000: For ~Display.GetDisplayInfo() only, indicates that the width and height values indicate the display's maximum size." },
+    { REFRESH         = "0x00200000: For ~Display.GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required." },
     { READ_ONLY       = "MAXIMISE|CUSTOM_WINDOW|FLIPPABLE|GTF_ENABLED|DPMS_ENABLED|POWERSAVE|HOSTED|MAXSIZE|REFRESH|BIT_6|VISIBLE|NO_ACCELERATION" }
   )
 
@@ -259,6 +258,12 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int AbsY   # Absolute Y
   ]])
 
+  struct("xrMode", { comment="Display mode." }, [[
+    int Width    # Horizontal
+    int Height   # Vertical
+    int Depth    # bit depth
+  ]])
+
   -- PixelFormat duplicates the Core module's ColourFormat structure.
 
   struct("PixelFormat", { type="pixelformat", comment="Carries instructions to pack or unpack RGBA colours." }, [[
@@ -308,13 +313,13 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int   LineWidth      # The distance between bitmap lines, measured in bytes.
     uchar BitsPerPixel   # The number of bits per pixel (8, 15, 16, 24, 32).
     uchar BytesPerPixel  # The number of bytes per pixel (1, 2, 3, 4).
-    uchar Opacity        # Opacity level of the source if CSRF::TRANSLUCENT is used.
+    uchar Opacity        # Opacity level of the source if `CSRF::TRANSLUCENT` is used.
     uchar Version        # Version of this structure.
-    int   Colour         # Colour index to use if CSRF::TRANSPARENT is used.
-    struct(ClipRectangle) Clip  # A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.
+    int   Colour         # Colour index to use if `CSRF::TRANSPARENT` is used.
+    struct(ClipRectangle) Clip  # A clipping rectangle will restrict drawing operations to this region if `CSRF::CLIP` is used.
     short XOffset        # Offset all X coordinate references by the given value.
     short YOffset        # Offset all Y coordinate references by the given value.
-    struct(ColourFormat) Format  # The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.
+    struct(ColourFormat) Format  # The colour format of this bitmap's pixels, or alternatively use `CSRF::DEFAULT_FORMAT`.
   ]])
 
   methods("Bitmap", "Bmp", {
@@ -324,14 +329,14 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     { id=4, name="Flip" },
     { id=6, name="DrawRectangle" },
     { id=7, name="SetClipRegion" },
-    { id=8, name="GetColour", inline=false },
+    { id=8, name="GetColour" },
     { id=10, name="Premultiply" },
     { id=11, name="Demultiply" },
     { id=12, name="ConvertToLinear" },
     { id=13, name="ConvertToRGB" }
   })
 
-  class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c" }, [[
+  class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c", references={ "ColourFormat" } }, [[
     struct(*RGBPalette) Palette          # Pointer to the Bitmap's palette
     struct(*ColourFormat) ColourFormat   # Pointer to colour information
     fptr(void obj(Bitmap) int int uint) DrawUCPixel
@@ -342,10 +347,10 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     fptr(void obj(Bitmap) ptr(uchar) struct(*RGB8)) DrawUCRIndex
     ptr(uchar) Data             # Pointer to bitmap data area
     int   Width                 # Width
-    int   ByteWidth             # ByteWidth (not including padding - see LineWidth)
+    int   ByteWidth             # Byte width (not including padding - see `LineWidth`)
     int   Height                # Height
     int(BMP) Type               # Bitmap type
-    int   LineWidth             # Line differential in bytes
+    int   LineWidth             # The length of each bitmap line in bytes, including alignment.
     int   PlaneMod              # Plane differential in bytes
     struct(ClipRectangle) Clip  # Clipping rectangle
     int   Size                  # Total size of the bitmap in bytes
@@ -359,28 +364,21 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int   XOffset               # Horizontal offset to apply to graphics coordinates
     int   YOffset               # Vertical offset to apply to graphics coordinates
     int   Opacity               # Opacity setting to use in drawing operations
-    struct(RGB8) TransRGB       # The transparent colour of the bitmap, in RGB format.
-    struct(RGB8) BkgdRGB        # Background colour (for clearing, resizing)
+    struct(RGB8) TransColour    # The transparent colour of the bitmap.
+    struct(RGB8) Bkgd           # Background colour (for clearing, resizing)
     int BkgdIndex               # Colour index or packed colour of the background.
     int(CS) ColourSpace         # Defines the colour space for RGB values.
   ]],
   nil,
   [[
-   inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
-      if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
-      else {
-         struct bmpGetColour args = { Red, Green, Blue, Alpha };
-         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
-         return 0;
-      }
-   }
-
    inline ULONG getColour(struct RGB8 &RGB) {
       if (BitsPerPixel > 8) return packPixel(RGB);
       else {
-         struct bmpGetColour args = { RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha };
-         if (!Action(MT_BmpGetColour, this, &args)) return args.Colour;
-         return 0;
+         ULONG result;
+         if (getColour(RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha, &result) IS ERR::Okay) {
+            return result;
+         }
+         else return 0;
       }
    }
 
@@ -425,7 +423,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
    inline ULONG packPixelWB(struct RGB8 &RGB) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (RGB.Alpha << ColourFormat->AlphaPos);
    }
-   
+
    inline ULONG packPixelWB(struct RGB8 &RGB, UBYTE Alpha) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
    }
@@ -490,7 +488,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
    FUNCTION RequestHandler;
   ]])
 
-  class("Pointer", { version=1.0, src="class_pointer.cpp", output="class_pointer_def.c" }, [[
+  class("Pointer", { version=1.0, src="class_pointer.cpp", output="class_pointer_def.c", references={ 'PTC', 'PF' } }, [[
     double Speed           # Speed multiplier (%)
     double Acceleration    # Acceleration level - keep between 0.0 and 3.0
     double DoubleClick     # Double click speed
@@ -519,18 +517,18 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
 
   methods("surface", "Drw", {
     { id=1, name="InheritedFocus" },
-    { id=2, name="Expose" },
+    { id=2, name="ExposeToDisplay" },
     { id=3, name="InvalidateRegion" },
     { id=4, name="SetDisplay" },
     { id=5, name="SetOpacity" },
-    { id=6, name="AddCallback", inline=false },
+    { id=6, name="AddCallback" },
     { id=7, name="Minimise" },
     { id=8, name="ResetDimensions" },
-    { id=9, name="RemoveCallback", inline=false },
+    { id=9, name="RemoveCallback" },
     { id=10, name="ScheduleRedraw" }
   })
 
-  class("Surface", { src={
+  class("Surface", { references={ 'DMF', 'ALIGN', 'JTYPE', 'JET', 'InputEvent' }, src={
       "class_surface/class_surface.cpp",
       "class_surface/surface_dimensions.cpp",
       "class_surface/surface_drawing.cpp",
@@ -571,10 +569,10 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
   [[
    // These coordinate fields are considered private but may be accessed by some internal classes, like Document
    LONG     XOffset, YOffset;     // Fixed horizontal and vertical offset
-   DOUBLE   XOffsetPercent;       // Relative horizontal offset
-   DOUBLE   YOffsetPercent;       // Relative vertical offset
-   DOUBLE   WidthPercent, HeightPercent; // Relative width and height
-   DOUBLE   XPercent, YPercent;   // Relative coordinate
+   DOUBLE   XOffsetPercent;       // Scaled horizontal offset
+   DOUBLE   YOffsetPercent;       // Scaled vertical offset
+   DOUBLE   WidthPercent, HeightPercent; // Scaled width and height
+   DOUBLE   XPercent, YPercent;   // Scaled coordinate
   ]],
   [[
    inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
@@ -644,47 +642,12 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
 #define CFUnpackBlue(a,b)         ((((b) >> (a)->BluePos) & (a)->BlueMask) << (a)->BlueShift)
 #define CFUnpackAlpha(a,b)        ((((b) >> (a)->AlphaPos) & (a)->AlphaMask))
 
-#define gfxReleasePointer(a)    (ReleaseObject(a))
+namespace fl {
+   using namespace pf;
 
-// Stubs
+constexpr FieldValue WindowType(SWIN Value) { return FieldValue(FID_WindowType, LONG(Value)); }
 
-INLINE ERROR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height) {
-   struct drwInvalidateRegion args = { X, Y, Width, Height };
-   return ActionMsg(MT_DrwInvalidateRegion, ObjectID, &args);
-}
+} // namespace
 
-INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
-   struct drwExpose args = { X, Y, Width, Height, Flags };
-   return ActionMsg(MT_DrwExpose, ObjectID, &args);
-}
-
-INLINE ERROR drwSetOpacityID(OBJECTID ObjectID, DOUBLE Value, DOUBLE Adjustment) {
-   struct drwSetOpacity args = { Value, Adjustment};
-   return ActionMsg(MT_DrwSetOpacity, ObjectID, &args);
-}
-
-INLINE ERROR drwAddCallback(OBJECTPTR Surface, APTR Callback) {
-   if (Callback) {
-      auto call = make_function_stdc(Callback);
-      struct drwAddCallback args = { &call };
-      return Action(MT_DrwAddCallback, Surface, &args);
-   }
-   else {
-      struct drwAddCallback args = { NULL };
-      return Action(MT_DrwAddCallback, Surface, &args);
-   }
-}
-
-INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
-   if (Callback) {
-      auto call = make_function_stdc(Callback);
-      struct drwRemoveCallback args = { &call };
-      return Action(MT_DrwRemoveCallback, Surface, &args);
-   }
-   else {
-      struct drwRemoveCallback args = { NULL };
-      return Action(MT_DrwRemoveCallback, Surface, &args);
-   }
-}
   ]])
 end)

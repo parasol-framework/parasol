@@ -14,7 +14,7 @@
     <idstring>ID_MODULE</idstring>
     <category>System</category>
     <include>modules/module.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Module class is used to load and maintain the modules that are installed on the user's system.  A number of modules are available in the core platform as standard, which you can use in the development of your programs.  Examples of existing modules can be found in both the <code>modules:</code> folder.</p>
 <p>To load a module and interact with its API, create a module object and initialise it.  The following code segment illustrates in C++:</p>
@@ -37,14 +37,14 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
   <methods>
     <method>
       <name>ResolveSymbol</name>
-      <comment>Resolves the symbol names in loaded link libraries to address pointers.</comment>
-      <prototype>ERROR modResolveSymbol(OBJECTPTR Object, CSTRING Name, APTR * Address)</prototype>
+      <comment>Resolves library symbol names to their address pointers.</comment>
+      <prototype>ERR mod::ResolveSymbol(OBJECTPTR Object, CSTRING Name, APTR * Address)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the symbol to resolve.</param>
         <param type="APTR *" name="Address">The address of the symbol will be returned in this parameter.</param>
       </input>
       <description>
-<p>This method will convert symbol names to their respective address pointers.  The module code must have been successfully loaded into memory or an ERR_FieldNotSet error will be returned.  If the symbol was not found then ERR_NotFound is returned.</p>
+<p>This method will convert symbol names to their respective address pointers.  The module code must have been successfully loaded into memory or an <code>ERR::FieldNotSet</code> error will be returned.  If the symbol was not found then <code>ERR::NotFound</code> is returned.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -74,7 +74,7 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
       <access read="R" write="W">Read/Write</access>
       <type>const struct Function *</type>
       <description>
-<p>After initialisation, the FunctionList will refer to an array of public functions that are exported by the module.  The FunctionList array consists of Function structs, which are in the following format:</p>
+<p>After initialisation, the FunctionList will refer to an array of public functions that are exported by the module.  The FunctionList array consists of <st>Function</st> structs, which are in the following format:</p>
 <pre>struct Function {
    APTR Address;  // Address of the function routine.
    CSTRING Name;  // Name of the function.
@@ -101,8 +101,8 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>This string pointer specifies the name of the Module.  This name will be used to load the module from the <code>modules:</code> folder, so this field actually reflects part of the module file name.  It is also possible to specify sub-directories before the module name itself - this could become more common in module loading in future.</p>
-<p>It is critical that file extensions do not appear in the Name string, e.g. <code>screen.dll</code> as not all systems may use a <code>.dll</code> extension.</p>
+<p>This string pointer specifies the name of the module.  This name will be used to load the module from the <code>modules:</code> folder, so this field actually reflects part of the module file name.  It is also possible to specify sub-directories before the module name itself - this could become more common in module loading in future.</p>
+<p>It is critical that file extensions do not appear in the Name string, e.g. <code>display.dll</code> as not all systems may use a <code>.dll</code> extension.</p>
       </description>
     </field>
 

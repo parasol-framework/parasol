@@ -1,0 +1,40 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+Test rotate='auto' and rotate='auto-reverse'.
+
+Two animations have been defined that move a triangle along a path. The first animation specifies rotate='auto', which causes
+the object to be rotated along the curve of the path. The second animation specifies rotate='auto-reverse', which causes the
+object to be flipped and then rotated along the curve of the path.
+
+A ghosted triangle travels at a linear speed to illustrate that there is a difference between paced and linear modes of motion
+along a path.
+-->
+
+  <text font-size="14" text-anchor="middle" x="225" y="25">Test rotate='auto' and rotate='auto-reverse'</text>
+  <g font-size="12" text-anchor="middle">
+    <path d="M25,225 C25,175 125,150 175,200" fill="none" stroke="black" stroke-width="2"/>
+    <rect x="10" y="195" width="30" height="30" fill="#FFCCCC" stroke="black" stroke-width="4"/>
+    <text x="25" y="240">0 sec.</text>
+    <rect x="160" y="170" width="30" height="30" fill="#FFCCCC" stroke="black" stroke-width="4"/>
+    <text x="175" y="215">6+ sec.</text>
+
+    <path d="M-15,0 L0,-30 L15,0 z" fill="blue" stroke="green" stroke-width="2" opacity="0.25">
+      <animateMotion path="M25,225 C25,175 125,150 175,200" rotate="auto" begin="0s" dur="6s" calcMode="linear" fill="freeze"/>
+    </path>
+
+    <path d="M-15,0 L0,-30 L15,0 z" fill="blue" stroke="green" stroke-width="2">
+      <animateMotion path="M25,225 C25,175 125,150 175,200" rotate="auto" begin="0s" dur="6s" calcMode="paced" fill="freeze"/>
+    </path>
+
+    <text x="100" y="260" stroke="none" font-size="14">rotate='auto'</text>
+    <path d="M275,225 C275,175 375,150 425,200" fill="none" stroke="black" stroke-width="2"/>
+    <rect x="260" y="195" width="30" height="30" fill="#FFCCCC" stroke="black" stroke-width="4"/>
+    <text x="275" y="240">0 sec.</text>
+    <rect x="410" y="170" width="30" height="30" fill="#FFCCCC" stroke="black" stroke-width="4"/>
+    <text x="425" y="215">6+ sec.</text>
+    <path d="M-15,0 L0,-30 L15,0 z" fill="blue" stroke="green" stroke-width="2">
+      <animateMotion path="M275,225 C275,175 375,150 425,200" rotate="auto-reverse" begin="0s" dur="6s" calcMode="paced" fill="freeze"/>
+    </path>
+    <text x="350" y="260" stroke="none" font-size="14">rotate='auto-reverse'</text>
+  </g>
+</svg>

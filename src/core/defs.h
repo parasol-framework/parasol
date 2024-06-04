@@ -86,7 +86,10 @@ using namespace std::chrono_literals;
 
 #define BREAKPOINT { UBYTE *nz = 0; nz[0] = 0; }
 
+#include <parasol/system/errors.h>
 #include <parasol/system/types.h>
+#include <parasol/system/registry.h>
+#include <parasol/strings.hpp>
 
 #include <stdarg.h>
 
@@ -158,10 +161,6 @@ struct rkWatchPath {
 
 using namespace pf;
 
-struct ActionEntry {
-   ERROR (*PerformAction)(OBJECTPTR, APTR);     // Internal
-};
-
 struct ThreadMessage {
    OBJECTID ThreadID;    // Internal
    FUNCTION Callback;
@@ -171,7 +170,7 @@ struct ThreadActionMessage {
    OBJECTPTR Object;    // Direct pointer to a target object.
    LONG      ActionID;  // The action to execute.
    LONG      Key;       // Internal
-   ERROR     Error;     // The error code resulting from the action's execution.
+   ERR       Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
 };
 
@@ -234,12 +233,18 @@ public:
 //********************************************************************************************************************
 
 struct ActionSubscription {
-   OBJECTPTR Context;
-   void (*Callback)(OBJECTPTR, ACTIONID, ERROR, APTR);
+   OBJECTPTR Subscriber; // The object that initiated the subscription
+   OBJECTID SubscriberID; // Required for sanity checks on subscriber still existing.
+   void (*Callback)(OBJECTPTR, ACTIONID, ERR, APTR, APTR);
+   APTR Meta;
 
-   ActionSubscription() : Context(NULL), Callback(NULL) { }
-   ActionSubscription(OBJECTPTR pContext, void (*pCallback)(OBJECTPTR, ACTIONID, ERROR, APTR)) : Context(pContext), Callback(pCallback) { }
-   ActionSubscription(OBJECTPTR pContext, APTR pCallback) : Context(pContext), Callback((void (*)(OBJECTPTR, ACTIONID, ERROR, APTR))pCallback) { }
+   ActionSubscription() : Subscriber(NULL), SubscriberID(0), Callback(NULL), Meta(NULL) { }
+
+   ActionSubscription(OBJECTPTR pContext, void (*pCallback)(OBJECTPTR, ACTIONID, ERR, APTR, APTR), APTR pMeta) :
+      Subscriber(pContext), SubscriberID(pContext->UID), Callback(pCallback), Meta(pMeta) { }
+
+   ActionSubscription(OBJECTPTR pContext, APTR pCallback, APTR pMeta) :
+      Subscriber(pContext), SubscriberID(pContext->UID), Callback((void (*)(OBJECTPTR, ACTIONID, ERR, APTR, APTR))pCallback), Meta(pMeta) { }
 };
 
 struct virtual_drive {
@@ -247,22 +252,22 @@ struct virtual_drive {
    LONG  DriverSize;  // The driver may reserve a private area for its own structure attached to DirInfo.
    char  Name[32];    // Volume name, including the trailing colon at the end
    ULONG CaseSensitive:1;
-   ERROR (*ScanDir)(DirInfo *);
-   ERROR (*Rename)(STRING, STRING);
-   ERROR (*Delete)(STRING, FUNCTION *);
-   ERROR (*OpenDir)(DirInfo *);
-   ERROR (*CloseDir)(DirInfo *);
-   ERROR (*Obsolete)(CSTRING, DirInfo **, LONG);
-   ERROR (*TestPath)(CSTRING, RSF, LOC *);
-   ERROR (*WatchPath)(class extFile *);
+   ERR (*ScanDir)(DirInfo *);
+   ERR (*Rename)(STRING, STRING);
+   ERR (*Delete)(STRING, FUNCTION *);
+   ERR (*OpenDir)(DirInfo *);
+   ERR (*CloseDir)(DirInfo *);
+   ERR (*Obsolete)(CSTRING, DirInfo **, LONG);
+   ERR (*TestPath)(CSTRING, RSF, LOC *);
+   ERR (*WatchPath)(class extFile *);
    void  (*IgnoreFile)(class extFile *);
-   ERROR (*GetInfo)(CSTRING, FileInfo *, LONG);
-   ERROR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
-   ERROR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
-   ERROR (*CreateFolder)(CSTRING, PERMIT);
-   ERROR (*SameFile)(CSTRING, CSTRING);
-   ERROR (*ReadLink)(STRING, STRING *);
-   ERROR (*CreateLink)(CSTRING, CSTRING);
+   ERR (*GetInfo)(CSTRING, FileInfo *, LONG);
+   ERR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
+   ERR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
+   ERR (*CreateFolder)(CSTRING, PERMIT);
+   ERR (*SameFile)(CSTRING, CSTRING);
+   ERR (*ReadLink)(STRING, STRING *);
+   ERR (*CreateLink)(CSTRING, CSTRING);
    inline bool is_default() const { return VirtualID IS 0; }
    inline bool is_virtual() const { return VirtualID != 0; }
 };
@@ -317,7 +322,7 @@ public:
    LARGE     Interval;       // The amount of microseconds to wait at each interval
    OBJECTPTR Subscriber;     // The object that is subscribed (pointer, if private)
    OBJECTID  SubscriberID;   // The object that is subscribed
-   FUNCTION  Routine;        // Routine to call if not using AC_Timer - ERROR Routine(OBJECTID, LONG, LONG);
+   FUNCTION  Routine;        // Routine to call if not using AC_Timer - ERR Routine(OBJECTID, LONG, LONG);
    UBYTE     Cycle;
    bool      Locked;
 };
@@ -347,8 +352,8 @@ class extMetaClass : public objMetaClass {
    std::vector<Field> FieldLookup;      // Field dictionary for base-class fields
    std::vector<MethodEntry> Methods;    // Original method array supplied by the module.
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
-   class RootModule *Root;             // Root module that owns this class, if any.
-   UBYTE Integral[8];                   // Integral object references (by field indexes), in order
+   class RootModule *Root;              // Root module that owns this class, if any.
+   UBYTE Local[8];                      // Local object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
    ActionEntry ActionTable[AC_END];
    WORD OriginalFieldTotal;
@@ -495,7 +500,7 @@ struct ClassRecord {
 
    inline ClassRecord(extMetaClass *pClass, std::optional<std::string> pPath = std::nullopt) {
       ClassID  = pClass->ClassID;
-      ParentID = (pClass->BaseClassID IS pClass->ClassID) ? 0 : pClass->BaseClassID;
+      ParentID = (pClass->BaseClassID IS pClass->ClassID) ? CLASSID::NIL : pClass->BaseClassID;
       Category = pClass->Category;
 
       Name.assign(pClass->ClassName);
@@ -509,7 +514,7 @@ struct ClassRecord {
 
    inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL) {
       ClassID  = pClassID;
-      ParentID = 0;
+      ParentID = CLASSID::NIL;
       Category = CCF::SYSTEM;
       Name     = pName;
       Path     = "modules:core";
@@ -517,10 +522,10 @@ struct ClassRecord {
       if (pHeader) Header = pHeader;
    }
 
-   inline ERROR write(objFile *File) {
-      if (File->write(&ClassID, sizeof(ClassID), NULL)) return ERR_Write;
-      if (File->write(&ParentID, sizeof(ParentID), NULL)) return ERR_Write;
-      if (File->write(&Category, sizeof(Category), NULL)) return ERR_Write;
+   inline ERR write(objFile *File) {
+      if (File->write(&ClassID, sizeof(ClassID), NULL) != ERR::Okay) return ERR::Write;
+      if (File->write(&ParentID, sizeof(ParentID), NULL) != ERR::Okay) return ERR::Write;
+      if (File->write(&Category, sizeof(Category), NULL) != ERR::Okay) return ERR::Write;
 
       auto size = LONG(Name.size());
       File->write(&size, sizeof(size));
@@ -538,13 +543,13 @@ struct ClassRecord {
       File->write(&size, sizeof(size));
       if (size) File->write(Header.c_str(), size);
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   inline ERROR read(objFile *File) {
-      if (File->read(&ClassID, sizeof(ClassID))) return ERR_Read;
-      if (File->read(&ParentID, sizeof(ParentID))) return ERR_Read;
-      if (File->read(&Category, sizeof(Category))) return ERR_Read;
+   inline ERR read(objFile *File) {
+      if (File->read(&ClassID, sizeof(ClassID)) != ERR::Okay) return ERR::Read;
+      if (File->read(&ParentID, sizeof(ParentID)) != ERR::Okay) return ERR::Read;
+      if (File->read(&Category, sizeof(Category)) != ERR::Okay) return ERR::Read;
 
       char buffer[256];
       LONG size = 0;
@@ -553,30 +558,30 @@ struct ClassRecord {
          File->read(buffer, size);
          Name.assign(buffer, size);
       }
-      else return ERR_BufferOverflow;
+      else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < (LONG)sizeof(buffer)) {
          File->read(buffer, size);
          Path.assign(buffer, size);
       }
-      else return ERR_BufferOverflow;
+      else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < (LONG)sizeof(buffer)) {
          File->read(buffer, size);
          Match.assign(buffer, size);
       }
-      else return ERR_BufferOverflow;
+      else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < (LONG)sizeof(buffer)) {
          File->read(buffer, size);
          Header.assign(buffer, size);
       }
-      else return ERR_BufferOverflow;
+      else return ERR::BufferOverflow;
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
 };
 
@@ -639,18 +644,18 @@ extern extTask *glCurrentTask;
 extern "C" const ActionTable ActionTable[];
 extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
-extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
+extern std::map<std::string, std::vector<Object *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
 extern std::unordered_map<std::string, struct ModHeader *> glStaticModules;
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Note that best performance for looking up ID's is achieved as a sorted array.
 extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
 extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
-extern std::unordered_map<CLASSID, ClassRecord> glClassDB;
+extern std::unordered_map<CLASSID, ClassRecord> glClassDB; // Class DB populated either by static_modules.cpp or by pre-generated file if modular.
 extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 extern std::unordered_map<ULONG, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
 extern std::vector<TaskRecord> glTasks;
-extern const CSTRING glMessages[ERR_END+1];       // Read-only table of error messages.
+extern const CSTRING glMessages[LONG(ERR::END)+1];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
 extern "C" LONG glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
@@ -666,12 +671,10 @@ extern bool glPrivileged, glSync;
 extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
 extern class ObjectContext glTopContext; // Read-only, not a threading concern.
-extern OBJECTPTR modIconv;
-extern OBJECTPTR glLocale;
 extern objTime *glTime;
 extern objConfig *glDatatypes;
 extern objFile *glClassFile;
-extern BaseClass glDummyObject;
+extern Object glDummyObject;
 extern TIMER glProcessJanitor;
 extern LONG glEventMask;
 extern struct ModHeader glCoreHeader;
@@ -720,7 +723,7 @@ extern THREADVAR PERMIT glDefaultPermissions;
 
 //********************************************************************************************************************
 
-extern ERROR (*glMessageHandler)(struct Message *);
+extern ERR (*glMessageHandler)(struct Message *);
 extern void (*glVideoRecovery)(void);
 extern void (*glKeyboardRecovery)(void);
 extern void (*glNetProcessMessages)(LONG, APTR);
@@ -810,8 +813,8 @@ class TaskMessage {
 
       if (pSize <= Buffer.size()) CopyMemory(pData, Buffer.data(), pSize);
       else {
-         ExtBuffer = new char[pSize];
-         CopyMemory(pData, ExtBuffer, pSize);
+         ExtBuffer = new (std::nothrow) char[pSize];
+         if (ExtBuffer) CopyMemory(pData, ExtBuffer, pSize);
       }
 
       Size = pSize;
@@ -918,7 +921,7 @@ extern std::vector<FDRecord> glRegisterFD;
 
 //********************************************************************************************************************
 
-class RootModule : public BaseClass {
+class RootModule : public Object {
    public:
    class RootModule *Next;     // Next module in list
    class RootModule *Prev;     // Previous module in list
@@ -937,10 +940,10 @@ class RootModule : public BaseClass {
    MHF    Flags;
    UBYTE  NoUnload;
    UBYTE  DLL;                 // TRUE if the module is a Windows DLL
-   LONG   (*Init)(OBJECTPTR, struct CoreBase *);
+   ERR    (*Init)(OBJECTPTR, struct CoreBase *);
    void   (*Close)(OBJECTPTR);
-   LONG   (*Open)(OBJECTPTR);
-   LONG   (*Expunge)(void);
+   ERR    (*Open)(OBJECTPTR);
+   ERR    (*Expunge)(void);
    struct ActionEntry prvActions[AC_END]; // Action routines to be intercepted by the program
    char   LibraryName[40]; // Name of the library loaded from disk
 };
@@ -951,41 +954,41 @@ extern "C" {
 
 //********************************************************************************************************************
 
-ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
+ERR SetFieldF(OBJECTPTR, FIELD, va_list);
 
-ERROR fs_closedir(DirInfo *);
-ERROR fs_createlink(CSTRING, CSTRING);
-ERROR fs_delete(STRING, FUNCTION *);
-ERROR fs_getinfo(CSTRING, FileInfo *, LONG);
-ERROR fs_getdeviceinfo(CSTRING, objStorageDevice *);
+ERR fs_closedir(DirInfo *);
+ERR fs_createlink(CSTRING, CSTRING);
+ERR fs_delete(STRING, FUNCTION *);
+ERR fs_getinfo(CSTRING, FileInfo *, LONG);
+ERR fs_getdeviceinfo(CSTRING, objStorageDevice *);
 void  fs_ignore_file(class extFile *);
-ERROR fs_makedir(CSTRING, PERMIT);
-ERROR fs_opendir(DirInfo *);
-ERROR fs_readlink(STRING, STRING *);
-ERROR fs_rename(STRING, STRING);
-ERROR fs_samefile(CSTRING, CSTRING);
-ERROR fs_scandir(DirInfo *);
-ERROR fs_testpath(CSTRING, RSF, LOC *);
-ERROR fs_watch_path(class extFile *);
+ERR fs_makedir(CSTRING, PERMIT);
+ERR fs_opendir(DirInfo *);
+ERR fs_readlink(STRING, STRING *);
+ERR fs_rename(STRING, STRING);
+ERR fs_samefile(CSTRING, CSTRING);
+ERR fs_scandir(DirInfo *);
+ERR fs_testpath(CSTRING, RSF, LOC *);
+ERR fs_watch_path(class extFile *);
 
 const virtual_drive * get_fs(CSTRING Path);
 void  free_storage_class(void);
 
-ERROR  convert_zip_error(struct z_stream_s *, LONG);
-ERROR  check_cache(OBJECTPTR, LARGE, LARGE);
-ERROR  get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
-ERROR  fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
-ERROR  fs_copydir(STRING, STRING, FileFeedback *, FUNCTION *, BYTE);
+ERR  convert_zip_error(struct z_stream_s *, LONG);
+ERR  check_cache(OBJECTPTR, LARGE, LARGE);
+ERR  get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
+ERR  fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
+ERR  fs_copydir(STRING, STRING, FileFeedback *, FUNCTION *, BYTE);
 PERMIT get_parent_permissions(CSTRING, LONG *, LONG *);
-ERROR  load_datatypes(void);
-ERROR  RenameVolume(CSTRING, CSTRING);
-ERROR  findfile(STRING);
+ERR  load_datatypes(void);
+ERR  RenameVolume(CSTRING, CSTRING);
+ERR  findfile(STRING);
 PERMIT convert_fs_permissions(LONG);
-LONG   convert_permissions(PERMIT);
-void   set_memory_manager(APTR, ResourceManager *);
-BYTE   strip_folder(STRING) __attribute__ ((unused));
-ERROR  get_file_info(CSTRING, FileInfo *, LONG);
-extern "C" ERROR  convert_errno(LONG Error, ERROR Default);
+LONG convert_permissions(PERMIT);
+bool strip_folder(STRING) __attribute__ ((unused));
+void set_memory_manager(APTR, ResourceManager *);
+ERR  get_file_info(CSTRING, FileInfo *, LONG);
+extern "C" ERR  convert_errno(LONG Error, ERR Default);
 void   free_file_cache(void);
 
 __export void Expunge(WORD);
@@ -998,58 +1001,57 @@ CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 #ifndef PARASOL_STATIC
 APTR   build_jump_table(const Function *);
 #endif
-ERROR  copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
-ERROR  copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
-ERROR  create_archive_volume(void);
-ERROR  delete_tree(STRING, LONG, FUNCTION *, FileFeedback *);
+ERR  copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
+ERR  copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
+ERR  create_archive_volume(void);
+ERR  delete_tree(STRING, LONG, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
-ERROR  find_private_object_entry(OBJECTID, LONG *);
+ERR  find_private_object_entry(OBJECTID, LONG *);
 void   free_events(void);
 void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
-ERROR  init_sleep(LONG, LONG, LONG);
+ERR  init_sleep(LONG, LONG, LONG);
 void   local_free_args(APTR, const FunctionField *);
 Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
-ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
-ERROR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
-ERROR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);
-ERROR  msg_free(APTR, LONG, LONG, APTR, LONG);
+ERR  msg_event(APTR, LONG, LONG, APTR, LONG);
+ERR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
+ERR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);
+ERR  msg_free(APTR, LONG, LONG, APTR, LONG);
 void   optimise_write_field(Field &);
 void   PrepareSleep(void);
-ERROR  process_janitor(OBJECTID, LONG, LONG);
+ERR  process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
-ERROR  resolve_args(APTR, const FunctionField *);
+ERR  resolve_args(APTR, const FunctionField *);
 
 #ifndef PARASOL_STATIC
 void   scan_classes(void);
 #endif
 
 void   remove_threadpool(void);
-ERROR  threadpool_get(extThread **);
+ERR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
-ERROR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
-extern "C" ERROR validate_process(LONG);
-void   free_iconv(void);
-ERROR  check_paths(CSTRING, PERMIT);
+ERR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
+extern "C" ERR validate_process(LONG);
+ERR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
 
 #ifdef _WIN32
-   extern "C" ERROR open_public_waitlock(WINHANDLE *, CSTRING);
+   extern "C" ERR open_public_waitlock(WINHANDLE *, CSTRING);
    extern "C" WINHANDLE get_threadlock(void);
    extern "C" void  free_threadlocks(void);
-   extern "C" ERROR wake_waitlock(WINHANDLE, LONG);
-   extern "C" ERROR alloc_public_waitlock(WINHANDLE *, const char *Name);
+   extern "C" ERR wake_waitlock(WINHANDLE, LONG);
+   extern "C" ERR alloc_public_waitlock(WINHANDLE *, const char *Name);
    extern "C" void  free_public_waitlock(WINHANDLE);
-   extern "C" ERROR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
+   extern "C" ERR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
    extern "C" LONG  sleep_waitlock(WINHANDLE, LONG);
 #else
    struct sockaddr_un * get_socket_path(LONG, socklen_t *);
-   ERROR alloc_public_cond(CONDLOCK *, ALF);
+   ERR alloc_public_cond(CONDLOCK *, ALF);
    void  free_public_cond(CONDLOCK *);
-   ERROR public_cond_wait(THREADLOCK *, CONDLOCK *, LONG);
-   ERROR send_thread_msg(LONG, LONG, APTR, LONG);
+   ERR public_cond_wait(THREADLOCK *, CONDLOCK *, LONG);
+   ERR send_thread_msg(LONG, LONG, APTR, LONG);
 #endif
 
 #ifdef _WIN32
@@ -1106,7 +1108,7 @@ extern "C" LONG winWaitThread(WINHANDLE, LONG);
 extern "C" LONG winWriteStd(APTR, CPTR Buffer, LONG Size);
 extern "C" int winDeleteFile(char *Path);
 extern "C" LONG winCheckDirectoryExists(CSTRING);
-extern "C" LONG winCreateDir(CSTRING);
+extern "C" ERR winCreateDir(CSTRING);
 extern "C" LONG winCurrentDirectory(STRING, LONG);
 extern "C" LONG winFileInfo(CSTRING, long long *, struct DateTime *, BYTE *);
 extern "C" void winFindClose(WINHANDLE);
@@ -1130,7 +1132,7 @@ extern "C" LONG winScan(APTR *, STRING, STRING, LARGE *, struct DateTime *, stru
 extern "C" LONG winSetAttrib(CSTRING, LONG);
 extern "C" LONG winSetEOF(CSTRING, LARGE);
 extern "C" LONG winTestLocation(CSTRING, BYTE);
-extern "C" LONG winWatchFile(LONG, CSTRING, APTR, WINHANDLE *, LONG *);
+extern "C" ERR winWatchFile(LONG, CSTRING, APTR, WINHANDLE *, LONG *);
 extern "C" void winFindCloseChangeNotification(WINHANDLE);
 extern "C" APTR winFindDirectory(STRING, APTR *, STRING);
 extern "C" APTR winFindFile(STRING, APTR *, STRING);
@@ -1152,21 +1154,21 @@ class ScopedObjectAccess {
       OBJECTPTR obj;
 
    public:
-      ERROR error;
+      ERR error;
 
       ScopedObjectAccess(OBJECTPTR Object) {
          error = Object->lock();
          obj = Object;
       }
 
-      ~ScopedObjectAccess() { if (!error) obj->unlock(); }
+      ~ScopedObjectAccess() { if (error IS ERR::Okay) obj->unlock(); }
 
-      bool granted() { return error == ERR_Okay; }
+      bool granted() { return error == ERR::Okay; }
 
       void release() {
-         if (!error) {
+         if (error IS ERR::Okay) {
             obj->unlock();
-            error = ERR_NotLocked;
+            error = ERR::NotLocked;
          }
       }
 };

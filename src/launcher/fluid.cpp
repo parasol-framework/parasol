@@ -55,11 +55,11 @@ static void set_script_args(objScript *Script, CSTRING *Args)
          value = Args[i] + k + 1;
       }
       else if (!Args[i+1]) {
-         SetVar(Script, argname, "1");
+         SetKey(Script, argname, "1");
          continue;
       }
       else if ((Args[i+1][0] IS '-') and (Args[i+1][1] IS '-')) {
-         SetVar(Script, argname, "1");
+         SetKey(Script, argname, "1");
          continue;
       }
       else value = Args[++i];
@@ -72,7 +72,7 @@ static void set_script_args(objScript *Script, CSTRING *Args)
          LONG arg_index = 0;
          while ((Args[i]) and (Args[i][0] != '}')) {
             snprintf(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
-            SetVar(Script, argname, Args[i]);
+            SetKey(Script, argname, Args[i]);
             arg_index++;
             i++;
          }
@@ -83,9 +83,9 @@ static void set_script_args(objScript *Script, CSTRING *Args)
          char array_size[16];
          StrCopy(":size", argname+al, sizeof(argbuffer)-al);
          IntToStr(arg_index, array_size, sizeof(array_size));
-         SetVar(Script, argname, array_size);
+         SetKey(Script, argname, array_size);
       }
-      else SetVar(Script, argname, value);
+      else SetKey(Script, argname, value);
    }
 }
 
@@ -131,7 +131,7 @@ static LONG exec_source(CSTRING TargetFile, CSTRING Procedure)
    CLASSID class_id, subclass;
    if (IdentifyFile(TargetFile, &class_id, &subclass)) {
       subclass = ID_FLUID;
-      class_id = ID_SCRIPT;
+      class_id = CLASSID::SCRIPT;
    }
 
    if (subclass != ID_FLUID) return -1;
@@ -158,12 +158,12 @@ static ERROR process_args(void)
 
    if ((!CurrentTask()->getPtr(FID_Parameters, &args)) and (args)) {
       for (i=0; args[i]; i++) {
-         if (!StrMatch(args[i], "--help")) {
+         if (iequals(args[i], "--help")) {
             // Print help for the user
             print(glHelp);
             return ERR_Terminate;
          }
-         else if (!StrMatch(args[i], "--verify")) {
+         else if (iequals(args[i], "--verify")) {
             // Special internal function that checks that the installation is valid, returning 1 if checks pass.
 
             static CSTRING modules[] = { // These modules must be present for an installation to be valid.
@@ -176,22 +176,21 @@ static ERROR process_args(void)
                while (!ScanDir(dir)) {
                   struct FileInfo *folder = dir->Info;
                   if (folder->Flags & RDF::FILE) {
-                     LONG m;
-                     for (m=0; m < ARRAYSIZE(modules); m++) {
-                        if (!StrCompare(modules[m], folder->Name)) total++;
+                     for (LONG m=0; m < std::ssize(modules); m++) {
+                        if (iequals(modules[m], folder->Name)) total++;
                      }
                   }
                }
                FreeResource(dir);
             }
 
-            if (total >= ARRAYSIZE(modules)) print("1");
+            if (total >= std::ssize(modules)) print("1");
             return ERR_Terminate;
          }
-         else if (!StrMatch(args[i], "--time")) {
+         else if (iequals(args[i], "--time")) {
             glTime = true;
          }
-         else if (!StrMatch(args[i], "--procedure")) {
+         else if (iequals(args[i], "--procedure")) {
             if (glProcedure) { FreeResource(glProcedure); glProcedure = NULL; }
 
             if (args[i+1]) {
@@ -282,10 +281,10 @@ int main(int argc, CSTRING *argv)
 
          glScriptReceivedMsg = AllocateID(IDTYPE_MESSAGE);
 
-         auto call = make_function_stdc(msg_script_received);
+         auto call = C_FUNCTION(msg_script_received);
          AddMsgHandler(NULL, glScriptReceivedMsg, &call, NULL);
 
-         CurrentTask()->setInputCallback(make_function_stdc(read_stdin));
+         CurrentTask()->setInputCallback(FUNCTION(read_stdin));
 
          ProcessMessages(0, -1);
 

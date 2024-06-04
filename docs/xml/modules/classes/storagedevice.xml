@@ -12,9 +12,9 @@
     <idstring>ID_STORAGEDEVICE</idstring>
     <category>System</category>
     <include>modules/storagedevice.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
-<p>The StorageDevice class returns the meta data of file system volumes.  A reference to an existing volume is required in the <field>Volume</field> field in order to make a successful analysis.  If the volume name cannot be resolved, initialisation will fail.</p>
+<p>The StorageDevice class returns the meta data of file system volumes.  A reference to an existing volume is required in the <fl>Volume</fl> field in order to make a successful analysis.  If the volume name cannot be resolved, initialisation will fail.</p>
 <p>Following initialisation, all meta fields describing the volume are readable for further information.</p></description>
     <source>
       <file path="../classes/">class_storagedevice.cpp</file>
@@ -52,7 +52,7 @@
 
     <field>
       <name>DeviceID</name>
-      <comment>A unique ID for the mounted device (platform dependent, NULL if unavailable).</comment>
+      <comment>A unique ID for the mounted device (platform dependent, <code>NULL</code> if unavailable).</comment>
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
@@ -76,7 +76,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Set the Volume field prior to initialisation for that volume to be queried by the object.  The standard volume string format is 'name:', but omitting the colon or defining complete file system paths when writing this field is also acceptable.  Any characters following a colon will be stripped automatically with no ongoing functional impact.</p>
+<p>Set the Volume field prior to initialisation for that volume to be queried by the object.  The standard volume string format is <code>name:</code>, but omitting the colon or defining complete file system paths when writing this field is also acceptable.  Any characters following a colon will be stripped automatically with no ongoing functional impact.</p>
       </description>
     </field>
 
@@ -99,7 +99,7 @@
       <const name="SOFTWARE">Device is virtual/software defined</const>
       <const name="TAPE">Tape/Stream style device</const>
       <const name="TEMPORARY">All storage is temporary</const>
-      <const name="USB">Removable USB storage device.  May be further qualified by DEVICE_HARDDISK, DEVICE_FLOPPYDISK etc</const>
+      <const name="USB">Removable USB storage device.  May be further qualified by <code>HARDDISK</code>, <code>FLOPPYDISK</code> etc</const>
       <const name="WRITE">Device is writeable</const>
     </constants>
 

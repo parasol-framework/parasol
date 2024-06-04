@@ -97,25 +97,25 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info) 
 static void BreakHandler(void)  __attribute__((unused));
 #endif
 
-extern "C" ERROR add_archive_class(void);
-extern "C" ERROR add_compressed_stream_class(void);
-extern "C" ERROR add_compression_class(void);
-extern "C" ERROR add_script_class(void);
-extern "C" ERROR add_task_class(void);
-extern "C" ERROR add_thread_class(void);
-extern "C" ERROR add_module_class(void);
-extern "C" ERROR add_config_class(void);
-extern "C" ERROR add_time_class(void);
+extern "C" ERR add_archive_class(void);
+extern "C" ERR add_compressed_stream_class(void);
+extern "C" ERR add_compression_class(void);
+extern "C" ERR add_script_class(void);
+extern "C" ERR add_task_class(void);
+extern "C" ERR add_thread_class(void);
+extern "C" ERR add_module_class(void);
+extern "C" ERR add_config_class(void);
+extern "C" ERR add_time_class(void);
 #ifdef __ANDROID__
-extern "C" ERROR add_asset_class(void);
+extern "C" ERR add_asset_class(void);
 #endif
-extern "C" ERROR add_file_class(void);
-extern "C" ERROR add_storage_class(void);
+extern "C" ERR add_file_class(void);
+extern "C" ERR add_storage_class(void);
 
 LONG InitCore(void);
 __export void CloseCore(void);
-__export ERROR OpenCore(OpenInfo *, struct CoreBase **);
-static ERROR init_volumes(const std::forward_list<std::string> &);
+__export ERR OpenCore(OpenInfo *, struct CoreBase **);
+static ERR init_volumes(const std::forward_list<std::string> &);
 
 #ifdef _WIN32
 #define DLLCALL // __declspec(dllimport)
@@ -158,7 +158,7 @@ void _init(void)
 
 //********************************************************************************************************************
 
-ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
+ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 {
    #ifdef __unix__
       struct timeval tmday;
@@ -169,10 +169,10 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    #endif
    LONG i;
 
-   if (!Info) return ERR_Failed;
-   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Failed;
+   if (!Info) return ERR::Failed;
+   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR::Failed;
    glOpenInfo   = Info;
-   tlMainThread = TRUE;
+   tlMainThread = true;
    glCodeIndex  = 0; // Reset the code index so that CloseCore() will work.
 
    if (glProcessID) fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
@@ -254,7 +254,7 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          else if (winGetCurrentDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
          else {
             fprintf(stderr, "Failed to determine root folder.\n");
-            return ERR_Failed;
+            return ERR::Failed;
          }
          if (glRootPath.back() != '\\') glRootPath += '\\';
       #else
@@ -282,9 +282,9 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
    // Debug processing
 
-   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)  glLogLevel = (WORD)Info->Detail;
-   if ((Info->Flags & OPF::MAX_DEPTH) != OPF::NIL) glMaxDepth = (WORD)Info->MaxDepth;
-   if ((Info->Flags & OPF::SHOW_MEMORY) != OPF::NIL) glShowPrivate = TRUE;
+   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)      glLogLevel = (WORD)Info->Detail;
+   if ((Info->Flags & OPF::MAX_DEPTH) != OPF::NIL)   glMaxDepth = (WORD)Info->MaxDepth;
+   if ((Info->Flags & OPF::SHOW_MEMORY) != OPF::NIL) glShowPrivate = true;
 
    // Android sets an important JNI pointer on initialisation.
 
@@ -305,7 +305,7 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
 #if defined(__unix__) && !defined(__ANDROID__)
    if (((Info->Flags & OPF::PRIVILEGED) != OPF::NIL) and (geteuid() != getuid())) {
-      glPrivileged = TRUE;
+      glPrivileged = true;
    }
 #endif
 
@@ -318,34 +318,34 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          if ((arg[0] != '-') or (arg[1] != '-')) { newargs.push_back(arg); continue; }
          arg += 2; // Skip '--' as this prepends all Core arguments
 
-         if (!StrMatch(arg, "log-memory")) {
+         if (iequals(arg, "log-memory")) {
             glShowPrivate = true;
             glDebugMemory = true;
          }
-         else if (!StrCompare(arg, "gfx-driver=", 11)) {
+         else if (startswith("gfx-driver=", arg)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
          }
-         else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
+         else if ((iequals(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);
          }
-         else if (!StrMatch(arg, "no-crash-handler")) glEnableCrashHandler = false;
-         else if (!StrMatch(arg, "sync"))        glSync = true;
-         else if (!StrMatch(arg, "log-threads")) glLogThreads = true;
-         else if (!StrMatch(arg, "log-none"))    glLogLevel = 0;
-         else if (!StrMatch(arg, "log-error"))   glLogLevel = 1;
-         else if (!StrMatch(arg, "log-warn"))    glLogLevel = 2;
-         else if (!StrMatch(arg, "log-warning")) glLogLevel = 2;
-         else if (!StrMatch(arg, "log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
-         else if (!StrMatch(arg, "log-api"))     glLogLevel = 5; // Default level for API messages
-         else if (!StrMatch(arg, "log-extapi"))  glLogLevel = 6;
-         else if (!StrMatch(arg, "log-debug"))   glLogLevel = 7;
-         else if (!StrMatch(arg, "log-trace"))   glLogLevel = 9;
-         else if (!StrMatch(arg, "log-all"))     glLogLevel = 9; // 9 is the absolute maximum
-         else if (!StrMatch(arg, "time"))        glTimeLog = PreciseTime();
+         else if (iequals(arg, "no-crash-handler")) glEnableCrashHandler = false;
+         else if (iequals(arg, "sync"))        glSync = true;
+         else if (iequals(arg, "log-threads")) glLogThreads = true;
+         else if (iequals(arg, "log-none"))    glLogLevel = 0;
+         else if (iequals(arg, "log-error"))   glLogLevel = 1;
+         else if (iequals(arg, "log-warn"))    glLogLevel = 2;
+         else if (iequals(arg, "log-warning")) glLogLevel = 2;
+         else if (iequals(arg, "log-info"))    glLogLevel = 4; // Levels 3/4 are for applications (no internal detail)
+         else if (iequals(arg, "log-api"))     glLogLevel = 5; // Default level for API messages
+         else if (iequals(arg, "log-extapi"))  glLogLevel = 6;
+         else if (iequals(arg, "log-debug"))   glLogLevel = 7;
+         else if (iequals(arg, "log-trace"))   glLogLevel = 9;
+         else if (iequals(arg, "log-all"))     glLogLevel = 9; // 9 is the absolute maximum
+         else if (iequals(arg, "time"))        glTimeLog = PreciseTime();
          #if defined(__unix__) && !defined(__ANDROID__)
-         else if (!StrMatch(arg, "holdpriority")) hold_priority = true;
+         else if (iequals(arg, "holdpriority")) hold_priority = true;
          #endif
-         else if (!StrCompare("home=", arg, 7)) glHomeFolderName.assign(arg + 7);
+         else if (startswith("home=", arg)) glHomeFolderName.assign(arg + 7);
          else newargs.push_back(Info->Args[i]);
       }
 
@@ -457,20 +457,20 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
                KMSG("Attempting to re-use an earlier bind().\n");
                if (setsockopt(glSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) IS -1) {
-                  if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-                  return ERR_SystemCall;
+                  if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR::SystemCall;
+                  return ERR::SystemCall;
                }
             }
             else {
-               if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-               return ERR_SystemCall;
+               if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR::SystemCall;
+               return ERR::SystemCall;
             }
          }
       }
       else {
          KERR("Failed to create a new socket communication point.\n");
-         if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-         return ERR_SystemCall;
+         if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR::SystemCall;
+         return ERR::SystemCall;
       }
 
       RegisterFD(glSocket, RFD::READ, NULL, NULL);
@@ -483,38 +483,38 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
    init_metaclass();
 
-   if (add_task_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
-   if (add_thread_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
-   if (add_module_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
-   if (add_time_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
-   if (add_config_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
-   if (add_storage_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
-   if (add_file_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
-   if (add_script_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
-   if (add_archive_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
-   if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
-   if (add_compression_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_task_class() != ERR::Okay)    { CloseCore(); return ERR::AddClass; }
+   if (add_thread_class() != ERR::Okay)  { CloseCore(); return ERR::AddClass; }
+   if (add_module_class() != ERR::Okay)  { CloseCore(); return ERR::AddClass; }
+   if (add_time_class() != ERR::Okay)    { CloseCore(); return ERR::AddClass; }
+   if (add_config_class() != ERR::Okay)  { CloseCore(); return ERR::AddClass; }
+   if (add_storage_class() != ERR::Okay) { CloseCore(); return ERR::AddClass; }
+   if (add_file_class() != ERR::Okay)    { CloseCore(); return ERR::AddClass; }
+   if (add_script_class() != ERR::Okay)  { CloseCore(); return ERR::AddClass; }
+   if (add_archive_class() != ERR::Okay) { CloseCore(); return ERR::AddClass; }
+   if (add_compressed_stream_class() != ERR::Okay) { CloseCore(); return ERR::AddClass; }
+   if (add_compression_class() != ERR::Okay) { CloseCore(); return ERR::AddClass; }
    #ifdef __ANDROID__
-   if (add_asset_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_asset_class() != ERR::Okay) { CloseCore(); return ERR::AddClass; }
    #endif
 
    if (!(glCurrentTask = extTask::create::untracked())) {
       CloseCore();
-      return ERR_CreateObject;
+      return ERR::CreateObject;
    }
 
-   if (init_volumes(volumes)) {
+   if (init_volumes(volumes) != ERR::Okay) {
       KERR("Failed to initialise the filesystem.");
       CloseCore();
-      return ERR_Failed;
+      return ERR::Failed;
    }
 
    fs_initialised = true;
 
 #ifndef PARASOL_STATIC
    if ((Info->Flags & OPF::SCAN_MODULES) IS OPF::NIL) {
-      ERROR error;
-      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
+      ERR error;
+      auto file = objFile::create { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
 
       if (file.ok()) {
          LONG filesize;
@@ -525,17 +525,17 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          if (hdr IS CLASSDB_HEADER) {
             while (file->Position + ClassRecord::MIN_SIZE < filesize) {
                ClassRecord item;
-               if ((error = item.read(*file))) break;
+               if ((error = item.read(*file)) != ERR::Okay) break;
 
                if (glClassDB.contains(item.ClassID)) {
                   log.warning("Invalid class dictionary file, %s is registered twice.", item.Name.c_str());
-                  error = ERR_Failed;
+                  error = ERR::Failed;
                   break;
                }
                glClassDB[item.ClassID] = item;
             }
 
-            if (error) glScanClasses = true;
+            if (error != ERR::Okay) glScanClasses = true;
          }
          else {
             // File is probably from an old version and requires recalculation.
@@ -553,7 +553,7 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 #ifdef _WIN32
    {
       STRING libpath;
-      if (!ResolvePath("modules:lib", RSF::NO_FILE_CHECK, &libpath)) {
+      if (ResolvePath("modules:lib", RSF::NO_FILE_CHECK, &libpath) IS ERR::Okay) {
          winSetDllDirectory(libpath);
          FreeResource(libpath);
       }
@@ -570,9 +570,15 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    register_static_modules();
 
    // Initialise all the modules because we don't retain a class database in static builds.
+   // Note that the order of initialisation is variable because glStaticModules is a map.
+   // This can lead to rare bugs in custom builds where modules have dependencies on each other.
 
-   for (auto & [ name, hdr ] : glStaticModules) {
-      objModule::create mod = { pf::FieldValue(FID_Name, name.c_str()) };
+   {
+      pf::Log log("Core");
+      log.branch("Initialising %d static modules.", LONG(std::ssize(glStaticModules)));
+      for (auto & [ name, hdr ] : glStaticModules) {
+         objModule::create mod = { pf::FieldValue(FID_Name, name.c_str()) };
+      }
    }
 #endif
 
@@ -597,10 +603,10 @@ ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    log.msg("PROGRAM OPENED");
 
    glSystemState = 0; // Indicates that initialisation is complete.
-   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Okay;
+   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR::Okay;
 
    *JumpTable = LocalCoreBase;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -722,15 +728,15 @@ void print_diagnosis(LONG Signal)
       glCodeIndex = CP_PRINT_CONTEXT;
 
       if (ctx->object()) {
-         CLASSID class_id = 0;
+         CLASSID class_id = CLASSID::NIL;
          CSTRING class_name;
          if (ctx != &glTopContext) {
-            if ((class_id = ctx->object()->Class->ClassID)) class_name = ResolveClassID(class_id);
+            if ((class_id = ctx->object()->classID()) != CLASSID::NIL) class_name = ResolveClassID(class_id);
             else class_name = "None";
          }
          else class_name = "None";
 
-         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->object()->UID, ctx->object(), class_name, class_id);
+         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->object()->UID, ctx->object(), class_name, ULONG(class_id));
       }
 
       glPageFault = 0;
@@ -902,7 +908,7 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
       if ((task = mem.Address)) {
          if ((task->ClassID IS ID_TASK) and (task->ProcessID IS childprocess)) {
             task->ReturnCode    = result;
-            task->ReturnCodeSet = TRUE;
+            task->ReturnCodeSet = true;
             break;
          }
       }
@@ -988,26 +994,26 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 
 //********************************************************************************************************************
 
-extern "C" ERROR convert_errno(LONG Error, ERROR Default)
+extern "C" ERR convert_errno(LONG Error, ERR Default)
 {
    switch (Error) {
-      case 0:       return ERR_Okay;
-      case ENAMETOOLONG: return ERR_BufferOverflow;
-      case EACCES:  return ERR_NoPermission;
-      case EPERM:   return ERR_NoPermission;
-      case EBUSY:   return ERR_Locked;
-      case EROFS:   return ERR_ReadOnly;
-      case EMFILE:  return ERR_ArrayFull;
-      case ENFILE:  return ERR_ArrayFull;
-      case ENOENT:  return ERR_FileNotFound;
-      case ENOMEM:  return ERR_AllocMemory;
-      case ENOTDIR: return ERR_FileNotFound;
-      case EEXIST:  return ERR_FileExists;
-      case ENOSPC:  return ERR_OutOfSpace;
-      case EFAULT:  return ERR_IllegalAddress;
-      case EIO:     return ERR_Failed;
+      case 0:       return ERR::Okay;
+      case ENAMETOOLONG: return ERR::BufferOverflow;
+      case EACCES:  return ERR::NoPermission;
+      case EPERM:   return ERR::NoPermission;
+      case EBUSY:   return ERR::Locked;
+      case EROFS:   return ERR::ReadOnly;
+      case EMFILE:  return ERR::ArrayFull;
+      case ENFILE:  return ERR::ArrayFull;
+      case ENOENT:  return ERR::FileNotFound;
+      case ENOMEM:  return ERR::AllocMemory;
+      case ENOTDIR: return ERR::FileNotFound;
+      case EEXIST:  return ERR::FileExists;
+      case ENOSPC:  return ERR::OutOfSpace;
+      case EFAULT:  return ERR::IllegalAddress;
+      case EIO:     return ERR::Failed;
       #ifdef ELOOP
-      case ELOOP:   return ERR_Loop;
+      case ELOOP:   return ERR::Loop;
       #endif
       default:      return Default;
    }
@@ -1047,7 +1053,7 @@ static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTR
 
 //********************************************************************************************************************
 
-static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
+static ERR init_volumes(const std::forward_list<std::string> &Volumes)
 {
    pf::Log log("Core");
 
@@ -1102,7 +1108,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    #else
       SetVolume("templates", "scripts:templates/", "misc/openbook", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("config", "system:config/", "tools/cog", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
-      if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
+      if (AnalysePath("parasol:bin/", NULL) IS ERR::Okay) { // Bin is the location of the fluid and parasol binaries
          SetVolume("bin", "parasol:bin/", NULL, NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
       else SetVolume("bin", "parasol:", NULL, NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
@@ -1112,7 +1118,6 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    SetVolume("fonts", "system:config/fonts/", "items/font", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    SetVolume("scripts", "system:scripts/", "filetypes/source", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    SetVolume("styles", "system:config/styles/", "tools/image_gallery", NULL, NULL, VOLUME::HIDDEN);
-   SetVolume("icons", "EXT:widget", "misc/picture", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM); // Refer to widget module for actual configuration
 
    // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
    // the Core.
@@ -1141,7 +1146,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    std::string buffer("config:users/default/");
 
    #ifdef __unix__
-      if (auto homedir = getenv("HOME"); homedir and homedir[0] and (StrMatch("/", homedir) != ERR_Okay)) {
+      if (auto homedir = getenv("HOME"); homedir and homedir[0] and (std::string_view("/") != homedir)) {
          buffer = homedir;
          if (buffer.back() IS '/') buffer.pop_back();
 
@@ -1171,7 +1176,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
    if (buffer != "config:users/default/") {
       LOC location_type = LOC::NIL;
-      if ((AnalysePath(buffer.c_str(), &location_type) != ERR_Okay) or (location_type != LOC::DIRECTORY)) {
+      if ((AnalysePath(buffer.c_str(), &location_type) != ERR::Okay) or (location_type != LOC::DIRECTORY)) {
          buffer.pop_back();
          SetDefaultPermissions(-1, -1, PERMIT::READ|PERMIT::WRITE);
             CopyFile("config:users/default/", buffer.c_str(), NULL);
@@ -1189,11 +1194,11 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    CreateFolder("user:config/", PERMIT::READ|PERMIT::EXEC|PERMIT::WRITE);
    CreateFolder("user:temp/", PERMIT::READ|PERMIT::EXEC|PERMIT::WRITE);
 
-   if (AnalysePath("temp:", NULL) != ERR_Okay) {
+   if (AnalysePath("temp:", NULL) != ERR::Okay) {
       SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
    }
 
-   if (AnalysePath("clipboard:", NULL) != ERR_Okay) {
+   if (AnalysePath("clipboard:", NULL) != ERR::Okay) {
       SetVolume("clipboard", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
    }
 
@@ -1269,24 +1274,24 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       if (size < 1) size = 8192;
 
       STRING buffer;
-      if (!AllocMemory(size, MEM::NO_CLEAR, (APTR *)&buffer, NULL)) {
+      if (AllocMemory(size, MEM::NO_CLEAR, (APTR *)&buffer, NULL) IS ERR::Okay) {
          size = read(file, buffer, size);
          buffer[size] = 0;
 
          CSTRING str = buffer;
          while (*str) {
-            if (!StrCompare("/dev/hd", str)) {
+            if (std::string_view(str, size).starts_with("/dev/hd")) {
                // Extract mount point
 
                LONG i = 0;
                while ((*str) and (*str > 0x20)) {
-                  if (i < (LONG)sizeof(devpath)-1) devpath[i++] = *str;
+                  if (i < std::ssize(devpath)-1) devpath[i++] = *str;
                   str++;
                }
                devpath[i] = 0;
 
                while ((*str) and (*str <= 0x20)) str++;
-               for (i=0; (*str) and (*str > 0x20) and (i < (LONG)sizeof(mount)-1); i++) mount[i] = *str++;
+               for (i=0; (*str) and (*str > 0x20) and (i < std::ssize(mount)-1); i++) mount[i] = *str++;
                mount[i] = 0;
 
                if ((mount[0] IS '/') and (!mount[1]));
@@ -1302,11 +1307,11 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
          }
          FreeResource(buffer);
       }
-      else log.warning(ERR_AllocMemory);
+      else log.warning(ERR::AllocMemory);
 
       close(file);
    }
-   else log.warning(ERR_File);
+   else log.warning(ERR::File);
 
    const CSTRING cdroms[] = {
       "/mnt/cdrom", "/mnt/cdrom0", "/mnt/cdrom1", "/mnt/cdrom2", "/mnt/cdrom3", "/mnt/cdrom4", "/mnt/cdrom5", "/mnt/cdrom6", // RedHat
@@ -1342,13 +1347,13 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 #ifndef PARASOL_STATIC
    // Change glModulePath to an absolute path to optimise the loading of modules.
    STRING mpath;
-   if (!ResolvePath("modules:", RSF::NO_FILE_CHECK, &mpath)) {
+   if (ResolvePath("modules:", RSF::NO_FILE_CHECK, &mpath) IS ERR::Okay) {
       glModulePath = mpath;
       FreeResource(mpath);
    }
 #endif
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 #include "core_close.cpp"

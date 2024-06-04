@@ -12,7 +12,7 @@
     <idstring>ID_CLIPBOARD</idstring>
     <category>IO</category>
     <include>modules/clipboard.h</include>
-    <copyright>Paul Manias 2003-2023</copyright>
+    <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>The Clipboard class manages data transfer between applications on behalf of the user.  Depending on the host system, behaviour between platforms can vary.</p>
 <p>On Windows the clipboard is tightly integrated by default, allowing it to support native Windows applications.  This reduces the default feature set, but ensures that the clipboard behaves in a way that the user would expect it to. If historical buffering is enabled with the <code>CPF::HISTORY_BUFFER</code> option then the clipboard API will actively monitor the clipboard and store copied data in the local <code>clipboard:</code> file cache.  This results in additional overhead to clipboard management.</p>
@@ -28,11 +28,19 @@
     <action>
       <name>Clear</name>
       <comment>Destroys all cached data that is stored in the clipboard.</comment>
+      <prototype>ERR acClear(*Object)</prototype>
     </action>
 
     <action>
       <name>DataFeed</name>
       <comment>This action can be used to place data in a clipboard.</comment>
+      <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, LONG Size)</prototype>
+      <input>
+        <param type="OBJECTID" name="Object">Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.</param>
+        <param type="DATA" name="Datatype" lookup="DATA">The type of data being sent.</param>
+        <param type="APTR" name="Buffer">The data being sent to the target object.</param>
+        <param type="LONG" name="Size">The size of the data in Buffer.</param>
+      </input>
       <description>
 <p>Data can be sent to a clipboard object via the DataFeed action. Currently, only the <code>DATA::TEXT</code> type is supported. All data that is sent to a clipboard object through this action will replace any stored information that matches the given data type.</p>
       </description>
@@ -44,7 +52,7 @@
     <method>
       <name>AddFile</name>
       <comment>Add files to the clipboard.</comment>
-      <prototype>ERROR clipAddFile(OBJECTPTR Object, CLIPTYPE Datatype, CSTRING Path, CEF Flags)</prototype>
+      <prototype>ERR clip::AddFile(OBJECTPTR Object, CLIPTYPE Datatype, CSTRING Path, CEF Flags)</prototype>
       <input>
         <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">Set this argument to indicate the type of data you are copying to the clipboard.</param>
         <param type="CSTRING" name="Path">The path of the file to add.</param>
@@ -67,15 +75,15 @@
     <method>
       <name>AddObjects</name>
       <comment>Extract data from objects and add it all to the clipboard.</comment>
-      <prototype>ERROR clipAddObjects(OBJECTPTR Object, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags)</prototype>
+      <prototype>ERR clip::AddObjects(OBJECTPTR Object, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags)</prototype>
       <input>
         <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">The type of data representing the objects, or NULL for automatic recognition.</param>
         <param type="OBJECTID *" name="Objects">Array of object ID's to add to the clipboard.</param>
         <param type="CEF" name="Flags" lookup="CEF">Optional flags.</param>
       </input>
       <description>
-<p>Data can be saved to the clipboard directly from an object if the object's class supports the SaveToObject action.  The clipboard will ask that the object save its data directly to a cache file, completely removing the need for the client to save the object data to an interim file for the clipboard.</p>
-<p>Certain classes are recognised by the clipboard system and will be added to the correct datatype automatically (for instance, Picture objects will be put into the <code>CLIPTYPE::IMAGE</code> data category).  If an object's class is not recognised by the clipboard system then the data will be stored in the <code>CLIPTYPE::OBJECT</code> category to signify that there is a class in the system that recognises the data.  If you want to over-ride any aspect of this behaviour, force the Datatype parameter with one of the available <code>CLIPTYPE</code> values.</p>
+<p>Data can be saved to the clipboard directly from an object if the object's class supports the SaveToObject() action.  The clipboard will ask that the object save its data directly to a cache file, completely removing the need for the client to save the object data to an interim file for the clipboard.</p>
+<p>Certain classes are recognised by the clipboard system and will be added to the correct datatype automatically (for instance, <class name="Picture">Picture</class> objects will be put into the <code>CLIPTYPE::IMAGE</code> data category).  If an object's class is not recognised by the clipboard system then the data will be stored in the <code>CLIPTYPE::OBJECT</code> category to signify that there is a class in the system that recognises the data.  If you want to over-ride any aspect of this behaviour, force the <code>Datatype</code> parameter with one of the available <code>CLIPTYPE</code> values.</p>
 <p>This method supports groups of objects in a single clip, thus requires an array of object ID's terminated with a zero entry.</p>
 <p>Optional flags that may be passed to this method are the same as those specified in the <method>AddFile</method> method.  The <code>CEF::DELETE</code> flag has no effect on objects.</p>
       </description>
@@ -88,12 +96,12 @@
     <method>
       <name>AddText</name>
       <comment>Adds a block of text to the clipboard.</comment>
-      <prototype>ERROR clipAddText(OBJECTPTR Object, CSTRING String)</prototype>
+      <prototype>ERR clip::AddText(OBJECTPTR Object, CSTRING String)</prototype>
       <input>
         <param type="CSTRING" name="String">The text to add to the clipboard.</param>
       </input>
       <description>
-<p>Plain UTF-8 text can be added to the clipboard using the AddText method.</p>
+<p>Plain UTF-8 text can be added to the clipboard using the AddText() method.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -105,36 +113,37 @@
     <method>
       <name>GetFiles</name>
       <comment>Retrieve the most recently clipped data as a list of files.</comment>
-      <prototype>ERROR clipGetFiles(OBJECTPTR Object, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags)</prototype>
+      <prototype>ERR clip::GetFiles(OBJECTPTR Object, CLIPTYPE Filter, LONG Index, CLIPTYPE * Datatype, CSTRING ** Files, CEF * Flags)</prototype>
       <input>
-        <param type="CLIPTYPE *" name="Datatype" lookup="CLIPTYPE">Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
-        <param type="LONG" name="Index">If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.</param>
-        <param type="CSTRING **" name="Files">The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeResource().</param>
-        <param type="CEF *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If DELETE is set, you need to delete the files after use in order to support the 'cut' operation.</param>
+        <param type="CLIPTYPE" name="Filter" lookup="CLIPTYPE">Filter down to the specified data type.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
+        <param type="LONG" name="Index">If the <code>Filter</code> parameter is zero, this parameter may be set to the index of the desired clip item.</param>
+        <param type="CLIPTYPE *" name="Datatype" lookup="CLIPTYPE">The resulting datatype of the requested clip data.</param>
+        <param type="CSTRING **" name="Files">The resulting location(s) of the requested clip data are returned in this parameter; terminated with a <code>NULL</code> entry.  You are required to free the returned array with <function module="Core">FreeResource</function>.</param>
+        <param type="CEF *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If <code>DELETE</code> is set, you need to delete the files after use in order to support the 'cut' operation.</param>
       </input>
       <description>
 <p>This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it supports (or zero if all datatypes are recognised).</p>
-<p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype parameter to zero and repeatedly call this method with incremented Index numbers until the error code ERR_OutOfRange is returned.</p>
-<p>On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is a readable clipboard entry - how the client reads it depends on the resulting Datatype.  Additionally, the <function module="Core">IdentifyFile</function> function could be used to find a class that supports the data.  The resulting Files array is a memory allocation that must be freed with a call to <function module="Core">FreeResource</function>.</p>
-<p>If this method returns the <code>CEF::DELETE</code> flag in the Flags parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
+<p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the <code>Filter</code> parameter to zero and repeatedly call this method with incremented Index numbers until the error code <code>ERR::OutOfRange</code> is returned.</p>
+<p>On success this method will return a list of files (terminated with a <code>NULL</code> entry) in the <code>Files</code> parameter.  Each file is a readable clipboard entry - how the client reads it depends on the resulting <code>Datatype</code>.  Additionally, the <function module="Core">IdentifyFile</function> function could be used to find a class that supports the data.  The resulting <code>Files</code> array is a memory allocation that must be freed with a call to <function module="Core">FreeResource</function>.</p>
+<p>If this method returns the <code>CEF::DELETE</code> flag in the <code>Flags</code> parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
       </description>
       <result>
         <error code="Okay">A matching clip was found and returned.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="NoData">No clip was available that matched the requested data type.</error>
-        <error code="OutOfRange">The specified Index is out of the range of the available clip items.</error>
+        <error code="OutOfRange">The specified <code>Index</code> is out of the range of the available clip items.</error>
       </result>
     </method>
 
     <method>
       <name>Remove</name>
       <comment>Remove items from the clipboard.</comment>
-      <prototype>ERROR clipRemove(OBJECTPTR Object, CLIPTYPE Datatype)</prototype>
+      <prototype>ERR clip::Remove(OBJECTPTR Object, CLIPTYPE Datatype)</prototype>
       <input>
         <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">The datatype(s) that will be deleted (datatypes may be logically-or'd together).</param>
       </input>
       <description>
-<p>The Remove method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags in the Datatype parameter.  To clear all content from the clipboard, use the <action>Clear</action> action instead of this method.</p>
+<p>The Remove() method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags in the <code>Datatype</code> parameter.  To clear all content from the clipboard, use the <action>Clear</action> action instead of this method.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -164,8 +173,8 @@
       <description>
 <p>Applications can request data from a clipboard if it is in drag-and-drop mode by sending a <code>DATA::REQUEST</code> to the Clipboard's DataFeed action.  Doing so will result in a callback to the function that is referenced in the RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this template:</p>
 <p>
-<code>ERROR RequestHandler(*Clipboard, OBJECTPTR Requester, LONG Item, BYTE Datatypes[4])</code></p>
-<p>The function will be expected to send a <code>DATA::RECEIPT</code> to the object referenced in the Requester paramter.  The receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format. If this cannot be achieved then <code>ERR_NoSupport</code> should be returned by the function.</p>
+<code>ERR RequestHandler(*Clipboard, OBJECTPTR Requester, LONG Item, BYTE Datatypes[4])</code></p>
+<p>The function will be expected to send a <code>DATA::RECEIPT</code> to the object referenced in the Requester paramter.  The receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format. If this cannot be achieved then <code>ERR::NoSupport</code> should be returned by the function.</p>
       </description>
     </field>
 

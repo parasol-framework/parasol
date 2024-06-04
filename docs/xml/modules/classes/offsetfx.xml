@@ -12,7 +12,7 @@
     <idstring>ID_OFFSETFX</idstring>
     <category>Graphics</category>
     <include>modules/offsetfx.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>This filter offsets the input image relative to its current position in the image space by the specified vector of <code>(XOffset,YOffset)</code>.</p></description>
     <source>
@@ -24,6 +24,13 @@
     <action>
       <name>Draw</name>
       <comment>Draws object graphics to drawable areas.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
     </action>
 
   </actions>
@@ -42,7 +49,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.</p>
+<p>The <code>(XOffset, YOffset)</code> field values define the offset of the input source within the target clipping area.</p>
       </description>
     </field>
 
@@ -52,7 +59,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The (XOffset,YOffset) field values define the offset of the input source within the target clipping area.</p>
+<p>The <code>(XOffset, YOffset)</code> field values define the offset of the input source within the target clipping area.</p>
       </description>
     </field>
 

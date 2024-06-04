@@ -11,12 +11,12 @@
 #define FILL_FIRST  1
 #define FILL_SECOND 2
 
-class BaseClass;
+class Object;
 class extAudio;
 
 struct PlatformData {
    LPDIRECTSOUNDBUFFER SoundBuffer;
-   BaseClass *Object;
+   Object *Object;
    DWORD  BufferLength;
    DWORD  Position;      // Total number of bytes that have so far been loaded from the audio data source
    DWORD  SampleLength;  // Total length of the original sample
@@ -27,8 +27,8 @@ struct PlatformData {
    bool   Loop;
 };
 
-extern "C" int dsReadData(BaseClass *, void *, int);
-extern "C" void dsSeekData(BaseClass *, int);
+extern "C" int dsReadData(Object *, void *, int);
+extern "C" void dsSeekData(Object *, int);
 
 #include "windows.h"
 
@@ -109,7 +109,7 @@ static const GUID pa_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT = { STATIC_KSDATAFORMAT_SUB
 //********************************************************************************************************************
 // SampleLength: The byte length of the raw audio data, excludes all file headers.
 
-extern "C" const char * sndCreateBuffer(BaseClass *Object, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
+extern "C" const char * sndCreateBuffer(Object *Object, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
 {
    if (!glDirectSound) return 0;
 
@@ -195,8 +195,14 @@ void sndStop(PlatformData *Sound)
 //********************************************************************************************************************
 // Used by the Sound class to play WAV or raw audio samples that are independent of our custom mixer.
 
-int sndPlay(PlatformData *Sound, bool Loop, int Offset)
+__declspec(no_sanitize_address) int sndPlay(PlatformData *Sound, bool Loop, int Offset)
 {
+#ifdef __SANITIZE_ADDRESS__
+   // There is an issue with the address sanitizer being tripped in calls to DirectSound under no client fault.
+   // The no_sanitize_address option doesn't seem to work as expected, so for the time being DirectSound
+   // is disabled if the sanitizer is enabled.
+   return -1;
+#else
    if ((!Sound) or (!Sound->SoundBuffer)) return -1;
 
    if (Offset < 0) Offset = 0;
@@ -240,6 +246,7 @@ int sndPlay(PlatformData *Sound, bool Loop, int Offset)
    else IDirectSoundBuffer_Play(Sound->SoundBuffer, 0, 0, 0);
 
    return 0;
+#endif
 }
 
 //********************************************************************************************************************

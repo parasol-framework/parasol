@@ -203,7 +203,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/buildvm_arch.h
 )
 
 set (SRC_LJLIB
-   src/lib_base.c src/lib_math.c src/lib_bit.c src/lib_string.c src/lib_table.c
+   src/lib_base.c src/lib_buffer.c src/lib_math.c src/lib_bit.c src/lib_string.c src/lib_table.c
    src/lib_debug.c src/lib_jit.c src/lib_ffi.c)
 
 set (SRC_LJCORE

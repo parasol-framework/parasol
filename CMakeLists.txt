@@ -14,7 +14,7 @@
 #          [MSVC] cd visual-studio; ctest -V -C Release
 #
 # A static build can be enabled with -DPARASOL_STATIC=ON if the intention is to embed Parasol into another project.
-# This is particularly useful if you intend to use specific features like the vector graphics API.  Static builds
+# This may be useful if you intend to use a limited feature-set, like the vector graphics API.  Static builds
 # should be customised with an isolated output folder that is exclusive to the target project.  Sharing a static
 # build across multiple projects can otherwise lead to confusing outcomes.
 
@@ -34,7 +34,7 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
    include(CTest)
 endif()
 
-project (Parasol VERSION 2023.6.12 LANGUAGES C CXX)
+project (Parasol VERSION 2024.2.27 LANGUAGES C CXX)
 
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 
@@ -49,7 +49,7 @@ else ()
    set (RUN_ANYWHERE ON)
 endif ()
 option (BUILD_TESTS       "Build/enable tests" ON)
-option (BUILD_DEFS        "Auto-generate C/C++ headers and documentation" ON)
+option (BUILD_DEFS        "Auto-generate C/C++ headers and documentation" OFF)
 option (DISABLE_SSL       "Disable built-in SSL support even if available on this system" OFF)
 option (DISABLE_X11       "Disable X11 even if available on this system" OFF)
 option (DISABLE_AUDIO     "Disable audio API" OFF)
@@ -58,12 +58,12 @@ option (DISABLE_DOCUMENT  "Disable document API" OFF)
 option (DISABLE_FONT      "Disable font API" OFF)
 option (DISABLE_HTTP      "Disable HTTP API" OFF)
 option (DISABLE_MP3       "Disable MP3 support" OFF)
-option (DISABLE_NETWORK   "Disable Network API" OFF)
-option (DISABLE_PICTURE   "Disable Picture API" OFF)
+option (DISABLE_NETWORK   "Disable network API" OFF)
+option (DISABLE_PICTURE   "Disable picture API" OFF)
 option (DISABLE_JPEG      "Disable JPEG support" OFF)
 option (DISABLE_SCINTILLA "Disable Scintilla API" OFF)
 option (DISABLE_SVG       "Disable SVG support" OFF)
-option (DISABLE_VECTOR    "Disable Vector API" OFF)
+option (DISABLE_VECTOR    "Disable vector API" OFF)
 option (INSTALL_EXAMPLES  "Install the example scripts, typically for compiling a distribution" OFF)
 option (INSTALL_INCLUDES  "Install the header files.  Turn this off for client releases." OFF)
 option (INSTALL_TESTS     "Install the test programs." OFF)
@@ -153,7 +153,7 @@ int main() {
 find_program (XXD_CMD "xxd")
 find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${PARASOL_CMD_PATH}")
 find_file (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
-find_file (IDL_DEF_SCRIPT "idl-def.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
+find_file (IDL_COMPILE_SCRIPT "idl-compile.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 find_file (FLUTE_SCRIPT "flute.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev")
 
 if (PARASOL_CMD STREQUAL "PARASOL_CMD-NOTFOUND")
@@ -174,8 +174,8 @@ if (IDL_C_SCRIPT STREQUAL "IDL_C_SCRIPT-NOTFOUND")
    message (FATAL_ERROR "The idl-c.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 endif ()
 
-if (IDL_DEF_SCRIPT STREQUAL "IDL_DEF_SCRIPT-NOTFOUND")
-   message (FATAL_ERROR "The idl-def.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev/idl")
+if (IDL_COMPILE_SCRIPT STREQUAL "IDL_COMPILE_SCRIPT-NOTFOUND")
+   message (FATAL_ERROR "The idl-compile.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev/idl")
 endif ()
 
 if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
@@ -227,9 +227,9 @@ function (flute_test name path)
 endfunction ()
 
 # --------------------------------------------------------------------------------------------------------------------
-# idl_all() is used to generate both C/C++ headers and IDL strings from FDL files.
+# idl_gen() is used to generate both C/C++ headers and IDL strings from FDL files.
 
-function (idl_all)
+function (idl_gen)
    cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;APPEND_IDL;NAME" "ARGS;FILES")
 
    if (BUILD_DEFS)
@@ -247,7 +247,7 @@ function (idl_all)
          "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS})
 
       if (DEFINED IDLC_APPEND_IDL)
-         list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "src=${ARGV0}"
+         list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${ARGV0}"
             "output=${IDLC_APPEND_IDL}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" "append")
       endif ()
 
@@ -268,11 +268,10 @@ function (idl_all)
 endfunction ()
 
 # --------------------------------------------------------------------------------------------------------------------
-# idl_c() is used to generate C/C++ headers from FDL files.
+# idl_compile() is used to generate universal IDL strings
 # Always provide a full path for OUTPUT
-# Use FILES to reference additional source files not in the .def file.
 
-function (idl_c)
+function (idl_compile)
    cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;NAME" "ARGS;FILES")
 
    if (BUILD_DEFS)
@@ -282,47 +281,9 @@ function (idl_c)
          string (REGEX REPLACE "[/:\.]" "_" OUTPUT_NAME ${IDLC_OUTPUT})
       endif ()
 
-      if (DEFINED IDLC_FILES)
-         list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
-      endif ()
-
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND "${PARASOL_CMD}" "${IDL_C_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
-         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-         DEPENDS ${ARGV0}
-         COMMENT "Producing C header file ${IDLC_OUTPUT} from ${ARGV0}"
-         VERBATIM)
-
-      add_custom_target (${OUTPUT_NAME} DEPENDS ${IDLC_OUTPUT})
-
-      add_dependencies (build_headers ${OUTPUT_NAME})
-   else ()
-      message (STATUS "The generation of ${IDLC_OUTPUT} will be skipped.")
-   endif ()
-endfunction ()
-
-# --------------------------------------------------------------------------------------------------------------------
-# idl_def() is used to generate C/C++ data definition files for functions, structural declarations etc
-# Always provide a full path for OUTPUT
-
-function (idl_def)
-   cmake_parse_arguments (PARSE_ARGV 0 IDLC "" "OUTPUT;NAME" "ARGS;FILES")
-
-   if (BUILD_DEFS)
-      if (DEFINED IDLC_NAME)
-         set (OUTPUT_NAME ${IDLC_NAME})
-      else ()
-         string (REGEX REPLACE "[/:\.]" "_" OUTPUT_NAME ${IDLC_OUTPUT})
-      endif ()
-
-      if (DEFINED IDLC_FILES)
-         list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
-      endif ()
-
-      add_custom_command (OUTPUT ${IDLC_OUTPUT}
-         PRE_BUILD
-         COMMAND "${PARASOL_CMD}" "${IDL_DEF_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" ${IDLC_ARGS}
+         COMMAND "${PARASOL_CMD}" "${IDL_COMPILE_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing definition file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -401,12 +362,27 @@ endif ()
 
 if (MSVC)
    # Turn off ugly warnings
-   add_compile_definitions ("_CRT_SECURE_NO_WARNINGS" )
+   add_compile_definitions ("_CRT_SECURE_NO_WARNINGS")
    set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
    # These options override sub-projects linking to incorrect standard libraries.
    # https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-6.0/aa267384(v=vs.60)?redirectedfrom=MSDN
    add_link_options ("/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrtd.lib")
    # add_link_options ("/VERBOSE:LIB")
+   if (ENABLE_ANALYSIS)
+      # Note that this option is not compatible with /ZI (edit-and-continue).  To rectify complaints about the asan DLL, you may also need a line like this one added to each entry in launch.vs.json:
+      # "env": { "Path": "${env:Path};C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64" }
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /fsanitize=address")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fsanitize=address")
+   endif ()
+
+   # We don't use exceptions, so get the compiler to disable this functionality.  This results in noticeably smaller binaries and more optimised code.
+   if (CMAKE_BUILD_TYPE STREQUAL "Release")
+      add_compile_definitions ("_HAS_EXCEPTIONS=0")
+      string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHs-c- /GR")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c- /GR")
+   endif ()
 else ()
    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
       add_compile_definitions ("_DARWIN_C_SOURCE")
@@ -437,6 +413,10 @@ else ()
       # In addition, gdb breakpoints are unlikely to work with these features enabled.
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
+      set (DISABLE_AUDIO ON)
+      if (NOT PARASOL_STATIC)
+         message (FATAL_ERROR "Address analysis requires the build to be compiled with PARASOL_STATIC on.")
+      endif ()
    endif ()
 
    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
@@ -462,6 +442,8 @@ endif (MINGW)
 # Sub-libraries are defined as linkable objects so that they work correctly between static and modular builds.
 
 add_library(linear_rgb OBJECT src/link/linear_rgb.cpp)
+add_library(unicode OBJECT src/link/unicode.cpp)
+add_library(base64 OBJECT src/link/base64.cpp)
 
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -469,63 +451,75 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 
+add_subdirectory (3rdparty/freetype-2.13.2)
+
+if (NOT DISABLE_AUDIO)
+   add_subdirectory (src/audio)
+   list (APPEND LIB_LIST audio)
+endif ()
+
+if (NOT DISABLE_DISPLAY)
+   add_subdirectory (src/display)
+   list (APPEND LIB_LIST display)
+endif ()
+
+if ((NOT DISABLE_DOCUMENT) AND (NOT DISABLE_DISPLAY) AND (NOT DISABLE_VECTOR) AND (NOT DISABLE_FONT))
+   add_subdirectory (src/document)
+   list (APPEND LIB_LIST document)
+endif ()
+
+if (NOT DISABLE_FONT AND NOT DISABLE_DISPLAY)
+   add_subdirectory (src/font)
+   list (APPEND LIB_LIST font)
+endif ()
+
+if (NOT DISABLE_HTTP AND NOT DISABLE_NETWORK)
+   add_subdirectory (src/http)
+   list (APPEND LIB_LIST http)
+endif ()
+
+if (NOT DISABLE_MP3 AND NOT DISABLE_AUDIO)
+   add_subdirectory (src/mp3)
+   list (APPEND LIB_LIST mp3)
+endif ()
+
+if (NOT DISABLE_NETWORK)
+   add_subdirectory (src/network)
+   list (APPEND LIB_LIST network)
+endif ()
+
+if (NOT DISABLE_PICTURE AND NOT DISABLE_DISPLAY)
+   add_subdirectory (src/picture)
+   list (APPEND LIB_LIST picture)
+endif ()
+
+if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
+   add_subdirectory (src/picture_jpeg)
+   list (APPEND LIB_LIST jpeg)
+endif ()
+
+if (NOT DISABLE_SCINTILLA AND NOT DISABLE_DISPLAY AND NOT DISABLE_VECTOR AND NOT DISABLE_FONT)
+   add_subdirectory (src/scintilla)
+   list (APPEND LIB_LIST scintilla)
+endif ()
+
+if (NOT DISABLE_SVG AND NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
+   add_subdirectory (src/svg)
+   list (APPEND LIB_LIST svg)
+endif ()
+
+if (NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
+   add_subdirectory (src/vector)
+   list (APPEND LIB_LIST vector)
+endif ()
+
+list (APPEND LIB_LIST fluid json jpeg xml)
+
 add_subdirectory (src/link)
 add_subdirectory (src/core)
 add_subdirectory (src/fluid)
 add_subdirectory (src/xml)
 add_subdirectory (src/json)
-
-if (NOT DISABLE_AUDIO)
-   add_subdirectory (src/audio)
-endif ()
-
-if (NOT DISABLE_DISPLAY)
-   add_subdirectory (src/display)
-endif ()
-
-if ((NOT DISABLE_DOCUMENT) AND (NOT DISABLE_DISPLAY) AND (NOT DISABLE_VECTOR) AND (NOT DISABLE_FONT))
-   #add_subdirectory (src/document)
-endif ()
-
-if (NOT DISABLE_FONT AND NOT DISABLE_DISPLAY)
-   add_subdirectory (src/font)
-endif ()
-
-if (NOT DISABLE_HTTP AND NOT DISABLE_NETWORK)
-   add_subdirectory (src/http)
-endif ()
-
-if (NOT DISABLE_MP3 AND NOT DISABLE_AUDIO)
-   add_subdirectory (src/mp3)
-endif ()
-
-if (NOT DISABLE_NETWORK)
-   add_subdirectory (src/network)
-endif ()
-
-if (NOT DISABLE_PICTURE AND NOT DISABLE_DISPLAY)
-   add_subdirectory (src/picture)
-endif ()
-
-if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
-   add_subdirectory (src/picture_jpeg)
-endif ()
-
-if (NOT DISABLE_SCINTILLA AND NOT DISABLE_DISPLAY AND NOT DISABLE_VECTOR AND NOT DISABLE_FONT)
-   add_subdirectory (src/scintilla)
-endif ()
-
-if (NOT DISABLE_SVG AND NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
-   add_subdirectory (src/svg)
-endif ()
-
-if (NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
-   add_subdirectory (src/vector)
-endif ()
-
-if (X11_Xrandr_FOUND)
-   add_subdirectory (src/xrandr)
-endif ()
 
 add_subdirectory (src/launcher)
 

@@ -8,16 +8,13 @@ FDEF argsAccessMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Memory", FD_LONG }
 FDEF argsAccessObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "MilliSeconds", FD_LONG }, { "Result", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Parameters", FD_PTR }, { 0, 0 } };
 FDEF argsActionList[] = { { "Void", FD_VOID }, { "ActionTable:Actions", FD_ARRAY|FD_STRUCT|FD_RESULT }, { "Size", FD_LONG|FD_ARRAYSIZE|FD_RESULT }, { 0, 0 } };
-FDEF argsActionMsg[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { 0, 0 } };
 FDEF argsActionThread[] = { { "Error", FD_LONG|FD_ERROR }, { "Action", FD_LONG }, { "Object", FD_OBJECTPTR }, { "Args", FD_PTR }, { "Callback", FD_FUNCTIONPTR }, { "Key", FD_LONG }, { 0, 0 } };
 FDEF argsAddInfoTag[] = { { "Error", FD_LONG|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF argsAddMsgHandler[] = { { "Error", FD_LONG|FD_ERROR }, { "Custom", FD_PTR }, { "MsgType", FD_LONG }, { "Routine", FD_FUNCTIONPTR }, { "MsgHandler:Handle", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
-FDEF argsAdjustLogLevel[] = { { "Result", FD_LONG }, { "Adjust", FD_LONG }, { 0, 0 } };
+FDEF argsAdjustLogLevel[] = { { "Result", FD_LONG }, { "Delta", FD_LONG }, { 0, 0 } };
 FDEF argsAllocMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Size", FD_LONG }, { "Flags", FD_LONG }, { "Address", FD_PTR|FD_RESULT }, { "ID", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsAllocateID[] = { { "Result", FD_LONG }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF argsAnalysePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Type", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsBase64Decode[] = { { "Error", FD_LONG|FD_ERROR }, { "pfBase64Decode:State", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Input", FD_STR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "Written", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsBase64Encode[] = { { "Result", FD_LONG }, { "pfBase64Encode:State", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Input", FD_BUFFER|FD_PTR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_STR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsBroadcastEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_PTR }, { "EventSize", FD_LONG }, { 0, 0 } };
 FDEF argsCheckAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsCheckMemoryExists[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
@@ -58,7 +55,7 @@ FDEF argsLogReturn[] = { { "Void", FD_VOID }, { 0, 0 } };
 FDEF argsMemoryIDInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsMemoryPtrInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsMoveFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Source", FD_STR }, { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF argsNewObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LARGE }, { "Flags", FD_LONG }, { "Object", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
+FDEF argsNewObject[] = { { "Error", FD_LONG|FD_ERROR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { "Object", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsNotifySubscribers[] = { { "Void", FD_VOID }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { "Args", FD_PTR }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsOpenDir[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "DirInfo:Info", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsPreciseTime[] = { { "Result", FD_LARGE }, { 0, 0 } };
@@ -87,22 +84,9 @@ FDEF argsSetOwner[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR 
 FDEF argsSetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { "Value", FD_LARGE }, { 0, 0 } };
 FDEF argsSetResourcePath[] = { { "Error", FD_LONG|FD_ERROR }, { "PathType", FD_LONG }, { "Path", FD_STR }, { 0, 0 } };
 FDEF argsSetVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Path", FD_STR }, { "Icon", FD_STR }, { "Label", FD_STR }, { "Device", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, { "String2", FD_STR }, { "Length", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsStrDatatype[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
-FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSubscribeTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Interval", FD_DOUBLE }, { "Callback", FD_FUNCTIONPTR }, { "Subscription", FD_PTR|FD_RESULT }, { 0, 0 } };
-FDEF argsUTF8CharLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsUTF8CharOffset[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { 0, 0 } };
-FDEF argsUTF8Copy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_STR }, { "Chars", FD_LONG }, { "Size", FD_LONG }, { 0, 0 } };
-FDEF argsUTF8Length[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
-FDEF argsUTF8OffsetToChar[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { 0, 0 } };
-FDEF argsUTF8PrevLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { 0, 0 } };
-FDEF argsUTF8ReadValue[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "Length", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsUTF8ValidEncoding[] = { { "Result", FD_STR }, { "String", FD_STR }, { "Encoding", FD_STR }, { 0, 0 } };
-FDEF argsUTF8WriteValue[] = { { "Result", FD_LONG }, { "Value", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsUnloadFile[] = { { "Void", FD_VOID }, { "CacheFile:Cache", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsUnsubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsUnsubscribeEvent[] = { { "Void", FD_VOID }, { "Handle", FD_PTR }, { 0, 0 } };
@@ -117,7 +101,7 @@ const struct Function glFunctions[] = {
    { (APTR)AccessMemory, "AccessMemory", argsAccessMemory },
    { (APTR)Action, "Action", argsAction },
    { (APTR)ActionList, "ActionList", argsActionList },
-   { (APTR)ActionMsg, "ActionMsg", argsActionMsg },
+   { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
    { (APTR)ResolveClassID, "ResolveClassID", argsResolveClassID },
    { (APTR)AllocateID, "AllocateID", argsAllocateID },
    { (APTR)AllocMemory, "AllocMemory", argsAllocMemory },
@@ -134,7 +118,6 @@ const struct Function glFunctions[] = {
    { (APTR)FindObject, "FindObject", argsFindObject },
    { (APTR)FindClass, "FindClass", argsFindClass },
    { (APTR)AnalysePath, "AnalysePath", argsAnalysePath },
-   { (APTR)UTF8Copy, "UTF8Copy", argsUTF8Copy },
    { (APTR)FreeResource, "FreeResource", argsFreeResource },
    { (APTR)GetClassID, "GetClassID", argsGetClassID },
    { (APTR)GetOwnerID, "GetOwnerID", argsGetOwnerID },
@@ -143,15 +126,13 @@ const struct Function glFunctions[] = {
    { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)ListChildren, "ListChildren", argsListChildren },
-   { (APTR)Base64Decode, "Base64Decode", argsBase64Decode },
    { (APTR)RegisterFD, "RegisterFD", argsRegisterFD },
    { (APTR)ResolvePath, "ResolvePath", argsResolvePath },
    { (APTR)MemoryIDInfo, "MemoryIDInfo", argsMemoryIDInfo },
    { (APTR)MemoryPtrInfo, "MemoryPtrInfo", argsMemoryPtrInfo },
    { (APTR)NewObject, "NewObject", argsNewObject },
    { (APTR)NotifySubscribers, "NotifySubscribers", argsNotifySubscribers },
-   { (APTR)StrReadLocale, "StrReadLocale", argsStrReadLocale },
-   { (APTR)UTF8ValidEncoding, "UTF8ValidEncoding", argsUTF8ValidEncoding },
+   { (APTR)CopyFile, "CopyFile", argsCopyFile },
    { (APTR)ProcessMessages, "ProcessMessages", argsProcessMessages },
    { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
    { (APTR)ReallocMemory, "ReallocMemory", argsReallocMemory },
@@ -166,7 +147,6 @@ const struct Function glFunctions[] = {
    { (APTR)ScanDir, "ScanDir", argsScanDir },
    { (APTR)SetName, "SetName", argsSetName },
    { (APTR)LogReturn, "LogReturn", argsLogReturn },
-   { (APTR)StrCompare, "StrCompare", argsStrCompare },
    { (APTR)SubscribeAction, "SubscribeAction", argsSubscribeAction },
    { (APTR)SubscribeEvent, "SubscribeEvent", argsSubscribeEvent },
    { (APTR)SubscribeTimer, "SubscribeTimer", argsSubscribeTimer },
@@ -180,7 +160,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetResource, "GetResource", argsGetResource },
    { (APTR)SetResource, "SetResource", argsSetResource },
    { (APTR)ScanMessages, "ScanMessages", argsScanMessages },
-   { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
+   { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)CreateFolder, "CreateFolder", argsCreateFolder },
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
@@ -198,30 +178,18 @@ const struct Function glFunctions[] = {
    { (APTR)GetActionMsg, "GetActionMsg", argsGetActionMsg },
    { (APTR)FuncError, "FuncError", argsFuncError },
    { (APTR)SetArray, "SetArray", argsSetArray },
-   { (APTR)StrHash, "StrHash", argsStrHash },
    { (APTR)LockObject, "LockObject", argsLockObject },
    { (APTR)ReleaseObject, "ReleaseObject", argsReleaseObject },
    { (APTR)ActionThread, "ActionThread", argsActionThread },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)VLogF, "VLogF", argsVLogF },
-   { (APTR)Base64Encode, "Base64Encode", argsBase64Encode },
    { (APTR)ReadInfoTag, "ReadInfoTag", argsReadInfoTag },
    { (APTR)SetResourcePath, "SetResourcePath", argsSetResourcePath },
    { (APTR)CurrentTask, "CurrentTask", argsCurrentTask },
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
-   { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
-   { (APTR)UTF8CharOffset, "UTF8CharOffset", argsUTF8CharOffset },
-   { (APTR)UTF8Length, "UTF8Length", argsUTF8Length },
-   { (APTR)UTF8OffsetToChar, "UTF8OffsetToChar", argsUTF8OffsetToChar },
-   { (APTR)UTF8PrevLength, "UTF8PrevLength", argsUTF8PrevLength },
-   { (APTR)UTF8CharLength, "UTF8CharLength", argsUTF8CharLength },
-   { (APTR)UTF8ReadValue, "UTF8ReadValue", argsUTF8ReadValue },
-   { (APTR)UTF8WriteValue, "UTF8WriteValue", argsUTF8WriteValue },
-   { (APTR)CopyFile, "CopyFile", argsCopyFile },
-   { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { NULL, NULL, NULL }
 };
 

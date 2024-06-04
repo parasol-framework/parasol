@@ -53,6 +53,7 @@ It will be translated to the following when loaded into an XML object:
 #define PRV_XML
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
+#include <parasol/strings.hpp>
 #include <algorithm>
 #include <sstream>
 
@@ -60,8 +61,8 @@ JUMPTABLE_CORE
 
 static OBJECTPTR clJSON = NULL;
 
-static ERROR JSON_Init(objXML *, APTR);
-static ERROR JSON_SaveToObject(objXML *, struct acSaveToObject *);
+static ERR JSON_Init(objXML *);
+static ERR JSON_SaveToObject(objXML *, struct acSaveToObject *);
 
 static UWORD glTagID = 1;
 
@@ -71,34 +72,34 @@ static ActionArray clActions[] = {
    { 0, NULL }
 };
 
-static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags);
-static ERROR txt_to_json(objXML *, CSTRING);
+static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags);
+static ERR txt_to_json(objXML *, CSTRING);
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
    objModule::create xml = { fl::Name("xml") }; // Load our dependency ahead of class registration
 
    if ((clJSON = objMetaClass::create::global(
-      fl::BaseClassID(ID_XML),
-      fl::ClassID(ID_JSON),
+      fl::BaseClassID(CLASSID::XML),
+      fl::ClassID(CLASSID::JSON),
       fl::Name("JSON"),
       fl::Category(CCF::DATA),
       fl::FileExtension("*.json"),
       fl::FileDescription("JSON Data"),
       fl::Actions(clActions),
-      fl::Path("modules:json")))) return ERR_Okay;
+      fl::Path("modules:json")))) return ERR::Okay;
 
-   return ERR_AddClass;
+   return ERR::AddClass;
 }
 
-static ERROR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    if (clJSON) { FreeResource(clJSON); clJSON = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -141,11 +142,11 @@ static void debug_tree(objXML *Self)
 
 //********************************************************************************************************************
 
-static ERROR load_file(objXML *Self, CSTRING Path)
+static ERR load_file(objXML *Self, CSTRING Path)
 {
    CacheFile *filecache;
 
-   if (!(Self->ParseError = LoadFile(Self->Path, LDF::NIL, &filecache))) {
+   if ((Self->ParseError = LoadFile(Self->Path, LDF::NIL, &filecache)) IS ERR::Okay) {
       Self->ParseError = txt_to_json(Self, (CSTRING)filecache->Data);
       UnloadFile(filecache);
       return Self->ParseError;
@@ -155,28 +156,28 @@ static ERROR load_file(objXML *Self, CSTRING Path)
 
 //********************************************************************************************************************
 
-static ERROR next_item(LONG &Line, CSTRING &Input)
+static ERR next_item(LONG &Line, CSTRING &Input)
 {
    while ((*Input) and (*Input <= 0x20)) { if (*Input IS '\n') Line++; Input++; }
    if (*Input IS ',') {
       Input++;
       while ((*Input) and (*Input <= 0x20)) { if (*Input IS '\n') Line++; Input++; }
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_Failed;
+   else return ERR::Failed;
 }
 
 //********************************************************************************************************************
 
-static ERROR JSON_Init(objXML *Self, APTR Void)
+static ERR JSON_Init(objXML *Self)
 {
    pf::Log log;
    STRING location, statement;
 
    log.trace("Attempting JSON interpretation of source data.");
 
-   if ((!Self->get(FID_Statement, &statement)) and (statement)) {
-      if ((Self->ParseError = txt_to_json(Self, statement))) {
+   if ((Self->get(FID_Statement, &statement) IS ERR::Okay) and (statement)) {
+      if ((Self->ParseError = txt_to_json(Self, statement)) != ERR::Okay) {
          log.warning("JSON Parsing Error: %s", GetErrorMsg(Self->ParseError));
       }
 
@@ -193,35 +194,35 @@ static ERROR JSON_Init(objXML *Self, APTR Void)
       // If no location has been specified, assume that the JSON source is being
       // created from scratch (e.g. to save to disk).
 
-      return ERR_Okay;
+      return ERR::Okay;
    }
    else {
-      if ((Self->ParseError = load_file(Self, location))) {
+      if ((Self->ParseError = load_file(Self, location)) != ERR::Okay) {
          log.warning("Parsing Error: %s [File: %s]", GetErrorMsg(Self->ParseError), location);
          return Self->ParseError;
       }
-      else return ERR_Okay;
+      else return ERR::Okay;
    }
 
-   return ERR_NoSupport;
+   return ERR::NoSupport;
 }
 
 //********************************************************************************************************************
 
-static ERROR JSON_SaveToObject(objXML *Self, struct acSaveToObject *Args)
+static ERR JSON_SaveToObject(objXML *Self, struct acSaveToObject *Args)
 {
-   if (!Args) return ERR_NullArgs;
+   if (!Args) return ERR::NullArgs;
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR txt_to_json(objXML *Self, CSTRING Text)
+static ERR txt_to_json(objXML *Self, CSTRING Text)
 {
    pf::Log log;
 
-   if ((!Self) or (!Text)) return ERR_NullArgs;
+   if ((!Self) or (!Text)) return ERR::NullArgs;
 
    log.traceBranch("");
 
@@ -229,7 +230,7 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
    Self->Tags.clear();
    Self->LineNo = 1;
    for (str=Text; (*str) and (*str != '{'); str++) if (*str IS '\n') Self->LineNo++;
-   if (str[0] != '{') return log.warning(ERR_NoData);
+   if (str[0] != '{') return log.warning(ERR::NoData);
 
    log.trace("Extracting tag information with extract_tag()");
 
@@ -241,26 +242,26 @@ static ERROR txt_to_json(objXML *Self, CSTRING Text)
       while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
 
       do {
-         if (extract_item(Self->LineNo, &str, root.Children) != ERR_Okay) {
-            return log.warning(ERR_Syntax);
+         if (extract_item(Self->LineNo, &str, root.Children) != ERR::Okay) {
+            return log.warning(ERR::Syntax);
          }
-      } while (!next_item(Self->LineNo, str));
+      } while (next_item(Self->LineNo, str) IS ERR::Okay);
    }
 
    if (*str != '}') {
       log.warning("Missing expected '}' terminator at line %d.", Self->LineNo);
-      return ERR_Syntax;
+      return ERR::Syntax;
    }
 
    log.trace("JSON parsing complete.");
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Called by txt_to_json() to extract the next item from a JSON string.  This function also recurses into itself.
 
-static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
+static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -269,7 +270,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
    CSTRING str = Input[0];
    if (*str != '"') {
       log.warning("Malformed JSON statement detected at line %d, expected '\"', got '%c'.", Line, str[0]);
-      return ERR_Syntax;
+      return ERR::Syntax;
    }
 
    LONG line_no = Line;
@@ -285,24 +286,24 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
          else if (*str IS '"') item_name += '"';
          else {
             log.warning("Invalid use of back-slash in item name encountered at line %d", Line);
-            return ERR_Syntax;
+            return ERR::Syntax;
          }
       }
       else if (*str < 0x20) {
          log.warning("Invalid item name encountered at line %d.", Line);
-         return ERR_Syntax;
+         return ERR::Syntax;
       }
       else item_name += *str++;
    }
 
    if (*str IS '"') str++;
-   else return ERR_Syntax;
+   else return ERR::Syntax;
 
    while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Line++; str++; }
 
    if (*str != ':') {
       log.warning("Missing separator ':' after item name '%s' at line %d.", item_name.c_str(), Line);
-      return ERR_Syntax;
+      return ERR::Syntax;
    }
 
    str++; // Skip ':'
@@ -337,7 +338,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
       else if (*str IS ']') subtype = "null";
       else {
          log.warning("Invalid array defined at line %d.", line_start);
-         return ERR_Syntax;
+         return ERR::Syntax;
       }
 
       log.trace("Processing %s array at line %d.", subtype.c_str(), Line);
@@ -363,13 +364,13 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
                while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Line++; str++; }
 
                if (*str != '}') { // Don't process content if the object is empty.
-                  if (auto error = extract_item(Line, &str, object_tag.Children)) return error;
+                  if (auto error = extract_item(Line, &str, object_tag.Children); error != ERR::Okay) return error;
 
                   while ((*str) and (*str != '}')) { if (*str IS '\n') Line++; str++; } // Skip content/whitespace to get to the next tag.
 
                   if (*str != '}') {
                      log.warning("Missing '}' character to close an object by the end of line %d.", Line);
-                     return ERR_Syntax;
+                     return ERR::Syntax;
                   }
 
                   // Go to next value, or end of array
@@ -385,7 +386,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
                }
                else {
                   log.warning("Invalid array entry encountered at line %d, expected object, encountered character '%c'.", Line, *str);
-                  return ERR_Syntax;
+                  return ERR::Syntax;
                }
             }
          }
@@ -394,7 +395,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
          while ((*str) and (*str != ']')) {
             if (*str != '"') {
                log.warning("Invalid array of strings at line %d.", line_start);
-               return ERR_Syntax;
+               return ERR::Syntax;
             }
 
             str++; // Skip '"'
@@ -435,7 +436,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
          while ((*str) and (*str != ']')) {
             if ((str[0] != '0') or (str[1] != 'x')) {
                log.warning("Invalid array of hexadecimal numbers at line %d.", line_start);
-               return ERR_Syntax;
+               return ERR::Syntax;
             }
 
             std::string numbuf("0x");
@@ -448,7 +449,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
 
             if ((*str != ',') and (*str != ']')) { // If the next character is something other than ',' or ']' then it indicates that the hex value has an invalid character in it, e.g. 0x939fW
                log.warning("Invalid array of hexadecimal numbers at line %d.", line_start);
-               return ERR_Syntax;
+               return ERR::Syntax;
             }
 
             // Create <value>number</value>
@@ -466,7 +467,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
          while ((*str) and (*str != ']')) {
             if (((*str < '0') or (*str > '9')) and (*str != '-')) {
                log.warning("Invalid array of integers at line %d.", Line);
-               return ERR_Syntax;
+               return ERR::Syntax;
             }
 
             std::string numbuf;
@@ -491,12 +492,12 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
       }
       else {
          log.warning("Invalid array defined at line %d.", line_start);
-         return ERR_Syntax;
+         return ERR::Syntax;
       }
 
       if (*str != ']') {
          log.warning("Array at line %d not terminated with expected ']' character.", line_start);
-         return ERR_Syntax;
+         return ERR::Syntax;
       }
       else str++; // Skip array terminator ']'
    }
@@ -515,17 +516,17 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
       if (*str != '}') {
 
          do {
-            if (extract_item(Line, &str, object_tag.Children) != ERR_Okay) {
+            if (extract_item(Line, &str, object_tag.Children) != ERR::Okay) {
                log.warning("Aborting parsing of JSON statement.");
-               return ERR_Syntax;
+               return ERR::Syntax;
             }
-         } while (!next_item(Line, str));
+         } while (next_item(Line, str) IS ERR::Okay);
 
          while ((*str) and (*str != '}')) { if (*str IS '\n') Line++; str++; } // Skip content/whitespace to get to the next tag.
 
          if (*str != '}') {
             log.warning("Missing '}' character to close one of the objects.");
-            return ERR_Syntax;
+            return ERR::Syntax;
          }
          else str++; // Skip '}'
       }
@@ -563,7 +564,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
          string_tag.Children.emplace_back(XMLTag(glTagID++, Line, { { "", buffer.str() } }));
          str++; // Skip '"'
       }
-      else return log.warning(ERR_Syntax);
+      else return log.warning(ERR::Syntax);
    }
   else if ((str[0] IS '0') and (str[1] IS 'x')) {
       // Evaluates to: <item name="item_name" type="integer">number</item>
@@ -582,7 +583,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
          else if (*str IS '}') break;
          else {
             log.warning("Invalid hexadecimal number '%s' at line %d", numbuf.c_str(), Line);
-            return ERR_Syntax;
+            return ERR::Syntax;
          }
          str++;
       }
@@ -609,7 +610,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
          else if (*str IS '}') break;
          else {
             log.warning("Invalid number at line %d", Line);
-            return ERR_Syntax;
+            return ERR::Syntax;
          }
          str++;
       }
@@ -620,7 +621,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
 
       number_tag.Children.emplace_back(XMLTag(glTagID++, Line, { { "", numbuf } }));
    }
-   else if (!StrCompare("null", str, 4)) { // Evaluates to <item name="item_name" type="null"/>
+   else if (pf::startswith("null", str)) { // Evaluates to <item name="item_name" type="null"/>
       str += 4;
 
       Tags.emplace_back(XMLTag(glTagID++, Line, {
@@ -629,14 +630,14 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
    }
    else {
       log.warning("Invalid value character '%c' encountered for item '%s' at line %d.", *str, item_name.c_str(), Line);
-      return ERR_Syntax;
+      return ERR::Syntax;
    }
 
    *Input = str;
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, NULL, NULL)
+PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, NULL, NULL)
 extern "C" struct ModHeader * register_json_module() { return &ModHeader; }

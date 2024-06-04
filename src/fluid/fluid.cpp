@@ -24,7 +24,7 @@ high performance version of the Lua scripting language.  It supports garbage col
 interpreter for compiled code.  We chose to support Lua due to its extensive popularity amongst game developers, a
 testament to its low overhead, speed and lightweight processing when compared to common scripting languages.
 
-Fluid files use the file extensions .lua and .fluid.  Ideally, scripts should start with the comment '-- $FLUID' near
+Fluid files use the file extensions `.lua` and `.fluid`.  Ideally, scripts should start with the comment '-- $FLUID' near
 the start of the document so that it can be correctly identified by the Fluid class.
 
 For more information on the Fluid syntax, please refer to the official Fluid Reference Manual.
@@ -64,13 +64,12 @@ OBJECTPTR modDisplay = NULL; // Required by fluid_input.c
 OBJECTPTR modFluid = NULL;
 OBJECTPTR clFluid = NULL;
 struct ActionTable *glActions = NULL;
-static char glLocale[4] = "eng";
 std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
 std::unordered_map<std::string, ULONG> glStructSizes;
 
 static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
 static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
-static ERROR flSetVariable(objScript *, CSTRING, LONG, ...);
+static ERR flSetVariable(objScript *, CSTRING, LONG, ...);
 
 //********************************************************************************************************************
 
@@ -197,10 +196,9 @@ APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
    return NULL;
 }
 
-/*********************************************************************************************************************
-** Returns a pointer to an object (if the object exists).  To guarantee safety, object access always utilises the ID
-** so that we don't run into issues if the object has been collected.
-*/
+//********************************************************************************************************************
+// Returns a pointer to an object (if the object exists).  To guarantee safety, object access always utilises the ID
+// so that we don't run into issues if the object has been collected.
 
 OBJECTPTR access_object(struct object *Object)
 {
@@ -210,10 +208,10 @@ OBJECTPTR access_object(struct object *Object)
    }
    else if (!Object->UID) return NULL; // Object reference is dead
    else if (!Object->ObjectPtr) { // If not pointer defined then treat the object as detached.
-      if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); !error) {
+      if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); error IS ERR::Okay) {
          Object->Locked = true;
       }
-      else if (error IS ERR_DoesNotExist) {
+      else if (error IS ERR::DoesNotExist) {
          pf::Log log(__FUNCTION__);
          log.trace("Object #%d has been terminated.", Object->UID);
          Object->ObjectPtr = NULL;
@@ -245,8 +243,8 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
    pf::Log log(__FUNCTION__);
 
    CSTRING module_name;
-   ERROR error;
-   if (!(error = MetaClass->get(FID_Module, (STRING *)&module_name))) {
+   ERR error;
+   if ((error = MetaClass->get(FID_Module, (STRING *)&module_name)) IS ERR::Okay) {
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;
@@ -254,10 +252,10 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
          prv->Includes.insert(module_name); // Mark the module as processed.
 
          OBJECTPTR mod;
-         if (!(error = MetaClass->getPtr(FID_RootModule, &mod))) {
+         if ((error = MetaClass->getPtr(FID_RootModule, &mod)) IS ERR::Okay) {
             struct ModHeader *header;
 
-            if ((!(error = mod->getPtr(FID_Header, &header))) and (header)) {
+            if (((error = mod->getPtr(FID_Header, &header)) IS ERR::Okay) and (header)) {
                if (auto structs = header->StructDefs) {
                   for (auto &s : structs[0]) {
                      glStructSizes[s.first] = s.second;
@@ -284,7 +282,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
 //********************************************************************************************************************
 
-static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -298,27 +296,20 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       glActionLookup[glActions[action_id].Name] = action_id;
    }
 
-   // Get the user's language for translation purposes
-
-   CSTRING str;
-   if (!StrReadLocale("Language", &str)) {
-      StrCopy(str, glLocale, sizeof(glLocale));
-   }
-
    return create_fluid();
 }
 
-static ERROR CMDExpunge(void)
+static ERR MODExpunge(void)
 {
    if (clFluid)    { FreeResource(clFluid); clFluid = NULL; }
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
-static ERROR CMDOpen(OBJECTPTR Module)
+static ERR MODOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, JumpTableV1);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -332,29 +323,29 @@ script.  If the script is cached, the variable settings will be available on the
 -INPUT-
 obj Script: Pointer to a Fluid script.
 cstr Name: The name of the variable to set.
-int(FD) Type: A valid field type must be indicated, e.g. FD_STRING, FD_POINTER, FD_LONG, FD_DOUBLE, FD_LARGE.
-tags Variable: A variable that matches the indicated Type.
+int(FD) Type: A valid field type must be indicated, e.g. `FD_STRING`, `FD_POINTER`, `FD_LONG`, `FD_DOUBLE`, `FD_LARGE`.
+tags Variable: A variable that matches the indicated `Type`.
 
 -ERRORS-
 Okay: The variable was defined successfully.
 Args:
-FieldTypeMismatch: A valid field type was not specified in the Type parameter.
+FieldTypeMismatch: A valid field type was not specified in the `Type` parameter.
 ObjectCorrupt: Privately maintained memory has become inaccessible.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
+static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 {
    pf::Log log(__FUNCTION__);
    prvFluid *prv;
    va_list list;
 
-   if ((!Script) or (Script->Class->ClassID != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR_Args);
+   if ((!Script) or (Script->classID() != CLASSID::FLUID) or (!Name) or (!*Name)) return log.warning(ERR::Args);
 
    log.branch("Script: %d, Name: %s, Type: $%.8x", Script->UID, Name, Type);
 
-   if (!(prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
+   if (!(prv = (prvFluid *)Script->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
 
    va_start(list, Type);
 
@@ -365,13 +356,13 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
    else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, DOUBLE));
    else {
       va_end(list);
-      return log.warning(ERR_FieldTypeMismatch);
+      return log.warning(ERR::FieldTypeMismatch);
    }
 
    lua_setglobal(prv->Lua, Name);
 
    va_end(list);
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -476,7 +467,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
       std::vector<lua_ref> ref;
       for (LONG i=0; i < Elements; i++) {
          lua_pushinteger(Lua, i+1);
-         if (struct_to_table(Lua, ref, prv->Structs[s_name], Values[i]) != ERR_Okay) lua_pushnil(Lua);
+         if (struct_to_table(Lua, ref, prv->Structs[s_name], Values[i]) != ERR::Okay) lua_pushnil(Lua);
          lua_settable(Lua, -3);
       }
    }
@@ -519,7 +510,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
 
       for (LONG i=0; i < Elements; i++) {
          lua_pushinteger(Lua, i+1);
-         if (struct_to_table(Lua, ref, *def, Data) != ERR_Okay) lua_pushnil(Lua);
+         if (struct_to_table(Lua, ref, *def, Data) != ERR::Okay) lua_pushnil(Lua);
          Data = (BYTE *)Data + def_size;
          lua_settable(Lua, -3);
       }
@@ -567,7 +558,7 @@ void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
 
 //********************************************************************************************************************
 
-ERROR load_include(objScript *Script, CSTRING IncName)
+ERR load_include(objScript *Script, CSTRING IncName)
 {
    pf::Log log(__FUNCTION__);
 
@@ -587,15 +578,15 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 
    if ((IncName[i]) or (i >= 32)) {
       log.msg("Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
-      return ERR_Syntax;
+      return ERR::Syntax;
    }
 
    if (prv->Includes.contains(IncName)) {
       log.trace("Include file '%s' has already been loaded.", IncName);
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
-   ERROR error = ERR_Okay;
+   ERR error = ERR::Okay;
 
    AdjustLogLevel(1);
 
@@ -604,9 +595,9 @@ ERROR load_include(objScript *Script, CSTRING IncName)
          prv->Includes.insert(IncName); // Mark the file as loaded.
 
          OBJECTPTR root;
-         if (!(error = module->getPtr(FID_Root, &root))) {
+         if ((error = module->getPtr(FID_Root, &root)) IS ERR::Okay) {
             struct ModHeader *header;
-            if ((!(error = root->getPtr(FID_Header, &header)) and (header))) {
+            if ((((error = root->getPtr(FID_Header, &header)) IS ERR::Okay) and (header))) {
                if (auto structs = header->StructDefs) {
                   for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
                }
@@ -624,7 +615,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
             }
          }
       }
-      else error = ERR_CreateObject;
+      else error = ERR::CreateObject;
 
    AdjustLogLevel(-1);
    return error;
@@ -636,12 +627,11 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
-   char name[80];
    LONG i;
-   for (i=0; (Line[i] >= 0x20) and (Line[i] != ':') and ((size_t)i < sizeof(name)-1); i++) name[i] = Line[i];
-   name[i] = 0;
+   for (i=0; (Line[i] >= 0x20) and (Line[i] != ':'); i++);
 
    if (Line[i] IS ':') {
+      std::string name(Line, i);
       Line += i + 1;
 
       LONG j;
@@ -666,63 +656,91 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
 //********************************************************************************************************************
 
+static BYTE datatype(std::string_view String)
+{
+   LONG i = 0;
+   while ((String[i]) and (String[i] <= 0x20)) i++; // Skip white-space
+
+   if ((String[i] IS '0') and (String[i+1] IS 'x')) {
+      for (i+=2; String[i]; i++) {
+         if (((String[i] >= '0') and (String[i] <= '9')) or
+             ((String[i] >= 'A') and (String[i] <= 'F')) or
+             ((String[i] >= 'a') and (String[i] <= 'f')));
+         else return 's';
+      }
+      return 'h';
+   }
+
+   bool is_number = true;
+   bool is_float  = false;
+
+   for (; (String[i]) and (is_number); i++) {
+      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = false;
+      if (String[i] IS '.') is_float = true;
+   }
+
+   if ((is_float) and (is_number)) return 'f';
+   else if (is_number) return 'i';
+   else return 's';
+}
+
+//********************************************************************************************************************
+
 static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
-   char name[80];
-   LONG i;
-   for (i=0; (*Line > 0x20) and (*Line != ':') and ((size_t)i < sizeof(name)-1); i++) name[i] = *Line++;
 
-   if (*Line != ':') {
+   LONG i;
+   for (i=0; (unsigned(Line[i]) > 0x20) and (Line[i] != ':'); i++);
+
+   if (Line[i] != ':') {
       log.warning("Malformed const name in %s.", Source);
       return next_line(Line);
    }
-   else Line++;
 
-   LONG p;
-   if (name[0]) {
-      name[i++] = '_';
-      p = i;
-   }
-   else p = 0;
+   std::string prefix(Line, i);
+   prefix.reserve(200);
+
+   Line += i + 1;
+
+   if (!prefix.empty()) prefix += '_';
+   auto append_from = prefix.size();
 
    while (*Line > 0x20) {
       LONG n;
-      for (n=0; (*Line > 0x20) and (*Line != '=') and ((size_t)p+n < sizeof(name)-1); n++) name[p+n] = *Line++;
-      if ((size_t)p+n >= sizeof(name)-1) {
-         log.warning("The constant name '%s' in '%s' is too long.", name, Source);
+      for (n=0; (Line[n] > 0x20) and (Line[n] != '='); n++);
+
+      if (Line[n] != '=') {
+         log.warning("Malformed const definition, expected '=' after name '%s'", prefix.c_str());
          break;
       }
-      name[p+n] = 0;
 
-      if (Line[0] != '=') {
-         log.warning("Malformed const definition, expected '=' after name '%s'", name);
-         break;
-      }
-      Line++;
+      prefix.erase(append_from);
+      prefix.append(Line, n);
+      Line += n + 1;
 
-      char value[200];
-      for (n=0; ((size_t)n < sizeof(value)-1) and (*Line > 0x20) and (*Line != ','); n++) value[n] = *Line++;
-      value[n] = 0;
+      for (n=0; (Line[n] > 0x20) and (Line[n] != ','); n++);
+      std::string value(Line, n);
+      Line += n;
 
       if (n > 0) {
-         auto dt = StrDatatype(value);
-         if (dt IS STT::NUMBER) {
-            lua_pushinteger(Lua, strtoll(value, NULL, 0));
+         auto dt = datatype(value);
+         if (dt IS 'i') {
+            lua_pushinteger(Lua, strtoll(value.c_str(), NULL, 0));
          }
-         else if (dt IS STT::FLOAT) {
-            lua_pushnumber(Lua, strtod(value, NULL));
+         else if (dt IS 'f') {
+            lua_pushnumber(Lua, strtod(value.c_str(), NULL));
          }
-         else if (dt IS STT::HEX) {
-            lua_pushnumber(Lua, strtoull(value, NULL, 0)); // Using pushnumber() so that 64-bit hex is supported.
+         else if (dt IS 'h') {
+            lua_pushnumber(Lua, strtoull(value.c_str(), NULL, 0)); // Using pushnumber() so that 64-bit hex is supported.
          }
          else if (value[0] IS '\"') {
-            if (value[n-1] IS '\"') lua_pushlstring(Lua, value+1, n-2);
-            else lua_pushlstring(Lua, value, n);
+            if (value[n-1] IS '\"') lua_pushlstring(Lua, value.c_str()+1, n-2);
+            else lua_pushlstring(Lua, value.c_str(), n);
          }
-         else lua_pushlstring(Lua, value, n);
+         else lua_pushlstring(Lua, value.c_str(), n);
 
-         lua_setglobal(Lua, name);
+         lua_setglobal(Lua, prefix.c_str());
       }
 
       if (*Line IS ',') Line++;
@@ -731,9 +749,8 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
    return next_line(Line);
 }
 
-/*********************************************************************************************************************
-** Bytecode read & write callbacks.  Returning 1 will stop processing.
-*/
+//********************************************************************************************************************
+// Bytecode read & write callbacks.  Returning 1 will stop processing.
 
 int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 {
@@ -741,13 +758,12 @@ int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
 
    if (Size <= 0) return 0; // Ignore bad size requests
 
-   if (!acWrite((OBJECTID)(MAXINT)FileID, (APTR)Data, Size)) {
-      return 0;
+   pf::ScopedObjectLock file((MAXINT)FileID);
+   if (file.granted()) {
+      if (acWrite(*file, (APTR)Data, Size) IS ERR::Okay) return 0;
    }
-   else {
-      log.warning("Failed writing %d bytes.", (LONG)Size);
-      return 1;
-   }
+   log.warning("Failed writing %d bytes.", (LONG)Size);
+   return 1;
 }
 
 int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
@@ -757,7 +773,7 @@ int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
    if (Size <= 0) return 0; // Ignore bad size requests
 
    LONG result;
-   if (!acWrite(File, (APTR)Data, Size, &result)) {
+   if (acWrite(File, (APTR)Data, Size, &result) IS ERR::Okay) {
       if ((size_t)result != Size) {
          log.warning("Wrote %d bytes instead of %d.", result, (int)Size);
          return 1;
@@ -777,7 +793,7 @@ CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
 {
    auto handle = (code_reader_handle *)Handle;
    LONG result;
-   if (!acRead(handle->File, handle->Buffer, SIZE_READ, &result)) {
+   if (acRead(handle->File, handle->Buffer, SIZE_READ, &result) IS ERR::Okay) {
       *Size = result;
       return (CSTRING)handle->Buffer;
    }
@@ -811,5 +827,5 @@ static void stack_dump(lua_State *L)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_fluid_module() { return &ModHeader; }

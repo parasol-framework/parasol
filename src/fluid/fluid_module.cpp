@@ -4,6 +4,7 @@
 #define PRV_FLUID_MODULE
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/strings.hpp>
 #include <inttypes.h>
 
 extern "C" {
@@ -28,7 +29,7 @@ static int module_call(lua_State *);
 static LONG process_results(prvFluid *, APTR, const FunctionField *, LONG);
 
 //********************************************************************************************************************
-// Usage: module = mod.load("core")
+// Usage: module = mod.load('core')
 
 static int module_load(lua_State *Lua)
 {
@@ -43,8 +44,8 @@ static int module_load(lua_State *Lua)
 
    // Check if there is an include file with the same name as this module.
 
-   ERROR error = load_include(Lua->Script, modname);
-   if ((error != ERR_Okay) and (error != ERR_FileNotFound)) {
+   ERR error = load_include(Lua->Script, modname);
+   if ((error != ERR::Okay) and (error != ERR::FileNotFound)) {
       log.debranch();
       luaL_error(Lua, "Failed to load include file for the %s module.", modname);
       return 0;
@@ -87,7 +88,7 @@ static int module_tostring(lua_State *Lua)
 {
    if (auto mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
       STRING name;
-      if (!mod->Module->get(FID_Name, &name)) {
+      if (mod->Module->get(FID_Name, &name) IS ERR::Okay) {
          lua_pushstring(Lua, name);
       }
       else lua_pushnil(Lua);
@@ -106,8 +107,7 @@ static int module_index(lua_State *Lua)
       if (auto function = luaL_checkstring(Lua, 2)) {
          if (auto list = mod->Functions) {
             for (LONG i=0; list[i].Name; i++) {
-               CSTRING name = list[i].Name;
-               if (!StrMatch(name, function)) { // Function call stack management
+               if (pf::iequals(list[i].Name, function)) { // Function call stack management
                   lua_pushvalue(Lua, 1); // Arg1: Duplicate the module reference
                   lua_pushinteger(Lua, i); // Arg2: Index of the function that is being called
                   lua_pushcclosure(Lua, module_call, 2);
@@ -137,7 +137,7 @@ static int module_call(lua_State *Lua)
 
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) {
-      log.warning(ERR_ObjectCorrupt);
+      log.warning(ERR::ObjectCorrupt);
       return 0;
    }
 
@@ -165,7 +165,7 @@ static int module_call(lua_State *Lua)
    }
 
    APTR function = mod->Functions[index].Address;
-   FUNCTION func = { .Type = 0 };
+   FUNCTION func;
    ffi_cif cif;
    ffi_arg rc;
    ffi_type *arg_types[MAX_MODULE_ARGS];
@@ -260,7 +260,7 @@ static int module_call(lua_State *Lua)
          return 0;
       }
       else if (argtype & FD_FUNCTION) {
-         if (func.Type) { // Is the function reserve already used?
+         if (func.defined()) { // Is the function reserve already used?
             luaL_error(Lua, "Multiple function arguments are not supported.");
             return 0;
          }
@@ -268,14 +268,14 @@ static int module_call(lua_State *Lua)
          switch(lua_type(Lua, i)) {
             case LUA_TSTRING: { // Name of function to call
                lua_getglobal(Lua, lua_tostring(Lua, i));
-               func = make_function_script(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
+               func = FUNCTION(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
                ((FUNCTION **)(buffer + j))[0] = &func;
                break;
             }
 
             case LUA_TFUNCTION: { // Direct function reference
                lua_pushvalue(Lua, i);
-               func = make_function_script(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
+               func = FUNCTION(Self, luaL_ref(Lua, LUA_REGISTRYINDEX));
                ((FUNCTION **)(buffer + j))[0] = &func;
                break;
             }
@@ -409,22 +409,22 @@ static int module_call(lua_State *Lua)
                }
             }
          }
-         else if (auto memory = (struct memory *)get_meta(Lua, i, "Fluid.mem")) {
-            ((APTR *)(buffer + j))[0] = memory->Address;
+         else if (auto array = (struct array *)get_meta(Lua, i, "Fluid.array")) {
+            ((APTR *)(buffer + j))[0] = array->ptrVoid;
             arg_values[in] = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
                if (args[i+1].Type & FD_LONG) {
-                  ((LONG *)(buffer + j))[0] = memory->MemorySize;
+                  ((LONG *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint32;
                   j += sizeof(LONG);
                }
                else if (args[i+1].Type & FD_LARGE) {
-                  ((LARGE *)(buffer + j))[0] = memory->MemorySize;
+                  ((LARGE *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint64;
@@ -546,14 +546,14 @@ static int module_call(lua_State *Lua)
          if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, arg_types) IS FFI_OK) {
             ffi_call(&cif, (void (*)())function, &rc, arg_values);
             if (auto structptr = (APTR)rc) {
-               ERROR error;
+               ERR error;
                // A structure marked as a resource will be returned as an accessible struct pointer.  This is typically
                // needed when a struct's use is beyond informational and can be passed to other functions.
                //
                // Otherwise, the default behaviour is to convert the struct's content to a regular Lua table.
                if (restype & FD_RESOURCE) push_struct(Self, structptr, args->Name, (restype & FD_ALLOC) ? TRUE : FALSE, TRUE);
-               else if ((error = named_struct_to_table(Lua, args->Name, structptr)) != ERR_Okay) {
-                  if (error IS ERR_Search) {
+               else if ((error = named_struct_to_table(Lua, args->Name, structptr)) != ERR::Okay) {
+                  if (error IS ERR::Search) {
                      // Unknown structs are returned as pointers - this is mainly to indicate that there is a value
                      // and not a nil.
                      lua_pushlightuserdata(Lua, (APTR)structptr);
@@ -588,9 +588,9 @@ static int module_call(lua_State *Lua)
             ffi_call(&cif, (void (*)())function, &rc, arg_values);
             lua_pushinteger(Lua, (LONG)rc);
 
-            if ((prv->Catch) and (restype & FD_ERROR) and (rc >= ERR_ExceptionThreshold)) {
-               prv->CaughtError = rc;
-               luaL_error(prv->Lua, GetErrorMsg(rc));
+            if ((prv->Catch) and (restype & FD_ERROR) and (rc >= LONG(ERR::ExceptionThreshold))) {
+               prv->CaughtError = ERR(rc);
+               luaL_error(prv->Lua, GetErrorMsg(ERR(rc)));
             }
          }
          else lua_pushnil(Lua);
@@ -700,7 +700,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                         push_struct(prv->Lua->Script, ((APTR *)var)[0], args[i].Name, (argtype & FD_ALLOC) ? TRUE : FALSE, TRUE);
                      }
                      else {
-                        if (named_struct_to_table(prv->Lua, args[i].Name, ((APTR *)var)[0]) != ERR_Okay) lua_pushnil(prv->Lua);
+                        if (named_struct_to_table(prv->Lua, args[i].Name, ((APTR *)var)[0]) != ERR::Okay) lua_pushnil(prv->Lua);
                         if (argtype & FD_ALLOC) FreeResource(((APTR *)var)[0]);
                      }
                   }
@@ -716,7 +716,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                   }
                   else {
                      MemInfo meminfo;
-                     if (!MemoryIDInfo(GetMemoryID(((APTR *)var)[0]), &meminfo)) size = meminfo.Size;
+                     if (MemoryIDInfo(GetMemoryID(((APTR *)var)[0]), &meminfo) IS ERR::Okay) size = meminfo.Size;
                   }
 
                   if (size > 0) lua_pushlstring(prv->Lua, ((CSTRING *)var)[0], size);

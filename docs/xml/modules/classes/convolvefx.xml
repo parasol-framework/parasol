@@ -12,10 +12,10 @@
     <idstring>ID_CONVOLVEFX</idstring>
     <category>Graphics</category>
     <include>modules/convolvefx.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>Convolve applies a matrix convolution filter effect to an input source.  A convolution combines pixels in the input image with neighbouring pixels to produce a resulting image.  A wide variety of imaging operations can be achieved through convolutions, including blurring, edge detection, sharpening, embossing and beveling.</p>
-<p>A matrix convolution is based on an n-by-m matrix (the convolution kernel) which describes how a given pixel value in the input image is combined with its neighbouring pixel values to produce a resulting pixel value. Each result pixel is determined by applying the kernel matrix to the corresponding source pixel and its neighbouring pixels.  The basic convolution formula which is applied to each colour value for a given pixel is:</p>
+<p>A matrix convolution is based on an <code>n-by-m</code> matrix (the convolution kernel) which describes how a given pixel value in the input image is combined with its neighbouring pixel values to produce a resulting pixel value. Each result pixel is determined by applying the kernel matrix to the corresponding source pixel and its neighbouring pixels.  The basic convolution formula which is applied to each colour value for a given pixel is:</p>
 <pre>COLOURX,Y = (
      SUM I=0 to [MatrixRows-1] {
        SUM J=0 to [MatrixColumns-1] {
@@ -25,7 +25,7 @@
    ) / Divisor + Bias * ALPHAX,Y
 </pre>
 <p>Note in the above formula that the values in the kernel matrix are applied such that the kernel matrix is rotated 180 degrees relative to the source and destination images in order to match convolution theory as described in many computer graphics textbooks.</p>
-<p>Because they operate on pixels, matrix convolutions are inherently resolution-dependent.  To make resolution-independent results, an explicit value should be provided for either the ResX and ResY attributes on the parent VectorFilter and/or <field>UnitX</field> and <field>UnitY</field>.</p></description>
+<p>Because they operate on pixels, matrix convolutions are inherently resolution-dependent.  To make resolution-independent results, an explicit value should be provided for either the <code>ResX</code> and <code>ResY</code> attributes on the parent <class name="VectorFilter">VectorFilter</class> and/or <fl>UnitX</fl> and <fl>UnitY</fl>.</p></description>
     <source>
       <file path="filters/">filter_convolve.cpp</file>
     </source>
@@ -35,6 +35,13 @@
     <action>
       <name>Draw</name>
       <comment>Draws object graphics to drawable areas.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
     </action>
 
   </actions>
@@ -46,7 +53,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>After applying the <field>Matrix</field> to the input image to yield a number and applying the <field>Divisor</field>, the Bias value is added to each component.  One application of Bias is when it is desirable to have .5 gray value be the zero response of the filter.  The Bias value shifts the range of the filter.  This allows representation of values that would otherwise be clamped to 0 or 1.  The default is 0.</p>
+<p>After applying the <fl>Matrix</fl> to the input image to yield a number and applying the <fl>Divisor</fl>, the Bias value is added to each component.  One application of Bias is when it is desirable to have .5 gray value be the zero response of the filter.  The Bias value shifts the range of the filter.  This allows representation of values that would otherwise be clamped to 0 or 1.  The default is 0.</p>
       </description>
     </field>
 
@@ -56,7 +63,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>After applying the <field>Matrix</field> to the input image to yield a number, that number is divided by <field>Divisor</field> to yield the final destination color value.  A divisor that is the sum of all the matrix values tends to have an evening effect on the overall color intensity of the result.  The default value is the sum of all values in <field>Matrix</field>, with the exception that if the sum is zero, then the divisor is set to 1.</p>
+<p>After applying the <fl>Matrix</fl> to the input image to yield a number, that number is divided by <fl>Divisor</fl> to yield the final destination color value.  A divisor that is the sum of all the matrix values tends to have an evening effect on the overall color intensity of the result.  The default value is the sum of all values in <fl>Matrix</fl>, with the exception that if the sum is zero, then the divisor is set to <code>1</code>.</p>
       </description>
     </field>
 
@@ -66,7 +73,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The EdgeMode determines how to extend the input image with color values so that the matrix operations can be applied when the <field>Matrix</field> is positioned at or near the edge of the input image.</p>
+<p>The EdgeMode determines how to extend the input image with color values so that the matrix operations can be applied when the <fl>Matrix</fl> is positioned at or near the edge of the input image.</p>
       </description>
     </field>
 
@@ -86,7 +93,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Indicates the number of columns represented in <field>Matrix</field>.  A typical value is <code>3</code>.  It is recommended that only small values are used; higher values may result in very high CPU overhead and usually do not produce results that justify the impact on performance.  The default value is 3.</p>
+<p>Indicates the number of columns represented in <fl>Matrix</fl>.  A typical value is <code>3</code>.  It is recommended that only small values are used; higher values may result in very high CPU overhead and usually do not produce results that justify the impact on performance.  The default value is <code>3</code>.</p>
       </description>
     </field>
 
@@ -96,7 +103,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Indicates the number of rows represented in <field>Matrix</field>.  A typical value is <code>3</code>.  It is recommended that only small values are used; higher values may result in very high CPU overhead and usually do not produce results that justify the impact on performance.  The default value is 3.</p>
+<p>Indicates the number of rows represented in <fl>Matrix</fl>.  A typical value is <code>3</code>.  It is recommended that only small values are used; higher values may result in very high CPU overhead and usually do not produce results that justify the impact on performance.  The default value is 3.</p>
       </description>
     </field>
 
@@ -133,7 +140,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>Indicates the intended distance in current filter units (i.e. as determined by the value of PrimitiveUnits) between successive columns and rows, respectively, in the <field>Matrix</field>.  By specifying value(s) for <field>UnitX</field>, the kernel becomes defined in a scalable, abstract coordinate system.  If <field>UnitX</field> is not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary that a value be provided for at least one of ResX and <field>UnitX</field>.</p>
+<p>Indicates the intended distance in current filter units (i.e. as determined by the value of PrimitiveUnits) between successive columns and rows, respectively, in the <fl>Matrix</fl>.  By specifying value(s) for <fl>UnitX</fl>, the kernel becomes defined in a scalable, abstract coordinate system.  If <fl>UnitX</fl> is not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary that a value be provided for at least one of ResX and <fl>UnitX</fl>.</p>
 <p>The most consistent results and the fastest performance will be achieved if the pixel grid of the offscreen bitmap aligns with the pixel grid of the kernel.</p>
       </description>
     </field>
@@ -144,7 +151,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>Indicates the intended distance in current filter units (i.e. as determined by the value of PrimitiveUnits) between successive columns and rows, respectively, in the <field>Matrix</field>.  By specifying value(s) for <field>UnitY</field>, the kernel becomes defined in a scalable, abstract coordinate system.  If <field>UnitY</field> is not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary that a value be provided for at least one of ResY and <field>UnitY</field>.</p>
+<p>Indicates the intended distance in current filter units (i.e. as determined by the value of PrimitiveUnits) between successive columns and rows, respectively, in the <fl>Matrix</fl>.  By specifying value(s) for <fl>UnitY</fl>, the kernel becomes defined in a scalable, abstract coordinate system.  If <fl>UnitY</fl> is not specified, the default value is one pixel in the offscreen bitmap, which is a pixel-based coordinate system, and thus potentially not scalable.  For some level of consistency across display media and user agents, it is necessary that a value be provided for at least one of ResY and <fl>UnitY</fl>.</p>
 <p>The most consistent results and the fastest performance will be achieved if the pixel grid of the offscreen bitmap aligns with the pixel grid of the kernel.</p>
       </description>
     </field>

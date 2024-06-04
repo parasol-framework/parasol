@@ -12,11 +12,16 @@
     <idstring>ID_VECTORPOLYGON</idstring>
     <category>Graphics</category>
     <include>modules/vectorpolygon.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The VectorPolygon class provides support for three different types of vector:</p>
-<p>* Closed-point polygons consisting of at least 3 points. * Open polygons consisting of at least 3 points (a 'polyline' in SVG). * Single lines consisting of two points only (a 'line' in SVG).</p>
-<p>To create a polyline, set the <field>Closed</field> field to FALSE (defaults to TRUE).  To create a line, set the Closed field to FALSE and set only two points (<field>X1</field>,<field>Y1</field>) and (<field>X2</field>,<field>Y2</field>)</p></description>
+<list type="sorted">
+<li>Closed-point polygons consisting of at least 3 points.</li>
+<li>Open polygons consisting of at least 3 points (a 'polyline' in SVG).</li>
+<li>Single lines consisting of two points only (a 'line' in SVG).</li>
+</list>
+<p>To create a polyline, set the <fl>Closed</fl> field to <code>false</code>.</p>
+<p>To create a line, set the <fl>Closed</fl> field to <code>false</code> and set only two points (<fl>X1</fl>,<fl>Y1</fl>) and (<fl>X2</fl>,<fl>Y2</fl>)</p></description>
     <source>
       <file path="vectors/">polygon.cpp</file>
     </source>
@@ -25,11 +30,11 @@
   <fields>
     <field>
       <name>Closed</name>
-      <comment>If TRUE, the polygon will be closed between the start and end points.</comment>
+      <comment>If <code>true</code>, the polygon will be closed between the start and end points.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Set the Closed field to TRUE to ensure that the polygon is closed between the start and end points.  This behaviour is the default.  If FALSE, the polygon will not be closed, which results in the equivalent of the SVG polyline type.</p>
+<p>Set the Closed field to <code>true</code> to ensure that the polygon is closed between the start and end points.  This behaviour is the default.  If <code>false</code>, the polygon will not be closed, which results in the equivalent of the SVG polyline type.</p>
       </description>
     </field>
 
@@ -49,7 +54,7 @@
       <access write="S">Set</access>
       <type>STRING</type>
       <description>
-<p>The Points field can be set with a series of (X,Y) coordinates that will define the polygon's shape.  A minimum of two numbered pairs will be required to define a valid polygon.  Each point must be separated with either white-space or a comma.</p>
+<p>The Points field can be set with a series of <code>(X, Y)</code> coordinates that will define the polygon's shape.  A minimum of two numbered pairs will be required to define a valid polygon.  Each point must be separated with either white-space or a comma.</p>
       </description>
     </field>
 
@@ -59,7 +64,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>APTR []</type>
       <description>
-<p>The PointsArray field can be set with a <struct>VectorPoint</struct> array that defines the shape of a polygon.  A minimum of two points is required for the shape to be valid.  The <struct>VectorPoint</struct> structure consists of the following fields:</p>
+<p>The PointsArray field can be set with a <st>VectorPoint</st> array that defines the shape of a polygon.  A minimum of two points is required for the shape to be valid.  The <st>VectorPoint</st> structure consists of the following fields:</p>
 <struct lookup="VectorPoint"/>
       </description>
     </field>
@@ -70,7 +75,7 @@
       <access read="G">Get</access>
       <type>INT</type>
       <description>
-<p>TotalPoints is a read-only field value that reflects the total number of coordinates that have been set in the <field>Points</field> array.  The minimum value is 2.</p>
+<p>TotalPoints is a read-only field value that reflects the total number of coordinates that have been set in the <fl>Points</fl> array.  The minimum value is 2.</p>
       </description>
     </field>
 
@@ -81,7 +86,7 @@
       <type>DOUBLE</type>
       <description>
 <p>This field defines the X coordinate of the first point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
-<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+<p>By default the value will be treated as a fixed coordinate.  Scaled values are supported if the value is a defined as a percentage.</p>
       </description>
     </field>
 
@@ -92,7 +97,7 @@
       <type>DOUBLE</type>
       <description>
 <p>This field defines the X coordinate of the second point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
-<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+<p>By default the value will be treated as a fixed coordinate.  Scaled values are supported if the value is a defined as a percentage.</p>
       </description>
     </field>
 
@@ -103,7 +108,7 @@
       <type>DOUBLE</type>
       <description>
 <p>This field defines the Y coordinate of the first point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
-<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+<p>By default the value will be treated as a fixed coordinate.  Scaled values are supported if the value is a defined as a percentage.</p>
       </description>
     </field>
 
@@ -114,7 +119,7 @@
       <type>DOUBLE</type>
       <description>
 <p>This field defines the Y coordinate of the second point of the polygon.  It is recommended that this field is only used when creating a VectorPolygon that will be used to draw a single line.</p>
-<p>By default the value will be treated as a fixed coordinate.  Relative values are supported if the value is a defined as a percentage.</p>
+<p>By default the value will be treated as a fixed coordinate.  Scaled values are supported if the value is a defined as a percentage.</p>
       </description>
     </field>
 
@@ -123,8 +128,8 @@
     <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
       <field name="X" type="DOUBLE">The X coordinate of this point.</field>
       <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
-      <field name="XRelative" type="UBYTE">TRUE if the X value is relative to its viewport (between 0 and 1.0).</field>
-      <field name="YRelative" type="UBYTE">TRUE if the Y value is relative to its viewport (between 0 and 1.0).</field>
+      <field name="XScaled" type="UBYTE"><code>TRUE</code> if the <code>X</code> value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="YScaled" type="UBYTE"><code>TRUE</code> if the <code>Y</code> value is scaled to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>

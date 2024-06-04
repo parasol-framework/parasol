@@ -1,25 +1,5 @@
 --[[
-
-The Divider interface is used to break up the space between viewports and allow them to be user adjustable.
-
-For a horizontal split the configuration must specify two viewports that are positioned to the left and right of the
-divider, or top and bottom for a vertical split.  For the viewport on the far side of the divider, define (x, xOffset)
-and (y, yOffset) pairs as necessary to ensure that the viewport is correctly anchored.
-
-Example:
-
-   gui.divider({ left=leftViewport, right=rightViewport, minA=50, minB=50 })
-
-Valid options to use when creating the divider are as follows:
-
-   left:       Viewport on the left (A) side.  Must be paired with a viewport on the right.
-   right:      Viewport on the right (B) side.
-   top:        Viewport on the top (A) side.  Must be paired with a viewport on the bottom.
-   bottom:     Viewport on the bottom (B) side.
-   minA/B:     Minimum pixel size of the A or B side.
-   maxA/B:     Maximum pixel size of the A or B side.
-   fixedSize:  Set if the divider position should remain fixed when the window is resized (default is proportional).
-   style:      Set to 'none', 'default' or 'alt' for an alternative divider style.
+Documentation is available in the Parasol Wiki.
 --]]
 
    require 'common'
@@ -187,7 +167,7 @@ gui.divider = function(Options)
    check(self._dividerVP.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
       local ev = Events
       while ev do
-         if (ev.type == JET_ABS_X) or (ev.type == JET_ABS_Y) then
+         if (ev.type == JET_ABS_XY) then
             if self._buttonHeld then
                if (self._orientation == 'h') then
                   arrangeAll(self, ev.absX - self._vp.absX)

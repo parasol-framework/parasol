@@ -22,27 +22,27 @@ Use the NetLookup class for resolving network names to IP addresses and vice ver
 struct resolve_buffer {
    OBJECTID NetLookupID;
    OBJECTID ThreadID;
-   ERROR Error;
+   ERR Error;
 }; // Host name or IP address is appended
 
-static ERROR resolve_address(CSTRING, const IPAddress *, DNSEntry **);
-static ERROR resolve_name(CSTRING, DNSEntry **);
+static ERR resolve_address(CSTRING, const IPAddress *, DNSEntry **);
+static ERR resolve_name(CSTRING, DNSEntry **);
 #ifdef _WIN32
-static ERROR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry **);
+static ERR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry **);
 #else
-static ERROR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry **);
-static ERROR cache_host(HOSTMAP &, CSTRING, struct addrinfo *, DNSEntry **);
+static ERR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry **);
+static ERR cache_host(HOSTMAP &, CSTRING, struct addrinfo *, DNSEntry **);
 #endif
 
 static std::vector<IPAddress> glNoAddresses;
 
-static void resolve_callback(extNetLookup *, ERROR, const std::string & = "", std::vector<IPAddress> & = glNoAddresses);
+static void resolve_callback(extNetLookup *, ERR, const std::string & = "", std::vector<IPAddress> & = glNoAddresses);
 
 //********************************************************************************************************************
 // Used for receiving asynchronous execution results (sent as a message).
 // These routines execute in the main process.
 
-static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -50,8 +50,7 @@ static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
 
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
-   extNetLookup *nl;
-   if (!AccessObject(r->NetLookupID, 2000, &nl)) {
+   if (pf::ScopedObjectLock<extNetLookup> nl(r->NetLookupID, 2000); nl.granted()) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -60,18 +59,16 @@ static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
       auto it = glHosts.find((CSTRING)(r + 1));
       if (it != glHosts.end()) {
          nl->Info = it->second;
-         resolve_callback(nl, ERR_Okay, nl->Info.HostName, nl->Info.Addresses);
+         resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
       }
-      else resolve_callback(nl, ERR_Failed);
-
-      ReleaseObject(nl);
+      else resolve_callback(*nl, ERR::Failed);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -79,8 +76,7 @@ static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
 
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
-   extNetLookup *nl;
-   if (!AccessObject(r->NetLookupID, 2000, &nl)) {
+   if (pf::ScopedObjectLock<extNetLookup> nl(r->NetLookupID, 2000); nl.granted()) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -89,19 +85,17 @@ static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
       auto it = glAddresses.find((CSTRING)(r + 1));
       if (it != glAddresses.end()) {
          nl->Info = it->second;
-         resolve_callback(nl, ERR_Okay, nl->Info.HostName, nl->Info.Addresses);
+         resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
       }
-      else resolve_callback(nl, ERR_Failed);
-
-      ReleaseObject(nl);
+      else resolve_callback(*nl, ERR::Failed);
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Thread routines for asynchronous name & address resolution
 
-static ERROR thread_resolve_name(objThread *Thread)
+static ERR thread_resolve_name(objThread *Thread)
 {
    pf::Log log(__FUNCTION__);
 
@@ -113,12 +107,12 @@ static ERROR thread_resolve_name(objThread *Thread)
    rb->Error = resolve_name((CSTRING)(rb + 1), &dummy);
 
    SendMessage(glResolveNameMsgID, MSF::WAIT, rb, Thread->DataSize); // See resolve_name_receiver()
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR thread_resolve_addr(objThread *Thread)
+static ERR thread_resolve_addr(objThread *Thread)
 {
    pf::Log log(__FUNCTION__);
 
@@ -131,14 +125,14 @@ static ERROR thread_resolve_addr(objThread *Thread)
    rb->Error = resolve_address((CSTRING)(ip_address + 1), ip_address, &dummy);
 
    SendMessage(glResolveAddrMsgID, MSF::WAIT, rb, Thread->DataSize); // See resolve_addr_receiver()
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   ((extNetLookup *)CurrentContext())->Callback.Type = CALL_NONE;
+   ((extNetLookup *)CurrentContext())->Callback.clear();
 }
 
 /*********************************************************************************************************************
@@ -163,29 +157,29 @@ Failed: The address could not be resolved
 
 *********************************************************************************************************************/
 
-static ERROR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nlBlockingResolveAddress *Args)
+static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nl::BlockingResolveAddress *Args)
 {
    pf::Log log;
-   ERROR error;
+   ERR error;
 
-   if (!Args->Address) return log.warning(ERR_NullArgs);
+   if (!Args->Address) return log.warning(ERR::NullArgs);
 
    log.branch("Address: %s", Args->Address);
 
    IPAddress ip;
-   if (!netStrToAddress(Args->Address, &ip)) {
+   if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
       DNSEntry *info;
-      if (!(error = resolve_address(Args->Address, &ip, &info))) {
+      if ((error = resolve_address(Args->Address, &ip, &info)) IS ERR::Okay) {
          Self->Info = *info;
-         resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses);
-         return ERR_Okay;
+         resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
+         return ERR::Okay;
       }
       else {
          resolve_callback(Self, error);
          return error;
       }
    }
-   else return log.warning(ERR_Args);
+   else return log.warning(ERR::Args);
 }
 
 /*********************************************************************************************************************
@@ -210,20 +204,20 @@ Failed:
 
 *********************************************************************************************************************/
 
-static ERROR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nlResolveName *Args)
+static ERR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nl::ResolveName *Args)
 {
    pf::Log log;
-   ERROR error;
+   ERR error;
 
-   if (!Args->HostName) return log.error(ERR_NullArgs);
+   if (!Args->HostName) return log.error(ERR::NullArgs);
 
    log.branch("Host: %s", Args->HostName);
 
    DNSEntry *info;
-   if (!(error = resolve_name(Args->HostName, &info))) {
+   if ((error = resolve_name(Args->HostName, &info)) IS ERR::Okay) {
       Self->Info = *info;
-      resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses);
-      return ERR_Okay;
+      resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
+      return ERR::Okay;
    }
    else {
       resolve_callback(Self, error, Args->HostName);
@@ -240,22 +234,22 @@ This routine may block temporarily if there are unresolved requests awaiting com
 
 *********************************************************************************************************************/
 
-static ERROR NETLOOKUP_Free(extNetLookup *Self, APTR Void)
+static ERR NETLOOKUP_Free(extNetLookup *Self)
 {
    if (Self->Threads) { delete Self->Threads; Self->Threads = NULL; }
    if (Self->ThreadLock) { delete Self->ThreadLock; Self->ThreadLock = NULL; }
 
-   if (Self->Callback.Type IS CALL_SCRIPT) {
-      UnsubscribeAction(Self->Callback.Script.Script, AC_Free);
-      Self->Callback.Type = 0;
+   if (Self->Callback.isScript()) {
+      UnsubscribeAction(Self->Callback.Context, AC_Free);
+      Self->Callback.Type = CALL::NIL;
    }
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR NETLOOKUP_FreeWarning(extNetLookup *Self, APTR Void)
+static ERR NETLOOKUP_FreeWarning(extNetLookup *Self)
 {
    if (not Self->Threads->empty()) {
       pf::Log log;
@@ -263,7 +257,7 @@ static ERROR NETLOOKUP_FreeWarning(extNetLookup *Self, APTR Void)
       while (not Self->Threads->empty()) { // Threads will automatically remove themselves
 restart:
          for (auto &id : *Self->Threads) {
-            if (CheckObjectExists(id) != ERR_Okay) {
+            if (CheckObjectExists(id) != ERR::Okay) {
                Self->Threads->erase(id);
                goto restart;
             }
@@ -272,16 +266,16 @@ restart:
          WaitTime(1, 0);
       }
    }
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR NETLOOKUP_NewObject(extNetLookup *Self, APTR Void)
+static ERR NETLOOKUP_NewObject(extNetLookup *Self)
 {
-   Self->Threads = new std::unordered_set<OBJECTID>;
-   Self->ThreadLock = new std::mutex;
-   return ERR_Okay;
+   if (!(Self->Threads = new (std::nothrow) std::unordered_set<OBJECTID>)) return ERR::Memory;
+   if (!(Self->ThreadLock = new (std::nothrow) std::mutex)) return ERR::Memory;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -306,12 +300,12 @@ Failed: The address could not be resolved
 
 *********************************************************************************************************************/
 
-static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddress *Args)
+static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddress *Args)
 {
    pf::Log log;
 
-   if (!Args->Address) return log.warning(ERR_NullArgs);
-   if (!Self->Callback.Type) return log.warning(ERR_FieldNotSet);
+   if (!Args->Address) return log.warning(ERR::NullArgs);
+   if (Self->Callback.Type IS CALL::NIL) return log.warning(ERR::FieldNotSet);
 
    log.branch("Address: %s", Args->Address);
 
@@ -320,35 +314,35 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
       if (it != glAddresses.end()) {
          Self->Info = it->second;
          log.trace("Cache hit for address %s", Args->Address);
-         resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses);
-         return ERR_Okay;
+         resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
+         return ERR::Okay;
       }
    }
 
    IPAddress ip;
-   if (!netStrToAddress(Args->Address, &ip)) {
+   if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
       auto addr_len = StrLength(Args->Address) + 1;
       LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + addr_len;
-      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {
+      if (auto th = objThread::create::local(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {
          auto buffer = std::make_unique<UBYTE[]>(pkg_size);
          auto rb = (resolve_buffer *)buffer.get();
          rb->NetLookupID = Self->UID;
          rb->ThreadID = th->UID;
          CopyMemory(&ip, (rb + 1), sizeof(ip));
          CopyMemory(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), addr_len);
-         if ((!thSetData(th, rb, pkg_size)) and (!th->activate())) {
+         if ((th->setData(rb, pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
             std::lock_guard<std::mutex> lock(*Self->ThreadLock);
             Self->Threads->insert(th->UID);
-            return ERR_Okay;
+            return ERR::Okay;
          }
          else {
             FreeResource(th);
-            return log.warning(ERR_Failed);
+            return log.warning(ERR::Failed);
          }
       }
-      else return log.warning(ERR_CreateObject);
+      else return log.warning(ERR::CreateObject);
    }
-   else return log.warning(ERR_Failed);
+   else return log.warning(ERR::Failed);
 }
 
 /*********************************************************************************************************************
@@ -373,11 +367,11 @@ Failed:
 
 *********************************************************************************************************************/
 
-static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Args)
+static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Args)
 {
    pf::Log log;
 
-   if (!Args->HostName) return log.error(ERR_NullArgs);
+   if (!Args->HostName) return log.error(ERR::NullArgs);
 
    log.branch("Host: %s", Args->HostName);
 
@@ -386,31 +380,31 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
       if (it != glHosts.end()) {
          Self->Info = it->second;
          log.trace("Cache hit for host %s", Self->Info.HostName);
-         resolve_callback(Self, ERR_Okay, Self->Info.HostName, Self->Info.Addresses);
-         return ERR_Okay;
+         resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
+         return ERR::Okay;
       }
    }
 
-   ERROR error;
+   ERR error;
    LONG pkg_size = sizeof(resolve_buffer) + StrLength(Args->HostName) + 1;
-   if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_name),
+   if (auto th = objThread::create::local(fl::Routine((CPTR)thread_resolve_name),
          fl::Flags(THF::AUTO_FREE))) {
       auto buffer = std::make_unique<UBYTE[]>(pkg_size);
       auto rb = (resolve_buffer *)buffer.get();
       rb->NetLookupID = Self->UID;
       rb->ThreadID    = th->UID;
       StrCopy(Args->HostName, (STRING)(rb + 1), pkg_size - sizeof(resolve_buffer));
-      if ((!thSetData(th, buffer.get(), pkg_size)) and (!th->activate())) {
+      if ((th->setData(buffer.get(), pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
          std::lock_guard<std::mutex> lock(*Self->ThreadLock);
          Self->Threads->insert(th->UID);
-         return ERR_Okay;
+         return ERR::Okay;
       }
       else {
          FreeResource(th);
-         error = ERR_Failed;
+         error = ERR::Failed;
       }
    }
-   else error = ERR_CreateObject;
+   else error = ERR::CreateObject;
 
    return log.warning(error);
 }
@@ -424,14 +418,14 @@ A list of the most recently resolved IP addresses can be read from this field.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Addresses(extNetLookup *Self, BYTE **Value, LONG *Elements)
+static ERR GET_Addresses(extNetLookup *Self, BYTE **Value, LONG *Elements)
 {
    if (!Self->Info.Addresses.empty()) {
       *Value = (BYTE *)Self->Info.Addresses.data();
       *Elements = Self->Info.Addresses.size();
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
 /*********************************************************************************************************************
@@ -440,35 +434,34 @@ static ERROR GET_Addresses(extNetLookup *Self, BYTE **Value, LONG *Elements)
 Callback: This function will be called on the completion of any name or address resolution.
 
 The function referenced here will receive the results of the most recently resolved name or address.  The C/C++ prototype
-is `Function(*NetLookup, ERROR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)`.
+is `Function(*NetLookup, ERR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)`.
 
 The Fluid prototype is as follows, with results readable from the #HostName and #Addresses fields:
 `function(NetLookup, Error)`.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Callback(extNetLookup *Self, FUNCTION **Value)
+static ERR GET_Callback(extNetLookup *Self, FUNCTION **Value)
 {
-   if (Self->Callback.Type != CALL_NONE) {
+   if (Self->Callback.defined()) {
       *Value = &Self->Callback;
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
-static ERROR SET_Callback(extNetLookup *Self, FUNCTION *Value)
+static ERR SET_Callback(extNetLookup *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Callback.Type IS CALL_SCRIPT) UnsubscribeAction(Self->Callback.Script.Script, AC_Free);
+      if (Self->Callback.isScript()) UnsubscribeAction(Self->Callback.Context, AC_Free);
       Self->Callback = *Value;
-      if (Self->Callback.Type IS CALL_SCRIPT) {
-         auto callback = make_function_stdc(notify_free_callback);
-         SubscribeAction(Self->Callback.Script.Script, AC_Free, &callback);
+      if (Self->Callback.isScript()) {
+         SubscribeAction(Self->Callback.Context, AC_Free, C_FUNCTION(notify_free_callback));
       }
    }
-   else Self->Callback.Type = CALL_NONE;
+   else Self->Callback.clear();
 
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -480,31 +473,31 @@ The name of the most recently resolved host is readable from this field.
 
 *********************************************************************************************************************/
 
-static ERROR GET_HostName(extNetLookup *Self, CSTRING *Value)
+static ERR GET_HostName(extNetLookup *Self, CSTRING *Value)
 {
    if (!Self->Info.HostName.empty()) {
       *Value = Self->Info.HostName.c_str();
-      return ERR_Okay;
+      return ERR::Okay;
    }
-   else return ERR_FieldNotSet;
+   else return ERR::FieldNotSet;
 }
 
 //********************************************************************************************************************
 
-static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntry **Cache)
+static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntry **Cache)
 {
-   if ((!Host) or (!Cache)) return ERR_NullArgs;
+   if ((!Host) or (!Cache)) return ERR::NullArgs;
 
    if (!Key) {
-      if (!(Key = Host->h_name)) return ERR_Args;
+      if (!(Key = Host->h_name)) return ERR::Args;
    }
 
    pf::Log log(__FUNCTION__);
 
-   log.debug("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
+   log.detail("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
 
    *Cache = NULL;
-   if ((Host->h_addrtype != AF_INET) and (Host->h_addrtype != AF_INET6)) return ERR_Args;
+   if ((Host->h_addrtype != AF_INET) and (Host->h_addrtype != AF_INET6)) return ERR::Args;
 
    DNSEntry cache;
    if (!Host->h_name) cache.HostName = Key;
@@ -529,29 +522,29 @@ static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEn
 
    Store[Key] = std::move(cache);
    *Cache = &Store[Key];
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 #ifdef __linux__
 
-static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
+static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
 {
-   if ((!Host) or (!Cache)) return ERR_NullArgs;
+   if ((!Host) or (!Cache)) return ERR::NullArgs;
 
    *Cache = NULL;
 
    if (!Key) {
-      if (!(Key = Host->ai_canonname)) return ERR_Args;
+      if (!(Key = Host->ai_canonname)) return ERR::Args;
    }
 
    pf::Log log(__FUNCTION__);
-   log.debug("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->ai_addr, (Host->ai_family == AF_INET6));
+   log.detail("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->ai_addr, (Host->ai_family == AF_INET6));
 
    DNSEntry cache;
    if (!Host->ai_canonname) cache.HostName = Key;
    else cache.HostName = Host->ai_canonname;
 
-   if ((Host->ai_family != AF_INET) and (Host->ai_family != AF_INET6)) return ERR_Args;
+   if ((Host->ai_family != AF_INET) and (Host->ai_family != AF_INET6)) return ERR::Args;
 
    for (auto scan=Host; scan; scan=scan->ai_next) {
       if (!scan->ai_addr) continue;
@@ -570,18 +563,18 @@ static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSE
 
    Store[Key] = std::move(cache);
    *Cache = &Store[Key];
-   return ERR_Okay;
+   return ERR::Okay;
 }
 
 #endif
 
 //********************************************************************************************************************
 
-static ERROR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info)
+static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info)
 {
 #ifdef _WIN32
    struct hostent *host = win_gethostbyaddr(IP);
-   if (!host) return ERR_Failed;
+   if (!host) return ERR::Failed;
    return cache_host(glAddresses, Address, host, Info);
 #else
    char host_name[256], service[128];
@@ -616,26 +609,26 @@ static ERROR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **In
          };
          return cache_host(glAddresses, Address, &host, Info);
       }
-      case EAI_AGAIN:    return ERR_Retry;
-      case EAI_MEMORY:   return ERR_Memory;
-      case EAI_OVERFLOW: return ERR_BufferOverflow;
-      case EAI_SYSTEM:   return ERR_SystemCall;
-      default:           return ERR_Failed;
+      case EAI_AGAIN:    return ERR::Retry;
+      case EAI_MEMORY:   return ERR::Memory;
+      case EAI_OVERFLOW: return ERR::BufferOverflow;
+      case EAI_SYSTEM:   return ERR::SystemCall;
+      default:           return ERR::Failed;
    }
 
-   return ERR_Failed;
+   return ERR::Failed;
 #endif
 }
 
 //********************************************************************************************************************
 
-static ERROR resolve_name(CSTRING HostName, DNSEntry **Info)
+static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
 {
    // Use the cache if available.
    auto it = glHosts.find(HostName);
    if (it != glHosts.end()) {
       *Info = &it->second;
-      return ERR_Okay;
+      return ERR::Okay;
    }
 
 #ifdef __linux__
@@ -649,52 +642,47 @@ static ERROR resolve_name(CSTRING HostName, DNSEntry **Info)
 
    switch (result) {
       case 0: {
-         ERROR error = cache_host(glHosts, HostName, servinfo, Info);
+         ERR error = cache_host(glHosts, HostName, servinfo, Info);
          freeaddrinfo(servinfo);
          return error;
       }
-      case EAI_AGAIN:  return ERR_Retry;
-      case EAI_FAIL:   return ERR_Failed;
-      case EAI_MEMORY: return ERR_Memory;
-      case EAI_SYSTEM: return ERR_SystemCall;
-      default:         return ERR_Failed;
+      case EAI_AGAIN:  return ERR::Retry;
+      case EAI_FAIL:   return ERR::Failed;
+      case EAI_MEMORY: return ERR::Memory;
+      case EAI_SYSTEM: return ERR::SystemCall;
+      default:         return ERR::Failed;
    }
 
-   return ERR_Failed;
+   return ERR::Failed;
 #elif _WIN32
    struct hostent *host = win_gethostbyname(HostName);
-   if (!host) return ERR_Failed;
+   if (!host) return ERR::Failed;
    return cache_host(glHosts, HostName, host, Info);
 #endif
 }
 
 //********************************************************************************************************************
 
-static void resolve_callback(extNetLookup *Self, ERROR Error, const std::string &HostName, std::vector<IPAddress> &Addresses)
+static void resolve_callback(extNetLookup *Self, ERR Error, const std::string &HostName, std::vector<IPAddress> &Addresses)
 {
    pf::Log log(__FUNCTION__);
    log.traceBranch("Host: %s", HostName.c_str());
 
-   if (Self->Callback.Type IS CALL_STDC) {
-      pf::SwitchContext context(Self->Callback.StdC.Context);
-      auto routine = (ERROR (*)(extNetLookup *, ERROR, const std::string &, const std::vector<IPAddress> &))(Self->Callback.StdC.Routine);
-      routine(Self, Error, HostName, Addresses);
+   if (Self->Callback.isC()) {
+      pf::SwitchContext context(Self->Callback.Context);
+      auto routine = (ERR (*)(extNetLookup *, ERR, const std::string &, const std::vector<IPAddress> &, APTR))(Self->Callback.Routine);
+      routine(Self, Error, HostName, Addresses, Self->Callback.Meta);
    }
-   else if (Self->Callback.Type IS CALL_SCRIPT) {
-      const ScriptArg args[] = {
-         { "NetLookup", FDF_OBJECT, { .Address = Self } },
-         { "Error",     FD_LONG,    { .Long    = Error } }
-      };
-      auto script = Self->Callback.Script.Script;
-      scCallback(script, Self->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+   else if (Self->Callback.isScript()) {
+      sc::Call(Self->Callback, std::to_array<ScriptArg>({ { "NetLookup", Self, FDF_OBJECT }, { "Error", LONG(Error) } }));
    }
 }
 
 //********************************************************************************************************************
 
 static const FieldArray clNetLookupFields[] = {
-   { "UserData", FDF_LARGE|FDF_RW },
-   { "Flags",    FDF_LONG|FDF_FLAGS|FDF_RW },
+   { "ClientData", FDF_LARGE|FDF_RW },
+   { "Flags",      FDF_LONG|FDF_FLAGS|FDF_RW },
    // Virtual fields
    { "Callback",  FDF_FUNCTIONPTR|FDF_RW, GET_Callback, SET_Callback },
    { "HostName",  FDF_STRING|FDF_R, GET_HostName },
@@ -706,7 +694,7 @@ static const FieldArray clNetLookupFields[] = {
 
 //********************************************************************************************************************
 
-ERROR init_netlookup(void)
+ERR init_netlookup(void)
 {
    clNetLookup = objMetaClass::create::global(
       fl::ClassVersion(VER_NETLOOKUP),
@@ -718,5 +706,5 @@ ERROR init_netlookup(void)
       fl::Size(sizeof(extNetLookup)),
       fl::Path(MOD_PATH));
 
-   return clNetLookup ? ERR_Okay : ERR_AddClass;
+   return clNetLookup ? ERR::Okay : ERR::AddClass;
 }

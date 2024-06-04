@@ -7,13 +7,13 @@ extVectorViewport * get_parent_view(extVector *Vector)
 {
    if (Vector->ParentView) return Vector->ParentView;
    else {
-      auto scan = get_parent(Vector);
-      while (scan) {
-         if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
-            Vector->ParentView = (extVectorViewport *)scan;
+      auto node = get_parent(Vector);
+      while (node) {
+         if (node->classID() IS CLASSID::VECTORVIEWPORT) {
+            Vector->ParentView = (extVectorViewport *)node;
             return Vector->ParentView;
          }
-         else if (scan->Parent->Class->BaseClassID IS ID_VECTOR) scan = (extVector *)(scan->Parent);
+         else if (node->Parent->Class->BaseClassID IS CLASSID::VECTOR) node = (extVector *)(node->Parent);
          else return NULL;
       }
    }
@@ -30,9 +30,9 @@ void gen_vector_tree(extVector *Vector)
 
    if (Vector->dirty()) {
       std::vector<objVector *> list;
-      for (auto scan=(objVector *)Vector->Parent; scan; scan=(objVector *)scan->Parent) {
-         if (scan->Class->BaseClassID != ID_VECTOR) break;
-         list.push_back(scan);
+      for (auto node=(objVector *)Vector->Parent; node; node=(objVector *)node->Parent) {
+         if (node->Class->BaseClassID != CLASSID::VECTOR) break;
+         list.push_back(node);
       }
 
       std::for_each(list.rbegin(), list.rend(), [](auto v) {
@@ -44,18 +44,18 @@ void gen_vector_tree(extVector *Vector)
 }
 
 //********************************************************************************************************************
-// (Re)Generates the path for a vector.  Switches off most of the Dirty flag markers.
-// For Viewports, the vpFixed* and boundary field values will all be set.
+// (Re)Generates the path for a vector.  Switches off most of the Dirty flag markers.  For Viewports, the vpFixed*
+// and boundary field values will all be set.  There is no recursion into child vectors.
 //
-// NOTE: If parent vectors are marked at the time of calling this function, any relative values will be
-// computed from old information and likely to produce the wrong result.  Use gen_vector_tree() to avoid
+// NOTE: If parent vectors are marked as dirty at the time of calling this function, any relative values will be
+// computed from stale information and likely to produce the wrong result.  Use gen_vector_tree() to avoid
 // such problems.
 
 void gen_vector_path(extVector *Vector)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Vector->GeneratePath) and (Vector->Class->ClassID != ID_VECTORVIEWPORT) and (Vector->Class->ClassID != ID_VECTORGROUP)) return;
+   if ((!Vector->GeneratePath) and (Vector->classID() != CLASSID::VECTORVIEWPORT) and (Vector->classID() != CLASSID::VECTORGROUP)) return;
 
    pf::SwitchContext context(Vector);
 
@@ -63,12 +63,15 @@ void gen_vector_path(extVector *Vector)
 
    auto parent_view = get_parent_view(Vector);
 
-   if (Vector->Class->ClassID IS ID_VECTORGROUP) {
+   Vector->PathTimestamp++;
+
+   if (Vector->classID() IS CLASSID::VECTORGROUP) {
       Vector->Transform.reset();
       apply_parent_transforms(Vector, Vector->Transform);
+      Vector->Dirty &= ~RC::ALL; // Making out that the group has been refreshed is important
       return;
    }
-   else if (Vector->Class->ClassID IS ID_VECTORVIEWPORT) {
+   else if (Vector->classID() IS CLASSID::VECTORVIEWPORT) {
       auto view = (extVectorViewport *)Vector;
 
       DOUBLE parent_width, parent_height;
@@ -78,26 +81,24 @@ void gen_vector_path(extVector *Vector)
       // vpBX1/BY1/BX2/BY2 are fixed coordinate bounding box values from root position (0,0) and define the clip region imposed on all children of the viewport.
       // vpFixedX/Y are the fixed coordinate position of the viewport relative to root position (0,0)
 
-      if (!(view->vpDimensions & (DMF_X|DMF_X_OFFSET))) {
-         // Client failed to set a horizontal position
+      if (!dmf::hasAnyHorizontalPosition(view->vpDimensions)) { // Client failed to set a horizontal position
          view->vpTargetX = 0;
-         view->vpDimensions |= DMF_FIXED_X;
+         view->vpDimensions |= DMF::FIXED_X;
       }
-      else if ((view->vpDimensions & DMF_X_OFFSET) and (!(view->vpDimensions & (DMF_X|DMF_WIDTH)))) {
+      else if (dmf::hasAnyXOffset(view->vpDimensions) and (!dmf::has(view->vpDimensions, DMF::FIXED_X|DMF::SCALED_X|DMF::FIXED_WIDTH|DMF::SCALED_WIDTH))) {
          // Client set an offset but failed to combine it with a width or position value.
          view->vpTargetX = 0;
-         view->vpDimensions |= DMF_FIXED_X;
+         view->vpDimensions |= DMF::FIXED_X;
       }
 
-      if (!(view->vpDimensions & (DMF_Y|DMF_Y_OFFSET))) {
-         // Client failed to set a vertical position
+      if (!dmf::hasAnyVerticalPosition(view->vpDimensions)) { // Client failed to set a vertical position
          view->vpTargetY = 0;
-         view->vpDimensions |= DMF_FIXED_Y;
+         view->vpDimensions |= DMF::FIXED_Y;
       }
-      else if ((view->vpDimensions & DMF_Y_OFFSET) and (!(view->vpDimensions & (DMF_Y|DMF_HEIGHT)))) {
+      else if (dmf::hasAnyYOffset(view->vpDimensions) and (!dmf::has(view->vpDimensions, DMF::FIXED_Y|DMF::SCALED_Y|DMF::FIXED_HEIGHT|DMF::SCALED_HEIGHT))) {
          // Client set an offset but failed to combine it with a height or position value.
          view->vpTargetY = 0;
-         view->vpDimensions |= DMF_FIXED_Y;
+         view->vpDimensions |= DMF::FIXED_Y;
       }
 
       if (parent_view) {
@@ -109,57 +110,56 @@ void gen_vector_path(extVector *Vector)
 
          if ((!parent_width) or (!parent_height)) {
             // NB: It is perfectly legal, even if unlikely, that a viewport has a width/height of zero.
-            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, parent_view->vpDimensions);
+            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, LONG(parent_view->vpDimensions));
          }
 
          parent_id = parent_view->UID;
-
-         // The user's values for destination (x,y) need to be taken into account. <svg x="" y=""/>
-
-         if (view->vpDimensions & DMF_RELATIVE_X) view->FinalX = (parent_width * view->vpTargetX);
-         else view->FinalX = view->vpTargetX;
-
-         if (view->vpDimensions & DMF_RELATIVE_Y) view->FinalY = (parent_height * view->vpTargetY);
-         else view->FinalY = view->vpTargetY;
       }
       else {
          parent_width  = Vector->Scene->PageWidth;
          parent_height = Vector->Scene->PageHeight;
          parent_id     = Vector->Scene->UID;
-         // SVG requirement: top level viewport always located at (0,0)
-         view->FinalX = 0;
-         view->FinalY = 0;
       }
 
-      if (view->vpDimensions & DMF_RELATIVE_WIDTH) view->vpFixedWidth = parent_width * view->vpTargetWidth;
-      else if (view->vpDimensions & DMF_FIXED_WIDTH) view->vpFixedWidth = view->vpTargetWidth;
+      // The user's values for destination (x,y) need to be taken into account. <svg x="" y=""/>
+      // NB: In SVG it is a requirement that the top level viewport is always located at (0,0), but we
+      // leave that as something for the SVG parser to enforce.
+
+      if (dmf::hasScaledX(view->vpDimensions)) view->FinalX = (parent_width * view->vpTargetX);
+      else view->FinalX = view->vpTargetX;
+
+      if (dmf::hasScaledY(view->vpDimensions)) view->FinalY = (parent_height * view->vpTargetY);
+      else view->FinalY = view->vpTargetY;
+
+      if (dmf::hasScaledWidth(view->vpDimensions)) view->vpFixedWidth = parent_width * view->vpTargetWidth;
+      else if (dmf::hasWidth(view->vpDimensions)) view->vpFixedWidth = view->vpTargetWidth;
       else view->vpFixedWidth = parent_width;
 
-      if (view->vpDimensions & DMF_RELATIVE_HEIGHT) view->vpFixedHeight = parent_height * view->vpTargetHeight;
-      else if (view->vpDimensions & DMF_FIXED_HEIGHT) view->vpFixedHeight = view->vpTargetHeight;
+      if (dmf::hasScaledHeight(view->vpDimensions)) view->vpFixedHeight = parent_height * view->vpTargetHeight;
+      else if (dmf::hasHeight(view->vpDimensions)) view->vpFixedHeight = view->vpTargetHeight;
       else view->vpFixedHeight = parent_height;
 
-      if (view->vpDimensions & DMF_RELATIVE_X_OFFSET) {
-         if (view->vpDimensions & DMF_X) {
+      if (dmf::hasScaledYOffset(view->vpDimensions)) {
+         if (dmf::hasAnyX(view->vpDimensions)) {
             view->vpFixedWidth = parent_width - (parent_width * view->vpTargetXO) - view->FinalX;
          }
          else view->FinalX = parent_width - view->vpFixedWidth - (parent_width * view->vpTargetXO);
       }
-      else if (view->vpDimensions & DMF_FIXED_X_OFFSET) {
-         if (view->vpDimensions & DMF_X) {
+      else if (dmf::hasXOffset(view->vpDimensions)) {
+         if (dmf::hasAnyX(view->vpDimensions)) {
             view->vpFixedWidth = parent_width - view->vpTargetXO - view->FinalX;
          }
          else view->FinalX = parent_width - view->vpFixedWidth - view->vpTargetXO;
       }
 
-      if (view->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
-         if (view->vpDimensions & DMF_Y) {
+      if (dmf::hasScaledYOffset(view->vpDimensions)) {
+         if (dmf::hasAnyY(view->vpDimensions)) {
             view->vpFixedHeight = parent_height - (parent_height * view->vpTargetYO) - view->FinalY;
          }
          else view->FinalY = parent_height - view->vpFixedHeight - (parent_height * view->vpTargetYO);
       }
-      else if (view->vpDimensions & DMF_FIXED_Y_OFFSET) {
-         if (view->vpDimensions & DMF_Y) {
+      else if (dmf::hasYOffset(view->vpDimensions)) {
+         if (dmf::hasAnyY(view->vpDimensions)) {
             view->vpFixedHeight = parent_height - view->vpTargetYO - view->FinalY;
          }
          else view->FinalY = parent_height - view->vpFixedHeight - view->vpTargetYO;
@@ -172,7 +172,7 @@ void gen_vector_path(extVector *Vector)
 
       // The client can force the top-level viewport to be resized by using VPF::RESIZE and defining PageWidth/PageHeight
 
-      if ((!parent_view) and ((Vector->Scene->Flags & VPF::RESIZE) != VPF::NIL)) {
+      if ((Vector->Scene->Viewport IS (objVectorViewport *)Vector) and ((Vector->Scene->Flags & VPF::RESIZE) != VPF::NIL)) {
          log.trace("VPF::RESIZE enabled, using target size (%.2f %.2f)", parent_width, parent_height);
          target_width  = parent_width;
          target_height = parent_height;
@@ -220,27 +220,18 @@ void gen_vector_path(extVector *Vector)
 
       // Compute the clipping boundary of the viewport and store it in the BX/Y fields.
 
-      bounding_rect_single(Vector->BasePath, 0, &view->vpBX1, &view->vpBY1, &view->vpBX2, &view->vpBY2);
+      view->vpBounds = get_bounds(Vector->BasePath);
 
       // If the viewport uses a non-rectangular transform, a clipping mask will need to be generated based on its path.  The path is
       // pre-transformed and drawn in order to speed things up.
 
       if (((Vector->Transform.shx) or (Vector->Transform.shy)) and
           ((view->vpOverflowX != VOF::VISIBLE) or (view->vpOverflowY != VOF::VISIBLE))) {
-         log.trace("A clip path will be created for viewport #%d.", Vector->UID);
-         if (!view->vpClipMask) {
-            view->vpClipMask = extVectorClip::create::integral(fl::Owner(Vector->UID));
-         }
-         if (view->vpClipMask) {
-            delete view->vpClipMask->ClipPath;
-            view->vpClipMask->ClipPath = new (std::nothrow) agg::path_storage(Vector->BasePath);
-            acDraw(view->vpClipMask);
-         }
+         view->vpClip = true;
       }
-      else if (view->vpClipMask) { FreeResource(view->vpClipMask); view->vpClipMask = NULL; }
 
-      log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f",
-         Vector->UID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
+      log.trace("Clipping boundary for #%d is %g %g %g %g",
+         Vector->UID, view->vpBounds.left, view->vpBounds.top, view->vpBounds.right, view->vpBounds.bottom);
 
       Vector->Dirty &= ~(RC::TRANSFORM | RC::FINAL_PATH | RC::BASE_PATH);
 
@@ -248,10 +239,10 @@ void gen_vector_path(extVector *Vector)
          ((extVectorScene *)Vector->Scene)->PendingResizeMsgs.insert(view);
       }
    }
-   else if (Vector->Class->BaseClassID IS ID_VECTOR) {
+   else if (Vector->Class->BaseClassID IS CLASSID::VECTOR) {
       Vector->FinalX = 0;
       Vector->FinalY = 0;
-      if (((Vector->Dirty & RC::TRANSFORM) != RC::NIL) and (Vector->Class->ClassID != ID_VECTORTEXT)) {
+      if (((Vector->Dirty & RC::TRANSFORM) != RC::NIL) and (Vector->classID() != CLASSID::VECTORTEXT)) {
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);
 
@@ -265,10 +256,36 @@ void gen_vector_path(extVector *Vector)
       if ((Vector->Dirty & RC::BASE_PATH) != RC::NIL) {
          Vector->BasePath.free_all();
 
-         Vector->GeneratePath(Vector);
+         Vector->GeneratePath(Vector, Vector->BasePath);
 
-         if ((Vector->Morph) and (Vector->Morph->Class->BaseClassID IS ID_VECTOR)) {
-            if ((Vector->Class->ClassID IS ID_VECTORTEXT) and ((Vector->MorphFlags & VMF::STRETCH) IS VMF::NIL)) {
+         if (Vector->AppendPath) {
+            if (Vector->AppendPath->dirty()) gen_vector_path(Vector->AppendPath);
+
+            if (Vector->AppendPath->Matrices) {
+               agg::trans_affine trans;
+               trans.tx += Vector->AppendPath->FinalX;
+               trans.ty += Vector->AppendPath->FinalY;
+               for (auto t=Vector->AppendPath->Matrices; t; t=t->Next) {
+                  trans.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
+               }
+
+               agg::conv_transform<agg::path_storage, agg::trans_affine> tp(Vector->AppendPath->BasePath, trans);
+               if ((Vector->Flags & VF::JOIN_PATHS) != VF::NIL) Vector->BasePath.join_path(tp);
+               else Vector->BasePath.concat_path(tp);
+
+               auto bound_path = Vector->AppendPath->Bounds.as_path();
+               bound_path.transform(trans);
+               Vector->Bounds.expanding(get_bounds(bound_path));
+            }
+            else {
+               if ((Vector->Flags & VF::JOIN_PATHS) != VF::NIL) Vector->BasePath.join_path(Vector->AppendPath->BasePath);
+               else Vector->BasePath.concat_path(Vector->AppendPath->BasePath);
+               Vector->Bounds.expanding(Vector->AppendPath);
+            }
+         }
+
+         if ((Vector->Morph) and (Vector->Morph->Class->BaseClassID IS CLASSID::VECTOR)) {
+            if ((Vector->classID() IS CLASSID::VECTORTEXT) and ((Vector->MorphFlags & VMF::STRETCH) IS VMF::NIL)) {
                // Do nothing for VectorText because it applies morph and transition effects during base path generation.
             }
             else {
@@ -284,22 +301,23 @@ void gen_vector_path(extVector *Vector)
                      Vector->BasePath.translate(0, -by1 - ((by2 - by1) * 0.5));
                   }
                   else if ((Vector->MorphFlags & VMF::Y_MIN) != VMF::NIL) {
-                     if (Vector->Class->ClassID != ID_VECTORTEXT) {
+                     if (Vector->classID() != CLASSID::VECTORTEXT) {
                         bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
                         Vector->BasePath.translate(0, -by1 -(by2 - by1));
                      }
                   }
                   else { // VMF::Y_MAX
-                     if (Vector->Class->ClassID IS ID_VECTORTEXT) { // Only VectorText needs to be reset for yMax
+                     if (Vector->classID() IS CLASSID::VECTORTEXT) { // Only VectorText needs to be reset for yMax
                         bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
                         Vector->BasePath.translate(0, -by1);
                      }
                   }
 
                   agg::trans_single_path trans_path;
+                  morph->BasePath.approximation_scale(Vector->Transform.scale());
                   trans_path.add_path(morph->BasePath);
                   trans_path.preserve_x_scale(true); // The default is true.  Switching to false produces a lot of scrunching and extending
-                  if (morph->Class->ClassID IS ID_VECTORPATH) { // Enforcing a fixed length along the path effectively causes a resize.
+                  if (morph->classID() IS CLASSID::VECTORPATH) { // Enforcing a fixed length along the path effectively causes a resize.
                      if (((extVectorPath *)morph)->PathLength > 0) trans_path.base_length(((extVectorPath *)morph)->PathLength);
                   }
 
@@ -314,31 +332,29 @@ void gen_vector_path(extVector *Vector)
       // VectorText transform support is handled after base-path generation.  This is because vector text can be
       // aligned, for which the width and height of the base-path must be known.
 
-      if (((Vector->Dirty & RC::TRANSFORM) != RC::NIL) and (Vector->Class->ClassID IS ID_VECTORTEXT)) {
-         get_text_xy((extVectorText *)Vector); // Sets FinalX/Y
-
+      if (Vector->classID() IS CLASSID::VECTORTEXT) {
+         set_text_final_xy((extVectorText *)Vector);
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);
-
          Vector->Dirty = (Vector->Dirty & (~RC::TRANSFORM)) | RC::FINAL_PATH;
       }
 
       if (Vector->Matrices) {
          DOUBLE scale = Vector->Transform.scale();
-         Vector->BasePath.approximation_scale(scale);
          if (scale > 1.0) Vector->BasePath.angle_tolerance(0.2); // Set in radians.  The less this value is, the more accurate it will be at sharp turns.
          else Vector->BasePath.angle_tolerance(0);
       }
 
       //Vector->BasePath.cusp_limit(x); // Set in radians.  If more than 0, it restricts sharpness at the cusp (presumably for awkward angles).  Do not exceed 10-15 degrees
 
-      if ((Vector->FillColour.Alpha > 0) or (Vector->FillGradient) or (Vector->FillImage) or (Vector->FillPattern)) {
+      if ((Vector->Fill[0].Colour.Alpha > 0) or (Vector->Fill[0].Gradient) or (Vector->Fill[0].Image) or (Vector->Fill[0].Pattern)) {
          if (!Vector->FillRaster) {
             Vector->FillRaster = new (std::nothrow) agg::rasterizer_scanline_aa<>;
             if (!Vector->FillRaster) return;
          }
          else Vector->FillRaster->reset();
 
+         Vector->BasePath.approximation_scale(Vector->Transform.scale());
          agg::conv_transform<agg::path_storage, agg::trans_affine> fill_path(Vector->BasePath, Vector->Transform);
          Vector->FillRaster->add_path(fill_path);
       }
@@ -347,10 +363,7 @@ void gen_vector_path(extVector *Vector)
          Vector->FillRaster = NULL;
       }
 
-      if ((Vector->StrokeWidth > 0) and
-          ((Vector->StrokePattern) or (Vector->StrokeGradient) or (Vector->StrokeImage) or
-           (Vector->StrokeColour.Alpha * Vector->StrokeOpacity * Vector->Opacity > 0.001))) {
-
+      if (Vector->Stroked) {
          // Configure the curve algorithm so that it generates nicer looking curves when the vector is scaled up.  This
          // is not required if the vector scale is <= 1.0 (the angle_tolerance controls this).
 
@@ -361,12 +374,14 @@ void gen_vector_path(extVector *Vector)
          else Vector->StrokeRaster->reset();
 
          if (Vector->DashArray) {
+            Vector->BasePath.approximation_scale(Vector->Transform.scale());
             Vector->DashArray->path.attach(Vector->BasePath);
             configure_stroke(*Vector, Vector->DashArray->stroke);
             agg::conv_transform<agg::conv_stroke<agg::conv_dash<agg::path_storage>>, agg::trans_affine> stroke_path(Vector->DashArray->stroke, Vector->Transform);
             Vector->StrokeRaster->add_path(stroke_path);
          }
          else {
+            Vector->BasePath.approximation_scale(Vector->Transform.scale());
             agg::conv_stroke<agg::path_storage> stroked_path(Vector->BasePath);
             configure_stroke(*Vector, stroked_path);
             agg::conv_transform<agg::conv_stroke<agg::path_storage>, agg::trans_affine> stroke_path(stroked_path, Vector->Transform);
@@ -383,6 +398,9 @@ void gen_vector_path(extVector *Vector)
    else log.warning("Target vector is not a shape.");
 
    send_feedback(Vector, FM::PATH_CHANGED);
+
+   // Changes to the path could mean that the mouse cursor needs to be refreshed.
+   ((extVectorScene *)Vector->Scene)->RefreshCursor = true;
 }
 
 //********************************************************************************************************************
@@ -393,21 +411,19 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
 {
    pf::Log log(__FUNCTION__);
 
-   for (auto scan=Start; scan; scan=(extVector *)get_parent(scan)) {
-      if (scan->Class->BaseClassID != ID_VECTOR) continue;
+   for (auto node=Start; node; node=(extVector *)get_parent(node)) {
+      if (node->Class->BaseClassID != CLASSID::VECTOR) continue;
 
-      if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
+      if (node->classID() IS CLASSID::VECTORVIEWPORT) {
          // When a viewport is encountered we need to make special considerations as to its viewbox, which affects both
          // position and scaling of all children.  Alignment is another factor that is taken care of here.
 
-         auto view = (extVectorViewport *)scan;
+         auto view = (extVectorViewport *)node;
 
-         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", scan->UID, view->FinalX, view->FinalY);
+         DBG_TRANSFORM("Parent view #%d x/y: %.2f %.2f", node->UID, view->FinalX, view->FinalY);
 
-         if ((view->vpViewX) or (view->vpViewY)) {
-            AGGTransform.tx -= view->vpViewX;
-            AGGTransform.ty -= view->vpViewY;
-         }
+         AGGTransform.tx -= view->vpViewX;
+         AGGTransform.ty -= view->vpViewY;
 
          if ((view->vpXScale != 1.0) or (view->vpYScale != 1.0)) {
             if (std::isnan(view->vpXScale) or std::isnan(view->vpYScale)) {
@@ -419,7 +435,7 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
             }
          }
 
-         for (auto t=scan->Matrices; t; t=t->Next) {
+         for (auto t=node->Matrices; t; t=t->Next) {
             AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
          }
 
@@ -428,11 +444,11 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
          AGGTransform.ty += view->FinalY + view->vpAlignY;
       }
       else {
-         log.trace("Parent vector #%d x/y: %.2f %.2f", scan->UID, scan->FinalX, scan->FinalY);
+         log.trace("Parent vector #%d x/y: %.2f %.2f", node->UID, node->FinalX, node->FinalY);
 
-         AGGTransform.tx += scan->FinalX;
-         AGGTransform.ty += scan->FinalY;
-         for (auto t=scan->Matrices; t; t=t->Next) {
+         AGGTransform.tx += node->FinalX;
+         AGGTransform.ty += node->FinalY;
+         for (auto t=node->Matrices; t; t=t->Next) {
             AGGTransform.multiply(t->ScaleX, t->ShearY, t->ShearX, t->ScaleY, t->TranslateX, t->TranslateY);
          }
       }

@@ -12,7 +12,7 @@
     <idstring>ID_VECTORRECTANGLE</idstring>
     <category>Graphics</category>
     <include>modules/vectorrectangle.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>VectorRectangle extends the <class name="Vector">Vector</class> class with the ability to generate rectangular paths.</p></description>
     <source>
@@ -23,31 +23,35 @@
   <fields>
     <field>
       <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or scaled values.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
 <p>The following dimension flags are supported:</p>
 <types lookup="DMF">
-<type name="FIXED_HEIGHT">The <field>Height</field> value is a fixed coordinate.</type>
-<type name="FIXED_WIDTH">The <field>Width</field> value is a fixed coordinate.</type>
-<type name="FIXED_X">The <field>X</field> value is a fixed coordinate.</type>
-<type name="FIXED_Y">The <field>Y</field> value is a fixed coordinate.</type>
-<type name="RELATIVE_HEIGHT">The <field>Height</field> value is a relative coordinate.</type>
-<type name="RELATIVE_WIDTH">The <field>Width</field> value is a relative coordinate.</type>
-<type name="RELATIVE_X">The <field>X</field> value is a relative coordinate.</type>
-<type name="RELATIVE_Y">The <field>Y</field> value is a relative coordinate.</type>
+<type name="FIXED_HEIGHT">The <fl>Height</fl> value is a fixed coordinate.</type>
+<type name="FIXED_WIDTH">The <fl>Width</fl> value is a fixed coordinate.</type>
+<type name="FIXED_X">The <fl>X</fl> value is a fixed coordinate.</type>
+<type name="FIXED_Y">The <fl>Y</fl> value is a fixed coordinate.</type>
+<type name="FIXED_RADIUS_X">The <fl>RoundX</fl> value is a fixed coordinate.</type>
+<type name="FIXED_RADIUS_Y">The <fl>RoundY</fl> value is a fixed coordinate.</type>
+<type name="SCALED_HEIGHT">The <fl>Height</fl> value is a scaled coordinate.</type>
+<type name="SCALED_WIDTH">The <fl>Width</fl> value is a scaled coordinate.</type>
+<type name="SCALED_X">The <fl>X</fl> value is a scaled coordinate.</type>
+<type name="SCALED_Y">The <fl>Y</fl> value is a scaled coordinate.</type>
+<type name="SCALED_RADIUS_X">The <fl>RoundX</fl> value is a scaled coordinate.</type>
+<type name="SCALED_RADIUS_Y">The <fl>RoundY</fl> value is a scaled coordinate.</type>
 </types>
       </description>
     </field>
 
     <field>
       <name>Height</name>
-      <comment>The height of the rectangle.  Can be expressed as a fixed or relative coordinate.</comment>
+      <comment>The height of the rectangle.  Can be expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the rectangle is defined here as either a fixed or relative value.  Negative values are permitted (this will flip the rectangle on the vertical axis).</p>
+<p>The height of the rectangle is defined here as either a fixed or scaled value.  Negative values are permitted (this will flip the rectangle on the vertical axis).</p>
       </description>
     </field>
 
@@ -72,33 +76,52 @@
     </field>
 
     <field>
+      <name>Rounding</name>
+      <comment>Precisely controls rounded corner positioning.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE []</type>
+      <description>
+<p>Set the Rounding field if all four corners of the rectangle need to be precisely controlled.  Four X,Y sizing pairs must be provided in sequence, with the first describing the top-left corner and proceeding in clockwise fashion. Each pair of values is equivalent to a <fl>RoundX</fl>,<fl>RoundY</fl> definition for that corner only.</p>
+<p>By default, values will be treated as fixed pixel units.  They can be changed to scaled values by defining the <code>DMF::SCALED_RADIUS_X</code> and/or <code>DMF::SCALED_RADIUS_Y</code> flags in the <fl>Dimensions</fl> field.  The scale is calculated against the rectangle's diagonal.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Width</name>
-      <comment>The width of the rectangle.  Can be expressed as a fixed or relative coordinate.</comment>
+      <comment>The width of the rectangle.  Can be expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the rectangle is defined here as either a fixed or relative value.  Negative values are permitted (this will flip the rectangle on the horizontal axis).</p>
+<p>The width of the rectangle is defined here as either a fixed or scaled value.  Negative values are permitted (this will flip the rectangle on the horizontal axis).</p>
       </description>
     </field>
 
     <field>
       <name>X</name>
-      <comment>The left-side of the rectangle.  Can be expressed as a fixed or relative coordinate.</comment>
+      <comment>The left-side of the rectangle.  Can be expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
-      <description>
-<p>The position of the rectangle on the x-axis is defined here as a fixed or relative coordinate.</p>
-      </description>
+    </field>
+
+    <field>
+      <name>XOffset</name>
+      <comment>The right-side of the rectangle, expressed as a fixed or scaled offset value.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
     </field>
 
     <field>
       <name>Y</name>
-      <comment>The top of the rectangle.  Can be expressed as a fixed or relative coordinate.</comment>
+      <comment>The top of the rectangle.  Can be expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
-      <description>
-<p>The position of the rectangle on the y-axis is defined here as a fixed or relative coordinate.</p>
-      </description>
+    </field>
+
+    <field>
+      <name>YOffset</name>
+      <comment>The bottom of the rectangle, expressed as a fixed or scaled offset value.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
     </field>
 
   </fields>

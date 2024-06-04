@@ -5,7 +5,6 @@
 set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies to work correctly
    "${CMAKE_CURRENT_SOURCE_DIR}/core.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_objects.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_base64.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_events.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_fields_read.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_fields_write.cpp"
@@ -15,8 +14,6 @@ set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies 
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_log.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_messages.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_memory.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_strings.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_unicode.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/fs_folders.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/fs_identify.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/fs_resolution.cpp"
@@ -120,7 +117,6 @@ target_sources (core PRIVATE
    "lib_locking.cpp"
    "lib_memory.cpp"
    "lib_messages.cpp"
-   "lib_strings.cpp"
    "classes/class_config.cpp"
    "classes/class_file.cpp"
    "classes/class_metaclass.cpp"
@@ -138,11 +134,7 @@ target_include_directories (core PRIVATE
 target_link_libraries (core PRIVATE zlib)
 
 if (PARASOL_STATIC)
-   target_link_libraries (core PRIVATE audio display fluid font http json mp3 network picture jpeg scintilla svg vector xml)
-
-   if (X11_Xrandr_FOUND)
-      target_link_libraries (core PRIVATE xrandr)
-   endif ()
+   target_link_libraries (core PRIVATE ${LIB_LIST})
 endif ()
 
 if (WIN32)

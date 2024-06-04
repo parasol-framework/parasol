@@ -3,12 +3,11 @@
 set (MOD svg)
 set (INC_MOD_SVG TRUE PARENT_SCOPE)
 
-idl_c ("${MOD}.fdl" NAME ${MOD}_defs
+idl_gen ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
-   ARGS "--files={" "class_rsvg.cpp" "class_svg.cpp" "}")
+   FILES "class_rsvg.cpp" "class_svg.cpp")
 
-idl_def ("${MOD}.fdl" NAME ${MOD}_idl
-   OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}_def.c")
+idl_compile ("${MOD}.fdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}_def.c")
 
 add_library (${MOD})
 
@@ -30,6 +29,9 @@ target_sources (${MOD} PRIVATE
 
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/katana-parser/src")
+
+target_link_libraries (${MOD} PUBLIC linear_rgb)
+target_link_libraries (${MOD} PUBLIC base64)
 
 target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
 

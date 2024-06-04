@@ -71,6 +71,7 @@
 
 #include <math.h>
 #include "agg_basics.h"
+#include <sstream>
 
 namespace agg
 {
@@ -81,6 +82,12 @@ namespace agg
       // shy,shx = shear / rotate
       // tx, ty = translate
       double sx, shy, shx, sy, tx, ty;
+
+      std::string to_string() const {
+         std::ostringstream buf;
+         buf << sx << ' ' << shy << ' ' << shx << ' ' << sy << ' ' << tx << ' ' << ty;
+         return buf.str();
+      }
 
       // Identity matrix
       trans_affine() : sx(1.0), shy(0.0), shx(0.0), sy(1.0), tx(0.0), ty(0.0) {}
@@ -107,13 +114,11 @@ namespace agg
           parl_to_parl(src, dst);
       }
 
-      inline bool is_normal() {
+      inline bool is_normal() { // Return true if the transform is normalised (does nothing if applied)
          return sx == 1.0 and shy == 0 and shx == 0 and sy == 1.0 and tx == 0.0 and ty == 0.0;
       }
 
-      // Returns true if the transform configuration is limited to translating.
-
-      inline bool is_simple() {
+      inline bool is_simple() { // Returns true if the transform configuration is limited to translating.
          return sx == 1.0 and shy == 0 and shx == 0 and sy == 1.0;
       }
 
@@ -137,13 +142,14 @@ namespace agg
       const trans_affine& rect_to_parl(double x1, double y1, double x2, double y2, const double* parl);
       const trans_affine& parl_to_rect(const double* parl, double x1, double y1, double x2, double y2);
 
-      //------------------------------------------ Operations
       // Reset - load an identity matrix
       const trans_affine& reset();
 
       // Direct transformations operations
       const trans_affine& translate(double x, double y);
+      const trans_affine& translate(const point_d);
       const trans_affine& rotate(double a);
+      const trans_affine& scale(const point_d);
       const trans_affine& scale(double s);
       const trans_affine& scale(double x, double y);
       const trans_affine& scaleX(double x);
@@ -194,29 +200,19 @@ namespace agg
           return *this;
       }
 
-        //------------------------------------------- Operators
-
       // Multiply the matrix by another one
-      const trans_affine& operator *= (const trans_affine& m) {
-          return multiply(m);
-      }
+      const trans_affine& operator *= (const trans_affine& m) { return multiply(m); }
 
       // Multiply the matrix by inverse of another one
-      const trans_affine& operator /= (const trans_affine& m) {
-          return multiply_inv(m);
-      }
+      const trans_affine& operator /= (const trans_affine& m) { return multiply_inv(m); }
 
       // Multiply the matrix by another one and return the result in a separate matrix.
 
-      trans_affine operator * (const trans_affine& m) {
-          return trans_affine(*this).multiply(m);
-      }
+      trans_affine operator * (const trans_affine& m) { return trans_affine(*this).multiply(m); }
 
       // Multiply the matrix by inverse of another one and return the result in a seperate matrix.
 
-      trans_affine operator / (const trans_affine& m) {
-          return trans_affine(*this).multiply_inv(m);
-      }
+      trans_affine operator / (const trans_affine& m) { return trans_affine(*this).multiply_inv(m); }
 
       // Calculate and return the inverse matrix
       trans_affine operator ~ () const {
@@ -225,18 +221,15 @@ namespace agg
       }
 
       // Equal operator with default epsilon
-      bool operator == (const trans_affine& m) const {
-          return is_equal(m, affine_epsilon);
-      }
+      bool operator == (const trans_affine& m) const { return is_equal(m, affine_epsilon); }
 
       // Not Equal operator with default epsilon
-      bool operator != (const trans_affine& m) const {
-          return !is_equal(m, affine_epsilon);
-      }
+      bool operator != (const trans_affine& m) const { return !is_equal(m, affine_epsilon); }
 
-      //-------------------------------------------- Transformations
       // Direct transformation of x and y
       void transform(double* x, double* y) const;
+
+      point_d transform(const point_d &) const;
 
       // Direct transformation of x and y, 2x2 matrix only, no translation
       void transform_2x2(double* x, double* y) const;
@@ -246,16 +239,11 @@ namespace agg
       // invert() the matrix and then use direct transformations.
       void inverse_transform(double* x, double* y) const;
 
-      //-------------------------------------------- Auxiliary
       // Calculate the determinant of matrix
-      double determinant() const {
-          return sx * sy - shy * shx;
-      }
+      double determinant() const { return sx * sy - shy * shx; }
 
       // Calculate the reciprocal of the determinant
-      double determinant_reciprocal() const {
-          return 1.0 / (sx * sy - shy * shx);
-      }
+      double determinant_reciprocal() const { return 1.0 / (sx * sy - shy * shx); }
 
       // Get the average scale (by X and Y).
       // Basically used to calculate the approximation_scale when decompositioning curves into line segments.
@@ -277,6 +265,10 @@ namespace agg
       void scaling(double* x, double* y) const;
       void scaling_abs(double* x, double* y) const;
    };
+   
+   inline point_d trans_affine::transform(const point_d &Point) const {
+      return { Point.x * sx  + Point.y * shx + tx, Point.x * shy + Point.y * sy  + ty };
+   }
 
    inline void trans_affine::transform(double* x, double* y) const {
       double tmp = *x;
@@ -309,6 +301,12 @@ namespace agg
       ty += y;
       return *this;
    }
+   
+   inline const trans_affine& trans_affine::translate(const point_d pt) {
+      tx += pt.x;
+      ty += pt.y;
+      return *this;
+   }
 
    inline const trans_affine& trans_affine::rotate(double a) {
       double ca = cos(a);
@@ -339,26 +337,27 @@ namespace agg
        return *this;
    }
 
+   inline const trans_affine& trans_affine::scale(const point_d pt) {
+      return scale(pt.x, pt.y);
+   }
+
    inline const trans_affine& trans_affine::scale(double x, double y) {
-       double mm0 = x; // Possible hint for the optimizer
-       double mm3 = y;
-       sx  *= mm0;
-       shx *= mm0;
-       tx  *= mm0;
-       shy *= mm3;
-       sy  *= mm3;
-       ty  *= mm3;
+       sx  *= x;
+       shx *= x;
+       tx  *= x;
+       shy *= y;
+       sy  *= y;
+       ty  *= y;
        return *this;
    }
 
    inline const trans_affine& trans_affine::scale(double s) {
-       double m = s; // Possible hint for the optimizer
-       sx  *= m;
-       shx *= m;
-       tx  *= m;
-       shy *= m;
-       sy  *= m;
-       ty  *= m;
+       sx  *= s;
+       shx *= s;
+       tx  *= s;
+       shy *= s;
+       sy  *= s;
+       ty  *= s;
        return *this;
    }
 

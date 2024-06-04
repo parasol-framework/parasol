@@ -13,8 +13,6 @@
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
 
-   loadFile(glPath .. 'idl-doc.fluid')
-
 ----------------------------------------------------------------------------------------------------------------------
 
 glActionStubs = {
@@ -26,195 +24,189 @@ glActionStubs = {
    NewOwner      = "",
 
    -- Actions without parameters
-   Activate     = "   inline ERROR activate() { return Action(AC_Activate, this, NULL); }",
-   Clear        = "   inline ERROR clear() { return Action(AC_Clear, this, NULL); }",
-   Deactivate   = "   inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }",
-   Disable      = "   inline ERROR disable() { return Action(AC_Disable, this, NULL); }",
-   Enable       = "   inline ERROR enable() { return Action(AC_Enable, this, NULL); }",
-   Flush        = "   inline ERROR flush() { return Action(AC_Flush, this, NULL); }",
-   Focus        = "   inline ERROR focus() { return Action(AC_Focus, this, NULL); }",
-   Hide         = "   inline ERROR hide() { return Action(AC_Hide, this, NULL); }",
-   Init         = "   inline ERROR init() { return InitObject(this); }",
-   Lock         = "   inline ERROR lock() { return Action(AC_Lock, this, NULL); }",
-   LostFocus    = "   inline ERROR lostFocus() { return Action(AC_LostFocus, this, NULL); }",
-   MoveToBack   = "   inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }",
-   MoveToFront  = "   inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }",
-   Next         = "   inline ERROR next() { return Action(AC_Next, this, NULL); }",
-   Prev         = "   inline ERROR prev() { return Action(AC_Prev, this, NULL); }",
-   Query        = "   inline ERROR query() { return Action(AC_Query, this, NULL); }",
-   Refresh      = "   inline ERROR refresh() { return Action(AC_Refresh, this, NULL); }",
-   Reset        = "   inline ERROR reset() { return Action(AC_Reset, this, NULL); }",
-   SaveSettings = "   inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }",
-   Show         = "   inline ERROR show() { return Action(AC_Show, this, NULL); }",
-   Sort         = "   inline ERROR sort() { return Action(AC_Sort, this, NULL); }",
-   Unlock       = "   inline ERROR unlock() { return Action(AC_Unlock, this, NULL); }",
+   Activate     = "   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }",
+   Clear        = "   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }",
+   Deactivate   = "   inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }",
+   Disable      = "   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }",
+   Enable       = "   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }",
+   Flush        = "   inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }",
+   Focus        = "   inline ERR focus() noexcept { return Action(AC_Focus, this, NULL); }",
+   Hide         = "   inline ERR hide() noexcept { return Action(AC_Hide, this, NULL); }",
+   Init         = "   inline ERR init() noexcept { return InitObject(this); }",
+   Lock         = "   inline ERR lock() noexcept { return Action(AC_Lock, this, NULL); }",
+   LostFocus    = "   inline ERR lostFocus() noexcept { return Action(AC_LostFocus, this, NULL); }",
+   MoveToBack   = "   inline ERR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }",
+   MoveToFront  = "   inline ERR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }",
+   Next         = "   inline ERR next() noexcept { return Action(AC_Next, this, NULL); }",
+   Prev         = "   inline ERR prev() noexcept { return Action(AC_Prev, this, NULL); }",
+   Query        = "   inline ERR query() noexcept { return Action(AC_Query, this, NULL); }",
+   Refresh      = "   inline ERR refresh() noexcept { return Action(AC_Refresh, this, NULL); }",
+   Reset        = "   inline ERR reset() noexcept { return Action(AC_Reset, this, NULL); }",
+   SaveSettings = "   inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }",
+   Show         = "   inline ERR show() noexcept { return Action(AC_Show, this, NULL); }",
+   Unlock       = "   inline ERR unlock() noexcept { return Action(AC_Unlock, this, NULL); }",
 
    CopyData = [[
-   inline ERROR copyData(OBJECTPTR Dest) {
+   inline ERR copyData(OBJECTPTR Dest) noexcept {
       struct acCopyData args = { .Dest = Dest };
       return Action(AC_CopyData, this, &args);
    }]],
    DragDrop = [[
-   inline ERROR dragDrop(OBJECTPTR Source, LONG Item, CSTRING Datatype) {
+   inline ERR dragDrop(OBJECTPTR Source, LONG Item, CSTRING Datatype) noexcept {
       struct acDragDrop args = { .Source = Source, .Item = Item, .Datatype = Datatype };
       return Action(AC_DragDrop, this, &args);
    }]],
    Clipboard = [[
-   inline ERROR clipboard(CLIPMODE Mode) {
+   inline ERR clipboard(CLIPMODE Mode) noexcept {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }]],
    Draw = [[
-   inline ERROR draw() { return Action(AC_Draw, this, NULL); }
-   inline ERROR drawArea(LONG X, LONG Y, LONG Width, LONG Height) {
+   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC_Draw, this, &args);
    }]],
    DataFeed = [[
-   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }]],
    Move = [[
-   inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) {
+   inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
       struct acMove args = { X, Y, Z };
       return Action(AC_Move, this, &args);
    }]],
    Read = [[
-   template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
+   template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      ERROR error;
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (!(error = Action(AC_Read, this, &read))) *Result = static_cast<U>(read.Result);
-      else *Result = 0;
-      return error;
+      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+         *Result = static_cast<U>(read.Result);
+         return ERR::Okay;
+      }
+      else { *Result = 0; return error; }
    }
-   template <class T> ERROR read(APTR Buffer, T Size) {
+   template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }]],
    Redo = [[
-   inline ERROR redo(LONG Steps) {
+   inline ERR redo(LONG Steps) noexcept {
       struct acRedo args = { Steps };
       return Action(AC_Redo, this, &args);
    }]],
    Redimension = [[
-   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC_Redimension, this, &args);
    }
-   inline ERROR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
       return Action(AC_Redimension, this, &args);
    }]],
    Rename = [[
-   inline ERROR rename(CSTRING Name) {
+   inline ERR rename(CSTRING Name) noexcept {
       struct acRename args = { Name };
       return Action(AC_Rename, this, &args);
    }]],
    Resize = [[
-   inline ERROR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) {
+   inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }]],
-   Scroll = [[
-   inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
-      struct acScroll args = { X, Y, Z };
-      return Action(AC_Scroll, this, &args);
-   }]],
-   ScrollToPoint = [[
-   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
-      struct acScrollToPoint args = { X, Y, Z, Flags };
-      return Action(AC_ScrollToPoint, this, &args);
-   }]],
    Undo = [[
-   inline ERROR undo(LONG Steps) {
+   inline ERR undo(LONG Steps) noexcept {
       struct acUndo args = { Steps };
       return Action(AC_Undo, this, &args);
    }]],
-   GetVar = [[
-   inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
-      struct acGetVar args = { FieldName, Buffer, Size };
-      ERROR error = Action(AC_GetVar, this, &args);
-      if ((error) and (Buffer)) Buffer[0] = 0;
+   GetKey = [[
+   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+      struct acGetKey args = { Key, Value, Size };
+      auto error = Action(AC_GetKey, this, &args);
+      if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }]],
    MoveToPoint = [[
-   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
+   inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC_MoveToPoint, this, &moveto);
    }]],
    SaveImage = [[
-   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }]],
    SaveToObject = [[
-   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+   inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }]],
    Seek = [[
-   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
+   inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
+   inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
+   inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
+   inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
    ]],
-   SetVars = [[
-   inline ERROR setVars(CSTRING tags, ...) {
-      struct acSetVar args;
+   SetKeys = [[
+   inline ERR setKeys(CSTRING tags, ...) noexcept {
+      struct acSetKey args;
       va_list list;
       va_start(list, tags);
       while ((args.Field = va_arg(list, STRING)) != TAGEND) {
          args.Value = va_arg(list, STRING);
-         if (Action(AC_SetVar, this, &args) != ERR_Okay) {
+         if (Action(AC_SetKey, this, &args) != ERR::Okay) {
             va_end(list);
-            return ERR_Failed;
+            return ERR::Failed;
          }
       }
       va_end(list);
-      return ERR_Okay;
+      return ERR::Okay;
    }]],
    Write = [[
-   inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
-      ERROR error;
+   inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (!(error = Action(AC_Write, this, &write))) {
+      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
+         return ERR::Okay;
       }
-      else if (Result) *Result = 0;
-      return error;
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
    }
-   inline ERROR write(std::string Buffer, LONG *Result = NULL) {
-      ERROR error;
+   inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (!(error = Action(AC_Write, this, &write))) {
+      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
+         return ERR::Okay;
       }
-      else if (Result) *Result = 0;
-      return error;
+      else {
+         if (Result) *Result = 0;
+         return error;
+      }
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) {
+   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (!Action(AC_Write, this, &write)) return write.Result;
+      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }]],
    SelectArea = [[
-   inline ERROR acSelectArea(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
+   inline ERR acSelectArea(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acSelectArea area = { X, Y, Width, Height };
       return Action(AC_SelectArea, this, &area);
    }]],
-   SetVar = [[
-   inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
-      struct acSetVar args = { FieldName, Value };
-      return Action(AC_SetVar, this, &args);
+   SetKey = [[
+   inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
+      struct acSetKey args = { FieldName, Value };
+      return Action(AC_SetKey, this, &args);
    }]],
 }
 
@@ -223,6 +215,7 @@ glActionStubs = {
 glHeader = { }
 glOutput = { }
 glConstants = { }
+glConstantOptions = { }
 glActiveRefs = { } -- For cType()
 
 function output(String)
@@ -452,7 +445,7 @@ function flags(Prefix, Options, ...)
             if (type(ref) != 'number') then
                key, comment = ref:match('^(.-):%s+(.+)$')
                if (key != nil) then
-                  if (mSys.StrDatatype(key) != STT_STRING) then
+                  if (key:find('^0x%d+$')) or (key:find('^[+-]?%d+$')) then
                      key = tonumber(key)
                   end
                end
@@ -471,7 +464,7 @@ function flags(Prefix, Options, ...)
                      error("Failed to lookup flag reference '" .. v .. "' for " .. Prefix .. "_" .. flag_name)
                   end
                end
-               if (comment == nil) then comment = 'Synonym for ' .. key:gsub('|',' | ') end
+               if (comment == nil) then comment = 'Synonym for `' .. key:gsub('|',' | ') .. '`' end
             end
             outputFlagDef(Options, Prefix, flag_name, val)
             lookup[flag_name] = { name=flag_name, value=val, comment=comment }
@@ -496,7 +489,9 @@ function flags(Prefix, Options, ...)
 
    table.insert(out, '')
 
-   if (glRestrict == nil) then
+   if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+     -- Do nothing, module restriction imposed.
+   elseif (glRestrict == nil) then
       for k,v in pairs(out) do table.insert(glConstants, v) end
    end
 
@@ -526,9 +521,23 @@ function hash(Prefix, Format, ...)
    for _, v in ipairs({...}) do
       local hash_name = v:gsub('[^%w]', '_')
       -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-      local hash_id = string.format('%08x', mSys.StrHash(v)):sub(-8)
+      local hash_id = string.format('%08x', v:hash()):sub(-8)
       output('#define ' .. Prefix .. '_' .. hash_name .. ' ' .. string.format(Format, hash_id))
    end
+   output()
+end
+
+function typedHash(Prefix, Type, ...)
+   Type = cType({ type=Type }, Prefix)
+   output('enum class ' .. Prefix .. ' : ' .. Type.type .. ' {')
+   output('   NIL = 0,')
+   for _, v in ipairs({...}) do
+      local hash_name = v:gsub('[^%w]', '_')
+      -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
+      local hash_id = string.format('%08x', v:hash()):sub(-8)
+      output('   ' .. hash_name .. ' = ' .. string.format("0x%sUL", hash_id) .. ',')
+   end
+   output('};')
    output()
 end
 
@@ -602,7 +611,9 @@ function const(Prefix, Options, ...)
 
    table.insert(out, '')
 
-   if (glRestrict == nil) then //.
+   if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+     -- Do nothing, module restriction imposed.
+   elseif (glRestrict == nil) then //.
       for k,v in pairs(out) do table.insert(glConstants, v) end
    end
 
@@ -649,13 +660,31 @@ function enum(Prefix, Options, ...)
             else
                table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. inc)
             end
+
             table.insert(list, { name=name, value=inc, comment=comment, synonym=synonym })
             synonym = true
          end
+
+         inc = inc + 1
+      elseif (type(va) == 'table') then -- The client provided a table of fixed values
+         for name, client_val in pairs(va) do
+            if (type(client_val) != 'number') then
+               error('Client-provided enum values must be numeric')
+            end
+
+            if (Options.type) then
+               table.insert(out, '   ' .. name .. ' = ' .. client_val .. ',')
+            elseif (Options.bits == 64) then
+               table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. client_val .. 'LL')
+            else
+               table.insert(out, '#define ' .. Prefix .. '_' .. name .. ' ' .. client_val)
+            end
+
+            table.insert(list, { name=name, value=client_val })
+         end
       else
-         error('Invalid flag type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
+         error('Invalid enum type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
       end
-      inc = inc + 1
    end
 
    if (Options.type) then
@@ -664,7 +693,9 @@ function enum(Prefix, Options, ...)
 
    table.insert(out, '')
 
-   if (glRestrict == nil) then
+   if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+     -- Do nothing, module restriction imposed.
+   elseif (glRestrict == nil) then
       for k,v in pairs(out) do table.insert(glConstants, v) end
    end
 
@@ -695,6 +726,9 @@ function platform(Platform, Function)
    elseif (Platform:lower() == 'x11') then
       define = '__xwindows__'
       Function()
+   --elseif (Platform:lower() == 'osx') then
+   --   define = '__xwindows__'
+   --   Function()
    else
       error('Unrecognised platform "' .. Platform .. '"')
    end
@@ -783,7 +817,8 @@ function struct(Name, Options, Def, Append)
          end
 
          if nz(f.comment) then
-            table.insert(out, string.format('%-' .. max_len .. 's // %s', left, f.comment))
+            local clean_comment = f.comment:gsub('[`!@#]', '')
+            table.insert(out, string.format('%-' .. max_len .. 's // %s', left, clean_comment))
          else
             print('WARN: ' .. full_name .. '.' .. f.name .. ' requires a comment.')
             table.insert(out, left)
@@ -803,7 +838,9 @@ function struct(Name, Options, Def, Append)
          table.insert(out, '')
       end
 
-      if (glRestrict == nil) then
+      if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+        -- Do nothing, module restriction imposed.
+      elseif (glRestrict == nil) then
          for k,v in pairs(out) do table.insert(glOutput, v) end
       end
 
@@ -850,7 +887,7 @@ end
 -- FDL Function
 -- Refer to outputClassHeader() for output of the class structure.
 
-function class(Name, Options, Blueprint, Private, Custom)
+function class(Name, Options, Spec, Private, Custom)
    if (glFeedback == 'verbose') then print('Processing class ' .. nz(Name,'NIL')) end
 
    Options = checkOptions(Options)
@@ -877,24 +914,29 @@ function class(Name, Options, Blueprint, Private, Custom)
       -- compiled, so the meta information may only be used for phase 2 output (i.e. documentation).
 
       if (mSys.AnalysePath('~modules:' .. glModule.name) == ERR_Okay) then
-         class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
+         class.meta = mSys.FindClass(Name:hash(), 0)
       else
          if (glFeedback == 'verbose') then
             print('Module ' .. glModule.name .. ' not compiled, class documentation will not be produced.')
          end
       end
    else
-      class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
+      class.meta = mSys.FindClass(Name:hash(), 0)
    end
 
    -- Process methods and fields defined in the source code (if available)
 
-   local cdef = processClassFields(class, Blueprint)
+   local cdef = processClassFields(class, Spec)
 
    if nz(Options.references) then
       for _, v in pairs(Options.references) do
          if nz(glCustomTypes[v]) then
             cdef = cdef .. outputLookup(class.name .. v, glCustomTypes[v].list)
+            glCustomTypes[v].restrict = nil
+         elseif nz(glStructures[v]) then
+            class.references['STRUCT:' .. v] = true
+            -- A manual reference to a structure will forcibly turn off any restriction
+            glStructures[v].restrict = nil
          else
             print('Reference to lookup ' .. v .. ' not found.')
          end
@@ -915,12 +957,12 @@ function class(Name, Options, Blueprint, Private, Custom)
          local content = file.readAll(glFDLFolder .. path)
          content = content:gsub('\r\n', '\n')
 
-         -- Look for C/C++ action declarations, in the format: ERROR CLASS_Action(...).  This will create a series
+         -- Look for C/C++ action declarations, in the format: ERR CLASS_Action(...).  This will create a series
          -- of dummy action entries that can be overwritten with -ACTION- sections.
 
          local patterns = {
-            'ERROR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)',
-            'ERROR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
+            'ERR%s-' .. Name:upper() .. '_(%a-)%(obj.-%)',
+            'ERR%s-' .. Name:upper() .. '_(%a-)%(ext.-%)'
          }
          for _, pattern in pairs(patterns) do
             for actionName in string.gmatch(content, pattern) do
@@ -970,11 +1012,7 @@ function class(Name, Options, Blueprint, Private, Custom)
       end
    end
 
-   -- Export method definitions according to this template:
-   --
-   -- #define MT_[Prefix][Method] [ID]
-   -- struct [Prefix][Method] { [Args] }
-   -- INLINE ERROR [Prefix][Method]([Args]) { }
+   -- Export method definitions for a class
 
    if (class.methods != nil) then
       local pfx  = class.methodPrefix
@@ -1020,18 +1058,23 @@ function class(Name, Options, Blueprint, Private, Custom)
             return name
          end
 
-         if (method.params != nil) and (#method.params > 0) then
-            local def     = '' -- struct definition
-            local values  = '' -- struct values
-            local call    = 'APTR Ob' -- Inline function parameters
-            local results = false
-            for _, param in ipairs(method.params) do
-               def = def .. param.basicType .. ' ' .. pName(param) .. '; '
+         local struct_params = '' -- struct parameter types & names
+         local values = '' -- Parameter values
+         local results = false
+         local params = ''
+         for _, param in ipairs(method.params) do
+            struct_params = struct_params .. param.basicType .. ' ' .. pName(param) .. '; '
 
-               if nz(call) then call = call .. ', ' end
-               call = call .. param.type .. ' ' .. pName(param)
+            if nz(params) then params = params .. ', ' end
 
+            if (param.type == 'FUNCTION *') then
+               params = params .. 'FUNCTION ' .. pName(param)
                if nz(values) then values = values .. ', ' end
+               values = values .. '&' .. pName(param)
+            else
+               params = params .. param.type .. ' ' .. pName(param)
+               if nz(values) then values = values .. ', ' end
+
                if (param.resultValue) then
                   values  = values .. '(' .. param.basicType .. ')0'
                   results = true
@@ -1039,40 +1082,48 @@ function class(Name, Options, Blueprint, Private, Custom)
                   values = values .. pName(param)
                end
             end
-
-            class.methods[k].struct = 'struct ' .. lpfx .. method.name .. ' { ' .. def .. ' };'
-
-            if (method.inline != false) then
-               local inline = 'INLINE ERROR ' .. lpfx .. method.name .. '(' .. call .. ') {\n'
-               inline = inline .. '   struct ' .. lpfx .. method.name .. ' args = { ' .. values .. ' };\n'
-               if (results) then
-                  inline = inline .. '   ERROR error = Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, &args);\n'
-                  for _, p in pairs(method.params) do
-                     if (p.resultValue) then
-                        inline = inline .. '   if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
-                     end
-                  end
-                  inline = inline .. '   return(error);\n'
-               else
-                  inline = inline .. '   return(Action(MT_' .. pfx .. method.name .. ', (OBJECTPTR)Ob, &args));\n'
-               end
-               inline = inline .. '}\n'
-               class.methods[k].inline = inline
-            else
-               class.methods[k].inline = nil
-            end
-         else
-            class.methods[k].inline = '#define ' .. lpfx .. method.name .. '(obj) Action(MT_' .. pfx .. method.name .. ',(obj),0)\n'
          end
+
+         local action_support = 'static const ACTIONID id = -' .. method.id .. '; ERR call(OBJECTPTR Object) { return Action(id, Object, this); }'
+         if (method.params != nil) and (#method.params > 0) then
+            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. struct_params .. action_support .. ' };'
+         else
+            class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. action_support .. ' };'
+         end
+
+         local name = method.name:decap()
+         if name == 'delete' then name = 'del' end -- C++ keyword check
+
+         local inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
+         local args = 'NULL'
+
+         if (method.params != nil) and (#method.params > 0) then
+            inline = inline .. '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. values .. ' };\n'
+            args = '&args'
+         end
+
+         if (results) then
+            inline = inline .. '      ERR error = Action(-' .. method.id .. ', this, ' .. args .. ');\n'
+            for _, p in pairs(method.params) do
+               if (p.resultValue) then
+                  inline = inline .. '      if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
+               end
+            end
+            inline = inline .. '      return(error);\n'
+         else
+            inline = inline .. '      return(Action(-' .. method.id .. ', this, ' .. args .. '));\n'
+         end
+
+         inline = inline .. '   }'
+         class.methods[k].nestedInline = inline
       end
 
       output('// ' .. Name:cap() .. ' methods')
       output()
 
-      for _, method in ipairs(class.methods) do
-         output('#define MT_' .. pfx .. method.name .. ' -' .. method.id)
+      if nz(lpfx) then
+         output('namespace ' .. lpfx .. ' {')
       end
-      output()
 
       for _, method in ipairs(class.methods) do
          if nz(method.struct) then
@@ -1081,11 +1132,10 @@ function class(Name, Options, Blueprint, Private, Custom)
       end
       output()
 
-      for _, method in ipairs(class.methods) do
-         if nz(method.inline) then
-            output(method.inline)
-         end
+      if nz(lpfx) then
+         output('} // namespace')
       end
+
       output()
    end
 
@@ -1118,7 +1168,7 @@ function class(Name, Options, Blueprint, Private, Custom)
             if not nz(m.params) then
                mdef = mdef .. '   { -' .. m.id .. ', (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", 0, 0 },\n'
             else
-               structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. m.name .. ')'
+               structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. '::' .. m.name .. ')'
                mdef = mdef .. '   { -' .. m.id .. ', (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", ma' .. m.name .. ', ' .. structSize .. ' },\n'
             end
          end
@@ -1214,10 +1264,6 @@ function processField(class, extract)
 
    local description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
 
-   if (status != nil) and (status:lower() == 'variable') then
-      return -- Variable fields are ignored.
-   end
-
    if not name then
       print('Name not defined for -FIELD- definition.')
       return
@@ -1240,7 +1286,7 @@ function processField(class, extract)
       end
       f.description = description
    elseif (class.meta != nil) then
-      print("Field '" .. class.name .. "." .. nz(name,'NIL') .. "' is not defined in the FDL or compiled class blueprint.")
+      print("Field '" .. class.name .. "." .. nz(name,'NIL') .. "' is not defined in the FDL or compiled class spec.")
    end
 end
 
@@ -1366,14 +1412,14 @@ function outputLookup(Name, List)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Process the formal field definitions in a class blueprint.
+-- Process the formal field definitions in a class spec.
 
-function processClassFields(class, Blueprint)
+function processClassFields(class, ClientSpec)
    local cdef = ''
 
    -- Process fields defined in the FDL
 
-   class.fields = extractFields(Blueprint, class.name)
+   class.fields = extractFields(ClientSpec, class.name)
 
    -- Add compiled fields into the field definitions.  NB: Technically this relies on a circular reference, so such
    -- information can only be taken advantage of for phase 2 processing (class documentation).
@@ -1381,10 +1427,11 @@ function processClassFields(class, Blueprint)
    if (class.meta != nil) then
       local newFields = {}
 
+      -- NB: Some classes don't output any fields (which is permissable)
+
       local metaFields = class.meta.subFields
-      if not metaFields then metaFields = class.meta.fields end
-      if not metaFields then
-         error('No compiled fields declared for class ' .. class.name)
+      if (not metaFields) and (class.meta.classID == class.meta.baseClassID) then
+         metaFields = class.meta.fields
       end
 
       for k, f in ipairs(nz(metaFields, { })) do
@@ -1459,205 +1506,211 @@ end
 -- Output the CPP compatible class definition
 
 function outputClassHeader(class, Private, Custom)
-   if nz(class.fields) then
-      local physicalFields = false
-      for _, f in ipairs(class.fields) do
-         if not f.virtual then physicalFields = true end
-      end
-
-      priority('class obj' .. class.name .. ';') -- Forward declaration
-      output('class obj' .. class.name ..  ' : public ' .. nz(class.base, 'BaseClass') .. ' {')
-      output('   public:')
-      output('   static constexpr CLASSID CLASS_ID = ID_' .. class.name:upper() .. ';')
-      output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
-      output('')
-      output('   using create = pf::Create<obj' .. class.name .. '>;')
-
-      if physicalFields then
-         output('')
-
-         local max_len = 3 + class.longestFieldType + 1 + 2
-
-         for _, f in ipairs(class.fields) do
-            if not f.virtual then
-               local left
-               local field_name = cName(f, true)
-               if nz(field_name) then
-                  left = string.format('   %-' .. class.longestType .. 's %s;', f.type, field_name)
-               else
-                  left = string.format('   %-' .. class.longestType .. 's;', f.type)
-               end
-
-               if nz(f.comment) then
-                  output(string.format('%-' .. max_len .. 's // %s', left, f.comment))
-               else
-                  output(left)
-               end
-            end
-         end
-
-         if (Private != nil) then
-            output()
-            output('#ifdef PRV_' .. class.name:upper())
-            output(Private)
-            output('#endif')
-         end
-
-         if (Custom != nil) then
-            output('   public:')
-            output(Custom)
-         end
-
-         -- Insert registered actions
-
-         if nz(class.sortedActions) then
-            output('')
-            output('   // Action stubs\n')
-            for _, action in ipairs(class.sortedActions) do
-               if glActionStubs[action.name] then
-                  if (glActionStubs[action.name]:len() != 0) then
-                     local stub = glActionStubs[action.name]
-                     stub = string.match(stub,'^()\n*$') and '' or string.match(stub,'^\n*(.*%S)')
-                     output(stub)
-                  end
-               else
-                  output('   // ' .. action.name .. '\n')
-               end
-            end
-
-            if not class.actions['Init'] then
-               output(glActionStubs['Init'])
-            end
-         end
-
-         -- Insert customised set-field functions.  These are intended to be as fast as possible, so
-         -- features such as error logging and parameter checking are not included.
-
-         output('')
-         output('   // Customised field setting\n')
-         local indent = '      '
-
-         for _, f in ipairs(class.fields) do
-            local field_name = cName(f, true)
-            if nz(field_name) and (f.write != nil) then
-               local fid_name = field_name
-               local id = fid_name:sub(-3)
-               if id:find('^%lID$') then
-                  fid_name = fid_name:sub(1, -3)
-               end
-
-               local field_type = f.type
-
-               if field_type:find('^STRUCT *') then -- Unnamed structs must be converted to PTR
-                  field_type = 'APTR'
-               end
-
-               if not field_type:find('^const ') then
-                  if (bit.band(f.flags, FD_STRING) != 0) and (bit.band(f.flags, FD_ARRAY) == 0) then
-                     if field_type:find('^STRING') or field_type:find('^CSTRING') then
-                        field_type = 'T &&'
-                     else
-                        field_type = 'const ' .. field_type
-                     end
-                  elseif bit.band(f.flags, FD_POINTER) != 0 then
-                     -- Applying const to pointers can cause type conversion issues.
-                  else
-                     field_type = 'const ' .. field_type
-                  end
-               end
-
-               if (f.write == 'Set') or nz(f.setField) or f.virtual then
-                  if f.struct then
-                     if field_type:sub(-1) != '*' then
-                        field_type = field_type .. ' *'
-                     end
-                  end
-
-                  if (field_type:sub(-2) == '[]') then
-                     field_type = field_type:sub(1,-3) .. '*'
-                     output(string.format('   inline ERROR set%s(%s Value, LONG Elements) {', fid_name, field_type))
-                  elseif (bit.band(f.flags, FD_ARRAY) != 0) then
-                     if bit.band(f.flags, FD_CPP) != 0 then
-                        output(string.format('   inline ERROR set%s(%s *Value) {', fid_name, field_type))
-                     else
-                        output(string.format('   inline ERROR set%s(%s Value, LONG Elements) {', fid_name, field_type))
-                     end
-                  elseif (field_type == 'T &&') then
-                     output(string.format('   template <class T> inline ERROR set%s(%s Value) {', fid_name, field_type))
-                  else
-                     output(string.format('   inline ERROR set%s(%s Value) {', fid_name, field_type))
-                  end
-
-                  if (f.write == 'Init') then
-                     output(indent .. 'if (this->initialised()) return ERR_NoFieldAccess;')
-                  end
-
-                  local err, fl, target = class.meta.mtFindField(mSys.StrHash(f.name, false))
-
-                  if (err != ERR_Okay) then
-                     print('Failed to field ' .. f.name .. ' in class ' .. class.name)
-                  end
-
-                  if (err == ERR_Okay) and (target.id == class.meta.id) then
-                     output(indent .. 'auto target = this;')
-                     output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))
-                  else
-                     output(indent .. 'OBJECTPTR target;')
-                     output(indent .. string.format('auto field = FindField(this, FID_%s, &target);', fid_name))
-                  end
-
-                  if bit.band(f.flags, FD_VARIABLE) != 0 then
-                     if bit.band(f.flags, bit.bor(FD_LONG,FD_LARGE,FD_DOUBLE,FD_FLOAT)) != 0 then
-                        output(indent .. 'Variable var(Value);')
-                        output(indent .. 'return field->WriteValue(target, field, FD_VARIABLE, &var, 1);')
-                     else
-                        -- Pass through as pointer; requires further analysis to determine viability
-                        output(indent .. 'return field->WriteValue(target, field, FD_POINTER, Value, 1);')
-                     end
-                  elseif bit.band(f.flags, FD_ARRAY) != 0 then
-                     if bit.band(f.flags, FD_CPP) != 0 then
-                        local flags = string.format('%08x', f.flags):sub(-8)
-                        output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, LONG(Value->size()));')
-                     else
-                        local flags = string.format('%08x', f.flags):sub(-8)
-                        output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Elements);')
-                     end
-                  elseif bit.band(f.flags, FD_FUNCTION) != 0 then
-                     output(indent .. 'return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);')
-                  elseif bit.band(f.flags, bit.bor(FD_STRING)) != 0 then
-                     local flags = string.format('%08x', f.flags):sub(-8)
-                     output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', to_cstring(Value), 1);')
-                  elseif bit.band(f.flags, bit.bor(FD_POINTER)) != 0 then
-                     local flags = string.format('%08x', f.flags):sub(-8)
-                     output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, 1);')
-                  elseif bit.band(f.flags, bit.bor(FD_DOUBLE,FD_FLOAT)) != 0 then
-                     output(indent .. 'return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);')
-                  elseif bit.band(f.flags, FD_LARGE) != 0 then
-                     output(indent .. 'return field->WriteValue(target, field, FD_LARGE, &Value, 1);')
-                  else
-                     output(indent .. 'return field->WriteValue(target, field, FD_LONG, &Value, 1);')
-                  end
-               else
-                  if (field_type == 'T &&') then
-                     output(string.format('   template <class T> inline ERROR set%s(%s Value) {', fid_name, field_type))
-                  else
-                     output(string.format('   inline ERROR set%s(%s Value) {', fid_name, field_type))
-                  end
-                  if (f.write == 'Init') then
-                     output(indent .. 'if (this->initialised()) return ERR_NoFieldAccess;')
-                  end
-                  output(indent .. string.format('this->%s = Value;', field_name))
-                  output(indent .. 'return ERR_Okay;')
-               end
-
-               output('   }\n')
-            end
-         end
-
-      end
-      output('};')
-      output()
+   local physicalFields = false
+   for _, f in ipairs(class.fields) do
+      if not f.virtual then physicalFields = true end
    end
+
+   priority('class obj' .. class.name .. ';') -- Forward declaration
+   output('class obj' .. class.name ..  ' : public ' .. nz(class.base, 'Object') .. ' {')
+   output('   public:')
+   output('   static constexpr CLASSID CLASS_ID = CLASSID::' .. class.name:upper() .. ';')
+   output("   static constexpr CSTRING CLASS_NAME = \"" .. class.name .. "\";")
+   output('')
+   output('   using create = pf::Create<obj' .. class.name .. '>;')
+
+   if physicalFields then
+      output('')
+
+      local max_len = 3 + class.longestFieldType + 1 + 2
+
+      for _, f in ipairs(class.fields) do
+         if not f.virtual then
+            local left
+            local field_name = cName(f, true)
+            if nz(field_name) then
+               left = string.format('   %-' .. class.longestType .. 's %s;', f.type, field_name)
+            else
+               left = string.format('   %-' .. class.longestType .. 's;', f.type)
+            end
+
+            if nz(f.comment) then
+               local clean_comment = f.comment:gsub('[`!@#]', '')
+               output(string.format('%-' .. max_len .. 's // %s', left, clean_comment))
+            else
+               output(left)
+            end
+         end
+      end
+
+      if (Private != nil) then
+         output()
+         output('#ifdef PRV_' .. class.name:upper())
+         output(Private)
+         output('#endif')
+      end
+
+      if (Custom != nil) then
+         output('   public:')
+         output(Custom)
+      end
+   end
+
+   -- Insert registered actions
+
+   if nz(class.sortedActions) then
+      output('')
+      output('   // Action stubs\n')
+      for _, action in ipairs(class.sortedActions) do
+         if glActionStubs[action.name] then
+            if (glActionStubs[action.name]:len() != 0) then
+               local stub = glActionStubs[action.name]
+               stub = string.match(stub,'^()\n*$') and '' or string.match(stub,'^\n*(.*%S)')
+               output(stub)
+            end
+         else
+            output('   // ' .. action.name .. '\n')
+         end
+      end
+
+      if not class.actions['Init'] then
+         output(glActionStubs['Init'])
+      end
+   end
+
+   -- Insert registered methods
+
+   if nz(class.methods) then
+      for _, m in ipairs(class.methods) do
+         if m.nestedInline then output(m.nestedInline) end
+      end
+   end
+
+   -- Insert customised set-field functions.  These are intended to be as fast as possible, so
+   -- features such as error logging and parameter checking are not included.
+
+   output('')
+   output('   // Customised field setting\n')
+   local indent = '      '
+
+   for _, f in ipairs(class.fields) do
+      local field_name = cName(f, true)
+      if nz(field_name) and (f.write != nil) then
+         local fid_name = field_name
+         local id = fid_name:sub(-3)
+         if id:find('^%lID$') then
+            fid_name = fid_name:sub(1, -3)
+         end
+
+         local field_type = f.type
+
+         if field_type:find('^STRUCT *') then -- Unnamed structs must be converted to PTR
+            field_type = 'APTR'
+         end
+
+         if not field_type:find('^const ') then
+            if (bit.band(f.flags, FD_STRING) != 0) and (bit.band(f.flags, FD_ARRAY) == 0) then
+               if field_type:find('^STRING') or field_type:find('^CSTRING') then
+                  field_type = 'T &&'
+               else
+                  field_type = 'const ' .. field_type
+               end
+            elseif bit.band(f.flags, bit.bor(FD_POINTER, FD_OBJECT)) != 0 then
+               -- Applying const to pointers can cause type conversion issues.
+            else
+               field_type = 'const ' .. field_type
+            end
+         end
+
+         if (f.write == 'Set') or nz(f.setField) or f.virtual then
+            if f.struct then
+               if field_type:sub(-1) != '*' then
+                  field_type = field_type .. ' *'
+               end
+            end
+
+            if (field_type:sub(-2) == '[]') then
+               field_type = field_type:sub(1,-3) .. '*'
+               output(string.format('   inline ERR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
+            elseif (bit.band(f.flags, FD_ARRAY) != 0) then
+               if bit.band(f.flags, FD_CPP) != 0 then
+                  output(string.format('   inline ERR set%s(%s *Value) noexcept {', fid_name, field_type))
+               else
+                  output(string.format('   inline ERR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
+               end
+            elseif (field_type == 'T &&') then
+               output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+            else
+               output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+            end
+
+            if (f.write == 'Init') then
+               output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
+            end
+
+            local err, fl, target = class.meta.mtFindField(f.name:hash())
+
+            if (err != ERR_Okay) then
+               print('Failed to field ' .. f.name .. ' in class ' .. class.name)
+            end
+
+            if (err == ERR_Okay) and (target.id == class.meta.id) then
+               output(indent .. 'auto target = this;')
+               output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))
+            else
+               output(indent .. 'OBJECTPTR target;')
+               output(indent .. string.format('auto field = FindField(this, FID_%s, &target);', fid_name))
+            end
+
+            if bit.band(f.flags, FD_UNIT) != 0 then
+               if bit.band(f.flags, bit.bor(FD_LONG,FD_LARGE,FD_DOUBLE,FD_FLOAT)) != 0 then
+                  output(indent .. 'Unit var(Value);')
+                  output(indent .. 'return field->WriteValue(target, field, FD_UNIT, &var, 1);')
+               else
+                  -- Pass through as pointer; requires further analysis to determine viability
+                  output(indent .. 'return field->WriteValue(target, field, FD_POINTER, Value, 1);')
+               end
+            elseif bit.band(f.flags, FD_ARRAY) != 0 then
+               if bit.band(f.flags, FD_CPP) != 0 then
+                  local flags = string.format('%08x', f.flags):sub(-8)
+                  output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, LONG(Value->size()));')
+               else
+                  local flags = string.format('%08x', f.flags):sub(-8)
+                  output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Elements);')
+               end
+            elseif bit.band(f.flags, FD_FUNCTION) != 0 then
+               output(indent .. 'return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);')
+            elseif bit.band(f.flags, bit.bor(FD_STRING)) != 0 then
+               local flags = string.format('%08x', f.flags):sub(-8)
+               output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', to_cstring(Value), 1);')
+            elseif bit.band(f.flags, bit.bor(FD_POINTER)) != 0 then
+               local flags = string.format('%08x', f.flags):sub(-8)
+               output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, 1);')
+            elseif bit.band(f.flags, bit.bor(FD_DOUBLE,FD_FLOAT)) != 0 then
+               output(indent .. 'return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);')
+            elseif bit.band(f.flags, FD_LARGE) != 0 then
+               output(indent .. 'return field->WriteValue(target, field, FD_LARGE, &Value, 1);')
+            else
+               output(indent .. 'return field->WriteValue(target, field, FD_LONG, &Value, 1);')
+            end
+         else
+            if (field_type == 'T &&') then
+               output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+            else
+               output(string.format('   inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
+            end
+            if (f.write == 'Init') then
+               output(indent .. 'if (this->initialised()) return ERR::NoFieldAccess;')
+            end
+            output(indent .. string.format('this->%s = Value;', field_name))
+            output(indent .. 'return ERR::Okay;')
+         end
+
+         output('   }\n')
+      end
+   end
+   output('};')
+   output()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1677,7 +1730,7 @@ function cleanXMLString(str, caller)
 
          if (cleanXMLString_xml != nil) then
             cleanXMLString_xml.statement = str
-            local err, clean_str = cleanXMLString_xml.mtGetString(0, XMF_INCLUDE_SIBLINGS)
+            local err, clean_str = cleanXMLString_xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
             if (clean_str) then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
          else
             error('Failed to parse XML for ' .. nz(caller, 'undefined') .. '.')
@@ -1753,11 +1806,11 @@ function functionNames(Prefix, ...)
          name  = fname,
          def   = '   void (*_' .. fname .. ')(void);',
          macro = function() -- Default macro, to be overridden by documented function
-            return 'template <typename... Args> inline ERROR ' .. glFunctionPrefix:lower() .. fname ..
-               '(Args... pArgs) { return ' .. glModule.name .. 'Base->_' .. fname .. '(pArgs...); }'
+            return 'template <typename... Args> inline ERR ' .. glFunctionPrefix:lower() .. fname ..
+               '(Args... pArgs) noexcept { return ' .. glModule.name .. 'Base->_' .. fname .. '(pArgs...); }'
          end,
          staticMacro = function()
-            return 'template <typename... Args> ERROR ' .. glFunctionPrefix:lower() .. fname .. '(Args... pArgs);'
+            return 'template <typename... Args> ERR ' .. glFunctionPrefix:lower() .. fname .. '(Args... pArgs);'
          end
       }
 
@@ -1978,7 +2031,7 @@ function processFunction(extract)
    local status      = extract:match('\n[Ss]tatus:%s+(.-)\n')
    local category    = extract:match('\n[Cc]ategory:%s+(.-)\n')
    local ext_proto   = extract:match('\n[Ee]xtPrototype:%s+(.-)\n')
-   local attrib      = extract:match('\n[Aa]ttribute:%s+(.-)\n')
+   local attrib      = extract:match('\n[Aa]ttribute:%s+(.-)\n') -- This value is appended to the jump table name
    local description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
 
    if (name:find('%(%)') != nil) then
@@ -2014,7 +2067,7 @@ function processFunction(extract)
       for line in string.gmatch(errors, "(.-)\n") do
          if not nz(line) then break end // A double line-break forces a premature end to error processing.
 
-         local ecode, comment = line:match("(%a-):%s+(.-)")
+         local ecode, comment = line:match("(%a-):%s+(.+)")
          if nz(ecode) and nz(comment) then
             local codeValue = _G['ERR_' .. ecode]
             if not codeValue then
@@ -2110,13 +2163,15 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                outValues = outValues .. ","
             end
 
-            if (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
-               argSeq = argSeq .. "APTR " .. param.name
-            elseif (param.type == '...') then
+            if (param.type == '...') then
                jumpArgs = argSeq .. "..."
                argSeq = argSeq .. "Args... Tags"
             else
-               argSeq = argSeq .. param.type .. " " .. cName(param)
+               if param.type:find('*$') then
+                  argSeq = argSeq .. param.type .. cName(param)
+               else
+                  argSeq = argSeq .. param.type .. " " .. cName(param)
+               end
             end
 
             if (param.type == "...") then
@@ -2162,7 +2217,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    -- The func.def is used for building the jump table
    func.def = "   " .. nz(response.type,"NIL")
-   if Def.attrib then func.def = func.def .. " " .. nz(Def.attrib,"") end
+   if Def.attrib then func.def = func.def .. " " .. Def.attrib end
    func.def = func.def  .. " (*_" .. func.name .. ")(" .. nz(jumpArgs,"void") .. ");"
 
    func.c_proto = proto
@@ -2171,25 +2226,30 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    if (variadic) then
       func.macro = function()
-         return "template<class... Args> " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
+         return "template<class... Args> " .. nz(response.type,"NIL") .. " " .. func.name ..
             "(" .. nz(argSeq,"void") .. ")" ..
             " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
       end
 
       func.staticMacro = function()
-         return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(jumpArgs,"void") .. ");"
+         if nz(glFunctionPrefix) then
+            return 'extern ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         else
+            return 'extern "C" ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         end
       end
    else
       func.macro = function()
-         return "inline " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(argSeq,"void") .. ")" ..
-            " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
+         return 'inline ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(argSeq,'void') .. ')' ..
+            ' { return ' .. glModule.name .. 'Base->_' .. func.name .. '(' .. nz(outValues,'') .. '); }'
       end
 
       func.staticMacro = function()
-         return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(jumpArgs,"void") .. ");"
+         if nz(glFunctionPrefix) then
+            return 'extern ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         else
+            return 'extern "C" ' .. nz(response.type,'NIL') .. ' ' .. func.name .. '(' .. nz(jumpArgs,'void') .. ');'
+         end
       end
    end
 end
@@ -2264,19 +2324,29 @@ function saveOutput()
 
             out = out .. "#ifndef PARASOL_STATIC\n"
             out = out .. "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
+            if nz(glFunctionPrefix) then
+               out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
+            end
             for k, func in ipairs(glFunctions) do
                if nz(func.macro) then
                   out = out .. func.macro() .. "\n"
                end
             end
+            if nz(glFunctionPrefix) then
+               out = out .. "} // namespace\n"
+            end
             out = out .. "#else\n"
-            out = out .. 'extern "C" {\n'
+            if nz(glFunctionPrefix) then
+               out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
+            end
             for k, func in ipairs(glFunctions) do
                if nz(func.staticMacro) and (func.status != 'private') then
                   out = out .. func.staticMacro() .. "\n"
                end
             end
-            out = out .. "}\n"
+            if nz(glFunctionPrefix) then
+               out = out .. "} // namespace\n"
+            end
             out = out .. "#endif // PARASOL_STATIC\n"
             out = out .. "#endif\n\n"
             file.acWrite(out, out:len())
@@ -2312,18 +2382,21 @@ function buildPrototypes()
                      proto = proto .. ", " .. nz(param.extType, param.type) .. " " .. param.name
                   end
                end
-               method.prototype = "ERROR " .. cl.methodPrefix:lower() .. method.name .. "(" .. proto .. ")"
+               method.prototype = "ERR " .. cl.methodPrefix:lower() .. '::' .. method.name .. "(" .. proto .. ")"
             end
          end
       end
    end
 
    if nz(glFunctions) then
-      local proto = 'extern "C" {\n'
+      local proto = ''
+      local prefix = ''
+      if nz(glFunctionPrefix) then
+         proto = 'namespace ' .. glFunctionPrefix .. ' {\n'
+         prefix = glFunctionPrefix .. '::'
+      end
 
       for k, func in ipairs(glFunctions) do
-         if (glPrototypes == "static") then proto = proto .. "static " end
-
          local response
          if (func.result != nil) and (func.result.type != nil) then
             response = func.result.fullType.c_type
@@ -2331,11 +2404,20 @@ function buildPrototypes()
             response = "void"
          end
 
-         func.prototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
-         func.docPrototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
-         proto = proto .. func.prototype .. ";\n"
+         func.prototype = nz(func.c_response,"void") .. " " .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
+         func.docPrototype = nz(func.c_response,"void") .. " " .. prefix .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
+
+         if nz(glFunctionPrefix) then
+            proto = proto .. 'extern ' .. func.prototype .. ";\n"
+         else
+            proto = proto .. 'extern "C" ' .. func.prototype .. ";\n"
+         end
       end
-      proto = proto .. '\n} // extern c\n'
+
+      if nz(glFunctionPrefix) then
+         proto = proto .. '\n} // namespace\n'
+      end
+
       return proto
    else
       return ""
@@ -2348,9 +2430,12 @@ end
 function buildDefs()
    if not nz(glFunctions) then return "" end
 
+   local prefix = ''
+   if nz(glFunctionPrefix) then prefix = glFunctionPrefix .. '::' end
+
    local flist = "\nconst struct Function glFunctions[] = {\n"
    for _, func in ipairs(glFunctions) do
-      flist = flist .. "   { (APTR)" .. nz(glFunctionPrefix,"") .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
+      flist = flist .. "   { (APTR)" .. prefix .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
    end
    flist = flist .. "   { NULL, NULL, NULL }\n"
    flist = flist .. "};\n\n"
@@ -2464,7 +2549,6 @@ end
    glProgram     = 'idl-c' // FDL's can read this
    glSource      = arg('src')
    glOutputPath  = arg('output')
-   glLanguage    = arg('language')
    glFeedback    = arg('feedback')
    glOutputDefs  = arg('output-defs')
    glOutputProto = arg('output-proto')
@@ -2503,6 +2587,8 @@ end
    resolveSDKPath(arg('sdk'))
 
    loadActions()
+
+   loadFile(glPath .. 'idl-doc.fluid')
 
    if (processFDLFile(glSource) == ERR_Okay) then
       processSourceFiles()

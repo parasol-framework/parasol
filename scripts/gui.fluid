@@ -1,126 +1,146 @@
 -- Graphical User Interface functions
 
 if (gui == nil) then
+   -- The following values are the default.  They can be overridden by the "style:values.xml" file.
    gui = {
-      dpi = 160,
-      fonts = { },
-      colours = { },
-      interface = { },
-      rgb = { },
-      counter = 0,
-      iconThemes = {
-         default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
-         carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
-         yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke={ r=60, g=30, b=30, a=90 } },
-         orange  = { first={ r=0xFD,g=0xC8,b=0x30 }, last={ r=0xF3,g=0x73,b=0x35 } },
-         blue    = { first={ r=0x4b,g=0x6c,b=0xb7 }, last={ r=0x18,g=0x28,b=0x48 } },
-         ocean   = { first={ r=0xA8,g=0xC0,b=0xFF }, last={ r=0x3F,g=0x2B,b=0x96 } },
-         green   = { first={ r=0x7e,g=0x9d,b=0x13 }, last={ r=0x00,g=0x65,b=0x32 } },
-         red     = { first={ r=0xf5,g=0xaf,b=0x19 }, last={ r=0xf1,g=0x27,b=0x11 } },
-         indigo  = { first={ r=0xad,g=0x53,b=0x89 }, last={ r=0x3c,g=0x10,b=0x53 } },
-         rose    = { first={ r=0xff,g=0xc3,b=0xa0 }, last={ r=0xFF,g=0xAF,b=0xBD } },
-         pink    = { first={ r=0xff,g=0xdd,b=0xe1 }, last={ r=0xee,g=0x9c,b=0xa7 } },
-         grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } },
-         pearl   = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
-      }
+     dpi = 160,
+     fonts = {
+       -- Use percentages for scalable sizes, where 100% is equivalent to the value of gui.interface.fontSize
+       default  = { face='Noto Sans,Source Sans 3', size='100%' },
+       window   = { face='Noto Sans,Source Sans 3', size='100%' }, -- For text that is not inside a widget
+       button   = { face='Noto Sans,Source Sans 3', size='100%' }, -- Text inside buttons
+       icon     = { face='Noto Sans,Source Sans 3', size='100%' }, -- Text at the bottom of icons
+       menu     = { face='Noto Sans,Source Sans 3', size='100%' }, -- Menu item text
+       titlebar = { face='Noto Sans', size='100%' }, -- Window titlebar text
+       small    = { face='Tiny', size='60%' }, -- Recommended text for small sizes
+       large    = { face='Noto Sans,Source Sans 3', size='130%' }, -- Recommended text for headers
+       widget   = { face='Noto Sans,Source Sans 3', size='100%' }, -- Text inside widgets (e.g. combobox)
+       label    = { face='Noto Sans,Source Sans 3::bold', size='100%' } -- Text for labels and outside widgets
+     },
+     colours = {
+       -- These are all fills, so any SVG compliant fill value can potentially be used to define a 'colour'.
+       widgetText   = 'rgb(255,255,255)',
+       widgetBkgd   = 'rgb(0,0,0,100)',
+       widgetStroke = 'rgb(255,255,255,60)',
+       widgetStrokeFocus    = 'rgb(255,255,255,160)',
+       widgetStrokeDisabled = 'rgb(255,255,255,60)',
+       shadow        = 'rgb(0,0,0,100)', -- Base colour/alpha value for stroked shadows
+       highlight     = 'rgb(255,255,255,150)', -- Base colour/alpha value for stroked highlights
+       button        = 'rgb(230,230,230)', -- Button background (raised)
+       buttonClick   = 'rgb(200,200,200)', -- Button background when clicked (depressed)
+       menubar       = 'rgb(190,190,190)', -- Menubar background fill
+       menu          = 'rgb(240,240,240)', -- Menu background fill
+       border        = 'rgb(144,144,144)', -- Standard border for any area filled with 'background'
+       borderFocus   = 'rgb(160,160,160)', -- Colour to use when 'border' has the user's focus
+       menuborder    = 'rgb(200,200,200)', -- Menu border
+       desktop       = 'rgb(160,160,160)', -- Background colour for the desktop
+       recess        = 'rgb(160,160,160)', -- Background colour for recessed areas with no content.
+       background    = 'rgb(255,255,255)', -- Standard background for hosting text & paper-based layouts
+       textHighlight = 'rgb(224,224,240)', -- Background fill for text that is highlighted
+       window        = 'rgb(220,220,220)', -- Background fill for windows
+       windowText    = 'rgb(0,0,0)'        -- Colour for text that is drawn directly to the window
+     },
+     interface = {
+       inputBorder   = 1,  -- Stroke size for borders that receive keyboard input
+       outputBorder  = 1,  -- Stroke size for borders containing immutable content
+       widgetMargin  = 5,  -- Recommended internal margin for widgets (px)
+       widgetGap     = 6,  -- Recommended gap between widgets (px)
+       fontSize      = 11, -- Default font-size for everything (pt)
+       sliderSize    = 16, -- Max size for slider widgets (px)
+       scrollSize    = 18, -- Max size for scroll widgets (px)
+       scrollOpacity = 100, -- Opacity for scrollbar background fills
+       iconTheme     = 'Default',
+       iconSize      = 20   -- Recommended default size for icons (px) and should be linked to fontSize
+     },
+     iconThemes = {
+        default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+        carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+        yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke={ r=60, g=30, b=30, a=90 } },
+        orange  = { first={ r=0xFD,g=0xC8,b=0x30 }, last={ r=0xF3,g=0x73,b=0x35 } },
+        blue    = { first={ r=0x4b,g=0x6c,b=0xb7 }, last={ r=0x18,g=0x28,b=0x48 } },
+        ocean   = { first={ r=0xA8,g=0xC0,b=0xFF }, last={ r=0x3F,g=0x2B,b=0x96 } },
+        green   = { first={ r=0x7e,g=0x9d,b=0x13 }, last={ r=0x00,g=0x65,b=0x32 } },
+        red     = { first={ r=0xf5,g=0xaf,b=0x19 }, last={ r=0xf1,g=0x27,b=0x11 } },
+        indigo  = { first={ r=0xad,g=0x53,b=0x89 }, last={ r=0x3c,g=0x10,b=0x53 } },
+        rose    = { first={ r=0xff,g=0xc3,b=0xa0 }, last={ r=0xFF,g=0xAF,b=0xBD } },
+        pink    = { first={ r=0xff,g=0xdd,b=0xe1 }, last={ r=0xee,g=0x9c,b=0xa7 } },
+        grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } },
+        pearl   = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
+     },
+     _counter = 0
    }
 
-   gui.colours.rgb = function(Name)
-      if not gui.colours[Name] then error('Invalid colour name "' .. Name .. '"') end
-      return 'rgb(' .. gui.colours[Name] .. ')'
+   function convertFontSizes() -- Convert font percentage sizes to their px size
+      for k,v in pairs(gui.fonts) do
+         if gui.fonts[k].size then
+            if string.match(gui.fonts[k].size, '^%-?%d+%%$') then
+               pct = tonumber(string.match(gui.fonts[k].size, '^(%-?%d+)%%$'))
+               gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
+            end
+         end
+      end
    end
 
-   do
-      local path = 'style:values.xml'
+   local path = 'style:values.xml'
+   if mSys.AnalysePath(path) != ERR_Okay then
+      path = 'environment:config/values.xml'
       if mSys.AnalysePath(path) != ERR_Okay then
-         path = 'environment:config/values.xml'
-         if mSys.AnalysePath(path) != ERR_Okay then
-            path = 'styles:default/values.xml'
+         path = 'styles:default/values.xml'
+      end
+   end
+
+   local xml = obj.new('xml', { path=path })
+
+   if (xml != nil) then
+      local err, index = xml.mtFindTag('/colours')
+      if (err == ERR_Okay) then
+         for k,v in pairs(gui.colours) do
+            err, colour = xml.mtGetAttrib(index, k)
+            if (err == ERR_Okay) then gui.colours[k] = colour end
          end
       end
 
-      local xml = obj.new('xml', { path=path })
-
-      if (xml != nil) then
-         local total = 0
-         xml.mtFindTag('/fonts/font',
-            function(XML, TagIndex, Attrib)
-               local font = { }
-               local err, name = xml.mtGetAttrib(TagIndex, 'name')
-               if nz(name) then
-                  err, font.face = xml.mtGetAttrib(TagIndex, 'face')
-                  if nz(font.face) then
-                     err, font.size      = xml.mtGetAttrib(TagIndex, 'size')
-                     err, font.colour    = xml.mtGetAttrib(TagIndex, 'colour')
-                     err, font.highlight = xml.mtGetAttrib(TagIndex, 'highlight')
-                     gui.fonts[name] = font
-                     total = total + 1
-                  end
-               end
-            end)
-
-         if (total == 0) then
-            error('No fonts were processed from the style information.')
-         end
-
-         local err, index = xml.mtFindTag('/colours')
-         if (err == ERR_Okay) then
-            err, gui.colours['shadow']        = xml.mtGetAttrib(index, 'shadow')
-            err, gui.colours['highlight']     = xml.mtGetAttrib(index, 'highlight')
-            err, gui.colours['colour']        = xml.mtGetAttrib(index, 'colour')
-            err, gui.colours['widgetText']    = xml.mtGetAttrib(index, 'widgetText')
-            err, gui.colours['widgetBkgd']    = xml.mtGetAttrib(index, 'widgetBkgd')
-            err, gui.colours['widgetStroke']  = xml.mtGetAttrib(index, 'widgetStroke')
-            err, gui.colours['widgetStrokeFocus']   = xml.mtGetAttrib(index, 'widgetStrokeFocus')
-            err, gui.colours['widgetStrokeDisabled'] = xml.mtGetAttrib(index, 'widgetStrokeDisabled')
-            err, gui.colours['button']        = xml.mtGetAttrib(index, 'button')
-            err, gui.colours['buttonClick']   = xml.mtGetAttrib(index, 'buttonClick')
-            err, gui.colours['menubar']       = xml.mtGetAttrib(index, 'menubar')
-            err, gui.colours['menu']          = xml.mtGetAttrib(index, 'menu')
-            err, gui.colours['border']        = xml.mtGetAttrib(index, 'border')
-            err, gui.colours['menuBorder']    = xml.mtGetAttrib(index, 'menuBorder')
-            err, gui.colours['desktop']       = xml.mtGetAttrib(index, 'desktop')
-            err, gui.colours['recess']        = xml.mtGetAttrib(index, 'recess')
-            err, gui.colours['white']         = xml.mtGetAttrib(index, 'white')
-            err, gui.colours['red']           = xml.mtGetAttrib(index, 'red')
-            err, gui.colours['green']         = xml.mtGetAttrib(index, 'green')
-            err, gui.colours['blue']          = xml.mtGetAttrib(index, 'blue')
-            err, gui.colours['background']    = xml.mtGetAttrib(index, 'background')
-            err, gui.colours['textHighlight'] = xml.mtGetAttrib(index, 'textHighlight')
-            err, gui.colours['window']        = xml.mtGetAttrib(index, 'window')
-            err, gui.colours['boxedText']     = xml.mtGetAttrib(index, 'boxedText')
-            err, gui.colours['windowText']    = xml.mtGetAttrib(index, 'windowText')
-         else
-            error('No colours tag in style values.')
-         end
-
-         local err, index = xml.mtFindTag('/interface')
-         if (err == ERR_Okay) then
-            err, gui.interface['inputBorder']    = xml.mtGetAttrib(index, 'inputBorder')
-            err, gui.interface['outputBorder']   = xml.mtGetAttrib(index, 'outputBorder')
-            err, gui.interface['widgetMargin']   = xml.mtGetAttrib(index, 'widgetMargin')
-            err, gui.interface['widgetGap']      = xml.mtGetAttrib(index, 'widgetGap')
-            err, gui.interface['textBorder']     = xml.mtGetAttrib(index, 'textBorder')
-            err, gui.interface['fontSize']       = xml.mtGetAttrib(index, 'fontSize')
-            err, gui.interface['sliderSize']     = xml.mtGetAttrib(index, 'sliderSize')
-            err, gui.interface['scrollSize']     = xml.mtGetAttrib(index, 'scrollSize')
-            err, gui.interface['scrollOpacity']  = xml.mtGetAttrib(index, 'scrollOpacity')
-            err, gui.interface['iconRatio']      = xml.mtGetAttrib(index, 'iconRatio')
-            err, gui.interface['iconTheme']      = xml.mtGetAttrib(index, 'iconTheme')
-            err, gui.interface['iconSize']       = xml.mtGetAttrib(index, 'iconSize')
-            for k, v in pairs(gui.interface) do
-               if string.match(v, '^%-?%d+$') then
-                  gui.interface[k] = tonumber(v)
+      local err, index = xml.mtFindTag('/interface')
+      if (err == ERR_Okay) then
+         for k,v in pairs(gui.interface) do
+            err, val = xml.mtGetAttrib(index, k)
+            if (err == ERR_Okay) then
+               if string.match(val, '^%-?%d+$') then
+                  gui.interface[k] = tonumber(val)
+               else
+                  gui.interface[k] = val
                end
             end
-         else
-            error('No interface tag in style values.')
          end
-
-         xml = nil
-      else
-         error('Failed to retrieve style information.')
       end
+
+      convertFontSizes()
+
+      local err, index = xml.mtFindTag('/fonts')
+      if (err == ERR_Okay) then
+         for k,v in pairs(gui.fonts) do
+            local err, index = xml.mtFindTag("/fonts/font(@name='" .. k .. "')")
+            if (err == ERR_Okay) then
+               local err, face = xml.mtGetAttrib(index, 'face')
+               if (err == ERR_Okay) then gui.fonts[k].face = face end
+               local err, size = xml.mtGetAttrib(index, 'size')
+               if (err == ERR_Okay) then
+                  if string.match(size, '^%-?%d+$') then
+                     gui.fonts[k].size = tonumber(size)
+                  elseif string.match(size, '^%-?%d+%%$') then
+                     pct = tonumber(string.match(size, '^(%-?%d+)%%$'))
+                     gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
+                  else
+                     gui.fonts[k].size = size
+                  end
+               end
+            end
+         end
+      end
+
+      xml = nil
+   else
+      convertFontSizes()
    end
 end
 
@@ -128,27 +148,13 @@ end
 
 gui.getFontHeight = function(Font)
    if not Font.height then
-      local fnt = obj.new('font', { face=Font.face, point=Font.size })
-      Font.height = fnt.height
-      Font.maxHeight = fnt.maxHeight
+      local err, handle = mVec.getFontHandle(Font.face, 'Regular', 0, Font.size)
+      local metrics = struct.new('FontMetrics')
+      mVec.getFontMetrics(handle, metrics)
+      Font.height  = metrics.height
+      Font.spacing = metrics.lineSpacing
    end
-   return Font.maxHeight, Font.height
-end
-
-------------------------------------------------------------------------------
-
-gui.bitmapColour = function(Bitmap, ColourName)
-   if (gui.rgb[ColourName] == nil) then
-      local str = gui.colours[ColourName]
-      if (str == nil) then
-         error('Unrecognised colour "' .. nz(ColourName,'NIL') .. '"')
-      end
-      gui.rgb[ColourName] = gui.strToRGB(str)
-   end
-
-   local rgb = gui.rgb[ColourName]
-   local err, col = Bitmap.mtGetColour(rgb.r, rgb.g, rgb.b, rgb.a)
-   return col
+   return Font.spacing, Font.height
 end
 
 ------------------------------------------------------------------------------
@@ -424,8 +430,8 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
       end
    end
 
-   gui.counter = gui.counter + 1
-   local gname   = 'icon_grd' .. gui.counter
+   gui._counter = gui._counter + 1
+   local gname   = 'icon_grd' .. gui._counter
    icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size, spreadMethod=VSPREAD_PAD })
    icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lGradient.first, lGradient.last }, 0, 0, 0, 1)
    if string.find(Path, 'icons:') != 1 then
@@ -467,6 +473,4 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
    end
 
    check(Scene.mtAddDef(Name, icon.pattern))
-
-   return icon
 end

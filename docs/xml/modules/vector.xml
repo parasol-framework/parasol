@@ -6,7 +6,7 @@
     <name>Vector</name>
     <type>module</type>
     <version>1</version>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <classes>
       <class>BlurFX</class>
       <class>ColourFX</class>
@@ -29,6 +29,7 @@
       <class>VectorEllipse</class>
       <class>VectorFilter</class>
       <class>VectorGradient</class>
+      <class>VectorGroup</class>
       <class>VectorImage</class>
       <class>VectorPath</class>
       <class>VectorPattern</class>
@@ -38,6 +39,7 @@
       <class>VectorShape</class>
       <class>VectorSpiral</class>
       <class>VectorText</class>
+      <class>VectorTransition</class>
       <class>VectorViewport</class>
       <class>VectorWave</class>
     </classes>
@@ -46,16 +48,16 @@
   <function>
     <name>ApplyPath</name>
     <comment>Copy a pre-generated or custom path to a VectorPath object.</comment>
-    <prototype>ERROR vecApplyPath(APTR Path, OBJECTPTR VectorPath)</prototype>
+    <prototype>ERR vec::ApplyPath(APTR Path, objVectorPath * VectorPath)</prototype>
     <input>
       <param type="APTR" name="Path">The source path to be copied.</param>
-      <param type="OBJECTPTR" name="VectorPath">The target VectorPath object.</param>
+      <param type="objVectorPath *" name="VectorPath">The target VectorPath object.</param>
     </input>
     <description>
-<p>Any path originating from <function module="Vector">GeneratePath</function>, <function module="Vector">GenerateEllipse</function> or <function module="Vector">GenerateRectangle</function> can be applied to a VectorPath object by calling ApplyPath().  The source Path can then be deallocated with <function module="Vector">FreePath</function> if it is no longer required.</p>
+<p>Any path originating from <function>GeneratePath</function>, <function>GenerateEllipse</function> or <function>GenerateRectangle</function> can be applied to a VectorPath object by calling ApplyPath().  The source Path can then be deallocated with <function module="Core">FreeResource</function> if it is no longer required.</p>
 <p>This method is particularly useful when paths need to be generated or changed in real-time and the alternative of processing the path as a string is detrimental to performance.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -64,7 +66,7 @@
   <function>
     <name>ArcTo</name>
     <comment>Alter a path by setting an arc-to command at the current vertex position.</comment>
-    <prototype>void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags)</prototype>
+    <prototype>void vec::ArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="RX">The horizontal radius of the arc.</param>
@@ -80,9 +82,26 @@
   </function>
 
   <function>
+    <name>CharWidth</name>
+    <comment>Returns the width of a character.</comment>
+    <prototype>DOUBLE vec::CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning)</prototype>
+    <input>
+      <param type="APTR" name="FontHandle">The font to use for calculating the character width.</param>
+      <param type="ULONG" name="Char">A 32-bit unicode character.</param>
+      <param type="ULONG" name="KChar">A unicode character to use for calculating the font kerning (optional).</param>
+      <param type="DOUBLE *" name="Kerning">The resulting kerning value (optional).</param>
+    </input>
+    <description>
+<p>This function will return the pixel width of a font character.  The character is specified as a unicode value in the <code>Char</code> parameter. Kerning values can also be returned, which affect the position of the character along the horizontal. The previous character in the word is set in <code>KChar</code> and the kerning value will be returned in the <code>Kerning</code> parameter. If kerning information is not required, set the <code>KChar</code> and <code>Kerning</code> parameters to zero.</p>
+<p>The font's glyph spacing value is not used in calculating the character width.</p>
+    </description>
+    <result type="DOUBLE">The pixel width of the character will be returned.</result>
+  </function>
+
+  <function>
     <name>ClosePath</name>
     <comment>Close the path by connecting the beginning and end points.</comment>
-    <prototype>void vecClosePath(APTR Path)</prototype>
+    <prototype>void vec::ClosePath(APTR Path)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
     </input>
@@ -94,8 +113,8 @@
 
   <function>
     <name>Curve3</name>
-    <comment>Alter a path by setting a quadratic bezier curve command at the current vertex position.</comment>
-    <prototype>void vecCurve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)</prototype>
+    <comment>Alter a path by inserting a quadratic bezier curve command at the current vertex position.</comment>
+    <prototype>void vec::Curve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="CtrlX">Control point horizontal coordinate.</param>
@@ -110,8 +129,8 @@
 
   <function>
     <name>Curve4</name>
-    <comment>Alter a path by setting a curve4 command at the current vertex position.</comment>
-    <prototype>void vecCurve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y)</prototype>
+    <comment>Alter a path by inserting a curve4 command at the current vertex position.</comment>
+    <prototype>void vec::Curve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="CtrlX1">Control point 1 horizontal coordinate.</param>
@@ -129,52 +148,57 @@
   <function>
     <name>DrawPath</name>
     <comment>Draws a vector path to a target bitmap.</comment>
-    <prototype>ERROR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)</prototype>
+    <prototype>ERR vec::DrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)</prototype>
     <input>
-      <param type="objBitmap *" name="Bitmap">Pointer to a target Bitmap object.</param>
+      <param type="objBitmap *" name="Bitmap">Pointer to a target <class name="Bitmap">Bitmap</class> object.</param>
       <param type="APTR" name="Path">The vector path to render.</param>
       <param type="DOUBLE" name="StrokeWidth">The width of the stroke.  Set to 0 if no stroke is required.</param>
-      <param type="OBJECTPTR" name="StrokeStyle">Pointer to a valid object for stroke definition, or NULL if none required.</param>
-      <param type="OBJECTPTR" name="FillStyle">Pointer to a valid object for fill definition, or NULL if none required.</param>
+      <param type="OBJECTPTR" name="StrokeStyle">Pointer to a valid object for stroke definition, or <code>NULL</code> if none required.</param>
+      <param type="OBJECTPTR" name="FillStyle">Pointer to a valid object for fill definition, or <code>NULL</code> if none required.</param>
     </input>
     <description>
-<p>Use DrawPath() to draw a generated path to a Bitmap, using customised fill and stroke definitions.  This functionality provides an effective alternative to configuring vector scenes for situations where only simple vector shapes are required.  However, it is limited in that advanced rendering options and effects are not available to the client.</p>
-<p>A StrokeStyle and/or FillStyle will be required to render the path.  Valid styles are allocated and configured using recognised vector style objects, specifically from the classes <class name="VectorImage">VectorImage</class>, <class name="VectorPattern">VectorPattern</class> and <class name="VectorGradient">VectorGradient</class>.  If a fill or stroke operation is not required, set the relevant parameter to NULL.</p>
+<p>Use DrawPath() to draw a generated path to a <class name="Bitmap">Bitmap</class>, using customised fill and stroke definitions.  This functionality provides an effective alternative to configuring vector scenes for situations where only simple vector shapes are required.  However, it is limited in that advanced rendering options and effects are not available to the client.</p>
+<p>A <code>StrokeStyle</code> and/or <code>FillStyle</code> will be required to render the path.  Valid styles are allocated and configured using recognised vector style objects, specifically from the classes <class name="VectorImage">VectorImage</class>, <class name="VectorPattern">VectorPattern</class> and <class name="VectorGradient">VectorGradient</class>.  If a fill or stroke operation is not required, set the relevant parameter to <code>NULL</code>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
   <function>
-    <name>FreePath</name>
-    <comment>Remove a generated path.</comment>
-    <prototype>void vecFreePath(APTR Path)</prototype>
+    <name>FlushMatrix</name>
+    <comment>Flushes matrix changes to a vector.</comment>
+    <prototype>ERR vec::FlushMatrix(struct VectorMatrix * Matrix)</prototype>
     <input>
-      <param type="APTR" name="Path">Pointer to the path to deallocate.</param>
+      <param type="struct VectorMatrix *" name="Matrix">The matrix to be flushed.</param>
     </input>
     <description>
-<p>Deallocates paths generated by the Vector module, such as <function module="Vector">GeneratePath</function>.</p>
+<p>If the matrices values of a vector have been directly modified by the client, the changes will need to be flushed in order to have those changes reflected on the display.  This needs to be done before the next draw cycle.</p>
+<p>Note that if the client uses API functions to modify a <st>VectorMatrix</st>, a call to FlushMatrix() is unnecessary as the vector will have already been marked for an update.</p>
     </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
   </function>
 
   <function>
     <name>GenerateEllipse</name>
     <comment>Generates an elliptical path.</comment>
-    <prototype>ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR * Path)</prototype>
+    <prototype>ERR vec::GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR * Path)</prototype>
     <input>
       <param type="DOUBLE" name="CX">Horizontal center point of the ellipse.</param>
       <param type="DOUBLE" name="CY">Vertical center point of the ellipse.</param>
       <param type="DOUBLE" name="RX">Horizontal radius of the ellipse.</param>
       <param type="DOUBLE" name="RY">Vertical radius of the ellipse.</param>
-      <param type="LONG" name="Vertices">Optional.  If &gt;= 3, the total number of generated vertices will be limited to the specified value.</param>
+      <param type="LONG" name="Vertices">Optional.  If <code>&gt;= 3</code>, the total number of generated vertices will be limited to the specified value.</param>
       <param type="APTR *" name="Path">A pointer variable that will receive the resulting path.</param>
     </input>
     <description>
-<p>Use GenerateEllipse() to create an elliptical path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Vector">FreePath</function> once it is no longer required.</p>
+<p>Use GenerateEllipse() to create an elliptical path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Core">FreeResource</function> once it is no longer required.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -184,14 +208,14 @@
   <function>
     <name>GeneratePath</name>
     <comment>Generates a path from an SVG path command sequence, or an empty path for custom configuration.</comment>
-    <prototype>ERROR vecGeneratePath(CSTRING Sequence, APTR * Path)</prototype>
+    <prototype>ERR vec::GeneratePath(CSTRING Sequence, APTR * Path)</prototype>
     <input>
       <param type="CSTRING" name="Sequence">The command sequence to process.  If no sequence is specified then the path will be empty.</param>
       <param type="APTR *" name="Path">A pointer variable that will receive the resulting path.</param>
     </input>
     <description>
-<p>This function will generate a vector path from a sequence of fixed point coordinates and curve instructions.  The resulting path can then be passed to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Vector">FreePath</function> once it is no longer required.</p>
-<p>The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path element 'd' attribute, but also provides some additional features that are present in the vector engine.  Commands are case insensitive.</p>
+<p>This function will generate a vector path from a sequence of fixed point coordinates and curve instructions.  The resulting path can then be passed to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Core">FreeResource</function> once it is no longer required.</p>
+<p>The Sequence is a string of points and instructions that define the path.  It is based on the SVG standard for the path element <code>d</code> attribute, but also provides some additional features that are present in the vector engine.  Commands are case insensitive.</p>
 <p>The following commands are supported:</p>
 <pre>M: Move To
 L: Line To
@@ -205,9 +229,9 @@ A: Arc
 Z: Close Path
 </pre>
 <p>The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate of the previous command).</p>
-<p>If the Sequence is NULL then an empty path resource will be generated.  This path will be suitable for passing to path modifying functions such as <function module="Vector">MoveTo</function> and <function module="Vector">LineTo</function> for custom path generation.</p>
+<p>If the <code>Sequence</code> is <code>NULL</code> then an empty path resource will be generated.  This path will be suitable for passing to path modifying functions such as <function>MoveTo</function> and <function>LineTo</function> for custom path generation.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -217,7 +241,7 @@ Z: Close Path
   <function>
     <name>GenerateRectangle</name>
     <comment>Generate a rectangular path at (x,y) with size (width,height).</comment>
-    <prototype>ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR * Path)</prototype>
+    <prototype>ERR vec::GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR * Path)</prototype>
     <input>
       <param type="DOUBLE" name="X">The horizontal position of the rectangle.</param>
       <param type="DOUBLE" name="Y">The vertical position of the rectangle.</param>
@@ -226,9 +250,9 @@ Z: Close Path
       <param type="APTR *" name="Path">A pointer variable that will receive the resulting path.</param>
     </input>
     <description>
-<p>Use GenerateRectangle() to create a rectangular path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Vector">FreePath</function> once it is no longer required.</p>
+<p>Use GenerateRectangle() to create a rectangular path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <function module="Core">FreeResource</function> once it is no longer required.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -236,16 +260,55 @@ Z: Close Path
   </function>
 
   <function>
-    <name>GetVertex</name>
-    <comment>Retrieve the coordinates of the current vertex.</comment>
-    <prototype>LONG vecGetVertex(APTR Path, DOUBLE * X, DOUBLE * Y)</prototype>
+    <name>GetFontHandle</name>
+    <comment>Returns a handle for a given font family.</comment>
+    <prototype>ERR vec::GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR * Handle)</prototype>
     <input>
-      <param type="APTR" name="Path">The vector path to modify.</param>
-      <param type="DOUBLE *" name="X">Pointer to a DOUBLE that will receive the X coordinate value.</param>
-      <param type="DOUBLE *" name="Y">Pointer to a DOUBLE that will receive the Y coordinate value.</param>
+      <param type="CSTRING" name="Family">The name of the font family to access.</param>
+      <param type="CSTRING" name="Style">The preferred style to choose from the family.  Use <code>Regular</code> or <code>NULL</code> for the default.</param>
+      <param type="LONG" name="Weight">Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.</param>
+      <param type="LONG" name="Size">The font-size, measured in pixels @ 72 DPI.</param>
+      <param type="APTR *" name="Handle">The resulting font handle is returned here.</param>
     </input>
     <description>
-<p>The coordinates of the current vertex are returned by this function in the X and Y parameters.  In addition, the internal command number for that vertex is the return value.</p>
+<p>For a given font family and size, this function will return a <code>Handle</code> that can be passed to font querying functions.</p>
+<p>The handle is deterministic and permanent, remaining valid for the lifetime of the program.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Args">Invalid arguments passed to function.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetFontMetrics</name>
+    <comment>Returns a set of display metric values for a font.</comment>
+    <prototype>ERR vec::GetFontMetrics(APTR Handle, struct FontMetrics * Info)</prototype>
+    <input>
+      <param type="APTR" name="Handle">A font handle obtained from <function>GetFontHandle</function>.</param>
+      <param type="struct FontMetrics *" name="Info">The font metrics for the <code>Handle</code> will be stored here.</param>
+    </input>
+    <description>
+<p>Call GetFontMetrics() to retrieve a basic set of display metrics measured in pixels (adjusted to the display's DPI) for a given font.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>GetVertex</name>
+    <comment>Retrieve the coordinates of the current vertex.</comment>
+    <prototype>LONG vec::GetVertex(APTR Path, DOUBLE * X, DOUBLE * Y)</prototype>
+    <input>
+      <param type="APTR" name="Path">The vector path to query.</param>
+      <param type="DOUBLE *" name="X">Pointer to a double that will receive the X coordinate value.</param>
+      <param type="DOUBLE *" name="Y">Pointer to a double that will receive the Y coordinate value.</param>
+    </input>
+    <description>
+<p>The coordinates of the current vertex are returned by this function in the <code>X</code> and <code>Y</code> parameters.  In addition, the internal command number for that vertex is the return value.</p>
     </description>
     <result type="LONG">The internal command value for the vertex will be returned.</result>
   </function>
@@ -253,7 +316,7 @@ Z: Close Path
   <function>
     <name>LineTo</name>
     <comment>Alter a path by setting a line-to command at the current vertex position.</comment>
-    <prototype>void vecLineTo(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>void vec::LineTo(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="X">The line end point on the horizontal plane.</param>
@@ -267,7 +330,7 @@ Z: Close Path
   <function>
     <name>MoveTo</name>
     <comment>Alter a path by setting a move-to command at the current vertex position.</comment>
-    <prototype>void vecMoveTo(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>void vec::MoveTo(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="X">The horizontal end point for the command.</param>
@@ -282,7 +345,7 @@ Z: Close Path
   <function>
     <name>Multiply</name>
     <comment>Combines a matrix with a series of matrix values.</comment>
-    <prototype>ERROR vecMultiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)</prototype>
+    <prototype>ERR vec::Multiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="ScaleX">Matrix value A.</param>
@@ -293,9 +356,9 @@ Z: Close Path
       <param type="DOUBLE" name="TranslateY">Matrix value F.</param>
     </input>
     <description>
-<p>This function uses matrix multiplication to combine a set of values with a VectorMatrix structure.</p>
+<p>This function uses matrix multiplication to combine a set of values with a <st>VectorMatrix</st> structure.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -304,15 +367,15 @@ Z: Close Path
   <function>
     <name>MultiplyMatrix</name>
     <comment>Combines a source matrix with a target.</comment>
-    <prototype>ERROR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source)</prototype>
+    <prototype>ERR vec::MultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Target">The target transformation matrix.</param>
       <param type="struct VectorMatrix *" name="Source">The source transformation matrix.</param>
     </input>
     <description>
-<p>This function uses matrix multiplication to combine a Source matrix with a Target.</p>
+<p>This function uses matrix multiplication to combine a <code>Source</code> matrix with a <code>Target</code>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -321,7 +384,7 @@ Z: Close Path
   <function>
     <name>ParseTransform</name>
     <comment>Parse an SVG transformation string and apply the values to a matrix.</comment>
-    <prototype>ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform)</prototype>
+    <prototype>ERR vec::ParseTransform(struct VectorMatrix * Matrix, CSTRING Transform)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="CSTRING" name="Transform">The transform to apply, expressed as a string instruction.</param>
@@ -329,9 +392,9 @@ Z: Close Path
     <description>
 <p>This function parses a sequence of transform instructions and applies them to a matrix.</p>
 <p>The string must be written using SVG guidelines for the transform attribute.  For example, <code>skewX(20) rotate(45 50 50)</code> would be valid.  Transform instructions are applied in reverse, as per the standard.</p>
-<p>Note that any existing transforms applied to the matrix will be cancelled as a result of calling this function. If existing matrix values need to be retained, create a fresh matrix and use <function module="Vector">Multiply</function> to combine them.</p>
+<p>Note that any existing transforms applied to the matrix will be cancelled as a result of calling this function. If existing matrix values need to be retained, create a fresh matrix and use <function>Multiply</function> to combine them.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -339,22 +402,21 @@ Z: Close Path
 
   <function>
     <name>ReadPainter</name>
-    <comment>Parses a painter string into its colour, gradient and image values.</comment>
-    <prototype>ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern)</prototype>
+    <comment>Parses a painter string to its colour, gradient, pattern or image value.</comment>
+    <prototype>ERR vec::ReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result)</prototype>
     <input>
-      <param type="objVectorScene *" name="Scene">Optional.  Required if url() references are to be resolved.</param>
+      <param type="objVectorScene *" name="Scene">Optional.  Required if <code>url()</code> references are to be resolved.</param>
       <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
-      <param type="struct FRGB *" name="RGB">A colour will be returned here if specified in the IRI.</param>
-      <param type="objVectorGradient **" name="Gradient">A VectorGradient will be returned here if specified in the IRI.</param>
-      <param type="objVectorImage **" name="Image">A VectorImage will be returned here if specified in the IRI.</param>
-      <param type="objVectorPattern **" name="Pattern">A VectorPattern will be returned here if specified in the IRI.</param>
+      <param type="struct VectorPainter *" name="Painter">This <st>VectorPainter</st> structure will store the deserialised result.</param>
+      <param type="CSTRING *" name="Result">Optional pointer for storing the end of the parsed IRI string.  <code>NULL</code> is returned if there is no further content to parse.</param>
     </input>
     <description>
-<p>This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
-<p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between 0.0 and 1.0.</p>
-<p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference. Any failure to lookup a reference will be silently discarded.</p>
+<p>This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
+<p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between <code>0.0</code> and <code>255.0</code>.</p>
+<p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the provided <code>Scene</code> object.  If <code>Scene</code> is <code>NULL</code> then it will not be possible to find the reference.  Any failure to lookup a reference will be silently discarded.</p>
+<p>A <st>VectorPainter</st> structure must be provided by the client and will be used to store the final result.  All pointers that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An optional <code>Result</code> string can store a reference to the character up to which the IRI was parsed.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -364,14 +426,14 @@ Z: Close Path
   <function>
     <name>ResetMatrix</name>
     <comment>Resets a transformation matrix to its default state.</comment>
-    <prototype>ERROR vecResetMatrix(struct VectorMatrix * Matrix)</prototype>
+    <prototype>ERR vec::ResetMatrix(struct VectorMatrix * Matrix)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
     </input>
     <description>
 <p>Call ResetMatrix() to reset a transformation matrix to its default state, undoing all former transform operations.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -380,20 +442,20 @@ Z: Close Path
   <function>
     <name>RewindPath</name>
     <comment>Resets the vertex seek position to zero.</comment>
-    <prototype>void vecRewindPath(APTR Path)</prototype>
+    <prototype>void vec::RewindPath(APTR Path)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to rewind.</param>
     </input>
     <description>
-<p>Rewinding a path will reset the current vertex index to zero.  The next call to a vertex modification function such as <function module="Vector">LineTo</function> would result in the first vertex being modified.</p>
-<p>If the referenced Path is empty, this function does nothing.</p>
+<p>Rewinding a path will reset the current vertex index to zero.  The next call to a vertex modification function such as <function>LineTo</function> would result in the first vertex being modified.</p>
+<p>If the referenced <code>Path</code> is empty, this function does nothing.</p>
     </description>
   </function>
 
   <function>
     <name>Rotate</name>
     <comment>Applies a rotation transformation to a matrix.</comment>
-    <prototype>ERROR vecRotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)</prototype>
+    <prototype>ERR vec::Rotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="Angle">Angle of rotation, in degrees.</param>
@@ -401,9 +463,9 @@ Z: Close Path
       <param type="DOUBLE" name="CenterY">Center of rotation on the vertical axis.</param>
     </input>
     <description>
-<p>This function will apply a rotation transformation to a matrix.  By default, rotation will occur around point (0,0) unless CenterX and CenterY values are specified.</p>
+<p>This function will apply a rotation transformation to a matrix.  By default, rotation will occur around point <code>(0, 0)</code> unless <code>CenterX</code> and <code>CenterY</code> values are specified.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -412,18 +474,18 @@ Z: Close Path
   <function>
     <name>Scale</name>
     <comment>Scale the size of the vector by (x,y)</comment>
-    <prototype>ERROR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>ERR vec::Scale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="X">The scale factor on the x-axis.</param>
       <param type="DOUBLE" name="Y">The scale factor on the y-axis.</param>
     </input>
     <description>
-<p>This function will perform a scale operation on a matrix.  Values of less than 1.0 will shrink the affected vector path, while values greater than 1.0 will enlarge it.</p>
-<p>Scaling is relative to position (0,0).  If the width and height of the vector path needs to be transformed without affecting its top-left position, the client must translate the path to (0,0) around its center point.  The path should then be scaled before being transformed back to its original top-left coordinate.</p>
-<p>The scale operation can also be used to flip a vector path if negative values are used.  For instance, a value of -1.0 on the x axis would result in a 1:1 flip across the horizontal.</p>
+<p>This function will perform a scale operation on a matrix.  Values of less than <code>1.0</code> will shrink the affected vector path, while values greater than <code>1.0</code> will enlarge it.</p>
+<p>Scaling is relative to position <code>(0, 0)</code>.  If the width and height of the vector path needs to be transformed without affecting its top-left position, the client must translate the path to <code>(0, 0)</code> around its center point.  The path should then be scaled before being transformed back to its original top-left coordinate.</p>
+<p>The scale operation can also be used to flip a vector path if negative values are used.  For instance, a value of <code>-1.0</code> on the x axis would result in a <code>1:1</code> flip across the horizontal.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -432,18 +494,18 @@ Z: Close Path
   <function>
     <name>Skew</name>
     <comment>Skews the matrix along the horizontal and/or vertical axis.</comment>
-    <prototype>ERROR vecSkew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>ERR vec::Skew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="X">The angle to skew along the horizontal.</param>
       <param type="DOUBLE" name="Y">The angle to skew along the vertical.</param>
     </input>
     <description>
-<p>The Skew function applies a skew transformation to the horizontal and/or vertical axis of the matrix. Valid X and Y values are in the range of -90 &lt; Angle &lt; 90.</p>
+<p>The Skew function applies a skew transformation to the horizontal and/or vertical axis of the matrix. Valid X and Y values are in the range of <code>-90 &lt; Angle &lt; 90</code>.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="OutOfRange">A specified number is outside of the valid range.</error>
+      <error code="OutOfRange">At least one of the angles is out of the allowable range.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -451,7 +513,7 @@ Z: Close Path
   <function>
     <name>Smooth3</name>
     <comment>Alter a path by setting a smooth3 command at the current vertex position.</comment>
-    <prototype>void vecSmooth3(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>void vec::Smooth3(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="X">The horizontal end point for the smooth3 command.</param>
@@ -466,7 +528,7 @@ Z: Close Path
   <function>
     <name>Smooth4</name>
     <comment>Alter a path by setting a smooth4 command at the current vertex position.</comment>
-    <prototype>void vecSmooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>void vec::Smooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="CtrlX">Control point horizontal coordinate.</param>
@@ -481,9 +543,45 @@ Z: Close Path
   </function>
 
   <function>
+    <name>StringWidth</name>
+    <comment>Calculate the pixel width of a UTF-8 string, for a given font.</comment>
+    <prototype>DOUBLE vec::StringWidth(APTR FontHandle, CSTRING String, LONG Chars)</prototype>
+    <input>
+      <param type="APTR" name="FontHandle">A font handle obtained from <function>GetFontHandle</function>.</param>
+      <param type="CSTRING" name="String">Pointer to a null-terminated string.</param>
+      <param type="LONG" name="Chars">The maximum number of unicode characters to process in calculating the string width.  Set to <code>-1</code> for all chars.</param>
+    </input>
+    <description>
+<p>This function calculates the pixel width of a string, in relation to a known font.  The function takes into account any line-feeds that are encountered, so if the <code>String</code> contains multiple lines, then the width of the longest line will be returned.</p>
+<p>The font's kerning specifications will be taken into account when computing the distance between glyphs.</p>
+    </description>
+    <result type="DOUBLE">The pixel width of the string is returned.</result>
+  </function>
+
+  <function>
+    <name>TracePath</name>
+    <comment>Returns the coordinates for a vector path, using callbacks.</comment>
+    <prototype>ERR vec::TracePath(APTR Path, FUNCTION * Callback, DOUBLE Scale)</prototype>
+    <input>
+      <param type="APTR" name="Path">The vector path to trace.</param>
+      <param type="FUNCTION *" name="Callback">A function to call with the path coordinates.</param>
+      <param type="DOUBLE" name="Scale">Set to 1.0 (recommended) to trace the path at a scale of 1 to 1.</param>
+    </input>
+    <description>
+<p>Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the <code>Path</code> from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function is <code>ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, double X, double Y, APTR Meta)</code>.</p>
+<p>The <code>Index</code> is an incrementing counter that reflects the currently plotted point.  The <code>X</code> and <code>Y</code> parameters reflect the coordinate of a point on the path.</p>
+<p>If the <code>Callback</code> returns <code>ERR::Terminate</code>, then no further coordinates will be processed.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
     <name>Translate</name>
     <comment>Translates the vector by (X,Y).</comment>
-    <prototype>ERROR vecTranslate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>ERR vec::Translate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="struct VectorMatrix *" name="Matrix">The target transformation matrix.</param>
       <param type="DOUBLE" name="X">Translation along the x-axis.</param>
@@ -492,7 +590,7 @@ Z: Close Path
     <description>
 <p>This function will translate the matrix in the direction of the provided (X,Y) values.</p>
     </description>
-    <result type="ERROR">
+    <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -501,7 +599,7 @@ Z: Close Path
   <function>
     <name>TranslatePath</name>
     <comment>Translates a path by (x,y)</comment>
-    <prototype>void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
+    <prototype>void vec::TranslatePath(APTR Path, DOUBLE X, DOUBLE Y)</prototype>
     <input>
       <param type="APTR" name="Path">Pointer to a generated path.</param>
       <param type="DOUBLE" name="X">Translate the path horizontally by the given value.</param>
@@ -514,8 +612,8 @@ Z: Close Path
 
   <types>
     <constants lookup="ARC" comment="Options for drawing arcs.">
-      <const name="LARGE"/>
-      <const name="SWEEP"/>
+      <const name="LARGE">The arc will take the longest available drawing path rather than the shortest.</const>
+      <const name="SWEEP">Inverts the default behaviour in generating the arc path (go clockwise).</const>
     </constants>
 
     <constants lookup="ARF" comment="Aspect ratios control alignment, scaling and clipping.">
@@ -549,6 +647,35 @@ Z: Close Path
       <const name="BLUE">The blue colour channel.</const>
       <const name="GREEN">The green colour channel.</const>
       <const name="RED">The red colour channel.</const>
+    </constants>
+
+    <constants lookup="DMF">
+      <const name="FIXED_CENTER_X">The CenterX field is a fixed size.</const>
+      <const name="FIXED_CENTER_Y">The CenterY field is a fixed size.</const>
+      <const name="FIXED_DEPTH">The Depth field is a fixed size.</const>
+      <const name="FIXED_HEIGHT">The Height field is a fixed size.</const>
+      <const name="FIXED_RADIUS_X">The RadiusX field is a fixed size.</const>
+      <const name="FIXED_RADIUS_Y">The RadiusY field is a fixed size.</const>
+      <const name="FIXED_WIDTH">The Width field is a fixed suze.</const>
+      <const name="FIXED_X">The X field is a fixed coordinate.</const>
+      <const name="FIXED_X_OFFSET">The XOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
+      <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
+      <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
+      <const name="SCALED_CENTER_X">The CenterX field is scaled to this object's parent.</const>
+      <const name="SCALED_CENTER_Y">The CenterY field is scaled to this object's parent.</const>
+      <const name="SCALED_DEPTH">The Depth field is scaled to this object's parent.</const>
+      <const name="SCALED_HEIGHT">The Height field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_X">The RadiusX field is scaled to this object's parent.</const>
+      <const name="SCALED_RADIUS_Y">The RadiusY field is a scaled size to this object's parent.</const>
+      <const name="SCALED_WIDTH">The Width field is scaled to this object's parent.</const>
+      <const name="SCALED_X">The X field is scaled to this object's parent.</const>
+      <const name="SCALED_X_OFFSET">The XOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Y">The Y field is scaled to this object's parent.</const>
+      <const name="SCALED_Y_OFFSET">The YOffset field is scaled to this object's parent.</const>
+      <const name="SCALED_Z">The Z field is a scaled coordinate to this object's parent.</const>
+      <const name="STATUS_CHANGE_H"/>
+      <const name="STATUS_CHANGE_V"/>
     </constants>
 
     <constants lookup="EM">
@@ -587,7 +714,7 @@ Z: Close Path
       <const name="CONTRAST"/>
       <const name="DARKEN">Use the darker colour components of the mix and input values.</const>
       <const name="DIFFERENCE">Output the difference between the input and mix colours.</const>
-      <const name="DODGE">Gives a brighter result than SCREEN by decreasing the contrast between the input and mix colours.</const>
+      <const name="DODGE">Gives a brighter result than <code>SCREEN</code> by decreasing the contrast between the input and mix colours.</const>
       <const name="EXCLUSION">Produce the difference between the mix and input values around a reference point of mid-grey.</const>
       <const name="HARD_LIGHT"/>
       <const name="IN">The Porter-Duff 'in' operator; the input alpha channel has priority and the mix channel is secondary.</const>
@@ -628,10 +755,10 @@ Z: Close Path
     </constants>
 
     <constants lookup="RC">
-      <const name="ALL">Synonym for FINAL_PATH | BASE_PATH | TRANSFORM</const>
+      <const name="ALL">Synonym for <code>FINAL_PATH | BASE_PATH | TRANSFORM</code></const>
       <const name="BASE_PATH">The base path (shape of the vector) must be recalculated.</const>
-      <const name="FINAL_PATH">The final path will need to be recalculated, so as to take transforms and/or relative coordinates into account.</const>
-      <const name="TRANSFORM">The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.</const>
+      <const name="FINAL_PATH">The final path will need to be recalculated, so as to take transforms and/or scaled coordinates into account.</const>
+      <const name="TRANSFORM">The transform matrix must be recalculated.  This includes movement, e.g. changing the <code>CX, CY</code> of an ellipse.</const>
     </constants>
 
     <constants lookup="RQ">
@@ -652,6 +779,11 @@ Z: Close Path
       <const name="NO_TRANSFORM">The transformation step will not be applied to the vector's path.</const>
     </constants>
 
+    <constants lookup="VCLF" comment="Options for VectorClip.">
+      <const name="APPLY_FILLS">Apply fill instructions when drawing the clipping path(s).</const>
+      <const name="APPLY_STROKES">Apply stroke instructions when drawing the clipping path(s).</const>
+    </constants>
+
     <constants lookup="VCS" comment="Colour space options.">
       <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
       <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
@@ -661,6 +793,12 @@ Z: Close Path
     <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">
       <const name="DISABLED">The vector is disabled and user input should be ignored.</const>
       <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
+      <const name="JOIN_PATHS">When appending a new path, use a join operation to connect the tail end to the head.</const>
+    </constants>
+
+    <constants lookup="VFA" comment="Define the aspect ratio for VectorFilter unit scaling.">
+      <const name="MEET">Scale X/Y values independently and in relation to the width/height of the parent viewport.</const>
+      <const name="NONE">Scale X/Y values on a <code>1:1</code> basis, in relation to the diagonal of the parent viewport.</const>
     </constants>
 
     <constants lookup="VFR" comment="Vector fill rules for the FillRule field in the Vector class.">
@@ -679,23 +817,23 @@ Z: Close Path
       <const name="FIXED_X2">X2 is fixed</const>
       <const name="FIXED_Y1">Y1 is fixed</const>
       <const name="FIXED_Y2">Y2 is fixed</const>
-      <const name="RELATIVE_CX">CX is relative</const>
-      <const name="RELATIVE_CY">CY is relative</const>
-      <const name="RELATIVE_FX">FX is relative</const>
-      <const name="RELATIVE_FY">FY is relative</const>
-      <const name="RELATIVE_RADIUS">Radius is relative</const>
-      <const name="RELATIVE_X1">X1 is relative</const>
-      <const name="RELATIVE_X2">X2 is relative</const>
-      <const name="RELATIVE_Y1">Y1 is relative</const>
-      <const name="RELATIVE_Y2">Y2 is relative</const>
+      <const name="SCALED_CX">CX is scaled</const>
+      <const name="SCALED_CY">CY is scaled</const>
+      <const name="SCALED_FX">FX is scaled</const>
+      <const name="SCALED_FY">FY is scaled</const>
+      <const name="SCALED_RADIUS">Radius is scaled</const>
+      <const name="SCALED_X1">X1 is scaled</const>
+      <const name="SCALED_X2">X2 is scaled</const>
+      <const name="SCALED_Y1">Y1 is scaled</const>
+      <const name="SCALED_Y2">Y2 is scaled</const>
     </constants>
 
     <constants lookup="VGT" comment="VectorGradient options.">
       <const name="CONIC">The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.</const>
       <const name="CONTOUR">Contoured gradients follow the contours of the vector path in which they are rendered.</const>
       <const name="DIAMOND">A diamond gradient is drawn as a square emanating from the center point.</const>
-      <const name="LINEAR">A linear gradient is drawn from (X1,Y1) to (X2,Y2).</const>
-      <const name="RADIAL">A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.</const>
+      <const name="LINEAR">A linear gradient is drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</const>
+      <const name="RADIAL">A radial gradient is drawn from <code>CenterX, CenterY</code> to <code>Radius</code>.  An optional focal point can be expressed with <code>FX</code> and <code>FY</code>.</const>
     </constants>
 
     <constants lookup="VIJ" comment="Inner join options for angled lines.">
@@ -717,7 +855,7 @@ Z: Close Path
       <const name="BUTT">The default.  The line is sharply squared off at its exact end point.</const>
       <const name="INHERIT">The cap type is inherited from the parent (defaults to butt if unspecified).</const>
       <const name="ROUND">The line cap is a half-circle and the line's end-point forms the center point.</const>
-      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by 'StrokeWidth / 2'.</const>
+      <const name="SQUARE">Similar to butt, the line is sharply squared off but will extend past the end point by <code>StrokeWidth / 2</code>.</const>
     </constants>
 
     <constants lookup="VLJ" comment="Options for the look of line joins.">
@@ -725,13 +863,13 @@ Z: Close Path
       <const name="INHERIT">Inherit the join option from the parent.</const>
       <const name="MITER">The default.  The join will form a pointed edge.</const>
       <const name="MITER_REVERT"/>
-      <const name="MITER_ROUND">Default to MITER, but switch to ROUND if the miter limit is exceeded.</const>
+      <const name="MITER_ROUND">Default to <code>MITER</code>, but switch to <code>ROUND</code> if the miter limit is exceeded.</const>
       <const name="ROUND">The join is rounded.</const>
     </constants>
 
     <constants lookup="VMF" comment="Morph flags">
-      <const name="AUTO_SPACING">Applicable when used on VectorText, auto-spacing allows the spacing between glyphs to be shrunk or expanded along the target path so that they can produce a better fit.  The default is for the glyphs to conform to their original spacing requirements.</const>
-      <const name="STRETCH">Applicable when used on VectorText, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.</const>
+      <const name="AUTO_SPACING">Applicable when used on <class name="VectorText">VectorText</class>, auto-spacing allows the spacing between glyphs to be shrunk or expanded along the target path so that they can produce a better fit.  The default is for the glyphs to conform to their original spacing requirements.</const>
+      <const name="STRETCH">Applicable when used on <class name="VectorText">VectorText</class>, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.</const>
       <const name="X_MAX">Align the source so that it is morphed along the right of the target path.</const>
       <const name="X_MID">Align the source so that it is morphed along the middle of the target path.</const>
       <const name="X_MIN">Align the source so that it is morphed along the left of the target path.</const>
@@ -748,29 +886,41 @@ Z: Close Path
     </constants>
 
     <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
-      <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
+      <const name="BITMAP_SIZED">Automatically adjust the <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> to match the target <class name="Bitmap" field="Width">Bitmap.Width</class> and <class name="Bitmap" field="Height">Bitmap.Height</class>.</const>
       <const name="OUTLINE_VIEWPORTS">Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.</const>
-      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
-      <const name="RESIZE">The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.</const>
+      <const name="RENDER_TIME">Compute the drawing frame-rate for the <code>RenderTime</code> field.</const>
+      <const name="RESIZE">The vector will be stretched to fit the <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> values, if defined by the client.</const>
+    </constants>
+
+    <constants lookup="VSF" comment="Filter source types - these are used internally">
+      <const name="ALPHA">As for <code>GRAPHIC</code> except that only the alpha channel is used.</const>
+      <const name="BKGD">An image snapshot of the SVG document under the filter region at the time that the filter element was invoked.</const>
+      <const name="BKGD_ALPHA">As for <code>BKGD</code> but only the alpha channel is used.</const>
+      <const name="FILL">The value of the fill property on the target element for the filter effect.</const>
+      <const name="GRAPHIC">Represents the graphics elements that were the original input into the filter element.</const>
+      <const name="IGNORE">The filter does not require an input source.</const>
+      <const name="PREVIOUS">Use the previous effect as input, or source graphic if no previous effect.</const>
+      <const name="REFERENCE">This value is an assigned name for the filter primitive in the form of a custom-ident. If supplied, then graphics that result from processing this filter primitive can be referenced by an in attribute on a subsequent filter primitive within the same filter element. If no value is provided, the output will only be available for re-use as the implicit input into the next filter primitive if that filter primitive provides no value for its in attribute.</const>
+      <const name="STROKE">The value of the stroke property on the target element for the filter effect.</const>
     </constants>
 
     <constants lookup="VSM">
-      <const name="AUTO">The default option is chosen by the system.  This will typically be bilinear, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</const>
+      <const name="AUTO">The default option is chosen by the system.  This will typically be <code>BILINEAR</code>, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</const>
       <const name="BESSEL"/>
-      <const name="BICUBIC">Produces a similar result to bilinear with a marginally sharper after-effect.</const>
-      <const name="BILINEAR">Bilinear is a common algorithm that produces a reasonable quality image.</const>
-      <const name="BLACKMAN3">Five times slower than bilinear, the final result will lack sharpness when compared to SINC3.</const>
-      <const name="BLACKMAN8">15 times slower than bilinear, the final result is of excellent quality and sharpness is well balanced.</const>
+      <const name="BICUBIC">Produces a similar result to <code>BILINEAR</code> with a marginally sharper after-effect.</const>
+      <const name="BILINEAR">Bilinear is a common algorithm that produces a reasonable quality image quickly.</const>
+      <const name="BLACKMAN3">Five times slower than <code>BILINEAR</code>, the final result will lack sharpness when compared to SINC3.</const>
+      <const name="BLACKMAN8">15 times slower than <code>BILINEAR</code>, the final result is of excellent quality and sharpness is well balanced.</const>
       <const name="GAUSSIAN"/>
       <const name="KAISER"/>
-      <const name="LANCZOS3">This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with SINC and BLACKMAN.</const>
+      <const name="LANCZOS3">This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with <code>SINC</code> and <code>BLACKMAN</code>.</const>
       <const name="LANCZOS8"/>
       <const name="MITCHELL"/>
       <const name="NEIGHBOUR">Nearest neighbour is the fastest sampler at the cost of poor quality.</const>
       <const name="QUADRIC"/>
-      <const name="SINC3">Five times slower than bilinear, the final result is of very good quality.</const>
-      <const name="SINC8">15 times slower than bilinear, the final result is of excellent quality but may be marginally over-sharpened.</const>
-      <const name="SPLINE16">About 1/2 the speed of bilinear, this method produces a considerably better result.</const>
+      <const name="SINC3">Five times slower than <code>BILINEAR</code>, the final result is of very good quality.</const>
+      <const name="SINC8">15 times slower than <code>BILINEAR</code>, the final result is of excellent quality but may be marginally over-sharpened.</const>
+      <const name="SPLINE16">About half the speed of <code>BILINEAR</code>, this method produces a considerably better result.</const>
     </constants>
 
     <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">
@@ -808,13 +958,14 @@ Z: Close Path
       <const name="OVERLINE">Enable overlining of the text.</const>
       <const name="OVERWRITE">Turns on overwrite mode (if off, insert mode is enabled).</const>
       <const name="RASTER">Rasterise glyphs to a texture cache for very fast rendering.  This feature is not compatible with scalable graphics conventions.</const>
+      <const name="SECRET">Hide all characters from the UI by using generic symbols in place of glyphs.</const>
       <const name="UNDERLINE">Enable underlining of the text.</const>
     </constants>
 
     <constants lookup="VUNIT">
-      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
-      <const name="UNDEFINED"/>
-      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
+      <const name="BOUNDING_BOX">Coordinates are scaled to the object's bounding box.</const>
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
+      <const name="USERSPACE">Coordinates are scaled to the current viewport.</const>
     </constants>
 
     <constants lookup="WVC" comment="Wave options.">
@@ -831,6 +982,13 @@ Z: Close Path
 
   </types>
   <structs>
+    <struct name="FontMetrics" comment="Font metrics, measured in pixels relative to the display">
+      <field name="Height" type="LONG">Capitalised font height</field>
+      <field name="LineSpacing" type="LONG">Vertical advance from one line to the next</field>
+      <field name="Ascent" type="LONG">Height from the baseline to the top of the font, including accents.</field>
+      <field name="Descent" type="LONG">Height from the baseline to the bottom of the font</field>
+    </struct>
+
     <struct name="GradientStop" comment="Describes a colour stop for the VectorGradient Stops field.">
       <field name="Offset" type="DOUBLE">An offset in the range of 0 - 1.0</field>
       <field name="RGB" type="struct FRGB">A floating point RGB value.</field>
@@ -838,17 +996,16 @@ Z: Close Path
 
     <struct name="MergeSource" comment="Input source declaration for MergeFX">
       <field name="SourceType" type="VSF" lookup="VSF">The type of the required source.</field>
-      <field name="Effect" type="objFilterEffect *">Effect pointer if the SourceType is REFERENCE.</field>
+      <field name="Effect" type="objFilterEffect *">Effect pointer if the <code>SourceType</code> is <code>REFERENCE</code>.</field>
     </struct>
 
     <struct name="PathCommand" comment="Base structure for path commands.">
-      <field name="Type" type="PE" lookup="PE">The command type (PE value)</field>
-      <field name="Curved" type="UBYTE">Private</field>
-      <field name="LargeArc" type="UBYTE">Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.</field>
+      <field name="Type" type="PE" lookup="PE">The command type</field>
+      <field name="LargeArc" type="UBYTE">Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when <code>TRUE</code>.</field>
       <field name="Sweep" type="UBYTE">Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.</field>
       <field name="Pad1" type="UBYTE">Private</field>
-      <field name="X" type="DOUBLE">The targeted X coordinate (absolute or relative) for the command</field>
-      <field name="Y" type="DOUBLE">The targeted Y coordinate (absolute or relative) for the command</field>
+      <field name="X" type="DOUBLE">The targeted X coordinate (absolute or scaled) for the command</field>
+      <field name="Y" type="DOUBLE">The targeted Y coordinate (absolute or scaled) for the command</field>
       <field name="AbsX" type="DOUBLE">Private</field>
       <field name="AbsY" type="DOUBLE">Private</field>
       <field name="X2" type="DOUBLE">The X2 coordinate for curve commands, or RX for arcs</field>
@@ -872,13 +1029,21 @@ Z: Close Path
       <field name="ScaleY" type="DOUBLE">Matrix value D</field>
       <field name="TranslateX" type="DOUBLE">Matrix value E</field>
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+      <field name="Tag" type="LONG">An optional tag value defined by the client for matrix identification.</field>
+    </struct>
+
+    <struct name="VectorPainter" comment="Deserialised painter information; compliant with SVG painter definitions.">
+      <field name="Pattern" type="objVectorPattern *">A <class name="VectorPattern">VectorPattern</class> object, suitable for pattern based fills.</field>
+      <field name="Image" type="objVectorImage *">A <class name="VectorImage">VectorImage</class> object, suitable for image fills.</field>
+      <field name="Gradient" type="objVectorGradient *">A <class name="VectorGradient">VectorGradient</class> object, suitable for gradient fills.</field>
+      <field name="Colour" type="struct FRGB">A single RGB colour definition, suitable for block colour fills.</field>
     </struct>
 
     <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
       <field name="X" type="DOUBLE">The X coordinate of this point.</field>
       <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
-      <field name="XRelative" type="UBYTE">TRUE if the X value is relative to its viewport (between 0 and 1.0).</field>
-      <field name="YRelative" type="UBYTE">TRUE if the Y value is relative to its viewport (between 0 and 1.0).</field>
+      <field name="XScaled" type="UBYTE"><code>TRUE</code> if the <code>X</code> value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="YScaled" type="UBYTE"><code>TRUE</code> if the <code>Y</code> value is scaled to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>

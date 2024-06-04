@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <image id="icon" xlink:href="icons:items/warning" width="48" height="48"/>
+    <image id="checkmark" xlink:href="icons:items/checkmark" width="16" height="16"/>
+    <image id="cancel" xlink:href="icons:items/cancel" width="16" height="16"/>
+  </defs>
+</svg>
+
+<body margins="10 10 18 10" font-size="10pt"/>
+
+<page name="Index">
+  <table columns="48,0" width="100%">
+    <row>
+      <cell><image src="url(#icon)" width="48" height="48" padding="0 8 18 0"/></cell>
+      <cell>
+        <p>To be or not to be?</p>
+<p><input name="inDialog" ignore-focus width="200" value="That is the question"/></p>
+<p><checkbox name="dlgCheckbox" label="'Tis nobler to suffer" value="false"/></p>
+<p no-wrap><image src="url(#checkmark)" width="16" height="16" padding="0 0 4 0"/><a @response="1">To be</a><advance x="30"/><image src="url(#cancel)" width="16" height="16" padding="0 0 4 0"/><a @response="2">Not to be</a></p>
+      </cell>
+    </row>
+  </table>
+</page>

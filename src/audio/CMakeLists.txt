@@ -11,11 +11,11 @@ int main() {
 }"
    ALSA_INSTALLED)
 
-idl_all ("${MOD}.fdl" NAME ${MOD}_defs
+idl_gen ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    APPEND_IDL "module_def.c"
    FILES "${MOD}.cpp" "commands.cpp"
-   ARGS "output-defs=module_def.c" "output-proto=module_def.c" "prototypes=static")
+   ARGS "output-defs=module_def.c" "output-proto=module_def.c")
 
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast")
 

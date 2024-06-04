@@ -12,11 +12,11 @@
     <idstring>ID_TURBULENCEFX</idstring>
     <category>Graphics</category>
     <include>modules/turbulencefx.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>This filter effect creates an image using the Perlin turbulence function. It allows the synthesis of artificial textures like clouds or marble.  For a detailed description the of the Perlin turbulence function, see "Texturing and Modeling", Ebert et al, AP Professional, 1994. The resulting image will fill the entire filter primitive subregion for this filter primitive.</p>
 <p>It is possible to create bandwidth-limited noise by synthesizing only one octave.</p>
-<p>The following order is used for applying the pseudo random numbers.  An initial seed value is computed based on <field>Seed</field>.  Then the implementation computes the lattice points for R, then continues getting additional pseudo random numbers relative to the last generated pseudo random number and computes the lattice points for G, and so on for B and A.</p></description>
+<p>The following order is used for applying the pseudo random numbers.  An initial seed value is computed based on <fl>Seed</fl>.  Then the implementation computes the lattice points for R, then continues getting additional pseudo random numbers relative to the last generated pseudo random number and computes the lattice points for G, and so on for B and A.</p></description>
     <source>
       <file path="filters/">filter_turbulence.cpp</file>
     </source>
@@ -26,6 +26,13 @@
     <action>
       <name>Draw</name>
       <comment>Render the effect to the target bitmap.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
     </action>
 
   </actions>
@@ -57,7 +64,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Defaults to 1 if not specified.</p>
+<p>Defaults to <code>1</code> if not specified.</p>
       </description>
     </field>
 
@@ -67,17 +74,17 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>If the value is undefined, the effect is as if a value of 0 were specified.  When the seed number is handed over to the algorithm it must first be truncated, i.e. rounded to the closest integer value towards zero.</p>
+<p>If the value is undefined, the effect is as if a value of <code>0</code> were specified.  When the seed number is handed over to the algorithm it must first be truncated, i.e. rounded to the closest integer value towards zero.</p>
       </description>
     </field>
 
     <field>
       <name>Stitch</name>
-      <comment>If TRUE, stitching will be enabled at the tile's edges.</comment>
+      <comment>If <code>TRUE</code>, stitching will be enabled at the tile's edges.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>By default, the turbulence algorithm will sometimes show discontinuities at the tile borders.  If Stitch is set to TRUE then the algorithm will automatically adjust base frequency values such that the node's width and height (i.e., the width and height of the current subregion) contains an integral number of the Perlin tile width and height for the first octave.</p>
+<p>By default, the turbulence algorithm will sometimes show discontinuities at the tile borders.  If Stitch is set to <code>TRUE</code> then the algorithm will automatically adjust base frequency values such that the node's width and height (i.e., the width and height of the current subregion) contains an integral number of the Perlin tile width and height for the first octave.</p>
 <p>The baseFrequency will be adjusted up or down depending on which way has the smallest relative (not absolute) change as follows:  Given the frequency, calculate <code>lowFreq = floor(width*frequency) / width</code> and <code>hiFreq = ceil(width * frequency) / width</code>. If <code>frequency/lowFreq &lt; hiFreq/frequency</code> then use lowFreq, else use hiFreq.  While generating turbulence values, generate lattice vectors as normal for Perlin Noise, except for those lattice  points that lie on the right or bottom edges of the active area (the size of the resulting tile).  In those cases, copy the lattice vector from the opposite edge of the active area.</p>
       </description>
     </field>

@@ -1,0 +1,35 @@
+<!-- Original concept written by Artom Lvov -->
+
+<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <filter id="light">
+    <!-- blur the source image to make bump map less sharp -->
+    <feGaussianBlur stdDeviation="3" result="blurred"></feGaussianBlur>
+
+    <!-- create bump map based on alpha channel -->
+    <feColorMatrix in="blurred" type="luminanceToAlpha" result="bumpMap"></feColorMatrix>
+
+    <!-- use bump map for lighting filter -->
+    <feDiffuseLighting in="bumpMap" surfaceScale="3" result="light">
+      <fePointLight x="225" y="150" z="30"></fePointLight>
+    </feDiffuseLighting>
+
+    <!-- compose the lighting result with source image using multiplication -->
+    <feComposite in="light" in2="SourceGraphic" operator="arithmetic" k1="1" k2="0" k3="0" k4="0">
+    </feComposite>
+  </filter>
+
+  <!-- This coarse surface is suitable for a lighting demonstration -->
+  <filter id="paper">
+    <feTurbulence type="fractalNoise" baseFrequency="0.03 0.06" numOctaves="10" result="noise" />
+    <feDiffuseLighting in="noise" lighting-color="#e2e1db" surfaceScale="2">
+      <feDistantLight azimuth="45" elevation="40" />
+    </feDiffuseLighting>
+  </filter>
+
+  <!-- We'll use a real-time computed image to create the background, but image files could be used also -->
+  <pattern id="background" width="450" height="300" patternUnits="userSpaceOnUse">
+    <rect width="100%" height="100%" filter="url(#paper)"></rect>
+  </pattern>
+
+  <rect width="100%" height="100%" fill="url(#background)" filter="url(#light)"/>
+</svg>

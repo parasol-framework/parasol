@@ -1,12 +1,13 @@
 #pragma once
 
 // Name:      system/fields.h
-// Copyright: Paul Manias © 1996-2023
+// Copyright: Paul Manias © 1996-2024
 // Generator: idl-c
 
 #define FID_Category 0x19ee1863LL
 #define FID_FileName 0x33dfd266LL
 #define FID_BaseClassID 0xd296daa3LL
+#define FID_DisplayScale 0xeb1a36e3LL
 #define FID_FileDescription 0x675569a9LL
 #define FID_FileExtension 0x84ea7702LL
 #define FID_Fields 0xfd727cdcLL
@@ -16,23 +17,17 @@
 #define FID_Usage 0x1084ecfaLL
 #define FID_ActionTable 0x1c85e14bLL
 #define FID_Listener 0xcec9a28bLL
-#define FID_ObjectScope 0x97dccef6LL
-#define FID_AlarmStyle 0xb5343be3LL
 #define FID_ClassName 0xe973511cLL
-#define FID_DrawCallback 0x14e2b3c0LL
-#define FID_ResizeCallback 0xde06a624LL
 #define FID_ReadOnly 0xf952c623LL
 #define FID_Flags 0x0f71a6d2LL
 #define FID_Owner 0x101ac290LL
 #define FID_Static 0x1c8a8badLL
 #define FID_Condition 0x733efbacLL
 #define FID_Activated 0x5198579aLL
-#define FID_ValidateInput 0x54a6bd7fLL
 #define FID_Name 0x7c9b0c46LL
 #define FID_Test 0x7c9e6865LL
 #define FID_Statement 0x94a05e9aLL
 #define FID_ClassID 0xcb8e8f88LL
-#define FID_FeedList 0xef8fb495LL
 #define FID_Compare 0xd3653eecLL
 #define FID_Exists 0xfc2f1525LL
 #define FID_Src 0x0b88ab2dLL
@@ -112,12 +107,10 @@
 #define FID_Bitmap 0xf42617e2LL
 #define FID_Database 0x05e491daLL
 #define FID_Target 0x1d90fd6cLL
-#define FID_TaskControl 0xc491d7d9LL
 #define FID_ErrorMsg 0x0b206e76LL
 #define FID_XML 0x0b88bfd6LL
 #define FID_Record 0x1926f824LL
 #define FID_ItemCount 0x2b35f6fdLL
-#define FID_PrivateObjects 0xb08c94aaLL
 #define FID_Output 0x13525d76LL
 #define FID_RestartLimit 0x3e8d2aa9LL
 #define FID_ReturnCode 0x45981da0LL
@@ -133,12 +126,10 @@
 #define FID_CurrentTag 0x7304a3e4LL
 #define FID_Tags 0x7c9e55d4LL
 #define FID_TagCount 0xabda762aLL
-#define FID_RootIndex 0xb8d300c1LL
 #define FID_MaxSpeed 0x5ed725dcLL
 #define FID_Font 0x7c96e4fcLL
 #define FID_Page 0x7c9c2442LL
 #define FID_Rows 0x7c9d7ab0LL
-#define FID_UpdateRate 0x8f7613d4LL
 #define FID_MinSpeed 0xaf55759aLL
 #define FID_Columns 0xd35616e6LL
 #define FID_CPU 0x0b8866edLL
@@ -207,8 +198,6 @@
 #define FID_Disable 0x12c4e4b9LL
 #define FID_Region 0x19290fc9LL
 #define FID_String 0x1c93affcLL
-#define FID_ExitFrame 0x4ec02f4aLL
-#define FID_EnterFrame 0x5942272eLL
 #define FID_ReleaseFrame 0x788d98d1LL
 #define FID_Text 0x7c9e690aLL
 #define FID_InputWidth 0x8de1f455LL
@@ -216,7 +205,7 @@
 #define FID_ActionScript 0xab19ce38LL
 #define FID_LabelWidth 0xe1c93545LL
 #define FID_Template 0xeeaba201LL
-#define FID_FocusFrame 0xf362fb10LL
+#define FID_FontStyle 0xf6bc116dLL
 #define FID_Bottom 0xf492ca7aLL
 #define FID_IgnoreFocus 0xf730cb69LL
 #define FID_Header 0x01d218aeLL
@@ -230,10 +219,8 @@
 #define FID_Disclaimer 0x7a34e702LL
 #define FID_TotalSamples 0x7c7370deLL
 #define FID_Description 0x91b0c789LL
-#define FID_ResizeFeedback 0xc5d0375cLL
 #define FID_Active 0xf1644de1LL
 #define FID_Software 0xf42a7a30LL
-#define FID_ItemFeedback 0x7f745cd9LL
 #define FID_Image 0x0fa87ca8LL
 #define FID_Strength 0x8ff74c54LL
 #define FID_RandomSeed 0xc6745cc7LL
@@ -418,7 +405,7 @@
 #define FID_TotalClients 0xc62a03fbLL
 #define FID_Clients 0xcc179277LL
 #define FID_CurrentClient 0xf784f947LL
-#define FID_UserData 0xfe13525eLL
+#define FID_ClientData 0x3901055eLL
 #define FID_Sequence 0x0c15489eLL
 #define FID_NoDrawing 0x92ea90eeLL
 #define FID_FrameCount 0xefa2ec19LL
@@ -532,17 +519,14 @@
 #define FID_Tabs 0x7c9e552fLL
 #define FID_Outline 0x7d9ba745LL
 #define FID_WrapEdge 0x80248354LL
-#define FID_WrapCallback 0x878b8aecLL
 #define FID_StrWidth 0x913a3abeLL
 #define FID_FixedWidth 0xa86c5cd5LL
-#define FID_EscapeChar 0xb6a3bf14LL
 #define FID_Underline 0xb8ea5b4bLL
 #define FID_LineSpacing 0xbb0bc1d2LL
 #define FID_TotalChars 0xc8396dbaLL
 #define FID_GlyphSpacing 0xc896c32eLL
 #define FID_AlignWidth 0xcb1970d0LL
 #define FID_TabSize 0xce95c997LL
-#define FID_EscapeCallback 0xd07112a3LL
 #define FID_Ascent 0xf27c7183LL
 #define FID_InputFile 0x044358d5LL
 #define FID_Datatype 0x05eed661LL
@@ -797,7 +781,6 @@
 #define FID_IterationLevel 0xa47284acLL
 #define FID_MinAngle 0xae0ead30LL
 #define FID_WheelSpeed 0x02257e4bLL
-#define FID_LayoutStyle 0x7b3acff4LL
 #define FID_Routine 0x56a1e54bLL
 #define FID_StackSize 0x6d689bb6LL
 #define FID_Results 0x3f2ab7f7LL
@@ -855,6 +838,7 @@
 #define FID_Degree 0xf880fbf1LL
 #define FID_DestBitmap 0xae246132LL
 #define FID_DeviceID 0x3f093642LL
+#define FID_DragCallback 0xcd1ba3b0LL
 #define FID_EffectXML 0xa7fe50e3LL
 #define FID_EnableBkgd 0xdb56fba4LL
 #define FID_FX 0x005977e3LL
@@ -935,20 +919,28 @@
 #define FID_Vertices 0xd31fda6aLL
 #define FID_Weight 0x24d3ea4dLL
 
+#define FID_AppendPath 0x778f85caLL
 #define FID_Bias 0x7c949844LL
+#define FID_ClipFlags 0x4959653aLL
 #define FID_Constant 0x42a2b30fLL
 #define FID_Def 0x0b8869b4LL
 #define FID_Dictionary 0xccb60b7bLL
 #define FID_Divisor 0x12ffda05LL
 #define FID_EdgeMode 0xbb10b09fLL
+#define FID_EventCallback 0xfc356c74LL
+#define FID_EventMask 0x354f38b3LL
 #define FID_Exponent 0xd4513596LL
+#define FID_LoopLimit 0xf4c76a9eLL
 #define FID_MatrixRows 0x64419145LL
 #define FID_MatrixColumns 0x54dc215bLL
 #define FID_Matrix 0x0d3e291aLL
+#define FID_PathTimestamp 0x2efda9a6LL
 #define FID_PreserveAlpha 0xf9b49d57LL
+#define FID_Pretext 0xc28b4df1LL
 #define FID_ResX 0x7c9d4fa7LL
 #define FID_ResY 0x7c9d4fa8LL
 #define FID_RootModule 0xdc9a16cfLL
+#define FID_Rounding 0x2a6f2a0bLL
 #define FID_SourceName 0xb837c737LL
 #define FID_Structs 0xaf10175dLL
 #define FID_TargetX 0xcfb0ab64LL
@@ -967,7 +959,7 @@
 #define FID_SubClass 0xb7799ba5LL
 #define FID_Process 0xc336efe4LL
 #define FID_Clip 0x7c95326dLL
-#define FID_TransRGB 0xbb42bc88LL
+#define FID_TransColour 0x50fe95a1LL
 #define FID_HDensity 0x7bd1ed6dLL
 #define FID_VDensity 0x676b91bbLL
 #define FID_RequestHandler 0x781c36ecLL
@@ -979,4 +971,5 @@
 #define FID_Numeric 0x301f0df8LL
 #define FID_ResizeEvent 0xc404ebf9LL
 #define FID_TabOrder 0xa10b2cb8LL
+#define FID_TextFlags 0x1bce45f7LL
 
