@@ -532,7 +532,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     int ResY                  # Height of the intermediate images in pixels
     int(VUNIT) Units          # VUNIT constant
     int(VUNIT) PrimitiveUnits # VUNIT constant
-    int Dimensions            # Flags for detailing area values
+    int(DMF) Dimensions       # Flags for detailing area values
     int(VCS) ColourSpace      # Operating colour space for RGB values
     int(VFA) AspectRatio      # Aspect ratio to use when scaling X/Y values
   ]])
@@ -1182,19 +1182,18 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 namespace vec {
 inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
    struct SubscribeInput args = { Mask, &Callback };
-   return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
+   return(Action(vec::SubscribeInput::id, (OBJECTPTR)Ob, &args));
 }
 
 inline ERR SubscribeKeyboard(APTR Ob, FUNCTION Callback) {
    struct SubscribeKeyboard args = { &Callback };
-   return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
+   return(Action(vec::SubscribeKeyboard::id, (OBJECTPTR)Ob, &args));
 }
 
 inline ERR SubscribeFeedback(APTR Ob, FM Mask, FUNCTION Callback) {
    struct SubscribeFeedback args = { Mask, &Callback };
-   return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
+   return(Action(vec::SubscribeFeedback::id, (OBJECTPTR)Ob, &args));
 }
-
 } // namespace
 
 namespace fl {

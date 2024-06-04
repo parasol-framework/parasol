@@ -244,7 +244,7 @@ static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
 SaveImage: Saves the SVG document as a PNG image.
 
 This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is
-determined by the @VectorScene.PageWidth and @VectorScene.PageHeight of the #Scene, or if not defined, the 
+determined by the @VectorScene.PageWidth and @VectorScene.PageHeight of the #Scene, or if not defined, the
 default of 1920x1080 is applied.
 
 The image will be saved in PNG format by default, but can be changed by specifying an alternate `ClassID`.  PNG
@@ -346,19 +346,19 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                   xml::NewAttrib(tag, "viewBox", buffer);
                }
 
-               LONG dim;
-               if ((error IS ERR::Okay) and ((error = Self->Viewport->get(FID_Dimensions, &dim)) IS ERR::Okay)) {
-                  if ((dim & (DMF_SCALED_X|DMF_FIXED_X)) and (Self->Viewport->get(FID_X, &x) IS ERR::Okay))
-                     set_dimension(tag, "x", x, dim & DMF_SCALED_X);
+               if (error IS ERR::Okay) {
+                  auto dim = Self->Viewport->get<DMF>(FID_Dimensions);
+                  if (dmf::hasAnyX(dim) and (Self->Viewport->get(FID_X, &x) IS ERR::Okay))
+                     set_dimension(tag, "x", x, dmf::hasScaledX(dim));
 
-                  if ((dim & (DMF_SCALED_Y|DMF_FIXED_Y)) and (Self->Viewport->get(FID_Y, &y) IS ERR::Okay))
-                     set_dimension(tag, "y", y, dim & DMF_SCALED_Y);
+                  if (dmf::hasAnyY(dim) and (Self->Viewport->get(FID_Y, &y) IS ERR::Okay))
+                     set_dimension(tag, "y", y, dmf::hasScaledY(dim));
 
-                  if ((dim & (DMF_SCALED_WIDTH|DMF_FIXED_WIDTH)) and (Self->Viewport->get(FID_Width, &width) IS ERR::Okay))
-                     set_dimension(tag, "width", width, dim & DMF_SCALED_WIDTH);
+                  if (dmf::hasAnyWidth(dim) and (Self->Viewport->get(FID_Width, &width) IS ERR::Okay))
+                     set_dimension(tag, "width", width, dmf::hasScaledWidth(dim));
 
-                  if ((dim & (DMF_SCALED_HEIGHT|DMF_FIXED_HEIGHT)) and (Self->Viewport->get(FID_Height, &height) IS ERR::Okay))
-                     set_dimension(tag, "height", height, dim & DMF_SCALED_HEIGHT);
+                  if (dmf::hasAnyHeight(dim) and (Self->Viewport->get(FID_Height, &height) IS ERR::Okay))
+                     set_dimension(tag, "height", height, dmf::hasScaledHeight(dim));
                }
 
                if (error IS ERR::Okay) {
@@ -604,7 +604,7 @@ static ERR SET_Title(extSVG *Self, CSTRING Value)
 -FIELD-
 Viewport: Returns the first viewport created by an SVG document.
 
-This field simplifies the process of finding the first @VectorViewport that was created by a loaded SVG document.  
+This field simplifies the process of finding the first @VectorViewport that was created by a loaded SVG document.
 `NULL` is returned if an SVG document has not been successfully parsed yet.
 -END-
 

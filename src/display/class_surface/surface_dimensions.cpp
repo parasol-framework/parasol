@@ -162,63 +162,65 @@ that the flags do not conflict.  For instance, `FIXED_X` and `SCALED_X` cannot b
 
 *********************************************************************************************************************/
 
-static ERR SET_Dimensions(extSurface *Self, LONG Value)
+static ERR SET_Dimensions(extSurface *Self, DMF Value)
 {
    SURFACEINFO *parent;
+   const auto HORIZONTAL_FLAGS = DMF::FIXED_WIDTH|DMF::SCALED_WIDTH|DMF::FIXED_X_OFFSET|DMF::SCALED_X_OFFSET|DMF::FIXED_X|DMF::SCALED_X;
+   const auto VERTICAL_FLAGS   = DMF::FIXED_HEIGHT|DMF::SCALED_HEIGHT|DMF::FIXED_Y_OFFSET|DMF::SCALED_Y_OFFSET|DMF::FIXED_Y|DMF::SCALED_Y;
 
    if (gfx::GetSurfaceInfo(Self->ParentID, &parent) IS ERR::Okay) {
-      if (Value & DMF_Y) {
-         if ((Value & DMF_HEIGHT) or (Value & DMF_Y_OFFSET)) {
-            Self->Dimensions &= ~DMF_VERTICAL_FLAGS;
-            Self->Dimensions |= Value & DMF_VERTICAL_FLAGS;
+      if (dmf::hasAnyY(Value)) {
+         if (dmf::hasAnyHeight(Value) or dmf::hasAnyYOffset(Value)) {
+            Self->Dimensions &= ~VERTICAL_FLAGS;
+            Self->Dimensions |= Value & VERTICAL_FLAGS;
          }
       }
-      else if ((Value & DMF_HEIGHT) and (Value & DMF_Y_OFFSET)) {
-         Self->Dimensions &= ~DMF_VERTICAL_FLAGS;
-         Self->Dimensions |= Value & DMF_VERTICAL_FLAGS;
+      else if (dmf::hasAnyHeight(Value) and dmf::hasAnyYOffset(Value)) {
+         Self->Dimensions &= ~VERTICAL_FLAGS;
+         Self->Dimensions |= Value & VERTICAL_FLAGS;
       }
 
-      if (Value & DMF_X) {
-         if ((Value & DMF_WIDTH) or (Value & DMF_X_OFFSET)) {
-            Self->Dimensions &= ~DMF_HORIZONTAL_FLAGS;
-            Self->Dimensions |= Value & DMF_HORIZONTAL_FLAGS;
+      if (dmf::hasAnyX(Value)) {
+         if (dmf::hasAnyWidth(Value) or dmf::hasAnyXOffset(Value)) {
+            Self->Dimensions &= ~HORIZONTAL_FLAGS;
+            Self->Dimensions |= Value & HORIZONTAL_FLAGS;
          }
       }
-      else if ((Value & DMF_WIDTH) and (Value & DMF_X_OFFSET)) {
-         Self->Dimensions &= ~DMF_HORIZONTAL_FLAGS;
-         Self->Dimensions |= Value & DMF_HORIZONTAL_FLAGS;
+      else if (dmf::hasAnyWidth(Value) and dmf::hasAnyXOffset(Value)) {
+         Self->Dimensions &= ~HORIZONTAL_FLAGS;
+         Self->Dimensions |= Value & HORIZONTAL_FLAGS;
       }
 
       struct acRedimension resize;
-      if (Self->Dimensions & DMF_FIXED_X) resize.X = Self->X;
-      else if (Self->Dimensions & DMF_SCALED_X) resize.X = (parent->Width * F2I(Self->XPercent));
-      else if (Self->Dimensions & DMF_FIXED_X_OFFSET) resize.X = parent->Width - Self->XOffset;
-      else if (Self->Dimensions & DMF_SCALED_X_OFFSET) resize.X = parent->Width - ((parent->Width * F2I(Self->XOffsetPercent)));
+      if (dmf::hasX(Self->Dimensions)) resize.X = Self->X;
+      else if (dmf::hasScaledX(Self->Dimensions)) resize.X = parent->Width * F2I(Self->XPercent);
+      else if (dmf::hasXOffset(Self->Dimensions)) resize.X = parent->Width - Self->XOffset;
+      else if (dmf::hasScaledXOffset(Self->Dimensions)) resize.X = parent->Width - ((parent->Width * F2I(Self->XOffsetPercent)));
       else resize.X = 0;
 
-      if (Self->Dimensions & DMF_FIXED_Y) resize.Y = Self->Y;
-      else if (Self->Dimensions & DMF_SCALED_Y) resize.Y = (parent->Height * F2I(Self->YPercent));
-      else if (Self->Dimensions & DMF_FIXED_Y_OFFSET) resize.Y = parent->Height - Self->YOffset;
-      else if (Self->Dimensions & DMF_SCALED_Y_OFFSET) resize.Y = parent->Height - ((parent->Height * F2I(Self->YOffsetPercent)));
+      if (dmf::hasY(Self->Dimensions)) resize.Y = Self->Y;
+      else if (dmf::hasScaledY(Self->Dimensions)) resize.Y = parent->Height * F2I(Self->YPercent);
+      else if (dmf::hasYOffset(Self->Dimensions)) resize.Y = parent->Height - Self->YOffset;
+      else if (dmf::hasScaledYOffset(Self->Dimensions)) resize.Y = parent->Height - ((parent->Height * F2I(Self->YOffsetPercent)));
       else resize.Y = 0;
 
-      if (Self->Dimensions & DMF_FIXED_WIDTH) resize.Width = Self->Width;
-      else if (Self->Dimensions & DMF_SCALED_WIDTH) resize.Width = (parent->Width * F2I(Self->WidthPercent));
+      if (dmf::hasWidth(Self->Dimensions)) resize.Width = Self->Width;
+      else if (dmf::hasScaledWidth(Self->Dimensions)) resize.Width = parent->Width * F2I(Self->WidthPercent);
       else {
-         if (Self->Dimensions & DMF_SCALED_X_OFFSET) resize.Width = parent->Width - (parent->Width * F2I(Self->XOffsetPercent));
+         if (dmf::hasScaledXOffset(Self->Dimensions)) resize.Width = parent->Width - (parent->Width * F2I(Self->XOffsetPercent));
          else resize.Width = parent->Width - Self->XOffset;
 
-         if (Self->Dimensions & DMF_SCALED_X) resize.Width = resize.Width - ((parent->Width * F2I(Self->XPercent)));
+         if (dmf::hasScaledX(Self->Dimensions)) resize.Width = resize.Width - ((parent->Width * F2I(Self->XPercent)));
          else resize.Width = resize.Width - Self->X;
       }
 
-      if (Self->Dimensions & DMF_FIXED_HEIGHT) resize.Height = Self->Height;
-      else if (Self->Dimensions & DMF_SCALED_HEIGHT) resize.Height = (parent->Height * F2I(Self->HeightPercent));
+      if (dmf::hasHeight(Self->Dimensions)) resize.Height = Self->Height;
+      else if (dmf::hasScaledHeight(Self->Dimensions)) resize.Height = parent->Height * F2I(Self->HeightPercent);
       else {
-         if (Self->Dimensions & DMF_SCALED_Y_OFFSET) resize.Height = parent->Height - (parent->Height * F2I(Self->YOffsetPercent));
+         if (dmf::hasScaledYOffset(Self->Dimensions)) resize.Height = parent->Height - (parent->Height * F2I(Self->YOffsetPercent));
          else resize.Height = parent->Height - Self->YOffset;
 
-         if (Self->Dimensions & DMF_SCALED_Y) resize.Height = resize.Height - ((parent->Height * F2I(Self->YPercent)));
+         if (dmf::hasScaledY(Self->Dimensions)) resize.Height = resize.Height - ((parent->Height * F2I(Self->YPercent)));
          else resize.Height = resize.Height - Self->Y;
       }
 
@@ -251,7 +253,7 @@ for pairing the #Y and #YOffset fields together for dynamic height adjustment.
 static ERR GET_Height(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_SCALED) {
-      if (Self->Dimensions & DMF_SCALED_HEIGHT) {
+      if (dmf::hasScaledHeight(Self->Dimensions)) {
          Value->Double = Self->HeightPercent;
          Value->Large  = F2I(Self->HeightPercent);
          return ERR::Okay;
@@ -278,7 +280,7 @@ static ERR SET_Height(extSurface *Self, Variable *Value)
    if (value <= 0) {
       if (Self->initialised()) return ERR::InvalidDimension;
       else {
-         Self->Dimensions &= ~(DMF_HEIGHT);
+         Self->Dimensions &= ~(DMF::FIXED_HEIGHT|DMF::SCALED_HEIGHT);
          return ERR::Okay;
       }
    }
@@ -288,30 +290,30 @@ static ERR SET_Height(extSurface *Self, Variable *Value)
       if (Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->HeightPercent = value;
-            Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_SCALED_HEIGHT;
+            Self->Dimensions = (Self->Dimensions & ~DMF::FIXED_HEIGHT) | DMF::SCALED_HEIGHT;
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height * value, 0, 0, 0, 0, 0);
          }
          else return log.warning(ERR::AccessObject);
       }
       else {
          Self->HeightPercent = value;
-         Self->Dimensions    = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_SCALED_HEIGHT;
+         Self->Dimensions    = (Self->Dimensions & ~DMF::FIXED_HEIGHT) | DMF::SCALED_HEIGHT;
       }
    }
    else {
       if (value != Self->Height) resize_layer(Self, Self->X, Self->Y, 0, value, 0, 0, 0, 0, 0);
 
-      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_HEIGHT) | DMF_FIXED_HEIGHT;
+      Self->Dimensions = (Self->Dimensions & ~DMF::SCALED_HEIGHT) | DMF::FIXED_HEIGHT;
 
       // If the offset flags are used, adjust the vertical position
 
-      if (Self->Dimensions & DMF_SCALED_Y_OFFSET) {
+      if (dmf::hasScaledYOffset(Self->Dimensions)) {
          Variable var;
          var.Type   = FD_DOUBLE|FD_SCALED;
          var.Double = Self->YOffsetPercent;
          SET_YOffset(Self, &var);
       }
-      else if (Self->Dimensions & DMF_FIXED_Y_OFFSET) {
+      else if (dmf::hasYOffset(Self->Dimensions)) {
          Variable var(Self->YOffset);
          SET_YOffset(Self, &var);
       }
@@ -325,7 +327,7 @@ static ERR SET_Height(extSurface *Self, Variable *Value)
 -FIELD-
 InsideHeight: Defines the amount of space between the vertical margins.
 
-A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value 
+A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value
 is the result of calculating this formula: `Height - TopMargin - BottomMargin`.
 
 If the #TopMargin and #BottomMargin fields are not set, the returned value will be equal to the surface object's
@@ -451,8 +453,7 @@ static ERR SET_MaxWidth(extSurface *Self, LONG Value)
    Self->MaxWidth = Value;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
-      if (display.granted()) {
+      if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
          display->sizeHints(-1, -1,
             Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
             Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
@@ -482,8 +483,7 @@ static ERR SET_MinHeight(extSurface *Self, LONG Value)
    if (Self->MinHeight < 1) Self->MinHeight = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
-      if (display.granted()) {
+      if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
          display->sizeHints(Self->MinWidth + Self->LeftMargin + Self->RightMargin,
             Self->MinHeight + Self->TopMargin + Self->BottomMargin,
             -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
@@ -512,8 +512,7 @@ static ERR SET_MinWidth(extSurface *Self, LONG Value)
    if (Self->MinWidth < 1) Self->MinWidth = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
-      if (display.granted()) {
+      if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
          display->sizeHints(Self->MinWidth + Self->LeftMargin + Self->RightMargin,
             Self->MinHeight + Self->TopMargin + Self->BottomMargin,
             -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
@@ -764,7 +763,7 @@ static ERR GET_Width(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
       if (Value->Type & FD_SCALED) {
-         if (Self->Dimensions & DMF_SCALED_WIDTH) {
+         if (dmf::hasScaledWidth(Self->Dimensions)) {
             Value->Double = Self->WidthPercent;
          }
          else return ERR::Failed;
@@ -789,7 +788,7 @@ static ERR SET_Width(extSurface *Self, Variable *Value)
    if (value <= 0) {
       if (Self->initialised()) return ERR::InvalidDimension;
       else {
-         Self->Dimensions &= ~(DMF_WIDTH);
+         Self->Dimensions &= ~(DMF::FIXED_WIDTH|DMF::SCALED_WIDTH);
          return ERR::Okay;
       }
    }
@@ -799,28 +798,28 @@ static ERR SET_Width(extSurface *Self, Variable *Value)
       if (Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->WidthPercent = value;
-            Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_SCALED_WIDTH;
+            Self->Dimensions   = (Self->Dimensions & ~DMF::FIXED_WIDTH) | DMF::SCALED_WIDTH;
             resize_layer(Self, Self->X, Self->Y, parent->Width * value, 0, 0, 0, 0, 0, 0);
          }
          else return ERR::AccessObject;
       }
       else {
          Self->WidthPercent = value;
-         Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_SCALED_WIDTH;
+         Self->Dimensions   = (Self->Dimensions & ~DMF::FIXED_WIDTH) | DMF::SCALED_WIDTH;
       }
    }
    else {
       if (value != Self->Width) resize_layer(Self, Self->X, Self->Y, value, 0, 0, 0, 0, 0, 0);
 
-      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_WIDTH) | DMF_FIXED_WIDTH;
+      Self->Dimensions = (Self->Dimensions & ~DMF::SCALED_WIDTH) | DMF::FIXED_WIDTH;
 
       // If the offset flags are used, adjust the horizontal position
-      if (Self->Dimensions & DMF_SCALED_X_OFFSET) {
+      if (dmf::hasScaledXOffset(Self->Dimensions)) {
          var.Type = FD_DOUBLE|FD_SCALED;
          var.Double = Self->XOffsetPercent;
          SET_XOffset(Self, &var);
       }
-      else if (Self->Dimensions & DMF_FIXED_X_OFFSET) {
+      else if (dmf::hasXOffset(Self->Dimensions)) {
          var.Type = FD_DOUBLE;
          var.Double = Self->XOffset;
          SET_XOffset(Self, &var);
@@ -870,7 +869,7 @@ static ERR SET_XCoord(extSurface *Self, Variable *Value)
    else return log.warning(ERR::SetValueNotNumeric);
 
    if (Value->Type & FD_SCALED) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X) | DMF_SCALED_X;
+      Self->Dimensions = (Self->Dimensions & ~DMF::FIXED_X) | DMF::SCALED_X;
       Self->XPercent   = value;
       if (Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
@@ -880,12 +879,12 @@ static ERR SET_XCoord(extSurface *Self, Variable *Value)
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_X) | DMF_FIXED_X;
+      Self->Dimensions = (Self->Dimensions & ~DMF::SCALED_X) | DMF::FIXED_X;
       move_layer(Self, value, Self->Y);
 
       // If our right-hand side is relative, we need to resize our surface to counteract the movement.
 
-      if ((Self->ParentID) and (Self->Dimensions & (DMF_SCALED_X_OFFSET|DMF_FIXED_X_OFFSET))) {
+      if ((Self->ParentID) and (dmf::hasAnyXOffset(Self->Dimensions))) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
          }
@@ -916,22 +915,20 @@ an X coordinate calculated from the formula `X = ContainerWidth - SurfaceWidth -
 static ERR GET_XOffset(extSurface *Self, Variable *Value)
 {
    pf::Log log;
-   Variable xoffset;
    DOUBLE value;
 
    if (Value->Type & FD_SCALED) {
-      xoffset.Type = FD_DOUBLE;
-      xoffset.Double = 0;
+      Variable xoffset(0.0);
       if (GET_XOffset(Self, &xoffset) IS ERR::Okay) {
          value = xoffset.Double / Self->Width;
       }
       else value = 0;
    }
    else {
-      if (Self->Dimensions & DMF_X_OFFSET) {
+      if (dmf::hasAnyXOffset(Self->Dimensions)) {
          value = Self->XOffset;
       }
-      else if ((Self->Dimensions & DMF_WIDTH) and (Self->Dimensions & DMF_X) and (Self->ParentID)) {
+      else if ((dmf::hasAnyWidth(Self->Dimensions)) and (dmf::hasAnyX(Self->Dimensions)) and (Self->ParentID)) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             value = parent->Width - Self->X - Self->Width;
          }
@@ -960,14 +957,14 @@ static ERR SET_XOffset(extSurface *Self, Variable *Value)
    if (value < 0) value = -value;
 
    if (Value->Type & FD_SCALED) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X_OFFSET) | DMF_SCALED_X_OFFSET;
+      Self->Dimensions = (Self->Dimensions & ~DMF::FIXED_X_OFFSET) | DMF::SCALED_X_OFFSET;
       Self->XOffsetPercent = value;
 
       if (Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->XOffset = parent->Width * F2I(Self->XOffsetPercent);
-            if (!(Self->Dimensions & DMF_X)) Self->X = parent->Width - Self->XOffset - Self->Width;
-            if (!(Self->Dimensions & DMF_WIDTH)) {
+            if (!(dmf::hasAnyX(Self->Dimensions))) Self->X = parent->Width - Self->XOffset - Self->Width;
+            if (!(dmf::hasAnyWidth(Self->Dimensions))) {
                resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
             }
          }
@@ -975,16 +972,16 @@ static ERR SET_XOffset(extSurface *Self, Variable *Value)
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_X_OFFSET) | DMF_FIXED_X_OFFSET;
+      Self->Dimensions = (Self->Dimensions & ~DMF::SCALED_X_OFFSET) | DMF::FIXED_X_OFFSET;
       Self->XOffset = value;
 
-      if ((Self->Dimensions & DMF_WIDTH) and (Self->ParentID)) {
+      if ((dmf::hasAnyWidth(Self->Dimensions)) and (Self->ParentID)) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             move_layer(Self, parent->Width - Self->XOffset - Self->Width, Self->Y);
          }
          else return log.warning(ERR::AccessObject);
       }
-      else if ((Self->Dimensions & DMF_X) and (Self->ParentID)) {
+      else if ((dmf::hasAnyX(Self->Dimensions)) and (Self->ParentID)) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
          }
@@ -1035,7 +1032,7 @@ static ERR SET_YCoord(extSurface *Self, Variable *Value)
    else return log.warning(ERR::SetValueNotNumeric);
 
    if (Value->Type & FD_SCALED) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y) | DMF_SCALED_Y;
+      Self->Dimensions = (Self->Dimensions & ~DMF::FIXED_Y) | DMF::SCALED_Y;
       Self->YPercent = value;
       if (Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
@@ -1045,7 +1042,7 @@ static ERR SET_YCoord(extSurface *Self, Variable *Value)
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_Y) | DMF_FIXED_Y;
+      Self->Dimensions = (Self->Dimensions & ~DMF::SCALED_Y) | DMF::FIXED_Y;
       move_layer(Self, Self->X, value);
    }
 
@@ -1072,22 +1069,20 @@ at a Y coordinate calculated from the formula `Y = ContainerHeight - SurfaceHeig
 static ERR GET_YOffset(extSurface *Self, Variable *Value)
 {
    pf::Log log;
-   Variable yoffset;
    DOUBLE value;
 
    if (Value->Type & FD_SCALED) {
-      yoffset.Type = FD_DOUBLE;
-      yoffset.Double = 0;
+      Variable yoffset(0.0);
       if (GET_YOffset(Self, &yoffset) IS ERR::Okay) {
          value = yoffset.Double / Self->Height;
       }
       else value = 0;
    }
    else {
-      if (Self->Dimensions & DMF_Y_OFFSET) {
+      if (dmf::hasAnyYOffset(Self->Dimensions)) {
          value = Self->YOffset;
       }
-      else if ((Self->Dimensions & DMF_HEIGHT) and (Self->Dimensions & DMF_Y) and (Self->ParentID)) {
+      else if (dmf::hasAnyHeight(Self->Dimensions) and dmf::hasY(Self->Dimensions) and Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             value = parent->Height - Self->Y - Self->Height;
          }
@@ -1116,14 +1111,14 @@ static ERR SET_YOffset(extSurface *Self, Variable *Value)
    if (value < 0) value = -value;
 
    if (Value->Type & FD_SCALED) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y_OFFSET) | DMF_SCALED_Y_OFFSET;
+      Self->Dimensions = (Self->Dimensions & ~DMF::FIXED_Y_OFFSET) | DMF::SCALED_Y_OFFSET;
       Self->YOffsetPercent = value;
 
       if (Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             Self->YOffset = parent->Height * F2I(Self->YOffsetPercent);
-            if (!(Self->Dimensions & DMF_Y))Self->Y = parent->Height - Self->YOffset - Self->Height;
-            if (!(Self->Dimensions & DMF_HEIGHT)) {
+            if (!(dmf::hasAnyY(Self->Dimensions)))Self->Y = parent->Height - Self->YOffset - Self->Height;
+            if (!(dmf::hasAnyHeight(Self->Dimensions))) {
                resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
             }
             else move_layer(Self, Self->X, parent->Height - Self->YOffset - Self->Height);
@@ -1132,19 +1127,19 @@ static ERR SET_YOffset(extSurface *Self, Variable *Value)
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_Y_OFFSET) | DMF_FIXED_Y_OFFSET;
+      Self->Dimensions = (Self->Dimensions & ~DMF::SCALED_Y_OFFSET) | DMF::FIXED_Y_OFFSET;
       Self->YOffset = value;
 
-      if ((Self->Dimensions & DMF_HEIGHT) and (Self->ParentID)) {
+      if (dmf::hasAnyHeight(Self->Dimensions) and Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
-            if (!(Self->Dimensions & DMF_HEIGHT)) {
+            if (!(dmf::hasAnyHeight(Self->Dimensions))) {
                resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
             }
             else move_layer(Self, Self->X, parent->Height - Self->YOffset - Self->Height);
          }
          else return log.warning(ERR::AccessObject);
       }
-      else if ((Self->Dimensions & DMF_Y) and (Self->ParentID)) {
+      else if (dmf::hasAnyY(Self->Dimensions) and Self->ParentID) {
          if (ScopedObjectLock<extSurface> parent(Self->ParentID, 500); parent.granted()) {
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height - Self->Y - Self->YOffset, 0, 0, 0, 0, 0);
          }

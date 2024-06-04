@@ -29,7 +29,7 @@ class extVectorWave : public extVector {
    DOUBLE wDecay;
    DOUBLE wDegree;
    DOUBLE wThickness;
-   LONG   wDimensions;
+   DMF    wDimensions;
    WVC    wClose;
    UBYTE  wStyle;
 };
@@ -41,10 +41,10 @@ static void generate_wave(extVectorWave *Vector, agg::path_storage &Path)
    DOUBLE ox = Vector->wX, oy = Vector->wY;
    DOUBLE width = Vector->wWidth, height = Vector->wHeight;
 
-   if (Vector->wDimensions & DMF_SCALED_X) ox *= get_parent_width(Vector);
-   if (Vector->wDimensions & DMF_SCALED_Y) oy *= get_parent_height(Vector);
-   if (Vector->wDimensions & DMF_SCALED_WIDTH) width *= get_parent_width(Vector);
-   if (Vector->wDimensions & DMF_SCALED_HEIGHT) height *= get_parent_height(Vector);
+   if (dmf::hasScaledX(Vector->wDimensions)) ox *= get_parent_width(Vector);
+   if (dmf::hasScaledY(Vector->wDimensions)) oy *= get_parent_height(Vector);
+   if (dmf::hasScaledWidth(Vector->wDimensions)) width *= get_parent_width(Vector);
+   if (dmf::hasScaledHeight(Vector->wDimensions)) height *= get_parent_height(Vector);
 
    DOUBLE decay;
    if (Vector->wDecay IS 0) decay = 0.00000001;
@@ -183,8 +183,8 @@ static ERR WAVE_MoveToPoint(extVectorWave *Self, struct acMoveToPoint *Args)
 
    if ((Args->Flags & MTF::X) != MTF::NIL) Self->wX = Args->X;
    if ((Args->Flags & MTF::Y) != MTF::NIL) Self->wY = Args->Y;
-   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->wDimensions = (Self->wDimensions | DMF_SCALED_X | DMF_SCALED_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
-   else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X | DMF_FIXED_Y) & ~(DMF_SCALED_X | DMF_SCALED_Y);
+   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->wDimensions = (Self->wDimensions | DMF::SCALED_X | DMF::SCALED_Y) & ~(DMF::FIXED_X | DMF::FIXED_Y);
+   else Self->wDimensions = (Self->wDimensions | DMF::FIXED_X | DMF::FIXED_Y) & ~(DMF::SCALED_X | DMF::SCALED_Y);
    reset_path(Self);
    return ERR::Okay;
 }
@@ -330,13 +330,13 @@ The following dimension flags are supported:
 
 *********************************************************************************************************************/
 
-static ERR WAVE_GET_Dimensions(extVectorWave *Self, LONG *Value)
+static ERR WAVE_GET_Dimensions(extVectorWave *Self, DMF *Value)
 {
    *Value = Self->wDimensions;
    return ERR::Okay;
 }
 
-static ERR WAVE_SET_Dimensions(extVectorWave *Self, LONG Value)
+static ERR WAVE_SET_Dimensions(extVectorWave *Self, DMF Value)
 {
    Self->wDimensions = Value;
    reset_path(Self);
@@ -391,8 +391,8 @@ static ERR WAVE_SET_Height(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF_SCALED_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   else Self->wDimensions = (Self->wDimensions | DMF_FIXED_HEIGHT) & (~DMF_SCALED_HEIGHT);
+   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+   else Self->wDimensions = (Self->wDimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
 
    Self->wHeight = val;
    reset_path(Self);
@@ -466,8 +466,8 @@ static ERR WAVE_SET_Width(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF_SCALED_WIDTH) & (~DMF_FIXED_WIDTH);
-   else Self->wDimensions = (Self->wDimensions | DMF_FIXED_WIDTH) & (~DMF_SCALED_WIDTH);
+   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+   else Self->wDimensions = (Self->wDimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
 
    Self->wWidth = val;
    reset_path(Self);
@@ -497,8 +497,8 @@ static ERR WAVE_SET_X(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF_SCALED_X) & (~DMF_FIXED_X);
-   else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X) & (~DMF_SCALED_X);
+   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   else Self->wDimensions = (Self->wDimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
 
    Self->wX = val;
    reset_path(Self);
@@ -528,8 +528,8 @@ static ERR WAVE_SET_Y(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF_SCALED_Y) & (~DMF_FIXED_Y);
-   else Self->wDimensions = (Self->wDimensions | DMF_FIXED_Y) & (~DMF_SCALED_Y);
+   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   else Self->wDimensions = (Self->wDimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
 
    Self->wY = val;
    reset_path(Self);
@@ -553,14 +553,14 @@ static const FieldDef clWaveStyle[] = {
 };
 
 static const FieldDef clWaveDimensions[] = {
-   { "FixedHeight",   DMF_FIXED_HEIGHT },
-   { "FixedWidth",    DMF_FIXED_WIDTH },
-   { "FixedX",        DMF_FIXED_X },
-   { "FixedY",        DMF_FIXED_Y },
-   { "ScaledHeight",  DMF_SCALED_HEIGHT },
-   { "ScaledWidth",   DMF_SCALED_WIDTH },
-   { "ScaledX",       DMF_SCALED_X },
-   { "ScaledY",       DMF_SCALED_Y },
+   { "FixedHeight",   DMF::FIXED_HEIGHT },
+   { "FixedWidth",    DMF::FIXED_WIDTH },
+   { "FixedX",        DMF::FIXED_X },
+   { "FixedY",        DMF::FIXED_Y },
+   { "ScaledHeight",  DMF::SCALED_HEIGHT },
+   { "ScaledWidth",   DMF::SCALED_WIDTH },
+   { "ScaledX",       DMF::SCALED_X },
+   { "ScaledY",       DMF::SCALED_Y },
    { NULL, 0 }
 };
 

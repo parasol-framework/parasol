@@ -183,8 +183,8 @@ static ERR FILTEREFFECT_SET_Height(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_SCALED_HEIGHT);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
 
    Self->Height = val;
    return ERR::Okay;
@@ -252,8 +252,8 @@ static ERR FILTEREFFECT_SET_Width(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_WIDTH) & (~DMF_FIXED_WIDTH);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_SCALED_WIDTH);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
 
    Self->Width = val;
    return ERR::Okay;
@@ -283,8 +283,8 @@ static ERR FILTEREFFECT_SET_X(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_X) & (~DMF_FIXED_X);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_SCALED_X);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
 
    Self->X = val;
    return ERR::Okay;
@@ -315,8 +315,8 @@ static ERR FILTEREFFECT_SET_Y(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_Y) & (~DMF_FIXED_Y);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_SCALED_Y);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
 
    Self->Y = val;
    return ERR::Okay;

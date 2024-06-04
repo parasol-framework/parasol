@@ -81,26 +81,24 @@ void gen_vector_path(extVector *Vector)
       // vpBX1/BY1/BX2/BY2 are fixed coordinate bounding box values from root position (0,0) and define the clip region imposed on all children of the viewport.
       // vpFixedX/Y are the fixed coordinate position of the viewport relative to root position (0,0)
 
-      if (!(view->vpDimensions & (DMF_X|DMF_X_OFFSET))) {
-         // Client failed to set a horizontal position
+      if (!dmf::hasAnyHorizontalPosition(view->vpDimensions)) { // Client failed to set a horizontal position
          view->vpTargetX = 0;
-         view->vpDimensions |= DMF_FIXED_X;
+         view->vpDimensions |= DMF::FIXED_X;
       }
-      else if ((view->vpDimensions & DMF_X_OFFSET) and (!(view->vpDimensions & (DMF_X|DMF_WIDTH)))) {
+      else if (dmf::hasAnyXOffset(view->vpDimensions) and (!dmf::has(view->vpDimensions, DMF::FIXED_X|DMF::SCALED_X|DMF::FIXED_WIDTH|DMF::SCALED_WIDTH))) {
          // Client set an offset but failed to combine it with a width or position value.
          view->vpTargetX = 0;
-         view->vpDimensions |= DMF_FIXED_X;
+         view->vpDimensions |= DMF::FIXED_X;
       }
 
-      if (!(view->vpDimensions & (DMF_Y|DMF_Y_OFFSET))) {
-         // Client failed to set a vertical position
+      if (!dmf::hasAnyVerticalPosition(view->vpDimensions)) { // Client failed to set a vertical position
          view->vpTargetY = 0;
-         view->vpDimensions |= DMF_FIXED_Y;
+         view->vpDimensions |= DMF::FIXED_Y;
       }
-      else if ((view->vpDimensions & DMF_Y_OFFSET) and (!(view->vpDimensions & (DMF_Y|DMF_HEIGHT)))) {
+      else if (dmf::hasAnyYOffset(view->vpDimensions) and (!dmf::has(view->vpDimensions, DMF::FIXED_Y|DMF::SCALED_Y|DMF::FIXED_HEIGHT|DMF::SCALED_HEIGHT))) {
          // Client set an offset but failed to combine it with a height or position value.
          view->vpTargetY = 0;
-         view->vpDimensions |= DMF_FIXED_Y;
+         view->vpDimensions |= DMF::FIXED_Y;
       }
 
       if (parent_view) {
@@ -112,7 +110,7 @@ void gen_vector_path(extVector *Vector)
 
          if ((!parent_width) or (!parent_height)) {
             // NB: It is perfectly legal, even if unlikely, that a viewport has a width/height of zero.
-            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, parent_view->vpDimensions);
+            log.msg("Size of parent viewport #%d is %.2fx%.2f, dimensions $%.8x", parent_view->UID, parent_view->vpFixedWidth, parent_view->vpFixedHeight, LONG(parent_view->vpDimensions));
          }
 
          parent_id = parent_view->UID;
@@ -127,41 +125,41 @@ void gen_vector_path(extVector *Vector)
       // NB: In SVG it is a requirement that the top level viewport is always located at (0,0), but we
       // leave that as something for the SVG parser to enforce.
 
-      if (view->vpDimensions & DMF_SCALED_X) view->FinalX = (parent_width * view->vpTargetX);
+      if (dmf::hasScaledX(view->vpDimensions)) view->FinalX = (parent_width * view->vpTargetX);
       else view->FinalX = view->vpTargetX;
 
-      if (view->vpDimensions & DMF_SCALED_Y) view->FinalY = (parent_height * view->vpTargetY);
+      if (dmf::hasScaledY(view->vpDimensions)) view->FinalY = (parent_height * view->vpTargetY);
       else view->FinalY = view->vpTargetY;
 
-      if (view->vpDimensions & DMF_SCALED_WIDTH) view->vpFixedWidth = parent_width * view->vpTargetWidth;
-      else if (view->vpDimensions & DMF_FIXED_WIDTH) view->vpFixedWidth = view->vpTargetWidth;
+      if (dmf::hasScaledWidth(view->vpDimensions)) view->vpFixedWidth = parent_width * view->vpTargetWidth;
+      else if (dmf::hasWidth(view->vpDimensions)) view->vpFixedWidth = view->vpTargetWidth;
       else view->vpFixedWidth = parent_width;
 
-      if (view->vpDimensions & DMF_SCALED_HEIGHT) view->vpFixedHeight = parent_height * view->vpTargetHeight;
-      else if (view->vpDimensions & DMF_FIXED_HEIGHT) view->vpFixedHeight = view->vpTargetHeight;
+      if (dmf::hasScaledHeight(view->vpDimensions)) view->vpFixedHeight = parent_height * view->vpTargetHeight;
+      else if (dmf::hasHeight(view->vpDimensions)) view->vpFixedHeight = view->vpTargetHeight;
       else view->vpFixedHeight = parent_height;
 
-      if (view->vpDimensions & DMF_SCALED_X_OFFSET) {
-         if (view->vpDimensions & DMF_X) {
+      if (dmf::hasScaledYOffset(view->vpDimensions)) {
+         if (dmf::hasAnyX(view->vpDimensions)) {
             view->vpFixedWidth = parent_width - (parent_width * view->vpTargetXO) - view->FinalX;
          }
          else view->FinalX = parent_width - view->vpFixedWidth - (parent_width * view->vpTargetXO);
       }
-      else if (view->vpDimensions & DMF_FIXED_X_OFFSET) {
-         if (view->vpDimensions & DMF_X) {
+      else if (dmf::hasXOffset(view->vpDimensions)) {
+         if (dmf::hasAnyX(view->vpDimensions)) {
             view->vpFixedWidth = parent_width - view->vpTargetXO - view->FinalX;
          }
          else view->FinalX = parent_width - view->vpFixedWidth - view->vpTargetXO;
       }
 
-      if (view->vpDimensions & DMF_SCALED_Y_OFFSET) {
-         if (view->vpDimensions & DMF_Y) {
+      if (dmf::hasScaledYOffset(view->vpDimensions)) {
+         if (dmf::hasAnyY(view->vpDimensions)) {
             view->vpFixedHeight = parent_height - (parent_height * view->vpTargetYO) - view->FinalY;
          }
          else view->FinalY = parent_height - view->vpFixedHeight - (parent_height * view->vpTargetYO);
       }
-      else if (view->vpDimensions & DMF_FIXED_Y_OFFSET) {
-         if (view->vpDimensions & DMF_Y) {
+      else if (dmf::hasYOffset(view->vpDimensions)) {
+         if (dmf::hasAnyY(view->vpDimensions)) {
             view->vpFixedHeight = parent_height - view->vpTargetYO - view->FinalY;
          }
          else view->FinalY = parent_height - view->vpFixedHeight - view->vpTargetYO;

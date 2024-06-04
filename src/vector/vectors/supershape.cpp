@@ -25,7 +25,7 @@ class extVectorShape : public extVector {
    DOUBLE CX, CY;
    DOUBLE M, N1, N2, N3, A, B, Phi;
    LONG Vertices;
-   LONG Dimensions;
+   DMF Dimensions;
    LONG Spiral;
    LONG Repeat;
    UBYTE Close;
@@ -42,8 +42,8 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
    if (Path.empty()) target = &Path;
    else target = &path_buffer;
 
-   if (Vector->Dimensions & DMF_SCALED_CENTER_X) cx *= get_parent_width(Vector);
-   if (Vector->Dimensions & DMF_SCALED_CENTER_Y) cy *= get_parent_height(Vector);
+   if (dmf::hasScaledCenterX(Vector->Dimensions)) cx *= get_parent_width(Vector);
+   if (dmf::hasScaledCenterY(Vector->Dimensions)) cy *= get_parent_height(Vector);
 
    const DOUBLE scale = Vector->Radius;
    DOUBLE rescale = 0;
@@ -222,8 +222,8 @@ static ERR SUPER_SET_CenterX(extVectorShape *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_CENTER_X) & (~DMF_FIXED_CENTER_X);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_X) & (~DMF_SCALED_CENTER_X);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_CENTER_X) & (~DMF::FIXED_CENTER_X);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_CENTER_X) & (~DMF::SCALED_CENTER_X);
 
    Self->CX = val;
 
@@ -254,8 +254,8 @@ static ERR SUPER_SET_CenterY(extVectorShape *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_SCALED_CENTER_Y);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_CENTER_Y) & (~DMF::FIXED_CENTER_Y);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_CENTER_Y) & (~DMF::SCALED_CENTER_Y);
 
    Self->CY = val;
    reset_path(Self);
@@ -301,13 +301,13 @@ The following dimension flags are supported:
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Dimensions(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Dimensions(extVectorShape *Self, DMF *Value)
 {
    *Value = Self->Dimensions;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Dimensions(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Dimensions(extVectorShape *Self, DMF Value)
 {
    Self->Dimensions = Value;
    reset_path(Self);
@@ -483,8 +483,8 @@ static ERR SUPER_SET_Radius(extVectorShape *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_RADIUS) & (~DMF_FIXED_RADIUS);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_SCALED_RADIUS);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions|DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y) & (~(DMF::FIXED_RADIUS_X|DMF::FIXED_RADIUS_Y));
+   else Self->Dimensions = (Self->Dimensions|DMF::FIXED_RADIUS_X|DMF::FIXED_RADIUS_Y) & (~(DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y));
 
    Self->Radius = val;
    reset_path(Self);
@@ -572,12 +572,10 @@ static ERR SUPER_SET_Vertices(extVectorShape *Self, LONG Value)
 //********************************************************************************************************************
 
 static const FieldDef clSuperDimensions[] = {
-   { "FixedRadius",   DMF_FIXED_RADIUS },
-   { "FixedCenterX",  DMF_FIXED_CENTER_X },
-   { "FixedCenterY",  DMF_FIXED_CENTER_Y },
-   { "ScaledRadius",  DMF_SCALED_RADIUS },
-   { "ScaledCenterX", DMF_SCALED_CENTER_X },
-   { "ScaledCenterY", DMF_SCALED_CENTER_Y },
+   { "FixedCenterX",  DMF::FIXED_CENTER_X },
+   { "FixedCenterY",  DMF::FIXED_CENTER_Y },
+   { "ScaledCenterX", DMF::SCALED_CENTER_X },
+   { "ScaledCenterY", DMF::SCALED_CENTER_Y },
    { NULL, 0 }
 };
 

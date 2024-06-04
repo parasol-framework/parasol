@@ -86,12 +86,12 @@ static ERR PATTERN_Init(extVectorPattern *Self)
 
    if (!Self->Width) {
       Self->Width = 1;
-      Self->Dimensions |= DMF_FIXED_WIDTH;
+      Self->Dimensions |= DMF::FIXED_WIDTH;
    }
 
    if (!Self->Height) {
       Self->Height = 1;
-      Self->Dimensions |= DMF_FIXED_HEIGHT;
+      Self->Dimensions |= DMF::FIXED_HEIGHT;
    }
 
    if (InitObject(Self->Scene) != ERR::Okay) return ERR::Init;
@@ -153,8 +153,8 @@ static ERR PATTERN_SET_Height(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_SCALED_HEIGHT);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
 
    Self->Height = val;
    return ERR::Okay;
@@ -352,8 +352,8 @@ static ERR PATTERN_SET_Width(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_WIDTH) & (~DMF_FIXED_WIDTH);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_SCALED_WIDTH);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
 
    Self->Width = val;
    return ERR::Okay;
@@ -383,8 +383,8 @@ static ERR PATTERN_SET_X(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_X) & (~DMF_FIXED_X);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_SCALED_X);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
 
    Self->X = val;
    return ERR::Okay;
@@ -415,8 +415,8 @@ static ERR PATTERN_SET_Y(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR::FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_Y) & (~DMF_FIXED_Y);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_SCALED_Y);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   else Self->Dimensions = (Self->Dimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
 
    Self->Y = val;
    return ERR::Okay;
@@ -433,14 +433,14 @@ static const ActionArray clPatternActions[] = {
 };
 
 static const FieldDef clPatternDimensions[] = {
-   { "FixedX",       DMF_FIXED_X },
-   { "FixedY",       DMF_FIXED_Y },
-   { "ScaledX",      DMF_SCALED_X },
-   { "ScaledY",      DMF_SCALED_Y },
-   { "FixedWidth",   DMF_FIXED_WIDTH },
-   { "FixedHeight",  DMF_FIXED_HEIGHT },
-   { "ScaledWidth",  DMF_SCALED_WIDTH },
-   { "ScaledHeight", DMF_SCALED_HEIGHT },
+   { "FixedX",       DMF::FIXED_X },
+   { "FixedY",       DMF::FIXED_Y },
+   { "ScaledX",      DMF::SCALED_X },
+   { "ScaledY",      DMF::SCALED_Y },
+   { "FixedWidth",   DMF::FIXED_WIDTH },
+   { "FixedHeight",  DMF::FIXED_HEIGHT },
+   { "ScaledWidth",  DMF::SCALED_WIDTH },
+   { "ScaledHeight", DMF::SCALED_HEIGHT },
    { NULL, 0 }
 };
 

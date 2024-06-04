@@ -68,8 +68,8 @@ static void fill_image(VectorState &State, const TClipRectangle<DOUBLE> &Bounds,
 {
    const DOUBLE c_width  = (Image.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
    const DOUBLE c_height = (Image.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
-   const DOUBLE dx = Bounds.left + ((Image.Dimensions & DMF_SCALED_X) ? (c_width * Image.X) : Image.X);
-   const DOUBLE dy = Bounds.top + ((Image.Dimensions & DMF_SCALED_Y) ? (c_height * Image.Y) : Image.Y);
+   const DOUBLE dx = Bounds.left + (dmf::hasScaledX(Image.Dimensions) ? (c_width * Image.X) : Image.X);
+   const DOUBLE dy = Bounds.top + (dmf::hasScaledY(Image.Dimensions) ? (c_height * Image.Y) : Image.Y);
 
    Path.approximation_scale(Transform.scale());
 
@@ -462,12 +462,12 @@ static void fill_pattern(VectorState &State, const TClipRectangle<DOUBLE> &Bound
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coordinates specified in the pattern.
       DOUBLE dwidth, dheight;
-      if (Pattern.Dimensions & DMF_SCALED_WIDTH) dwidth = c_width * Pattern.Width;
-      else if (Pattern.Dimensions & DMF_FIXED_WIDTH) dwidth = Pattern.Width;
+      if (dmf::hasScaledWidth(Pattern.Dimensions)) dwidth = c_width * Pattern.Width;
+      else if (dmf::hasWidth(Pattern.Dimensions)) dwidth = Pattern.Width;
       else dwidth = 1;
 
-      if (Pattern.Dimensions & DMF_SCALED_HEIGHT) dheight = c_height * Pattern.Height;
-      else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) dheight = Pattern.Height;
+      if (dmf::hasScaledHeight(Pattern.Dimensions)) dheight = c_height * Pattern.Height;
+      else if (dmf::hasHeight(Pattern.Dimensions)) dheight = Pattern.Height;
       else dheight = 1;
 
       if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
@@ -482,15 +482,15 @@ static void fill_pattern(VectorState &State, const TClipRectangle<DOUBLE> &Bound
 
       DOUBLE dwidth, dheight;
 
-      if (Pattern.Dimensions & DMF_SCALED_WIDTH) dwidth = Pattern.Width * c_width;
-      else if (Pattern.Dimensions & DMF_FIXED_WIDTH) {
+      if (dmf::hasScaledWidth(Pattern.Dimensions)) dwidth = Pattern.Width * c_width;
+      else if (dmf::hasWidth(Pattern.Dimensions)) {
          if (Pattern.Viewport->vpViewWidth) dwidth = (Pattern.Width / Pattern.Viewport->vpViewWidth) * c_width;
          else dwidth = Pattern.Width * c_width; // A quirk of SVG is that the fixed value has to be interpreted as a multiplier if the viewbox is unspecified.
       }
       else dwidth = 1;
 
-      if (Pattern.Dimensions & DMF_SCALED_HEIGHT) dheight = Pattern.Height * c_height;
-      else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) {
+      if (dmf::hasScaledHeight(Pattern.Dimensions)) dheight = Pattern.Height * c_height;
+      else if (dmf::hasHeight(Pattern.Dimensions)) {
          if (Pattern.Viewport->vpViewHeight) dheight = (Pattern.Height / Pattern.Viewport->vpViewHeight) * c_height;
          else dheight = Pattern.Height * c_height;
       }
@@ -519,12 +519,12 @@ static void fill_pattern(VectorState &State, const TClipRectangle<DOUBLE> &Bound
    agg::trans_affine transform;
 
    DOUBLE dx, dy;
-   if (Pattern.Dimensions & DMF_SCALED_X) dx = x_offset + (c_width * Pattern.X);
-   else if (Pattern.Dimensions & DMF_FIXED_X) dx = x_offset + Pattern.X;
+   if (dmf::hasScaledX(Pattern.Dimensions)) dx = x_offset + (c_width * Pattern.X);
+   else if (dmf::hasX(Pattern.Dimensions)) dx = x_offset + Pattern.X;
    else dx = x_offset;
 
-   if (Pattern.Dimensions & DMF_SCALED_Y) dy = y_offset + c_height * Pattern.Y;
-   else if (Pattern.Dimensions & DMF_FIXED_Y) dy = y_offset + Pattern.Y;
+   if (dmf::hasScaledY(Pattern.Dimensions)) dy = y_offset + c_height * Pattern.Y;
+   else if (dmf::hasY(Pattern.Dimensions)) dy = y_offset + Pattern.Y;
    else dy = y_offset;
 
    if (Pattern.Matrices) {

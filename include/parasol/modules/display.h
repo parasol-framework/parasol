@@ -1315,7 +1315,7 @@ struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; L
 struct SetOpacity { DOUBLE Value; DOUBLE Adjustment; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct AddCallback { FUNCTION * Callback; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Minimise { static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; LONG Dimensions; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; DMF Dimensions; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RemoveCallback { FUNCTION * Callback; static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ScheduleRedraw { static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
@@ -1352,7 +1352,7 @@ class objSurface : public Object {
    LONG     Height;     // Defines the height of a surface object.
    OBJECTID RootID;     // Surface that is acting as a root for many surface children (useful when applying translucency)
    ALIGN    Align;      // This field allows you to align a surface area within its owner.
-   LONG     Dimensions; // Indicates currently active dimension settings.
+   DMF      Dimensions; // Indicates currently active dimension settings.
    DRAG     DragStatus; // Indicates the draggable state when dragging is enabled.
    PTC      Cursor;     // A default cursor image can be set here for changing the mouse pointer.
    struct RGB8 Colour;  // String-based field for setting the background colour.
@@ -1443,7 +1443,7 @@ class objSurface : public Object {
    inline ERR minimise() noexcept {
       return(Action(-7, this, NULL));
    }
-   inline ERR resetDimensions(DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions) noexcept {
+   inline ERR resetDimensions(DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, DMF Dimensions) noexcept {
       struct drw::ResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
       return(Action(-8, this, &args));
    }
@@ -1584,7 +1584,7 @@ class objSurface : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setDimensions(const LONG Value) noexcept {
+   inline ERR setDimensions(const DMF Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[35];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);

@@ -148,20 +148,19 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
 
             if (error IS ERR::Okay) xml::NewAttrib(tag, "id", key);
 
-            LONG dim;
-            if (error IS ERR::Okay) error = filter->get(FID_Dimensions, &dim);
+            auto dim = filter->get<DMF>(FID_Dimensions);
 
-            if ((error IS ERR::Okay) and (dim & (DMF_SCALED_X|DMF_FIXED_X)))
-               set_dimension(tag, "x", filter->X, dim & DMF_SCALED_X);
+            if ((error IS ERR::Okay) and dmf::hasAnyX(dim))
+               set_dimension(tag, "x", filter->X, dmf::hasScaledX(dim));
 
-            if ((error IS ERR::Okay) and (dim & (DMF_SCALED_Y|DMF_FIXED_Y)))
-               set_dimension(tag, "y", filter->Y, dim & DMF_SCALED_Y);
+            if ((error IS ERR::Okay) and dmf::hasAnyY(dim))
+               set_dimension(tag, "y", filter->Y, dmf::hasScaledY(dim));
 
-            if ((error IS ERR::Okay) and (dim & (DMF_SCALED_WIDTH|DMF_FIXED_WIDTH)))
-               set_dimension(tag, "width", filter->Width, dim & DMF_SCALED_WIDTH);
+            if ((error IS ERR::Okay) and dmf::hasAnyWidth(dim))
+               set_dimension(tag, "width", filter->Width, dmf::hasScaledWidth(dim));
 
-            if ((error IS ERR::Okay) and (dim & (DMF_SCALED_HEIGHT|DMF_FIXED_HEIGHT)))
-               set_dimension(tag, "height", filter->Height, dim & DMF_SCALED_HEIGHT);
+            if ((error IS ERR::Okay) and dmf::hasAnyHeight(dim))
+               set_dimension(tag, "height", filter->Height, dmf::hasScaledHeight(dim));
 
             VUNIT units;
             if ((error IS ERR::Okay) and (filter->get(FID_Units, (LONG *)&units) IS ERR::Okay)) {
@@ -399,19 +398,18 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    if (Vector->classID() IS CLASSID::VECTORRECTANGLE) {
       XMLTag *tag;
       DOUBLE rx, ry, x, y, width, height;
-      LONG dim;
 
       error = XML->insertXML(Parent, XMI::CHILD_END, "<rect/>", &new_index);
       if (error IS ERR::Okay) error = XML->getTag(new_index, &tag);
-      if (error IS ERR::Okay) error = Vector->get(FID_Dimensions, &dim);
 
       if (error IS ERR::Okay) {
+         auto dim = Vector->get<DMF>(FID_Dimensions);
          if ((Vector->get(FID_RoundX, &rx) IS ERR::Okay) and (rx != 0)) set_dimension(tag, "rx", rx, FALSE);
          if ((Vector->get(FID_RoundY, &ry) IS ERR::Okay) and (ry != 0)) set_dimension(tag, "ry", ry, FALSE);
-         if ((Vector->get(FID_X, &x) IS ERR::Okay)) set_dimension(tag, "x", x, dim & DMF_SCALED_X);
-         if ((Vector->get(FID_Y, &y) IS ERR::Okay)) set_dimension(tag, "y", y, dim & DMF_SCALED_Y);
-         if ((Vector->get(FID_Width, &width) IS ERR::Okay)) set_dimension(tag, "width", width, dim & DMF_SCALED_WIDTH);
-         if ((Vector->get(FID_Height, &height) IS ERR::Okay)) set_dimension(tag, "height", height, dim & DMF_SCALED_HEIGHT);
+         if ((Vector->get(FID_X, &x) IS ERR::Okay)) set_dimension(tag, "x", x, dmf::hasScaledX(dim));
+         if ((Vector->get(FID_Y, &y) IS ERR::Okay)) set_dimension(tag, "y", y, dmf::hasScaledY(dim));
+         if ((Vector->get(FID_Width, &width) IS ERR::Okay)) set_dimension(tag, "width", width, dmf::hasScaledWidth(dim));
+         if ((Vector->get(FID_Height, &height) IS ERR::Okay)) set_dimension(tag, "height", height, dmf::hasScaledHeight(dim));
 
          save_svg_scan_std(Self, XML, Vector, new_index);
       }
@@ -419,9 +417,8 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    else if (Vector->classID() IS CLASSID::VECTORELLIPSE) {
       XMLTag *tag;
       DOUBLE rx, ry, cx, cy;
-      LONG dim;
 
-      error = Vector->get(FID_Dimensions, &dim);
+      auto dim = Vector->get<DMF>(FID_Dimensions);
       if (error IS ERR::Okay) error = Vector->get(FID_RadiusX, &rx);
       if (error IS ERR::Okay) error = Vector->get(FID_RadiusY, &ry);
       if (error IS ERR::Okay) error = Vector->get(FID_CenterX, &cx);
@@ -429,10 +426,10 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
       if (error IS ERR::Okay) error = XML->insertStatement(Parent, XMI::CHILD_END, "<ellipse/>", &tag);
 
       if (error IS ERR::Okay) {
-         set_dimension(tag, "rx", rx, dim & DMF_SCALED_RADIUS_X);
-         set_dimension(tag, "ry", ry, dim & DMF_SCALED_RADIUS_Y);
-         set_dimension(tag, "cx", cx, dim & DMF_SCALED_CENTER_X);
-         set_dimension(tag, "cy", cy, dim & DMF_SCALED_CENTER_Y);
+         set_dimension(tag, "rx", rx, dmf::hasScaledRadiusX(dim));
+         set_dimension(tag, "ry", ry, dmf::hasScaledRadiusY(dim));
+         set_dimension(tag, "cx", cx, dmf::hasScaledCenterX(dim));
+         set_dimension(tag, "cy", cy, dmf::hasScaledCenterY(dim));
       }
 
       if (error IS ERR::Okay) error = save_svg_scan_std(Self, XML, Vector, new_index);
@@ -577,17 +574,15 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    else if (Vector->classID() IS CLASSID::VECTORWAVE) {
       XMLTag *tag;
       DOUBLE dbl;
-      LONG dim;
 
       error = XML->insertStatement(Parent, XMI::CHILD_END, "<parasol:wave/>", &tag);
 
-      if (error IS ERR::Okay) error = Vector->get(FID_Dimensions, &dim);
-
       if (error IS ERR::Okay) {
-         if (Vector->get(FID_X, &dbl) IS ERR::Okay) set_dimension(tag, "x", dbl, dim & DMF_SCALED_X);
-         if (Vector->get(FID_Y, &dbl) IS ERR::Okay) set_dimension(tag, "y", dbl, dim & DMF_SCALED_Y);
-         if (Vector->get(FID_Width, &dbl) IS ERR::Okay) set_dimension(tag, "width", dbl, dim & DMF_SCALED_WIDTH);
-         if (Vector->get(FID_Height, &dbl) IS ERR::Okay) set_dimension(tag, "height", dbl, dim & DMF_SCALED_HEIGHT);
+         auto dim = Vector->get<DMF>(FID_Dimensions);
+         if (Vector->get(FID_X, &dbl) IS ERR::Okay) set_dimension(tag, "x", dbl, dmf::hasScaledX(dim));
+         if (Vector->get(FID_Y, &dbl) IS ERR::Okay) set_dimension(tag, "y", dbl, dmf::hasScaledY(dim));
+         if (Vector->get(FID_Width, &dbl) IS ERR::Okay) set_dimension(tag, "width", dbl, dmf::hasScaledWidth(dim));
+         if (Vector->get(FID_Height, &dbl) IS ERR::Okay) set_dimension(tag, "height", dbl, dmf::hasScaledHeight(dim));
          if (Vector->get(FID_Amplitude, &dbl) IS ERR::Okay) xml::NewAttrib(tag, "amplitude", std::to_string(dbl));
          if (Vector->get(FID_Frequency, &dbl) IS ERR::Okay) xml::NewAttrib(tag, "frequency", std::to_string(dbl));
          if (Vector->get(FID_Decay, &dbl) IS ERR::Okay) xml::NewAttrib(tag, "decay", std::to_string(dbl));
@@ -603,21 +598,20 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    else if (Vector->classID() IS CLASSID::VECTORSPIRAL) {
       XMLTag *tag;
       DOUBLE dbl;
-      LONG dim, length;
+      LONG length;
 
       error = XML->insertStatement(Parent, XMI::CHILD_END, "<parasol:spiral/>", &tag);
       if (error != ERR::Okay) return error;
 
-      if ((error = Vector->get(FID_Dimensions, &dim)) != ERR::Okay) return error;
-
       if (error IS ERR::Okay) {
-         if (Vector->get(FID_CenterX, &dbl) IS ERR::Okay) set_dimension(tag, "cx", dbl, dim & DMF_SCALED_CENTER_X);
-         if (Vector->get(FID_CenterY, &dbl) IS ERR::Okay) set_dimension(tag, "cy", dbl, dim & DMF_SCALED_CENTER_Y);
-         if (Vector->get(FID_Width, &dbl) IS ERR::Okay) set_dimension(tag, "width", dbl, dim & DMF_SCALED_WIDTH);
-         if (Vector->get(FID_Height, &dbl) IS ERR::Okay) set_dimension(tag, "height", dbl, dim & DMF_SCALED_HEIGHT);
+         auto dim = Vector->get<DMF>(FID_Dimensions);
+         if (Vector->get(FID_CenterX, &dbl) IS ERR::Okay) set_dimension(tag, "cx", dbl, dmf::hasScaledCenterX(dim));
+         if (Vector->get(FID_CenterY, &dbl) IS ERR::Okay) set_dimension(tag, "cy", dbl, dmf::hasScaledCenterY(dim));
+         if (Vector->get(FID_Width, &dbl) IS ERR::Okay) set_dimension(tag, "width", dbl, dmf::hasScaledWidth(dim));
+         if (Vector->get(FID_Height, &dbl) IS ERR::Okay) set_dimension(tag, "height", dbl, dmf::hasScaledHeight(dim));
          if (Vector->get(FID_Offset, &dbl) IS ERR::Okay) xml::NewAttrib(tag, "offset", std::to_string(dbl));
          if ((Vector->get(FID_PathLength, &length) IS ERR::Okay) and (length != 0)) xml::NewAttrib(tag, "pathLength", std::to_string(length));
-         if (Vector->get(FID_Radius, &dbl) IS ERR::Okay) set_dimension(tag, "r", dbl, dim & DMF_SCALED_RADIUS);
+         if (Vector->get(FID_Radius, &dbl) IS ERR::Okay) set_dimension(tag, "r", dbl, dmf::hasAnyScaledRadius(dim));
          if (Vector->get(FID_Scale, &dbl) IS ERR::Okay) xml::NewAttrib(tag, "scale", std::to_string(dbl));
          if (Vector->get(FID_Step, &dbl) IS ERR::Okay) xml::NewAttrib(tag, "step", std::to_string(dbl));
 
@@ -627,16 +621,15 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    else if (Vector->classID() IS CLASSID::VECTORSHAPE) {
       XMLTag *tag;
       DOUBLE dbl;
-      LONG num, dim;
+      LONG num;
 
       error = XML->insertStatement(Parent, XMI::CHILD_END, "<parasol:shape/>", &tag);
 
-      if ((error = Vector->get(FID_Dimensions, &dim)) != ERR::Okay) return error;
-
       if (error IS ERR::Okay) {
-         if (Vector->get(FID_CenterX, &dbl) IS ERR::Okay) set_dimension(tag, "cx", dbl, dim & DMF_SCALED_CENTER_X);
-         if (Vector->get(FID_CenterY, &dbl) IS ERR::Okay) set_dimension(tag, "cy", dbl, dim & DMF_SCALED_CENTER_Y);
-         if (Vector->get(FID_Radius, &dbl) IS ERR::Okay) set_dimension(tag, "r", dbl, dim & DMF_SCALED_RADIUS);
+         auto dim = Vector->get<DMF>(FID_Dimensions);
+         if (Vector->get(FID_CenterX, &dbl) IS ERR::Okay) set_dimension(tag, "cx", dbl, dmf::hasScaledCenterX(dim));
+         if (Vector->get(FID_CenterY, &dbl) IS ERR::Okay) set_dimension(tag, "cy", dbl, dmf::hasScaledCenterY(dim));
+         if (Vector->get(FID_Radius, &dbl) IS ERR::Okay) set_dimension(tag, "r", dbl, dmf::hasAnyScaledRadius(dim));
          if (Vector->get(FID_A, &dbl) IS ERR::Okay) xml::NewAttrib(tag, "a", std::to_string(dbl));
          if (Vector->get(FID_B, &dbl) IS ERR::Okay) xml::NewAttrib(tag, "b", std::to_string(dbl));
          if (Vector->get(FID_M, &dbl) IS ERR::Okay) xml::NewAttrib(tag, "m", std::to_string(dbl));
@@ -657,7 +650,6 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    else if (Vector->classID() IS CLASSID::VECTORVIEWPORT) {
       XMLTag *tag;
       DOUBLE x, y, width, height;
-      LONG dim;
 
       error = XML->insertStatement(Parent, XMI::CHILD_END, "<svg/>", &tag);
 
@@ -672,18 +664,19 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
          xml::NewAttrib(tag, "viewBox", buffer.str());
       }
 
-      if ((error IS ERR::Okay) and ((error = Vector->get(FID_Dimensions, &dim)) IS ERR::Okay)) {
-         if ((error IS ERR::Okay) and (dim & (DMF_SCALED_X|DMF_FIXED_X)) and (Vector->get(FID_X, &x) IS ERR::Okay))
-            set_dimension(tag, "x", x, dim & DMF_SCALED_X);
+      if (error IS ERR::Okay) {
+         auto dim = Vector->get<DMF>(FID_Dimensions);
+         if ((error IS ERR::Okay) and dmf::hasAnyX(dim) and (Vector->get(FID_X, &x) IS ERR::Okay))
+            set_dimension(tag, "x", x, dmf::hasScaledX(dim));
 
-         if ((error IS ERR::Okay) and (dim & (DMF_SCALED_Y|DMF_FIXED_Y)) and (Vector->get(FID_Y, &y) IS ERR::Okay))
-            set_dimension(tag, "y", y, dim & DMF_SCALED_Y);
+         if ((error IS ERR::Okay) and dmf::hasAnyY(dim) and (Vector->get(FID_Y, &y) IS ERR::Okay))
+            set_dimension(tag, "y", y, dmf::hasScaledY(dim));
 
-         if ((error IS ERR::Okay) and (dim & (DMF_SCALED_WIDTH|DMF_FIXED_WIDTH)) and (Vector->get(FID_Width, &width) IS ERR::Okay))
-            set_dimension(tag, "width", width, dim & DMF_SCALED_WIDTH);
+         if ((error IS ERR::Okay) and dmf::hasAnyWidth(dim) and (Vector->get(FID_Width, &width) IS ERR::Okay))
+            set_dimension(tag, "width", width, dmf::hasScaledWidth(dim));
 
-         if ((error IS ERR::Okay) and (dim & (DMF_SCALED_HEIGHT|DMF_FIXED_HEIGHT)) and (Vector->get(FID_Height, &height) IS ERR::Okay))
-            set_dimension(tag, "height", height, dim & DMF_SCALED_HEIGHT);
+         if ((error IS ERR::Okay) and dmf::hasAnyHeight(dim) and (Vector->get(FID_Height, &height) IS ERR::Okay))
+            set_dimension(tag, "height", height, dmf::hasScaledHeight(dim));
       }
    }
    else {

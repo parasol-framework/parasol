@@ -265,7 +265,7 @@ the surface area first).</li>
     <method>
       <name>ResetDimensions</name>
       <comment>Changes the dimensions of a surface.</comment>
-      <prototype>ERR drw::ResetDimensions(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, LONG Dimensions)</prototype>
+      <prototype>ERR drw::ResetDimensions(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, DMF Dimensions)</prototype>
       <input>
         <param type="DOUBLE" name="X">New X coordinate.</param>
         <param type="DOUBLE" name="Y">New Y coordinate.</param>
@@ -273,11 +273,11 @@ the surface area first).</li>
         <param type="DOUBLE" name="YOffset">New Y offset.</param>
         <param type="DOUBLE" name="Width">New width.</param>
         <param type="DOUBLE" name="Height">New height.</param>
-        <param type="LONG" name="Dimensions" lookup="DMF">Dimension flags.</param>
+        <param type="DMF" name="Dimensions" lookup="DMF">Dimension flags.</param>
       </input>
       <description>
 <p>The ResetDimensions() method provides a simple way of re-declaring the dimensions of a surface object.  This is sometimes necessary when a surface needs to make a significant alteration to its display configuration.  For instance if the width of the surface is declared through a combination of <code>X</code> and <code>XOffset</code> settings and the width needs to change to a fixed setting, then ResetDimensions() will have to be used.</p>
-<p>It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension settings.  For instance if <code>X</code> and <code>Width</code> are set, <code>XOffset</code> is ignored and the Dimensions value must include <code>DMF_FIXED_X</code> and <code>DMF_FIXED_WIDTH</code> (or the relative equivalents).  Please refer to the <fl>Dimensions</fl> field for a full list of dimension flags that can be specified.</p>
+<p>It is not necessary to define a value for every parameter - only the ones that are relevant to the new dimension settings.  For instance if <code>X</code> and <code>Width</code> are set, <code>XOffset</code> is ignored and the Dimensions value must include <code>DMF::FIXED_X</code> and <code>DMF::FIXED_WIDTH</code> (or the relative equivalents).  Please refer to the <fl>Dimensions</fl> field for a full list of dimension flags that can be specified.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -459,7 +459,7 @@ the surface area first).</li>
       <name>Dimensions</name>
       <comment>Indicates currently active dimension settings.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="DMF">INT</type>
+      <type lookup="DMF">DMF</type>
       <description>
 <p>The dimension settings of a surface object can be read from this field.  The flags indicate the dimension fields that are in use, and whether the values are fixed or relative.</p>
 <p>It is strongly recommended that this field is never set manually, because the flags are automatically managed for the client when setting fields such as <fl>X</fl> and <fl>Width</fl>.  If circumstances require manual configuration, take care to ensure that the flags do not conflict.  For instance, <code>FIXED_X</code> and <code>SCALED_X</code> cannot be paired, nor could <code>FIXED_X</code>, <code>FIXED_XOFFSET</code> and <code>FIXED_WIDTH</code> simultaneously.</p>
@@ -924,7 +924,6 @@ the surface area first).</li>
       <const name="FIXED_CENTER_Y">The CenterY field is a fixed size.</const>
       <const name="FIXED_DEPTH">The Depth field is a fixed size.</const>
       <const name="FIXED_HEIGHT">The Height field is a fixed size.</const>
-      <const name="FIXED_RADIUS">Synonym for <code>FIXED_RADIUS_X | FIXED_RADIUS_Y</code></const>
       <const name="FIXED_RADIUS_X">The RadiusX field is a fixed size.</const>
       <const name="FIXED_RADIUS_Y">The RadiusY field is a fixed size.</const>
       <const name="FIXED_WIDTH">The Width field is a fixed suze.</const>
@@ -933,14 +932,10 @@ the surface area first).</li>
       <const name="FIXED_Y">The Y field is a fixed coordinate.</const>
       <const name="FIXED_Y_OFFSET">The YOffset field is a fixed coordinate.</const>
       <const name="FIXED_Z">The Z field is a fixed coordinate.</const>
-      <const name="HEIGHT">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT</code></const>
-      <const name="HEIGHT_FLAGS">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET</code></const>
-      <const name="HORIZONTAL_FLAGS">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET | FIXED_X | SCALED_X</code></const>
       <const name="SCALED_CENTER_X">The CenterX field is scaled to this object's parent.</const>
       <const name="SCALED_CENTER_Y">The CenterY field is scaled to this object's parent.</const>
       <const name="SCALED_DEPTH">The Depth field is scaled to this object's parent.</const>
       <const name="SCALED_HEIGHT">The Height field is scaled to this object's parent.</const>
-      <const name="SCALED_RADIUS">Synonym for <code>SCALED_RADIUS_X | SCALED_RADIUS_Y</code></const>
       <const name="SCALED_RADIUS_X">The RadiusX field is scaled to this object's parent.</const>
       <const name="SCALED_RADIUS_Y">The RadiusY field is a scaled size to this object's parent.</const>
       <const name="SCALED_WIDTH">The Width field is scaled to this object's parent.</const>
@@ -949,16 +944,8 @@ the surface area first).</li>
       <const name="SCALED_Y">The Y field is scaled to this object's parent.</const>
       <const name="SCALED_Y_OFFSET">The YOffset field is scaled to this object's parent.</const>
       <const name="SCALED_Z">The Z field is a scaled coordinate to this object's parent.</const>
-      <const name="STATUS_CHANGE">Synonym for <code>STATUS_CHANGE_H | STATUS_CHANGE_V</code></const>
       <const name="STATUS_CHANGE_H"/>
       <const name="STATUS_CHANGE_V"/>
-      <const name="VERTICAL_FLAGS">Synonym for <code>FIXED_HEIGHT | SCALED_HEIGHT | FIXED_Y_OFFSET | SCALED_Y_OFFSET | FIXED_Y | SCALED_Y</code></const>
-      <const name="WIDTH">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH</code></const>
-      <const name="WIDTH_FLAGS">Synonym for <code>FIXED_WIDTH | SCALED_WIDTH | FIXED_X_OFFSET | SCALED_X_OFFSET</code></const>
-      <const name="X">Synonym for <code>FIXED_X | SCALED_X</code></const>
-      <const name="X_OFFSET">Synonym for <code>FIXED_X_OFFSET | SCALED_X_OFFSET</code></const>
-      <const name="Y">Synonym for <code>FIXED_Y | SCALED_Y</code></const>
-      <const name="Y_OFFSET">Synonym for <code>FIXED_Y_OFFSET | SCALED_Y_OFFSET</code></const>
     </constants>
 
     <constants lookup="DRAG">

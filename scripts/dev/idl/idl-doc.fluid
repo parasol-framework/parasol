@@ -829,7 +829,7 @@ function docClass(Class)
                if (f.lookup != nil) then
                   local lookup = '<types lookup="' .. f.lookup .. '"/>'
                   if (description) then
-                     if not (description:find(lookup)) then
+                     if not (description:find('<types lookup="' .. f.lookup .. '"')) then
                         description = description .. '\n' .. lookup
                      end
                   else

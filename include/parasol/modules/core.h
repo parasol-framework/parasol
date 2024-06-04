@@ -478,45 +478,37 @@ enum class PTC : LONG {
    END = 25,
 };
 
-#define DMF_SCALED_X 0x00000001
-#define DMF_SCALED_Y 0x00000002
-#define DMF_FIXED_X 0x00000004
-#define DMF_X 0x00000005
-#define DMF_FIXED_Y 0x00000008
-#define DMF_Y 0x0000000a
-#define DMF_SCALED_X_OFFSET 0x00000010
-#define DMF_SCALED_Y_OFFSET 0x00000020
-#define DMF_FIXED_X_OFFSET 0x00000040
-#define DMF_X_OFFSET 0x00000050
-#define DMF_FIXED_Y_OFFSET 0x00000080
-#define DMF_Y_OFFSET 0x000000a0
-#define DMF_FIXED_HEIGHT 0x00000100
-#define DMF_FIXED_WIDTH 0x00000200
-#define DMF_SCALED_HEIGHT 0x00000400
-#define DMF_HEIGHT 0x00000500
-#define DMF_HEIGHT_FLAGS 0x000005a0
-#define DMF_VERTICAL_FLAGS 0x000005aa
-#define DMF_SCALED_WIDTH 0x00000800
-#define DMF_WIDTH 0x00000a00
-#define DMF_WIDTH_FLAGS 0x00000a50
-#define DMF_HORIZONTAL_FLAGS 0x00000a55
-#define DMF_FIXED_DEPTH 0x00001000
-#define DMF_SCALED_DEPTH 0x00002000
-#define DMF_FIXED_Z 0x00004000
-#define DMF_SCALED_Z 0x00008000
-#define DMF_SCALED_RADIUS_X 0x00010000
-#define DMF_FIXED_RADIUS_X 0x00020000
-#define DMF_SCALED_CENTER_X 0x00040000
-#define DMF_SCALED_CENTER_Y 0x00080000
-#define DMF_FIXED_CENTER_X 0x00100000
-#define DMF_FIXED_CENTER_Y 0x00200000
-#define DMF_STATUS_CHANGE_H 0x00400000
-#define DMF_STATUS_CHANGE_V 0x00800000
-#define DMF_STATUS_CHANGE 0x00c00000
-#define DMF_SCALED_RADIUS_Y 0x01000000
-#define DMF_SCALED_RADIUS 0x01010000
-#define DMF_FIXED_RADIUS_Y 0x02000000
-#define DMF_FIXED_RADIUS 0x02020000
+enum class DMF : ULONG {
+   NIL = 0,
+   SCALED_X = 0x00000001,
+   SCALED_Y = 0x00000002,
+   FIXED_X = 0x00000004,
+   FIXED_Y = 0x00000008,
+   SCALED_X_OFFSET = 0x00000010,
+   SCALED_Y_OFFSET = 0x00000020,
+   FIXED_X_OFFSET = 0x00000040,
+   FIXED_Y_OFFSET = 0x00000080,
+   FIXED_HEIGHT = 0x00000100,
+   FIXED_WIDTH = 0x00000200,
+   SCALED_HEIGHT = 0x00000400,
+   SCALED_WIDTH = 0x00000800,
+   FIXED_DEPTH = 0x00001000,
+   SCALED_DEPTH = 0x00002000,
+   FIXED_Z = 0x00004000,
+   SCALED_Z = 0x00008000,
+   SCALED_RADIUS_X = 0x00010000,
+   FIXED_RADIUS_X = 0x00020000,
+   SCALED_CENTER_X = 0x00040000,
+   SCALED_CENTER_Y = 0x00080000,
+   FIXED_CENTER_X = 0x00100000,
+   FIXED_CENTER_Y = 0x00200000,
+   STATUS_CHANGE_H = 0x00400000,
+   STATUS_CHANGE_V = 0x00800000,
+   SCALED_RADIUS_Y = 0x01000000,
+   FIXED_RADIUS_Y = 0x02000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(DMF)
 
 // Compass directions.
 
@@ -1709,6 +1701,38 @@ class FloatRect {
 
 #include <string.h> // memset()
 #include <stdlib.h> // strtol(), strtod()
+
+namespace dmf { // Helper functions for DMF flags
+inline bool has(DMF Value, DMF Flags) { return (Value & Flags) != DMF::NIL; }
+
+inline bool hasX(DMF Value) { return (Value & DMF::FIXED_X) != DMF::NIL; }
+inline bool hasY(DMF Value) { return (Value & DMF::FIXED_Y) != DMF::NIL; }
+inline bool hasWidth(DMF Value) { return (Value & DMF::FIXED_WIDTH) != DMF::NIL; }
+inline bool hasHeight(DMF Value) { return (Value & DMF::FIXED_HEIGHT) != DMF::NIL; }
+inline bool hasXOffset(DMF Value) { return (Value & DMF::FIXED_X_OFFSET) != DMF::NIL; }
+inline bool hasYOffset(DMF Value) { return (Value & DMF::FIXED_Y_OFFSET) != DMF::NIL; }
+inline bool hasScaledX(DMF Value) { return (Value & DMF::SCALED_X) != DMF::NIL; }
+inline bool hasScaledY(DMF Value) { return (Value & DMF::SCALED_Y) != DMF::NIL; }
+inline bool hasScaledWidth(DMF Value) { return (Value & DMF::SCALED_WIDTH) != DMF::NIL; }
+inline bool hasScaledHeight(DMF Value) { return (Value & DMF::SCALED_HEIGHT) != DMF::NIL; }
+inline bool hasScaledXOffset(DMF Value) { return (Value & DMF::SCALED_X_OFFSET) != DMF::NIL; }
+inline bool hasScaledYOffset(DMF Value) { return (Value & DMF::SCALED_Y_OFFSET) != DMF::NIL; }
+inline bool hasScaledCenterX(DMF Value) { return (Value & DMF::SCALED_CENTER_X) != DMF::NIL; }
+inline bool hasScaledCenterY(DMF Value) { return (Value & DMF::SCALED_CENTER_Y) != DMF::NIL; }
+inline bool hasScaledRadiusX(DMF Value) { return (Value & DMF::SCALED_RADIUS_X) != DMF::NIL; }
+inline bool hasScaledRadiusY(DMF Value) { return (Value & DMF::SCALED_RADIUS_Y) != DMF::NIL; }
+
+inline bool hasAnyHorizontalPosition(DMF Value) { return (Value & (DMF::FIXED_X|DMF::SCALED_X|DMF::FIXED_X_OFFSET|DMF::SCALED_X_OFFSET)) != DMF::NIL; }
+inline bool hasAnyVerticalPosition(DMF Value) { return (Value & (DMF::FIXED_Y|DMF::SCALED_Y|DMF::FIXED_Y_OFFSET|DMF::SCALED_Y_OFFSET)) != DMF::NIL; }
+inline bool hasAnyScaledRadius(DMF Value) { return (Value & (DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y)) != DMF::NIL; }
+inline bool hasAnyX(DMF Value) { return (Value & (DMF::SCALED_X|DMF::FIXED_X)) != DMF::NIL; }
+inline bool hasAnyY(DMF Value) { return (Value & (DMF::SCALED_Y|DMF::FIXED_Y)) != DMF::NIL; }
+inline bool hasAnyWidth(DMF Value) { return (Value & (DMF::SCALED_WIDTH|DMF::FIXED_WIDTH)) != DMF::NIL; }
+inline bool hasAnyHeight(DMF Value) { return (Value & (DMF::SCALED_HEIGHT|DMF::FIXED_HEIGHT)) != DMF::NIL; }
+inline bool hasAnyXOffset(DMF Value) { return (Value & (DMF::SCALED_X_OFFSET|DMF::FIXED_X_OFFSET)) != DMF::NIL; }
+inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF::FIXED_Y_OFFSET)) != DMF::NIL; }
+}
+
 
 struct ObjectSignal {
    OBJECTPTR Object;    // Reference to an object to monitor.
