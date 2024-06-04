@@ -284,8 +284,8 @@ class objDocument : public Object {
    inline ERR setPageWidth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    template <class T> inline ERR setPretext(T && Value) noexcept {

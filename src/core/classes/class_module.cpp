@@ -76,7 +76,7 @@ static STRUCTS glStructures = {
    { "SystemState",         sizeof(SystemState) },
    { "ThreadActionMessage", sizeof(ThreadActionMessage) },
    { "ThreadMessage",       sizeof(ThreadMessage) },
-   { "Variable",            sizeof(Variable) },
+   { "Unit",                sizeof(Unit) },
    { "dcAudio",             sizeof(dcAudio) },
    { "dcDeviceInput",       sizeof(dcDeviceInput) },
    { "dcKeyEntry",          sizeof(dcKeyEntry) },

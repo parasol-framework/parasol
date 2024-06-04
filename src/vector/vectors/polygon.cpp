@@ -264,8 +264,8 @@ static ERR POLY_GET_Closed(extVectorPoly *Self, LONG *Value)
 
 static ERR POLY_SET_Closed(extVectorPoly *Self, LONG Value)
 {
-   if (Value) Self->Closed = TRUE;
-   else Self->Closed = FALSE;
+   if (Value) Self->Closed = true;
+   else Self->Closed = false;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -382,27 +382,16 @@ a percentage.
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_X1(extVectorPoly *Self, Variable *Value)
+static ERR POLY_GET_X1(extVectorPoly *Self, Unit *Value)
 {
-   DOUBLE val = Self->Points[0].X;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Points[0].X);
    return ERR::Okay;
 }
 
-static ERR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
+static ERR POLY_SET_X1(extVectorPoly *Self, Unit &Value)
 {
-   pf::Log log;
-   DOUBLE val;
-
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR::SetValueNotNumeric);
-
-   if (Value->Type & FD_SCALED) Self->Points[0].XScaled = TRUE;
-   else Self->Points[0].XScaled = FALSE;
-   Self->Points[0].X = val;
+   Self->Points[0].XScaled = Value.scaled();
+   Self->Points[0].X = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -419,27 +408,16 @@ a percentage.
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_X2(extVectorPoly *Self, Variable *Value)
+static ERR POLY_GET_X2(extVectorPoly *Self, Unit *Value)
 {
-   DOUBLE val = Self->Points[1].X;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Points[1].X);
    return ERR::Okay;
 }
 
-static ERR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
+static ERR POLY_SET_X2(extVectorPoly *Self, Unit &Value)
 {
-   pf::Log log;
-   DOUBLE val;
-
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR::SetValueNotNumeric);
-
-   if (Value->Type & FD_SCALED) Self->Points[1].XScaled = TRUE;
-   else Self->Points[1].XScaled = FALSE;
-   Self->Points[1].X = val;
+   Self->Points[1].XScaled = Value.scaled();
+   Self->Points[1].X = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -456,27 +434,16 @@ a percentage.
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_Y1(extVectorPoly *Self, Variable *Value)
+static ERR POLY_GET_Y1(extVectorPoly *Self, Unit *Value)
 {
-   DOUBLE val = Self->Points[0].Y;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Points[0].Y);
    return ERR::Okay;
 }
 
-static ERR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
+static ERR POLY_SET_Y1(extVectorPoly *Self, Unit &Value)
 {
-   pf::Log log;
-   DOUBLE val;
-
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR::SetValueNotNumeric);
-
-   if (Value->Type & FD_SCALED) Self->Points[0].YScaled = TRUE;
-   else Self->Points[0].YScaled = FALSE;
-   Self->Points[0].Y = val;
+   Self->Points[0].YScaled = Value.scaled();
+   Self->Points[0].Y = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -493,27 +460,16 @@ a percentage.
 -END-
 *********************************************************************************************************************/
 
-static ERR POLY_GET_Y2(extVectorPoly *Self, Variable *Value)
+static ERR POLY_GET_Y2(extVectorPoly *Self, Unit *Value)
 {
-   DOUBLE val = Self->Points[1].Y;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Points[1].Y);
    return ERR::Okay;
 }
 
-static ERR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
+static ERR POLY_SET_Y2(extVectorPoly *Self, Unit &Value)
 {
-   pf::Log log;
-   DOUBLE val;
-
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR::SetValueNotNumeric);
-
-   if (Value->Type & FD_SCALED) Self->Points[1].YScaled = TRUE;
-   else Self->Points[1].YScaled = FALSE;
-   Self->Points[1].Y = val;
+   Self->Points[1].YScaled = Value.scaled();
+   Self->Points[1].Y = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -536,10 +492,10 @@ static const FieldArray clPolygonFields[] = {
    { "PointsArray", FDF_VIRTUAL|FDF_ARRAY|FDF_POINTER|FDF_RW,   POLY_GET_PointsArray, POLY_SET_PointsArray },
    { "Points",      FDF_VIRTUAL|FDF_STRING|FDF_W,               NULL, POLY_SET_Points },
    { "TotalPoints", FDF_VIRTUAL|FDF_LONG|FDF_R,                 POLY_GET_TotalPoints },
-   { "X1",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_X1, POLY_SET_X1 },
-   { "Y1",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_Y1, POLY_SET_Y1 },
-   { "X2",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_X2, POLY_SET_X2 },
-   { "Y2",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_Y2, POLY_SET_Y2 },
+   { "X1",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_X1, POLY_SET_X1 },
+   { "Y1",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_Y1, POLY_SET_Y1 },
+   { "X2",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_X2, POLY_SET_X2 },
+   { "Y2",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_Y2, POLY_SET_Y2 },
    END_FIELD
 };
 

@@ -1354,7 +1354,7 @@ static const FieldArray clFields[] = {
    { "EventCallback", FDF_FUNCTIONPTR|FDF_RW,  GET_EventCallback, SET_EventCallback },
    { "Path",          FDF_STRING|FDF_RW,       GET_Path, SET_Path },
    { "Origin",        FDF_STRING|FDF_RW,       GET_Path, SET_Origin },
-   { "PageWidth",     FDF_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_PageWidth, SET_PageWidth },
+   { "PageWidth",     FDF_UNIT|FDF_LONG|FDF_SCALED|FDF_RW, GET_PageWidth, SET_PageWidth },
    { "Pretext",       FDF_STRING|FDF_W,        NULL, SET_Pretext },
    { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
    { "WorkingPath",   FDF_STRING|FDF_R,        GET_WorkingPath, NULL },

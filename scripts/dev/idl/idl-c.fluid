@@ -1263,10 +1263,6 @@ function processField(class, extract)
 
    local description = extract:match('\n\n(.-)\n%-[A-Z]+%-\n')
 
-   if (status != nil) and (status:lower() == 'variable') then
-      return -- Variable fields are ignored.
-   end
-
    if not name then
       print('Name not defined for -FIELD- definition.')
       return
@@ -1665,10 +1661,10 @@ function outputClassHeader(class, Private, Custom)
                output(indent .. string.format('auto field = FindField(this, FID_%s, &target);', fid_name))
             end
 
-            if bit.band(f.flags, FD_VARIABLE) != 0 then
+            if bit.band(f.flags, FD_UNIT) != 0 then
                if bit.band(f.flags, bit.bor(FD_LONG,FD_LARGE,FD_DOUBLE,FD_FLOAT)) != 0 then
-                  output(indent .. 'Variable var(Value);')
-                  output(indent .. 'return field->WriteValue(target, field, FD_VARIABLE, &var, 1);')
+                  output(indent .. 'Unit var(Value);')
+                  output(indent .. 'return field->WriteValue(target, field, FD_UNIT, &var, 1);')
                else
                   -- Pass through as pointer; requires further analysis to determine viability
                   output(indent .. 'return field->WriteValue(target, field, FD_POINTER, Value, 1);')

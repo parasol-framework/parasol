@@ -1554,29 +1554,29 @@ class objSurface : public Object {
    inline ERR setX(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setWidth(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setHeight(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setAlign(const ALIGN Value) noexcept {
@@ -1688,15 +1688,15 @@ class objSurface : public Object {
    inline ERR setXOffset(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setYOffset(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
 };

@@ -232,7 +232,7 @@ enum("JET", { type="int", start=1, comment="JET constants are documented in GetI
 flags("FD", { weak=true, comment="Field descriptors.", module="Core" },
   { DOUBLE     = "0x80000000: 64 bit float." },
   { LONG       = "0x40000000: 32 bit integer." },
-  { VARIABLE   = "0x20000000: Supports multiple primitive types (long, double, large or pointer)." },
+  { UNIT       = "0x20000000: A value that describes a display unit." },
   { FLOAT      = "0x10000000: 32 bit float.  Not valid for use in class definitions." },
   { POINTER    = "0x08000000: Pointer (32 or 64 bit)." },
   { LARGE      = "0x04000000: 64 bit integer." },

@@ -852,29 +852,29 @@ class objVectorPattern : public Object {
    inline ERR setX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setWidth(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setHeight(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setOpacity(const DOUBLE Value) noexcept {
@@ -955,64 +955,64 @@ class objVectorGradient : public Object {
    inline ERR setX1(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY1(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setX2(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY2(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setFX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setFY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setRadius(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setInherit(objVectorGradient * Value) noexcept {
@@ -1143,29 +1143,29 @@ class objFilterEffect : public Object {
    inline ERR setX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setWidth(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setHeight(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setSourceType(const VSF Value) noexcept {
@@ -1950,29 +1950,29 @@ class objVectorFilter : public Object {
    inline ERR setX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setWidth(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setHeight(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setOpacity(const DOUBLE Value) noexcept {
@@ -2273,8 +2273,8 @@ class objVector : public Object {
    inline ERR setStrokeWidth(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setTransition(OBJECTPTR Value) noexcept {
@@ -2448,15 +2448,15 @@ class objVectorText : public objVector {
    inline ERR setX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setWeight(const LONG Value) noexcept {
@@ -2672,8 +2672,8 @@ class objVectorWave : public objVector {
    inline ERR setHeight(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setStyle(const LONG Value) noexcept {
@@ -2691,22 +2691,22 @@ class objVectorWave : public objVector {
    inline ERR setX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setWidth(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
 };
@@ -2733,57 +2733,57 @@ class objVectorRectangle : public objVector {
    inline ERR setRoundX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setRoundY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setXOffset(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setYOffset(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setWidth(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setHeight(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setDimensions(const LONG Value) noexcept {
@@ -2834,29 +2834,29 @@ class objVectorPolygon : public objVector {
    inline ERR setX1(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY1(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setX2(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY2(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
 };
@@ -2877,22 +2877,22 @@ class objVectorShape : public objVector {
    inline ERR setCenterX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setRadius(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setClose(const LONG Value) noexcept {
@@ -2997,36 +2997,36 @@ class objVectorSpiral : public objVector {
    inline ERR setWidth(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setHeight(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setRadius(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setOffset(const DOUBLE Value) noexcept {
@@ -3071,50 +3071,50 @@ class objVectorEllipse : public objVector {
    inline ERR setWidth(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setHeight(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setRadius(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setRadiusX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setRadiusY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setDimensions(const LONG Value) noexcept {
@@ -3208,43 +3208,43 @@ class objVectorViewport : public objVector {
    inline ERR setX(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setXOffset(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setYOffset(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setWidth(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setHeight(const DOUBLE Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
-      Variable var(Value);
-      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setViewX(const DOUBLE Value) noexcept {

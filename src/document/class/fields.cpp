@@ -259,7 +259,7 @@ margins.
 
 *********************************************************************************************************************/
 
-static ERR GET_PageWidth(extDocument *Self, Variable *Value)
+static ERR GET_PageWidth(extDocument *Self, Unit *Value)
 {
    DOUBLE value;
 
@@ -268,40 +268,28 @@ static ERR GET_PageWidth(extDocument *Self, Variable *Value)
    if (Self->initialised()) {
       value = Self->CalcWidth;
 
-      if (Value->Type & FD_SCALED) {
+      if (Value->scaled()) {
          if (Self->VPWidth <= 0) return ERR::GetField;
          value = (DOUBLE)(value * Self->VPWidth);
       }
    }
    else value = Self->PageWidth;
 
-   if (Value->Type & FD_DOUBLE) Value->Double = value;
-   else if (Value->Type & FD_LARGE) Value->Large = value;
-   else return ERR::FieldTypeMismatch;
+   Value->set(value);
    return ERR::Okay;
 }
 
-static ERR SET_PageWidth(extDocument *Self, Variable *Value)
+static ERR SET_PageWidth(extDocument *Self, Unit *Value)
 {
    pf::Log log;
 
-   if (Value->Type & FD_DOUBLE) {
-      if (Value->Double <= 0) {
-         log.warning("A page width of %.2f is illegal.", Value->Double);
-         return ERR::OutOfRange;
-      }
-      Self->PageWidth = Value->Double;
+   if (Value->Value <= 0) {
+      log.warning("A page width of %.2f is illegal.", Value->Value);
+      return ERR::OutOfRange;
    }
-   else if (Value->Type & FD_LARGE) {
-      if (Value->Large <= 0) {
-         log.warning("A page width of %" PF64 " is illegal.", Value->Large);
-         return ERR::OutOfRange;
-      }
-      Self->PageWidth = Value->Large;
-   }
-   else return ERR::FieldTypeMismatch;
+   Self->PageWidth = Value->Value;
 
-   if (Value->Type & FD_SCALED) Self->RelPageWidth = true;
+   if (Value->scaled()) Self->RelPageWidth = true;
    else Self->RelPageWidth = false;
 
    return ERR::Okay;

@@ -205,25 +205,17 @@ the gradient type requires it (such as the radial type).  By default, the center
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_CenterX(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_CenterX(extVectorGradient *Self, Unit *Value)
 {
-   DOUBLE val = Self->CenterX;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->CenterX);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_CenterX(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_CenterX(extVectorGradient *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_CX) & (~VGF::FIXED_CX);
+   if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_CX) & (~VGF::FIXED_CX);
    else Self->Flags = (Self->Flags | VGF::FIXED_CX) & (~VGF::SCALED_CX);
-
-   Self->CenterX = val;
+   Self->CenterX = Value;
    return ERR::Okay;
 }
 
@@ -237,25 +229,18 @@ the gradient type requires it (such as the radial type).  By default, the center
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_CenterY(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_CenterY(extVectorGradient *Self, Unit *Value)
 {
-   DOUBLE val = Self->CenterY;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->CenterY);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_CY) & (~VGF::FIXED_CY);
+   if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_CY) & (~VGF::FIXED_CY);
    else Self->Flags = (Self->Flags | VGF::FIXED_CY) & (~VGF::SCALED_CY);
 
-   Self->CenterY = val;
+   Self->CenterY = Value;
    return ERR::Okay;
 }
 
@@ -282,25 +267,18 @@ center of the gradient.
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_FX(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_FX(extVectorGradient *Self, Unit *Value)
 {
-   DOUBLE val = Self->FX;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->FX);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_FX(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_FX(extVectorGradient *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_FX) & (~VGF::FIXED_FX);
+   if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_FX) & (~VGF::FIXED_FX);
    else Self->Flags = (Self->Flags | VGF::FIXED_FX) & (~VGF::SCALED_FX);
 
-   Self->FX = val;
+   Self->FX = Value;
    return ERR::Okay;
 }
 
@@ -314,25 +292,18 @@ center of the gradient.
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_FY(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_FY(extVectorGradient *Self, Unit *Value)
 {
-   DOUBLE val = Self->FY;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->FY);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_FY(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_FY(extVectorGradient *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_FY) & (~VGF::FIXED_FY);
+   if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_FY) & (~VGF::FIXED_FY);
    else Self->Flags = (Self->Flags | VGF::FIXED_FY) & (~VGF::SCALED_FY);
 
-   Self->FY = val;
+   Self->FY = Value;
    return ERR::Okay;
 }
 
@@ -474,26 +445,19 @@ The Radius value has no effect if the gradient is linear.
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_Radius(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_Radius(extVectorGradient *Self, Unit *Value)
 {
-   DOUBLE val = Self->Radius;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Radius);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (val >= 0) {
-      if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_RADIUS) & (~VGF::FIXED_RADIUS);
+   if (Value >= 0) {
+      if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_RADIUS) & (~VGF::FIXED_RADIUS);
       else Self->Flags = (Self->Flags | VGF::FIXED_RADIUS) & (~VGF::SCALED_RADIUS);
 
-      Self->Radius = val;
+      Self->Radius = Value;
       return ERR::Okay;
    }
    else return ERR::OutOfRange;
@@ -612,25 +576,17 @@ Coordinate values can be expressed as percentages that are scaled to the target 
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_X1(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_X1(extVectorGradient *Self, Unit *Value)
 {
-   DOUBLE val = Self->X1;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->X1);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_X1) & (~VGF::FIXED_X1);
+   if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_X1) & (~VGF::FIXED_X1);
    else Self->Flags = (Self->Flags | VGF::FIXED_X1) & (~VGF::SCALED_X1);
-
-   Self->X1 = val;
+   Self->X1 = Value;
    return ERR::Okay;
 }
 
@@ -645,25 +601,17 @@ Coordinate values can be expressed as percentages that are scaled to the target 
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_X2(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_X2(extVectorGradient *Self, Unit *Value)
 {
-   DOUBLE val = Self->X2;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->X2);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_X2(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_X2(extVectorGradient *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_X2) & (~VGF::FIXED_X2);
+   if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_X2) & (~VGF::FIXED_X2);
    else Self->Flags = (Self->Flags | VGF::FIXED_X2) & (~VGF::SCALED_X2);
-
-   Self->X2 = val;
+   Self->X2 = Value;
    return ERR::Okay;
 }
 
@@ -678,25 +626,17 @@ Coordinate values can be expressed as percentages that are scaled to the target 
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_Y1(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_Y1(extVectorGradient *Self, Unit *Value)
 {
-   DOUBLE val = Self->Y1;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Y1);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_Y1(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_Y1(extVectorGradient *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_Y1) & (~VGF::FIXED_Y1);
+   if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_Y1) & (~VGF::FIXED_Y1);
    else Self->Flags = (Self->Flags | VGF::FIXED_Y1) & (~VGF::SCALED_Y1);
-
-   Self->Y1 = val;
+   Self->Y1 = Value;
    return ERR::Okay;
 }
 
@@ -711,25 +651,17 @@ Coordinate values can be expressed as percentages that are scaled to the target 
 -END-
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_Y2(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_GET_Y2(extVectorGradient *Self, Unit *Value)
 {
-   DOUBLE val = Self->Y2;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Y2);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Variable *Value)
+static ERR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Flags = (Self->Flags | VGF::SCALED_Y2) & (~VGF::FIXED_Y2);
+   if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_Y2) & (~VGF::FIXED_Y2);
    else Self->Flags = (Self->Flags | VGF::FIXED_Y2) & (~VGF::SCALED_Y2);
-
-   Self->Y2 = val;
+   Self->Y2 = Value;
    return ERR::Okay;
 }
 
@@ -738,15 +670,15 @@ static ERR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Variable *Value)
 #include "gradient_def.c"
 
 static const FieldArray clGradientFields[] = {
-   { "X1",           FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_X1, VECTORGRADIENT_SET_X1 },
-   { "Y1",           FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Y1, VECTORGRADIENT_SET_Y1 },
-   { "X2",           FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_X2, VECTORGRADIENT_SET_X2 },
-   { "Y2",           FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Y2, VECTORGRADIENT_SET_Y2 },
-   { "CenterX",      FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterX, VECTORGRADIENT_SET_CenterX },
-   { "CenterY",      FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterY, VECTORGRADIENT_SET_CenterY },
-   { "FX",           FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FX, VECTORGRADIENT_SET_FX },
-   { "FY",           FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FY, VECTORGRADIENT_SET_FY },
-   { "Radius",       FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Radius, VECTORGRADIENT_SET_Radius },
+   { "X1",           FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_X1, VECTORGRADIENT_SET_X1 },
+   { "Y1",           FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Y1, VECTORGRADIENT_SET_Y1 },
+   { "X2",           FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_X2, VECTORGRADIENT_SET_X2 },
+   { "Y2",           FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Y2, VECTORGRADIENT_SET_Y2 },
+   { "CenterX",      FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterX, VECTORGRADIENT_SET_CenterX },
+   { "CenterY",      FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterY, VECTORGRADIENT_SET_CenterY },
+   { "FX",           FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FX, VECTORGRADIENT_SET_FX },
+   { "FY",           FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FY, VECTORGRADIENT_SET_FY },
+   { "Radius",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Radius, VECTORGRADIENT_SET_Radius },
    { "Inherit",      FDF_OBJECT|FDF_RW, NULL, VECTORGRADIENT_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientSpreadMethod },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &clVectorGradientUnits },

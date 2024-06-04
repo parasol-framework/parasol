@@ -207,26 +207,17 @@ The horizontal center of the shape is defined here as either a fixed or scaled v
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_CenterX(extVectorShape *Self, Variable *Value)
+static ERR SUPER_GET_CenterX(extVectorShape *Self, Unit *Value)
 {
-   DOUBLE val = Self->CX;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->CX);
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_CenterX(extVectorShape *Self, Variable *Value)
+static ERR SUPER_SET_CenterX(extVectorShape *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_CENTER_X) & (~DMF::FIXED_CENTER_X);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_CENTER_X) & (~DMF::FIXED_CENTER_X);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_CENTER_X) & (~DMF::SCALED_CENTER_X);
-
-   Self->CX = val;
-
+   Self->CX = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -239,25 +230,17 @@ The vertical center of the shape is defined here as either a fixed or scaled val
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_CenterY(extVectorShape *Self, Variable *Value)
-{
-   DOUBLE val = Self->CY;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+static ERR SUPER_GET_CenterY(extVectorShape *Self, Unit *Value)
+{ 
+   Value->set(Self->CY);
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_CenterY(extVectorShape *Self, Variable *Value)
+static ERR SUPER_SET_CenterY(extVectorShape *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_CENTER_Y) & (~DMF::FIXED_CENTER_Y);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_CENTER_Y) & (~DMF::FIXED_CENTER_Y);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_CENTER_Y) & (~DMF::SCALED_CENTER_Y);
-
-   Self->CY = val;
+   Self->CY = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -468,25 +451,18 @@ The Radius defines the final size of the generated shape.  It can be expressed i
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Radius(extVectorShape *Self, Variable *Value)
+static ERR SUPER_GET_Radius(extVectorShape *Self, Unit *Value)
 {
-   DOUBLE val = Self->Radius;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Radius);
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Radius(extVectorShape *Self, Variable *Value)
+static ERR SUPER_SET_Radius(extVectorShape *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions|DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y) & (~(DMF::FIXED_RADIUS_X|DMF::FIXED_RADIUS_Y));
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions|DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y) & (~(DMF::FIXED_RADIUS_X|DMF::FIXED_RADIUS_Y));
    else Self->Dimensions = (Self->Dimensions|DMF::FIXED_RADIUS_X|DMF::FIXED_RADIUS_Y) & (~(DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y));
 
-   Self->Radius = val;
+   Self->Radius = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -585,9 +561,9 @@ static const ActionArray clVectorShapeActions[] = {
 };
 
 static const FieldArray clVectorShapeFields[] = {
-   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterX, SUPER_SET_CenterX },
-   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterY, SUPER_SET_CenterY },
-   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_Radius,  SUPER_SET_Radius },
+   { "CenterX",    FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterX, SUPER_SET_CenterX },
+   { "CenterY",    FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterY, SUPER_SET_CenterY },
+   { "Radius",     FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_Radius,  SUPER_SET_Radius },
    { "Close",      FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Close, SUPER_SET_Close },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, SUPER_GET_Dimensions, SUPER_SET_Dimensions, &clSuperDimensions },
    { "Phi",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SUPER_GET_Phi,  SUPER_SET_Phi },
@@ -602,9 +578,9 @@ static const FieldArray clVectorShapeFields[] = {
    { "Spiral",     FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Spiral, SUPER_SET_Spiral },
    { "Repeat",     FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Repeat, SUPER_SET_Repeat },
    // Synonyms
-   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterX, SUPER_SET_CenterX },
-   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterY, SUPER_SET_CenterY },
-   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_Radius,  SUPER_SET_Radius },
+   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterX, SUPER_SET_CenterX },
+   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterY, SUPER_SET_CenterY },
+   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_Radius,  SUPER_SET_Radius },
    END_FIELD
 };
 

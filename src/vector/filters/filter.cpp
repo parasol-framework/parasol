@@ -655,26 +655,18 @@ filter algorithms to work with, and is usually a sufficient default.
 
 *********************************************************************************************************************/
 
-static ERR VECTORFILTER_GET_Height(extVectorFilter *Self, struct Variable *Value)
+static ERR VECTORFILTER_GET_Height(extVectorFilter *Self, Unit *Value)
 {
-   DOUBLE val = Self->Height;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = val;
+   Value->set(Self->Height);
    return ERR::Okay;
 }
 
-static ERR VECTORFILTER_SET_Height(extVectorFilter *Self, Variable *Value)
+static ERR VECTORFILTER_SET_Height(extVectorFilter *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (val > 0) {
-      if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+   if (Value > 0) {
+      if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
       else Self->Dimensions = (Self->Dimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
-
-      Self->Height = val;
+      Self->Height = Value;
       return ERR::Okay;
    }
    else return ERR::InvalidValue;
@@ -757,26 +749,19 @@ filter algorithms to work with, and is usually a sufficient default.
 
 *********************************************************************************************************************/
 
-static ERR VECTORFILTER_GET_Width(extVectorFilter *Self, Variable *Value)
+static ERR VECTORFILTER_GET_Width(extVectorFilter *Self, Unit *Value)
 {
-   DOUBLE val = Self->Width;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = val;
+   Value->set(Self->Width);
    return ERR::Okay;
 }
 
-static ERR VECTORFILTER_SET_Width(extVectorFilter *Self, Variable *Value)
+static ERR VECTORFILTER_SET_Width(extVectorFilter *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (val > 0) {
-      if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+   if (Value > 0) {
+      if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
       else Self->Dimensions = (Self->Dimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
 
-      Self->Width = val;
+      Self->Width = Value;
       return ERR::Okay;
    }
    else return ERR::InvalidValue;
@@ -795,25 +780,18 @@ algorithms to work with, and is usually a sufficient default.
 
 *********************************************************************************************************************/
 
-static ERR VECTORFILTER_GET_X(extVectorFilter *Self, Variable *Value)
+static ERR VECTORFILTER_GET_X(extVectorFilter *Self, Unit *Value)
 {
-   DOUBLE val = Self->X;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = val;
+   Value->set(Self->X);
    return ERR::Okay;
 }
 
-static ERR VECTORFILTER_SET_X(extVectorFilter *Self, Variable *Value)
+static ERR VECTORFILTER_SET_X(extVectorFilter *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
 
-   Self->X = val;
+   Self->X = Value;
    return ERR::Okay;
 }
 
@@ -831,25 +809,18 @@ algorithms to work with, and is usually a sufficient default.
 -END-
 *********************************************************************************************************************/
 
-static ERR VECTORFILTER_GET_Y(extVectorFilter *Self, Variable *Value)
+static ERR VECTORFILTER_GET_Y(extVectorFilter *Self, Unit *Value)
 {
-   DOUBLE val = Self->Y;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = val;
+   Value->set(Self->Y);
    return ERR::Okay;
 }
 
-static ERR VECTORFILTER_SET_Y(extVectorFilter *Self, Variable *Value)
+static ERR VECTORFILTER_SET_Y(extVectorFilter *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
 
-   Self->Y = val;
+   Self->Y = Value;
    return ERR::Okay;
 }
 
@@ -870,10 +841,10 @@ static const FieldDef clFilterDimensions[] = {
 #include "filter_def.c"
 
 static const FieldArray clFilterFields[] = {
-   { "X",              FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_X, VECTORFILTER_SET_X },
-   { "Y",              FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_Y, VECTORFILTER_SET_Y },
-   { "Width",          FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_Width, VECTORFILTER_SET_Width },
-   { "Height",         FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_Height, VECTORFILTER_SET_Height },
+   { "X",              FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_X, VECTORFILTER_SET_X },
+   { "Y",              FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_Y, VECTORFILTER_SET_Y },
+   { "Width",          FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_Width, VECTORFILTER_SET_Width },
+   { "Height",         FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_Height, VECTORFILTER_SET_Height },
    { "Opacity",        FDF_DOUBLE|FDF_RW, NULL, VECTORFILTER_SET_Opacity },
    { "Inherit",        FDF_OBJECT|FDF_RW, NULL, VECTORFILTER_SET_Inherit },
    { "ResX",           FDF_LONG|FDF_RI },

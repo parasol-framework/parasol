@@ -37,8 +37,8 @@ using namespace display;
 #endif
 
 static ERR SET_Opacity(extSurface *, DOUBLE);
-static ERR SET_XOffset(extSurface *, Variable *);
-static ERR SET_YOffset(extSurface *, Variable *);
+static ERR SET_XOffset(extSurface *, Unit *);
+static ERR SET_YOffset(extSurface *, Unit *);
 
 #define MOVE_VERTICAL   0x0001
 #define MOVE_HORIZONTAL 0x0002
@@ -2542,10 +2542,10 @@ static const FieldArray clSurfaceFields[] = {
    { "BottomLimit",  FDF_LONG|FDF_RW,  NULL, SET_BottomLimit },
    { "Display",      FDF_OBJECTID|FDF_R, NULL, NULL, CLASSID::DISPLAY },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, SET_Flags, &clSurfaceFlags },
-   { "X",            FD_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_XCoord, SET_XCoord },
-   { "Y",            FD_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_YCoord, SET_YCoord },
-   { "Width",        FD_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_Width,  SET_Width },
-   { "Height",       FD_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_Height, SET_Height },
+   { "X",            FDF_UNIT|FDF_LONG|FDF_SCALED|FDF_RW, GET_XCoord, SET_XCoord },
+   { "Y",            FDF_UNIT|FDF_LONG|FDF_SCALED|FDF_RW, GET_YCoord, SET_YCoord },
+   { "Width",        FDF_UNIT|FDF_LONG|FDF_SCALED|FDF_RW, GET_Width,  SET_Width },
+   { "Height",       FDF_UNIT|FDF_LONG|FDF_SCALED|FDF_RW, GET_Height, SET_Height },
    { "RootLayer",    FDF_OBJECTID|FDF_RW, NULL, SET_RootLayer },
    { "Align",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clSurfaceAlign },
    { "Dimensions",   FDF_LONG|FDF_RW, NULL, SET_Dimensions, &clSurfaceDimensions },
@@ -2573,9 +2573,9 @@ static const FieldArray clSurfaceFields[] = {
    { "VisibleY",      FDF_VIRTUAL|FDF_LONG|FDF_R,  GET_VisibleY },
    { "WindowType",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, GET_WindowType, SET_WindowType, &clWindowType },
    { "WindowHandle",  FDF_VIRTUAL|FDF_POINTER|FDF_RW, GET_WindowHandle, SET_WindowHandle },
-   // Variable fields
-   { "XOffset",       FDF_VIRTUAL|FDF_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_XOffset, SET_XOffset },
-   { "YOffset",       FDF_VIRTUAL|FDF_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_YOffset, SET_YOffset },
+   // Unit fields
+   { "XOffset",       FDF_VIRTUAL|FDF_UNIT|FDF_LONG|FDF_SCALED|FDF_RW, GET_XOffset, SET_XOffset },
+   { "YOffset",       FDF_VIRTUAL|FDF_UNIT|FDF_LONG|FDF_SCALED|FDF_RW, GET_YOffset, SET_YOffset },
    END_FIELD
 };
 

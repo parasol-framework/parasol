@@ -34,7 +34,7 @@ static ERR setval_long(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
 static ERR setval_function(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
 static ERR setval_array(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
 static ERR setval_brgb(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
-static ERR setval_variable(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
+static ERR setval_unit(OBJECTPTR, Field *, LONG Flags, CPTR , LONG);
 
 /*********************************************************************************************************************
 
@@ -137,7 +137,7 @@ Available field types are as follows:
 <type name="TPTR">A standard address space pointer.</>
 <type name="TSTR">A pointer that refers to a string.</>
 <type name="TFUNCTION">A pointer to a `FUNCTION` structure.</>
-<type name="TVAR">A pointer to a `Variable` structure.</>
+<type name="TUNIT">A pointer to a `Unit` structure.</>
 </>
 
 There is no requirement for the client to have a working knowledge of the target object's field configuration in
@@ -187,7 +187,7 @@ ERR SetField(OBJECTPTR Object, FIELD FieldID, ...)
       va_list list;
       va_start(list, FieldID);
 
-         if (type & (FD_POINTER|FD_STRING|FD_FUNCTION|FD_VARIABLE)) {
+         if (type & (FD_POINTER|FD_STRING|FD_FUNCTION|FD_UNIT)) {
             error = field->WriteValue(Object, field, type, va_arg(list, APTR), 0);
          }
          else if (type & (FD_DOUBLE|FD_FLOAT)) {
@@ -313,7 +313,7 @@ ERR writeval_default(OBJECTPTR Object, Field *Field, LONG flags, CPTR Data, LONG
       return error;
    }
    else {
-      if (Field->Flags & FD_VARIABLE)      return setval_variable(Object, Field, flags, Data, 0);
+      if (Field->Flags & FD_UNIT)          return setval_unit(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_RGB)      return setval_brgb(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_ARRAY)    return setval_array(Object, Field, flags, Data, Elements);
       else if (Field->Flags & FD_FUNCTION) return setval_function(Object, Field, flags, Data, 0);
@@ -542,23 +542,23 @@ class FieldContext : public ObjectContext {
 
 //********************************************************************************************************************
 
-static ERR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
+static ERR setval_unit(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
-   // Convert the value to match what the variable will accept, then call the variable field's set function.
+   // Convert the value to match what the unit will accept, then call the unit field's set function.
 
-   Variable var;
+   Unit var;
    FieldContext ctx(Object, Field);
 
    if (Flags & (FD_LONG|FD_LARGE)) {
       var.Type = FD_LARGE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
-      if (Flags & FD_LONG) var.Large = *((LONG *)Data);
-      else var.Large = *((LARGE *)Data);
-      return ((ERR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
+      if (Flags & FD_LONG) var.Double = *((LONG *)Data);
+      else var.Double = *((LARGE *)Data);
+      return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &var);
    }
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) {
       var.Type = FD_DOUBLE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER|FD_STRING)));
       var.Double = *((DOUBLE *)Data);
-      return ((ERR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
+      return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &var);
    }
    else if (Flags & (FD_POINTER|FD_STRING)) {
       if (Field->Flags & FD_SCALED) {
@@ -569,19 +569,19 @@ static ERR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
          if (pct[0] IS '%') {
             var.Type = FD_DOUBLE|FD_SCALED;
             var.Double *= 0.01;
-            return ((ERR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
+            return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &var);
          }
          else {
             var.Type = FD_DOUBLE;
-            return ((ERR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
+            return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &var);
          }
       }
+      else var.Double = strtod((CSTRING)Data, NULL);
 
-      var.Type = FD_POINTER | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER))); // Allows support flags like FD_STRING to fall through
-      var.Pointer = (APTR)Data;
-      return ((ERR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
+      var.Type = FD_DOUBLE | (Flags & (~(FD_LONG|FD_LARGE|FD_DOUBLE|FD_POINTER))); // Allows support flags like FD_STRING to fall through
+      return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &var);
    }
-   else if (Flags & FD_VARIABLE) {
+   else if (Flags & FD_UNIT) {
       return ((ERR (*)(APTR, APTR))(Field->SetValue))(Object, (APTR)Data);
    }
    else return ERR::FieldTypeMismatch;
@@ -755,7 +755,7 @@ void optimise_write_field(Field &Field)
       else log.warning("Invalid field flags for %s: $%.8x.", Field.Name, Field.Flags);
    }
    else {
-      if (Field.Flags & FD_VARIABLE)      Field.WriteValue = setval_variable;
+      if (Field.Flags & FD_UNIT)      Field.WriteValue = setval_unit;
       else if (Field.Flags & FD_RGB) {
          if (Field.Flags & FD_BYTE) Field.WriteValue = setval_brgb;
          else log.warning("Invalid field flags for %s: $%.8x.", Field.Name, Field.Flags);

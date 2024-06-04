@@ -376,25 +376,18 @@ The height of the area containing the wave is defined here as a fixed or scaled 
 
 *********************************************************************************************************************/
 
-static ERR WAVE_GET_Height(extVectorWave *Self, Variable *Value)
+static ERR WAVE_GET_Height(extVectorWave *Self, Unit *Value)
 {
-   DOUBLE val = Self->wHeight;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->wHeight);
    return ERR::Okay;
 }
 
-static ERR WAVE_SET_Height(extVectorWave *Self, Variable *Value)
+static ERR WAVE_SET_Height(extVectorWave *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+   if (Value.scaled()) Self->wDimensions = (Self->wDimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
    else Self->wDimensions = (Self->wDimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
 
-   Self->wHeight = val;
+   Self->wHeight = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -451,25 +444,17 @@ The width of the area containing the wave is defined here as a fixed or scaled v
 
 *********************************************************************************************************************/
 
-static ERR WAVE_GET_Width(extVectorWave *Self, Variable *Value)
+static ERR WAVE_GET_Width(extVectorWave *Self, Unit *Value)
 {
-   DOUBLE val = Self->wWidth;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->wWidth);
    return ERR::Okay;
 }
 
-static ERR WAVE_SET_Width(extVectorWave *Self, Variable *Value)
+static ERR WAVE_SET_Width(extVectorWave *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+   if (Value.scaled()) Self->wDimensions = (Self->wDimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
    else Self->wDimensions = (Self->wDimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
-
-   Self->wWidth = val;
+   Self->wWidth = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -482,25 +467,17 @@ The x coordinate of the wave is defined here as either a fixed or scaled value.
 
 *********************************************************************************************************************/
 
-static ERR WAVE_GET_X(extVectorWave *Self, Variable *Value)
+static ERR WAVE_GET_X(extVectorWave *Self, Unit *Value)
 {
-   DOUBLE val = Self->wX;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->wX);
    return ERR::Okay;
 }
 
-static ERR WAVE_SET_X(extVectorWave *Self, Variable *Value)
+static ERR WAVE_SET_X(extVectorWave *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   if (Value.scaled()) Self->wDimensions = (Self->wDimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
    else Self->wDimensions = (Self->wDimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
-
-   Self->wX = val;
+   Self->wX = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -513,25 +490,17 @@ The y coordinate of the wave is defined here as either a fixed or scaled value.
 -END-
 *********************************************************************************************************************/
 
-static ERR WAVE_GET_Y(extVectorWave *Self, Variable *Value)
+static ERR WAVE_GET_Y(extVectorWave *Self, Unit *Value)
 {
-   DOUBLE val = Self->wY;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->wY);
    return ERR::Okay;
 }
 
-static ERR WAVE_SET_Y(extVectorWave *Self, Variable *Value)
+static ERR WAVE_SET_Y(extVectorWave *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->wDimensions = (Self->wDimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   if (Value.scaled()) Self->wDimensions = (Self->wDimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
    else Self->wDimensions = (Self->wDimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
-
-   Self->wY = val;
+   Self->wY = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -571,12 +540,12 @@ static const FieldArray clWaveFields[] = {
    { "Degree",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Degree, WAVE_SET_Degree },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, WAVE_GET_Dimensions, WAVE_SET_Dimensions, &clWaveDimensions },
    { "Frequency",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Frequency, WAVE_SET_Frequency },
-   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_Height, WAVE_SET_Height },
+   { "Height",     FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_Height, WAVE_SET_Height },
    { "Style",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, WAVE_GET_Style, WAVE_SET_Style, &clWaveStyle },
    { "Thickness",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Thickness, WAVE_SET_Thickness },
-   { "X",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_X, WAVE_SET_X },
-   { "Y",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_Y, WAVE_SET_Y },
-   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_Width, WAVE_SET_Width },
+   { "X",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_X, WAVE_SET_X },
+   { "Y",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_Y, WAVE_SET_Y },
+   { "Width",      FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_Width, WAVE_SET_Width },
    END_FIELD
 };
 

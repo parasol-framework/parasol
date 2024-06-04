@@ -439,7 +439,7 @@ enum class JET : LONG {
 #define FD_FUNCTIONPTR 0x0a000000
 #define FD_PTR_LARGERESULT 0x0c000100
 #define FD_FLOAT 0x10000000
-#define FD_VARIABLE 0x20000000
+#define FD_UNIT 0x20000000
 #define FD_LONG 0x40000000
 #define FD_OBJECTID 0x40000001
 #define FD_LONGRESULT 0x40000100
@@ -1591,7 +1591,7 @@ struct OpenInfo {
 #define FT_LARGE    FD_LARGE
 #define FT_STRING   (FD_POINTER|FD_STRING)
 #define FT_UNLISTED FD_UNLISTED
-#define FT_VARIABLE FD_VARIABLE
+#define FT_UNIT     FD_UNIT
 
 // Class field definitions.  See core.h for all FD definitions.
 
@@ -1604,7 +1604,7 @@ struct OpenInfo {
 #define FDF_ARRAY      FD_ARRAY    // Field is a pointer to an array
 #define FDF_CPP        FD_CPP      // Field is a C++ type variant
 #define FDF_PTR        FD_POINTER
-#define FDF_VARIABLE   FD_VARIABLE
+#define FDF_UNIT       FD_UNIT
 #define FDF_SYNONYM    FD_SYNONYM
 
 #define FDF_UNSIGNED    FD_UNSIGNED
@@ -1634,13 +1634,13 @@ struct OpenInfo {
 #define FDF_I           FD_INIT
 #define FDF_VIRTUAL     FD_VIRTUAL
 #define FDF_LONGFLAGS   (FDF_LONG|FDF_FLAGS)
-#define FDF_FIELDTYPES  (FD_LONG|FD_DOUBLE|FD_LARGE|FD_POINTER|FD_VARIABLE|FD_BYTE|FD_ARRAY|FD_FUNCTION)
+#define FDF_FIELDTYPES  (FD_LONG|FD_DOUBLE|FD_LARGE|FD_POINTER|FD_UNIT|FD_BYTE|FD_ARRAY|FD_FUNCTION)
 
 // These constants have to match the FD* constants << 32
 
 #define TDOUBLE   0x8000000000000000LL
 #define TLONG     0x4000000000000000LL
-#define TVAR      0x2000000000000000LL
+#define TUNIT     0x2000000000000000LL
 #define TFLOAT    0x1000000000000000LL // NB: Floats are upscaled to doubles when passed as v-args.
 #define TPTR      0x0800000000000000LL
 #define TLARGE    0x0400000000000000LL
@@ -1806,17 +1806,12 @@ struct SystemState {
    LONG    Stage;           // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
 };
 
-struct Variable {
+struct Unit {
    ULONG  Type;      // Field definition flags
    LONG   Unused;    // Unused 32-bit value for 64-bit alignment
-   LARGE  Large;     // The value as a 64-bit integer.
    DOUBLE Double;    // The value as a 64-bit float-point number.
-   APTR   Pointer;   // The value as an address pointer.
-   Variable(LONG Value) : Type(FD_LARGE), Large(Value) { }
-   Variable(LARGE Value) : Type(FD_LARGE), Large(Value) { }
-   Variable(DOUBLE Value) : Type(FD_DOUBLE), Double(Value) { }
-   Variable(APTR Value) : Type(FD_POINTER), Pointer(Value) { }
-   Variable() { }
+   Unit(DOUBLE Value) : Type(FD_DOUBLE), Double(Value) { }
+   Unit() { }
 };
 
 struct ActionArray {
@@ -2736,7 +2731,7 @@ struct Object { // Must be 64-bit aligned
    inline ERR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
    inline ERR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
    inline ERR set(ULONG FieldID, const std::string &Value)   { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
-   inline ERR set(ULONG FieldID, const Variable *Value)      { return SetField(this, (FIELD)FieldID|TVAR, Value); }
+   inline ERR set(ULONG FieldID, const Unit *Value)          { return SetField(this, (FIELD)FieldID|TUNIT, Value); }
    // Works both for regular data pointers and function pointers if field is defined correctly.
    inline ERR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
 
@@ -2750,7 +2745,7 @@ struct Object { // Must be 64-bit aligned
    inline ERR get(ULONG FieldID, DOUBLE *Value)   { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
    inline ERR get(ULONG FieldID, STRING *Value)   { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
    inline ERR get(ULONG FieldID, CSTRING *Value)  { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
+   inline ERR get(ULONG FieldID, Unit *Value)     { return GetField(this, (FIELD)FieldID|TUNIT, Value); }
    inline ERR getPtr(ULONG FieldID, APTR Value)   { return GetField(this, (FIELD)FieldID|TPTR, Value); }
    inline ERR getScale(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TSCALE, Value); }
 
@@ -2781,7 +2776,7 @@ struct Object { // Must be 64-bit aligned
                if (target != this) target->lock();
 
                ERR error;
-               if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
+               if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_UNIT)) {
                   error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
                }
                else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
@@ -2901,7 +2896,7 @@ class Create {
                   else {
                      target->lock();
 
-                     if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
+                     if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_UNIT)) {
                         error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
                      }
                      else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
@@ -2958,27 +2953,27 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResou
 
 // Action and Notification Structures
 
-struct acClipboard     { CLIPMODE Mode; };
-struct acCopyData      { OBJECTPTR Dest; };
-struct acDataFeed      { OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
-struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
-struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
-struct acGetKey        { CSTRING Key; STRING Value; LONG Size; };
-struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; MTF Flags; };
-struct acNewChild      { OBJECTPTR Object; };
-struct acNewOwner      { OBJECTPTR NewOwner; };
-struct acRead          { APTR Buffer; LONG Length; LONG Result; };
-struct acRedimension   { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acRedo          { LONG Steps; };
-struct acRename        { CSTRING Name; };
-struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSeek          { DOUBLE Offset; SEEK Position; };
-struct acSetKey        { CSTRING Key; CSTRING Value; };
-struct acUndo          { LONG Steps; };
-struct acWrite         { CPTR Buffer; LONG Length; LONG Result; };
+struct acClipboard     { static const ACTIONID id = AC_Clipboard; CLIPMODE Mode; };
+struct acCopyData      { static const ACTIONID id = AC_CopyData; OBJECTPTR Dest; };
+struct acDataFeed      { static const ACTIONID id = AC_DataFeed; OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
+struct acDragDrop      { static const ACTIONID id = AC_DragDrop; OBJECTPTR Source; LONG Item; CSTRING Datatype; };
+struct acDraw          { static const ACTIONID id = AC_Draw; LONG X; LONG Y; LONG Width; LONG Height; };
+struct acGetKey        { static const ACTIONID id = AC_GetKey; CSTRING Key; STRING Value; LONG Size; };
+struct acMove          { static const ACTIONID id = AC_Move; DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
+struct acMoveToPoint   { static const ACTIONID id = AC_MoveToPoint; DOUBLE X; DOUBLE Y; DOUBLE Z; MTF Flags; };
+struct acNewChild      { static const ACTIONID id = AC_NewChild; OBJECTPTR Object; };
+struct acNewOwner      { static const ACTIONID id = AC_NewOwner; OBJECTPTR NewOwner; };
+struct acRead          { static const ACTIONID id = AC_Read; APTR Buffer; LONG Length; LONG Result; };
+struct acRedimension   { static const ACTIONID id = AC_Redimension; DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
+struct acRedo          { static const ACTIONID id = AC_Redo; LONG Steps; };
+struct acRename        { static const ACTIONID id = AC_Rename; CSTRING Name; };
+struct acResize        { static const ACTIONID id = AC_Resize; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
+struct acSaveImage     { static const ACTIONID id = AC_SaveImage; OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSaveToObject  { static const ACTIONID id = AC_SaveToObject; OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSeek          { static const ACTIONID id = AC_Seek; DOUBLE Offset; SEEK Position; };
+struct acSetKey        { static const ACTIONID id = AC_SetKey; CSTRING Key; CSTRING Value; };
+struct acUndo          { static const ACTIONID id = AC_Undo; LONG Steps; };
+struct acWrite         { static const ACTIONID id = AC_Write; CPTR Buffer; LONG Length; LONG Result; };
 
 // Action Macros
 

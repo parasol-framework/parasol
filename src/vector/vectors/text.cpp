@@ -1087,19 +1087,15 @@ The x-axis coordinate of the text is specified here as a fixed value.  Scaled co
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_X(extVectorText *Self, Variable *Value)
+static ERR TEXT_GET_X(extVectorText *Self, Unit *Value)
 {
-   DOUBLE val = Self->txX;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->txX);
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_X(extVectorText *Self, Variable *Value)
+static ERR TEXT_SET_X(extVectorText *Self, Unit &Value)
 {
-   if (Value->Type & FD_DOUBLE) Self->txX = Value->Double;
-   else if (Value->Type & FD_LARGE) Self->txX = Value->Large;
-   else return ERR::FieldTypeMismatch;
+   Self->txX = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -1114,19 +1110,15 @@ Unlike other vector shapes, the Y coordinate positions the text from its base li
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_Y(extVectorText *Self, Variable *Value)
+static ERR TEXT_GET_Y(extVectorText *Self, Unit *Value)
 {
-   DOUBLE val = Self->txY;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->txY);
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_Y(extVectorText *Self, Variable *Value)
+static ERR TEXT_SET_Y(extVectorText *Self, Unit &Value)
 {
-   if (Value->Type & FD_DOUBLE) Self->txY = Value->Double;
-   else if (Value->Type & FD_LARGE) Self->txY = Value->Large;
-   else return ERR::FieldTypeMismatch;
+   Self->txY = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -2013,8 +2005,8 @@ static const FieldDef clTextAlign[] = {
 };
 
 static const FieldArray clTextFields[] = {
-   { "X",             FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, TEXT_GET_X, TEXT_SET_X },
-   { "Y",             FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, TEXT_GET_Y, TEXT_SET_Y },
+   { "X",             FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, TEXT_GET_X, TEXT_SET_X },
+   { "Y",             FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, TEXT_GET_Y, TEXT_SET_Y },
    { "Weight",        FDF_VIRTUAL|FDF_LONG|FDF_RW, TEXT_GET_Weight, TEXT_SET_Weight },
    { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW, TEXT_GET_String, TEXT_SET_String },
    { "Align",         FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, TEXT_GET_Align, TEXT_SET_Align, &clTextAlign },

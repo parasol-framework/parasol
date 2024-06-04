@@ -196,11 +196,11 @@ ERR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
 
 #ifdef _LP64
    if (type & (FD_DOUBLE|FD_LARGE|FD_POINTER|FD_STRING)) *((LARGE *)Result) = 0;
-   else if (type & FD_VARIABLE); // Do not touch variable storage.
+   else if (type & FD_UNIT); // Do not touch unit storage.
    else *((LONG *)Result)  = 0;
 #else
    if (type & (FD_DOUBLE|FD_LARGE)) *((LARGE *)Result) = 0;
-   else if (type & FD_VARIABLE); // Do not touch variable storage.
+   else if (type & FD_UNIT); // Do not touch unit storage.
    else *((LONG *)Result)  = 0;
 #endif
 
@@ -529,20 +529,20 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
    LONG array_size = -1;
    LONG srcflags = Field->Flags;
 
-   if (!(DestFlags & (FD_VARIABLE|FD_LARGE|FD_LONG|FD_DOUBLE|FD_POINTER|FD_STRING|FD_ARRAY))) goto mismatch;
+   if (!(DestFlags & (FD_UNIT|FD_LARGE|FD_LONG|FD_DOUBLE|FD_POINTER|FD_STRING|FD_ARRAY))) goto mismatch;
 
-   if (srcflags & FD_VARIABLE) {
+   if (srcflags & FD_UNIT) {
       if (!Field->GetValue) return ERR::NoFieldAccess;
 
-      Variable var;
+      Unit var;
       ERR error;
       ObjectContext ctx(Object, 0, Field);
 
-      if (DestFlags & FD_VARIABLE) {
+      if (DestFlags & FD_UNIT) {
          error = Field->GetValue(Object, Result);
       }
       else if (srcflags & FD_DOUBLE) {
-         var.Type = FD_DOUBLE | (DestFlags & (~(FD_LONG|FD_LARGE)));
+         var.Type = FD_DOUBLE | (DestFlags & (~(FD_LONG|FD_LARGE|FD_DOUBLE)));
          error = Field->GetValue(Object, &var);
 
          if (error IS ERR::Okay) {
@@ -553,29 +553,17 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
          }
       }
       else if (srcflags & (FD_LARGE|FD_LONG)) {
-         var.Type = FD_LARGE | (DestFlags & (~(FD_LARGE|FD_LONG|FD_DOUBLE)));
+         var.Type = FD_DOUBLE | (DestFlags & (~(FD_LARGE|FD_LONG|FD_DOUBLE)));
 
          error = Field->GetValue(Object, &var);
          if (error IS ERR::Okay) {
-            if (DestFlags & FD_LARGE)       *((LARGE *)Result)  = var.Large;
-            else if (DestFlags & FD_LONG)   *((LONG *)Result)   = var.Large;
-            else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = var.Large;
+            if (DestFlags & FD_LARGE)       *((LARGE *)Result)  = var.Double;
+            else if (DestFlags & FD_LONG)   *((LONG *)Result)   = var.Double;
+            else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = var.Double;
             else error = ERR::FieldTypeMismatch;
          }
       }
-      else {
-         // Get field using the user's preferred format
-         if (DestFlags & FD_LONG) var.Type = (DestFlags & (~FD_LONG)) | FD_LARGE;
-         else var.Type = DestFlags;
-
-         error = Field->GetValue(Object, &var);
-         if (error IS ERR::Okay) {
-            if (DestFlags & FD_LARGE)        *((LARGE *)Result)  = var.Large;
-            else if (DestFlags & FD_LONG)    *((LONG *)Result)   = (LONG)var.Large;
-            else if (DestFlags & FD_DOUBLE)  *((DOUBLE *)Result) = var.Double;
-            else if (DestFlags & FD_POINTER) *((APTR *)Result)   = var.Pointer;
-         }
-      }
+      else error = ERR::FieldTypeMismatch;
 
       if (error IS ERR::FieldTypeMismatch) goto mismatch;
       else return error;

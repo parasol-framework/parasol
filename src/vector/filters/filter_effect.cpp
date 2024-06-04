@@ -168,25 +168,18 @@ The `(Width, Height)` field values define the dimensions of the effect within th
 
 *********************************************************************************************************************/
 
-static ERR FILTEREFFECT_GET_Height(extFilterEffect *Self, Variable *Value)
+static ERR FILTEREFFECT_GET_Height(extFilterEffect *Self, Unit *Value)
 {
-   DOUBLE val = Self->Height;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Height);
    return ERR::Okay;
 }
 
-static ERR FILTEREFFECT_SET_Height(extFilterEffect *Self, Variable *Value)
+static ERR FILTEREFFECT_SET_Height(extFilterEffect *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
 
-   Self->Height = val;
+   Self->Height = Value;
    return ERR::Okay;
 }
 
@@ -237,25 +230,18 @@ The (Width,Height) field values define the dimensions of the effect within the t
 
 *********************************************************************************************************************/
 
-static ERR FILTEREFFECT_GET_Width(extFilterEffect *Self, Variable *Value)
+static ERR FILTEREFFECT_GET_Width(extFilterEffect *Self, Unit *Value)
 {
-   DOUBLE val = Self->Width;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Width);
    return ERR::Okay;
 }
 
-static ERR FILTEREFFECT_SET_Width(extFilterEffect *Self, Variable *Value)
+static ERR FILTEREFFECT_SET_Width(extFilterEffect *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
 
-   Self->Width = val;
+   Self->Width = Value;
    return ERR::Okay;
 }
 
@@ -268,25 +254,17 @@ The (X,Y) field values define the offset of the effect within the target clippin
 
 *********************************************************************************************************************/
 
-static ERR FILTEREFFECT_GET_X(extFilterEffect *Self, Variable *Value)
+static ERR FILTEREFFECT_GET_X(extFilterEffect *Self, Unit *Value)
 {
-   DOUBLE val = Self->X;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->X);
    return ERR::Okay;
 }
 
-static ERR FILTEREFFECT_SET_X(extFilterEffect *Self, Variable *Value)
+static ERR FILTEREFFECT_SET_X(extFilterEffect *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
-
-   Self->X = val;
+   Self->X = Value;
    return ERR::Okay;
 }
 
@@ -300,25 +278,17 @@ The (X,Y) field values define the offset of the effect within the target clippin
 
 *********************************************************************************************************************/
 
-static ERR FILTEREFFECT_GET_Y(extFilterEffect *Self, Variable *Value)
+static ERR FILTEREFFECT_GET_Y(extFilterEffect *Self, Unit *Value)
 {
-   DOUBLE val = Self->Y;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Y);
    return ERR::Okay;
 }
 
-static ERR FILTEREFFECT_SET_Y(extFilterEffect *Self, Variable *Value)
+static ERR FILTEREFFECT_SET_Y(extFilterEffect *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
-
-   Self->Y = val;
+   Self->Y = Value;
    return ERR::Okay;
 }
 
@@ -332,10 +302,10 @@ static const FieldArray clFilterEffectFields[] = {
    { "Target",     FDF_OBJECT|FDF_RW, NULL, NULL, CLASSID::BITMAP },
    { "Input",      FDF_OBJECT|FDF_RW, NULL, FILTEREFFECT_SET_Input, CLASSID::FILTEREFFECT },
    { "Mix",        FDF_OBJECT|FDF_RW, NULL, FILTEREFFECT_SET_Mix, CLASSID::FILTEREFFECT },
-   { "X",          FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_X, FILTEREFFECT_SET_X },
-   { "Y",          FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Y, FILTEREFFECT_SET_Y },
-   { "Width",      FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Width, FILTEREFFECT_SET_Width },
-   { "Height",     FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Height, FILTEREFFECT_SET_Height },
+   { "X",          FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_X, FILTEREFFECT_SET_X },
+   { "Y",          FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Y, FILTEREFFECT_SET_Y },
+   { "Width",      FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Width, FILTEREFFECT_SET_Width },
+   { "Height",     FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Height, FILTEREFFECT_SET_Height },
    { "Dimensions", FDF_LONGFLAGS|FDF_R, NULL, NULL, &clFilterEffectDimensions },
    { "SourceType", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clFilterEffectSourceType },
    { "MixType",    FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clFilterEffectMixType },

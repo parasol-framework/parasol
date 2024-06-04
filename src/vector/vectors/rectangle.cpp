@@ -268,28 +268,17 @@ will flip the rectangle on the vertical axis).
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_Height(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_GET_Height(extVectorRectangle *Self, Unit *Value)
 {
-   DOUBLE val = Self->rHeight;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->rHeight);
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_Height(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_SET_Height(extVectorRectangle *Self, Unit &Value)
 {
-   pf::Log log;
-   DOUBLE val;
-
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR::SetValueNotNumeric);
-
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+   if (Value.scaled()) Self->rDimensions = (Self->rDimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
    else Self->rDimensions = (Self->rDimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
-
-   Self->rHeight = val;
+   Self->rHeight = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -337,29 +326,20 @@ radius along the relevant axis.  A value of zero (the default) turns off this fe
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_RoundX(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_GET_RoundX(extVectorRectangle *Self, Unit *Value)
 {
-   DOUBLE val = Self->rRound[0].x;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->rRound[0].x);
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_RoundX(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_SET_RoundX(extVectorRectangle *Self, Unit &Value)
 {
-   DOUBLE val;
+   if ((Value < 0) or (Value > 1000)) return ERR::OutOfRange;
 
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   if ((val < 0) or (val > 1000)) return ERR::OutOfRange;
-
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_RADIUS_X) & (~DMF::FIXED_RADIUS_X);
+   if (Value.scaled()) Self->rDimensions = (Self->rDimensions | DMF::SCALED_RADIUS_X) & (~DMF::FIXED_RADIUS_X);
    else Self->rDimensions = (Self->rDimensions | DMF::FIXED_RADIUS_X) & (~DMF::SCALED_RADIUS_X);
 
-   Self->rRound[0].x = Self->rRound[1].x = Self->rRound[2].x = Self->rRound[3].x = val;
+   Self->rRound[0].x = Self->rRound[1].x = Self->rRound[2].x = Self->rRound[3].x = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -374,29 +354,18 @@ radius along the relevant axis.  A value of zero (the default) turns off this fe
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_RoundY(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_GET_RoundY(extVectorRectangle *Self, Unit *Value)
 {
-   DOUBLE val = Self->rRound[0].y;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->rRound[0].y);
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_RoundY(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_SET_RoundY(extVectorRectangle *Self, Unit &Value)
 {
-   DOUBLE val;
-
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   if ((val < 0) or (val > 1000)) return ERR::OutOfRange;
-
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_RADIUS_Y) & (~DMF::FIXED_RADIUS_Y);
+   if ((Value < 0) or (Value > 1000)) return ERR::OutOfRange;
+   if (Value.scaled()) Self->rDimensions = (Self->rDimensions | DMF::SCALED_RADIUS_Y) & (~DMF::FIXED_RADIUS_Y);
    else Self->rDimensions = (Self->rDimensions | DMF::FIXED_RADIUS_Y) & (~DMF::SCALED_RADIUS_Y);
-
-   Self->rRound[0].y = Self->rRound[1].y = Self->rRound[2].y = Self->rRound[3].y = val;
+   Self->rRound[0].y = Self->rRound[1].y = Self->rRound[2].y = Self->rRound[3].y = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -409,27 +378,17 @@ X: The left-side of the rectangle.  Can be expressed as a fixed or scaled coordi
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_X(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_GET_X(extVectorRectangle *Self, Unit *Value)
 {
-   DOUBLE val = Self->rX;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->rX);
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_X(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_SET_X(extVectorRectangle *Self, Unit &Value)
 {
-   DOUBLE val;
-
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   if (Value.scaled()) Self->rDimensions = (Self->rDimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
    else Self->rDimensions = (Self->rDimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
-
-   Self->rX = val;
+   Self->rX = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -442,7 +401,7 @@ XOffset: The right-side of the rectangle, expressed as a fixed or scaled offset 
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_XOffset(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_GET_XOffset(extVectorRectangle *Self, Unit *Value)
 {
    DOUBLE value = 0;
 
@@ -460,25 +419,18 @@ static ERR RECTANGLE_GET_XOffset(extVectorRectangle *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_SCALED) value = value / get_parent_width(Self);
+   if (Value->scaled()) value = value / get_parent_width(Self);
 
-   if (Value->Type & FD_DOUBLE) Value->Double = value;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
-   else return ERR::FieldTypeMismatch;
+   Value->set(value);
 
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_XOffset(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_SET_XOffset(extVectorRectangle *Self, Unit &Value)
 {
-   if (Value->Type & FD_DOUBLE) Self->rXOffset = Value->Double;
-   else if (Value->Type & FD_LARGE) Self->rXOffset = Value->Large;
-   else if (Value->Type & FD_STRING) Self->rXOffset = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_X_OFFSET) & (~DMF::FIXED_X_OFFSET);
+   Self->rXOffset = Value;
+   if (Value.scaled()) Self->rDimensions = (Self->rDimensions | DMF::SCALED_X_OFFSET) & (~DMF::FIXED_X_OFFSET);
    else Self->rDimensions = (Self->rDimensions | DMF::FIXED_X_OFFSET) & (~DMF::SCALED_X_OFFSET);
-
    reset_path(Self);
    return ERR::Okay;
 }
@@ -493,24 +445,17 @@ will flip the rectangle on the horizontal axis).
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_Width(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_GET_Width(extVectorRectangle *Self, Unit *Value)
 {
-   DOUBLE val = Self->rWidth;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->rWidth);
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_Width(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_SET_Width(extVectorRectangle *Self, Unit &Value)
 {
-   if (Value->Type & FD_DOUBLE) Self->rWidth = Value->Double;
-   else if (Value->Type & FD_LARGE) Self->rWidth = Value->Large;
-   else if (Value->Type & FD_STRING) Self->rWidth = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+   Self->rWidth = Value;
+   if (Value.scaled()) Self->rDimensions = (Self->rDimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
    else Self->rDimensions = (Self->rDimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
-
    reset_path(Self);
    return ERR::Okay;
 }
@@ -523,27 +468,17 @@ Y: The top of the rectangle.  Can be expressed as a fixed or scaled coordinate.
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_Y(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_GET_Y(extVectorRectangle *Self, Unit *Value)
 {
-   DOUBLE val = Self->rY;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->rY);
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_Y(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_SET_Y(extVectorRectangle *Self, Unit &Value)
 {
-   DOUBLE val;
-
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   if (Value.scaled()) Self->rDimensions = (Self->rDimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
    else Self->rDimensions = (Self->rDimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
-
-   Self->rY = val;
+   Self->rY = Value;
    reset_path(Self);
    return ERR::Okay;
 }
@@ -556,7 +491,7 @@ YOffset: The bottom of the rectangle, expressed as a fixed or scaled offset valu
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_YOffset(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_GET_YOffset(extVectorRectangle *Self, Unit *Value)
 {
    DOUBLE value = 0;
 
@@ -574,25 +509,16 @@ static ERR RECTANGLE_GET_YOffset(extVectorRectangle *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_SCALED) value = value / get_parent_height(Self);
-
-   if (Value->Type & FD_DOUBLE) Value->Double = value;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
-   else return ERR::FieldTypeMismatch;
-
+   if (Value->scaled()) Value->set(value / get_parent_height(Self));
+   else Value->set(value);
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_YOffset(extVectorRectangle *Self, Variable *Value)
+static ERR RECTANGLE_SET_YOffset(extVectorRectangle *Self, Unit &Value)
 {
-   if (Value->Type & FD_DOUBLE) Self->rYOffset = Value->Double;
-   else if (Value->Type & FD_LARGE) Self->rYOffset = Value->Large;
-   else if (Value->Type & FD_STRING) Self->rYOffset = strtod((CSTRING)Value->Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   if (Value->Type & FD_SCALED) Self->rDimensions = (Self->rDimensions | DMF::SCALED_Y_OFFSET) & (~DMF::FIXED_Y_OFFSET);
+   Self->rYOffset = Value;
+   if (Value.scaled()) Self->rDimensions = (Self->rDimensions | DMF::SCALED_Y_OFFSET) & (~DMF::FIXED_Y_OFFSET);
    else Self->rDimensions = (Self->rDimensions | DMF::FIXED_Y_OFFSET) & (~DMF::SCALED_Y_OFFSET);
-
    reset_path(Self);
    return ERR::Okay;
 }
@@ -617,14 +543,14 @@ static const FieldDef clRectDimensions[] = {
 
 static const FieldArray clRectangleFields[] = {
    { "Rounding",   FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RW, RECTANGLE_GET_Rounding, RECTANGLE_SET_Rounding },
-   { "RoundX",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_RoundX, RECTANGLE_SET_RoundX },
-   { "RoundY",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_RoundY, RECTANGLE_SET_RoundY },
-   { "X",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_X, RECTANGLE_SET_X },
-   { "Y",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_Y, RECTANGLE_SET_Y },
-   { "XOffset",    FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_XOffset, RECTANGLE_SET_XOffset },
-   { "YOffset",    FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_YOffset, RECTANGLE_SET_YOffset },
-   { "Width",      FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_Width, RECTANGLE_SET_Width },
-   { "Height",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_Height, RECTANGLE_SET_Height },
+   { "RoundX",     FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_RoundX, RECTANGLE_SET_RoundX },
+   { "RoundY",     FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_RoundY, RECTANGLE_SET_RoundY },
+   { "X",          FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_X, RECTANGLE_SET_X },
+   { "Y",          FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_Y, RECTANGLE_SET_Y },
+   { "XOffset",    FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_XOffset, RECTANGLE_SET_XOffset },
+   { "YOffset",    FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_YOffset, RECTANGLE_SET_YOffset },
+   { "Width",      FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_Width, RECTANGLE_SET_Width },
+   { "Height",     FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_Height, RECTANGLE_SET_Height },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, RECTANGLE_GET_Dimensions, RECTANGLE_SET_Dimensions, &clRectDimensions },
    END_FIELD
 };

@@ -375,7 +375,7 @@ The fixed value is always returned when retrieving the height.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_Height(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_GET_Height(extVectorViewport *Self, Unit &Value)
 {
    DOUBLE val;
 
@@ -410,24 +410,15 @@ static ERR VIEW_GET_Height(extVectorViewport *Self, Variable &Value)
       else Self->Scene->get(FID_PageHeight, &val);
    }
 
-   if (Value.Type & FD_DOUBLE) Value.Double = val;
-   else if (Value.Type & FD_LARGE) Value.Large = F2T(val);
+   Value.set(val);
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_Height(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_SET_Height(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE val;
-
-   if (Value.Type & FD_DOUBLE) val = Value.Double;
-   else if (Value.Type & FD_LARGE) val = Value.Large;
-   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   Self->vpTargetHeight = val;
-   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+   Self->vpTargetHeight = Value;
+   if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
-
    mark_dirty((extVector *)Self, RC::ALL);
    return ERR::Okay;
 }
@@ -613,7 +604,7 @@ full coverage.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_Width(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_GET_Width(extVectorViewport *Self, Unit &Value)
 {
    DOUBLE val;
 
@@ -648,23 +639,15 @@ static ERR VIEW_GET_Width(extVectorViewport *Self, Variable &Value)
       else Self->Scene->get(FID_PageWidth, &val);
    }
 
-   if (Value.Type & FD_DOUBLE) Value.Double = val;
-   else if (Value.Type & FD_LARGE) Value.Large = F2T(val);
+   Value.set(val);
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_Width(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_SET_Width(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value.Type & FD_DOUBLE) val = Value.Double;
-   else if (Value.Type & FD_LARGE) val = Value.Large;
-   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   Self->vpTargetWidth = val;
-   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+   Self->vpTargetWidth = Value;
+   if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
-
    mark_dirty((extVector *)Self, RC::ALL);
    return ERR::Okay;
 }
@@ -682,7 +665,7 @@ width.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_X(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_GET_X(extVectorViewport *Self, Unit &Value)
 {
    DOUBLE width, value;
 
@@ -700,30 +683,16 @@ static ERR VIEW_GET_X(extVectorViewport *Self, Variable &Value)
    }
    else value = 0;
 
-   if (Value.Type & FD_SCALED) value = value / Self->ParentView->vpFixedWidth;
-
-   if (Value.Type & FD_DOUBLE) Value.Double = value;
-   else if (Value.Type & FD_LARGE) Value.Large = F2T(value);
-   else {
-      pf::Log log;
-      return log.warning(ERR::FieldTypeMismatch);
-   }
-
+   if (Value.scaled()) Value.set(value / Self->ParentView->vpFixedWidth);
+   else Value.set(value);
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_X(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_SET_X(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value.Type & FD_DOUBLE) val = Value.Double;
-   else if (Value.Type & FD_LARGE) val = Value.Large;
-   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   Self->vpTargetX = val;
-   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   Self->vpTargetX = Value;
+   if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
-
    mark_dirty((extVector *)Self, RC::ALL);
    return ERR::Okay;
 }
@@ -741,7 +710,7 @@ parent's width.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_XOffset(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_GET_XOffset(extVectorViewport *Self, Unit &Value)
 {
    DOUBLE width;
    DOUBLE value = 0;
@@ -761,31 +730,16 @@ static ERR VIEW_GET_XOffset(extVectorViewport *Self, Variable &Value)
    }
    else value = 0;
 
-   if (Value.Type & FD_SCALED) value = value / Self->ParentView->vpFixedWidth;
-
-   if (Value.Type & FD_DOUBLE) Value.Double = value;
-   else if (Value.Type & FD_LARGE) Value.Large = F2T(value);
-   else {
-      pf::Log log;
-      return log.warning(ERR::FieldTypeMismatch);
-   }
-
+   if (Value.scaled()) Value.set(value / Self->ParentView->vpFixedWidth);
+   else Value.set(value);
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_XOffset(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_SET_XOffset(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE val;
-
-   if (Value.Type & FD_DOUBLE) val = Value.Double;
-   else if (Value.Type & FD_LARGE) val = Value.Large;
-   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   Self->vpTargetXO = val;
-   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_X_OFFSET) & (~DMF::FIXED_X_OFFSET);
+   Self->vpTargetXO = Value;
+   if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_X_OFFSET) & (~DMF::FIXED_X_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_X_OFFSET) & (~DMF::SCALED_X_OFFSET);
-
    mark_dirty((extVector *)Self, RC::ALL);
    return ERR::Okay;
 }
@@ -803,7 +757,7 @@ height.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_Y(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_GET_Y(extVectorViewport *Self, Unit &Value)
 {
    DOUBLE value, height;
 
@@ -822,29 +776,16 @@ static ERR VIEW_GET_Y(extVectorViewport *Self, Variable &Value)
    }
    else value = 0;
 
-   if (Value.Type & FD_SCALED) value = value / Self->ParentView->vpFixedHeight;
-   if (Value.Type & FD_DOUBLE) Value.Double = value;
-   else if (Value.Type & FD_LARGE) Value.Large = F2T(value);
-   else {
-      pf::Log log;
-      return log.warning(ERR::FieldTypeMismatch);
-   }
-
+   if (Value.scaled()) Value.set(value / Self->ParentView->vpFixedHeight);
+   else Value.set(value);
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_Y(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_SET_Y(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value.Type & FD_DOUBLE) val = Value.Double;
-   else if (Value.Type & FD_LARGE) val = Value.Large;
-   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   Self->vpTargetY = val;
-   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   Self->vpTargetY = Value;
+   if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
-
    mark_dirty((extVector *)Self, RC::ALL);
    return ERR::Okay;
 }
@@ -862,7 +803,7 @@ height.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_YOffset(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_GET_YOffset(extVectorViewport *Self, Unit &Value)
 {
    DOUBLE height;
    DOUBLE value = 0;
@@ -882,30 +823,16 @@ static ERR VIEW_GET_YOffset(extVectorViewport *Self, Variable &Value)
    }
    else value = 0;
 
-   if (Value.Type & FD_SCALED) value = value / Self->ParentView->vpFixedHeight;
-
-   if (Value.Type & FD_DOUBLE) Value.Double = value;
-   else if (Value.Type & FD_LARGE) Value.Large = F2T(value);
-   else {
-      pf::Log log;
-      return log.warning(ERR::FieldTypeMismatch);
-   }
-
+   if (Value.scaled()) Value.set(value / Self->ParentView->vpFixedHeight);
+   else Value.set(value);
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_YOffset(extVectorViewport *Self, Variable &Value)
+static ERR VIEW_SET_YOffset(extVectorViewport *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value.Type & FD_DOUBLE) val = Value.Double;
-   else if (Value.Type & FD_LARGE) val = Value.Large;
-   else if (Value.Type & FD_STRING) val = strtod((CSTRING)Value.Pointer, NULL);
-   else return ERR::SetValueNotNumeric;
-
-   Self->vpTargetYO = val;
-   if (Value.Type & FD_SCALED) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_Y_OFFSET) & (~DMF::FIXED_Y_OFFSET);
+   Self->vpTargetYO = Value;
+   if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_Y_OFFSET) & (~DMF::FIXED_Y_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_Y_OFFSET) & (~DMF::SCALED_Y_OFFSET);
-
    mark_dirty((extVector *)Self, RC::ALL);
    return ERR::Okay;
 }
@@ -935,12 +862,12 @@ static const FieldArray clViewFields[] = {
    { "Overflow",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_Overflow, VIEW_SET_Overflow, &clVectorViewportVOF },
    { "OverflowX",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_OverflowX, VIEW_SET_OverflowX, &clVectorViewportVOF },
    { "OverflowY",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_OverflowY, VIEW_SET_OverflowY, &clVectorViewportVOF },
-   { "X",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_X,       VIEW_SET_X },
-   { "Y",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_Y,       VIEW_SET_Y },
-   { "XOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_XOffset, VIEW_SET_XOffset },
-   { "YOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_YOffset, VIEW_SET_YOffset },
-   { "Width",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_Width,   VIEW_SET_Width },
-   { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_Height,  VIEW_SET_Height },
+   { "X",            FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_X,       VIEW_SET_X },
+   { "Y",            FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_Y,       VIEW_SET_Y },
+   { "XOffset",      FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_XOffset, VIEW_SET_XOffset },
+   { "YOffset",      FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_YOffset, VIEW_SET_YOffset },
+   { "Width",        FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_Width,   VIEW_SET_Width },
+   { "Height",       FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VIEW_GET_Height,  VIEW_SET_Height },
    { "ViewX",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, VIEW_GET_ViewX,      VIEW_SET_ViewX },
    { "ViewY",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, VIEW_GET_ViewY,      VIEW_SET_ViewY },
    { "ViewWidth",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, VIEW_GET_ViewWidth,  VIEW_SET_ViewWidth },

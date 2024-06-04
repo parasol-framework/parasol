@@ -1642,7 +1642,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <type name="TPTR">A standard address space pointer.</type>
 <type name="TSTR">A pointer that refers to a string.</type>
 <type name="TFUNCTION">A pointer to a <code>FUNCTION</code> structure.</type>
-<type name="TVAR">A pointer to a <code>Variable</code> structure.</type>
+<type name="TUNIT">A pointer to a <code>Unit</code> structure.</type>
 </types>
 <p>There is no requirement for the client to have a working knowledge of the target object's field configuration in order to write information to it.</p>
 <p>To set a field with a fixed-size array, use the <function>SetArray</function> function.</p>
@@ -2255,8 +2255,8 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="SYNONYM">CLASSDEF Use to declare fields that duplicate the functionality of another field.</const>
       <const name="SYSTEM">CLASSDEF System, internal and private fields.</const>
       <const name="TAGS">FUNCDEF Overrides <code>INIT</code></const>
+      <const name="UNIT">A value that describes a display unit.</const>
       <const name="UNSIGNED">Supplementary, integer value is unsigned.</const>
-      <const name="VARIABLE">Supports multiple primitive types (long, double, large or pointer).</const>
       <const name="VARTAGS">FUNCDEF Overrides <code>FLAGS</code>.  Use for 64-bit taglists that require value definitions, e.g. <code>TDOUBLE</code>, <code>TLONG</code> etc.</const>
       <const name="VIRTUAL">CLASSDEF Ensures that the field has no physical representation in the structure.</const>
       <const name="VOID"/>
@@ -3183,12 +3183,9 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="Stage" type="LONG">The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</field>
     </struct>
 
-    <struct name="Variable">
-      <field name="Type" type="ULONG">Field definition flags</field>
-      <field name="Unused" type="LONG">Unused 32-bit value for 64-bit alignment</field>
-      <field name="Large" type="LARGE">The value as a 64-bit integer.</field>
-      <field name="Double" type="DOUBLE">The value as a 64-bit float-point number.</field>
-      <field name="Pointer" type="APTR">The value as an address pointer.</field>
+    <struct name="Unit">
+      <field name="Value" type="DOUBLE">The unit value.</field>
+      <field name="Type" type="ULONG">Additional type information</field>
     </struct>
 
     <struct name="dcAudio" comment="Data feed structure for Audio">

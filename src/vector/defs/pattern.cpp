@@ -138,25 +138,17 @@ then the dimension is calculated relative to the bounding box or viewport applyi
 
 *********************************************************************************************************************/
 
-static ERR PATTERN_GET_Height(extVectorPattern *Self, Variable *Value)
+static ERR PATTERN_GET_Height(extVectorPattern *Self, Unit *Value)
 {
-   DOUBLE val = Self->Height;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Height);
    return ERR::Okay;
 }
 
-static ERR PATTERN_SET_Height(extVectorPattern *Self, Variable *Value)
+static ERR PATTERN_SET_Height(extVectorPattern *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
-
-   Self->Height = val;
+   Self->Height = Value;
    return ERR::Okay;
 }
 
@@ -337,25 +329,17 @@ the dimension is calculated relative to the bounding box or viewport applying th
 
 *********************************************************************************************************************/
 
-static ERR PATTERN_GET_Width(extVectorPattern *Self, Variable *Value)
+static ERR PATTERN_GET_Width(extVectorPattern *Self, Unit *Value)
 {
-   DOUBLE val = Self->Width;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Width);
    return ERR::Okay;
 }
 
-static ERR PATTERN_SET_Width(extVectorPattern *Self, Variable *Value)
+static ERR PATTERN_SET_Width(extVectorPattern *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
-
-   Self->Width = val;
+   Self->Width = Value;
    return ERR::Okay;
 }
 
@@ -368,25 +352,17 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 
 *********************************************************************************************************************/
 
-static ERR PATTERN_GET_X(extVectorPattern *Self, Variable *Value)
+static ERR PATTERN_GET_X(extVectorPattern *Self, Unit *Value)
 {
-   DOUBLE val = Self->X;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->X);
    return ERR::Okay;
 }
 
-static ERR PATTERN_SET_X(extVectorPattern *Self, Variable *Value)
+static ERR PATTERN_SET_X(extVectorPattern *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
-
-   Self->X = val;
+   Self->X = Value;
    return ERR::Okay;
 }
 
@@ -400,25 +376,17 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 
 *********************************************************************************************************************/
 
-static ERR PATTERN_GET_Y(extVectorPattern *Self, Variable *Value)
+static ERR PATTERN_GET_Y(extVectorPattern *Self, Unit *Value)
 {
-   DOUBLE val = Self->Y;
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
+   Value->set(Self->Y);
    return ERR::Okay;
 }
 
-static ERR PATTERN_SET_Y(extVectorPattern *Self, Variable *Value)
+static ERR PATTERN_SET_Y(extVectorPattern *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
+   if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
-
-   Self->Y = val;
+   Self->Y = Value;
    return ERR::Okay;
 }
 
@@ -460,10 +428,10 @@ static const FieldDef clPatternSpread[] = {
 };
 
 static const FieldArray clPatternFields[] = {
-   { "X",            FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_X, PATTERN_SET_X },
-   { "Y",            FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Y, PATTERN_SET_Y },
-   { "Width",        FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Width, PATTERN_SET_Width },
-   { "Height",       FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Height, PATTERN_SET_Height },
+   { "X",            FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_X, PATTERN_SET_X },
+   { "Y",            FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Y, PATTERN_SET_Y },
+   { "Width",        FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Width, PATTERN_SET_Width },
+   { "Height",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Height, PATTERN_SET_Height },
    { "Opacity",      FDF_DOUBLE|FDF_RW, NULL, PATTERN_SET_Opacity },
    { "Scene",        FDF_LOCAL|FDF_R },
    { "Inherit",      FDF_OBJECT|FDF_RW, NULL, PATTERN_SET_Inherit },

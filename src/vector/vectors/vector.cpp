@@ -2253,31 +2253,22 @@ The size of the stroke is also affected by scaling factors imposed by transforms
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_StrokeWidth(extVector *Self, Variable *Value)
+static ERR VECTOR_GET_StrokeWidth(extVector *Self, Unit *Value)
 {
-   DOUBLE val;
-
-   if (Value->Type & FD_SCALED) {
-      if (Self->ScaledStrokeWidth) val = Self->StrokeWidth * 100.0;
-      else val = 0;
+   if (Value->scaled()) {
+      if (Self->ScaledStrokeWidth) Value->set(Self->StrokeWidth * 100.0);
+      else Value->set(0);
    }
-   else val = Self->fixed_stroke_width();
+   else Value->set(Self->fixed_stroke_width());
 
-   if (Value->Type & FD_DOUBLE) Value->Double = val;
-   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_StrokeWidth(extVector *Self, Variable *Value)
+static ERR VECTOR_SET_StrokeWidth(extVector *Self, Unit &Value)
 {
-   DOUBLE val;
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else return ERR::FieldTypeMismatch;
-
-   if ((val >= 0.0) and (val <= 2000.0)) {
-      Self->StrokeWidth = val;
-      Self->ScaledStrokeWidth = (Value->Type & FD_SCALED) ? true : false;
+   if ((Value >= 0.0) and (Value <= 2000.0)) {
+      Self->StrokeWidth = Value;
+      Self->ScaledStrokeWidth = Value.scaled();
       Self->Stroked = Self->is_stroked();
       mark_dirty(Self, RC::FINAL_PATH); // Not really a path change, but needed for some dependent code like clip-masks.
       return ERR::Okay;
@@ -2491,7 +2482,7 @@ static const FieldArray clVectorFields[] = {
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, VECTOR_GET_Sequence },
    { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Stroke, VECTOR_SET_Stroke },
    { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   VECTOR_GET_StrokeColour, VECTOR_SET_StrokeColour },
-   { "StrokeWidth",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTOR_GET_StrokeWidth, VECTOR_SET_StrokeWidth },
+   { "StrokeWidth",  FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTOR_GET_StrokeWidth, VECTOR_SET_StrokeWidth },
    { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Transition, VECTOR_SET_Transition },
    { "EnableBkgd",   FDF_VIRTUAL|FDF_LONG|FDF_RW,            VECTOR_GET_EnableBkgd, VECTOR_SET_EnableBkgd },
    { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Fill, VECTOR_SET_Fill },
