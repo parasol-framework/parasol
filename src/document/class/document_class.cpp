@@ -665,8 +665,7 @@ static ERR DOCUMENT_Init(extDocument *Self)
    if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
 
    if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
-      auto call = C_FUNCTION(key_event);
-      Self->Viewport->subscribeKeyboard(&call);
+      Self->Viewport->subscribeKeyboard(C_FUNCTION(key_event));
       SubscribeAction(Self->Focus, AC_Focus, C_FUNCTION(notify_focus_viewport));
       SubscribeAction(Self->Focus, AC_LostFocus, C_FUNCTION(notify_lostfocus_viewport));
       SubscribeAction(Self->Viewport, AC_Disable, C_FUNCTION(notify_disable_viewport));
@@ -714,8 +713,7 @@ static ERR DOCUMENT_Init(extDocument *Self)
    }
    else return ERR::CreateObject;
 
-   auto call = C_FUNCTION(feedback_view);
-   Self->View->subscribeFeedback(FM::PATH_CHANGED, &call);
+   Self->View->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_view));
 
    // Flash the cursor via the timer
 

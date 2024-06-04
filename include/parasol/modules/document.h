@@ -200,12 +200,12 @@ class objDocument : public Object {
       struct doc::CallFunction args = { Function, Args, TotalArgs };
       return(Action(-8, this, &args));
    }
-   inline ERR addListener(DRT Trigger, FUNCTION * Function) noexcept {
-      struct doc::AddListener args = { Trigger, Function };
+   inline ERR addListener(DRT Trigger, FUNCTION Function) noexcept {
+      struct doc::AddListener args = { Trigger, &Function };
       return(Action(-9, this, &args));
    }
-   inline ERR removeListener(LONG Trigger, FUNCTION * Function) noexcept {
-      struct doc::RemoveListener args = { Trigger, Function };
+   inline ERR removeListener(LONG Trigger, FUNCTION Function) noexcept {
+      struct doc::RemoveListener args = { Trigger, &Function };
       return(Action(-10, this, &args));
    }
    inline ERR showIndex(CSTRING Name) noexcept {

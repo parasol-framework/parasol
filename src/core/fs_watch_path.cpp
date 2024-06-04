@@ -271,7 +271,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
          }
          else error = ERR::Terminate;
 
-         if (error IS ERR::Terminate) File->watch(NULL, 0, MFF::NIL);
+         if (error IS ERR::Terminate) Action(fl::Watch::id, File, NULL);
       }
    }
    else {
@@ -279,12 +279,12 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
       pf::SwitchContext context(File->prvWatch->Routine.Context);
       error = routine(File, File->Path, File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
 
-      if (error IS ERR::Terminate) File->watch(NULL, 0, MFF::NIL);
+      if (error IS ERR::Terminate) Action(fl::Watch::id, File, NULL);
    }
 
    winFindNextChangeNotification(Handle);
 
-   recursion = FALSE;
+   recursion = false;
 
    AdjustLogLevel(-2);
 }

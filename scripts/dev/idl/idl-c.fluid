@@ -1066,14 +1066,21 @@ function class(Name, Options, Spec, Private, Custom)
             struct_params = struct_params .. param.basicType .. ' ' .. pName(param) .. '; '
 
             if nz(params) then params = params .. ', ' end
-            params = params .. param.type .. ' ' .. pName(param)
 
-            if nz(values) then values = values .. ', ' end
-            if (param.resultValue) then
-               values  = values .. '(' .. param.basicType .. ')0'
-               results = true
+            if (param.type == 'FUNCTION *') then
+               params = params .. 'FUNCTION ' .. pName(param)
+               if nz(values) then values = values .. ', ' end
+               values = values .. '&' .. pName(param)
             else
-               values = values .. pName(param)
+               params = params .. param.type .. ' ' .. pName(param)
+               if nz(values) then values = values .. ', ' end
+
+               if (param.resultValue) then
+                  values  = values .. '(' .. param.basicType .. ')0'
+                  results = true
+               else
+                  values = values .. pName(param)
+               end
             end
          end
 
@@ -1084,37 +1091,31 @@ function class(Name, Options, Spec, Private, Custom)
             class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. action_support .. ' };'
          end
 
-         if (method.inline != false) then
-            -- Nested inline variant
+         local name = method.name:decap()
+         if name == 'delete' then name = 'del' end -- C++ keyword check
 
-            local name = method.name:decap()
-            if name == 'delete' then name = 'del' end -- C++ keyword check
+         local inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
+         local args = 'NULL'
 
-            local inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
-            local args = 'NULL'
-
-            if (method.params != nil) and (#method.params > 0) then
-               inline = inline .. '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. values .. ' };\n'
-               args = '&args'
-            end
-
-            if (results) then
-               inline = inline .. '      ERR error = Action(-' .. method.id .. ', this, ' .. args .. ');\n'
-               for _, p in pairs(method.params) do
-                  if (p.resultValue) then
-                     inline = inline .. '      if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
-                  end
-               end
-               inline = inline .. '      return(error);\n'
-            else
-               inline = inline .. '      return(Action(-' .. method.id .. ', this, ' .. args .. '));\n'
-            end
-
-            inline = inline .. '   }'
-            class.methods[k].nestedInline = inline
-         else
-            class.methods[k].nestedInline = nil
+         if (method.params != nil) and (#method.params > 0) then
+            inline = inline .. '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. values .. ' };\n'
+            args = '&args'
          end
+
+         if (results) then
+            inline = inline .. '      ERR error = Action(-' .. method.id .. ', this, ' .. args .. ');\n'
+            for _, p in pairs(method.params) do
+               if (p.resultValue) then
+                  inline = inline .. '      if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
+               end
+            end
+            inline = inline .. '      return(error);\n'
+         else
+            inline = inline .. '      return(Action(-' .. method.id .. ', this, ' .. args .. '));\n'
+         end
+
+         inline = inline .. '   }'
+         class.methods[k].nestedInline = inline
       end
 
       output('// ' .. Name:cap() .. ' methods')

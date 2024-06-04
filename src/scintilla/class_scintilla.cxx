@@ -636,8 +636,7 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
 
    if (Self->SurfaceID) {
       if (pf::ScopedObjectLock<objSurface> object(Self->SurfaceID, 500); object.granted()) {
-         auto call = C_FUNCTION(&draw_scintilla);
-         object->removeCallback(&call);
+         object->removeCallback(C_FUNCTION(&draw_scintilla));
          UnsubscribeAction(*object, 0);
       }
    }
@@ -799,8 +798,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
       Self->Surface.Width  = surface->Width;
       Self->Surface.Height = surface->Height;
 
-      auto call = C_FUNCTION(draw_scintilla);
-      surface->addCallback(&call);
+      surface->addCallback(C_FUNCTION(draw_scintilla));
 
       //SubscribeFeed(surface); TODO: Deprecated
 

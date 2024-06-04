@@ -340,8 +340,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
    }
 
    if ((((extVector *)Self)->ParentView) and (((extVector *)Self)->ParentView->Scene->SurfaceID)) {
-      auto call = C_FUNCTION(text_input_events);
-      ((extVector *)Self)->ParentView->subscribeInput(JTYPE::NIL, &call);
+      ((extVector *)Self)->ParentView->subscribeInput(JTYPE::NIL, C_FUNCTION(text_input_events));
    }
 
    if (Self->txBitmapImage)  { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
@@ -353,8 +352,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
 
    if (Self->txFocusID) {
       if (pf::ScopedObjectLock<extVector> focus(Self->txFocusID, 5000); focus.granted()) {
-         auto call = C_FUNCTION(text_focus_event);
-         focus->subscribeFeedback(FM::NIL, &call);
+         focus->subscribeFeedback(FM::NIL, C_FUNCTION(text_focus_event));
       }
    }
 
@@ -371,8 +369,7 @@ static ERR VECTORTEXT_Init(extVectorText *Self)
       }
 
       if (pf::ScopedObjectLock<extVector> focus(Self->txFocusID, 5000); focus.granted()) {
-         auto call = C_FUNCTION(text_focus_event);
-         focus->subscribeFeedback(FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, &call);
+         focus->subscribeFeedback(FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(text_focus_event));
       }
 
       // The editing cursor will inherit transforms from the VectorText as long as it is a direct child.
@@ -390,8 +387,7 @@ static ERR VECTORTEXT_Init(extVectorText *Self)
       if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
 
       if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
-         auto call = C_FUNCTION(text_input_events);
-         Self->ParentView->subscribeInput(JTYPE::BUTTON, &call);
+         Self->ParentView->subscribeInput(JTYPE::BUTTON, C_FUNCTION(text_input_events));
       }
    }
 

@@ -2085,8 +2085,8 @@ class objVector : public Object {
       struct vec::Push args = { Position };
       return(Action(-1, this, &args));
    }
-   inline ERR trace(FUNCTION * Callback, DOUBLE Scale, LONG Transform) noexcept {
-      struct vec::Trace args = { Callback, Scale, Transform };
+   inline ERR trace(FUNCTION Callback, DOUBLE Scale, LONG Transform) noexcept {
+      struct vec::Trace args = { &Callback, Scale, Transform };
       return(Action(-2, this, &args));
    }
    inline ERR getBoundary(VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) noexcept {
@@ -2102,16 +2102,16 @@ class objVector : public Object {
       struct vec::PointInPath args = { X, Y };
       return(Action(-4, this, &args));
    }
-   inline ERR subscribeInput(JTYPE Mask, FUNCTION * Callback) noexcept {
-      struct vec::SubscribeInput args = { Mask, Callback };
+   inline ERR subscribeInput(JTYPE Mask, FUNCTION Callback) noexcept {
+      struct vec::SubscribeInput args = { Mask, &Callback };
       return(Action(-5, this, &args));
    }
-   inline ERR subscribeKeyboard(FUNCTION * Callback) noexcept {
-      struct vec::SubscribeKeyboard args = { Callback };
+   inline ERR subscribeKeyboard(FUNCTION Callback) noexcept {
+      struct vec::SubscribeKeyboard args = { &Callback };
       return(Action(-6, this, &args));
    }
-   inline ERR subscribeFeedback(FM Mask, FUNCTION * Callback) noexcept {
-      struct vec::SubscribeFeedback args = { Mask, Callback };
+   inline ERR subscribeFeedback(FM Mask, FUNCTION Callback) noexcept {
+      struct vec::SubscribeFeedback args = { Mask, &Callback };
       return(Action(-7, this, &args));
    }
    inline ERR debug() noexcept {

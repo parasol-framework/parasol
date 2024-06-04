@@ -2081,7 +2081,7 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
     { id=4,  name="Move" },
     { id=5,  name="Copy" },
     { id=6,  name="SetDate" },
-    { id=7,  name="ReadLine", inline=false },
+    { id=7,  name="ReadLine" },
     { id=8,  name="BufferContent" },
     { id=9,  name="Next" },
     { id=10, name="Watch" }

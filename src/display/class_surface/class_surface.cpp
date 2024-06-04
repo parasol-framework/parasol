@@ -928,7 +928,7 @@ static ERR SURFACE_Free(extSurface *Self)
       if (pf::ScopedObjectLock<extSurface> parent(Self->ParentID, 5000); parent.granted()) {
          UnsubscribeAction(*parent, 0);
          if (Self->transparent()) {
-            parent->removeCallback(NULL);
+            Action(drw::RemoveCallback::id, Self, NULL);
          }
       }
    }
@@ -1123,8 +1123,7 @@ static ERR SURFACE_Init(extSurface *Self)
       // If the surface object is transparent, subscribe to the Draw action of the parent object.
 
       if (Self->transparent()) {
-         auto func = C_FUNCTION(draw_region);
-         parent->addCallback(&func);
+         parent->addCallback(C_FUNCTION(draw_region));
 
          // Turn off flags that should never be combined with transparent surfaces.
          Self->Flags &= ~(RNF::PRECOPY|RNF::AFTER_COPY|RNF::COMPOSITE);

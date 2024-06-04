@@ -397,8 +397,7 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
    if (Self->SurfaceID) {
       pf::ScopedObjectLock<objSurface> surface(Self->SurfaceID, 5000);
       if (surface.granted()) {
-         auto call = C_FUNCTION(render_to_surface);
-         surface->addCallback(&call);
+         surface->addCallback(C_FUNCTION(render_to_surface));
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
             Self->Flags |= VPF::RESIZE;

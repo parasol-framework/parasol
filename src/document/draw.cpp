@@ -566,8 +566,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                if (!checkbox.processed) {
                   checkbox.processed = true;
                   if ((!checkbox.viewport.empty()) and (checkbox.viewport->Scene->SurfaceID)) {
-                     auto call = C_FUNCTION(inputevent_checkbox);
-                     checkbox.viewport->subscribeInput(JTYPE::BUTTON|JTYPE::CROSSING, &call);
+                     checkbox.viewport->subscribeInput(JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(inputevent_checkbox));
                   }
                }
 
@@ -639,11 +638,8 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::Width(combo.full_height()) // Button width matches the widget height
                   });
 
-                  auto call = C_FUNCTION(inputevent_dropdown);
-                  combo.viewport->subscribeInput(JTYPE::BUTTON|JTYPE::CROSSING,&call);
-
-                  call = C_FUNCTION(combo_feedback);
-                  combo.viewport->subscribeFeedback(FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, &call);
+                  combo.viewport->subscribeInput(JTYPE::BUTTON|JTYPE::CROSSING, C_FUNCTION(inputevent_dropdown));
+                  combo.viewport->subscribeFeedback(FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, C_FUNCTION(combo_feedback));
 
                   combo.clip_vp = objVectorViewport::create::global({
                      fl::Name("vp_clip_combo"),

@@ -109,8 +109,7 @@ static ERR VECTORVIEWPORT_Free(extVectorViewport *Self)
    }
 
    if (Self->vpDragCallback.defined()) {
-      auto call = C_FUNCTION(drag_callback);
-      Self->subscribeInput(JTYPE::NIL, &call);
+      Self->subscribeInput(JTYPE::NIL, C_FUNCTION(drag_callback));
    }
 
    return ERR::Okay;
@@ -349,8 +348,7 @@ static ERR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
          return log.warning(ERR::FieldNotSet);
       }
 
-      auto call = C_FUNCTION(drag_callback);
-      if (Self->subscribeInput(JTYPE::MOVEMENT|JTYPE::BUTTON, &call) != ERR::Okay) {
+      if (Self->subscribeInput(JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(drag_callback)) != ERR::Okay) {
          return ERR::Failed;
       }
 
@@ -358,8 +356,7 @@ static ERR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
    }
    else {
       Self->vpDragCallback.clear();
-      auto call = C_FUNCTION(drag_callback);
-      Self->subscribeInput(JTYPE::NIL, &call);
+      Self->subscribeInput(JTYPE::NIL, C_FUNCTION(drag_callback));
    }
    return ERR::Okay;
 }

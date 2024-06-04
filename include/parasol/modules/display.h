@@ -1436,8 +1436,8 @@ class objSurface : public Object {
       struct drw::SetOpacity args = { Value, Adjustment };
       return(Action(-5, this, &args));
    }
-   inline ERR addCallback(FUNCTION * Callback) noexcept {
-      struct drw::AddCallback args = { Callback };
+   inline ERR addCallback(FUNCTION Callback) noexcept {
+      struct drw::AddCallback args = { &Callback };
       return(Action(-6, this, &args));
    }
    inline ERR minimise() noexcept {
@@ -1447,8 +1447,8 @@ class objSurface : public Object {
       struct drw::ResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
       return(Action(-8, this, &args));
    }
-   inline ERR removeCallback(FUNCTION * Callback) noexcept {
-      struct drw::RemoveCallback args = { Callback };
+   inline ERR removeCallback(FUNCTION Callback) noexcept {
+      struct drw::RemoveCallback args = { &Callback };
       return(Action(-9, this, &args));
    }
    inline ERR scheduleRedraw() noexcept {
