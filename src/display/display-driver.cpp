@@ -195,7 +195,7 @@ static OBJECTID glActiveDisplayID = 0;
 #ifdef XRANDR_ENABLED
 static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 1024,768,0,0 }, { 1280,1024,0,0 } };
 static XRRScreenSize *glSizes = glCustomSizes;
-static LONG glSizeCount = ARRAYSIZE(glCustomSizes);
+static LONG glSizeCount = std::ssize(glCustomSizes);
 static LONG glActualCount = 0;
 #endif
 
@@ -550,7 +550,7 @@ XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 
    if (XDisplay) {
       XGetErrorText(XDisplay, XEvent->error_code, buffer, sizeof(buffer)-1);
-      if ((XEvent->request_code > 0) and (XEvent->request_code < ARRAYSIZE(glXProtoList))) {
+      if ((XEvent->request_code > 0) and (XEvent->request_code < std::ssize(glXProtoList))) {
          log.warning("Function: %s, XError: %s", glXProtoList[XEvent->request_code], buffer);
       }
       else log.warning("Function: Unknown, XError: %s", buffer);
@@ -1076,7 +1076,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    winDisableBatching();
 
-   winInitCursors(winCursors, ARRAYSIZE(winCursors));
+   winInitCursors(winCursors, std::ssize(winCursors));
 
 #endif
 
@@ -1146,7 +1146,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
    }
 #endif
-   
+
    // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
 
    std::string icon_path;

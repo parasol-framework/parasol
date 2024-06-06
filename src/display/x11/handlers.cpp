@@ -558,7 +558,7 @@ void handle_key_press(XEvent *xevent)
       flags |= KQ::NUM_PAD;
    }
 
-   if ((value != KEY::NIL) and (LONG(value) < ARRAYSIZE(KeyHeld))) {
+   if ((value != KEY::NIL) and (LONG(value) < std::ssize(KeyHeld))) {
       if (KeyHeld[LONG(value)]) flags |= KQ::REPEAT;
       else KeyHeld[LONG(value)] = 1;
 
@@ -628,7 +628,7 @@ void handle_key_release(XEvent *xevent)
    auto value = xkeysym_to_pkey(sym);
    auto flags = KQ::RELEASED;
 
-   if ((value != KEY::NIL) and (LONG(value) < ARRAYSIZE(KeyHeld))) {
+   if ((value != KEY::NIL) and (LONG(value) < std::ssize(KeyHeld))) {
       KeyHeld[LONG(value)] = 0;
 
       if (value IS KEY::L_COMMAND)      glKeyFlags &= ~KQ::L_COMMAND;

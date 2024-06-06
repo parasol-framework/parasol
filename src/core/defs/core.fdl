@@ -556,8 +556,6 @@ __export struct ModHeader ModHeader;
 #define MOD_NAME NULL
 #endif
 
-#define ARRAYSIZE(a) (LONG(sizeof(a)/sizeof(a[0])))
-
 namespace pf {
 
 template <class T> T roundup(T Num, LONG Alignment) {

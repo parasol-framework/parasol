@@ -488,7 +488,7 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                         };
 
                         auto script = (objScript *)Self->FileDrop.Context;
-                        script->callback(Self->FileDrop.ProcedureID, args, ARRAYSIZE(args), NULL);
+                        script->callback(Self->FileDrop.ProcedureID, args, std::ssize(args), NULL);
                      }
                      break;
                   }
@@ -630,7 +630,7 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
 
       if (pf::ScopedObjectLock object(Self->FocusID, 500); object.granted()) {
-         UnsubscribeAction(*object, 0);         
+         UnsubscribeAction(*object, 0);
       }
    }
 
@@ -2252,7 +2252,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
             break;
          }
       }
-      if (i >= ARRAYSIZE(glLexers)) log.msg("Failed to choose a lexer for %s", Path);
+      if (i >= std::ssize(glLexers)) log.msg("Failed to choose a lexer for %s", Path);
    }
 
    return error;

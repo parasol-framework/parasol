@@ -323,7 +323,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
             glDebugMemory = true;
          }
          else if (startswith("gfx-driver=", arg)) {
-            glDisplayDriver.assign(arg+11);            
+            glDisplayDriver.assign(arg+11);
          }
          else if ((iequals(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);
@@ -660,7 +660,7 @@ void print_diagnosis(LONG Signal)
 
    if (glCodeIndex != CP_PRINT_CONTEXT) {
       if (Signal) {
-         if ((Signal > 0) and (Signal < ARRAYSIZE(signals))) {
+         if ((Signal > 0) and (Signal < std::ssize(signals))) {
             LOGE("  Signal ID:      %s", signals[Signal]);
          }
          else LOGE("  Signal ID:      %d", Signal);
@@ -720,7 +720,7 @@ void print_diagnosis(LONG Signal)
       fprintf(fd, "  Task ID:        %d\n", glCurrentTask->UID);
       fprintf(fd, "  Process ID:     %d\n", glCurrentTask->ProcessID);
       if (Signal) {
-         if ((Signal > 0) and (Signal < ARRAYSIZE(signals))) {
+         if ((Signal > 0) and (Signal < std::ssize(signals))) {
             fprintf(fd, "  Signal ID:      %s\n", signals[Signal]);
          }
          else fprintf(fd, "  Signal ID:      %d\n", Signal);
@@ -762,7 +762,7 @@ void print_diagnosis(LONG Signal)
    char **messages = (char **)NULL;
    int i, trace_size = 0;
 
-   trace_size = backtrace(trace, ARRAYSIZE(trace));
+   trace_size = backtrace(trace, std::ssize(trace));
    // overwrite sigaction with caller's address
    //trace[1] = pnt;
 
@@ -844,7 +844,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
       if (glLogLevel >= 5) {
          log.msg("Process terminated.\n");
       }
-      else if ((SignalNumber > 0) and (SignalNumber < ARRAYSIZE(signals))) {
+      else if ((SignalNumber > 0) and (SignalNumber < std::ssize(signals))) {
          fprintf(stderr, "\nProcess terminated, signal %s.\n\n", signals[SignalNumber]);
       }
       else fprintf(stderr, "\nProcess terminated, signal %d.\n\n", SignalNumber);
@@ -1319,7 +1319,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
    };
    char cdname[] = "cd1";
 
-   for (LONG i=0; i < ARRAYSIZE(cdroms); i++) {
+   for (LONG i=0; i < std::ssize(cdroms); i++) {
       if (!access(cdroms[i], F_OK)) {
          SetVolume(cdname, cdroms[i], "devices/compactdisc", NULL, "cd", VOLUME::NIL);
          cdname[2] = cdname[2] + 1;

@@ -683,7 +683,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
    else {
       Self->Callback = Self->CallbackCache;
       Self->CallbackCount = 1;
-      Self->CallbackSize = ARRAYSIZE(Self->CallbackCache);
+      Self->CallbackSize = std::ssize(Self->CallbackCache);
       Self->Callback[0].Object = context;
       Self->Callback[0].Function = *Args->Callback;
    }

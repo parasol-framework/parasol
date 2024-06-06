@@ -411,7 +411,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
             { "Requester", Args->Object, FD_OBJECTPTR },
             { "Item",      request->Item },
             { "Datatypes", request->Preference, FD_ARRAY|FD_BYTE },
-            { "Size",      LONG(ARRAYSIZE(request->Preference)), FD_LONG|FD_ARRAYSIZE }
+            { "Size",      LONG(std::ssize(request->Preference)), FD_LONG|FD_ARRAYSIZE }
          }), error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = log.warning(ERR::FieldNotSet);

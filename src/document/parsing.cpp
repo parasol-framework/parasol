@@ -3177,7 +3177,7 @@ void parser::tag_object(XMLTag &Tag)
 
             static const CLASSID classes[] = { CLASSID::VECTOR };
 
-            for (unsigned i=0; i < ARRAYSIZE(classes); i++) {
+            for (unsigned i=0; i < std::ssize(classes); i++) {
                if (classes[i] IS class_id) {
                   add_tabfocus(Self, TT::OBJECT, object->UID);
                   break;

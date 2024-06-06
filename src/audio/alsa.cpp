@@ -220,9 +220,9 @@ next_card:
 
       // Get the current channel volumes
 
-      volctl[index].Channels.resize(ARRAYSIZE(glAlsaConvert));
+      volctl[index].Channels.resize(std::ssize(glAlsaConvert));
       if ((flags & VCF::MONO) IS VCF::NIL) {
-         for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
+         for (channel=0; channel < std::ssize(glAlsaConvert); channel++) {
             if (snd_mixer_selem_has_playback_channel(elem, (snd_mixer_selem_channel_id_t)glAlsaConvert[channel]))   {
                long vol;
                snd_mixer_selem_get_playback_volume(elem, (snd_mixer_selem_channel_id_t)glAlsaConvert[channel], &vol);
@@ -236,13 +236,13 @@ next_card:
       // pitched feedback, e.g. when the microphone channel is on.  All playback channels are enabled by default.
 
       if ((snd_mixer_selem_has_capture_switch(elem)) and (!snd_mixer_selem_has_playback_switch(elem))) {
-         for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
+         for (channel=0; channel < std::ssize(glAlsaConvert); channel++) {
             flags |= VCF::MUTE;
             snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)channel, 0);
          }
       }
       else if (snd_mixer_selem_has_playback_switch(elem)) {
-         for (channel=0; channel < ARRAYSIZE(glAlsaConvert); channel++) {
+         for (channel=0; channel < std::ssize(glAlsaConvert); channel++) {
             snd_mixer_selem_set_capture_switch(elem, (snd_mixer_selem_channel_id_t)channel, 1);
          }
       }

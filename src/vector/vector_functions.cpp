@@ -1200,7 +1200,7 @@ next:
       IRI++;
       char nibbles[8];
       UBYTE n = 0;
-      while ((*IRI) and (n < ARRAYSIZE(nibbles))) nibbles[n++] = read_nibble(IRI++);
+      while ((*IRI) and (n < std::ssize(nibbles))) nibbles[n++] = read_nibble(IRI++);
       while ((*IRI) and (*IRI != ';')) IRI++;
 
       if (n IS 3) {

@@ -204,7 +204,7 @@ static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       char buffer[] = "/tmp/.X11-unix/X10";
       STRING x11[] = { "X", "X0", "X1", "X2", "X3", "X5", "X6", "X7", "X8", "X9", "X10" };
 
-      for (WORD i=0; (i < ARRAYSIZE(x11)); i++) {
+      for (WORD i=0; (i < std::ssize(x11)); i++) {
          for (j=0; x11[i][j]; j++) buffer[15+j] = x11[i][j];
          buffer[15+j] = 0;
          if (test_x11(buffer) IS ERR_Okay) {

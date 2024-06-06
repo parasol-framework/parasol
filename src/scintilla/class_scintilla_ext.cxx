@@ -96,8 +96,8 @@ ScintillaParasol::ScintillaParasol(int SurfaceID, extScintilla *Scintilla)
 
    wMain = Scintilla;
 
-   SetStyles(c_styles, ARRAYSIZE(c_styles));
-   SetStyles(std_styles, ARRAYSIZE(std_styles));
+   SetStyles(c_styles, std::ssize(c_styles));
+   SetStyles(std_styles, std::ssize(std_styles));
 
    SendScintilla(SCI_SETMODEVENTMASK, SC_MOD_INSERTTEXT, SC_MOD_DELETETEXT |
       SC_PERFORMED_USER | SC_PERFORMED_UNDO | SC_PERFORMED_REDO |

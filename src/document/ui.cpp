@@ -453,7 +453,7 @@ static ERR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char Cu
 
       if (extract_script(Self, edit.on_enter, &script, function_name, argstring) IS ERR::Okay) {
          ScriptArg args[] = { { "ID", edit.name } };
-         script->exec(function_name.c_str(), args, ARRAYSIZE(args));
+         script->exec(function_name.c_str(), args, std::ssize(args));
       }
    }
 
@@ -790,7 +790,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
                { "Y", Event->Y },
                { "Args", argstring }
             };
-            script->exec(func_name.c_str(), args, ARRAYSIZE(args));
+            script->exec(func_name.c_str(), args, std::ssize(args));
          }
       }
    }
@@ -804,7 +804,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
                { "Y", Event->Y },
                { "Args", argstring }
             };
-            script->exec(func_name.c_str(), args, ARRAYSIZE(args));
+            script->exec(func_name.c_str(), args, std::ssize(args));
          }
       }
 
@@ -827,7 +827,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
             const ScriptArg args[] = {
                { "Element", link->origin.uid },
                { "Args", argstring } };
-            script->exec(func_name.c_str(), args, ARRAYSIZE(args));
+            script->exec(func_name.c_str(), args, std::ssize(args));
          }
       }
 
@@ -1117,7 +1117,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                   { "Y", Event->Y },
                   { "Args", s_args }
                };
-               script->exec(func_name.c_str(), args, ARRAYSIZE(args));
+               script->exec(func_name.c_str(), args, std::ssize(args));
             }
          }
       }
@@ -1133,7 +1133,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                      { "Y", Event->Y },
                      { "Args", s_args }
                   };
-                  script->exec(func_name.c_str(), args, ARRAYSIZE(args));
+                  script->exec(func_name.c_str(), args, std::ssize(args));
                }
             }
          }
@@ -1150,7 +1150,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                      { "Y", Event->Y },
                      { "Args", s_args }
                   };
-                  script->exec(func_name.c_str(), args, ARRAYSIZE(args));
+                  script->exec(func_name.c_str(), args, std::ssize(args));
                }
             }
          }
@@ -1167,7 +1167,7 @@ static ERR inputevent_cell(objVectorViewport *Viewport, const InputEvent *Event)
                      { "Y", Event->Y },
                      { "Args", s_args }
                   };
-                  script->exec(func_name.c_str(), args, ARRAYSIZE(args));
+                  script->exec(func_name.c_str(), args, std::ssize(args));
                }
             }
          }

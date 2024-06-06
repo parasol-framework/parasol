@@ -822,7 +822,7 @@ static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
 
             LONG layer = 4 - ((frame & ((1<<17)|(1<<18)))>>17);
             LONG index = (frame & 0x0c00)>>10;
-            if (index >= ARRAYSIZE(samplerate_table)) continue;
+            if (index >= std::ssize(samplerate_table)) continue;
             LONG samplerate = samplerate_table[index];
             if ((layer < 0) or (layer > 3) or (!samplerate)) continue;
 

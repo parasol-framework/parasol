@@ -193,4 +193,4 @@ const CSTRING glMessages[LONG(ERR::END)+1] = {
  NULL // Needs to be null-terminated for Fluid support
 };
 
-const LONG glTotalMessages = ARRAYSIZE(glMessages);
+const LONG glTotalMessages = std::ssize(glMessages);

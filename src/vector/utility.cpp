@@ -33,7 +33,7 @@ static CSTRING get_effect_name(UBYTE Effect)
       "Spotlight"
    };
 
-   if ((Effect >= 0) and (Effect < ARRAYSIZE(effects))) {
+   if ((Effect >= 0) and (Effect < std::ssize(effects))) {
       return effects[Effect];
    }
    else return "Unknown";

@@ -981,7 +981,7 @@ static ERR run_script(objScript *Self)
 
                      if (args->Address) {
                         struct object *obj = push_object(prv->Lua, (OBJECTPTR)args->Address);
-                        if ((r < ARRAYSIZE(release_list)) and (access_object(obj))) {
+                        if ((r < std::ssize(release_list)) and (access_object(obj))) {
                            release_list[r++] = obj;
                         }
                      }

@@ -174,7 +174,7 @@ void init_metaclass(void)
    glMetaClass.BaseClassID        = CLASSID::METACLASS;
    glMetaClass.Category           = CCF::SYSTEM;
    glMetaClass.FieldLookup        = glMetaFieldsPreset;
-   glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
+   glMetaClass.OriginalFieldTotal = std::ssize(glMetaFields)-1;
    glMetaClass.Local[0]        = 0xff;
 
    glMetaClass.Methods.resize(2);
@@ -924,7 +924,7 @@ static void field_setup(extMetaClass *Class)
 
       // Build a list of local objects before we do the sort
 
-      ULONG local[ARRAYSIZE(Class->Local)];
+      std::vector<ULONG> local(std::ssize(Class->Local));
 
       UBYTE int_count = 0;
       if ((Class->Flags & CLF::INHERIT_LOCAL) != CLF::NIL) {

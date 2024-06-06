@@ -1187,7 +1187,7 @@ The buffer that is referred to by the Header field is not populated until the In
 static ERR SOUND_GET_Header(extSound *Self, BYTE **Value, LONG *Elements)
 {
    *Value = (BYTE *)Self->Header;
-   *Elements = ARRAYSIZE(Self->Header);
+   *Elements = std::ssize(Self->Header);
    return ERR::Okay;
 }
 

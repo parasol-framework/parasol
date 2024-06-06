@@ -401,7 +401,7 @@ static ERR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, DOUBLE *Value, LONG Elemen
 {
    pf::Log log;
 
-   if ((Elements > 0) and (Elements <= ARRAYSIZE(Self->Matrix))) {
+   if ((Elements > 0) and (Elements <= std::ssize(Self->Matrix))) {
       Self->MatrixSize = Elements;
       CopyMemory(Value, Self->Matrix, sizeof(DOUBLE) * Elements);
       return ERR::Okay;

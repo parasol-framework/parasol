@@ -146,7 +146,7 @@ WINHANDLE get_threadlock(void)
    auto index = glThreadLockIndex++;
    LONG end = index - 1;
    while (index != end) {
-      if (index >= ARRAYSIZE(glThreadLocks)) index = glThreadLockIndex = 1; // Has the array reached exhaustion?  If so, we need to wrap it.
+      if (index >= std::ssize(glThreadLocks)) index = glThreadLockIndex = 1; // Has the array reached exhaustion?  If so, we need to wrap it.
       if (!glThreadLocks[index]) {
          WINHANDLE lock;
          if (alloc_public_waitlock(&lock, NULL) IS ERR::Okay) {

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cctype>
 #include <string_view>
+#include <charconv>
 
 namespace pf {
 
@@ -255,6 +256,16 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
       return newstr;
    }
    else return NULL;
+}
+
+// std::string_view conversion to numeric type.  Returns zero on error.
+// Leading whitespace is not ignored, unlike strtol() and strtod()
+
+template <class T> [[nodiscard]] T svtonum(std::string_view String) noexcept {
+   T val;
+   auto [ v, error ] = std::from_chars(String.data(), String.data() + String.size(), val);
+   if (error IS std::errc()) return val;
+   else return 0;
 }
 
 } // namespace

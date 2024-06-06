@@ -521,9 +521,9 @@ static ERR COLOURFX_GET_Values(extColourFX *Self, DOUBLE **Array, LONG *Elements
 
 static ERR COLOURFX_SET_Values(extColourFX *Self, DOUBLE *Array, LONG Elements)
 {
-   if (Elements > ARRAYSIZE(Self->Values)) return ERR::InvalidValue;
+   if (Elements > std::ssize(Self->Values)) return ERR::InvalidValue;
    if (Array) CopyMemory(Array, Self->Values, Elements * sizeof(DOUBLE));
-   ClearMemory(Self->Values + Elements, (ARRAYSIZE(Self->Values) - Elements) * sizeof(DOUBLE));
+   ClearMemory(Self->Values + Elements, (std::ssize(Self->Values) - Elements) * sizeof(DOUBLE));
    return ERR::Okay;
 }
 
