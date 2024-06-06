@@ -178,7 +178,7 @@ static bool parse_id3v1(objSound *Self)
          else SetKey(Self, "Genre", "Unknown");
 
          if (id3.comment[COMMENT_TRACK] > 0) {
-            IntToStr(id3.comment[COMMENT_TRACK], buffer, sizeof(buffer));
+            strcopy(std::to_string(id3.comment[COMMENT_TRACK]), buffer, sizeof(buffer));
             SetKey(Self, "Track", buffer);
          }
 

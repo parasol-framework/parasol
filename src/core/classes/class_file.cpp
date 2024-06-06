@@ -349,7 +349,7 @@ static ERR FILE_DataFeed(extFile *Self, struct acDataFeed *Args)
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
 
    if (Args->Size) return acWrite(Self, Args->Buffer, Args->Size, NULL);
-   else return acWrite(Self, Args->Buffer, StrLength((CSTRING)Args->Buffer), NULL);
+   else return acWrite(Self, Args->Buffer, strlen((CSTRING)Args->Buffer), NULL);
 }
 
 /*********************************************************************************************************************
@@ -426,7 +426,7 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
 
       // Check if the Path is a volume
 
-      LONG len = StrLength(Self->Path);
+      LONG len = strlen(Self->Path);
       if (Self->Path[len-1] IS ':') {
          if (DeleteVolume(Self->Path) IS ERR::Okay) {
             #ifdef __unix__
@@ -449,7 +449,7 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
          #endif
          Self->Stream = 0;
 
-         LONG len = StrCopy(path, buffer, sizeof(buffer));
+         LONG len = strcopy(path, buffer, sizeof(buffer));
          if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          FileFeedback fb;
@@ -472,17 +472,16 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
 
       CSTRING path;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
-         char buffer[512];
-         LONG len = StrCopy(path, buffer, sizeof(buffer));
-         if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
+         std::string buffer(path);
+         if (buffer.ends_with('/') or buffer.ends_with('\\')) buffer.pop_back();
 
          if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
 
          // Unlinking the file deletes it
 
-         if (!unlink(buffer)) return ERR::Okay;
+         if (!unlink(buffer.c_str())) return ERR::Okay;
          else {
-            log.warning("unlink() failed on file \"%s\": %s", buffer, strerror(errno));
+            log.warning("unlink() failed on file \"%s\": %s", buffer.c_str(), strerror(errno));
             return convert_errno(errno, ERR::Failed);
          }
       }
@@ -606,7 +605,7 @@ static ERR FILE_Init(extFile *Self)
    if (glDefaultPermissions != PERMIT::NIL) Self->Permissions = glDefaultPermissions;
 
    if (pf::startswith("string:", Self->Path)) {
-      Self->Size = StrLength(Self->Path + 7);
+      Self->Size = strlen(Self->Path + 7);
 
       if (Self->Size > 0) {
          if (AllocMemory(Self->Size, MEM::DATA, (APTR *)&Self->Buffer, NULL) IS ERR::Okay) {
@@ -655,7 +654,7 @@ static ERR FILE_Init(extFile *Self)
 
 retrydir:
    if ((Self->Flags & FL::FOLDER) != FL::NIL) {
-      LONG len = StrLength(Self->Path);
+      LONG len = strlen(Self->Path);
       if (len > 512) return log.warning(ERR::BufferOverflow);
 
       if ((Self->Path[len-1] != '/') and (Self->Path[len-1] != '\\') and (Self->Path[len-1] != ':')) {
@@ -703,7 +702,7 @@ retrydir:
       }
    }
 
-   len = StrLength(Self->prvResolvedPath);
+   len = strlen(Self->prvResolvedPath);
 
    // Check if ResolvePath() resolved the path from a file string to a folder
 
@@ -811,7 +810,7 @@ static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
    STRING src   = Self->Path;
    CSTRING dest = Args->Dest;
 
-   LONG len = StrLength(dest);
+   LONG len = strlen(dest);
    if (len <= 1) return log.warning(ERR::Args);
 
    log.msg("%s to %s", src, dest);
@@ -819,7 +818,7 @@ static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
    if ((dest[len-1] IS '/') or (dest[len-1] IS '\\') or (dest[len-1] IS ':')) {
       // If a trailing slash has been specified, we are moving the file into a folder, rather than to a direct path.
 
-      LONG i = StrLength(src) - 1;
+      LONG i = strlen(src) - 1;
       if (src[i] IS ':') {
          log.warning("Moving volumes is illegal.");
          return ERR::Failed;
@@ -833,7 +832,7 @@ static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
 
       STRING newpath;
       if (AllocMemory(len + 1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&newpath, NULL) IS ERR::Okay) {
-         LONG j = StrCopy(dest, newpath);
+         LONG j = strcopy(dest, newpath);
          i++;
          while ((src[i]) and (src[i] != '/') and (src[i] != '\\')) newpath[j++] = src[i++];
          newpath[j] = 0;
@@ -1151,7 +1150,7 @@ static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
    }
    else {
       if (Self->prvLine) { FreeResource(Self->prvLine); Self->prvLine = NULL; }
-      Self->prvLine    = StrClone(line);
+      Self->prvLine    = strclone(line);
       Self->prvLineLen = len + 1;
       Args->Result = Self->prvLine;
       return ERR::Okay;
@@ -1171,13 +1170,13 @@ static ERR FILE_Rename(extFile *Self, struct acRename *Args)
    STRING n;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
-   LONG namelen = StrLength(Args->Name);
+   LONG namelen = strlen(Args->Name);
    if (!namelen) return log.warning(ERR::NullArgs);
    if (!Self->Path) return log.warning(ERR::FieldNotSet);
 
    log.branch("%s to %s", Self->Path, Args->Name);
 
-   LONG i = StrLength(Self->Path);
+   LONG i = strlen(Self->Path);
 
    if ((Self->prvType & STAT_FOLDER) or ((Self->Flags & FL::FOLDER) != FL::NIL)) {
       if (Self->Path[i-1] IS ':') { // Renaming a volume
@@ -1754,7 +1753,7 @@ static ERR GET_Created(extFile *Self, DateTime **Value)
       ERR error;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
          char buffer[512];
-         LONG len = StrCopy(path, buffer, sizeof(buffer));
+         LONG len = strcopy(path, buffer, sizeof(buffer));
          if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          struct stat64 stats;
@@ -1832,7 +1831,7 @@ static ERR GET_Date(extFile *Self, DateTime **Value)
       ERR error;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
          char buffer[512];
-         LONG len = StrCopy(path, buffer, sizeof(buffer));
+         LONG len = strcopy(path, buffer, sizeof(buffer));
          if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          struct stat64 stats;
@@ -1996,7 +1995,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
    pf::SwitchContext context(Self);
 
    if ((!Self->Path) or (!Self->Path[0])) {
-      *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
+      *Value = Self->prvIcon = strclone("icons:filetypes/empty");
       return ERR::Okay;
    }
 
@@ -2016,7 +2015,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
          }
       }
 
-      *Value = Self->prvIcon = StrClone(icon.c_str());
+      *Value = Self->prvIcon = strclone(icon);
       return ERR::Okay;
    }
 
@@ -2031,16 +2030,16 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       }
 
       if ((info.Flags & RDF::FOLDER) != RDF::NIL) {
-         if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder_shortcut");
-         else *Value = Self->prvIcon = StrClone("icons:folders/folder");
+         if (link) *Value = Self->prvIcon = strclone("icons:folders/folder_shortcut");
+         else *Value = Self->prvIcon = strclone("icons:folders/folder");
          return ERR::Okay;
       }
    }
 
    while (Self->Path[i]) i++;
    if ((Self->Path[i-1] IS '/') or (Self->Path[i-1] IS '\\')) {
-      if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder_shortcut");
-      else *Value = Self->prvIcon = StrClone("icons:folders/folder");
+      if (link) *Value = Self->prvIcon = strclone("icons:folders/folder_shortcut");
+      else *Value = Self->prvIcon = strclone("icons:folders/folder");
       return ERR::Okay;
    }
 
@@ -2049,8 +2048,8 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
 
    if (!glDatatypes) {
       if (load_datatypes() != ERR::Okay) {
-         if (link) *Value = Self->prvIcon = StrClone("icons:filetypes/empty_shortcut");
-         else *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
+         if (link) *Value = Self->prvIcon = strclone("icons:filetypes/empty_shortcut");
+         else *Value = Self->prvIcon = strclone("icons:filetypes/empty");
          return ERR::Okay;
       }
    }
@@ -2066,9 +2065,9 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       if (Self->Path[k]) {
          for (auto& [group, keys] : groups[0]) {
             if (keys.contains("Match")) {
-               if (wildcmp(keys["Match"], std::string_view(Self->Path+k, StrLength(Self->Path)-k))) {
+               if (wildcmp(keys["Match"], std::string_view(Self->Path+k, strlen(Self->Path)-k))) {
                   if (keys.contains("Icon")) {
-                     StrCopy(keys["Icon"], icon, sizeof(icon));
+                     strcopy(keys["Icon"], icon, sizeof(icon));
                      break;
                   }
                }
@@ -2098,11 +2097,11 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
             for (auto& [group, keys] : groups[0]) {
                if (keys.contains("Class")) {
                   if (iequals(keys["Class"], subclass)) {
-                     if (keys.contains("Icon")) StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
+                     if (keys.contains("Icon")) strcopy(keys["Icon"], icon, sizeof(icon));
                      break;
                   }
                   else if (iequals(keys["Class"], baseclass)) {
-                     if (keys.contains("Icon")) StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
+                     if (keys.contains("Icon")) strcopy(keys["Icon"], icon, sizeof(icon));
                      // Don't break as sub-class would have priority
                   }
                }
@@ -2112,8 +2111,8 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
    }
 
    if (!icon[0]) {
-      if (link) *Value = Self->prvIcon = StrClone("icons:filetypes/empty_shortcut");
-      else *Value = Self->prvIcon = StrClone("icons:filetypes/empty");
+      if (link) *Value = Self->prvIcon = strclone("icons:filetypes/empty_shortcut");
+      else *Value = Self->prvIcon = strclone("icons:filetypes/empty");
       return ERR::Okay;
    }
 
@@ -2122,7 +2121,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       for (LONG i=0; i < 6; i++) icon[i] = "icons:"[i];
    }
 
-   *Value = Self->prvIcon = StrClone(icon);
+   *Value = Self->prvIcon = strclone(icon);
    return ERR::Okay;
 }
 
@@ -2151,11 +2150,11 @@ static ERR GET_Link(extFile *Self, STRING *Value)
    *Value = NULL;
    if ((Self->Flags & FL::LINK) != FL::NIL) {
       if (ResolvePath(Self->Path, RSF::NIL, &path) IS ERR::Okay) {
-         LONG i = StrLength(path);
+         LONG i = strlen(path);
          if (path[i-1] IS '/') path[i-1] = 0;
          if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
             buffer[i] = 0;
-            Self->prvLink = StrClone(buffer);
+            Self->prvLink = strclone(buffer);
             *Value = Self->prvLink;
          }
          FreeResource(path);
@@ -2234,7 +2233,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
       if (!pf::startswith("string:", Value)) {
          for (len=0; (Value[len]) and (Value[len] != '|'); len++);
       }
-      else len = StrLength(Value);
+      else len = strlen(Value);
 
       // Note: An extra byte is allocated in case the FL::FOLDER flag is set
       if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, NULL) IS ERR::Okay) {
@@ -2252,7 +2251,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
 
             for (j=0; Value[j] IS ':'; j++);
             if (pf::startswith("string:", Value)) {
-               i = StrCopy(Value, Self->Path);
+               i = strcopy(Value, Self->Path);
             }
             else {
                i = 0;

@@ -199,7 +199,7 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
          CSTRING *results;
          LONG size;
          if ((GetFieldArray(Callback->Context, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
-            return FFR(StrToInt(results[0]));
+            return FFR(strtol(results[0], NULL, 0));
          }
          else return FFR::OKAY;
       }
@@ -219,7 +219,7 @@ static STRING cleaned_path(CSTRING Path)
 #ifdef _WIN32
    char buffer[512];
    if (winGetFullPathName(Path, sizeof(buffer), buffer, NULL) > 0) {
-      STRING p = StrClone(buffer);
+      STRING p = strclone(buffer);
       /*LONG i;
       for (i=0; p[i]; i++) {
          if (p[i] IS '/') p[i] = '\\';
@@ -230,7 +230,7 @@ static STRING cleaned_path(CSTRING Path)
 #else
    char *rp = realpath(Path, NULL);
    if (rp) {
-      STRING p = StrClone(rp);
+      STRING p = strclone(rp);
       free(rp);
       return p;
    }
@@ -374,7 +374,7 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
       Path++;
    }
 
-   LONG len = StrLength(Path);
+   LONG len = strlen(Path);
    if (Path[len-1] IS ':') {
       if (auto lock = std::unique_lock{glmVolumes, 6s}) {
          std::string path_vol(Path, len-1);
@@ -734,7 +734,7 @@ ERR DeleteFile(CSTRING Path, FUNCTION *Callback)
 
    log.branch("%s", Path);
 
-   LONG len = StrLength(Path);
+   LONG len = strlen(Path);
 
    if (Path[len-1] IS ':') return DeleteVolume(Path);
 
@@ -1244,7 +1244,7 @@ ERR test_path(STRING Path, RSF Flags)
    for (j=0; Path[j]; j++) if (Path[j] IS '/') Path[j] = '\\';
 #endif
 
-   len = StrLength(Path);
+   len = strlen(Path);
    if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) {
       // This code handles testing for folder locations
 
@@ -1377,7 +1377,7 @@ ERR findfile(STRING Path)
 
          if ((iequals(Path+len, entry->d_name)) and
              ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
-            StrCopy(entry->d_name, Path+len);
+            strcopy(entry->d_name, Path+len);
 
             // If it turns out that the Path is a folder, ignore it
 
@@ -1411,7 +1411,7 @@ ERR findfile(STRING Path)
 
             if ((iequals(Path+len, entry->d_name)) and
                 ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
-               StrCopy(entry->d_name, Path+len);
+               strcopy(entry->d_name, Path+len);
 
                // If it turns out that the Path is a folder, ignore it
 
@@ -1451,7 +1451,7 @@ ERR findfile(STRING Path)
 
    // Find a file with an extension
 
-   LONG len = StrLength(Path);
+   LONG len = strlen(Path);
    Path[len] = '.';
    Path[len+1] = '*';
    Path[len+2] = 0;
@@ -1460,7 +1460,7 @@ ERR findfile(STRING Path)
    APTR handle = NULL;
    if ((handle = winFindFile(Path, &handle, buffer))) {
       while ((len > 0) and (Path[len-1] != ':') and (Path[len-1] != '/') and (Path[len-1] != '\\')) len--;
-      StrCopy(buffer, Path+len);
+      strcopy(buffer, Path+len);
       winFindClose(handle);
       return ERR::Okay;
    }
@@ -1584,7 +1584,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    const virtual_drive *srcvirtual  = get_fs(src);
    const virtual_drive *destvirtual = get_fs(tmp);
 
-   LONG destlen = StrCopy(tmp, dest, sizeof(dest));
+   LONG destlen = strcopy(tmp, dest, sizeof(dest));
    FreeResource(tmp);
 
    // Check if the source is a folder
@@ -1667,7 +1667,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             goto exit;
          }
 
-         srclen = StrCopy(src, srcbuffer, sizeof(srcbuffer));
+         srclen = strcopy(src, srcbuffer, sizeof(srcbuffer));
 
          // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
@@ -1907,7 +1907,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          }
       #endif
 
-      srclen = StrCopy(src, srcbuffer, sizeof(srcbuffer));
+      srclen = strcopy(src, srcbuffer, sizeof(srcbuffer));
 
       // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
@@ -2134,8 +2134,8 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
          FileInfo *file = dir->Info;
          if ((file->Flags & RDF::LINK) != RDF::NIL) {
             if ((vsrc->ReadLink) and (vdest->CreateLink)) {
-               StrCopy(file->Name, Source+srclen);
-               StrCopy(file->Name, Dest+destlen);
+               strcopy(file->Name, Source+srclen);
+               strcopy(file->Name, Dest+destlen);
 
                if ((Callback) and (Callback->defined())) {
                   Feedback->Path = Source;
@@ -2157,15 +2157,15 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
             }
          }
          else if ((file->Flags & RDF::FILE) != RDF::NIL) {
-            StrCopy(file->Name, Source+srclen);
-            StrCopy(file->Name, Dest+destlen);
+            strcopy(file->Name, Source+srclen);
+            strcopy(file->Name, Dest+destlen);
 
             AdjustLogLevel(1);
                error = fs_copy(Source, Dest, Callback, FALSE);
             AdjustLogLevel(-1);
          }
          else if ((file->Flags & RDF::FOLDER) != RDF::NIL) {
-            StrCopy(file->Name, Dest+destlen);
+            strcopy(file->Name, Dest+destlen);
 
             if ((Callback) and (Callback->defined())) {
                Feedback->Path = Source;
@@ -2188,7 +2188,7 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
             // Copy everything under the folder to the destination
 
             if (error IS ERR::Okay) {
-               StrCopy(file->Name, Source+srclen);
+               strcopy(file->Name, Source+srclen);
                fs_copydir(Source, Dest, Feedback, Callback, Move);
             }
          }
@@ -2249,7 +2249,7 @@ PERMIT get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
 
 bool strip_folder(STRING Path)
 {
-   LONG i = StrLength(Path);
+   LONG i = strlen(Path);
    if (i > 1) {
       if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) {
          Path[i-1] = 0;
@@ -2269,7 +2269,7 @@ ERR fs_readlink(STRING Source, STRING *Link)
 
    if ((i = readlink(Source, buffer, sizeof(buffer)-1)) != -1) {
       buffer[i] = 0;
-      *Link = StrClone(buffer);
+      *Link = strclone(buffer);
       return ERR::Okay;
    }
    else return ERR::Failed;
@@ -2307,7 +2307,7 @@ ERR fs_delete(STRING Path, FUNCTION *Callback)
       FileFeedback feedback;
       char buffer[MAX_FILENAME];
 
-      StrCopy(Path, buffer, sizeof(buffer));
+      strcopy(Path, buffer, sizeof(buffer));
 
       if ((Callback) and (Callback->defined())) {
          ClearMemory(&feedback, sizeof(feedback));
@@ -2324,7 +2324,7 @@ ERR fs_delete(STRING Path, FUNCTION *Callback)
          FileFeedback feedback;
          char buffer[MAX_FILENAME];
 
-         StrCopy(Path, buffer, sizeof(buffer));
+         strcopy(Path, buffer, sizeof(buffer));
 
          if ((Callback) and (Callback->defined())) {
             ClearMemory(&feedback, sizeof(feedback));
@@ -2351,7 +2351,7 @@ ERR fs_scandir(DirInfo *Dir)
    LONG j;
 
    char pathbuf[256];
-   LONG path_end = StrCopy(Dir->prvResolvedPath, pathbuf, sizeof(pathbuf));
+   LONG path_end = strcopy(Dir->prvResolvedPath, pathbuf, sizeof(pathbuf));
    if ((size_t)path_end >= sizeof(pathbuf)-12) return(ERR::BufferOverflow);
    if (pathbuf[path_end-1] != '/') pathbuf[path_end++] = '/';
 
@@ -2359,7 +2359,7 @@ ERR fs_scandir(DirInfo *Dir)
       if ((de->d_name[0] IS '.') and (de->d_name[1] IS 0)) continue;
       if ((de->d_name[0] IS '.') and (de->d_name[1] IS '.') and (de->d_name[2] IS 0)) continue;
 
-      StrCopy(de->d_name, pathbuf + path_end, sizeof(pathbuf) - path_end);
+      strcopy(de->d_name, pathbuf + path_end, sizeof(pathbuf) - path_end);
 
       FileInfo *file = Dir->Info;
       if (!(stat64(pathbuf, &info))) {
@@ -2382,7 +2382,7 @@ ERR fs_scandir(DirInfo *Dir)
          if (S_ISLNK(link.st_mode)) file->Flags |= RDF::LINK;
       }
 
-      j = StrCopy(de->d_name, file->Name, MAX_FILENAME);
+      j = strcopy(de->d_name, file->Name, MAX_FILENAME);
 
       if (((file->Flags & RDF::FOLDER) != RDF::NIL) and ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL)) {
          file->Name[j++] = '/';
@@ -2443,7 +2443,7 @@ ERR fs_scandir(DirInfo *Dir)
          Dir->Info->Flags |= RDF::FOLDER;
 
          if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
-            i = StrLength(Dir->Info->Name);
+            i = strlen(Dir->Info->Name);
             Dir->Info->Name[i++] = '/';
             Dir->Info->Name[i] = 0;
          }
@@ -2550,7 +2550,7 @@ ERR fs_testpath(CSTRING Path, RSF Flags, LOC *Type)
 {
    LOC type;
 
-   auto len = StrLength(Path);
+   auto len = strlen(Path);
 
    if (Path[len-1] IS ':') {
       STRING str;
@@ -2595,7 +2595,7 @@ ERR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
 
    char path_ref[256];
-   LONG len = StrCopy(Path, path_ref, sizeof(path_ref));
+   LONG len = strcopy(Path, path_ref, sizeof(path_ref));
    if ((size_t)len >= sizeof(path_ref)-1) return ERR::BufferOverflow;
    if ((path_ref[len-1] IS '/') or (path_ref[len-1] IS '\\')) path_ref[len-1] = 0;
 
@@ -2622,7 +2622,7 @@ ERR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    LONG i = len;
    while ((i > 0) and (path_ref[i-1] != '/') and (path_ref[i-1] != '\\') and (path_ref[i-1] != ':')) i--;
-   i = StrCopy(path_ref + i, Info->Name, MAX_FILENAME-2);
+   i = strcopy(path_ref + i, Info->Name, MAX_FILENAME-2);
 
    if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
       Info->Name[i++] = '/';
@@ -2697,7 +2697,7 @@ ERR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
 
-   i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
+   i = strcopy(Path + i, Info->Name, MAX_FILENAME-2);
 
    if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
       if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';
@@ -2886,7 +2886,7 @@ ERR fs_makedir(CSTRING Path, PERMIT Permissions)
    LONG secureflags = convert_permissions(Permissions);
 
    if (mkdir(Path, secureflags) IS -1) {
-      auto buffer = std::make_unique<char[]>(StrLength(Path)+1);
+      auto buffer = std::make_unique<char[]>(strlen(Path)+1);
 
       if (errno IS EEXIST) {
          log.msg("A folder or file already exists at \"%s\"", Path);
@@ -2940,7 +2940,7 @@ ERR fs_makedir(CSTRING Path, PERMIT Permissions)
 
    LONG i;
    if (auto error = winCreateDir(Path); error != ERR::Okay) {
-      auto buffer = std::make_unique<char[]>(StrLength(Path)+1);
+      auto buffer = std::make_unique<char[]>(strlen(Path)+1);
 
       if (error IS ERR::FileExists) return ERR::FileExists;
 
@@ -3074,7 +3074,7 @@ ERR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feedba
          if ((direntry->d_name[0] IS '.') and (direntry->d_name[1] IS 0));
          else if ((direntry->d_name[0] IS '.') and (direntry->d_name[1] IS '.') and (direntry->d_name[2] IS 0));
          else {
-            StrCopy(direntry->d_name, Path+len+1, Size-len-1);
+            strcopy(direntry->d_name, Path+len+1, Size-len-1);
             if ((dummydir = opendir(Path))) {
                closedir(dummydir);
                if (delete_tree(Path, Size, Callback, Feedback) IS ERR::Cancelled) {

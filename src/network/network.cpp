@@ -410,7 +410,7 @@ CSTRING AddressToStr(IPAddress *Address)
 #endif
 
    if (!result) return NULL;
-   return StrClone(result);
+   return pf::strclone(result);
 }
 
 /*********************************************************************************************************************

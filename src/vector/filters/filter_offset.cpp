@@ -87,7 +87,7 @@ static ERR OFFSETFX_GET_XMLDef(extOffsetFX *Self, STRING *Value)
 {
    std::stringstream stream;
    stream << "feOffset dx=\"" << Self->XOffset << "\" dy=\"" << Self->YOffset << "\"";
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

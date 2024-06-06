@@ -841,7 +841,7 @@ ERR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result
       }
 
       if (number) {
-         if (auto objectid = (OBJECTID)StrToInt(InitialName)) {
+         if (auto objectid = (OBJECTID)strtol(InitialName, NULL, 0)) {
             if (CheckObjectExists(objectid) IS ERR::Okay) {
                *Result = objectid;
                return ERR::Okay;

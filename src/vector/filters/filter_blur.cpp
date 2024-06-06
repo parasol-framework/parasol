@@ -445,7 +445,7 @@ static ERR BLURFX_GET_XMLDef(extBlurFX *Self, STRING *Value)
 {
    std::stringstream stream;
    stream << "feGaussianBlur stdDeviation=\"" << Self->SX << " " << Self->SY << "\"";
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

@@ -725,11 +725,11 @@ static ERR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 
    auto config = objConfig::create { };
    if (config.ok()) {
-      config->write("POINTER", "Speed", Self->Speed);
-      config->write("POINTER", "Acceleration", Self->Acceleration);
-      config->write("POINTER", "DoubleClick", Self->DoubleClick);
-      config->write("POINTER", "MaxSpeed", Self->MaxSpeed);
-      config->write("POINTER", "WheelSpeed", Self->WheelSpeed);
+      config->write("POINTER", "Speed", std::to_string(Self->Speed));
+      config->write("POINTER", "Acceleration", std::to_string(Self->Acceleration));
+      config->write("POINTER", "DoubleClick", std::to_string(Self->DoubleClick));
+      config->write("POINTER", "MaxSpeed", std::to_string(Self->MaxSpeed));
+      config->write("POINTER", "WheelSpeed", std::to_string(Self->WheelSpeed));
       config->write("POINTER", "ButtonOrder", Self->ButtonOrder);
       config->saveToObject(Args->Dest);
    }
@@ -1040,19 +1040,15 @@ static void set_pointer_defaults(extPointer *Self)
    LONG maxspeed       = 100;
    DOUBLE wheelspeed   = DEFAULT_WHEELSPEED;
    DOUBLE doubleclick  = 0.36;
-   CSTRING buttonorder = "123456789ABCDEF";
+   std::string buttonorder = "123456789ABCDEF";
 
-   auto config = objConfig::create { fl::Path("user:config/pointer.cfg") };
-
-   if (config.ok()) {
-      DOUBLE dbl;
-      CSTRING str;
-      if (config->read("POINTER", "Speed", &dbl) IS ERR::Okay) speed = dbl;
-      if (config->read("POINTER", "Acceleration", &dbl) IS ERR::Okay) acceleration = dbl;
-      if (config->read("POINTER", "MaxSpeed", &dbl) IS ERR::Okay) maxspeed = dbl;
-      if (config->read("POINTER", "WheelSpeed", &dbl) IS ERR::Okay) wheelspeed = dbl;
-      if (config->read("POINTER", "DoubleClick", &dbl) IS ERR::Okay) doubleclick = dbl;
-      if (config->readValue("POINTER", "ButtonOrder", &str) IS ERR::Okay) buttonorder = str;
+   if (auto config = objConfig::create { fl::Path("user:config/pointer.cfg") }; config.ok()) {
+      config->read("POINTER", "Speed", speed);
+      config->read("POINTER", "Acceleration", acceleration);
+      config->read("POINTER", "MaxSpeed", maxspeed);
+      config->read("POINTER", "WheelSpeed", wheelspeed);
+      config->read("POINTER", "DoubleClick", doubleclick);
+      config->read("POINTER", "ButtonOrder", buttonorder);
    }
 
    if (doubleclick < 0.2) doubleclick = 0.2;

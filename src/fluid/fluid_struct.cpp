@@ -401,7 +401,7 @@ static ERR generate_structdef(objScript *Self, const std::string_view StructName
             field_size = sizeof(std::vector<int>);
          }
          else if ((Sequence[pos] >= '0') and (Sequence[pos] <= '9')) { // Sanity check
-            array_size = StrToInt(Sequence.c_str() + pos);
+            array_size = strtol(Sequence.c_str() + pos, NULL, 0);
          }
          pos = Sequence.find_first_of("],", pos);
          if (pos IS std::string::npos) pos = Sequence.size();

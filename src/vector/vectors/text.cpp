@@ -401,13 +401,13 @@ static ERR VECTORTEXT_NewObject(extVectorText *Self)
    new (&Self->txLines) std::vector<TextLine>;
    new (&Self->txCursor) TextCursor;
 
-   StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
+   strcopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_text;
    Self->StrokeWidth  = 0.0;
    Self->txWeight     = DEFAULT_WEIGHT;
    Self->txFontSize   = 16; // Pixel units @ 72 DPI
    Self->txCharLimit  = 0x7fffffff;
-   Self->txFamily     = StrClone("Noto Sans");
+   Self->txFamily     = strclone("Noto Sans");
    Self->Fill[0].Colour  = FRGB(1, 1, 1, 1);
    Self->txLetterSpacing = 1.0;
    Self->DisableHitTesting = true;
@@ -676,9 +676,9 @@ static ERR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
 
       CSTRING name;
       if (fnt::ResolveFamilyName(Value, &name) IS ERR::Okay) {
-         Self->txFamily = StrClone(name);
+         Self->txFamily = strclone(name);
       }
-      else Self->txFamily = StrClone("Noto Sans"); // Better to resort to a default than fail completely
+      else Self->txFamily = strclone("Noto Sans"); // Better to resort to a default than fail completely
 
       if (Self->initialised()) return reset_font(Self);
 
@@ -730,10 +730,10 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
 
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
 
-      Self->txFamily = StrClone(other->Face);
+      Self->txFamily = strclone(other->Face);
       Self->txFontSize = std::trunc(other->Point * (96.0 / 72.0));
       Self->txScaledFontSize = false;
-      StrCopy(other->Style, Self->txFontStyle);
+      strcopy(other->Style, Self->txFontStyle);
 
       if (Self->initialised()) return reset_font(Self);
       else return ERR::Okay;
@@ -743,10 +743,10 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
 
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
 
-      Self->txFamily = StrClone(other->txFamily);
+      Self->txFamily = strclone(other->txFamily);
       Self->txFontSize = other->txFontSize;
       Self->txScaledFontSize = false;
-      StrCopy(other->txFontStyle, Self->txFontStyle);
+      strcopy(other->txFontStyle, Self->txFontStyle);
 
       if (Self->initialised()) return reset_font(Self);
       else return ERR::Okay;
@@ -784,7 +784,7 @@ static ERR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
 
    CSTRING next;
    if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
-      Self->FillString = StrClone(Value);
+      Self->FillString = strclone(Value);
 
       if (next) {
          vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
@@ -823,9 +823,7 @@ When retrieving the font size, the resulting string must be freed by the client 
 
 static ERR TEXT_GET_FontSize(extVectorText *Self, CSTRING *Value)
 {
-   char buffer[32];
-   IntToStr(Self->txFontSize, buffer, sizeof(buffer));
-   *Value = StrClone(buffer);
+   *Value = strclone(std::to_string(Self->txFontSize));
    return ERR::Okay;
 }
 
@@ -870,8 +868,8 @@ static ERR TEXT_GET_FontStyle(extVectorText *Self, CSTRING *Value)
 
 static ERR TEXT_SET_FontStyle(extVectorText *Self, CSTRING Value)
 {
-   if ((!Value) or (!Value[0])) StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
-   else StrCopy(Value, Self->txFontStyle, sizeof(Self->txFontStyle));
+   if ((!Value) or (!Value[0])) strcopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
+   else strcopy(Value, Self->txFontStyle, sizeof(Self->txFontStyle));
    return ERR::Okay;
 }
 

@@ -49,14 +49,14 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 
 static HSV rgb_to_hsl(FRGB Colour)
 {
-   DOUBLE vmax = std::ranges::max({ Colour.Red, Colour.Green, Colour.Blue });
-   DOUBLE vmin = std::ranges::min({ Colour.Red, Colour.Green, Colour.Blue });
-   DOUBLE light = (vmax + vmin) * 0.5;
+   double vmax = std::ranges::max({ Colour.Red, Colour.Green, Colour.Blue });
+   double vmin = std::ranges::min({ Colour.Red, Colour.Green, Colour.Blue });
+   double light = (vmax + vmin) * 0.5;
 
    if (vmax IS vmin) return HSV { 0, 0, light };
 
-   DOUBLE sat = light, hue = light;
-   DOUBLE d = vmax - vmin;
+   double sat = light, hue = light;
+   double d = vmax - vmin;
    sat = light > 0.5 ? d / (2 - vmax - vmin) : d / (vmax + vmin);
    if (vmax IS Colour.Red)   hue = (Colour.Green - Colour.Blue) / d + (Colour.Green < Colour.Blue ? 6.0 : 0.0);
    if (vmax IS Colour.Green) hue = (Colour.Blue  - Colour.Red) / d + 2.0;
@@ -84,8 +84,8 @@ static FRGB hsl_to_rgb(HSV Colour)
       return { FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Alpha) };
    }
    else {
-      const DOUBLE q = (Colour.Value < 0.5) ? Colour.Value * (1.0 + Colour.Saturation) : Colour.Value + Colour.Saturation - Colour.Value * Colour.Saturation;
-      const DOUBLE p = 2.0 * Colour.Value - q;
+      const double q = (Colour.Value < 0.5) ? Colour.Value * (1.0 + Colour.Saturation) : Colour.Value + Colour.Saturation - Colour.Value * Colour.Saturation;
+      const double p = 2.0 * Colour.Value - q;
       return {
          hueToRgb(p, q, Colour.Hue + 1.0/3.0),
          hueToRgb(p, q, Colour.Hue),
@@ -305,9 +305,9 @@ static XMLTag * find_href_tag(extSVG *Self, std::string Ref)
 **  12.467  = 12
 */
 
-static DOUBLE read_time(const std::string_view Value)
+static double read_time(const std::string_view Value)
 {
-   std::array<DOUBLE, 3> units;
+   std::array<double, 3> units;
 
    std::size_t i = 0;
    while ((i < Value.size()) and (unsigned(Value[i]) <= 0x20)) i++;
@@ -336,7 +336,7 @@ static DOUBLE read_time(const std::string_view Value)
       else if (Value.ends_with("h")) return units[0] * 60 * 60;
       else if (Value.ends_with("s")) return units[0];
       else if (Value.ends_with("min")) return units[0] * 60;
-      else if (Value.ends_with("ms")) return DOUBLE(units[0]) / 1000.0;
+      else if (Value.ends_with("ms")) return double(units[0]) / 1000.0;
       else return units[0];
    }
    else return 0;
@@ -345,16 +345,16 @@ static DOUBLE read_time(const std::string_view Value)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static DOUBLE read_unit(const std::string_view Value, LARGE *FieldID)
+static double read_unit(const std::string_view Value, LARGE *FieldID)
 {
    if (FieldID) *FieldID |= TDOUBLE;
 
-   const DOUBLE dpi = 96.0; // TODO: Needs to be derived from the display
+   const double dpi = 96.0; // TODO: Needs to be derived from the display
 
    std::size_t i = 0;
    while ((i < Value.size()) and (unsigned(Value[i]) <= 0x20)) i++;
 
-   DOUBLE fv;
+   double fv;
    auto [ ptr, error ] = std::from_chars(Value.data() + i, Value.data() + Value.size(), fv);
 
    if (error IS std::errc()) {
@@ -383,7 +383,7 @@ static DOUBLE read_unit(const std::string_view Value, LARGE *FieldID)
 inline void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string_view Value, VUNIT Units)
 {
    auto field = FieldID;
-   DOUBLE num = read_unit(Value, &field);
+   double num = read_unit(Value, &field);
    if (Units IS VUNIT::BOUNDING_BOX) field |= TSCALE;
    SetField(Object, field, num);
 }
@@ -418,7 +418,7 @@ template <class T = double> std::string_view read_numseq(std::string_view String
 
 //********************************************************************************************************************
 
-template<class T = DOUBLE> std::vector<T> read_array(const std::string Value, LONG Limit = 0x7fffffff)
+template<class T = double> std::vector<T> read_array(const std::string Value, LONG Limit = 0x7fffffff)
 {
    std::vector<T> result;
 
@@ -428,7 +428,7 @@ template<class T = DOUBLE> std::vector<T> read_array(const std::string Value, LO
       if (!*v) return result;
 
       STRING next = NULL;
-      DOUBLE num = strtod(v, &next);
+      double num = strtod(v, &next);
       if ((!num) and (!next)) return result;
       result.push_back(num);
       v = next;
@@ -497,7 +497,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          }
          else xml->setPath(Path);
 
-         if (task->get(FID_Path, &working_path) IS ERR::Okay) working_path = StrClone(working_path);
+         if (task->get(FID_Path, &working_path) IS ERR::Okay) working_path = strclone(working_path);
 
          // Set a new working path based on the path
 

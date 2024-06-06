@@ -291,7 +291,7 @@ static ERR FONT_NewObject(extFont *Self)
    Self->Face            = Self->prvFace;
    Self->Colour.Alpha    = 255;
    Self->GlyphSpacing    = 1.0;
-   StrCopy("Regular", Self->prvStyle, sizeof(Self->prvStyle));
+   strcopy("Regular", Self->prvStyle, sizeof(Self->prvStyle));
    return ERR::Okay;
 }
 
@@ -336,7 +336,7 @@ convenience - we recommend that you set the Style field for determining font sty
 static ERR GET_Bold(extFont *Self, LONG *Value)
 {
    if ((Self->Flags & FTF::BOLD) != FTF::NIL) *Value = TRUE;
-   else if (StrSearch("bold", Self->prvStyle) != -1) *Value = TRUE;
+   else if (pf::strisearch("bold", Self->prvStyle) != -1) *Value = TRUE;
    else *Value = FALSE;
    return ERR::Okay;
 }
@@ -399,7 +399,7 @@ static ERR SET_Face(extFont *Self, STRING Value)
    if ((Value) and (Value[0])) {
       CSTRING final_name;
       if (fnt::ResolveFamilyName(Value, &final_name) IS ERR::Okay) {
-         StrCopy(final_name, Self->prvFace, std::ssize(Self->prvFace));
+         strcopy(final_name, Self->prvFace, std::ssize(Self->prvFace));
       }
 
       LONG i, j;
@@ -487,7 +487,7 @@ convenience only - we recommend that you set the #Style field for determining fo
 static ERR GET_Italic(extFont *Self, LONG *Value)
 {
    if ((Self->Flags & FTF::ITALIC) != FTF::NIL) *Value = TRUE;
-   else if (StrSearch("italic", Self->prvStyle) != -1) *Value = TRUE;
+   else if (pf::strisearch("italic", Self->prvStyle) != -1) *Value = TRUE;
    else *Value = FALSE;
    return ERR::Okay;
 }
@@ -551,7 +551,7 @@ static ERR SET_Path(extFont *Self, CSTRING Value)
 {
    if (!Self->initialised()) {
       if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-      if (Value) Self->Path = StrClone(Value);
+      if (Value) Self->Path = strclone(Value);
       return ERR::Okay;
    }
    else return ERR::Failed;
@@ -674,8 +674,8 @@ Conventional font styles are `Bold`, `Bold Italic`, `Italic` and `Regular` (the 
 
 static ERR SET_Style(extFont *Self, CSTRING Value)
 {
-   if ((!Value) or (!Value[0])) StrCopy("Regular", Self->prvStyle, sizeof(Self->prvStyle));
-   else StrCopy(Value, Self->prvStyle, sizeof(Self->prvStyle));
+   if ((!Value) or (!Value[0])) strcopy("Regular", Self->prvStyle, sizeof(Self->prvStyle));
+   else strcopy(Value, Self->prvStyle, sizeof(Self->prvStyle));
    return ERR::Okay;
 }
 

@@ -276,7 +276,7 @@ static ERR SOUND_Activate(extSound *Self)
       if (Self->Length > buffer_len) {
          log.msg("Streaming enabled because sample length %d exceeds buffer size %d.", Self->Length, buffer_len);
          Self->Flags |= SDF::STREAM;
-         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
+         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, true);
       }
       else {
          // Create the buffer and fill it completely with sample data.
@@ -284,7 +284,7 @@ static ERR SOUND_Activate(extSound *Self)
          Self->Flags &= ~SDF::STREAM;
          auto client_pos = Self->Position; // Save the seek cursor from pollution
          if (client_pos) Self->seekStart(0);
-         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
+         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, false);
          Self->seekStart(client_pos);
       }
 
@@ -312,7 +312,7 @@ static ERR SOUND_Activate(extSound *Self)
    }
    else if (set_playback_trigger(Self) != ERR::Okay) return log.warning(ERR::Failed);
 
-   auto response = sndPlay((PlatformData *)Self->PlatformData, ((Self->Flags & SDF::LOOP) != SDF::NIL) ? TRUE : FALSE, Self->Position);
+   auto response = sndPlay((PlatformData *)Self->PlatformData, ((Self->Flags & SDF::LOOP) != SDF::NIL) ? true : false, Self->Position);
    return response ? log.warning(ERR::Failed) : ERR::Okay;
 #else
 
@@ -649,7 +649,7 @@ static ERR SOUND_GetKey(extSound *Self, struct acGetKey *Args)
 
    std::string name(Args->Key);
    if (Self->Tags.contains(name)) {
-      StrCopy(Self->Tags[name].c_str(), Args->Value, Args->Size);
+      strcopy(Self->Tags[name], Args->Value, Args->Size);
       return ERR::Okay;
    }
    else return ERR::UnsupportedField;
@@ -1339,7 +1339,7 @@ static ERR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    CSTRING str = Value;
    if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-')) {
-      note = StrToInt(Value);
+      note = strtol(Value, NULL, 0);
    }
    else {
       note = 0;

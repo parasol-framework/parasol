@@ -74,8 +74,8 @@ ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
       auto vd = get_fs(resolved_path);
 
       // NB: We use MAX_FILENAME rather than resolve_len in the allocation size because fs_opendir() requires more space.
-      LONG path_len = StrLength(Path) + 1;
-      LONG resolve_len = StrLength(resolved_path) + 1;
+      LONG path_len = strlen(Path) + 1;
+      LONG resolve_len = strlen(resolved_path) + 1;
       DirInfo *dir;
       // Layout: [DirInfo] [FileInfo] [Driver] [Name] [Path]
       LONG size = sizeof(DirInfo) + sizeof(FileInfo) + vd->DriverSize + MAX_FILENAME + path_len + MAX_FILENAME;
@@ -193,7 +193,7 @@ ERR ScanDir(DirInfo *Dir)
             if (count IS Dir->prvIndex) {
                Dir->prvIndex++;
                auto &volume = pair.first;
-               LONG j = StrCopy(volume.c_str(), file->Name, MAX_FILENAME-2);
+               LONG j = strcopy(volume, file->Name, MAX_FILENAME-2);
                if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
                   file->Name[j++] = ':';
                   file->Name[j] = 0;

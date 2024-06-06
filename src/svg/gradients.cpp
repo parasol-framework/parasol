@@ -43,7 +43,7 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
             if (value.empty()) continue;
 
             if (iequals("offset", name)) {
-               stop.Offset = StrToFloat(value);
+               stop.Offset = strtod(value.c_str(), NULL);
                for (LONG j=0; value[j]; j++) {
                   if (value[j] IS '%') {
                      stop.Offset = stop.Offset * 0.01; // Must be in the range of 0 - 1.0
@@ -60,7 +60,7 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
                stop.RGB = painter.Colour;
             }
             else if (iequals("stop-opacity", name)) {
-               stop_opacity = StrToFloat(value);
+               stop_opacity = strtod(value.c_str(), NULL);
             }
             else if (iequals("id", name)) {
                log.trace("Use of id attribute in <stop/> ignored.");

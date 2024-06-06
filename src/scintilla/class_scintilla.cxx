@@ -463,7 +463,7 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
       if (!Args->Buffer) str = "";
       else str = (CSTRING)Args->Buffer;
 
-      SCICALL(SCI_APPENDTEXT, StrLength(str), str);
+      SCICALL(SCI_APPENDTEXT, strlen(str), str);
    }
    else if (Args->Datatype IS DATA::RECEIPT) {
       log.msg("Received item receipt from object %d.", Args->Object ? Args->Object->UID : 0);
@@ -1157,8 +1157,8 @@ static ERR SCINTILLA_ReplaceText(extScintilla *Self, struct sci::ReplaceText *Ar
    SCICALL(SCI_SETTARGETSTART, start);
    SCICALL(SCI_SETTARGETEND, end);
 
-   LONG findlen = StrLength(Args->Find);
-   LONG replacelen = StrLength(replace);
+   LONG findlen = strlen(Args->Find);
+   LONG replacelen = strlen(replace);
 
    LONG flags = (((Args->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
                 (((Args->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
@@ -1739,7 +1739,7 @@ static ERR SET_Path(extScintilla *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) and (*Value)) {
-      if ((Self->Path = StrClone(Value))) {
+      if ((Self->Path = strclone(Value))) {
          if (Self->initialised()) {
             if (load_file(Self, Self->Path) != ERR::Okay) {
                return ERR::File;
@@ -1768,7 +1768,7 @@ static ERR SET_Origin(extScintilla *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Path = strclone(Value))) return ERR::AllocMemory;
    }
 
    return ERR::Okay;
@@ -1777,13 +1777,13 @@ static ERR SET_Origin(extScintilla *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Modified:  Returns TRUE if the document has been modified and not saved.
+Modified:  Returns `true` if the document has been modified and not saved.
 
 The Modified field controls the modification state of the document.  It is automatically changed to a value of TRUE
 when the user edits the document.  To receive notification of changes to the document state, you should subscribe to
 the Modified field.
 
-It is recommended that you manually set this field to FALSE if the document is saved to disk.  The Scintilla class will
+It is recommended that you manually set this field to `false` if the document is saved to disk.  The Scintilla class will
 not make this change for you automatically.
 
 *********************************************************************************************************************/
@@ -2184,7 +2184,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERR Error)
          CSTRING *results;
          LONG size;
          if ((GetFieldArray(dialog, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
-            dialog_id = StrToInt(results[0]);
+            dialog_id = strtol(results[0], NULL, 0);
          }
       }
    }
@@ -2239,7 +2239,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
    else error = ERR::File;
 
    if ((error IS ERR::Okay) and ((Self->Flags & SCIF::DETECT_LEXER) != SCIF::NIL)) {
-      LONG i = StrLength(Path);
+      LONG i = strlen(Path);
       while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
       Path = Path + i;
 
@@ -2280,7 +2280,7 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
          if (out >= 0) string[out] = 0;
       }
 
-      StrCopy(string, (STRING)Self->API->lastkeytrans, sizeof(Self->API->lastkeytrans));
+      strcopy(string, (STRING)Self->API->lastkeytrans, sizeof(Self->API->lastkeytrans));
 
       LONG keyval;
       switch (Event->Code) {

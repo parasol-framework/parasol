@@ -151,7 +151,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    CSTRING file = Self->Path;
    if (file) {
       LONG i;
-      for (i=StrLength(file); (i > 0) and (file[i-1] != '/') and (file[i-1] != '\\'); i--);
+      for (i=strlen(file); (i > 0) and (file[i-1] != '/') and (file[i-1] != '\\'); i--);
       log.msg(flags, "%s: %s", file+i, str);
    }
    else log.msg(flags, "%s: Error: %s", Procedure, str);
@@ -180,7 +180,7 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
    log.traceBranch("Args: %p, Buffer: %p", args, Buffer);
 
    for (LONG i=0; args[i].Name; i++) {
-      auto name = std::make_unique<char[]>(StrLength(args[i].Name)+1);
+      auto name = std::make_unique<char[]>(strlen(args[i].Name)+1);
       for (j=0; args[i].Name[j]; j++) name[j] = std::tolower(args[i].Name[j]);
       name[j] = 0;
 
@@ -397,7 +397,7 @@ static ERR FLUID_Activate(objScript *Self)
       LONG result;
       if (startswith(LUA_COMPILED, Self->String)) { // The source is compiled
          log.trace("Loading pre-compiled Lua script.");
-         LONG headerlen = StrLength(Self->String) + 1;
+         LONG headerlen = strlen(Self->String) + 1;
          result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, "DefaultChunk");
       }
       else {
@@ -408,9 +408,9 @@ static ERR FLUID_Activate(objScript *Self)
       if (result) { // Error reported from parser
          if (auto errorstr = lua_tostring(prv->Lua,-1)) {
             // Format: [string "..."]:Line:Error
-            if ((i = StrSearchCase("\"]:", errorstr)) != -1) {
+            if ((i = strsearch("\"]:", errorstr)) != -1) {
                i += 3;
-               LONG line = StrToInt(errorstr + i);
+               LONG line = strtol(errorstr + i, NULL, 0);
                while ((errorstr[i]) and (errorstr[i] != ':')) i++;
                if (errorstr[i] IS ':') i++;
 

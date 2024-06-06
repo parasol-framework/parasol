@@ -1453,8 +1453,7 @@ struct Edges {
 #endif
 
 typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
-typedef std::map<std::string, std::string> KEYVALUE;
-typedef std::map<std::string_view, std::string_view> CONST_KEYVALUE;
+typedef std::map<std::string, std::string, std::less<>> KEYVALUE;
 
 #ifndef STRINGIFY
 #define STRINGIFY(x) #x
@@ -2297,26 +2296,6 @@ inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
-
-template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
-{
-   auto src = to_cstring(Source);
-   if ((Length > 0) and (src) and (Dest)) {
-      LONG i = 0;
-      while (*src) {
-         if (i IS Length) {
-            Dest[i-1] = 0;
-            return i;
-         }
-         Dest[i++] = *src++;
-      }
-
-      Dest[i] = 0;
-      return i;
-   }
-   else return 0;
-}
-
 #ifndef PRV_CORE_DATA
 // These overloaded functions can't be used in the Core as they will confuse the compiler in key areas.
 
@@ -2389,85 +2368,6 @@ typedef std::vector<ConfigGroup> ConfigGroups;
 inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
 {
    memmove(Dest, Src, Length);
-}
-
-[[nodiscard]] inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
-{
-   LONG i;
-   LONG pos = 0;
-   while (String[pos]) {
-      for (i=0; Keyword[i]; i++) if (String[pos+i] != Keyword[i]) break;
-      if (!Keyword[i]) return pos;
-      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
-   }
-
-   return -1;
-}
-
-[[nodiscard]] inline LONG StrSearch(CSTRING Keyword, CSTRING String)
-{
-   LONG i;
-   LONG pos = 0;
-   while (String[pos]) {
-      for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
-      if (!Keyword[i]) return pos;
-      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
-   }
-
-   return -1;
-}
-
-[[nodiscard]] inline STRING StrClone(CSTRING String)
-{
-   if (!String) return NULL;
-
-   auto len = LONG(strlen(String));
-   STRING newstr;
-   if (AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL) IS ERR::Okay) {
-      CopyMemory(String, newstr, len+1);
-      return newstr;
-   }
-   else return NULL;
-}
-
-[[nodiscard]] inline LONG StrLength(CSTRING String) {
-   if (String) return LONG(strlen(String));
-   else return 0;
-}
-
-template <class T> inline LARGE StrToInt(T &&String) {
-   CSTRING str = to_cstring(String);
-   if (!str) return 0;
-
-   while ((*str < '0') or (*str > '9')) { // Ignore any leading characters
-      if (!str[0]) return 0;
-      else if (*str IS '-') break;
-      else if (*str IS '+') break;
-      else str++;
-   }
-
-   return strtoll(str, NULL, 0);
-}
-
-template <class T> inline DOUBLE StrToFloat(T &&String) {
-   CSTRING str = to_cstring(String);
-   if (!str) return 0;
-
-   while ((*str != '-') and (*str != '.') and ((*str < '0') or (*str > '9'))) {
-      if (!*str) return 0;
-      str++;
-   }
-
-   return strtod(str, NULL);
-}
-
-// NB: Prefer std::to_string(value) where viable to get the std::string of a number.
-
-inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
-   auto str = std::to_string(Integer);
-   auto len = LONG(str.copy(String, StringSize-1));
-   String[len] = 0;
-   return len;
 }
 
 inline ERR ClearMemory(APTR Memory, LONG Length) {
@@ -2726,6 +2626,7 @@ struct Object { // Must be 64-bit aligned
    inline ERR setArray(ULONG FieldID, LARGE *Value, LONG Size)  { return SetArray(this, (FIELD)FieldID|TLARGE, Value, Size); }
 
    inline ERR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERR set(ULONG FieldID, long Value)            { return SetField(this, (FIELD)FieldID|TLONG, Value); }
    inline ERR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
    inline ERR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
    inline ERR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
@@ -3559,84 +3460,54 @@ class objConfig : public Object {
 
    // For C++ only, these read variants avoid method calls for speed, but apply identical logic.
 
-   inline ERR read(CSTRING pGroup, CSTRING pKey, DOUBLE *pValue) {
+   inline ERR read(std::string_view pGroup, std::string_view pKey, DOUBLE &pValue) {
       for (auto& [group, keys] : Groups[0]) {
-         if ((pGroup) and (group.compare(pGroup))) continue;
-         if (!pKey) {
-            *pValue = strtod(keys.cbegin()->second.c_str(), NULL);
-            return ERR::Okay;
-         }
-         else if (keys.contains(pKey)) {
-            *pValue = strtod(keys[pKey].c_str(), NULL);
-            return ERR::Okay;
-         }
-      }
-      return ERR::Search;
-   }
-
-   inline ERR read(CSTRING pGroup, CSTRING pKey, LONG *pValue) {
-      for (auto& [group, keys] : Groups[0]) {
-         if ((pGroup) and (group.compare(pGroup))) continue;
-         if (!pKey) {
-            *pValue = strtol(keys.cbegin()->second.c_str(), NULL, 0);
-            return ERR::Okay;
-         }
-         else if (keys.contains(pKey)) {
-            *pValue = strtol(keys[pKey].c_str(), NULL, 0);
-            return ERR::Okay;
-         }
-      }
-      return ERR::Search;
-   }
-
-   inline ERR read(CSTRING pGroup, CSTRING pKey, std::string &pValue) {
-      for (auto& [group, keys] : Groups[0]) {
-         if ((pGroup) and (group.compare(pGroup))) continue;
-         if (!pKey) {
-            pValue = keys.cbegin()->second;
-            return ERR::Okay;
-         }
-         else if (keys.contains(pKey)) {
-            pValue = keys[pKey];
-            return ERR::Okay;
-         }
-      }
-      return ERR::Search;
-   }
-
-   inline ERR write(CSTRING Group, CSTRING Key, CSTRING Value) {
-      return writeValue(Group, Key, Value);
-   }
-
-   inline ERR write(CSTRING Group, CSTRING Key, STRING Value) {
-      return writeValue(Group, Key, Value);
-   }
-
-   inline ERR write(CSTRING Group, CSTRING Key, std::string Value) {
-      return writeValue(Group, Key, Value.c_str());
-   }
-
-   template <class T> inline ERR write(CSTRING Group, CSTRING Key, T Value) {
-      auto str = std::to_string(Value);
-      return writeValue(Group, Key, str.c_str());
-   }
-
-   inline ERR read(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value) {
-      CSTRING result;
-      if (auto error = readValue(Group, Key, &result); error IS ERR::Okay) {
-         *Value = strtod(result, NULL);
+         if ((!pGroup.empty()) and (group.compare(pGroup))) continue;
+         if (pKey.empty()) pValue = strtod(keys.cbegin()->second.c_str(), NULL);
+         else if (auto it = keys.find(pKey); it != keys.end()) pValue = strtod(it->second.c_str(), NULL);
+         else return ERR::Search;
          return ERR::Okay;
       }
-      else { *Value = 0; return error; }
+      return ERR::Search;
    }
 
-   inline ERR read(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value) {
-      CSTRING result;
-      if (auto error = readValue(Group, Key, &result); error IS ERR::Okay) {
-         *Value = strtol(result, NULL, 0);
+   inline ERR read(std::string_view pGroup, std::string_view pKey, LONG &pValue) {
+      for (auto& [group, keys] : Groups[0]) {
+         if ((!pGroup.empty()) and (group.compare(pGroup))) continue;
+         if (pKey.empty()) pValue = strtol(keys.cbegin()->second.c_str(), NULL, 0);
+         else if (auto it = keys.find(pKey); it != keys.end()) pValue = strtol(it->second.c_str(), NULL, 0);
+         else return ERR::Search;
          return ERR::Okay;
       }
-      else { *Value = 0; return error; }
+      return ERR::Search;
+   }
+
+   inline ERR read(std::string_view pGroup, std::string_view pKey, std::string &pValue) {
+      for (auto & [group, keys] : Groups[0]) {
+         if ((!pGroup.empty()) and (group.compare(pGroup))) continue;
+         if (pKey.empty()) pValue = keys.cbegin()->second;
+         else if (auto it = keys.find(pKey); it != keys.end()) pValue = it->second;
+         else return ERR::Search;
+         return ERR::Okay;
+      }
+      return ERR::Search;
+   }
+
+   inline ERR write(std::string_view Group, std::string_view Key, std::string_view Value) {
+      ConfigGroups &groups = *Groups;
+      for (auto& [group, keys] : groups) {
+         if (!group.compare(Group)) {
+            if (auto it = keys.find(Key); it != keys.end()) {
+               it->second.assign(Value);
+               return ERR::Okay;
+            }
+         }
+      }
+
+      auto &new_group = Groups->emplace_back();
+      new_group.first.assign(Group);
+      new_group.second.emplace(Key, Value);
+      return ERR::Okay;
    }
 
    // Action stubs

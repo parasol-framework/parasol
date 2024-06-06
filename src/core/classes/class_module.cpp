@@ -327,9 +327,9 @@ static ERR MODULE_Init(extModule *Self)
 
    OBJECTPTR context = NULL;
 
-   i = StrLength(Self->Name);
+   i = strlen(Self->Name);
    while ((i > 0) and (Self->Name[i-1] != ':') and (Self->Name[i-1] != '/') and (Self->Name[i-1] != '\\')) i--;
-   StrCopy(Self->Name+i, name, sizeof(name));
+   strcopy(Self->Name+i, name, sizeof(name));
 
    log.trace("Finding module %s (%s)", Self->Name, name);
 
@@ -347,7 +347,7 @@ static ERR MODULE_Init(extModule *Self)
 
       context = SetContext(master);
 
-      StrCopy(name, master->LibraryName, sizeof(master->LibraryName));
+      strcopy(name, master->LibraryName, sizeof(master->LibraryName));
 
       if (Self->Header) {
          // If the developer has specified a module header, then the module code is memory-resident and not to be

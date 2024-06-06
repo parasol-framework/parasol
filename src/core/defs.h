@@ -89,7 +89,6 @@ using namespace std::chrono_literals;
 #include <parasol/system/errors.h>
 #include <parasol/system/types.h>
 #include <parasol/system/registry.h>
-#include <parasol/strings.hpp>
 
 #include <stdarg.h>
 
@@ -158,6 +157,7 @@ struct rkWatchPath {
 #include "prototypes.h"
 
 #include <parasol/main.h>
+#include <parasol/strings.hpp>
 
 using namespace pf;
 
@@ -631,7 +631,7 @@ extern LONG glEUID, glEGID, glUID, glGID;
 extern std::string glSystemPath;
 extern std::string glModulePath;
 extern std::string glRootPath;
-extern char glDisplayDriver[28];
+extern std::string glDisplayDriver;
 extern bool glShowIO, glShowPrivate, glEnableCrashHandler;
 extern bool glJanitorActive;
 extern bool glLogThreads;

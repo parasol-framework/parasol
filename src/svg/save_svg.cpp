@@ -357,15 +357,14 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
       if ((error IS ERR::Okay) and ((morph_flags & VMF::AUTO_SPACING) != VMF::NIL)) xml::NewAttrib(morph_tag, "spacing", "auto");
 
       if ((error IS ERR::Okay) and ((morph_flags & (VMF::X_MIN|VMF::X_MID|VMF::X_MAX|VMF::Y_MIN|VMF::Y_MID|VMF::Y_MAX)) != VMF::NIL)) {
-         char align[40];
-         WORD apos = 0;
-         if ((morph_flags & VMF::X_MIN) != VMF::NIL) apos = StrCopy("xMin ", align, sizeof(align));
-         else if ((morph_flags & VMF::X_MID) != VMF::NIL) apos = StrCopy("xMid ", align, sizeof(align));
-         else if ((morph_flags & VMF::X_MAX) != VMF::NIL) apos = StrCopy("xMax ", align, sizeof(align));
+         std::string align;
+         if ((morph_flags & VMF::X_MIN) != VMF::NIL) align = "xMin ";
+         else if ((morph_flags & VMF::X_MID) != VMF::NIL) align = "xMid ";
+         else if ((morph_flags & VMF::X_MAX) != VMF::NIL) align = "xMax ";
 
-         if ((morph_flags & VMF::Y_MIN) != VMF::NIL) StrCopy("yMin", align+apos, sizeof(align));
-         else if ((morph_flags & VMF::Y_MID) != VMF::NIL) StrCopy("yMid", align+apos, sizeof(align));
-         else if ((morph_flags & VMF::Y_MAX) != VMF::NIL) StrCopy("yMax", align+apos, sizeof(align));
+         if ((morph_flags & VMF::Y_MIN) != VMF::NIL) align += "yMin";
+         else if ((morph_flags & VMF::Y_MID) != VMF::NIL) align += "yMid";
+         else if ((morph_flags & VMF::Y_MAX) != VMF::NIL) align += "yMax";
 
          xml::NewAttrib(morph_tag, "align", align);
       }

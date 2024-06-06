@@ -459,7 +459,7 @@ static ERR TURBULENCEFX_GET_XMLDef(extTurbulenceFX *Self, STRING *Value)
 
    stream << "feTurbulence";
 
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

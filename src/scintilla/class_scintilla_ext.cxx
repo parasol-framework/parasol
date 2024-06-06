@@ -850,7 +850,7 @@ void ScintillaParasol::panKeyDown(int Key, KQ Flags)
 int ScintillaParasol::KeyDefault(int key, int modifiers)
 {
    //log.msg("%d, $%.8x", key, modifiers);
-   AddCharUTF(lastkeytrans, StrLength(lastkeytrans), FALSE);
+   AddCharUTF(lastkeytrans, strlen(lastkeytrans), false);
    return 1;
 }
 

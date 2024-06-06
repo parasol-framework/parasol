@@ -143,7 +143,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 
    if (Args->Address != Self->Address) {
       if (Self->Address) FreeResource(Self->Address);
-      Self->Address = StrClone(Args->Address);
+      Self->Address = pf::strclone(Args->Address);
    }
    Self->Port = Args->Port;
 
@@ -905,7 +905,7 @@ connection.
 static ERR SET_Address(extNetSocket *Self, CSTRING Value)
 {
    if (Self->Address) { FreeResource(Self->Address); Self->Address = NULL; }
-   if (Value) Self->Address = StrClone(Value);
+   if (Value) Self->Address = pf::strclone(Value);
    return ERR::Okay;
 }
 

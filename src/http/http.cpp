@@ -759,7 +759,7 @@ static ERR HTTP_Free(extHTTP *Self)
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
 
    for (LONG i=0; i < std::ssize(Self->Password); i++) Self->Password[i] = char(0xff);
-   
+
    Self->~extHTTP();
    return ERR::Okay;
 }
@@ -775,12 +775,12 @@ static ERR HTTP_GetKey(extHTTP *Self, struct acGetKey *Args)
    if (!Args) return ERR::NullArgs;
 
    if (Self->Args.contains(Args->Key)) {
-      StrCopy(Self->Args[Args->Key].c_str(), Args->Value, Args->Size);
+      pf::strcopy(Self->Args[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
    if (Self->Headers.contains(Args->Key)) {
-      StrCopy(Self->Headers[Args->Key].c_str(), Args->Value, Args->Size);
+      pf::strcopy(Self->Headers[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
@@ -797,7 +797,7 @@ static ERR HTTP_Init(extHTTP *Self)
       if (glProxy) {
          if (glProxy->find(Self->Port, true) IS ERR::Okay) {
             if (Self->ProxyServer) FreeResource(Self->ProxyServer);
-            Self->ProxyServer = StrClone(glProxy->Server);
+            Self->ProxyServer = pf::strclone(glProxy->Server);
             Self->ProxyPort   = glProxy->ServerPort; // NB: Default is usually 8080
 
             log.msg("Using preset proxy server '%s:%d'", Self->ProxyServer, Self->ProxyPort);
@@ -816,7 +816,7 @@ static ERR HTTP_NewObject(extHTTP *Self)
 {
    new (Self) extHTTP;
    Self->Error          = ERR::Okay;
-   Self->UserAgent      = StrClone("Parasol Client");
+   Self->UserAgent      = pf::strclone("Parasol Client");
    Self->DataTimeout    = 5.0;
    Self->ConnectTimeout = 10.0;
    Self->Datatype       = DATA::RAW;
@@ -1061,7 +1061,7 @@ The HTTP server to target for HTTP requests is defined here.  To change the host
 static ERR SET_Host(extHTTP *Self, CSTRING Value)
 {
    if (Self->Host) { FreeResource(Self->Host); Self->Host = NULL; }
-   Self->Host = StrClone(Value);
+   Self->Host = pf::strclone(Value);
    return ERR::Okay;
 }
 
@@ -1134,7 +1134,7 @@ static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
    Self->MultipleInput = FALSE;
    Self->InputPos = 0;
    if ((Value) and (*Value)) {
-      Self->InputFile = StrClone(Value);
+      Self->InputFile = pf::strclone(Value);
 
       // Check if the path contains multiple inputs, separated by the pipe symbol.
 
@@ -1245,7 +1245,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 
    if (*str IS ':') {
       str++;
-      if (auto i = StrToInt(str)) {
+      if (auto i = strtol(str, NULL, 0)) {
          Self->Port = i;
          if (Self->Port IS 443) Self->Flags |= HTF::SSL;
       }
@@ -1340,7 +1340,7 @@ been set in the #Flags field.
 static ERR SET_OutputFile(extHTTP *Self, CSTRING Value)
 {
    if (Self->OutputFile) { FreeResource(Self->OutputFile); Self->OutputFile = NULL; }
-   Self->OutputFile = StrClone(Value);
+   Self->OutputFile = pf::strclone(Value);
    return ERR::Okay;
 }
 
@@ -1462,7 +1462,7 @@ that the proxy server uses to receive requests, see the #ProxyPort field.
 static ERR SET_ProxyServer(extHTTP *Self, CSTRING Value)
 {
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
-   if ((Value) and (Value[0])) Self->ProxyServer = StrClone(Value);
+   if ((Value) and (Value[0])) Self->ProxyServer = pf::strclone(Value);
    Self->ProxyDefined = TRUE;
    return ERR::Okay;
 }
@@ -1568,7 +1568,7 @@ This field describe the `user-agent` value that will be sent in HTTP requests.  
 static ERR SET_UserAgent(extHTTP *Self, CSTRING Value)
 {
    if (Self->UserAgent) { FreeResource(Self->UserAgent); Self->UserAgent = NULL; }
-   Self->UserAgent = StrClone(Value);
+   Self->UserAgent = pf::strclone(Value);
    return ERR::Okay;
 }
 

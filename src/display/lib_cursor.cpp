@@ -720,7 +720,7 @@ ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surf
       pointer->DragSurface = Surface;
       pointer->DragItem    = Item;
       pointer->DragSourceID = Source;
-      StrCopy(Datatypes, pointer->DragData, sizeof(pointer->DragData));
+      strcopy(Datatypes, pointer->DragData, sizeof(pointer->DragData));
 
       SURFACEINFO *info;
       if (gfx::GetSurfaceInfo(Surface, &info) IS ERR::Okay) {

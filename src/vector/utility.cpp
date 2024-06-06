@@ -428,7 +428,7 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
       else if ((str[0] IS 'p') and (str[1] IS 't')) { str += 2; multiplier = (1.0 / 72.0) * dpi; } // Points.  A point is 1/72 of an inch
       else if ((str[0] IS 'p') and (str[1] IS 'c')) { str += 2; multiplier = (12.0 / 72.0) * dpi; } // Pica.  1 Pica is equal to 12 Points
 
-      auto result = StrToFloat(Value) * multiplier;
+      auto result = strtod(Value, NULL) * multiplier;
 
       Value = str;
       return result;

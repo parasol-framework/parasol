@@ -213,7 +213,7 @@ static ERR ARCHIVE_Init(extFile *Self)
       auto prv = (prvFileArchive *)Self->ChildPrivate;
       new (prv) prvFileArchive;
 
-      if (Self->Path[StrLength(Self->Path)-1] IS ':') { // Nothing is referenced
+      if (Self->Path[strlen(Self->Path)-1] IS ':') { // Nothing is referenced
          return ERR::Okay;
       }
       else {
@@ -530,7 +530,7 @@ static ERR scan_folder(DirInfo *Dir)
          Dir->Info->Flags |= RDF::FILE;
          auto offset = zf.Name.find_last_of("/\\");
          if (offset IS std::string::npos) offset = 0;
-         StrCopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME);
+         strcopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME);
 
          ((ArchiveDriver *)Dir->Driver)->Index = it;
          Dir->prvTotal++;
@@ -542,7 +542,7 @@ static ERR scan_folder(DirInfo *Dir)
 
          auto offset = zf.Name.find_last_of("/\\");
          if (offset IS std::string::npos) offset = 0;
-         LONG i = StrCopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME-2);
+         LONG i = strcopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME-2);
 
          if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
             Dir->Info->Name[i++] = '/';
@@ -596,11 +596,11 @@ static ERR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    // Extract the file name
 
-   LONG len = StrLength(Path);
+   LONG len = strlen(Path);
    LONG i = len;
    if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) i--;
    while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
-   i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
+   i = strcopy(Path + i, Info->Name, MAX_FILENAME-2);
 
    if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
       if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';
@@ -644,7 +644,7 @@ static ERR test_path(STRING Path, RSF Flags, LOC *Type)
          // Point the path to the discovered item
          LONG i;
          for (i=0; (Path[i] != '/') and (Path[i]); i++);
-         if (Path[i] IS '/') StrCopy(item->Path, Path + i + 1, MAX_FILENAME);
+         if (Path[i] IS '/') strcopy(item->Path, Path + i + 1, MAX_FILENAME);
       }
    }
 

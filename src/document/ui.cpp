@@ -101,7 +101,7 @@ static ERR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unic
          char string[12];
          UTF8WriteValue(Unicode, string, sizeof(string));
          Self->insertText(string, Self->CursorIndex.index, Self->CursorIndex.offset, true); // Will set UpdatingLayout to true
-         Self->CursorIndex += StrLength(string); // Reposition the cursor
+         Self->CursorIndex += strlen(string); // Reposition the cursor
 
          layout_doc_fast(Self);
 
@@ -361,7 +361,7 @@ static void error_dialog(const std::string Title, const std::string Message)
          CSTRING *results;
          LONG size;
          if ((GetFieldArray(dialog, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
-            dialog_id = StrToInt(results[0]);
+            dialog_id = strtol(results[0], NULL, 0);
          }
       }
    }

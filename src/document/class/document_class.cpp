@@ -631,11 +631,11 @@ static ERR DOCUMENT_GetKey(extDocument *Self, struct acGetKey *Args)
    if ((!Args) or (!Args->Value) or (!Args->Key) or (Args->Size < 2)) return ERR::Args;
 
    if (Self->Vars.contains(Args->Key)) {
-      StrCopy(Self->Vars[Args->Key], Args->Value, Args->Size);
+      strcopy(Self->Vars[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
    else if (Self->Params.contains(Args->Key)) {
-      StrCopy(Self->Params[Args->Key], Args->Value, Args->Size);
+      strcopy(Self->Params[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
@@ -996,7 +996,7 @@ static ERR DOCUMENT_ReadContent(extDocument *Self, struct doc::ReadContent *Args
 
       auto str = buffer.str();
       if (str.empty()) return ERR::NoData;
-      if ((Args->Result = StrClone(str.c_str()))) return ERR::Okay;
+      if ((Args->Result = strclone(str))) return ERR::Okay;
       else return log.warning(ERR::AllocMemory);
    }
    else if (Args->Format IS DATA::RAW) {

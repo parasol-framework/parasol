@@ -416,7 +416,7 @@ LARGE GetResource(RES Resource)
       case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
       case RES::THREAD_ID:       return (MAXINT)get_thread_id();
       case RES::CORE_IDL:        return (MAXINT)glIDL;
-      case RES::DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
+      case RES::DISPLAY_DRIVER:  if (!glDisplayDriver.empty()) return (MAXINT)glDisplayDriver.c_str(); else return 0;
 
       case RES::STATIC_BUILD:
          #ifdef PARASOL_STATIC

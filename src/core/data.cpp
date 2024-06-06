@@ -35,7 +35,7 @@ std::string glRootPath   = "" _ROOT_PATH "";
 std::string glSystemPath = "" _SYSTEM_PATH "";
 std::string glModulePath = "" _MODULE_PATH ""; // NB: This path will be updated to its resolved-form during Core initialisation.
 
-char glDisplayDriver[28] = "";
+std::string glDisplayDriver;
 
 #ifndef PARASOL_STATIC
 CSTRING glClassBinPath = "system:config/classes.bin";

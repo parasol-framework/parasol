@@ -491,7 +491,7 @@ static ERR REMAPFX_GET_XMLDef(extRemapFX *Self, STRING *Value)
    stream << "<feFuncB/>";
    stream << "<feFuncA/>";
    stream << "</feComponentTransfer>";
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

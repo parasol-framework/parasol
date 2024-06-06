@@ -277,7 +277,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 static ERR IMAGEFX_GET_XMLDef(extImageFX *Self, STRING *Value)
 {
-   *Value = StrClone("feImage");
+   *Value = strclone("feImage");
    return ERR::Okay;
 }
 

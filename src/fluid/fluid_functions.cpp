@@ -713,7 +713,8 @@ int fcmd_exec(lua_State *Lua)
 
    LONG results = 0;
 
-   if (auto statement = lua_tostring(Lua, 1)) {
+   size_t len;
+   if (auto statement = lua_tolstring(Lua, 1, &len)) {
       CSTRING error_msg = NULL;
 
       {
@@ -725,10 +726,11 @@ int fcmd_exec(lua_State *Lua)
          if (pf::startswith(LUA_COMPILED, statement)) {
             size_t i;
             for (i=sizeof(LUA_COMPILED)-1; statement[i]; i++);
-            if (!statement[i]) statement += i + 1;
+            statement += i + 1;
+            len -= (i + 1);
          }
 
-         struct luaReader lr = { statement, 0, StrLength(statement) };
+         struct luaReader lr = { statement, 0, LONG(len) };
          if (!lua_load(Lua, &code_reader_buffer, &lr, "exec")) {
             LONG result_top = lua_gettop(prv->Lua);
             if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) {

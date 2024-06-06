@@ -866,7 +866,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 static ERR COMPOSITEFX_GET_XMLDef(extCompositeFX *Self, STRING *Value)
 {
-   *Value = StrClone("feComposite");
+   *Value = strclone("feComposite");
    return ERR::Okay;
 }
 

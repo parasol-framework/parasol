@@ -635,8 +635,7 @@ static ERR VECTORFILTER_GET_EffectXML(extVectorFilter *Self, CSTRING *Value)
       ss << "/>";
    }
 
-   auto str = ss.str();
-   if ((*Value = StrClone(str.c_str()))) return ERR::Okay;
+   if ((*Value = strclone(ss.str()))) return ERR::Okay;
    else return ERR::AllocMemory;
 }
 

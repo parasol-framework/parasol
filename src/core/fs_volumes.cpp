@@ -80,7 +80,7 @@ ERR RenameVolume(CSTRING Volume, CSTRING Name)
          CopyMemory(vol.c_str(), evdeleted.get() + sizeof(EVENTID), vol.size() + 1);
          BroadcastEvent(evdeleted.get(), sizeof(EVENTID) + vol.size() + 1);
 
-         LONG namelen = StrLength(Name) + 1;
+         LONG namelen = strlen(Name) + 1;
          auto evcreated = std::make_unique<UBYTE[]>(sizeof(EVENTID) + namelen);
          ((EVENTID *)evcreated.get())[0] = EVID_FILESYSTEM_VOLUME_CREATED;
          CopyMemory(Name, evcreated.get() + sizeof(EVENTID), namelen);
@@ -216,7 +216,7 @@ ERR VirtualVolume(CSTRING Name, ...)
 
    if (glVirtual.contains(id)) return ERR::Exists;
 
-   LONG i = StrCopy(Name, glVirtual[id].Name, sizeof(glVirtual[id].Name)-2);
+   LONG i = strcopy(Name, glVirtual[id].Name, sizeof(glVirtual[id].Name)-2);
    glVirtual[id].Name[i++]     = ':';
    glVirtual[id].Name[i]       = 0;
    glVirtual[id].VirtualID     = id; // Virtual ID = Hash of the name, not including the colon

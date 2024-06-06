@@ -75,7 +75,7 @@ ERR extXML::find_tag(CSTRING XPath)
       while ((XPath[pos]) and (XPath[pos] <= 0x20)) pos++;
 
       if ((XPath[pos] >= '0') and (XPath[pos] <= '9')) { // Parse index
-         subscript = StrToInt(XPath+pos);
+         subscript = strtol(XPath+pos, NULL, 0);
          while ((XPath[pos] >= '0') and (XPath[pos] <= '9')) pos++;
       }
       else if ((XPath[pos] IS '@') or (XPath[pos] IS '=')) {

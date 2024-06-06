@@ -640,7 +640,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
       AAsset *asset;
       if ((asset = AAssetManager_open(mgr, assetpath, AASSET_MODE_UNKNOWN))) {
          if ((Flags & RDF::FILE) != RDF::NIL) {
-            LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
+            LONG size = sizeof(FileInfo) + strlen(filename) + 2;
             if (!AllocMemory(size, MEM::DATA, &entry, NULL)) {
                entry->Flags = RDF::FILE;
 
@@ -670,7 +670,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
          AAsset_close(asset);
       }
       else if ((Flags & RDF::FOLDER) != RDF::NIL) {
-         LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
+         LONG size = sizeof(FileInfo) + strlen(filename) + 2;
          if (!AllocMemory(size, MEM::DATA, &entry, NULL)) {
             entry->Flags = RDF::FOLDER;
 

@@ -660,12 +660,12 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 
    objConfig::create config = { };
    if (config.ok()) {
-      config->write("AUDIO", "OutputRate", Self->OutputRate);
-      config->write("AUDIO", "InputRate", Self->InputRate);
-      config->write("AUDIO", "Quality", Self->Quality);
-      config->write("AUDIO", "BitDepth", Self->BitDepth);
-      config->write("AUDIO", "Periods", Self->Periods);
-      config->write("AUDIO", "PeriodSize", Self->PeriodSize);
+      config->write("AUDIO", "OutputRate", std::to_string(Self->OutputRate));
+      config->write("AUDIO", "InputRate", std::to_string(Self->InputRate));
+      config->write("AUDIO", "Quality", std::to_string(Self->Quality));
+      config->write("AUDIO", "BitDepth", std::to_string(Self->BitDepth));
+      config->write("AUDIO", "Periods", std::to_string(Self->Periods));
+      config->write("AUDIO", "PeriodSize", std::to_string(Self->PeriodSize));
 
       if ((Self->Flags & ADF::STEREO) != ADF::NIL) config->write("AUDIO", "Stereo", "TRUE");
       else config->write("AUDIO", "Stereo", "FALSE");
@@ -1282,14 +1282,14 @@ static void load_config(extAudio *Self)
    objConfig::create config = { fl::Path("user:config/audio.cfg") };
 
    if (config.ok()) {
-      config->read("AUDIO", "OutputRate", &Self->OutputRate);
-      config->read("AUDIO", "InputRate", &Self->InputRate);
-      config->read("AUDIO", "Quality", &Self->Quality);
-      config->read("AUDIO", "BitDepth", &Self->BitDepth);
+      config->read("AUDIO", "OutputRate", Self->OutputRate);
+      config->read("AUDIO", "InputRate", Self->InputRate);
+      config->read("AUDIO", "Quality", Self->Quality);
+      config->read("AUDIO", "BitDepth", Self->BitDepth);
 
       LONG value;
-      if (config->read("AUDIO", "Periods", &value) IS ERR::Okay) SET_Periods(Self, value);
-      if (config->read("AUDIO", "PeriodSize", &value) IS ERR::Okay) SET_PeriodSize(Self, value);
+      if (config->read("AUDIO", "Periods", value) IS ERR::Okay) SET_Periods(Self, value);
+      if (config->read("AUDIO", "PeriodSize", value) IS ERR::Okay) SET_PeriodSize(Self, value);
       if (config->read("AUDIO", "Device", Self->Device) != ERR::Okay) Self->Device = "default";
 
       std::string str;
@@ -1315,7 +1315,7 @@ static void load_config(extAudio *Self)
                   Self->Volumes[j].Name = k;
 
                   CSTRING str = v.c_str();
-                  if (StrToInt(str) IS 1) Self->Volumes[j].Flags |= VCF::MUTE;
+                  if (std::stoi(v) IS 1) Self->Volumes[j].Flags |= VCF::MUTE;
                   while ((*str) and (*str != ',')) str++;
                   if (*str IS ',') str++;
 
@@ -1323,7 +1323,7 @@ static void load_config(extAudio *Self)
                   if (*str IS '[') { // Read channel volumes
                      str++;
                      while ((*str) and (*str != ']')) {
-                        Self->Volumes[j].Channels[channel] = StrToInt(str);
+                        Self->Volumes[j].Channels[channel] = strtol(str, NULL, 0);
                         while ((*str) and (*str != ',') and (*str != ']')) str++;
                         if (*str IS ',') str++;
                         channel++;

@@ -700,7 +700,7 @@ static ERR add_clip(CSTRING String)
    if (auto error = add_clip(CLIPTYPE::TEXT, items); error IS ERR::Okay) {
       pf::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT::READ|PERMIT::WRITE) };
       if (file.ok()) {
-         file->write(String, StrLength(String), 0);
+         file->write(String, strlen(String), 0);
          return ERR::Okay;
       }
       else return log.warning(ERR::CreateFile);

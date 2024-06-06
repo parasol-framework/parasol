@@ -541,7 +541,7 @@ static ERR COLOURFX_GET_XMLDef(extColourFX *Self, STRING *Value)
 
    stream << "feColorMatrix";
 
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

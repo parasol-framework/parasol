@@ -303,7 +303,7 @@ static ERR SCRIPT_GetKey(objScript *Self, struct acGetKey *Args)
 
    auto it = Self->Vars.find(Args->Key);
    if (it != Self->Vars.end()) {
-      StrCopy(it->second, Args->Value, Args->Size);
+      strcopy(it->second, Args->Value, Args->Size);
       return ERR::Okay;
    }
    else {
@@ -343,7 +343,7 @@ static ERR SCRIPT_NewObject(objScript *Self)
    Self->Language[2] = 'g';
    Self->Language[3] = 0;
 
-   StrCopy("lang", Self->LanguageDir, sizeof(Self->LanguageDir));
+   strcopy("lang", Self->LanguageDir, sizeof(Self->LanguageDir));
 
    return ERR::Okay;
 }
@@ -401,7 +401,7 @@ static ERR GET_CacheFile(objScript *Self, STRING *Value)
 static ERR SET_CacheFile(objScript *Self, CSTRING Value)
 {
    if (Self->CacheFile) { FreeResource(Self->CacheFile); Self->CacheFile = NULL; }
-   if (Value) Self->CacheFile = StrClone(Value);
+   if (Value) Self->CacheFile = strclone(Value);
    return ERR::Okay;
 }
 
@@ -437,7 +437,7 @@ static ERR GET_ErrorString(objScript *Self, STRING *Value)
 static ERR SET_ErrorString(objScript *Self, CSTRING Value)
 {
    if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = NULL; }
-   if (Value) Self->ErrorString = StrClone(Value);
+   if (Value) Self->ErrorString = strclone(Value);
    return ERR::Okay;
 }
 
@@ -568,7 +568,7 @@ static ERR SET_Path(objScript *Self, CSTRING Value)
                         }
                      }
 
-                     if (iequals("target", arg)) Self->setTarget(StrToInt(argval));
+                     if (iequals("target", arg)) Self->setTarget(strtol(argval.c_str(), NULL, 0));
                      else acSetKey(Self, arg, argval.c_str());
                   }
                }
@@ -654,7 +654,7 @@ static ERR GET_Procedure(objScript *Self, CSTRING *Value)
 static ERR SET_Procedure(objScript *Self, CSTRING Value)
 {
    if (Self->Procedure) { FreeResource(Self->Procedure); Self->Procedure = NULL; }
-   if (Value) Self->Procedure = StrClone(Value);
+   if (Value) Self->Procedure = strclone(Value);
    return ERR::Okay;
 }
 
@@ -696,7 +696,7 @@ static ERR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
       LONG len = 0;
       for (LONG i=0; i < Elements; i++) {
          if (!Value[i]) return log.warning(ERR::InvalidData);
-         len += StrLength(Value[i]) + 1;
+         len += strlen(Value[i]) + 1;
       }
       Self->ResultsTotal = Elements;
 
@@ -705,7 +705,7 @@ static ERR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
          LONG i;
          for (i=0; Value[i]; i++) {
             Self->Results[i] = str;
-            str += StrCopy(Value[i], str) + 1;
+            str += strcopy(Value[i], str) + 1;
          }
          Self->Results[i] = NULL;
          return ERR::Okay;
@@ -737,7 +737,7 @@ static ERR SET_String(objScript *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; } // Path removed when a statement string is being set
    if (Self->String) { FreeResource(Self->String); Self->String = NULL; }
 
-   if (Value) Self->String = StrClone(check_bom((const unsigned char *)Value));
+   if (Value) Self->String = strclone(check_bom((const unsigned char *)Value));
    return ERR::Okay;
 }
 
@@ -767,7 +767,7 @@ static ERR GET_TotalArgs(objScript *Self, LONG *Value)
 PRIVATE: Variables
 *********************************************************************************************************************/
 
-static ERR GET_Variables(objScript *Self, std::map<std::string, std::string> **Value)
+static ERR GET_Variables(objScript *Self, KEYVALUE **Value)
 {
    *Value = &Self->Vars;
    return ERR::Okay;
@@ -822,7 +822,7 @@ static ERR GET_WorkingPath(objScript *Self, STRING *Value)
          pf::SwitchContext ctx(Self);
          char save = Self->Path[j];
          Self->Path[j] = 0;
-         Self->WorkingPath = StrClone(Self->Path);
+         Self->WorkingPath = strclone(Self->Path);
          Self->Path[j] = save;
       }
       else {
@@ -835,7 +835,7 @@ static ERR GET_WorkingPath(objScript *Self, STRING *Value)
 
             pf::SwitchContext ctx(Self);
             if (ResolvePath(buf.c_str(), RSF::APPROXIMATE, &Self->WorkingPath) != ERR::Okay) {
-               Self->WorkingPath = StrClone(working_path);
+               Self->WorkingPath = strclone(working_path);
             }
          }
          else log.warning("No working path.");
@@ -849,7 +849,7 @@ static ERR GET_WorkingPath(objScript *Self, STRING *Value)
 static ERR SET_WorkingPath(objScript *Self, STRING Value)
 {
    if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
-   if (Value) Self->WorkingPath = StrClone(Value);
+   if (Value) Self->WorkingPath = strclone(Value);
    return ERR::Okay;
 }
 

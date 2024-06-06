@@ -1109,58 +1109,58 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          glpDisplayDepth  = info.BitsPerPixel;
       }
 #else
-   auto config = objConfig::create { fl::Path("user:config/display.cfg") };
-
-   if (config.ok()) {
-      config->read("DISPLAY", "Maximise", &glpMaximise);
+   if (auto config = objConfig::create { fl::Path("user:config/display.cfg") }; config.ok()) {
+      config->read("DISPLAY", "Maximise", glpMaximise);
 
       if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINGDI)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
-         if ((config->read("DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR::Okay) or (!glpDisplayWidth)) {
-            config->read("DISPLAY", "Width", &glpDisplayWidth);
+         if ((config->read("DISPLAY", "WindowWidth", glpDisplayWidth) != ERR::Okay) or (!glpDisplayWidth)) {
+            config->read("DISPLAY", "Width", glpDisplayWidth);
          }
 
-         if ((config->read("DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR::Okay) or (!glpDisplayHeight)) {
-            config->read("DISPLAY", "Height", &glpDisplayHeight);
+         if ((config->read("DISPLAY", "WindowHeight", glpDisplayHeight) != ERR::Okay) or (!glpDisplayHeight)) {
+            config->read("DISPLAY", "Height", glpDisplayHeight);
          }
 
-         config->read("DISPLAY", "WindowX", &glpDisplayX);
-         config->read("DISPLAY", "WindowY", &glpDisplayY);
-         config->read("DISPLAY", "FullScreen", &glpFullScreen);
+         config->read("DISPLAY", "WindowX", glpDisplayX);
+         config->read("DISPLAY", "WindowY", glpDisplayY);
+         config->read("DISPLAY", "FullScreen", glpFullScreen);
       }
       else {
-         config->read("DISPLAY", "Width", &glpDisplayWidth);
-         config->read("DISPLAY", "Height", &glpDisplayHeight);
-         config->read("DISPLAY", "XCoord", &glpDisplayX);
-         config->read("DISPLAY", "YCoord", &glpDisplayY);
-         config->read("DISPLAY", "Depth", &glpDisplayDepth);
+         config->read("DISPLAY", "Width", glpDisplayWidth);
+         config->read("DISPLAY", "Height", glpDisplayHeight);
+         config->read("DISPLAY", "XCoord", glpDisplayX);
+         config->read("DISPLAY", "YCoord", glpDisplayY);
+         config->read("DISPLAY", "Depth", glpDisplayDepth);
          log.msg("Using default display dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
       }
 
-      config->read("DISPLAY", "RefreshRate", &glpRefreshRate);
-      config->read("DISPLAY", "GammaRed", &glpGammaRed);
-      config->read("DISPLAY", "GammaGreen", &glpGammaGreen);
-      config->read("DISPLAY", "GammaBlue", &glpGammaBlue);
-      CSTRING dpms;
-      if (config->readValue("DISPLAY", "DPMS", &dpms) IS ERR::Okay) {
-         StrCopy(dpms, glpDPMS, sizeof(glpDPMS));
+      config->read("DISPLAY", "RefreshRate", glpRefreshRate);
+      config->read("DISPLAY", "GammaRed", glpGammaRed);
+      config->read("DISPLAY", "GammaGreen", glpGammaGreen);
+      config->read("DISPLAY", "GammaBlue", glpGammaBlue);
+
+      std::string dpms;
+      if (config->read("DISPLAY", "DPMS", dpms) IS ERR::Okay) {
+         strcopy(dpms, glpDPMS, sizeof(glpDPMS));
       }
    }
 #endif
-
-   STRING icon_path;
-   if (ResolvePath("iconsource:", RSF::NIL, &icon_path) != ERR::Okay) { // The client can set iconsource: to redefine the icon origins
-      icon_path = StrClone("styles:icons/");
-   }
-
+   
    // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
 
-   auto src = std::string(icon_path) + "Default.zip";
+   std::string icon_path;
+   STRING path;
+   if (ResolvePath("iconsource:", RSF::NIL, &path) IS ERR::Okay) { // The client can set iconsource: to redefine the icon origins
+      icon_path.assign(path);
+      FreeResource(path);
+   }
+   else icon_path = "styles:icons/";
+
+   auto src = icon_path + "Default.zip";
    if (!(glIconArchive = objCompression::create::local(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
       return ERR::CreateObject;
    }
-
-   FreeResource(icon_path);
 
    // The icons: special volume is a simple reference to the archive path.
 

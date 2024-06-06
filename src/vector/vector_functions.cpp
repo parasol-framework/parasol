@@ -1050,26 +1050,26 @@ next:
       auto &rgb = Painter->Colour;
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
       IRI += 4;
-      rgb.Red = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Red = strtod(IRI, NULL) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
          if (*IRI IS '%') rgb.Red = rgb.Red * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) IRI++;
-      rgb.Green = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Green = strtod(IRI, NULL) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
          if (*IRI IS '%') rgb.Green = rgb.Green * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) IRI++;
-      rgb.Blue = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Blue = strtod(IRI, NULL) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
          if (*IRI IS '%') rgb.Blue = rgb.Blue * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) {
          IRI++;
-         rgb.Alpha = StrToFloat(IRI) * (1.0 / 255.0);
+         rgb.Alpha = strtod(IRI, NULL) * (1.0 / 255.0);
          while (*IRI) {
             if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
             IRI++;
@@ -1101,18 +1101,18 @@ next:
       auto &rgb = Painter->Colour;
       while (*IRI != '(') IRI++;
       IRI++;
-      double hue = StrToFloat(IRI) * (1.0 / 360.0);
+      double hue = strtod(IRI, NULL) * (1.0 / 360.0);
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double sat = StrToFloat(IRI) * 0.01;
+      double sat = strtod(IRI, NULL) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double light = StrToFloat(IRI) * 0.01;
+      double light = strtod(IRI, NULL) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
 
       if (*IRI) {
          IRI++;
-         rgb.Alpha = std::clamp(StrToFloat(IRI), 0.0, 1.0);
+         rgb.Alpha = std::clamp(strtod(IRI, NULL), 0.0, 1.0);
          while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;
@@ -1153,17 +1153,17 @@ next:
       // Rules apply as for HSL, but the conversion algorithm is different.
       auto &rgb = Painter->Colour;
       IRI += 4;
-      double hue = StrToFloat(IRI) * (1.0 / 360.0);
+      double hue = strtod(IRI, NULL) * (1.0 / 360.0);
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double sat = StrToFloat(IRI) * 0.01;
+      double sat = strtod(IRI, NULL) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double val = StrToFloat(IRI) * 0.01;
+      double val = strtod(IRI, NULL) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) {
          IRI++;
-         rgb.Alpha = std::clamp(StrToFloat(IRI), 0.0, 1.0);
+         rgb.Alpha = std::clamp(strtod(IRI, NULL), 0.0, 1.0);
          while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;

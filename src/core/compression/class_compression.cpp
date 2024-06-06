@@ -1976,7 +1976,7 @@ static ERR COMPRESSION_Scan(extCompression *Self, struct cmp::Scan *Args)
 
    LONG folder_len = 0;
    if (Args->Folder) {
-      folder_len = StrLength(Args->Folder);
+      folder_len = strlen(Args->Folder);
       if ((folder_len > 0) and (Args->Folder[folder_len-1] IS '/')) folder_len--;
    }
 

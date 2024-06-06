@@ -198,4 +198,63 @@ inline void camelcase(std::string &s) {
    return hash;
 }
 
+template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
+{
+   auto src = to_cstring(Source);
+   if ((Length > 0) and (src) and (Dest)) {
+      LONG i = 0;
+      while (*src) {
+         if (i IS Length) {
+            Dest[i-1] = 0;
+            return i;
+         }
+         Dest[i++] = *src++;
+      }
+
+      Dest[i] = 0;
+      return i;
+   }
+   else return 0;
+}
+
+// Case-sensitive keyword search
+
+[[nodiscard]] inline LONG strsearch(std::string_view Keyword, CSTRING String)
+{
+   LONG i;
+   LONG pos = 0;
+   while (String[pos]) {
+      for (i=0; Keyword[i]; i++) if (String[pos+i] != Keyword[i]) break;
+      if (!Keyword[i]) return pos;
+      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+   }
+
+   return -1;
+}
+
+// Case-insensitive keyword search
+
+[[nodiscard]] inline LONG strisearch(std::string_view Keyword, CSTRING String)
+{
+   LONG i;
+   LONG pos = 0;
+   while (String[pos]) {
+      for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
+      if (!Keyword[i]) return pos;
+      for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
+   }
+
+   return -1;
+}
+
+[[nodiscard]] inline STRING strclone(std::string_view String)
+{
+   STRING newstr;
+   if (AllocMemory(String.size()+1, MEM::STRING, (APTR *)&newstr, NULL) IS ERR::Okay) {
+      CopyMemory(String.data(), newstr, String.size()+1);
+      return newstr;
+   }
+   else return NULL;
+}
+
 } // namespace

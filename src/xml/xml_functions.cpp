@@ -90,7 +90,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       // Comments will be stripped - check if this is a comment and skip it if this is the case.
       if ((str[0] IS '!') and (str[1] IS '-') and (str[2] IS '-')) {
          LONG i;
-         if ((i = StrSearchCase("-->", str)) != -1) {
+         if ((i = pf::strsearch("-->", str)) != -1) {
             State.Pos = str + i + 3;
             return ERR::NothingDone;
          }
@@ -539,7 +539,7 @@ static ERR get_content(extXML *Self, XMLTag &Tag, STRING Buffer, LONG Size)
          if (scan.Attribs.empty()) continue; // Sanity check (there should always be at least 1 attribute)
 
          if (scan.Attribs[0].isContent()) {
-            j += StrCopy(scan.Attribs[0].Value.c_str(), Buffer+j, Size-j);
+            j += pf::strcopy(scan.Attribs[0].Value, Buffer+j, Size-j);
             if (j >= Size) return ERR::BufferOverflow;
          }
       }

@@ -498,7 +498,7 @@ static ERR SET_Path(extSVG *Self, CSTRING Value)
    if (Self->Folder) { FreeResource(Self->Folder); Self->Folder = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Path = strclone(Value))) return ERR::AllocMemory;
    }
    return ERR::Okay;
 }
@@ -535,7 +535,7 @@ static ERR SET_Statement(extSVG *Self, CSTRING Value)
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Statement = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Statement = strclone(Value))) return ERR::AllocMemory;
    }
    return ERR::Okay;
 }
@@ -595,7 +595,7 @@ where a title has been specified, it will be possible to read it from this field
 static ERR SET_Title(extSVG *Self, CSTRING Value)
 {
    if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
-   if (Value) Self->Title = StrClone(Value);
+   if (Value) Self->Title = strclone(Value);
    return ERR::Okay;
 }
 

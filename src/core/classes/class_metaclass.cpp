@@ -609,11 +609,11 @@ static ERR GET_Location(extMetaClass *Self, CSTRING *Value)
 
    if (Self->ClassID != CLASSID::NIL) {
       if (glClassDB.contains(Self->ClassID)) {
-         Self->Location = StrClone(glClassDB[Self->ClassID].Path.c_str());
+         Self->Location = strclone(glClassDB[Self->ClassID].Path);
       }
    }
    else if (glClassDB.contains(Self->BaseClassID)) {
-      Self->Location = StrClone(glClassDB[Self->BaseClassID].Path.c_str());
+      Self->Location = strclone(glClassDB[Self->BaseClassID].Path);
    }
 
    if ((*Value = Self->Location)) return ERR::Okay;

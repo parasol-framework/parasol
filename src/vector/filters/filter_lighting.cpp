@@ -863,7 +863,7 @@ static ERR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, STRING *Value)
    // TODO
    stream << "<" << type << ">";
    stream << "</" << type << ">";
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

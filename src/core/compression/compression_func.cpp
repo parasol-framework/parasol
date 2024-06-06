@@ -17,7 +17,7 @@ static void print(extCompression *Self, CSTRING Buffer)
 
    if (Self->OutputID) {
       pf::ScopedObjectLock output(Self->OutputID);
-      if (output.granted()) acDataFeed(*output, Self, DATA::TEXT, Buffer, StrLength(Buffer) + 1);
+      if (output.granted()) acDataFeed(*output, Self, DATA::TEXT, Buffer, strlen(Buffer) + 1);
    }
    else log.msg("%s", Buffer);
 }
@@ -334,7 +334,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    if (entry.Flags & ZIP_LINK) {
       // Compress the symbolic link to the zip file, rather than the data
-      len = StrLength(symlink);
+      len = strlen(symlink);
       Self->Zip.next_in   = (Bytef *)symlink;
       Self->Zip.avail_in  = len;
       Self->Zip.next_out  = Self->Output;

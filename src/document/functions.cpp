@@ -157,7 +157,7 @@ static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Scaled)
       else if ((str[0] IS 'p') and (str[1] IS 't')) { str += 2; multiplier = (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
       else if ((str[0] IS 'p') and (str[1] IS 'c')) { str += 2; multiplier = (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
 
-      Output = StrToFloat(v) * multiplier;
+      Output = strtod(v, NULL) * multiplier;
    }
    else Output = 0;
 

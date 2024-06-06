@@ -150,7 +150,7 @@ static ERR FLOODFX_GET_XMLDef(extFloodFX *Self, STRING *Value)
 
    stream << "<feFlood opacity=\"" << Self->Opacity << "\"/>";
 
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

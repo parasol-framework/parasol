@@ -614,7 +614,7 @@ static ERR CONVOLVEFX_GET_XMLDef(extConvolveFX *Self, STRING *Value)
 
    stream << "feConvolveMatrix";
 
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

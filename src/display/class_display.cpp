@@ -223,38 +223,26 @@ static ERR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
       struct WinDT *data;
       LONG total_items;
       if (!winGetData(request->Preference, &data, &total_items)) {
-         LONG xmlsize = 100; // Receipt header and tail
-
+         std::ostringstream xml;
+         xml << "<receipt totalitems=\"" << total_items << "\" id=\"" << request->Item << "\">";
          for (LONG i=0; i < total_items; i++) {
-            if (DATA(data[i].Datatype) IS DATA::FILE) xmlsize += 30 + data[i].Length;
-            else if (DATA(data[i].Datatype) IS DATA::TEXT) xmlsize += 30 + data[i].Length;
-         }
-
-         STRING xml;
-         if (AllocMemory(xmlsize, MEM::STRING|MEM::NO_CLEAR, &xml) IS ERR::Okay) {
-            LONG pos = snprintf(xml, xmlsize, "<receipt totalitems=\"%d\" id=\"%d\">", total_items, request->Item);
-
-            for (LONG i=0; i < total_items; i++) {
-               if (DATA(data[i].Datatype) IS DATA::FILE) {
-                  pos += snprintf(xml+pos, xmlsize-pos, "<file path=\"%s\"/>", (STRING)data[i].Data);
-               }
-               else if (DATA(data[i].Datatype) IS DATA::TEXT) {
-                  pos += snprintf(xml+pos, xmlsize-pos, "<text>%s</text>", (STRING)data[i].Data);
-               }
-               //else TODO: other types like images need their data saved to disk and referenced as a path, e.g. <image path="clipboard:abc.001"/>
+            if (DATA(data[i].Datatype) IS DATA::FILE) {
+               xml << "<file path=\"" << (CSTRING)data[i].Data << "\"/>";
             }
-            pos += StrCopy("</receipt>", xml+pos, xmlsize-pos);
-
-            struct acDataFeed dc;
-            dc.Object   = Self;
-            dc.Datatype = DATA::RECEIPT;
-            dc.Buffer   = xml;
-            dc.Size     = pos+1;
-            Action(AC_DataFeed, Args->Object, &dc);
-
-            FreeResource(xml);
+            else if (DATA(data[i].Datatype) IS DATA::TEXT) {
+               xml << "<text>" << (CSTRING)data[i].Data << "</text>";
+            }
+            //else TODO: other types like images need their data saved to disk and referenced as a path, e.g. <image path="clipboard:abc.001"/>
          }
-         else return log.warning(ERR::AllocMemory);
+         xml << "</receipt>";
+
+         struct acDataFeed dc;
+         auto result = xml.str();
+         dc.Object   = Self;
+         dc.Datatype = DATA::RECEIPT;
+         dc.Buffer   = pf::strclone(result);
+         dc.Size     = result.size() + 1;
+         Action(AC_DataFeed, Args->Object, &dc);
       }
       else return log.warning(ERR::NoSupport);
       #endif
@@ -417,19 +405,15 @@ GetKey: Retrieve formatted information from the display.
 static ERR DISPLAY_GetKey(extDisplay *Self, struct acGetKey *Args)
 {
    pf::Log log;
-   ULONG colours;
 
-   if (!Args) return log.warning(ERR::NullArgs);
-   if ((!Args->Key) or (!Args->Value) or (Args->Size < 1)) return log.warning(ERR::Args);
-
-   STRING buffer = Args->Value;
-   buffer[0] = 0;
+   if ((!Args) or (!Args->Key) or (!Args->Value)) return log.warning(ERR::NullArgs);
+   if (Args->Size < 1) return log.warning(ERR::Args);
 
    if (pf::startswith("resolution(", Args->Key)) {
       // Field is in the format:  Resolution(Index, Format) Where 'Format' contains % symbols to indicate variable references.
 
       CSTRING str = Args->Key + 11;
-      LONG index = StrToInt(str);
+      LONG index = strtol(str, NULL, 0);
       while ((*str) and (*str != ')') and (*str != ',')) str++;
       if (*str IS ',') str++;
       while ((*str) and (*str <= 0x20)) str++;
@@ -437,34 +421,28 @@ static ERR DISPLAY_GetKey(extDisplay *Self, struct acGetKey *Args)
       if (Self->Resolutions.empty()) get_resolutions(Self);
 
       if (!Self->Resolutions.empty()) {
-         if (index >= LONG(Self->Resolutions.size())) return ERR::OutOfRange;
+         if (index >= std::ssize(Self->Resolutions)) return ERR::OutOfRange;
 
-         LONG i = 0;
-         while ((*str) and (*str != ')') and (i < Args->Size-1)) {
-            if (*str != '%') {
-               buffer[i++] = *str++;
-               continue;
+         std::ostringstream out;
+         while ((*str) and (*str != ')')) {
+            if (*str != '%') out << *str++;
+            else if (str[1] IS '%') { // Escape?
+               out << '%';
+               str += 2;
             }
-
-            if (str[1] IS '%') {
-               buffer[i++] = '%';
-               continue;
+            else {
+               switch (str[1]) {
+                  case 'w': out << Self->Resolutions[index].width; break;
+                  case 'h': out << Self->Resolutions[index].height; break;
+                  case 'd': out << Self->Resolutions[index].bpp; break;
+                  case 'c': if (Self->Resolutions[index].bpp <= 24) out << (1<<Self->Resolutions[index].bpp);
+                            else out << (1<<24);
+                            break;
+               }
+               str += 2;
             }
-
-            str++;
-
-            switch (*str) {
-               case 'w': i += IntToStr(Self->Resolutions[index].width, buffer+i, Args->Size-i); break;
-               case 'h': i += IntToStr(Self->Resolutions[index].height, buffer+i, Args->Size-i); break;
-               case 'd': i += IntToStr(Self->Resolutions[index].bpp, buffer+i, Args->Size-i); break;
-               case 'c': if (Self->Resolutions[index].bpp <= 24) colours = 1<<Self->Resolutions[index].bpp;
-                         else colours = 1<<24;
-                         i += IntToStr(colours, buffer+i, Args->Size-i);
-                         break;
-            }
-            str++;
          }
-         buffer[i] = 0;
+         pf::strcopy(out.str(), Args->Value, Args->Size);
 
          return ERR::Okay;
       }
@@ -1104,35 +1082,35 @@ static ERR DISPLAY_NewObject(extDisplay *Self)
 
    #ifdef __xwindows__
 
-      StrCopy("X11", Self->Chipset, sizeof(Self->Chipset));
-      StrCopy("X Windows", Self->Display, sizeof(Self->Display));
-      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+      strcopy("X11", Self->Chipset, sizeof(Self->Chipset));
+      strcopy("X Windows", Self->Display, sizeof(Self->Display));
+      strcopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      strcopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
 
    #elif _WIN32
 
-      StrCopy("Windows", Self->Chipset, sizeof(Self->Chipset));
-      StrCopy("Windows", Self->Display, sizeof(Self->Display));
-      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+      strcopy("Windows", Self->Chipset, sizeof(Self->Chipset));
+      strcopy("Windows", Self->Display, sizeof(Self->Display));
+      strcopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      strcopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
 
    #elif _GLES_
 
-      StrCopy("OpenGLES", Self->Chipset, sizeof(Self->Chipset));
-      StrCopy("OpenGL", Self->Display, sizeof(Self->Display));
-      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+      strcopy("OpenGLES", Self->Chipset, sizeof(Self->Chipset));
+      strcopy("OpenGL", Self->Display, sizeof(Self->Display));
+      strcopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      strcopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
 
    #else
 
-      StrCopy("Unknown", Self->CertificationDate, sizeof(Self->CertificationDate));
-      StrCopy("Unknown", Self->Chipset, sizeof(Self->Chipset));
-      StrCopy("Unknown", Self->Display, sizeof(Self->Display));
-      StrCopy("Unknown", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-      StrCopy("Unknown", Self->DriverCopyright, sizeof(Self->DriverCopyright));
-      StrCopy("Unknown", Self->DriverVendor, sizeof(Self->DriverVendor));
-      StrCopy("Unknown", Self->DriverVersion, sizeof(Self->DriverVersion));
-      StrCopy("Unknown", Self->Manufacturer, sizeof(Self->Manufacturer));
+      strcopy("Unknown", Self->CertificationDate, sizeof(Self->CertificationDate));
+      strcopy("Unknown", Self->Chipset, sizeof(Self->Chipset));
+      strcopy("Unknown", Self->Display, sizeof(Self->Display));
+      strcopy("Unknown", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      strcopy("Unknown", Self->DriverCopyright, sizeof(Self->DriverCopyright));
+      strcopy("Unknown", Self->DriverVendor, sizeof(Self->DriverVendor));
+      strcopy("Unknown", Self->DriverVersion, sizeof(Self->DriverVersion));
+      strcopy("Unknown", Self->Manufacturer, sizeof(Self->Manufacturer));
 
    #endif
 
@@ -1337,13 +1315,13 @@ static ERR DISPLAY_SaveSettings(extDisplay *Self)
          LONG x, y, width, height, maximise;
 
          if (winGetWindowInfo(Self->WindowHandle, &x, &y, &width, &height, &maximise)) {
-            config->write("DISPLAY", "WindowWidth", width);
-            config->write("DISPLAY", "WindowHeight", height);
-            config->write("DISPLAY", "WindowX", x);
-            config->write("DISPLAY", "WindowY", y);
-            config->write("DISPLAY", "Maximise", maximise);
+            config->write("DISPLAY", "WindowWidth", std::to_string(width));
+            config->write("DISPLAY", "WindowHeight", std::to_string(height));
+            config->write("DISPLAY", "WindowX", std::to_string(x));
+            config->write("DISPLAY", "WindowY", std::to_string(y));
+            config->write("DISPLAY", "Maximise", std::to_string(maximise));
             config->write("DISPLAY", "DPMS", dpms_name(Self->PowerMode));
-            config->write("DISPLAY", "FullScreen", ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0);
+            config->write("DISPLAY", "FullScreen", ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? "1" : "0");
             acSaveSettings(*config);
          }
       }
@@ -2037,7 +2015,7 @@ ERR GET_HDensity(extDisplay *Self, LONG *Value)
       if (style.granted()) {
          char strdpi[32];
          if (acGetKey(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi)) IS ERR::Okay) {
-            *Value = StrToInt(strdpi);
+            *Value = strtol(strdpi, NULL, 0);
             Self->HDensity = *Value; // Store for future use.
             if (!Self->VDensity) Self->VDensity = Self->HDensity;
          }
@@ -2107,7 +2085,7 @@ ERR GET_VDensity(extDisplay *Self, LONG *Value)
       if (style.granted()) {
          char strdpi[32];
          if (acGetKey(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi)) IS ERR::Okay) {
-            *Value = StrToInt(strdpi);
+            *Value = strtol(strdpi, NULL, 0);
             Self->VDensity = *Value;
             if (!Self->HDensity) Self->HDensity = Self->VDensity;
          }
@@ -2774,8 +2752,8 @@ static ERR GET_Title(extDisplay *Self, CSTRING *Value)
 
    buffer[0] = 0;
    winGetWindowTitle(Self->WindowHandle, buffer, sizeof(buffer));
-   if (AllocMemory(StrLength(buffer) + 1, MEM::STRING|MEM::UNTRACKED, &str) IS ERR::Okay) {
-      StrCopy(buffer, str);
+   if (AllocMemory(strlen(buffer) + 1, MEM::STRING|MEM::UNTRACKED, &str) IS ERR::Okay) {
+      strcopy(buffer, str);
       if (glWindowTitle) FreeResource(glWindowTitle);
       glWindowTitle = str;
       *Value = glWindowTitle;

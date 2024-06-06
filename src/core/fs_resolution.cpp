@@ -83,7 +83,7 @@ ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
    }
 
    if (startswith("string:", Path)) {
-      if ((*Result = StrClone(Path))) return ERR::Okay;
+      if ((*Result = strclone(Path))) return ERR::Okay;
       else return log.warning(ERR::AllocMemory);
    }
 
@@ -98,7 +98,7 @@ ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
          src[0] = Path[0];
          src[1] = ':';
          src[2] = '\\';
-         StrCopy(Path+2, src+3, sizeof(src)-3);
+         strcopy(Path+2, src+3, sizeof(src)-3);
          Path = src;
       }
    }
@@ -123,23 +123,23 @@ ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
 
    if (resolved) {
       if ((Flags & RSF::APPROXIMATE) != RSF::NIL) {
-         StrCopy(Path, dest, sizeof(dest));
+         strcopy(Path, dest, sizeof(dest));
          if (test_path(dest, RSF::APPROXIMATE) IS ERR::Okay) Path = dest;
          else return ERR::FileNotFound;
       }
       else if ((Flags & RSF::NO_FILE_CHECK) IS RSF::NIL) {
-         StrCopy(Path, dest, sizeof(dest));
+         strcopy(Path, dest, sizeof(dest));
          if (test_path(dest, RSF::NIL) IS ERR::Okay) Path = dest;
          else return ERR::FileNotFound;
       }
 
       if (!Result) return ERR::Okay;
       else if ((*Result = cleaned_path(Path))) return ERR::Okay;
-      else if ((*Result = StrClone(Path))) return ERR::Okay;
+      else if ((*Result = strclone(Path))) return ERR::Okay;
       else return log.warning(ERR::AllocMemory);
    }
 
-   StrCopy(Path, src, sizeof(src)); // Copy the Path parameter to our internal buffer
+   strcopy(Path, src, sizeof(src)); // Copy the Path parameter to our internal buffer
 
    // Keep looping until the volume is resolved
 
@@ -160,7 +160,7 @@ ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
                if (test_path(dest, RSF::APPROXIMATE) != ERR::Okay) error = ERR::FileNotFound;
             }
 
-            if (!(*Result = StrClone(dest))) error = ERR::AllocMemory;
+            if (!(*Result = strclone(dest))) error = ERR::AllocMemory;
          }
 
          break;
@@ -185,7 +185,7 @@ ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
             // Copy the destination to the source buffer and repeat the resolution process.
 
             if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) return ERR::Failed;
-            StrCopy(dest, src, sizeof(src));
+            strcopy(dest, src, sizeof(src));
             continue; // Keep resolving
          }
       }
@@ -195,7 +195,7 @@ resolved_path:
 #endif
       if (Result) {
          if (!(*Result = cleaned_path(dest))) {
-            if (!(*Result = StrClone(dest))) error = ERR::AllocMemory;
+            if (!(*Result = strclone(dest))) error = ERR::AllocMemory;
          }
       }
 
@@ -231,7 +231,7 @@ static ERR resolve_path_env(CSTRING RelativePath, STRING *Result)
          }
          if ((k > 0) and (src[k-1] != '/')) src[k++] = '/';
 
-         StrCopy(RelativePath, src+k, sizeof(src)-k);
+         strcopy(RelativePath, src+k, sizeof(src)-k);
 
          if (!stat64(src, &info)) {
             if (!S_ISDIR(info.st_mode)) { // Successfully identified file location
@@ -271,7 +271,7 @@ static ERR resolve_path_env(CSTRING RelativePath, STRING *Result)
          j += k;
          if ((k > 0) and (src[k-1] != '/')) src[k++] = '/';
 
-         StrCopy(RelativePath, src+k, sizeof(src)-k);
+         strcopy(RelativePath, src+k, sizeof(src)-k);
 
          if (!stat64(src, &info)) {
             if (!S_ISDIR(info.st_mode)) { // Successfully identified file location
@@ -310,7 +310,7 @@ static ERR resolve(STRING Source, STRING Dest, RSF Flags)
    ERR error;
 
    if (get_virtual(Source)) {
-      StrCopy(Source, Dest);
+      strcopy(Source, Dest);
       return ERR::VirtualVolume;
    }
 
@@ -323,7 +323,7 @@ static ERR resolve(STRING Source, STRING Dest, RSF Flags)
 
    if (auto lock = std::unique_lock{glmVolumes, 2s}) {
       if (glVolumes.contains(Source)) {
-         StrCopy(glVolumes[Source]["Path"], fullpath, sizeof(fullpath));
+         strcopy(glVolumes[Source]["Path"], fullpath, sizeof(fullpath));
       }
       else fullpath[0] = 0;
    }
@@ -349,7 +349,7 @@ static ERR resolve(STRING Source, STRING Dest, RSF Flags)
    // The loaded code should replace the volume with the correct information for discovery on the next resolution phase.
 
    if (!strncmp("EXT:", path, 4)) {
-      StrCopy(Source, Dest, MAX_FILENAME); // Return an exact duplicate of the original source string
+      strcopy(Source, Dest, MAX_FILENAME); // Return an exact duplicate of the original source string
 
       if (get_virtual(Source)) {
          return ERR::VirtualVolume;
@@ -478,7 +478,7 @@ static ERR resolve_object_path(STRING Path, STRING Source, STRING Dest, LONG Pat
    }
 
    if (error IS ERR::VirtualVolume) { // Return an exact duplicate of the original source string
-      StrCopy(Source, Dest);
+      strcopy(Source, Dest);
       return ERR::VirtualVolume;
    }
    else if (error != ERR::Okay) return log.warning(error);

@@ -39,6 +39,7 @@ rendered image size.
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
+#include <parasol/strings.hpp>
 #include "../link/linear_rgb.h"
 
 #include "picture.h"
@@ -864,7 +865,7 @@ static ERR GET_Author(extPicture *Self, STRING *Value)
 
 static ERR SET_Author(extPicture *Self, CSTRING Value)
 {
-   if (Value) StrCopy(Value, Self->prvAuthor, sizeof(Self->prvAuthor));
+   if (Value) strcopy(Value, Self->prvAuthor, sizeof(Self->prvAuthor));
    else Self->prvAuthor[0] = 0;
    return ERR::Okay;
 }
@@ -896,7 +897,7 @@ static ERR GET_Copyright(extPicture *Self, STRING *Value)
 
 static ERR SET_Copyright(extPicture *Self, CSTRING Value)
 {
-   if (Value) StrCopy(Value, Self->prvCopyright, sizeof(Self->prvCopyright));
+   if (Value) strcopy(Value, Self->prvCopyright, sizeof(Self->prvCopyright));
    else Self->prvCopyright[0] = 0;
    return ERR::Okay;
 }
@@ -929,7 +930,7 @@ static ERR SET_Description(extPicture *Self, CSTRING Value)
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->prvDescription = StrClone(Value))) return log.warning(ERR::AllocMemory);
+      if (!(Self->prvDescription = pf::strclone(Value))) return log.warning(ERR::AllocMemory);
    }
    return ERR::Okay;
 }
@@ -961,7 +962,7 @@ static ERR SET_Disclaimer(extPicture *Self, CSTRING Value)
    if (Self->prvDisclaimer) { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->prvDisclaimer = StrClone(Value))) return log.warning(ERR::AllocMemory);
+      if (!(Self->prvDisclaimer = pf::strclone(Value))) return log.warning(ERR::AllocMemory);
    }
    return ERR::Okay;
 }
@@ -1035,7 +1036,7 @@ static ERR SET_Path(extPicture *Self, CSTRING Value)
    if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->prvPath = StrClone(Value))) return log.warning(ERR::AllocMemory);
+      if (!(Self->prvPath = pf::strclone(Value))) return log.warning(ERR::AllocMemory);
    }
    return ERR::Okay;
 }
@@ -1074,7 +1075,7 @@ static ERR GET_Software(extPicture *Self, STRING *Value)
 
 static ERR SET_Software(extPicture *Self, CSTRING Value)
 {
-   if (Value) StrCopy(Value, Self->prvSoftware, sizeof(Self->prvSoftware));
+   if (Value) strcopy(Value, Self->prvSoftware, sizeof(Self->prvSoftware));
    else Self->prvSoftware[0] = 0;
    return ERR::Okay;
 }
@@ -1093,7 +1094,7 @@ static ERR GET_Title(extPicture *Self, STRING *Value)
 
 static ERR SET_Title(extPicture *Self, CSTRING Value)
 {
-   if (Value) StrCopy(Value, Self->prvTitle, sizeof(Self->prvTitle));
+   if (Value) strcopy(Value, Self->prvTitle, sizeof(Self->prvTitle));
    else Self->prvTitle[0] = 0;
    return ERR::Okay;
 }

@@ -1388,7 +1388,7 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 
    CSTRING next;
    if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
-      Self->FillString = StrClone(Value);
+      Self->FillString = strclone(Value);
 
       if (next) {
          vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
@@ -1506,7 +1506,7 @@ static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 
    if (!Self->Scene) { // Vector is not yet initialised, so store the filter string for later.
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
-      Self->FilterString = StrClone(Value);
+      Self->FilterString = strclone(Value);
       return ERR::Okay;
    }
 
@@ -1518,7 +1518,7 @@ static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 
    if (def->Class->BaseClassID IS CLASSID::VECTORFILTER) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
-      Self->FilterString = StrClone(Value);
+      Self->FilterString = strclone(Value);
       Self->Filter = (extVectorFilter *)def;
       return ERR::Okay;
    }
@@ -1568,7 +1568,7 @@ static ERR VECTOR_SET_ID(extVector *Self, CSTRING Value)
    if (Self->ID) FreeResource(Self->ID);
 
    if (Value) {
-      Self->ID = StrClone(Value);
+      Self->ID = strclone(Value);
       Self->NumericID = strhash(Value);
    }
    else {
@@ -2148,7 +2148,7 @@ static ERR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    auto out = seq.str();
    if (out.length() > 0) {
-      *Value = StrClone(out.c_str());
+      *Value = strclone(out);
       return ERR::Okay;
    }
    else return ERR::NoData;
@@ -2173,7 +2173,7 @@ static ERR VECTOR_GET_Stroke(extVector *Self, CSTRING *Value)
 static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
-   Self->StrokeString = StrClone(Value);
+   Self->StrokeString = strclone(Value);
    vec::ReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
    Self->Stroked = Self->is_stroked();
    return ERR::Okay;

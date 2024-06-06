@@ -114,7 +114,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 static ERR MERGEFX_GET_XMLDef(extMergeFX *Self, STRING *Value)
 {
-   *Value = StrClone("feMerge");
+   *Value = strclone("feMerge");
    return ERR::Okay;
 }
 

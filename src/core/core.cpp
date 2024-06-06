@@ -323,7 +323,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
             glDebugMemory = true;
          }
          else if (startswith("gfx-driver=", arg)) {
-            StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
+            glDisplayDriver.assign(arg+11);            
          }
          else if ((iequals(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);

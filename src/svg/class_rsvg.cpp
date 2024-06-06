@@ -49,7 +49,7 @@ static ERR RSVG_Init(extPicture *Self)
 
    if (wildcmp("*.svg|*.svgz", path));
    else if (Self->getPtr(FID_Header, &buffer) IS ERR::Okay) {
-      if (StrSearch("<svg", buffer) >= 0) {
+      if (strisearch("<svg", buffer) >= 0) {
       }
       else return ERR::NoSupport;
    }

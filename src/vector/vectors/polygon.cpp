@@ -96,10 +96,10 @@ static ERR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCoun
          for (LONG pos=0; (Value[pos]) and (point < points);) {
             if (((Value[pos] >= '0') and (Value[pos] <= '9')) or (Value[pos] IS '-') or (Value[pos] IS '+')) {
                if (!(index & 0x1)) {
-                  Array[0][point].X = StrToFloat(Value + pos);
+                  Array[0][point].X = strtod(Value + pos, NULL);
                }
                else {
-                  Array[0][point].Y = StrToFloat(Value + pos);
+                  Array[0][point].Y = strtod(Value + pos, NULL);
                   point++;
                }
                index++;

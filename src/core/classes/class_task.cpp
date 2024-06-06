@@ -1235,7 +1235,6 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 #ifdef _WIN32
 
    #define ENV_SIZE 4096
-   LONG len;
 
    Args->Value = NULL;
 
@@ -1248,9 +1247,9 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
    }
 
    if (Args->Name[0] IS '\\') {
-      struct {
+      struct key {
          ULONG ID;
-         CSTRING HKey;
+         std::string_view HKey;
       } keys[] = {
          { HKEY_LOCAL_MACHINE,  "\\HKEY_LOCAL_MACHINE\\" },
          { HKEY_CURRENT_USER,   "\\HKEY_CURRENT_USER\\" },
@@ -1258,58 +1257,53 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
          { HKEY_USERS,          "\\HKEY_USERS\\" }
       };
 
-      for (LONG ki=0; ki < std::ssize(keys); ki++) {
-         if (startswith(keys[ki].HKey, Args->Name)) {
-            CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
-            len = StrLength(str); // End of string
+      std::string full_path(Args->Name);
+      for (auto &key : keys) {
+         if (!full_path.starts_with(key.HKey)) continue;
 
-            while (len > 0) {
-               if (str[len] IS '\\') break;
-               len--;
-            }
+         auto sep = full_path.find_last_of('\\');
+         if (sep IS std::string::npos) return log.warning(ERR::Syntax);
 
-            if (len > 0) {
-               std::string path(str, len);
+         std::string folder = full_path.substr(key.HKey.size(), sep - key.HKey.size() + 1);
 
-               APTR keyhandle;
-               if (!RegOpenKeyExA(keys[ki].ID, path.c_str(), 0, KEY_READ, &keyhandle)) {
-                  LONG type;
-                  LONG envlen = ENV_SIZE;
-                  if (!RegQueryValueExA(keyhandle, str+len+1, 0, &type, Self->Env, &envlen)) {
-                     // Numerical registry types can be converted into strings
+         APTR keyhandle;
+         if (!RegOpenKeyExA(key.ID, folder.c_str(), 0, KEY_READ, &keyhandle)) {
+            LONG type;
+            LONG envlen = ENV_SIZE;
+            std::string name = full_path.substr(sep+1);
+            if (!RegQueryValueExA(keyhandle, name.c_str(), 0, &type, Self->Env, &envlen)) {
+               // Numerical registry types can be converted into strings
 
-                     switch(type) {
-                        case REG_DWORD:
-                           snprintf(Self->Env, ENV_SIZE, "%d", ((LONG *)Self->Env)[0]);
-                           break;
-                        case REG_DWORD_BIG_ENDIAN: {
-                           if constexpr (std::endian::native == std::endian::little) {
-                              StrCopy(std::to_string(reverse_long(((LONG *)Self->Env)[0])).c_str(), Self->Env, ENV_SIZE);
-                           }
-                           else {
-                              StrCopy(std::to_string(((LONG *)Self->Env)[0]).c_str(), Self->Env, ENV_SIZE);
-                           }
-                           break;
-                        }
-                        case REG_QWORD:
-                           IntToStr(((LARGE *)Self->Env)[0], Self->Env, ENV_SIZE);
-                           break;
+               switch(type) {
+                  case REG_DWORD:
+                     snprintf(Self->Env, ENV_SIZE, "%d", ((LONG *)Self->Env)[0]);
+                     break;
+                  case REG_DWORD_BIG_ENDIAN: {
+                     if constexpr (std::endian::native == std::endian::little) {
+                        strcopy(std::to_string(reverse_long(((LONG *)Self->Env)[0])), Self->Env, ENV_SIZE);
                      }
-
-                     Args->Value = Self->Env;
+                     else {
+                        strcopy(std::to_string(((LONG *)Self->Env)[0]), Self->Env, ENV_SIZE);
+                     }
+                     break;
                   }
-                  winCloseHandle(keyhandle);
+                  case REG_QWORD:
+                     strcopy(std::to_string(((LARGE *)Self->Env)[0]), Self->Env, ENV_SIZE);
+                     break;
                }
 
-               if (Args->Value) return ERR::Okay;
-               else return ERR::DoesNotExist;
+               Args->Value = Self->Env;
             }
-            else return log.warning(ERR::Syntax);
+            winCloseHandle(keyhandle);
+
+            if (Args->Value) return ERR::Okay;
+            else return ERR::DoesNotExist;
          }
+         else return ERR::DoesNotExist;
       }
    }
 
-   len = winGetEnv(Args->Name, Self->Env, ENV_SIZE);
+   auto len = winGetEnv(Args->Name, Self->Env, ENV_SIZE);
    if (!len) return ERR::DoesNotExist;
    if (len >= ENV_SIZE) return log.warning(ERR::BufferOverflow);
 
@@ -1370,7 +1364,7 @@ static ERR TASK_Init(extTask *Self)
       LONG i;
       char buffer[300];
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
-         LONG len = StrLength(buffer);
+         LONG len = strlen(buffer);
          while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
          if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, NULL) IS ERR::Okay) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
@@ -1571,9 +1565,9 @@ static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
 
       for (ki=0; ki < std::ssize(keys); ki++) {
          if (startswith(keys[ki].HKey, Args->Name)) {
-            CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
+            CSTRING str = Args->Name + strlen(keys[ki].HKey); // str = Parasol\Something
 
-            for (len=StrLength(str); (len > 0) and (str[len] != '\\'); len--);
+            for (len=strlen(str); (len > 0) and (str[len] != '\\'); len--);
 
             if (len > 0) {
                std::string path(str, len);
@@ -1585,23 +1579,23 @@ static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
 
                      switch(type) {
                         case REG_DWORD: {
-                           LONG int32 = StrToInt(Args->Value);
+                           LONG int32 = strtol(Args->Value, NULL, 0);
                            RegSetValueExA(keyhandle, str+len+1, 0, REG_DWORD, &int32, sizeof(int32));
                            break;
                         }
 
                         case REG_QWORD: {
-                           LARGE int64 = StrToInt(Args->Value);
+                           LARGE int64 = strtoll(Args->Value, NULL, 0);
                            RegSetValueExA(keyhandle, str+len+1, 0, REG_QWORD, &int64, sizeof(int64));
                            break;
                         }
 
                         default: {
-                           RegSetValueExA(keyhandle, str+len+1, 0, REG_SZ, Args->Value, StrLength(Args->Value)+1);
+                           RegSetValueExA(keyhandle, str+len+1, 0, REG_SZ, Args->Value, strlen(Args->Value)+1);
                         }
                      }
                   }
-                  else RegSetValueExA(keyhandle, str+len+1, 0, REG_SZ, Args->Value, StrLength(Args->Value)+1);
+                  else RegSetValueExA(keyhandle, str+len+1, 0, REG_SZ, Args->Value, strlen(Args->Value)+1);
 
                   winCloseHandle(keyhandle);
                }
@@ -1987,7 +1981,7 @@ static ERR GET_Name(extTask *Self, STRING *Value)
 
 static ERR SET_Name(extTask *Self, CSTRING Value)
 {
-   StrCopy(Value, Self->Name, sizeof(Self->Name));
+   strcopy(Value, Self->Name, sizeof(Self->Name));
    return ERR::Okay;
 }
 
@@ -2064,7 +2058,7 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
 
    ERR error = ERR::Okay;
    if ((Value) and (*Value)) {
-      LONG len = StrLength(Value);
+      LONG len = strlen(Value);
       while ((len > 1) and (Value[len-1] != '/') and (Value[len-1] != '\\') and (Value[len-1] != ':')) len--;
       if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&new_path, NULL) IS ERR::Okay) {
          CopyMemory(Value, new_path, len);

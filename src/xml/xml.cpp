@@ -444,7 +444,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 
    if (pf::startswith("count:", field)) {
       if (Self->count(field+6, &count) IS ERR::Okay) {
-         Args->Value[IntToStr(count, Args->Value, Args->Size)] = 0;
+         Args->Value[pf::strcopy(std::to_string(count), Args->Value, Args->Size)] = 0;
          return ERR::Okay;
       }
       else return ERR::Failed;
@@ -504,7 +504,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
       if (!Self->Attrib.empty()) { // Extract attribute value
          for (auto &scan : Self->Cursor->Attribs) {
             if (pf::iequals(scan.Name, Self->Attrib)) {
-               StrCopy(scan.Value, Args->Value, Args->Size);
+               pf::strcopy(scan.Value, Args->Value, Args->Size);
                return ERR::Okay;
             }
          }
@@ -527,7 +527,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
             STRING str;
             ERR error = Self->serialise(Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
             if (error IS ERR::Okay) {
-               StrCopy(str, Args->Value, Args->Size);
+               pf::strcopy(str, Args->Value, Args->Size);
                FreeResource(str);
             }
 
@@ -537,7 +537,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
             if (!Self->Cursor->Children.empty()) {
                LONG j = 0;
                for (auto &scan : Self->Cursor->Children) {
-                  if (!scan.Attribs[0].isContent()) j += StrCopy(scan.Attribs[0].Value, Args->Value+j, Args->Size-j);
+                  if (!scan.Attribs[0].isContent()) j += pf::strcopy(scan.Attribs[0].Value, Args->Value+j, Args->Size-j);
                }
                if (j >= Args->Size-1) log.warning(ERR::BufferOverflow);
             }
@@ -659,7 +659,7 @@ static ERR XML_Serialise(extXML *Self, struct xml::Serialise *Args)
    else serialise_xml(*tag, buffer, Args->Flags);
 
    pf::SwitchContext ctx(GetParentContext());
-   if ((Args->Result = StrClone(buffer.str().c_str()))) return ERR::Okay;
+   if ((Args->Result = pf::strclone(buffer.str()))) return ERR::Okay;
    else return log.warning(ERR::AllocMemory);
 }
 
@@ -1181,11 +1181,9 @@ static ERR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 
    log.traceBranch("To: %d", Args->Dest->UID);
 
-   ERR error;
    STRING str;
-   if ((error = Self->serialise(0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str)) IS ERR::Okay) {
-      struct acWrite write = { str, StrLength(str) };
-      if (Action(AC_Write, Args->Dest, &write) != ERR::Okay) error = ERR::Write;
+   if (auto error = Self->serialise(0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str); error IS ERR::Okay) {
+      if (acWrite(Args->Dest, str, strlen(str), NULL) != ERR::Okay) error = ERR::Write;
       FreeResource(str);
       return error;
    }
@@ -1535,7 +1533,7 @@ static ERR SET_Path(extXML *Self, CSTRING Value)
       return SET_Statement(Self, Value+7);
    }
    else if ((Value) and (*Value)) {
-      if ((Self->Path = StrClone(Value))) {
+      if ((Self->Path = pf::strclone(Value))) {
          if (Self->initialised()) {
             parse_source(Self);
             return Self->ParseError;
@@ -1639,7 +1637,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
 
    if (!Self->initialised()) {
       if (Self->Statement) {
-         *Value = StrClone(Self->Statement);
+         *Value = pf::strclone(Self->Statement);
          return ERR::Okay;
       }
       else return ERR::FieldNotSet;
@@ -1661,7 +1659,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
    }
    else return log.warning(ERR::NotFound);
 
-   if ((*Value = StrClone(buffer.str().c_str()))) {
+   if ((*Value = pf::strclone(buffer.str()))) {
       return ERR::Okay;
    }
    else return ERR::AllocMemory;
@@ -1679,13 +1677,13 @@ static ERR SET_Statement(extXML *Self, CSTRING Value)
          Self->ParseError = txt_to_xml(Self, Self->Tags, Value);
          return Self->ParseError;
       }
-      else if ((Self->Statement = StrClone(Value))) return ERR::Okay;
+      else if ((Self->Statement = pf::strclone(Value))) return ERR::Okay;
       else return ERR::AllocMemory;
    }
    else {
       if (Self->initialised()) {
          auto temp = Self->ReadOnly;
-         Self->ReadOnly = FALSE;
+         Self->ReadOnly = false;
          acClear(Self);
          Self->ReadOnly = temp;
       }

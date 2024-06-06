@@ -91,11 +91,11 @@ void svgState::applyTag(XMLTag &Tag) noexcept
             m_stroke = val;
             if (!m_stroke_width) m_stroke_width = 1;
             break;
-         case SVF_STROKE_WIDTH: m_stroke_width = StrToFloat(val); break;
+         case SVF_STROKE_WIDTH: m_stroke_width = strtod(val.c_str(), NULL); break;
          case SVF_FONT_FAMILY:  m_font_family = val; break;
          case SVF_FONT_SIZE:    m_font_size = val; break;
          case SVF_FONT_WEIGHT: {
-            m_font_weight = StrToFloat(val);
+            m_font_weight = strtod(val.c_str(), NULL);
             if (!m_font_weight) {
                switch(strihash(val)) {
                   case SVF_NORMAL:  m_font_weight = 400; break;
@@ -110,8 +110,8 @@ void svgState::applyTag(XMLTag &Tag) noexcept
             }
             break;
          }
-         case SVF_FILL_OPACITY: m_fill_opacity = StrToFloat(val); break;
-         case SVF_OPACITY:      m_opacity = StrToFloat(val); break;
+         case SVF_FILL_OPACITY: m_fill_opacity = strtod(val.c_str(), NULL); break;
+         case SVF_OPACITY:      m_opacity = strtod(val.c_str(), NULL); break;
          case SVF_SHAPE_RENDERING: m_path_quality = shape_rendering_to_render_quality(val); break;
       }
    }
@@ -410,8 +410,8 @@ static ERR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
       if (val.empty()) continue;
 
       switch(strihash(Tag.Attribs[a].Name)) {
-         case SVF_DX: fx->set(FID_XOffset, StrToInt(val)); break;
-         case SVF_DY: fx->set(FID_YOffset, StrToInt(val)); break;
+         case SVF_DX: fx->set(FID_XOffset, strtol(val.c_str(), NULL, 0)); break;
+         case SVF_DY: fx->set(FID_YOffset, strtol(val.c_str(), NULL, 0)); break;
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: result_name = val; break;
       }
@@ -629,9 +629,9 @@ static ERR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, XMLTa
             break;
          }
 
-         case SVF_TARGETX: fx->set(FID_TargetX, StrToInt(val)); break;
+         case SVF_TARGETX: fx->set(FID_TargetX, strtol(val.c_str(), NULL, 0)); break;
 
-         case SVF_TARGETY: fx->set(FID_TargetY, StrToInt(val)); break;
+         case SVF_TARGETY: fx->set(FID_TargetY, strtol(val.c_str(), NULL, 0)); break;
 
          case SVF_EDGEMODE:
             if (iequals("duplicate", val)) fx->set(FID_EdgeMode, LONG(EM::DUPLICATE));
@@ -737,8 +737,8 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             switch(strihash(child.Attribs[a].Name)) {
-               case SVF_AZIMUTH:   azimuth   = StrToFloat(child.Attribs[a].Value); break;
-               case SVF_ELEVATION: elevation = StrToFloat(child.Attribs[a].Value); break;
+               case SVF_AZIMUTH:   azimuth   = strtod(child.Attribs[a].Value.c_str(), NULL); break;
+               case SVF_ELEVATION: elevation = strtod(child.Attribs[a].Value.c_str(), NULL); break;
             }
          }
 
@@ -749,9 +749,9 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             switch(strihash(child.Attribs[a].Name)) {
-               case SVF_X: x = StrToFloat(child.Attribs[a].Value); break;
-               case SVF_Y: y = StrToFloat(child.Attribs[a].Value); break;
-               case SVF_Z: z = StrToFloat(child.Attribs[a].Value); break;
+               case SVF_X: x = strtod(child.Attribs[a].Value.c_str(), NULL); break;
+               case SVF_Y: y = strtod(child.Attribs[a].Value.c_str(), NULL); break;
+               case SVF_Z: z = strtod(child.Attribs[a].Value.c_str(), NULL); break;
             }
          }
 
@@ -764,14 +764,14 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             auto &val = child.Attribs[a].Value;
             switch(strihash(child.Attribs[a].Name)) {
-               case SVF_X:                 x = StrToFloat(val); break;
-               case SVF_Y:                 y = StrToFloat(val); break;
-               case SVF_Z:                 z = StrToFloat(val); break;
-               case SVF_POINTSATX:         px = StrToFloat(val); break;
-               case SVF_POINTSATY:         py = StrToFloat(val); break;
-               case SVF_POINTSATZ:         pz = StrToFloat(val); break;
-               case SVF_SPECULAREXPONENT:  exponent   = StrToFloat(val); break;
-               case SVF_LIMITINGCONEANGLE: cone_angle = StrToFloat(val); break;
+               case SVF_X:                 x = strtod(val.c_str(), NULL); break;
+               case SVF_Y:                 y = strtod(val.c_str(), NULL); break;
+               case SVF_Z:                 z = strtod(val.c_str(), NULL); break;
+               case SVF_POINTSATX:         px = strtod(val.c_str(), NULL); break;
+               case SVF_POINTSATY:         py = strtod(val.c_str(), NULL); break;
+               case SVF_POINTSATZ:         pz = strtod(val.c_str(), NULL); break;
+               case SVF_SPECULAREXPONENT:  exponent   = strtod(val.c_str(), NULL); break;
+               case SVF_LIMITINGCONEANGLE: cone_angle = strtod(val.c_str(), NULL); break;
             }
          }
 
@@ -832,7 +832,7 @@ static ERR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, XMLT
             }
             break;
 
-         case SVF_SCALE: fx->set(FID_Scale, StrToFloat(val)); break;
+         case SVF_SCALE: fx->set(FID_Scale, strtod(val.c_str(), NULL)); break;
 
          case SVF_X:      FUNIT(FID_X, val).set(fx); break;
          case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
@@ -906,7 +906,7 @@ static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag
                case SVF_SLOPE:       read_numseq(child.Attribs[a].Value, { &slope }); break;
                case SVF_EXPONENT:    read_numseq(child.Attribs[a].Value, { &exp }); break;
                case SVF_OFFSET:      read_numseq(child.Attribs[a].Value, { &offset }); break;
-               case SVF_MASK:        mask = StrToInt(child.Attribs[a].Value); break;
+               case SVF_MASK:        mask = strtol(child.Attribs[a].Value.c_str(), NULL, 0); break;
                case SVF_TABLEVALUES: {
                   values = read_array<DOUBLE>(child.Attribs[a].Value, 64);
                   break;
@@ -1121,9 +1121,9 @@ static ERR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, XMLTag &Ta
             break;
          }
 
-         case SVF_NUMOCTAVES: fx->set(FID_Octaves, StrToInt(val)); break;
+         case SVF_NUMOCTAVES: fx->set(FID_Octaves, strtol(val.c_str(), NULL, 0)); break;
 
-         case SVF_SEED: fx->set(FID_Seed, StrToInt(val)); break;
+         case SVF_SEED: fx->set(FID_Seed, strtol(val.c_str(), NULL, 0)); break;
 
          case SVF_STITCHTILES:
             if (iequals("stitch", val)) fx->set(FID_Stitch, TRUE);
@@ -1647,7 +1647,7 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
          if (!Tag.Children.empty()) {
             if (auto buffer = Tag.getContent(); !buffer.empty()) {
                pf::ltrim(buffer);
-               Self->Title = StrClone(buffer.c_str());
+               Self->Title = strclone(buffer);
             }
          }
          break;
@@ -3170,7 +3170,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
             case SVF_FONT_VARIANT: return ERR::NoSupport;
 
             case SVF_FONT_WEIGHT: { // SVG: normal | bold | bolder | lighter | inherit
-               DOUBLE num = StrToFloat(StrValue);
+               DOUBLE num = strtod(StrValue.c_str(), NULL);
                if (num) Vector->set(FID_Weight, num);
                else switch(strihash(StrValue)) {
                   case SVF_NORMAL:  Vector->set(FID_Weight, 400); return ERR::Okay;
@@ -3416,7 +3416,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_STROKE_DASHARRAY: Vector->set(FID_DashArray, StrValue); break;
       case SVF_OPACITY:          Vector->set(FID_Opacity, StrValue); break;
-      case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, StrToFloat(StrValue)); break;
+      case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, strtod(StrValue.c_str(), NULL)); break;
       case SVF_SHAPE_RENDERING:  Vector->set(FID_PathQuality, LONG(shape_rendering_to_render_quality(StrValue))); break;
 
       case SVF_STROKE_WIDTH:            FUNIT(FID_StrokeWidth, StrValue).set(Vector); break;

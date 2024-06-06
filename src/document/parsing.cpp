@@ -766,7 +766,7 @@ static bool eval_condition(const std::string &String)
    // If there is no condition statement, evaluate the statement as an integer
 
    if (i >= String.size()) {
-      if (StrToInt(String)) return true;
+      if (std::stoi(String)) return true;
       else return false;
    }
 
@@ -1534,7 +1534,7 @@ void parser::tag_body(XMLTag &Tag)
          case HASH_page_width:
             [[fallthrough]];
          case HASH_width:
-            Self->PageWidth = std::clamp(StrToFloat(Tag.Attribs[i].Value), 1.0, 6000.0);
+            Self->PageWidth = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), NULL), 1.0, 6000.0);
 
             if (Tag.Attribs[i].Value.find('%') != std::string::npos) Self->RelPageWidth = true;
             else Self->RelPageWidth = false;
@@ -2133,7 +2133,7 @@ void parser::tag_editdef(XMLTag &Tag)
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_max_chars:
-            edit.max_chars = StrToInt(Tag.Attribs[i].Value);
+            edit.max_chars = std::stoi(Tag.Attribs[i].Value);
             if (edit.max_chars < 0) edit.max_chars = -1;
             break;
 
@@ -2141,7 +2141,7 @@ void parser::tag_editdef(XMLTag &Tag)
 
          case HASH_select_fill: break;
 
-         case HASH_line_breaks: edit.line_breaks = StrToInt(Tag.Attribs[i].Value); break;
+         case HASH_line_breaks: edit.line_breaks = std::stoi(Tag.Attribs[i].Value); break;
 
          case HASH_edit_fonts:
          case HASH_edit_images:
@@ -2186,31 +2186,31 @@ void parser::tag_head(XMLTag &Tag)
       if (iequals("title", scan.name())) {
          if (scan.hasContent()) {
             if (Self->Title) FreeResource(Self->Title);
-            Self->Title = StrClone(scan.Children[0].Attribs[0].Value.c_str());
+            Self->Title = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if (iequals("author", scan.name())) {
          if (scan.hasContent()) {
             if (Self->Author) FreeResource(Self->Author);
-            Self->Author = StrClone(scan.Children[0].Attribs[0].Value.c_str());
+            Self->Author = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if (iequals("copyright", scan.name())) {
          if (scan.hasContent()) {
             if (Self->Copyright) FreeResource(Self->Copyright);
-            Self->Copyright = StrClone(scan.Children[0].Attribs[0].Value.c_str());
+            Self->Copyright = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if (iequals("keywords", scan.name())) {
          if (scan.hasContent()) {
             if (Self->Keywords) FreeResource(Self->Keywords);
-            Self->Keywords = StrClone(scan.Children[0].Attribs[0].Value.c_str());
+            Self->Keywords = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if (iequals("description", scan.name())) {
          if (scan.hasContent()) {
             if (Self->Description) FreeResource(Self->Description);
-            Self->Description = StrClone(scan.Children[0].Attribs[0].Value.c_str());
+            Self->Description = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
    }
@@ -3493,21 +3493,21 @@ void parser::tag_repeat(XMLTag &Tag)
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("start", Tag.Attribs[i].Name)) {
-         loop_start = StrToInt(Tag.Attribs[i].Value);
+         loop_start = std::stoi(Tag.Attribs[i].Value);
          if (loop_start < 0) loop_start = 0;
       }
       else if (iequals("count", Tag.Attribs[i].Name)) {
-         count = StrToInt(Tag.Attribs[i].Value);
+         count = std::stoi(Tag.Attribs[i].Value);
          if (count < 0) {
             log.warning("Invalid count value of %d", count);
             return;
          }
       }
       else if (iequals("end", Tag.Attribs[i].Name)) {
-         loop_end = StrToInt(Tag.Attribs[i].Value) + 1;
+         loop_end = std::stoi(Tag.Attribs[i].Value) + 1;
       }
       else if (iequals("step", Tag.Attribs[i].Name)) {
-         step = StrToInt(Tag.Attribs[i].Value);
+         step = std::stoi(Tag.Attribs[i].Value);
       }
       else if (iequals("index", Tag.Attribs[i].Name)) {
          // If an index name is specified, the programmer will need to refer to it as [@indexname] and [%index] will
@@ -3633,7 +3633,7 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_stroke_width:
-            table.stroke_width = std::clamp(StrToFloat(value), 0.0, 255.0);
+            table.stroke_width = std::clamp(strtod(value.c_str(), NULL), 0.0, 255.0);
             break;
       }
    }
@@ -3657,7 +3657,7 @@ void parser::tag_table(XMLTag &Tag)
 
       unsigned i;
       for (i=0; (i < table.columns.size()) and (i < list.size()); i++) {
-         table.columns[i].preset_width = StrToFloat(list[i]);
+         table.columns[i].preset_width = strtod(list[i].c_str(), NULL);
          if (list[i].find_first_of('%') != std::string::npos) table.columns[i].preset_width_rel = true;
       }
 
@@ -3686,7 +3686,7 @@ void parser::tag_row(XMLTag &Tag)
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("height", Tag.Attribs[i].Name)) {
-         escrow.min_height = std::clamp(StrToFloat(Tag.Attribs[i].Value), 0.0, 4000.0);
+         escrow.min_height = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), NULL), 0.0, 4000.0);
       }
       else if (iequals("fill", Tag.Attribs[i].Name))   escrow.fill   = Tag.Attribs[i].Value;
       else if (iequals("stroke", Tag.Attribs[i].Name)) escrow.stroke = Tag.Attribs[i].Value;
@@ -3745,11 +3745,11 @@ void parser::tag_cell(XMLTag &Tag)
          }
 
          case HASH_col_span:
-            cell.col_span = std::clamp(LONG(StrToInt(Tag.Attribs[i].Value)), 1, 1000);
+            cell.col_span = std::clamp(LONG(std::stoi(Tag.Attribs[i].Value)), 1, 1000);
             break;
 
          case HASH_row_span:
-            cell.row_span = std::clamp(LONG(StrToInt(Tag.Attribs[i].Value)), 1, 1000);
+            cell.row_span = std::clamp(LONG(std::stoi(Tag.Attribs[i].Value)), 1, 1000);
             break;
 
          case HASH_edit:

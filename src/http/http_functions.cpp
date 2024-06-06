@@ -1117,7 +1117,7 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
    MD5Update(&md5, (UBYTE *)":", 1);
 
    if (!Self->AuthQOP.empty()) {
-      MD5Update(&md5, (UBYTE *)NonceCount, StrLength((CSTRING)NonceCount));
+      MD5Update(&md5, (UBYTE *)NonceCount, strlen((CSTRING)NonceCount));
       MD5Update(&md5, (UBYTE *)":", 1);
       MD5Update(&md5, (UBYTE *)Self->AuthCNonce.c_str(), Self->AuthCNonce.size());
       MD5Update(&md5, (UBYTE *)":", 1);

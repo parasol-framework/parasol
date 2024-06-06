@@ -162,7 +162,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
                   }
 
                   header++;
-                  LONG offset = StrToInt(header);
+                  LONG offset = strtol(header, NULL, 0);
                   while ((*header) and (*header != ':')) header++;
                   if (!header[0]) break;
 

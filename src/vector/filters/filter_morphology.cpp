@@ -289,7 +289,7 @@ static ERR MORPHOLOGYFX_GET_XMLDef(extMorphologyFX *Self, STRING *Value)
 
    stream << "radius=\"" << Self->RadiusX << " " << Self->RadiusY << "\"";
 
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 
