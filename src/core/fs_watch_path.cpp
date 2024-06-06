@@ -36,8 +36,7 @@ extern "C" void path_monitor(HOSTHANDLE, extFile *);
 ERR fs_watch_path(extFile *File)
 {
    pf::Log log;
-   STRING path;
-   if ((path = StrClone(File->prvResolvedPath))) {
+   if (auto path = strclone(File->prvResolvedPath)) {
       strip_folder(path); // Remove trailing slash if there is one
 
       // Add a watch for this file

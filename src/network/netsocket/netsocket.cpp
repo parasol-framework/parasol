@@ -501,7 +501,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
             struct sockaddr_in6 addr;
 
-            clearmem(&addr, sizeof(addr));
+            pf::clearmem(&addr, sizeof(addr));
             addr.sin6_family = AF_INET6;
             addr.sin6_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
             addr.sin6_addr   = in6addr_any;   // Must be passed in in network byte order
