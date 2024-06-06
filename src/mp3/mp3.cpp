@@ -158,28 +158,28 @@ static bool parse_id3v1(objSound *Self)
 
          std::string title(id3.title);
          pf::ltrim(title, " ");
-         SetKey(Self, "Title", title.c_str());
+         acSetKey(Self, "Title", title.c_str());
 
          std::string artist(id3.artist);
          pf::ltrim(artist, " ");
-         SetKey(Self, "Author", artist.c_str());
+         acSetKey(Self, "Author", artist.c_str());
 
          std::string album(id3.album);
          pf::ltrim(album, " ");
-         SetKey(Self, "Album", album.c_str());
+         acSetKey(Self, "Album", album.c_str());
 
          std::string comment(id3.comment);
          pf::ltrim(comment, " ");
-         SetKey(Self, "Description", comment.c_str());
+         acSetKey(Self, "Description", comment.c_str());
 
          if (id3.genre <= genre_table.size()) {
-            SetKey(Self, "Genre", genre_table[id3.genre]);
+            acSetKey(Self, "Genre", genre_table[id3.genre]);
          }
-         else SetKey(Self, "Genre", "Unknown");
+         else acSetKey(Self, "Genre", "Unknown");
 
          if (id3.comment[COMMENT_TRACK] > 0) {
             strcopy(std::to_string(id3.comment[COMMENT_TRACK]), buffer, sizeof(buffer));
-            SetKey(Self, "Track", buffer);
+            acSetKey(Self, "Track", buffer);
          }
 
          processed = true;

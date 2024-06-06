@@ -1928,8 +1928,6 @@ inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
    return Action(AC_SetKey, Object, &args);
 }
 
-#define GetKey(a,b,c,d)  acGetKey(a,b,c,d)
-#define SetKey(a,b,c)    acSetKey(a,b,c)
 ]=])
 
   methods("MetaClass", "mc", {

@@ -3540,7 +3540,7 @@ void parser::tag_repeat(XMLTag &Tag)
 
    while (loop_start < loop_end) {
       if (index_name.empty()) m_loop_index = loop_start;
-      else SetKey(Self, index_name.c_str(), std::to_string(loop_start).c_str());
+      else acSetKey(Self, index_name.c_str(), std::to_string(loop_start).c_str());
 
       parse_tags(Tag.Children);
       loop_start += step;
