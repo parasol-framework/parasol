@@ -349,7 +349,7 @@ static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct cs::ReadClie
                APTR buffer;
                if (AllocMemory(total_length, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
                   if (queue->Buffer) {
-                     CopyMemory(queue->Buffer, buffer, queue->Index);
+                     pf::copymem(queue->Buffer, buffer, queue->Index);
                      FreeResource(queue->Buffer);
                   }
                   queue->Buffer = buffer;

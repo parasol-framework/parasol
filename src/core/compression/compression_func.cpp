@@ -118,7 +118,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
       if (acSeekStart(Self->FileIO, entry.Offset) != ERR::Okay) return ERR::Seek;
 
       UBYTE header[sizeof(glHeader)];
-      CopyMemory(glHeader, header, sizeof(glHeader));
+      copymem(glHeader, header, sizeof(glHeader));
 
       wrb<UWORD>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
       wrb<ULONG>(entry.TimeStamp, header + HEAD_TIMESTAMP);
@@ -399,7 +399,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    if (acSeek(Self->FileIO, (DOUBLE)entry.Offset, SEEK::START) != ERR::Okay) return ERR::Seek;
 
    UBYTE header[sizeof(glHeader)];
-   CopyMemory(glHeader, header, sizeof(glHeader));
+   copymem(glHeader, header, sizeof(glHeader));
    wrb<UWORD>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
    wrb<ULONG>(entry.TimeStamp, header + HEAD_TIMESTAMP);
    wrb<ULONG>(entry.CRC, header + HEAD_CRC);
@@ -741,7 +741,7 @@ static void write_eof(extCompression *Self)
          UWORD filecount = 0;
          for (auto &chain : Self->Files) {
             UBYTE elist[sizeof(glList)];
-            CopyMemory(glList, elist, sizeof(glList));
+            copymem(glList, elist, sizeof(glList));
 
             wrb<UWORD>(chain.DeflateMethod, elist+LIST_METHOD);
             wrb<ULONG>(chain.TimeStamp, elist+LIST_TIMESTAMP);
@@ -766,7 +766,7 @@ static void write_eof(extCompression *Self)
          }
 
          UBYTE tail[sizeof(glTail)];
-         CopyMemory(glTail, tail, sizeof(glTail));
+         copymem(glTail, tail, sizeof(glTail));
 
          wrb<UWORD>(filecount,  tail + TAIL_FILECOUNT); // File count for this file
          wrb<UWORD>(filecount,  tail + TAIL_TOTALFILECOUNT); // File count for all zip files when spanning multiple archives
@@ -784,7 +784,7 @@ static void write_eof(extCompression *Self)
 
 void zipfile_to_item(ZipFile &ZF, CompressedItem &Item)
 {
-   ClearMemory(&Item, sizeof(Item));
+   clearmem(&Item, sizeof(Item));
 
    Item.Modified.Year   = 1980 + ((ZF.TimeStamp>>25) & 0x3f);
    Item.Modified.Month  = (ZF.TimeStamp>>21) & 0x0f;

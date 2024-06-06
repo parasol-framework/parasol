@@ -320,7 +320,7 @@ static ERR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG El
    if (Elements >= 2) {
       VectorPoint *points;
       if (AllocMemory(sizeof(VectorPoint) * Elements, MEM::DATA|MEM::NO_CLEAR, &points) IS ERR::Okay) {
-         CopyMemory(Value, points, sizeof(VectorPoint) * Elements);
+         copymem(Value, points, sizeof(VectorPoint) * Elements);
          Self->Points = points;
          Self->TotalPoints = Elements;
          reset_path(Self);

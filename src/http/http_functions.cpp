@@ -583,7 +583,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   Self->ChunkBuffered = len;
                   if (len > Self->ChunkSize) Self->ChunkSize = len;
                   if (AllocMemory(Self->ChunkSize, MEM::DATA|MEM::NO_CLEAR, &Self->Chunk) IS ERR::Okay) {
-                     if (len > 0) CopyMemory(Self->Response.data() + Self->SearchIndex + 4, Self->Chunk, len);
+                     if (len > 0) pf::copymem(Self->Response.data() + Self->SearchIndex + 4, Self->Chunk, len);
                   }
                   else {
                      SET_ERROR(log, Self, log.warning(ERR::AllocMemory));
@@ -649,7 +649,7 @@ static ERR socket_incoming(objNetSocket *Socket)
             if (Self->ChunkIndex > 0) {
                //log.msg("Compressing the chunk buffer.");
                if (Self->ChunkBuffered > Self->ChunkIndex) {
-                  CopyMemory(Self->Chunk + Self->ChunkIndex, Self->Chunk, Self->ChunkBuffered - Self->ChunkIndex);
+                  pf::copymem(Self->Chunk + Self->ChunkIndex, Self->Chunk, Self->ChunkBuffered - Self->ChunkIndex);
                }
                Self->ChunkBuffered -= Self->ChunkIndex;
                Self->ChunkIndex = 0;
@@ -932,7 +932,7 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
    if ((Self->Flags & HTF::RECV_BUFFER) != HTF::NIL) {
       Self->RecvBuffer.resize(Length+1);
-      CopyMemory(Buffer, Self->RecvBuffer.data(), Self->RecvBuffer.size());
+      pf::copymem(Buffer, Self->RecvBuffer.data(), Self->RecvBuffer.size());
       Self->RecvBuffer[Length] = 0;
    }
 

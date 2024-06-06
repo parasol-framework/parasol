@@ -77,13 +77,13 @@ ERR RenameVolume(CSTRING Volume, CSTRING Name)
 
          auto evdeleted = std::make_unique<UBYTE[]>(sizeof(EVENTID) + vol.size() + 1);
          ((EVENTID *)evdeleted.get())[0] = GetEventID(EVG::FILESYSTEM, "volume", "deleted");
-         CopyMemory(vol.c_str(), evdeleted.get() + sizeof(EVENTID), vol.size() + 1);
+         copymem(vol.c_str(), evdeleted.get() + sizeof(EVENTID), vol.size() + 1);
          BroadcastEvent(evdeleted.get(), sizeof(EVENTID) + vol.size() + 1);
 
          LONG namelen = strlen(Name) + 1;
          auto evcreated = std::make_unique<UBYTE[]>(sizeof(EVENTID) + namelen);
          ((EVENTID *)evcreated.get())[0] = EVID_FILESYSTEM_VOLUME_CREATED;
-         CopyMemory(Name, evcreated.get() + sizeof(EVENTID), namelen);
+         copymem(Name, evcreated.get() + sizeof(EVENTID), namelen);
          BroadcastEvent(evcreated.get(), sizeof(EVENTID) + namelen);
          return ERR::Okay;
       }
@@ -162,7 +162,7 @@ ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING D
 
       auto evbuf = std::make_unique<UBYTE[]>(sizeof(EVENTID) + name.size() + 1);
       ((EVENTID *)evbuf.get())[0] = GetEventID(EVG::FILESYSTEM, "volume", "created");
-      CopyMemory(name.c_str(), evbuf.get() + sizeof(EVENTID), name.size() + 1);
+      copymem(name.c_str(), evbuf.get() + sizeof(EVENTID), name.size() + 1);
       BroadcastEvent(evbuf.get(), sizeof(EVENTID) + name.size() + 1);
       return ERR::Okay;
    }

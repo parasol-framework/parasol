@@ -811,10 +811,10 @@ class TaskMessage {
    void setBuffer(APTR pData, size_t pSize) {
       if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = NULL; }
 
-      if (pSize <= Buffer.size()) CopyMemory(pData, Buffer.data(), pSize);
+      if (pSize <= Buffer.size()) copymem(pData, Buffer.data(), pSize);
       else {
          ExtBuffer = new (std::nothrow) char[pSize];
-         if (ExtBuffer) CopyMemory(pData, ExtBuffer, pSize);
+         if (ExtBuffer) copymem(pData, ExtBuffer, pSize);
       }
 
       Size = pSize;
@@ -827,7 +827,7 @@ class TaskMessage {
       Type = Source.Type;
       Size = Source.Size;
       if (Source.ExtBuffer) setBuffer(Source.ExtBuffer, Size);
-      else if (Size) CopyMemory(Source.Buffer.data(), Buffer.data(), Size);
+      else if (Size) copymem(Source.Buffer.data(), Buffer.data(), Size);
    }
 };
 

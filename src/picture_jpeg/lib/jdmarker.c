@@ -474,8 +474,8 @@ get_dht (j_decompress_ptr cinfo)
     if (*htblptr == NULL)
       *htblptr = jpeg_alloc_huff_table((j_common_ptr) cinfo);
 
-    CopyMemory(bits, (*htblptr)->bits, SIZEOF((*htblptr)->bits));
-    CopyMemory(huffval, (*htblptr)->huffval, SIZEOF((*htblptr)->huffval));
+    pf::copymem(bits, (*htblptr)->bits, SIZEOF((*htblptr)->bits));
+    pf::copymem(huffval, (*htblptr)->huffval, SIZEOF((*htblptr)->huffval));
   }
 
   if (length != 0)

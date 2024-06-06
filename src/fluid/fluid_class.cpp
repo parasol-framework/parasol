@@ -380,7 +380,7 @@ static ERR FLUID_Activate(objScript *Self)
       if (auto core = objModule::create::global(fl::Name("core"))) {
          SetName(core, "mSys");
          auto mod = (struct module *)lua_newuserdata(prv->Lua, sizeof(struct module));
-         ClearMemory(mod, sizeof(struct module));
+         clearmem(mod, sizeof(struct module));
          luaL_getmetatable(prv->Lua, "Fluid.mod");
          lua_setmetatable(prv->Lua, -2);
          mod->Module = core;
@@ -714,7 +714,7 @@ static ERR FLUID_Init(objScript *Self)
 
                // Unicode BOM handler - in case the file starts with a BOM header.
                CSTRING bomptr = check_bom(Self->String);
-               if (bomptr != Self->String) CopyMemory(bomptr, Self->String, (len + 1) - (bomptr - Self->String));
+               if (bomptr != Self->String) copymem(bomptr, Self->String, (len + 1) - (bomptr - Self->String));
 
                loaded_size = len;
 

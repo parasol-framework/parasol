@@ -92,7 +92,7 @@ For internal use only.
 
 <pre>
 DISPLAYINFO info;
-ClearMemory(&info, sizeof(info));
+clearmem(&info, sizeof(info));
 while (!scrScanDisplayModes("depth=32", &info, sizeof(info))) {
    ...
 }

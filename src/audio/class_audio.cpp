@@ -220,7 +220,7 @@ ERR AUDIO_AddSample(extAudio *Self, struct snd::AddSample *Args)
       sample.Data = NULL;
    }
    else if (AllocMemory(Args->DataSize, MEM::DATA|MEM::NO_CLEAR, &sample.Data) IS ERR::Okay) {
-      CopyMemory(Args->Data, sample.Data, Args->DataSize);
+      copymem(Args->Data, sample.Data, Args->DataSize);
    }
    else return log.warning(ERR::AllocMemory);
 

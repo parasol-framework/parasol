@@ -126,7 +126,7 @@ static LONG test_x11(STRING Path)
       fcntl(fd, F_SETFL, O_NONBLOCK);
 
       sockname.sun_family = AF_UNIX;
-      ClearMemory(sockname.sun_path, sizeof(sockname.sun_path));
+      clearmem(sockname.sun_path, sizeof(sockname.sun_path));
       for (i=0; i < sizeof(sockname.sun_path) AND (Path[i]); i++) sockname.sun_path[i] = Path[i];
       namelen = i + sizeof(sockname.sun_family);
 

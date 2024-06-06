@@ -45,7 +45,7 @@ GLOBAL(void) jpeg_CreateDecompress (j_decompress_ptr cinfo, int version, LONG st
    {
       struct jpeg_error_mgr * err = cinfo->err;
       void * client_data = cinfo->client_data; /* ignore Purify complaint here */
-      ClearMemory(cinfo, SIZEOF(struct jpeg_decompress_struct));
+      pf::clearmem(cinfo, SIZEOF(struct jpeg_decompress_struct));
       cinfo->err = err;
       cinfo->client_data = client_data;
    }

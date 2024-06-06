@@ -666,7 +666,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
          if (new_size > 255) new_size = 255;
          SurfaceCallback *scb;
          if (AllocMemory(sizeof(SurfaceCallback) * new_size, MEM::DATA|MEM::NO_CLEAR, &scb) IS ERR::Okay) {
-            CopyMemory(Self->Callback, scb, sizeof(SurfaceCallback) * Self->CallbackCount);
+            copymem(Self->Callback, scb, sizeof(SurfaceCallback) * Self->CallbackCount);
 
             scb[Self->CallbackCount].Object   = context;
             scb[Self->CallbackCount].Function = *Args->Callback;

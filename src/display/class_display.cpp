@@ -860,7 +860,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
 
    // Take a record of the pixel format for GetDisplayInfo()
 
-   CopyMemory(bmp->ColourFormat, &glColourFormat, sizeof(glColourFormat));
+   copymem(bmp->ColourFormat, &glColourFormat, sizeof(glColourFormat));
 
    if (glSixBitDisplay) Self->Flags |= SCR::BIT_6;
 
@@ -1687,7 +1687,7 @@ static ERR DISPLAY_SetMonitor(extDisplay *Self, struct gfx::SetMonitor *Args)
 
    // Get the current monitor record, then set the new scan rates against it.
 
-   ClearMemory(&monitor, sizeof(monitor));
+   clearmem(&monitor, sizeof(monitor));
    glSNAP->Init.GetMonitorInfo(&monitor, glSNAP->Init.GetActiveHead());
 
    monitor.maxResolution = 0;  // Must be zero for SNAP to filter display modes
@@ -1897,7 +1897,7 @@ static ERR DISPLAY_UpdatePalette(extDisplay *Self, struct gfx::UpdatePalette *Ar
       Args->NewPalette->AmtColours = 256;
    }
 
-   CopyMemory(Args->NewPalette, Self->Bitmap->Palette, sizeof(*Args->NewPalette));
+   copymem(Args->NewPalette, Self->Bitmap->Palette, sizeof(*Args->NewPalette));
 
    return ERR::Okay;
 }

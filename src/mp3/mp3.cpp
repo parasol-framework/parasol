@@ -246,7 +246,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
    }
 
    if (flags & XING_TOC) {
-      CopyMemory(tag, prv->TOC.data(), 100);
+      copymem(tag, prv->TOC.data(), 100);
       tag += 100;
       prv->TOCLoaded = true;
    }
@@ -428,7 +428,7 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
       if ((prv->OverflowSize) and (prv->OverflowPos < prv->OverflowSize)) {
          LONG to_copy = prv->OverflowSize - prv->OverflowPos;
          if (pos + to_copy > Args->Length) to_copy = Args->Length - pos;
-         CopyMemory(prv->Overflow.data() + prv->OverflowPos, (UBYTE *)Args->Buffer + pos, to_copy);
+         copymem(prv->Overflow.data() + prv->OverflowPos, (UBYTE *)Args->Buffer + pos, to_copy);
          prv->OverflowPos += to_copy;
          prv->WriteOffset += to_copy;
          pos += to_copy;
@@ -473,10 +473,10 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
                   prv->OverflowPos  = 0;
                   prv->OverflowSize = pos + decoded_bytes - Args->Length;
                   decoded_bytes = Args->Length - pos;
-                  CopyMemory((UBYTE *)pcm + decoded_bytes, prv->Overflow.data(), prv->OverflowSize);
+                  copymem((UBYTE *)pcm + decoded_bytes, prv->Overflow.data(), prv->OverflowSize);
                }
 
-               CopyMemory(pcm, (UBYTE *)Args->Buffer + pos, decoded_bytes);
+               copymem(pcm, (UBYTE *)Args->Buffer + pos, decoded_bytes);
 
                prv->FramesProcessed++;
                prv->WriteOffset += decoded_bytes;
@@ -523,7 +523,7 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
 
       if (!in) break;
       else if (in < prv->CompressedOffset) {
-         CopyMemory((UBYTE *)prv->Input.data() + in, prv->Input.data(), prv->CompressedOffset - in);
+         copymem((UBYTE *)prv->Input.data() + in, prv->Input.data(), prv->CompressedOffset - in);
       }
 
       prv->CompressedOffset -= in;

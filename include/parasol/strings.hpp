@@ -252,7 +252,7 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 {
    STRING newstr;
    if (AllocMemory(String.size()+1, MEM::STRING, (APTR *)&newstr, NULL) IS ERR::Okay) {
-      CopyMemory(String.data(), newstr, String.size()+1);
+      copymem(String.data(), newstr, String.size()+1);
       return newstr;
    }
    else return NULL;

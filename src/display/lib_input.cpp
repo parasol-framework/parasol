@@ -146,7 +146,7 @@ ERR UnsubscribeInput(LONG Handle)
    if (it IS glInputCallbacks.end()) return log.warning(ERR::NotFound);
    else {
       if (glInputEvents.processing) { // Cannot erase during input processing
-         ClearMemory(&it->second, sizeof(it->second));
+         clearmem(&it->second, sizeof(it->second));
       }
       else glInputCallbacks.erase(it);
    }

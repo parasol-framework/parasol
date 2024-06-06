@@ -253,12 +253,12 @@ LOCAL(void) prepare_range_limit_table (j_decompress_ptr cinfo)
   table = (JSAMPLE *)(*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE, (5 * (MAXJSAMPLE+1) + CENTERJSAMPLE) * SIZEOF(JSAMPLE));
   table += (MAXJSAMPLE+1);	/* allow negative subscripts of simple table */
   cinfo->sample_range_limit = table;
-  ClearMemory(table - (MAXJSAMPLE+1), (MAXJSAMPLE+1) * SIZEOF(JSAMPLE));
+  pf::clearmem(table - (MAXJSAMPLE+1), (MAXJSAMPLE+1) * SIZEOF(JSAMPLE));
   for (i = 0; i <= MAXJSAMPLE; i++) table[i] = (JSAMPLE) i;
   table += CENTERJSAMPLE;	/* Point to where post-IDCT table starts */
   for (i = CENTERJSAMPLE; i < 2*(MAXJSAMPLE+1); i++) table[i] = MAXJSAMPLE;
-  ClearMemory(table + (2 * (MAXJSAMPLE+1)), (2 * (MAXJSAMPLE+1) - CENTERJSAMPLE) * SIZEOF(JSAMPLE));
-  CopyMemory(cinfo->sample_range_limit, table + (4 * (MAXJSAMPLE+1) - CENTERJSAMPLE), CENTERJSAMPLE * SIZEOF(JSAMPLE));
+  pf::clearmem(table + (2 * (MAXJSAMPLE+1)), (2 * (MAXJSAMPLE+1) - CENTERJSAMPLE) * SIZEOF(JSAMPLE));
+  pf::copymem(cinfo->sample_range_limit, table + (4 * (MAXJSAMPLE+1) - CENTERJSAMPLE), CENTERJSAMPLE * SIZEOF(JSAMPLE));
 }
 
 

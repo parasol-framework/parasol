@@ -140,7 +140,7 @@ WINHANDLE get_threadlock(void)
 
    if (!glTLInit) {
       glTLInit = true;
-      ClearMemory(glThreadLocks, sizeof(glThreadLocks));
+      clearmem(glThreadLocks, sizeof(glThreadLocks));
    }
 
    auto index = glThreadLockIndex++;

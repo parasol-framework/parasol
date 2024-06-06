@@ -1002,7 +1002,7 @@ static ERR DOCUMENT_ReadContent(extDocument *Self, struct doc::ReadContent *Args
    else if (Args->Format IS DATA::RAW) {
       STRING output;
       if (AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output) IS ERR::Okay) {
-         CopyMemory(Self->Stream.data.data() + Args->Start, output, Args->End - Args->Start);
+         copymem(Self->Stream.data.data() + Args->Start, output, Args->End - Args->Start);
          output[Args->End - Args->Start] = 0;
          Args->Result = output;
          return ERR::Okay;
@@ -1091,7 +1091,7 @@ static ERR DOCUMENT_RemoveContent(extDocument *Self, struct doc::RemoveContent *
    if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
    if (Args->End <= Args->Start) return log.warning(ERR::Args);
 
-   CopyMemory(Self->Stream.data.data() + Args->End, Self->Stream.data.data() + Args->Start, Self->Stream.data.size() - Args->End);
+   copymem(Self->Stream.data.data() + Args->End, Self->Stream.data.data() + Args->Start, Self->Stream.data.size() - Args->End);
    Self->Stream.data.resize(Self->Stream.data.size() - Args->End - Args->Start);
 
    Self->UpdatingLayout = true;

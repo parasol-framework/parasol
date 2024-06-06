@@ -531,11 +531,11 @@ static ERR PROXY_SaveSettings(extProxy *Self)
                LONG end = strlen(server_buffer);
                if (AllocMemory(end + server.size() + 2, MEM::STRING|MEM::NO_CLEAR, &newlist) IS ERR::Okay) {
                   if (end > 0) {
-                     CopyMemory(server_buffer, newlist, end);
+                     pf::copymem(server_buffer, newlist, end);
                      newlist[end++] = ';';
                   }
 
-                  CopyMemory(server.c_str(), newlist+end, server.size()+1);
+                  pf::copymem(server.c_str(), newlist+end, server.size()+1);
 
                   // Save the new proxy list
 

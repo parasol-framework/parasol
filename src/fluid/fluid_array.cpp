@@ -185,7 +185,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
                }
             }
          }
-         else CopyMemory(List, a->ptrPointer, cache_size);
+         else copymem(List, a->ptrPointer, cache_size);
 
          if (alloc) FreeResource(List);
          a->Allocated = FALSE;
@@ -232,7 +232,7 @@ static int array_new(lua_State *Lua)
                a->Total   = len;
                a->Type    = FD_BYTE;
                a->ptrByte = (UBYTE *)(a + 1);
-               CopyMemory(str, a->ptrByte, len + 1);
+               copymem(str, a->ptrByte, len + 1);
 
                luaL_getmetatable(Lua, "Fluid.array");
                lua_setmetatable(Lua, -2);
@@ -526,7 +526,7 @@ static int array_copy(lua_State *Lua)
    }
 
    if (src_typesize IS a->TypeSize) {
-      CopyMemory(src, a->ptrPointer + (to_index * src_typesize), req_total * src_typesize);
+      copymem(src, a->ptrPointer + (to_index * src_typesize), req_total * src_typesize);
    }
    else {
       for (LONG i=0; i < req_total; i++) {

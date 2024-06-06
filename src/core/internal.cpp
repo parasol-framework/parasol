@@ -32,7 +32,7 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
 
    if (!init) {
       tlSocket.sun_family = AF_UNIX;
-      ClearMemory(tlSocket.sun_path, sizeof(tlSocket.sun_path));
+      clearmem(tlSocket.sun_path, sizeof(tlSocket.sun_path));
       tlSocket.sun_path[0] = '\0';
       tlSocket.sun_path[1] = 'p';
       tlSocket.sun_path[2] = 's';
@@ -218,7 +218,7 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
                            // For large data areas, we need to allocate them as public memory blocks
                            if (AllocMemory(memsize, MEM::NO_CLEAR, (void **)&data, NULL) IS ERR::Okay) {
                               ((APTR *)(Buffer + pos))[0] = data;
-                              CopyMemory(src, data, memsize);
+                              copymem(src, data, memsize);
                            }
                            else { error = ERR::AllocMemory; goto looperror; }
                         }

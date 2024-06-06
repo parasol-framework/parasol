@@ -95,7 +95,7 @@ static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
 
    if (!Self->Inflating) {
       log.trace("Initialising decompression of the stream.");
-      ClearMemory(&Self->Stream, sizeof(Self->Stream));
+      clearmem(&Self->Stream, sizeof(Self->Stream));
       switch (Self->Format) {
          case CF::ZLIB:
             if (inflateInit2(&Self->Stream, MAX_WBITS) != Z_OK) return log.warning(ERR::Decompression);
@@ -242,7 +242,7 @@ static ERR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
    if (!Self->Deflating) {
-      ClearMemory(&Self->Stream, sizeof(Self->Stream));
+      clearmem(&Self->Stream, sizeof(Self->Stream));
 
       switch (Self->Format) {
          case CF::ZLIB:

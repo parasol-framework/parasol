@@ -613,7 +613,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 
    if (DisplayID) {
       if (glDisplayInfo.DisplayID IS DisplayID) {
-         CopyMemory(&glDisplayInfo, Info, InfoSize);
+         copymem(&glDisplayInfo, Info, InfoSize);
          return ERR::Okay;
       }
       else if (ScopedObjectLock<extDisplay> display(DisplayID, 5000); display.granted()) {
@@ -759,7 +759,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
                else glDisplayInfo.BitsPerPixel = 24;
             }
 
-            CopyMemory(&glColourFormat, &glDisplayInfo.PixelFormat, sizeof(glDisplayInfo.PixelFormat));
+            copymem(&glColourFormat, &glDisplayInfo.PixelFormat, sizeof(glDisplayInfo.PixelFormat));
 
             if ((glDisplayInfo.BitsPerPixel < 8) or (glDisplayInfo.BitsPerPixel > 32)) {
                if (glDisplayInfo.BitsPerPixel > 32) glDisplayInfo.BitsPerPixel = 32;
@@ -780,12 +780,12 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       }
       else return log.warning(ERR::TimeOut);
 
-      CopyMemory(glDisplayInfo, Info, InfoSize);
+      copymem(glDisplayInfo, Info, InfoSize);
       return ERR::Okay;
 #else
 
       if (glDisplayInfo.DisplayID) {
-         CopyMemory(glDisplayInfo, Info, InfoSize);
+         copymem(glDisplayInfo, Info, InfoSize);
          return ERR::Okay;
       }
       else {
@@ -965,7 +965,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
       else glXCompositeSupported = false;
 
-      ClearMemory(KeyHeld, sizeof(KeyHeld));
+      clearmem(KeyHeld, sizeof(KeyHeld));
 
       // Drop superuser privileges following X11 initialisation (we only need suid for DGA).
 

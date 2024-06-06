@@ -742,7 +742,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             bmpSave = mBitmap;
             mBitmap = bmpBkgd;
             mFormat.setBitmap(*bmpBkgd);
-            ClearMemory(bmpBkgd->Data, bmpBkgd->LineWidth * bmpBkgd->Height);
+            clearmem(bmpBkgd->Data, bmpBkgd->LineWidth * bmpBkgd->Height);
             state.mBackgroundActive = true;
          }
       }

@@ -493,7 +493,7 @@ static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value
    if (Elements >= 2) {
       if (AllocMemory(sizeof(GradientStop) * Elements, MEM::DATA|MEM::NO_CLEAR, &Self->Stops) IS ERR::Okay) {
          Self->TotalStops = Elements;
-         CopyMemory(Value, Self->Stops, Elements * sizeof(GradientStop));
+         copymem(Value, Self->Stops, Elements * sizeof(GradientStop));
          if (Self->Colours) delete Self->Colours;
          Self->Colours = new (std::nothrow) GradientColours(Self, 1.0);
          if (!Self->Colours) return ERR::AllocMemory;

@@ -44,7 +44,7 @@ static ERR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
       fl::Flags(BMF::ALPHA_CHANNEL),
       fl::BitsPerPixel(32)))) return ERR::CreateObject;
 
-   ClearMemory(Self->Bitmap->Data, Self->Bitmap->LineWidth * Self->Bitmap->Height);
+   clearmem(Self->Bitmap->Data, Self->Bitmap->LineWidth * Self->Bitmap->Height);
    Self->Scene->Bitmap = Self->Bitmap;
    acDraw(Self->Scene);
 

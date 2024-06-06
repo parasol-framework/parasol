@@ -100,7 +100,7 @@ public:
 
       pFile->seek(pWinFont.Offset + 118, SEEK::START);
 
-      ClearMemory(Chars, sizeof(Chars));
+      clearmem(Chars, sizeof(Chars));
       if (pFace.version IS 0x300) {
          LONG j = pFace.first_char;
          for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
@@ -144,7 +144,7 @@ public:
                LONG sz = ((Chars[i].Width+7)>>3) * pFace.pixel_height;
                if (Chars[i].Width > 8) {
                   auto buffer = std::make_unique<UBYTE[]>(sz);
-                  ClearMemory(buffer.get(), sz);
+                  clearmem(buffer.get(), sz);
 
                   UBYTE *gfx = mData + Chars[i].Offset;
                   LONG bytewidth = (Chars[i].Width + 7)>>3;
@@ -155,7 +155,7 @@ public:
                      }
                   }
 
-                  CopyMemory(buffer.get(), gfx, pos);
+                  copymem(buffer.get(), gfx, pos);
                }
             }
          }

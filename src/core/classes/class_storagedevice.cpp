@@ -129,7 +129,7 @@ static ERR SET_Volume(extStorageDevice *Self, CSTRING Value)
       if (Self->Volume) FreeResource(Self->Volume);
 
       if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Volume, NULL) IS ERR::Okay) {
-         CopyMemory(Value, Self->Volume, len);
+         copymem(Value, Self->Volume, len);
          Self->Volume[len] = ':';
          Self->Volume[len+1] = 0;
          return ERR::Okay;

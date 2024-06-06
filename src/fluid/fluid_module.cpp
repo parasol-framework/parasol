@@ -53,7 +53,7 @@ static int module_load(lua_State *Lua)
 
    if (auto loaded_mod = objModule::create::global(fl::Name(modname))) {
       auto mod = (module *)lua_newuserdata(Lua, sizeof(module));
-      ClearMemory(mod, sizeof(struct module));
+      clearmem(mod, sizeof(struct module));
 
       luaL_getmetatable(Lua, "Fluid.mod");
       lua_setmetatable(Lua, -2);

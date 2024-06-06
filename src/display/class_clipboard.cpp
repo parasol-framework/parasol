@@ -533,7 +533,7 @@ static ERR CLIPBOARD_GetFiles(objClipboard *Self, struct clip::GetFiles *Args)
       auto dest = (char *)list + ((clip->Items.size() + 1) * sizeof(STRING));
       for (auto &item : clip->Items) {
          *list++ = dest;
-         CopyMemory(item.Path.c_str(), dest, item.Path.size() + 1);
+         copymem(item.Path.c_str(), dest, item.Path.size() + 1);
          dest += item.Path.size() + 1;
       }
       *list = NULL;

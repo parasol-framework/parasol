@@ -191,7 +191,7 @@ ERR GetCursorInfo(CursorInfo *Info, LONG Size)
 
 #ifdef __ANDROID__
    // TODO: Some Android devices probably do support a mouse or similar input device.
-   ClearMemory(Info, sizeof(CursorInfo));
+   clearmem(Info, sizeof(CursorInfo));
    return ERR::NoSupport;
 #else
    Info->Width  = 32;

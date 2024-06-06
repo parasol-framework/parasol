@@ -797,7 +797,7 @@ ERR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    if ((!Path) or (!Path[0]) or (!Info) or (InfoSize <= 0)) return log.warning(ERR::Args);
 
    char NameBuffer[MAX_FILENAME];
-   ClearMemory(Info, InfoSize);
+   clearmem(Info, InfoSize);
    Info->Name = NameBuffer;
 
    // Check if the location is a volume with no file reference
@@ -1618,7 +1618,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    }
 
    FileFeedback feedback;
-   ClearMemory(&feedback, sizeof(feedback));
+   clearmem(&feedback, sizeof(feedback));
    if (Move) feedback.FeedbackID = FBK::MOVE_FILE;
    else feedback.FeedbackID = FBK::COPY_FILE;
 
@@ -2310,7 +2310,7 @@ ERR fs_delete(STRING Path, FUNCTION *Callback)
       strcopy(Path, buffer, sizeof(buffer));
 
       if ((Callback) and (Callback->defined())) {
-         ClearMemory(&feedback, sizeof(feedback));
+         clearmem(&feedback, sizeof(feedback));
          feedback.FeedbackID = FBK::DELETE_FILE;
          feedback.Path = buffer;
       }
@@ -2327,7 +2327,7 @@ ERR fs_delete(STRING Path, FUNCTION *Callback)
          strcopy(Path, buffer, sizeof(buffer));
 
          if ((Callback) and (Callback->defined())) {
-            ClearMemory(&feedback, sizeof(feedback));
+            clearmem(&feedback, sizeof(feedback));
             feedback.FeedbackID = FBK::DELETE_FILE;
             feedback.Path = buffer;
          }

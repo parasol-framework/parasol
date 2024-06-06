@@ -543,7 +543,7 @@ static ERR COMPRESSION_CompressStreamStart(extCompression *Self)
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
-   ClearMemory(&Self->DeflateStream, sizeof(Self->DeflateStream));
+   clearmem(&Self->DeflateStream, sizeof(Self->DeflateStream));
 
    Self->TotalOutput = 0;
    if (auto err = deflateInit2(&Self->DeflateStream, level, Z_DEFLATED, Self->WindowBits, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY); err IS Z_OK) {
@@ -792,7 +792,7 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::Compr
    }
 
    deflateEnd(&Self->DeflateStream);
-   ClearMemory(&Self->DeflateStream, sizeof(Self->DeflateStream));
+   clearmem(&Self->DeflateStream, sizeof(Self->DeflateStream));
    Self->Deflating = false;
    return error;
 }
@@ -822,7 +822,7 @@ static ERR COMPRESSION_DecompressStreamStart(extCompression *Self)
 
    if (Self->Inflating) { inflateEnd(&Self->InflateStream); Self->Inflating = false; }
 
-   ClearMemory(&Self->InflateStream, sizeof(Self->InflateStream));
+   clearmem(&Self->InflateStream, sizeof(Self->InflateStream));
 
    Self->TotalOutput = 0;
 
@@ -1128,7 +1128,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
    Self->FileIndex = 0;
 
    CompressionFeedback feedback;
-   ClearMemory(&feedback, sizeof(feedback));
+   clearmem(&feedback, sizeof(feedback));
 
    for (auto &zf : Self->Files) {
       log.trace("Found %s", zf.Name);
@@ -1468,7 +1468,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
    Self->FileIndex = 0;
 
    CompressionFeedback fb;
-   ClearMemory(&fb, sizeof(fb));
+   clearmem(&fb, sizeof(fb));
 
    ERR error = ERR::Okay;
    LONG total_scanned = 0;

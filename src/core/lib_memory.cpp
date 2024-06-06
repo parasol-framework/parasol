@@ -324,7 +324,7 @@ ERR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, LONG Size)
    if ((!MemInfo) or (!MemoryID)) return log.warning(ERR::NullArgs);
    if ((size_t)Size < sizeof(MemInfo)) return log.warning(ERR::Args);
 
-   ClearMemory(MemInfo, Size);
+   clearmem(MemInfo, Size);
 
    if (auto lock = std::unique_lock{glmMemory}) {
       auto mem = glPrivateMemory.find(MemoryID);
@@ -383,7 +383,7 @@ ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
    if ((!MemInfo) or (!Memory)) return log.warning(ERR::NullArgs);
    if ((size_t)Size < sizeof(MemInfo)) return log.warning(ERR::Args);
 
-   ClearMemory(MemInfo, Size);
+   clearmem(MemInfo, Size);
 
    // Search private addresses.  This is a bit slow, but if the memory pointer is guaranteed to have
    // come from AllocMemory() then the optimal solution for the client is to pull the ID from
@@ -468,7 +468,7 @@ ERR ReallocMemory(APTR Address, ULONG NewSize, APTR *Memory, MEMORYID *MemoryID)
 
    if (AllocMemory(NewSize, meminfo.Flags, Memory, MemoryID) IS ERR::Okay) {
       auto copysize = (NewSize < meminfo.Size) ? NewSize : meminfo.Size;
-      CopyMemory(Address, *Memory, copysize);
+      copymem(Address, *Memory, copysize);
 
       // Free the old memory block.  If it is locked then we also release it for the caller.
 

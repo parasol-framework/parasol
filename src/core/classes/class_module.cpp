@@ -712,7 +712,7 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
       log.msg("Self-reference to the Core detected.");
       if (!kminit) {
          kminit = true;
-         ClearMemory(&glCoreRoot, sizeof(glCoreRoot));
+         clearmem(&glCoreRoot, sizeof(glCoreRoot));
          glCoreRoot.Class       = glRootModuleClass;
          glCoreRoot.Name        = "Core";
          glCoreRoot.OpenCount   = 1;

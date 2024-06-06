@@ -342,7 +342,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
          if (prv->ReadPtr < (UBYTE *)prv->Stream.next_out) {
             LONG len = (LONG)(prv->Stream.next_out - (Bytef *)prv->ReadPtr);
             if (len > Args->Length) len = Args->Length;
-            CopyMemory(prv->ReadPtr, (char *)Args->Buffer + Args->Result, len);
+            copymem(prv->ReadPtr, (char *)Args->Buffer + Args->Result, len);
             prv->ReadPtr   += len;
             Args->Result   += len;
             Self->Position += len;

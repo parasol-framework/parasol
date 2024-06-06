@@ -308,7 +308,7 @@ static ERR RECTANGLE_GET_Rounding(extVectorRectangle *Self, DOUBLE **Value, LONG
 static ERR RECTANGLE_SET_Rounding(extVectorRectangle *Self, DOUBLE *Value, LONG Elements)
 {
    if (Elements >= 8) {
-      CopyMemory(Value, Self->rRound.data(), sizeof(DOUBLE) * 8);
+      copymem(Value, Self->rRound.data(), sizeof(DOUBLE) * 8);
       Self->rFullControl = true;
       reset_path(Self);
       return ERR::Okay;

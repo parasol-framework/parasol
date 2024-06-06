@@ -1261,18 +1261,15 @@ typedef KEYVALUE ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
 
-inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
-{
+namespace pf {
+
+inline void copymem(const void *Src, APTR Dest, std::size_t Length) {
    memmove(Dest, Src, Length);
 }
 
-inline ERR ClearMemory(APTR Memory, LONG Length) {
-   if (!Memory) return ERR::NullArgs;
-   memset(Memory, 0, Length); // memset() is assumed to be optimised by the compiler.
-   return ERR::Okay;
+inline void clearmem(APTR Memory, std::size_t Length) {
+   if (Memory) memset(Memory, 0, Length);
 }
-
-namespace pf {
 
 static THREADVAR LONG _tlUniqueThreadID = 0;
 

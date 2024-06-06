@@ -348,7 +348,7 @@ static ERR VECTORPATH_SetCommand(extVectorPath *Self, struct vp::SetCommand *Arg
    const LONG total_cmds = Args->Size / sizeof(PathCommand);
    if ((size_t)Args->Index + total_cmds > Self->Commands.size()) Self->Commands.resize(Args->Index + total_cmds);
 
-   CopyMemory(Args->Command, &Self->Commands[Args->Index], total_cmds * sizeof(PathCommand));
+   copymem(Args->Command, &Self->Commands[Args->Index], total_cmds * sizeof(PathCommand));
 
    reset_path(Self);
    return ERR::Okay;

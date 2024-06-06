@@ -386,7 +386,7 @@ static ERROR open_dir(DirInfo *Dir)
    else {
       char path[len];
       len = len - LEN_ASSETS - 1;
-      CopyMemory(Dir->prvResolvedPath+LEN_ASSETS, path, len);
+      copymem(Dir->prvResolvedPath+LEN_ASSETS, path, len);
       path[len] = 0;
       Dir->prvHandle = AAssetManager_openDir(mgr, path);
    }
@@ -555,7 +555,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LOC *Type)
       // openDir() doesn't like trailing slashes, so we'll have to remove it.
       char path[len];
       len = len - LEN_ASSETS - 1;
-      CopyMemory(Path+LEN_ASSETS, path, len);
+      copymem(Path+LEN_ASSETS, path, len);
       path[len] = 0;
 
       dir = AAssetManager_openDir(mgr, path);
@@ -602,7 +602,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
    else {
       char path[len];
       len = len - LEN_ASSETS - 1;
-      CopyMemory(Path+LEN_ASSETS, path, len);
+      copymem(Path+LEN_ASSETS, path, len);
       path[len] = 0;
       dir = AAssetManager_openDir(mgr, path);
    }

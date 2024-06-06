@@ -290,7 +290,7 @@ static ERR FILE_BufferContent(extFile *Self)
             acRead(Self, buffer, 1024 * 1024, &len);
             if (len > 0) {
                if (AllocMemory(len, MEM::NO_CLEAR, (APTR *)&Self->Buffer, NULL) IS ERR::Okay) {
-                  CopyMemory(buffer, Self->Buffer, len);
+                  copymem(buffer, Self->Buffer, len);
                   Self->Size = len;
                }
             }
@@ -453,7 +453,7 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
          if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          FileFeedback fb;
-         ClearMemory(&fb, sizeof(fb));
+         clearmem(&fb, sizeof(fb));
          if ((Args->Callback) and (Args->Callback->defined())) {
             fb.FeedbackID = FBK::DELETE_FILE;
             fb.Path       = buffer;
@@ -610,7 +610,7 @@ static ERR FILE_Init(extFile *Self)
       if (Self->Size > 0) {
          if (AllocMemory(Self->Size, MEM::DATA, (APTR *)&Self->Buffer, NULL) IS ERR::Okay) {
             Self->Flags |= FL::READ|FL::WRITE;
-            CopyMemory(Self->Path + 7, Self->Buffer, Self->Size);
+            copymem(Self->Path + 7, Self->Buffer, Self->Size);
             return ERR::Okay;
          }
          else return log.warning(ERR::AllocMemory);
@@ -857,7 +857,7 @@ static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
    else {
       STRING newpath;
       if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&newpath, NULL) IS ERR::Okay) {
-         CopyMemory(dest, newpath, len+1);
+         copymem(dest, newpath, len+1);
 
          #ifdef _WIN32
             if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
@@ -1013,7 +1013,7 @@ static ERR FILE_Read(extFile *Self, struct acRead *Args)
             len = Self->Size - (Self->Position % Self->Size); // Calculate amount of space ahead of us.
             if (len > readlen) len = readlen; // Restrict the length of the read operation to the length of the destination.
 
-            CopyMemory(Self->Buffer + (Self->Position % Self->Size), dest, len);
+            copymem(Self->Buffer + (Self->Position % Self->Size), dest, len);
             dest += len;
             Self->Position += len;
          }
@@ -1031,7 +1031,7 @@ static ERR FILE_Read(extFile *Self, struct acRead *Args)
       else {
          if (Self->Position + Args->Length > Self->Size) Args->Result = Self->Size - Self->Position;
          else Args->Result = Args->Length;
-         CopyMemory(Self->Buffer + Self->Position, Args->Buffer, Args->Result);
+         copymem(Self->Buffer + Self->Position, Args->Buffer, Args->Result);
          Self->Position += Args->Result;
          return ERR::Okay;
       }
@@ -1144,7 +1144,7 @@ static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
    if (Self->Position IS pos) return ERR::NoData;
 
    if (Self->prvLineLen >= len+1) {
-      CopyMemory(line, Self->prvLine, len+1);
+      copymem(line, Self->prvLine, len+1);
       Args->Result = Self->prvLine;
       return ERR::Okay;
    }
@@ -1616,7 +1616,7 @@ static ERR FILE_Write(extFile *Self, struct acWrite *Args)
             len = Self->Size - (Self->Position % Self->Size); // Calculate amount of space ahead of us.
             if (len > writelen) len = writelen; // Restrict the length to the requested amount to write.
 
-            CopyMemory(src, Self->Buffer + (Self->Position % Self->Size), len);
+            copymem(src, Self->Buffer + (Self->Position % Self->Size), len);
             src += len;
             Self->Position += len;
          }
@@ -1646,7 +1646,7 @@ static ERR FILE_Write(extFile *Self, struct acWrite *Args)
 
          Args->Result = Args->Length;
 
-         CopyMemory(Args->Buffer, Self->Buffer + Self->Position, Args->Result);
+         copymem(Args->Buffer, Self->Buffer + Self->Position, Args->Result);
 
          Self->Position += Args->Result;
          return ERR::Okay;
@@ -2117,7 +2117,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
    }
 
    if (!pf::startswith("icons:", icon)) {
-      CopyMemory(icon, icon+6, sizeof(icon) - 6);
+      copymem(icon, icon+6, sizeof(icon) - 6);
       for (LONG i=0; i < 6; i++) icon[i] = "icons:"[i];
    }
 

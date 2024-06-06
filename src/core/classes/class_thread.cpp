@@ -493,7 +493,7 @@ static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
    }
    else if (AllocMemory(Args->Size, MEM::DATA, &Self->Data, NULL) IS ERR::Okay) {
       Self->DataSize = Args->Size;
-      CopyMemory(Args->Data, Self->Data, Args->Size);
+      copymem(Args->Data, Self->Data, Args->Size);
       return ERR::Okay;
    }
    else return log.warning(ERR::AllocMemory);

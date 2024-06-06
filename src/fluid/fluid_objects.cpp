@@ -384,7 +384,7 @@ static int object_new(lua_State *Lua)
       auto_load_include(Lua, obj->Class);
 
       auto def = (object *)lua_newuserdata(Lua, sizeof(object));
-      ClearMemory(def, sizeof(object));
+      clearmem(def, sizeof(object));
 
       luaL_getmetatable(Lua, "Fluid.obj");
       lua_setmetatable(Lua, -2);
@@ -523,7 +523,7 @@ static int object_newchild(lua_State *Lua)
       auto_load_include(Lua, obj->Class);
 
       auto def = (object *)lua_newuserdata(Lua, sizeof(object));
-      ClearMemory(def, sizeof(object));
+      clearmem(def, sizeof(object));
 
       luaL_getmetatable(Lua, "Fluid.obj");
       lua_setmetatable(Lua, -2);
@@ -588,7 +588,7 @@ static int object_newchild(lua_State *Lua)
 object * push_object(lua_State *Lua, OBJECTPTR Object)
 {
    if (auto newobject = (object *)lua_newuserdata(Lua, sizeof(object))) {
-      ClearMemory(newobject, sizeof(object));
+      clearmem(newobject, sizeof(object));
 
       auto_load_include(Lua, Object->Class);
 
@@ -613,7 +613,7 @@ ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
    if (!ObjectID) { lua_pushnil(Lua); return ERR::Okay; }
 
    if (auto newobject = (object *)lua_newuserdata(Lua, sizeof(object))) {
-      ClearMemory(newobject, sizeof(object));
+      clearmem(newobject, sizeof(object));
 
       if (auto object = GetObjectPtr(ObjectID)) {
          newobject->UID = ObjectID;
@@ -645,7 +645,7 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
    auto_load_include(Lua, obj->Class);
 
    auto def = (object *)lua_newuserdata(Lua, sizeof(object)); // +1 stack
-   ClearMemory(def, sizeof(object));
+   clearmem(def, sizeof(object));
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
@@ -720,7 +720,7 @@ static int object_class(lua_State *Lua)
 
    objMetaClass *cl = query->Class;
    auto def = (object *)lua_newuserdata(Lua, sizeof(object)); // +1 stack
-   ClearMemory(def, sizeof(object));
+   clearmem(def, sizeof(object));
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
@@ -1012,7 +1012,7 @@ static int object_free(lua_State *Lua)
 {
    if (auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
       FreeResource(def->UID);
-      ClearMemory(def, sizeof(object)); // Mark the object as unusable
+      clearmem(def, sizeof(object)); // Mark the object as unusable
    }
 
    return 0;

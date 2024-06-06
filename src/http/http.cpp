@@ -854,7 +854,7 @@ static ERR HTTP_Write(extHTTP *Self, struct acWrite *Args)
       }
 
       if (len > 0) {
-         CopyMemory(Args->Buffer, Self->WriteBuffer + Self->WriteOffset, len);
+         pf::copymem(Args->Buffer, Self->WriteBuffer + Self->WriteOffset, len);
          Self->WriteOffset += len;
          Args->Result = len;
          if (Args->Result != Args->Length) return ERR::LimitedSuccess;
@@ -1236,7 +1236,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
       return ERR::AllocMemory;
    }
 
-   CopyMemory(str, Self->Host, len);
+   pf::copymem(str, Self->Host, len);
    Self->Host[len] = 0;
 
    str += len;

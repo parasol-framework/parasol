@@ -97,8 +97,8 @@ ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
       #ifdef _WIN32
          dir->prvHandle = (WINHANDLE)-1;
       #endif
-      CopyMemory(Path, dir->prvPath, path_len);
-      CopyMemory(resolved_path, dir->prvResolvedPath, resolve_len);
+      copymem(Path, dir->prvPath, path_len);
+      copymem(resolved_path, dir->prvResolvedPath, resolve_len);
 
       FreeResource(resolved_path);
 

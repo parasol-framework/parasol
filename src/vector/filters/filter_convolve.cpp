@@ -237,7 +237,7 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
    ULONG *pixel = (ULONG *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
    ULONG *src   = (ULONG *)output;
    for (LONG y=0; y < canvas_height; y++) {
-      CopyMemory(src, pixel, 4 * canvas_width);
+      copymem(src, pixel, 4 * canvas_width);
       pixel += Self->Target->LineWidth>>2;
       src += canvas_width;
    }
@@ -403,7 +403,7 @@ static ERR CONVOLVEFX_SET_Matrix(extConvolveFX *Self, DOUBLE *Value, LONG Elemen
 
    if ((Elements > 0) and (Elements <= std::ssize(Self->Matrix))) {
       Self->MatrixSize = Elements;
-      CopyMemory(Value, Self->Matrix, sizeof(DOUBLE) * Elements);
+      copymem(Value, Self->Matrix, sizeof(DOUBLE) * Elements);
       return ERR::Okay;
    }
    else return log.warning(ERR::InvalidValue);

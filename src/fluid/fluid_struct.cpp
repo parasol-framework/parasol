@@ -535,7 +535,7 @@ static int struct_new(lua_State *Lua)
          lua_setmetatable(Lua, -2);
 
          fs->Data  = (APTR)(fs + 1);
-         ClearMemory(fs->Data, record.Size);
+         clearmem(fs->Data, record.Size);
 
          fs->Def         = &record;
          fs->StructSize  = record.Size;

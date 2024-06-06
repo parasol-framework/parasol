@@ -48,7 +48,7 @@ jpeg_CreateCompress (j_compress_ptr cinfo, int version, LONG structsize)
   {
     struct jpeg_error_mgr * err = cinfo->err;
     void * client_data = cinfo->client_data; /* ignore Purify complaint here */
-    ClearMemory(cinfo, SIZEOF(struct jpeg_compress_struct));
+    pf::clearmem(cinfo, SIZEOF(struct jpeg_compress_struct));
     cinfo->err = err;
     cinfo->client_data = client_data;
   }

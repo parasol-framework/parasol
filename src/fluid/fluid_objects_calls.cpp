@@ -148,7 +148,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *a
 
    log.traceBranch("%d, %p, Top: %d", ArgsSize, argbuffer, top);
 
-   ClearMemory(argbuffer, ArgsSize);
+   clearmem(argbuffer, ArgsSize);
 
    LONG i, n;
    LONG resultcount = 0;

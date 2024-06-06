@@ -165,7 +165,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    OBJECTID target;
    LONG buttonflag, bi;
 
-   ClearMemory(&userinput, sizeof(userinput));
+   clearmem(&userinput, sizeof(userinput));
    userinput.Value     = Input->Values[0];
    userinput.Timestamp = Input->Timestamp;
    userinput.Type      = Input->Type;
@@ -341,7 +341,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    pf::Log log(__FUNCTION__);
    InputEvent userinput;
 
-   ClearMemory(&userinput, sizeof(userinput));
+   clearmem(&userinput, sizeof(userinput));
    userinput.X         = Input->Values[0];
    userinput.Y         = Input->Values[1];
    userinput.Timestamp = Input->Timestamp;
@@ -1177,7 +1177,7 @@ static ERR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
          LARGE time = PreciseTime();
          if (Self->Buttons[i].LastClickTime + 300000LL <= time) {
             InputEvent input;
-            ClearMemory(&input, sizeof(input));
+            clearmem(&input, sizeof(input));
 
             LONG surface_x, surface_y;
             if (Self->Buttons[i].LastClicked IS Self->OverObjectID) {

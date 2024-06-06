@@ -1715,7 +1715,7 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE
             if (*val IS ',') val++;
 
             pf::BASE64DECODE state;
-            ClearMemory(&state, sizeof(state));
+            clearmem(&state, sizeof(state));
 
             UBYTE *output;
             LONG size = strlen(val);

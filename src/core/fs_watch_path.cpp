@@ -210,7 +210,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 
       LONG event_size = sizeof(struct inotify_event) + event->len;
 
-      if (buffersize > event_size) CopyMemory(buffer + event_size, buffer, buffersize - event_size);
+      if (buffersize > event_size) copymem(buffer + event_size, buffer, buffersize - event_size);
       buffersize -= event_size;
 
       if (++count > 50) {

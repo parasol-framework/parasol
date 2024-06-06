@@ -1911,7 +1911,7 @@ static ERR SET_LaunchPath(extTask *Self, CSTRING Value)
       LONG i;
       for (i=0; Value[i]; i++);
       if (AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->LaunchPath, NULL) IS ERR::Okay) {
-         CopyMemory(Value, Self->LaunchPath, i+1);
+         copymem(Value, Self->LaunchPath, i+1);
       }
       else return log.warning(ERR::AllocMemory);
    }
@@ -2061,7 +2061,7 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
       LONG len = strlen(Value);
       while ((len > 1) and (Value[len-1] != '/') and (Value[len-1] != '\\') and (Value[len-1] != ':')) len--;
       if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&new_path, NULL) IS ERR::Okay) {
-         CopyMemory(Value, new_path, len);
+         copymem(Value, new_path, len);
          new_path[len] = 0;
 
 #ifdef __unix__

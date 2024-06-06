@@ -223,9 +223,9 @@ ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG BufferSize)
          BufferSize -= sizeof(Message);
          if (BufferSize < it->Size) {
             ((Message *)Buffer)->Size = BufferSize;
-            CopyMemory(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), BufferSize);
+            copymem(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), BufferSize);
          }
-         else CopyMemory(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), it->Size);
+         else copymem(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), it->Size);
       }
 
       glQueue.erase(it);
@@ -570,9 +570,9 @@ ERR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG BufferSize)
             BufferSize -= sizeof(Message);
             if (BufferSize < it->Size) {
                ((Message *)Buffer)->Size = BufferSize;
-               CopyMemory(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), BufferSize);
+               copymem(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), BufferSize);
             }
-            else CopyMemory(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), it->Size);
+            else copymem(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), it->Size);
          }
 
          *Handle = index + 1;

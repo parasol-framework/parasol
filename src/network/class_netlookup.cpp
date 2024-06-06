@@ -328,8 +328,8 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
          auto rb = (resolve_buffer *)buffer.get();
          rb->NetLookupID = Self->UID;
          rb->ThreadID = th->UID;
-         CopyMemory(&ip, (rb + 1), sizeof(ip));
-         CopyMemory(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), addr_len);
+         pf::copymem(&ip, (rb + 1), sizeof(ip));
+         pf::copymem(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), addr_len);
          if ((th->setData(rb, pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
             std::lock_guard<std::mutex> lock(*Self->ThreadLock);
             Self->Threads->insert(th->UID);
@@ -595,7 +595,7 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info
          .sin6_flowinfo = 0,
          .sin6_scope_id = 0
       };
-      CopyMemory(IP->Data, (APTR)sa.sin6_addr.s6_addr, 16);
+      pf::copymem(IP->Data, (APTR)sa.sin6_addr.s6_addr, 16);
       result = getnameinfo((struct sockaddr *)&sa, sizeof(sa), host_name, sizeof(host_name), service, sizeof(service), NI_NAMEREQD);
    }
 
@@ -634,7 +634,7 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
 #ifdef __linux__
    struct addrinfo hints, *servinfo;
 
-   ClearMemory(&hints, sizeof hints);
+   clearmem(&hints, sizeof hints);
    hints.ai_family   = AF_UNSPEC;
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_flags    = AI_CANONNAME;
