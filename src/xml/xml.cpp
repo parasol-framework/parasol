@@ -658,7 +658,7 @@ static ERR XML_Serialise(extXML *Self, struct xml::Serialise *Args)
    }
    else serialise_xml(*tag, buffer, Args->Flags);
 
-   pf::SwitchContext ctx(GetParentContext());
+   pf::SwitchContext ctx(ParentContext());
    if ((Args->Result = pf::strclone(buffer.str()))) return ERR::Okay;
    else return log.warning(ERR::AllocMemory);
 }

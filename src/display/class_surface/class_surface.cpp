@@ -612,7 +612,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   OBJECTPTR context = GetParentContext();
+   OBJECTPTR context = ParentContext();
    OBJECTPTR call_context = NULL;
    if (Args->Callback->isC()) call_context = (OBJECTPTR)Args->Callback->Context;
    else if (Args->Callback->isScript()) call_context = context; // Scripts use runtime ID resolution...
@@ -1938,7 +1938,7 @@ static ERR SURFACE_RemoveCallback(extSurface *Self, struct drw::RemoveCallback *
    }
    else log.trace("Current Total: %d [Remove All]", Self->CallbackCount);
 
-   if (!context) context = GetParentContext();
+   if (!context) context = ParentContext();
 
    if (!Self->Callback) return ERR::Okay;
 

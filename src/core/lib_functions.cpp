@@ -425,14 +425,6 @@ LARGE GetResource(RES Resource)
             return 0;
          #endif
 
-      case RES::PARENT_CONTEXT: {
-         // Return the first parent context that differs to the current context.  This avoids any confusion
-         // arising from the the current object making calls to itself.
-         auto parent = tlContext->Stack;
-         while ((parent) and (parent->object() IS tlContext->object())) parent = parent->Stack;
-         return parent ? (MAXINT)parent->object() : 0;
-      }
-
 #ifdef __linux__
       // NB: This value is not cached.  Although unlikely, it is feasible that the total amount of physical RAM could
       // change during runtime.

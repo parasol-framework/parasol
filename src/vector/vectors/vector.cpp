@@ -1026,7 +1026,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
   if (Args->Callback->isC()) {
       auto routine = ((ERR (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->Routine));
 
-      pf::SwitchContext context(GetParentContext());
+      pf::SwitchContext context(ParentContext());
 
       if (Args->Transform) {
          agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);

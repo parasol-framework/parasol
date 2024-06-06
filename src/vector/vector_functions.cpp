@@ -631,7 +631,7 @@ ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
    if (Callback->isC()) {
       auto routine = ((ERR (*)(SimpleVector *, LONG, LONG, double, double, APTR))(Callback->Routine));
 
-      pf::SwitchContext context(GetParentContext());
+      pf::SwitchContext context(ParentContext());
 
       do {
          cmd = ((SimpleVector *)Path)->mPath.vertex(&x, &y);

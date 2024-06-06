@@ -746,11 +746,11 @@ void print_diagnosis(LONG Signal)
 
    if (glCodeIndex != CP_PRINT_ACTION) {
       glCodeIndex = CP_PRINT_ACTION;
-      if (ctx->Action > 0) {
-         if (ctx->Field) fprintf(fd, "  Last Action:    Set.%s\n", ctx->Field->Name);
-         else fprintf(fd, "  Last Action:    %s\n", ActionTable[ctx->Action].Name);
+      if (ctx->action > 0) {
+         if (ctx->field) fprintf(fd, "  Last Action:    Set.%s\n", ctx->field->Name);
+         else fprintf(fd, "  Last Action:    %s\n", ActionTable[ctx->action].Name);
       }
-      else if (ctx->Action < 0) fprintf(fd, "  Last Method:    %d\n", ctx->Action);
+      else if (ctx->action < 0) fprintf(fd, "  Last Method:    %d\n", ctx->action);
    }
    else fprintf(fd, "  The action table is corrupt.\n");
 

@@ -213,9 +213,9 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       auto ctx = tlContext;
       auto obj = ctx->object();
-      if (ctx->Action > 0) action = ActionTable[ctx->Action].Name;
-      else if (ctx->Action < 0) {
-         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
+      if (ctx->action > 0) action = ActionTable[ctx->action].Name;
+      else if (ctx->action < 0) {
+         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->action].Name;
          else action = "Method";
       }
       else action = "App";
@@ -267,13 +267,13 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
             name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
             if (glLogLevel > 5) {
-               if (ctx->Field) {
-                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx->Field->Name);
+               if (ctx->field) {
+                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx->field->Name);
                }
                else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
             }
-            else if (ctx->Field) {
-               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx->Field->Name);
+            else if (ctx->field) {
+               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx->field->Name);
             }
             else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UID);
          }
@@ -331,9 +331,9 @@ ERR FuncError(CSTRING Header, ERR Code)
    auto ctx = tlContext;
    auto obj = tlContext->object();
    if (!Header) {
-      if (ctx->Action > 0) Header = ActionTable[ctx->Action].Name;
-      else if (ctx->Action < 0) {
-         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
+      if (ctx->action > 0) Header = ActionTable[ctx->action].Name;
+      else if (ctx->action < 0) {
+         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-ctx->action].Name;
          else Header = "Method";
       }
       else Header = "Function";
@@ -369,8 +369,8 @@ ERR FuncError(CSTRING Header, ERR Code)
       if (obj->Class) {
          CSTRING name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
-         if (ctx->Field) {
-            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->Field->Name, glMessages[LONG(Code)], hiend);
+         if (ctx->field) {
+            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->field->Name, glMessages[LONG(Code)], hiend);
          }
          else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[LONG(Code)], hiend);
       }

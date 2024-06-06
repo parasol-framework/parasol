@@ -127,7 +127,7 @@ class objScintilla : public Object {
    LONG      CursorRow;          // The current row of the text cursor.
    LONG      CursorCol;          // The current column of the text cursor.
    SCLEX     Lexer;              // The lexer for document styling is defined here.
-   LONG      Modified;           // Returns TRUE if the document has been modified and not saved.
+   LONG      Modified;           // Returns true if the document has been modified and not saved.
 
    // Action stubs
 

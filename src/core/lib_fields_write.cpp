@@ -526,7 +526,7 @@ class FieldContext : public ObjectContext {
 
    public:
    FieldContext(OBJECTPTR Object, struct Field *Field) : ObjectContext(Object, AC_SetField, NULL) {
-      if ((tlContext->Field IS Field) and (tlContext->object() IS Object)) { // Detect recursion
+      if ((tlContext->field IS Field) and (tlContext->object() IS Object)) { // Detect recursion
          success = false;
          return;
       }
@@ -536,7 +536,7 @@ class FieldContext : public ObjectContext {
    }
 
    ~FieldContext() {
-      if (success) Object->ActionDepth--;
+      if (success) obj->ActionDepth--;
    }
 };
 

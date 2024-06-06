@@ -1061,7 +1061,7 @@ enum class RES : LONG {
    PRIVILEGED_USER = 6,
    PRIVILEGED = 7,
    CORE_IDL = 8,
-   PARENT_CONTEXT = 9,
+   STATIC_BUILD = 9,
    LOG_LEVEL = 10,
    TOTAL_SHARED_MEMORY = 11,
    MAX_PROCESSES = 12,
@@ -1076,7 +1076,6 @@ enum class RES : LONG {
    TOTAL_SWAP = 21,
    CPU_SPEED = 22,
    FREE_MEMORY = 23,
-   STATIC_BUILD = 24,
 };
 
 // Path types for SetResourcePath()
@@ -2079,6 +2078,7 @@ struct CoreBase {
    CSTRING (*_ResolveGroupID)(LONG Group);
    CSTRING (*_ResolveUserID)(LONG User);
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
+   OBJECTPTR (*_ParentContext)(void);
 #endif // PARASOL_STATIC
 };
 
@@ -2177,6 +2177,7 @@ inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
+inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR *Result);
 extern "C" ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
@@ -2269,13 +2270,13 @@ extern "C" objTask * CurrentTask(void);
 extern "C" CSTRING ResolveGroupID(LONG Group);
 extern "C" CSTRING ResolveUserID(LONG User);
 extern "C" ERR CreateLink(CSTRING From, CSTRING To);
+extern "C" OBJECTPTR ParentContext(void);
 #endif // PARASOL_STATIC
 #endif
 
 
 //********************************************************************************************************************
 
-#define PRIME_HASH 2654435761UL
 #define END_FIELD FieldArray(NULL, 0)
 #define FDEF static const struct FunctionField
 
@@ -2287,9 +2288,6 @@ inline ERR DeregisterFD(HOSTHANDLE Handle) {
    return RegisterFD(Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL, 0, 0);
 }
 
-#define DeleteMsg(a,b)  UpdateMessage(a,b,(APTR)-1,0,0)
-
-inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES::PARENT_CONTEXT); }
 inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }

@@ -1186,6 +1186,18 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
+    <name>ParentContext</name>
+    <category>Objects</category>
+    <comment>Returns the first parent context that differs to the current context.</comment>
+    <prototype>OBJECTPTR ParentContext()</prototype>
+    <description>
+<p>This function is used to return the context of the caller (the client), as opposed to <function>CurrentContext</function>, which returns the operating context.  This feature is commonly used by methods that need to acquire a reference to the client for resource management reasons.</p>
+<p>Note that this function can return <code>NULL</code> if used in system calls at the operating level of the running process.</p>
+    </description>
+    <result type="OBJECTPTR">An object reference is returned, or <code>NULL</code> if there is no parent context.</result>
+  </function>
+
+  <function>
     <name>PreciseTime</name>
     <category>System</category>
     <comment>Returns the current system time, in microseconds.</comment>
@@ -2817,7 +2829,6 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</const>
       <const name="MAX_PROCESSES">The maximum number of processes that can be supported at any time.</const>
       <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
-      <const name="PARENT_CONTEXT">Read-only pointer to the parent object of the current context.</const>
       <const name="PRIVILEGED">This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</const>
       <const name="PRIVILEGED_USER">If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</const>
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>

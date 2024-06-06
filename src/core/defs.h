@@ -840,55 +840,55 @@ extern std::vector<TaskMessage> glQueue;
 
 class ObjectContext {
    public:
-   class ObjectContext *Stack; // Call stack.
-   struct Field *Field;        // Set if the context is linked to a get/set field operation.  For logging purposes only.
-   WORD Action;                // Set if the context enters an action or method routine.
+   class ObjectContext *stack; // Call stack.
+   struct Field *field;        // Set if the context is linked to a get/set field operation.  For logging purposes only.
+   WORD action;                // Set if the context enters an action or method routine.
 
    protected:
-   OBJECTPTR Object;           // Required.  The object that currently has the operating context.
+   OBJECTPTR obj;           // Required.  The object that currently has the operating context.
 
    public:
    ObjectContext() { // Dummy initialisation
-      Stack  = NULL;
-      Object = &glDummyObject;
-      Field  = NULL;
-      Action = 0;
+      stack  = NULL;
+      obj = &glDummyObject;
+      field  = NULL;
+      action = 0;
    }
 
    ObjectContext(OBJECTPTR pObject, WORD pAction, struct Field *pField = NULL) {
-      Stack  = tlContext;
-      Object = pObject;
-      Field  = pField;
-      Action = pAction;
+      stack  = tlContext;
+      obj = pObject;
+      field  = pField;
+      action = pAction;
 
       tlContext = this;
    }
 
    ~ObjectContext() {
-      if (Stack) tlContext = Stack;
+      if (stack) tlContext = stack;
    }
 
    // Return the nearest object for resourcing purposes.  Note that an action ID of 0 has special meaning and indicates
    // that resources should be tracked to the next object on the stack (this feature is used by GetField*() functionality).
 
-   inline OBJECTPTR resource() {
-      if (Action) return Object;
+   inline OBJECTPTR resource() const {
+      if (action) return obj;
       else {
-         for (auto ctx = Stack; ctx; ctx=ctx->Stack) {
-            if (Action) return ctx->Object;
+         for (auto ctx = stack; ctx; ctx=ctx->stack) {
+            if (action) return ctx->obj;
          }
          return &glDummyObject;
       }
    }
 
    inline OBJECTPTR setContext(OBJECTPTR NewObject) {
-      auto old = Object;
-      Object = NewObject;
+      auto old = obj;
+      obj = NewObject;
       return old;
    }
 
-   constexpr inline OBJECTPTR object() { // Return the object that has the context (but not necessarily for resourcing)
-      return Object;
+   constexpr inline OBJECTPTR object() const { // Return the object that has the context (but not necessarily for resourcing)
+      return obj;
    }
 };
 

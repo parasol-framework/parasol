@@ -327,7 +327,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "PRIVILEGED_USER: If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.",
     "PRIVILEGED: This is set to `true` if the process has elevated privileges (such as superuser or administrative rights).",
     "CORE_IDL: Refers to the Core module's compressed IDL string.",
-    "PARENT_CONTEXT: Read-only pointer to the parent object of the current context.",
+    "STATIC_BUILD: Returns true if the runtime is a statically linked build.",
     "LOG_LEVEL: The current level of log detail (larger numbers indicate more detail).",
     "TOTAL_SHARED_MEMORY: The total amount of shared memory in use (system wide).",
     "MAX_PROCESSES: The maximum number of processes that can be supported at any time.",
@@ -341,8 +341,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TOTAL_MEMORY: The total amount of installed memory.",
     "TOTAL_SWAP: The total amount of available swap space.",
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
-    "FREE_MEMORY: The total amount of free memory.",
-    "STATIC_BUILD: Returns true if the runtime is a statically linked build."
+    "FREE_MEMORY: The total amount of free memory."
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
@@ -1171,13 +1170,13 @@ struct ScriptArg { // For use with sc::Exec
     "CurrentTask",
     "ResolveGroupID",
     "ResolveUserID",
-    "CreateLink")
+    "CreateLink",
+    "ParentContext")
 
   c_insert([=[
 
 //********************************************************************************************************************
 
-#define PRIME_HASH 2654435761UL
 #define END_FIELD FieldArray(NULL, 0)
 #define FDEF static const struct FunctionField
 
@@ -1189,9 +1188,6 @@ inline ERR DeregisterFD(HOSTHANDLE Handle) {
    return RegisterFD(Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL, 0, 0);
 }
 
-#define DeleteMsg(a,b)  UpdateMessage(a,b,(APTR)-1,0,0)
-
-inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES::PARENT_CONTEXT); }
 inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }

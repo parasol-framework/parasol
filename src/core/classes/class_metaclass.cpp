@@ -320,7 +320,7 @@ ERR CLASS_Init(extMetaClass *Self)
          Self->Root = (RootModule *)ctx->object();
          break;
       }
-      ctx = ctx->Stack;
+      ctx = ctx->stack;
    }
 
    bool save = false;

@@ -727,6 +727,30 @@ OBJECTPTR CurrentContext(void)
 /*********************************************************************************************************************
 
 -FUNCTION-
+ParentContext: Returns the first parent context that differs to the current context.
+
+This function is used to return the context of the caller (the client), as opposed to ~CurrentContext(), which 
+returns the operating context.  This feature is commonly used by methods that need to acquire a reference to the 
+client for resource management reasons.
+
+Note that this function can return `NULL` if used in system calls at the operating level of the running 
+process.
+
+-RESULT-
+obj: An object reference is returned, or `NULL` if there is no parent context.
+
+*********************************************************************************************************************/
+
+OBJECTPTR ParentContext(void)
+{
+   auto parent = tlContext->stack;
+   while ((parent) and (parent->object() IS tlContext->object())) parent = parent->stack;
+   return parent ? parent->object() : (OBJECTPTR)NULL;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 FindClass: Returns all class objects for a given class ID.
 
 This function will find a specific class by ID and return its @MetaClass.  If the class is not in memory, the internal

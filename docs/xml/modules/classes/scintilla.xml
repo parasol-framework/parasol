@@ -412,12 +412,12 @@
 
     <field>
       <name>Modified</name>
-      <comment>Returns TRUE if the document has been modified and not saved.</comment>
+      <comment>Returns <code>true</code> if the document has been modified and not saved.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
 <p>The Modified field controls the modification state of the document.  It is automatically changed to a value of TRUE when the user edits the document.  To receive notification of changes to the document state, you should subscribe to the Modified field.</p>
-<p>It is recommended that you manually set this field to FALSE if the document is saved to disk.  The Scintilla class will not make this change for you automatically.</p>
+<p>It is recommended that you manually set this field to <code>false</code> if the document is saved to disk.  The Scintilla class will not make this change for you automatically.</p>
       </description>
     </field>
 

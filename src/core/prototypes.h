@@ -92,3 +92,4 @@ extern "C" objTask * CurrentTask();
 extern "C" CSTRING ResolveGroupID(LONG Group);
 extern "C" CSTRING ResolveUserID(LONG User);
 extern "C" ERR CreateLink(CSTRING From, CSTRING To);
+extern "C" OBJECTPTR ParentContext();
