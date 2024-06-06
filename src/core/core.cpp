@@ -1296,7 +1296,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
 
                if ((mount[0] IS '/') and (!mount[1]));
                else {
-                  IntToStr(driveno++, drivename+5, 3);
+                  strcopy(std::to_string(driveno++), drivename+5, 3);
                   SetVolume(drivename, mount, "devices/storage", NULL, "hd", VOLUME::NIL);
                }
             }

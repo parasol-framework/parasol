@@ -1288,18 +1288,18 @@ static ERR DISPLAY_SaveSettings(extDisplay *Self)
 
    if (config.ok()) {
       if ((Self->Flags & SCR::BORDERLESS) IS SCR::NIL) {
-         config->write("DISPLAY", "WindowX", Self->X);
-         config->write("DISPLAY", "WindowY", Self->Y);
+         config->write("DISPLAY", "WindowX", std::to_string(Self->X));
+         config->write("DISPLAY", "WindowY", std::to_string(Self->Y));
 
-         if (Self->Width >= 600) config->write("DISPLAY", "WindowWidth", Self->Width);
-         else config->write("DISPLAY", "WindowWidth", 600);
+         if (Self->Width >= 600) config->write("DISPLAY", "WindowWidth", std::to_string(Self->Width));
+         else config->write("DISPLAY", "WindowWidth", "600");
 
-         if (Self->Height >= 480) config->write("DISPLAY", "WindowHeight", Self->Height);
-         else config->write("DISPLAY", "WindowHeight", 480);
+         if (Self->Height >= 480) config->write("DISPLAY", "WindowHeight", std::to_string(Self->Height));
+         else config->write("DISPLAY", "WindowHeight", "480");
       }
 
       config->write("DISPLAY", "DPMS", dpms_name(Self->PowerMode));
-      config->write("DISPLAY", "FullScreen", ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0);
+      config->write("DISPLAY", "FullScreen", ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? "1" : "0");
 
       config->saveSettings();
    }

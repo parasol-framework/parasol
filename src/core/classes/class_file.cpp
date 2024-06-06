@@ -2318,7 +2318,7 @@ static ERR GET_Permissions(extFile *Self, PERMIT *Value)
 
    CSTRING path;
    if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
-      LONG i = StrLength(path);
+      LONG i = strlen(path);
       while ((i >= 0) and (path[i] != '/') and (path[i] != ':') and (path[i] != '\\')) i--;
       if (path[i+1] IS '.') Self->Permissions = PERMIT::HIDDEN;
       else Self->Permissions = PERMIT::NIL;

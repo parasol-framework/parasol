@@ -634,7 +634,7 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
 #ifdef __linux__
    struct addrinfo hints, *servinfo;
 
-   clearmem(&hints, sizeof hints);
+   pf::clearmem(&hints, sizeof hints);
    hints.ai_family   = AF_UNSPEC;
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_flags    = AI_CANONNAME;

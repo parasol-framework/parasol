@@ -445,9 +445,9 @@ LARGE GetResource(RES Resource)
          if (ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result) IS ERR::Okay) {
             LONG i = 0;
             while (i < result) {
-               if (startswith("Cached", str+i)) freemem += (LARGE)StrToInt(str+i) * 1024LL;
-               else if (startswith("Buffers", str+i)) freemem += (LARGE)StrToInt(str+i) * 1024LL;
-               else if (startswith("MemFree", str+i)) freemem += (LARGE)StrToInt(str+i) * 1024LL;
+               if (startswith("Cached", str+i)) freemem += strtoll(str+i, NULL, 0) * 1024LL;
+               else if (startswith("Buffers", str+i)) freemem += strtoll(str+i, NULL, 0) * 1024LL;
+               else if (startswith("MemFree", str+i)) freemem += strtoll(str+i, NULL, 0) * 1024LL;
 
                while ((i < result) and (str[i] != '\n')) i++;
                i++;
@@ -480,7 +480,7 @@ LARGE GetResource(RES Resource)
 
          if (file.ok()) {
             while ((line = file->readLine())) {
-               if (startswith("cpu Mhz", line)) cpu_mhz = StrToInt(line);
+               if (startswith("cpu Mhz", line)) cpu_mhz = strtol(line, NULL, 0);
             }
          }
 
