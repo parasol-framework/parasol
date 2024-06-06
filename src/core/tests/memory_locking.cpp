@@ -118,15 +118,15 @@ int main(int argc, CSTRING *argv)
    if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR::Okay) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
          if (iequals(args[0][i], "-threads")) {
-            if (++i < args->size()) glTotalThreads = strtol(args[0][i], NULL, 0);
+            if (++i < args->size()) glTotalThreads = strtol(args[0][i].c_str(), NULL, 0);
             else break;
          }
          else if (iequals(args[0][i], "-attempts")) {
-            if (++i < args->size()) glLockAttempts = strtol(args[0][i], NULL, 0);
+            if (++i < args->size()) glLockAttempts = strtol(args[0][i].c_str(), NULL, 0);
             else break;
          }
          else if (iequals(args[0][i], "-gap")) {
-            if (++i < args->size()) glAccessGap = strtol(args[0][i], NULL, 0);
+            if (++i < args->size()) glAccessGap = strtol(args[0][i].c_str(), NULL, 0);
             else break;
          }
          else if (iequals(args[0][i], "-terminate")) glTerminateMemory = true;

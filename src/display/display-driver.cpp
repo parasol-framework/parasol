@@ -999,7 +999,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
          if (file.ok()) {
             auto write_string = [](objFile *File, CSTRING String) {
-               struct acWrite write = { .Buffer = String, .Length = StrLength(String) };
+               struct acWrite write = { .Buffer = String, .Length = LONG(strlen(String)) };
                Action(AC_Write, File, &write);
             };
 

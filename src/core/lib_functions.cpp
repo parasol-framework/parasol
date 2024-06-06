@@ -480,7 +480,7 @@ LARGE GetResource(RES Resource)
 
          if (file.ok()) {
             while ((line = file->readLine())) {
-               if (startswith("cpu Mhz", line)) cpu_mhz = StrToInt(line);
+               if (startswith("cpu Mhz", line)) cpu_mhz = strtol(line, NULL, 0);
             }
          }
 
