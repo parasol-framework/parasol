@@ -53,13 +53,13 @@ static const FieldArray clFields[] = {
 };
 
 static const ActionArray clActions[] = {
-   { AC_Free,   ASSET_Free },
-   { AC_Init,   ASSET_Init },
-   { AC_Move,   ASSET_Move },
-   { AC_Read,   ASSET_Read },
-   { AC_Rename, ASSET_Rename },
-   { AC_Seek,   ASSET_Seek },
-   { AC_Write,  ASSET_Write },
+   { AC::Free,   ASSET_Free },
+   { AC::Init,   ASSET_Init },
+   { AC::Move,   ASSET_Move },
+   { AC::Read,   ASSET_Read },
+   { AC::Rename, ASSET_Rename },
+   { AC::Seek,   ASSET_Seek },
+   { AC::Write,  ASSET_Write },
    { 0, NULL }
 };
 

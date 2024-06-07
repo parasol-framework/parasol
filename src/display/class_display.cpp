@@ -242,7 +242,7 @@ static ERR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
          dc.Datatype = DATA::RECEIPT;
          dc.Buffer   = pf::strclone(result);
          dc.Size     = result.size() + 1;
-         Action(AC_DataFeed, Args->Object, &dc);
+         Action(AC::DataFeed, Args->Object, &dc);
       }
       else return log.warning(ERR::NoSupport);
       #endif
@@ -1177,7 +1177,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
       return ERR::Failed;
    }
 
-   Action(AC_Resize, Self->Bitmap, Args);
+   Action(AC::Resize, Self->Bitmap, Args);
    Self->Width = Self->Bitmap->Width;
    Self->Height = Self->Bitmap->Height;
 
@@ -1190,7 +1190,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
       XResizeWindow(XDisplay, Self->XWindowHandle, Args->Width, Args->Height);
    }
 
-   Action(AC_Resize, Self->Bitmap, Args);
+   Action(AC::Resize, Self->Bitmap, Args);
    Self->Width = Self->Bitmap->Width;
    Self->Height = Self->Bitmap->Height;
 
@@ -1267,7 +1267,7 @@ SaveImage: Saves the image of a display to a data object.
 
 static ERR DISPLAY_SaveImage(extDisplay *Self, struct acSaveImage *Args)
 {
-   return Action(AC_SaveImage, Self->Bitmap, Args);
+   return Action(AC::SaveImage, Self->Bitmap, Args);
 }
 
 /*********************************************************************************************************************
@@ -2266,7 +2266,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
 
             if ((Self->Flags & SCR::VISIBLE) != SCR::NIL) {
                winShowWindow(Self->WindowHandle, TRUE);
-               QueueAction(AC_Focus, Self->UID);
+               QueueAction(AC::Focus, Self->UID);
             }
          }
 
@@ -2348,7 +2348,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
          if ((Self->Flags & SCR::VISIBLE) != SCR::NIL) {
             acShow(Self);
             XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
-            QueueAction(AC_Focus, Self->UID);
+            QueueAction(AC::Focus, Self->UID);
          }
 
          resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
@@ -2640,10 +2640,10 @@ static ERR GET_ResizeFeedback(extDisplay *Self, FUNCTION **Value)
 static ERR SET_ResizeFeedback(extDisplay *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->ResizeFeedback.isScript()) UnsubscribeAction(Self->ResizeFeedback.Context, AC_Free);
+      if (Self->ResizeFeedback.isScript()) UnsubscribeAction(Self->ResizeFeedback.Context, AC::Free);
       Self->ResizeFeedback = *Value;
       if (Self->ResizeFeedback.isScript()) {
-         SubscribeAction(Self->ResizeFeedback.Context, AC_Free, C_FUNCTION(notify_resize_free));
+         SubscribeAction(Self->ResizeFeedback.Context, AC::Free, C_FUNCTION(notify_resize_free));
       }
    }
    else Self->ResizeFeedback.clear();

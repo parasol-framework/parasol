@@ -5,13 +5,13 @@
 static int object_action_call_args(lua_State *Lua)
 {
    auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
-   LONG action_id = lua_tointeger(Lua, lua_upvalueindex(2));
+   AC action_id = AC(lua_tointeger(Lua, lua_upvalueindex(2)));
    bool release = false;
 
-   auto argbuffer = std::make_unique<BYTE[]>(glActions[action_id].Size+8); // +8 for overflow protection in build_args()
-   ERR error = build_args(Lua, glActions[action_id].Args, glActions[action_id].Size, argbuffer.get(), NULL);
+   auto argbuffer = std::make_unique<BYTE[]>(glActions[LONG(action_id)].Size+8); // +8 for overflow protection in build_args()
+   ERR error = build_args(Lua, glActions[LONG(action_id)].Args, glActions[LONG(action_id)].Size, argbuffer.get(), NULL);
    if (error != ERR::Okay) {
-      luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
+      luaL_error(Lua, "Argument build failure for %s.", glActions[LONG(action_id)].Name);
       return 0;
    }
 
@@ -34,11 +34,11 @@ static int object_action_call_args(lua_State *Lua)
       // quite common when returning ERR::Terminate).
 
       lua_pushinteger(Lua, LONG(error));
-      results += get_results(Lua, glActions[action_id].Args, argbuffer.get());
+      results += get_results(Lua, glActions[LONG(action_id)].Args, argbuffer.get());
    }
 
    if (release) release_object(object);
-   report_action_error(Lua, object, glActions[action_id].Name, error);
+   report_action_error(Lua, object, glActions[LONG(action_id)].Name, error);
    return results;
 }
 
@@ -47,7 +47,7 @@ static int object_action_call_args(lua_State *Lua)
 static int object_action_call(lua_State *Lua)
 {
    auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
-   LONG action_id = lua_tointeger(Lua, lua_upvalueindex(2));
+   AC action_id = AC(lua_tointeger(Lua, lua_upvalueindex(2)));
    ERR error;
    bool release = false;
 
@@ -65,7 +65,7 @@ static int object_action_call(lua_State *Lua)
    lua_pushinteger(Lua, LONG(error));
 
    if (release) release_object(def);
-   report_action_error(Lua, def, glActions[action_id].Name, error);
+   report_action_error(Lua, def, glActions[LONG(action_id)].Name, error);
    return 1;
 }
 

@@ -67,7 +67,7 @@ struct actionmonitor {
    ~actionmonitor() {
       if (ObjectID) {
          pf::Log log(__FUNCTION__);
-         log.trace("Unsubscribe action %s from object #%d", glActions[ActionID].Name, ObjectID);
+         log.trace("Unsubscribe action %s from object #%d", glActions[LONG(ActionID)].Name, ObjectID);
          OBJECTPTR obj;
          if (AccessObject(ObjectID, 3000, &obj) IS ERR::Okay) {
             UnsubscribeAction(obj, ActionID);

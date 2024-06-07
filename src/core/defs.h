@@ -138,6 +138,7 @@ enum class CCF    : ULONG;
 enum class MEM    : ULONG;
 enum class ALF    : UWORD;
 enum class EVG    : LONG;
+enum class AC     : LONG;
 
 #define STAT_FOLDER 0x0001
 
@@ -168,7 +169,7 @@ struct ThreadMessage {
 
 struct ThreadActionMessage {
    OBJECTPTR Object;    // Direct pointer to a target object.
-   LONG      ActionID;  // The action to execute.
+   AC        ActionID;  // The action to execute.
    LONG      Key;       // Internal
    ERR       Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
@@ -322,7 +323,7 @@ public:
    LARGE     Interval;       // The amount of microseconds to wait at each interval
    OBJECTPTR Subscriber;     // The object that is subscribed (pointer, if private)
    OBJECTID  SubscriberID;   // The object that is subscribed
-   FUNCTION  Routine;        // Routine to call if not using AC_Timer - ERR Routine(OBJECTID, LONG, LONG);
+   FUNCTION  Routine;        // Routine to call if not using AC::Timer - ERR Routine(OBJECTID, LONG, LONG);
    UBYTE     Cycle;
    bool      Locked;
 };
@@ -355,7 +356,7 @@ class extMetaClass : public objMetaClass {
    class RootModule *Root;              // Root module that owns this class, if any.
    UBYTE Local[8];                      // Local object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
-   ActionEntry ActionTable[AC_END];
+   ActionEntry ActionTable[LONG(AC::END)];
    WORD OriginalFieldTotal;
    UWORD BaseCeiling;                   // FieldLookup ceiling value for the base-class fields
 };
@@ -449,7 +450,7 @@ class extTask : public objTask {
       STRING Env;
       APTR Platform;
    #endif
-   struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
+   struct ActionEntry Actions[LONG(AC::END)]; // Action routines to be intercepted by the program
 };
 
 //********************************************************************************************************************
@@ -842,7 +843,7 @@ class ObjectContext {
    public:
    class ObjectContext *stack; // Call stack.
    struct Field *field;        // Set if the context is linked to a get/set field operation.  For logging purposes only.
-   WORD action;                // Set if the context enters an action or method routine.
+   AC action;                  // Set if the context enters an action or method routine.
 
    protected:
    OBJECTPTR obj;           // Required.  The object that currently has the operating context.
@@ -852,10 +853,10 @@ class ObjectContext {
       stack  = NULL;
       obj = &glDummyObject;
       field  = NULL;
-      action = 0;
+      action = AC::NIL;
    }
 
-   ObjectContext(OBJECTPTR pObject, WORD pAction, struct Field *pField = NULL) {
+   ObjectContext(OBJECTPTR pObject, AC pAction, struct Field *pField = NULL) {
       stack  = tlContext;
       obj = pObject;
       field  = pField;
@@ -872,10 +873,10 @@ class ObjectContext {
    // that resources should be tracked to the next object on the stack (this feature is used by GetField*() functionality).
 
    inline OBJECTPTR resource() const {
-      if (action) return obj;
+      if (action != AC::NIL) return obj;
       else {
          for (auto ctx = stack; ctx; ctx=ctx->stack) {
-            if (action) return ctx->obj;
+            if (action != AC::NIL) return ctx->obj;
          }
          return &glDummyObject;
       }
@@ -944,7 +945,7 @@ class RootModule : public Object {
    void   (*Close)(OBJECTPTR);
    ERR    (*Open)(OBJECTPTR);
    ERR    (*Expunge)(void);
-   struct ActionEntry prvActions[AC_END]; // Action routines to be intercepted by the program
+   struct ActionEntry prvActions[LONG(AC::END)]; // Action routines to be intercepted by the program
    char   LibraryName[40]; // Name of the library loaded from disk
 };
 

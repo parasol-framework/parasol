@@ -550,12 +550,12 @@ static const FieldArray clWaveFields[] = {
 };
 
 static const ActionArray clWaveActions[] = {
-   { AC_NewObject,     WAVE_NewObject },
-   { AC_Move,          WAVE_Move },
-   { AC_MoveToPoint,   WAVE_MoveToPoint },
-   //{ AC_Redimension, WAVE_Redimension },
-   { AC_Resize,      WAVE_Resize },
-   { 0, NULL }
+   { AC::NewObject,     WAVE_NewObject },
+   { AC::Move,          WAVE_Move },
+   { AC::MoveToPoint,   WAVE_MoveToPoint },
+   //{ AC::Redimension, WAVE_Redimension },
+   { AC::Resize,      WAVE_Resize },
+   { AC::NIL, NULL }
 };
 
 static ERR init_wave(void)

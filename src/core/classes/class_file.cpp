@@ -1425,12 +1425,12 @@ stopped with the #StopStream() method and then restarted with StartStream.
 A stream can be limited by setting the Length parameter to a non-zero value.
 
 If the StartStream request is successful, the file object will return action notifications to the Subscriber to
-indicate activity on the file stream.  When reading from a stream, `AC_Write` notifications will be received to indicate
+indicate activity on the file stream.  When reading from a stream, `AC::Write` notifications will be received to indicate
 that new data has been written to the file cache.  The Buffer parameter of the reported acWrite structure may refer to
 a private address that contains the data that was received from the stream and the Result indicates the amount of new
 data available.
 
-When writing to a stream, `AC_Read` notifications will be received to indicate that the stream is ready to accept more
+When writing to a stream, `AC::Read` notifications will be received to indicate that the stream is ready to accept more
 data.  The Result parameter will indicate the maximum amount of data that should be written to the stream using the
 #Write() action.
 

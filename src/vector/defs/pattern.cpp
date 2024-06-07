@@ -393,11 +393,11 @@ static ERR PATTERN_SET_Y(extVectorPattern *Self, Unit &Value)
 //********************************************************************************************************************
 
 static const ActionArray clPatternActions[] = {
-   { AC_Draw,      PATTERN_Draw },
-   { AC_Free,      PATTERN_Free },
-   { AC_Init,      PATTERN_Init },
-   { AC_NewObject, PATTERN_NewObject },
-   { 0, NULL }
+   { AC::Draw,      PATTERN_Draw },
+   { AC::Free,      PATTERN_Free },
+   { AC::Init,      PATTERN_Init },
+   { AC::NewObject, PATTERN_NewObject },
+   { AC::NIL, NULL }
 };
 
 static const FieldDef clPatternDimensions[] = {

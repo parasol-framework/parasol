@@ -126,7 +126,7 @@ static int thread_action(lua_State *Lua)
    }
 
    LONG type = lua_type(Lua, 2);
-   ACTIONID action_id;
+   AC action_id;
    CSTRING action = NULL;
    if (type IS LUA_TSTRING) {
       action = lua_tostring(Lua, 2);
@@ -139,7 +139,7 @@ static int thread_action(lua_State *Lua)
       }
    }
    else if (type IS LUA_TNUMBER) {
-      action_id = lua_tointeger(Lua, 2);
+      action_id = AC(lua_tointeger(Lua, 2));
    }
    else {
       luaL_argerror(Lua, 2, "Action name required.");
@@ -163,12 +163,12 @@ static int thread_action(lua_State *Lua)
    const FunctionField *args = NULL;
    ERR error = ERR::Okay;
 
-   if ((glActions[action_id].Args) and (glActions[action_id].Size)) {
-      argsize = glActions[action_id].Size;
-      args = glActions[action_id].Args;
+   if ((glActions[LONG(action_id)].Args) and (glActions[LONG(action_id)].Size)) {
+      argsize = glActions[LONG(action_id)].Size;
+      args = glActions[LONG(action_id)].Args;
    }
 
-   log.trace("#%d/%p, Action: %s/%d, Key: %d, Args: %d", object->UID, object->ObjectPtr, action, action_id, key, argsize);
+   log.trace("#%d/%p, Action: %s/%d, Key: %d, Args: %d", object->UID, object->ObjectPtr, action, LONG(action_id), key, argsize);
 
    if (argsize > 0) {
       auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
@@ -190,7 +190,7 @@ static int thread_action(lua_State *Lua)
       }
       else {
          luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-         luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
+         luaL_error(Lua, "Argument build failure for %s.", glActions[LONG(action_id)].Name);
          return 0;
       }
    }
@@ -242,7 +242,7 @@ static int thread_method(lua_State *Lua)
 
                auto args = table[i].Args;
                LONG argsize = table[i].Size;
-               LONG action_id = table[i].MethodID;
+               AC action_id = table[i].MethodID;
                ERR error;
                OBJECTPTR obj;
                FUNCTION callback;
@@ -283,7 +283,7 @@ static int thread_method(lua_State *Lua)
                   }
                   else {
                      luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-                     luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
+                     luaL_error(Lua, "Argument build failure for %s.", glActions[LONG(action_id)].Name);
                      return 0;
                   }
                }

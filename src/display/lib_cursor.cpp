@@ -648,10 +648,10 @@ ERR SetCursorPos(DOUBLE X, DOUBLE Y)
 {
    struct acMoveToPoint move = { X, Y, 0, MTF::X|MTF::Y };
    if (auto pointer = gfx::AccessPointer()) {
-      Action(AC_MoveToPoint, pointer, &move);
+      Action(AC::MoveToPoint, pointer, &move);
       ReleaseObject(pointer);
    }
-   else QueueAction(AC_MoveToPoint, glPointerID, &move);
+   else QueueAction(AC::MoveToPoint, glPointerID, &move);
 
    return ERR::Okay;
 }

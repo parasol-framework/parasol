@@ -154,11 +154,11 @@ static ERR CLIP_GET_Viewport(extVectorClip *Self, objVectorViewport **Value)
 #include "clip_def.cpp"
 
 static const ActionArray clClipActions[] = {
-   { AC_Free,      CLIP_Free },
-   { AC_Init,      CLIP_Init },
-   { AC_NewChild,  CLIP_NewChild },
-   { AC_NewObject, CLIP_NewObject },
-   { 0, NULL }
+   { AC::Free,      CLIP_Free },
+   { AC::Init,      CLIP_Init },
+   { AC::NewChild,  CLIP_NewChild },
+   { AC::NewObject, CLIP_NewObject },
+   { AC::NIL, NULL }
 };
 
 static const FieldArray clClipFields[] = {

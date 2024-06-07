@@ -292,8 +292,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Create a lookup table for converting named actions to IDs.
 
-   for (ACTIONID action_id=1; glActions[action_id].Name; action_id++) {
-      glActionLookup[glActions[action_id].Name] = action_id;
+   for (LONG action_id=1; glActions[action_id].Name; action_id++) {
+      glActionLookup[glActions[action_id].Name] = AC(action_id);
    }
 
    return create_fluid();

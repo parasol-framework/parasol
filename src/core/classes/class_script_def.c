@@ -12,22 +12,22 @@ FDEF maCallback[] = { { "ProcedureID", FD_LARGE }, { "ScriptArg:Args", FD_PTR|FD
 FDEF maGetProcedureID[] = { { "Procedure", FD_STR }, { "ProcedureID", FD_LARGE|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clScriptMethods[] = {
-   { -1, (APTR)SCRIPT_Exec, "Exec", maExec, sizeof(struct sc::Exec) },
-   { -2, (APTR)SCRIPT_DerefProcedure, "DerefProcedure", maDerefProcedure, sizeof(struct sc::DerefProcedure) },
-   { -3, (APTR)SCRIPT_Callback, "Callback", maCallback, sizeof(struct sc::Callback) },
-   { -4, (APTR)SCRIPT_GetProcedureID, "GetProcedureID", maGetProcedureID, sizeof(struct sc::GetProcedureID) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)SCRIPT_Exec, "Exec", maExec, sizeof(struct sc::Exec) },
+   { AC(-2), (APTR)SCRIPT_DerefProcedure, "DerefProcedure", maDerefProcedure, sizeof(struct sc::DerefProcedure) },
+   { AC(-3), (APTR)SCRIPT_Callback, "Callback", maCallback, sizeof(struct sc::Callback) },
+   { AC(-4), (APTR)SCRIPT_GetProcedureID, "GetProcedureID", maGetProcedureID, sizeof(struct sc::GetProcedureID) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clScriptActions[] = {
-   { AC_Activate, SCRIPT_Activate },
-   { AC_DataFeed, SCRIPT_DataFeed },
-   { AC_Free, SCRIPT_Free },
-   { AC_GetKey, SCRIPT_GetKey },
-   { AC_Init, SCRIPT_Init },
-   { AC_NewObject, SCRIPT_NewObject },
-   { AC_Reset, SCRIPT_Reset },
-   { AC_SetKey, SCRIPT_SetKey },
-   { 0, NULL }
+   { AC::Activate, SCRIPT_Activate },
+   { AC::DataFeed, SCRIPT_DataFeed },
+   { AC::Free, SCRIPT_Free },
+   { AC::GetKey, SCRIPT_GetKey },
+   { AC::Init, SCRIPT_Init },
+   { AC::NewObject, SCRIPT_NewObject },
+   { AC::Reset, SCRIPT_Reset },
+   { AC::SetKey, SCRIPT_SetKey },
+   { AC::NIL, NULL }
 };
 

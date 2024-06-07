@@ -185,7 +185,7 @@ exit:
    if (CoreObjectID) {
       OBJECTPTR object;
       if (!AccessObject(CoreObjectID, 5000, &object)) {
-         UnsubscribeAction(object, 0, glTask->UniqueID);
+         UnsubscribeAction(object, AC::NIL, glTask->UniqueID);
          ReleaseObject(object);
       }
    }

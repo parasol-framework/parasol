@@ -8,17 +8,17 @@ static const struct FieldDef clThreadFlags[] = {
 FDEF maSetData[] = { { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 
 static const struct MethodEntry clThreadMethods[] = {
-   { -1, (APTR)THREAD_SetData, "SetData", maSetData, sizeof(struct th::SetData) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)THREAD_SetData, "SetData", maSetData, sizeof(struct th::SetData) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clThreadActions[] = {
-   { AC_Activate, THREAD_Activate },
-   { AC_Deactivate, THREAD_Deactivate },
-   { AC_Free, THREAD_Free },
-   { AC_FreeWarning, THREAD_FreeWarning },
-   { AC_Init, THREAD_Init },
-   { AC_NewObject, THREAD_NewObject },
-   { 0, NULL }
+   { AC::Activate, THREAD_Activate },
+   { AC::Deactivate, THREAD_Deactivate },
+   { AC::Free, THREAD_Free },
+   { AC::FreeWarning, THREAD_FreeWarning },
+   { AC::Init, THREAD_Init },
+   { AC::NewObject, THREAD_NewObject },
+   { AC::NIL, NULL }
 };
 

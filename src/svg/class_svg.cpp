@@ -45,7 +45,7 @@ static ERR SVG_Activate(extSVG *Self)
    if (!Self->Animations.empty()) {
       if (!Self->AnimationTimer) {
          SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
-         SubscribeAction(Self->Scene, AC_Free, C_FUNCTION(notify_free_scene));
+         SubscribeAction(Self->Scene, AC::Free, C_FUNCTION(notify_free_scene));
       }
       else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
    }
@@ -94,7 +94,7 @@ static ERR SVG_Free(extSVG *Self)
    }
 
    if (Self->FrameCallback.isScript()) {
-      UnsubscribeAction(Self->FrameCallback.Context, AC_Free);
+      UnsubscribeAction(Self->FrameCallback.Context, AC::Free);
       Self->FrameCallback.clear();
    }
 
@@ -231,7 +231,7 @@ static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
    bmp->XOffset += Args->X;
    bmp->YOffset += Args->Y;
 
-   Action(AC_Draw, Self->Scene, NULL);
+   Action(AC::Draw, Self->Scene, NULL);
 
    bmp->XOffset -= Args->X;
    bmp->YOffset -= Args->Y;
@@ -299,12 +299,12 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((mc->getPtr(FID_ActionTable, &actions) IS ERR::Okay) and (actions)) {
-         if ((actions[AC_SaveToObject]) and (actions[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
-            return actions[AC_SaveToObject](Self, Args);
+         if ((actions[LONG(AC::SaveToObject)]) and (actions[LONG(AC::SaveToObject)] != (APTR)SVG_SaveToObject)) {
+            return actions[LONG(AC::SaveToObject)](Self, Args);
          }
-         else if ((actions[AC_SaveImage]) and (actions[AC_SaveImage] != (APTR)SVG_SaveImage)) {
+         else if ((actions[LONG(AC::SaveImage)]) and (actions[LONG(AC::SaveImage)] != (APTR)SVG_SaveImage)) {
             struct acSaveImage saveimage = { .Dest = Args->Dest };
-            return actions[AC_SaveImage](Self, &saveimage);
+            return actions[LONG(AC::SaveImage)](Self, &saveimage);
          }
          else return log.warning(ERR::NoSupport);
       }
@@ -444,10 +444,10 @@ static ERR GET_FrameCallback(extSVG *Self, FUNCTION **Value)
 static ERR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->FrameCallback.isScript()) UnsubscribeAction(Self->FrameCallback.Context, AC_Free);
+      if (Self->FrameCallback.isScript()) UnsubscribeAction(Self->FrameCallback.Context, AC::Free);
       Self->FrameCallback = *Value;
       if (Self->FrameCallback.isScript()) {
-         SubscribeAction(Self->FrameCallback.Context, AC_Free, C_FUNCTION(notify_free_frame_callback));
+         SubscribeAction(Self->FrameCallback.Context, AC::Free, C_FUNCTION(notify_free_frame_callback));
       }
    }
    else Self->FrameCallback.clear();

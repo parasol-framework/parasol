@@ -71,10 +71,10 @@ static ERR GET_Feedback(extCompression *Self, FUNCTION **Value)
 static ERR SET_Feedback(extCompression *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC_Free);
+      if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC::Free);
       Self->Feedback = *Value;
       if (Self->Feedback.isScript()) {
-         SubscribeAction(Self->Feedback.Context, AC_Free, C_FUNCTION(notify_free_feedback));
+         SubscribeAction(Self->Feedback.Context, AC::Free, C_FUNCTION(notify_free_feedback));
       }
    }
    else Self->Feedback.clear();

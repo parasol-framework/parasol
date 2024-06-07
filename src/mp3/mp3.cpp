@@ -863,11 +863,11 @@ static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
 //********************************************************************************************************************
 
 static const struct ActionArray clActions[] = {
-   { AC_Free, MP3_Free },
-   { AC_Init, MP3_Init },
-   { AC_Read, MP3_Read },
-   { AC_Seek, MP3_Seek },
-   { 0, NULL }
+   { AC::Free, MP3_Free },
+   { AC::Init, MP3_Init },
+   { AC::Read, MP3_Read },
+   { AC::Seek, MP3_Seek },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************

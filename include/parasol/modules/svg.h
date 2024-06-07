@@ -27,8 +27,8 @@ DEFINE_ENUM_FLAG_OPERATORS(SVF)
 // SVG methods
 
 namespace svg {
-struct Render { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ParseSymbol { CSTRING ID; objVectorViewport * Viewport; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Render { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ParseSymbol { CSTRING ID; objVectorViewport * Viewport; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -49,28 +49,28 @@ class objSVG : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
-      return Action(AC_DataFeed, this, &args);
+      return Action(AC::DataFeed, this, &args);
    }
-   inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
-      return Action(AC_SaveImage, this, &args);
+      return Action(AC::SaveImage, this, &args);
    }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
-      return Action(AC_SaveToObject, this, &args);
+      return Action(AC::SaveToObject, this, &args);
    }
    inline ERR render(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct svg::Render args = { Bitmap, X, Y, Width, Height };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR parseSymbol(CSTRING ID, objVectorViewport * Viewport) noexcept {
       struct svg::ParseSymbol args = { ID, Viewport };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
 
    // Customised field setting

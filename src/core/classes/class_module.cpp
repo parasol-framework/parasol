@@ -120,9 +120,9 @@ static ERR MODULE_Init(extModule *);
 static ERR MODULE_Free(extModule *);
 
 static const ActionArray glModuleActions[] = {
-   { AC_Free, MODULE_Free },
-   { AC_Init, MODULE_Init },
-   { 0, NULL }
+   { AC::Free, MODULE_Free },
+   { AC::Init, MODULE_Init },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************
@@ -765,7 +765,7 @@ static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Addres
 
 static const MethodEntry glModuleMethods[] = {
    { mod::ResolveSymbol::id, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct mod::ResolveSymbol) },
-   { 0, NULL, NULL, NULL, 0 }
+   { AC::NIL, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************
@@ -776,8 +776,8 @@ static const FieldArray glRootModuleFields[] = {
 };
 
 static const ActionArray glRootModuleActions[] = {
-   { AC_Free, ROOTMODULE_Free },
-   { 0, NULL }
+   { AC::Free, ROOTMODULE_Free },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************

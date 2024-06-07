@@ -167,7 +167,7 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 static ERR SOURCEFX_Free(extSourceFX *Self)
 {
    if (Self->Bitmap)     { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Source)     { UnsubscribeAction(Self->Source, AC_Free); Self->Source = NULL; }
+   if (Self->Source)     { UnsubscribeAction(Self->Source, AC::Free); Self->Source = NULL; }
    if (Self->Scene)      { FreeResource(Self->Scene); Self->Scene = NULL; }
    if (Self->BitmapData) { FreeResource(Self->BitmapData); Self->BitmapData = NULL; }
    return ERR::Okay;
@@ -247,9 +247,9 @@ static ERR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
    if (!Value) return log.warning(ERR::InvalidValue);
    if (Value->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::WrongClass);
 
-   if (Self->Source) UnsubscribeAction(Self->Source, AC_Free);
+   if (Self->Source) UnsubscribeAction(Self->Source, AC::Free);
    Self->Source = Value;
-   SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_source));
+   SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_source));
    Self->Render = true;
    return ERR::Okay;
 }
@@ -273,7 +273,7 @@ static ERR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
    if ((!Self->Filter) or (!Self->Filter->Scene)) log.warning(ERR::UndefinedField);
 
    if (Self->Source) {
-      UnsubscribeAction(Self->Source, AC_Free);
+      UnsubscribeAction(Self->Source, AC::Free);
       Self->Source = NULL;
    }
 
@@ -281,7 +281,7 @@ static ERR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
    if (Self->Filter->Scene->findDef(Value, (OBJECTPTR *)&src) IS ERR::Okay) {
       if (src->Class->BaseClassID != CLASSID::VECTOR) return log.warning(ERR::WrongClass);
       Self->Source = src;
-      SubscribeAction(src, AC_Free, C_FUNCTION(notify_free_source));
+      SubscribeAction(src, AC::Free, C_FUNCTION(notify_free_source));
       Self->Render = true;
       return ERR::Okay;
    }

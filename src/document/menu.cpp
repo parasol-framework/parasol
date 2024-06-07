@@ -78,8 +78,8 @@ objSurface * doc_menu::create(DOUBLE Width)
 
       m_doc->CreatorMeta = this;
 
-      SubscribeAction(*m_surface, AC_LostFocus, C_FUNCTION(menu_lost_focus, this));
-      SubscribeAction(*m_surface, AC_Hide, C_FUNCTION(menu_hidden, this));
+      SubscribeAction(*m_surface, AC::LostFocus, C_FUNCTION(menu_lost_focus, this));
+      SubscribeAction(*m_surface, AC::Hide, C_FUNCTION(menu_hidden, this));
 
       refresh();
    }

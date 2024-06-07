@@ -192,9 +192,9 @@ enum {
    STAGE_COMPOSITE
 };
 
-#define MT_PtrSetWinCursor -1
-#define MT_PtrGrabX11Pointer -2
-#define MT_PtrUngrabX11Pointer -3
+static const auto MT_PtrSetWinCursor  = AC(-1);
+static const auto MT_PtrGrabX11Pointer = AC(-2);
+static const auto MT_PtrUngrabX11Pointer = AC(-3);
 
 struct ptrSetWinCursor { PTC Cursor;  };
 struct ptrGrabX11Pointer { OBJECTID SurfaceID;  };

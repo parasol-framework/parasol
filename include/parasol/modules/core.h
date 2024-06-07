@@ -123,54 +123,57 @@ DEFINE_ENUM_FLAG_OPERATORS(CCF)
 
 // Action identifiers.
 
-#define AC_Signal 1
-#define AC_Activate 2
-#define AC_Redimension 3
-#define AC_Clear 4
-#define AC_FreeWarning 5
-#define AC_Enable 6
-#define AC_CopyData 7
-#define AC_DataFeed 8
-#define AC_Deactivate 9
-#define AC_Draw 10
-#define AC_Flush 11
-#define AC_Focus 12
-#define AC_Free 13
-#define AC_SaveSettings 14
-#define AC_GetKey 15
-#define AC_DragDrop 16
-#define AC_Hide 17
-#define AC_Init 18
-#define AC_Lock 19
-#define AC_LostFocus 20
-#define AC_Move 21
-#define AC_MoveToBack 22
-#define AC_MoveToFront 23
-#define AC_NewChild 24
-#define AC_NewOwner 25
-#define AC_NewObject 26
-#define AC_Redo 27
-#define AC_Query 28
-#define AC_Read 29
-#define AC_Rename 30
-#define AC_Reset 31
-#define AC_Resize 32
-#define AC_SaveImage 33
-#define AC_SaveToObject 34
-#define AC_MoveToPoint 35
-#define AC_Seek 36
-#define AC_SetKey 37
-#define AC_Show 38
-#define AC_Undo 39
-#define AC_Unlock 40
-#define AC_Next 41
-#define AC_Prev 42
-#define AC_Write 43
-#define AC_SetField 44
-#define AC_Clipboard 45
-#define AC_Refresh 46
-#define AC_Disable 47
-#define AC_END 48
+enum class AC : LONG {
+   NIL = 0,
+   Signal = 1,
+   Activate = 2,
+   Redimension = 3,
+   Clear = 4,
+   FreeWarning = 5,
+   Enable = 6,
+   CopyData = 7,
+   DataFeed = 8,
+   Deactivate = 9,
+   Draw = 10,
+   Flush = 11,
+   Focus = 12,
+   Free = 13,
+   SaveSettings = 14,
+   GetKey = 15,
+   DragDrop = 16,
+   Hide = 17,
+   Init = 18,
+   Lock = 19,
+   LostFocus = 20,
+   Move = 21,
+   MoveToBack = 22,
+   MoveToFront = 23,
+   NewChild = 24,
+   NewOwner = 25,
+   NewObject = 26,
+   Redo = 27,
+   Query = 28,
+   Read = 29,
+   Rename = 30,
+   Reset = 31,
+   Resize = 32,
+   SaveImage = 33,
+   SaveToObject = 34,
+   MoveToPoint = 35,
+   Seek = 36,
+   SetKey = 37,
+   Show = 38,
+   Undo = 39,
+   Unlock = 40,
+   Next = 41,
+   Prev = 42,
+   Write = 43,
+   SetField = 44,
+   Clipboard = 45,
+   Refresh = 46,
+   Disable = 47,
+   END = 48,
+};
 
 // Permission flags
 
@@ -1447,6 +1450,8 @@ struct Edges {
 #define AHASH_UNDO 0x7c9f191b
 
 
+typedef AC ACTIONID;
+
 #ifndef __GNUC__
 #define __attribute__(a)
 #endif
@@ -1813,19 +1818,19 @@ struct Unit {
 };
 
 struct ActionArray {
-   APTR Routine;       // Pointer to the function entry point
-   LONG ActionCode;    // Action identifier
-  template <class T> ActionArray(LONG pID, T pRoutine) : Routine((APTR)pRoutine), ActionCode(pID) { }
+   APTR Routine;    // Pointer to the function entry point
+   AC   ActionCode; // Action identifier
+  template <class T> ActionArray(AC pID, T pRoutine) : Routine((APTR)pRoutine), ActionCode(pID) { }
 };
 
 struct MethodEntry {
-   LONG    MethodID;                     // Unique method identifier
+   AC      MethodID;                     // Unique method identifier
    APTR    Routine;                      // The method entry point, defined as ERR (*Routine)(OBJECTPTR, APTR);
    CSTRING Name;                         // Name of the method
    const struct FunctionField * Args;    // List of parameters accepted by the method
    LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
-   MethodEntry() : MethodID(0), Routine(NULL), Name(NULL) { }
-   MethodEntry(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+   MethodEntry() : MethodID(AC::NIL), Routine(NULL), Name(NULL) { }
+   MethodEntry(AC pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
       MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
 };
 
@@ -1987,14 +1992,14 @@ struct ScriptArg { // For use with sc::Exec
 struct CoreBase {
 #ifndef PARASOL_STATIC
    ERR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR *Result);
-   ERR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
+   ERR (*_Action)(AC Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable **Actions, LONG *Size);
    ERR (*_DeleteFile)(CSTRING Path, FUNCTION *Callback);
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(IDTYPE Type);
    ERR (*_AllocMemory)(LONG Size, MEM Flags, APTR *Address, MEMORYID *ID);
    ERR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, OBJECTPTR *Result);
-   ERR (*_CheckAction)(OBJECTPTR Object, LONG Action);
+   ERR (*_CheckAction)(OBJECTPTR Object, AC Action);
    ERR (*_CheckMemoryExists)(MEMORYID ID);
    ERR (*_CheckObjectExists)(OBJECTID Object);
    ERR (*_InitObject)(OBJECTPTR Object);
@@ -2019,7 +2024,7 @@ struct CoreBase {
    ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo *MemInfo, LONG Size);
    ERR (*_MemoryPtrInfo)(APTR Address, struct MemInfo *MemInfo, LONG Size);
    ERR (*_NewObject)(CLASSID ClassID, NF Flags, OBJECTPTR *Object);
-   void (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
+   void (*_NotifySubscribers)(OBJECTPTR Object, AC Action, APTR Args, ERR Error);
    ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
    ERR (*_ProcessMessages)(PMF Flags, LONG TimeOut);
    ERR (*_IdentifyFile)(CSTRING Path, CLASSID *Class, CLASSID *SubClass);
@@ -2035,11 +2040,11 @@ struct CoreBase {
    ERR (*_ScanDir)(struct DirInfo *Info);
    ERR (*_SetName)(OBJECTPTR Object, CSTRING Name);
    void (*_LogReturn)(void);
-   ERR (*_SubscribeAction)(OBJECTPTR Object, LONG Action, FUNCTION *Callback);
+   ERR (*_SubscribeAction)(OBJECTPTR Object, AC Action, FUNCTION *Callback);
    ERR (*_SubscribeEvent)(LARGE Event, FUNCTION *Callback, APTR Custom, APTR *Handle);
    ERR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription);
    ERR (*_UpdateTimer)(APTR Subscription, DOUBLE Interval);
-   ERR (*_UnsubscribeAction)(OBJECTPTR Object, LONG Action);
+   ERR (*_UnsubscribeAction)(OBJECTPTR Object, AC Action);
    void (*_UnsubscribeEvent)(APTR Handle);
    ERR (*_BroadcastEvent)(APTR Event, LONG EventSize);
    void (*_WaitTime)(LONG Seconds, LONG MicroSeconds);
@@ -2057,7 +2062,7 @@ struct CoreBase {
    ERR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
    ERR (*_UpdateMessage)(LONG Message, LONG Type, APTR Data, LONG Size);
    ERR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
-   ERR (*_QueueAction)(LONG Action, OBJECTID Object, APTR Args);
+   ERR (*_QueueAction)(AC Action, OBJECTID Object, APTR Args);
    LARGE (*_PreciseTime)(void);
    ERR (*_OpenDir)(CSTRING Path, RDF Flags, struct DirInfo **Info);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID Object);
@@ -2068,7 +2073,7 @@ struct CoreBase {
    ERR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
    ERR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
-   ERR (*_ActionThread)(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key);
+   ERR (*_ActionThread)(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key);
    ERR (*_AddInfoTag)(struct FileInfo *Info, CSTRING Name, CSTRING Value);
    void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
    void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
@@ -2086,14 +2091,14 @@ struct CoreBase {
 #ifndef PARASOL_STATIC
 extern struct CoreBase *CoreBase;
 inline ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR *Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
-inline ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
+inline ERR Action(AC Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable **Actions, LONG *Size) { return CoreBase->_ActionList(Actions,Size); }
 inline ERR DeleteFile(CSTRING Path, FUNCTION *Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(IDTYPE Type) { return CoreBase->_AllocateID(Type); }
 inline ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
 inline ERR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR *Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
-inline ERR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
+inline ERR CheckAction(OBJECTPTR Object, AC Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
 inline ERR InitObject(OBJECTPTR Object) { return CoreBase->_InitObject(Object); }
@@ -2118,7 +2123,7 @@ inline ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result) { return CoreBas
 inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
 inline ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
 inline ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
-inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
+inline void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERR ProcessMessages(PMF Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERR IdentifyFile(CSTRING Path, CLASSID *Class, CLASSID *SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
@@ -2134,11 +2139,11 @@ inline CSTRING FieldName(ULONG FieldID) { return CoreBase->_FieldName(FieldID); 
 inline ERR ScanDir(struct DirInfo *Info) { return CoreBase->_ScanDir(Info); }
 inline ERR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
-inline ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION *Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
+inline ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION *Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
 inline ERR SubscribeEvent(LARGE Event, FUNCTION *Callback, APTR Custom, APTR *Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Custom,Handle); }
 inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
 inline ERR UpdateTimer(APTR Subscription, DOUBLE Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
-inline ERR UnsubscribeAction(OBJECTPTR Object, LONG Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
+inline ERR UnsubscribeAction(OBJECTPTR Object, AC Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
 inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
 inline ERR BroadcastEvent(APTR Event, LONG EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
 inline void WaitTime(LONG Seconds, LONG MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
@@ -2156,7 +2161,7 @@ inline ERR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Message,Type,Data,Size); }
 inline ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
-inline ERR QueueAction(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
+inline ERR QueueAction(AC Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 inline LARGE PreciseTime(void) { return CoreBase->_PreciseTime(); }
 inline ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
 inline OBJECTPTR GetObjectPtr(OBJECTID Object) { return CoreBase->_GetObjectPtr(Object); }
@@ -2167,7 +2172,7 @@ inline ERR FuncError(CSTRING Header, ERR Error) { return CoreBase->_FuncError(He
 inline ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
 inline ERR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
-inline ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
+inline ERR ActionThread(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
 inline ERR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
@@ -2180,14 +2185,14 @@ inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(F
 inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR *Result);
-extern "C" ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
+extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
 extern "C" void ActionList(struct ActionTable **Actions, LONG *Size);
 extern "C" ERR DeleteFile(CSTRING Path, FUNCTION *Callback);
 extern "C" CSTRING ResolveClassID(CLASSID ID);
 extern "C" LONG AllocateID(IDTYPE Type);
 extern "C" ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *ID);
 extern "C" ERR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR *Result);
-extern "C" ERR CheckAction(OBJECTPTR Object, LONG Action);
+extern "C" ERR CheckAction(OBJECTPTR Object, AC Action);
 extern "C" ERR CheckMemoryExists(MEMORYID ID);
 extern "C" ERR CheckObjectExists(OBJECTID Object);
 extern "C" ERR InitObject(OBJECTPTR Object);
@@ -2211,7 +2216,7 @@ extern "C" ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result);
 extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, LONG Size);
 extern "C" ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, LONG Size);
 extern "C" ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object);
-extern "C" void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error);
+extern "C" void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error);
 extern "C" ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR ProcessMessages(PMF Flags, LONG TimeOut);
 extern "C" ERR IdentifyFile(CSTRING Path, CLASSID *Class, CLASSID *SubClass);
@@ -2227,11 +2232,11 @@ extern "C" CSTRING FieldName(ULONG FieldID);
 extern "C" ERR ScanDir(struct DirInfo *Info);
 extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);
 extern "C" void LogReturn(void);
-extern "C" ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION *Callback);
+extern "C" ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION *Callback);
 extern "C" ERR SubscribeEvent(LARGE Event, FUNCTION *Callback, APTR Custom, APTR *Handle);
 extern "C" ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription);
 extern "C" ERR UpdateTimer(APTR Subscription, DOUBLE Interval);
-extern "C" ERR UnsubscribeAction(OBJECTPTR Object, LONG Action);
+extern "C" ERR UnsubscribeAction(OBJECTPTR Object, AC Action);
 extern "C" void UnsubscribeEvent(APTR Handle);
 extern "C" ERR BroadcastEvent(APTR Event, LONG EventSize);
 extern "C" void WaitTime(LONG Seconds, LONG MicroSeconds);
@@ -2249,7 +2254,7 @@ extern "C" ERR DeleteVolume(CSTRING Name);
 extern "C" ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size);
 extern "C" ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
-extern "C" ERR QueueAction(LONG Action, OBJECTID Object, APTR Args);
+extern "C" ERR QueueAction(AC Action, OBJECTID Object, APTR Args);
 extern "C" LARGE PreciseTime(void);
 extern "C" ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info);
 extern "C" OBJECTPTR GetObjectPtr(OBJECTID Object);
@@ -2260,7 +2265,7 @@ extern "C" ERR FuncError(CSTRING Header, ERR Error);
 extern "C" ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
 extern "C" ERR LockObject(OBJECTPTR Object, LONG MilliSeconds);
 extern "C" void ReleaseObject(OBJECTPTR Object);
-extern "C" ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key);
+extern "C" ERR ActionThread(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key);
 extern "C" ERR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value);
 extern "C" void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
 extern "C" void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args);
@@ -2295,7 +2300,7 @@ constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 #ifndef PRV_CORE_DATA
 // These overloaded functions can't be used in the Core as they will confuse the compiler in key areas.
 
-inline ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION Callback) {
+inline ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION Callback) {
    return SubscribeAction(Object,Action,&Callback);
 }
 
@@ -2337,7 +2342,7 @@ inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
    return MemoryPtrInfo(Address,MemInfo,sizeof(struct MemInfo));
 }
 
-inline ERR QueueAction(LONG Action, OBJECTID ObjectID) {
+inline ERR QueueAction(AC Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
 }
 
@@ -2849,88 +2854,88 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResou
 
 // Action and Notification Structures
 
-struct acClipboard     { static const ACTIONID id = AC_Clipboard; CLIPMODE Mode; };
-struct acCopyData      { static const ACTIONID id = AC_CopyData; OBJECTPTR Dest; };
-struct acDataFeed      { static const ACTIONID id = AC_DataFeed; OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
-struct acDragDrop      { static const ACTIONID id = AC_DragDrop; OBJECTPTR Source; LONG Item; CSTRING Datatype; };
-struct acDraw          { static const ACTIONID id = AC_Draw; LONG X; LONG Y; LONG Width; LONG Height; };
-struct acGetKey        { static const ACTIONID id = AC_GetKey; CSTRING Key; STRING Value; LONG Size; };
-struct acMove          { static const ACTIONID id = AC_Move; DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acMoveToPoint   { static const ACTIONID id = AC_MoveToPoint; DOUBLE X; DOUBLE Y; DOUBLE Z; MTF Flags; };
-struct acNewChild      { static const ACTIONID id = AC_NewChild; OBJECTPTR Object; };
-struct acNewOwner      { static const ACTIONID id = AC_NewOwner; OBJECTPTR NewOwner; };
-struct acRead          { static const ACTIONID id = AC_Read; APTR Buffer; LONG Length; LONG Result; };
-struct acRedimension   { static const ACTIONID id = AC_Redimension; DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acRedo          { static const ACTIONID id = AC_Redo; LONG Steps; };
-struct acRename        { static const ACTIONID id = AC_Rename; CSTRING Name; };
-struct acResize        { static const ACTIONID id = AC_Resize; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acSaveImage     { static const ACTIONID id = AC_SaveImage; OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSaveToObject  { static const ACTIONID id = AC_SaveToObject; OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSeek          { static const ACTIONID id = AC_Seek; DOUBLE Offset; SEEK Position; };
-struct acSetKey        { static const ACTIONID id = AC_SetKey; CSTRING Key; CSTRING Value; };
-struct acUndo          { static const ACTIONID id = AC_Undo; LONG Steps; };
-struct acWrite         { static const ACTIONID id = AC_Write; CPTR Buffer; LONG Length; LONG Result; };
+struct acClipboard     { static const AC id = AC::Clipboard; CLIPMODE Mode; };
+struct acCopyData      { static const AC id = AC::CopyData; OBJECTPTR Dest; };
+struct acDataFeed      { static const AC id = AC::DataFeed; OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
+struct acDragDrop      { static const AC id = AC::DragDrop; OBJECTPTR Source; LONG Item; CSTRING Datatype; };
+struct acDraw          { static const AC id = AC::Draw; LONG X; LONG Y; LONG Width; LONG Height; };
+struct acGetKey        { static const AC id = AC::GetKey; CSTRING Key; STRING Value; LONG Size; };
+struct acMove          { static const AC id = AC::Move; DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
+struct acMoveToPoint   { static const AC id = AC::MoveToPoint; DOUBLE X; DOUBLE Y; DOUBLE Z; MTF Flags; };
+struct acNewChild      { static const AC id = AC::NewChild; OBJECTPTR Object; };
+struct acNewOwner      { static const AC id = AC::NewOwner; OBJECTPTR NewOwner; };
+struct acRead          { static const AC id = AC::Read; APTR Buffer; LONG Length; LONG Result; };
+struct acRedimension   { static const AC id = AC::Redimension; DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
+struct acRedo          { static const AC id = AC::Redo; LONG Steps; };
+struct acRename        { static const AC id = AC::Rename; CSTRING Name; };
+struct acResize        { static const AC id = AC::Resize; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
+struct acSaveImage     { static const AC id = AC::SaveImage; OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSaveToObject  { static const AC id = AC::SaveToObject; OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSeek          { static const AC id = AC::Seek; DOUBLE Offset; SEEK Position; };
+struct acSetKey        { static const AC id = AC::SetKey; CSTRING Key; CSTRING Value; };
+struct acUndo          { static const AC id = AC::Undo; LONG Steps; };
+struct acWrite         { static const AC id = AC::Write; CPTR Buffer; LONG Length; LONG Result; };
 
 // Action Macros
 
-inline ERR acActivate(OBJECTPTR Object) { return Action(AC_Activate,Object,NULL); }
-inline ERR acClear(OBJECTPTR Object) { return Action(AC_Clear,Object,NULL); }
-inline ERR acDeactivate(OBJECTPTR Object) { return Action(AC_Deactivate,Object,NULL); }
-inline ERR acDisable(OBJECTPTR Object) { return Action(AC_Disable,Object,NULL); }
-inline ERR acDraw(OBJECTPTR Object) { return Action(AC_Draw,Object,NULL); }
-inline ERR acEnable(OBJECTPTR Object) { return Action(AC_Enable,Object,NULL); }
-inline ERR acFlush(OBJECTPTR Object) { return Action(AC_Flush,Object,NULL); }
-inline ERR acFocus(OBJECTPTR Object) { return Action(AC_Focus,Object,NULL); }
-inline ERR acHide(OBJECTPTR Object) { return Action(AC_Hide,Object,NULL); }
-inline ERR acLock(OBJECTPTR Object) { return Action(AC_Lock,Object,NULL); }
-inline ERR acLostFocus(OBJECTPTR Object) { return Action(AC_LostFocus,Object,NULL); }
-inline ERR acMoveToBack(OBJECTPTR Object) { return Action(AC_MoveToBack,Object,NULL); }
-inline ERR acMoveToFront(OBJECTPTR Object) { return Action(AC_MoveToFront,Object,NULL); }
-inline ERR acNext(OBJECTPTR Object) { return Action(AC_Next,Object,NULL); }
-inline ERR acPrev(OBJECTPTR Object) { return Action(AC_Prev,Object,NULL); }
-inline ERR acQuery(OBJECTPTR Object) { return Action(AC_Query,Object,NULL); }
-inline ERR acRefresh(OBJECTPTR Object) { return Action(AC_Refresh, Object, NULL); }
-inline ERR acReset(OBJECTPTR Object) { return Action(AC_Reset,Object,NULL); }
-inline ERR acSaveSettings(OBJECTPTR Object) { return Action(AC_SaveSettings,Object,NULL); }
-inline ERR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
-inline ERR acSignal(OBJECTPTR Object) { return Action(AC_Signal,Object,NULL); }
-inline ERR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
+inline ERR acActivate(OBJECTPTR Object) { return Action(AC::Activate,Object,NULL); }
+inline ERR acClear(OBJECTPTR Object) { return Action(AC::Clear,Object,NULL); }
+inline ERR acDeactivate(OBJECTPTR Object) { return Action(AC::Deactivate,Object,NULL); }
+inline ERR acDisable(OBJECTPTR Object) { return Action(AC::Disable,Object,NULL); }
+inline ERR acDraw(OBJECTPTR Object) { return Action(AC::Draw,Object,NULL); }
+inline ERR acEnable(OBJECTPTR Object) { return Action(AC::Enable,Object,NULL); }
+inline ERR acFlush(OBJECTPTR Object) { return Action(AC::Flush,Object,NULL); }
+inline ERR acFocus(OBJECTPTR Object) { return Action(AC::Focus,Object,NULL); }
+inline ERR acHide(OBJECTPTR Object) { return Action(AC::Hide,Object,NULL); }
+inline ERR acLock(OBJECTPTR Object) { return Action(AC::Lock,Object,NULL); }
+inline ERR acLostFocus(OBJECTPTR Object) { return Action(AC::LostFocus,Object,NULL); }
+inline ERR acMoveToBack(OBJECTPTR Object) { return Action(AC::MoveToBack,Object,NULL); }
+inline ERR acMoveToFront(OBJECTPTR Object) { return Action(AC::MoveToFront,Object,NULL); }
+inline ERR acNext(OBJECTPTR Object) { return Action(AC::Next,Object,NULL); }
+inline ERR acPrev(OBJECTPTR Object) { return Action(AC::Prev,Object,NULL); }
+inline ERR acQuery(OBJECTPTR Object) { return Action(AC::Query,Object,NULL); }
+inline ERR acRefresh(OBJECTPTR Object) { return Action(AC::Refresh, Object, NULL); }
+inline ERR acReset(OBJECTPTR Object) { return Action(AC::Reset,Object,NULL); }
+inline ERR acSaveSettings(OBJECTPTR Object) { return Action(AC::SaveSettings,Object,NULL); }
+inline ERR acShow(OBJECTPTR Object) { return Action(AC::Show,Object,NULL); }
+inline ERR acSignal(OBJECTPTR Object) { return Action(AC::Signal,Object,NULL); }
+inline ERR acUnlock(OBJECTPTR Object) { return Action(AC::Unlock,Object,NULL); }
 
 inline ERR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
    struct acClipboard args = { Mode };
-   return Action(AC_Clipboard, Object, &args);
+   return Action(AC::Clipboard, Object, &args);
 }
 
 inline ERR acDragDrop(OBJECTPTR Object, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
    struct acDragDrop args = { Source, Item, Datatype };
-   return Action(AC_DragDrop, Object, &args);
+   return Action(AC::DragDrop, Object, &args);
 }
 
 inline ERR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height) {
    struct acDraw args = { X, Y, Width, Height };
-   return Action(AC_Draw, Object, &args);
+   return Action(AC::Draw, Object, &args);
 }
 
 inline ERR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
    struct acDataFeed args = { Sender, Datatype, Buffer, Size };
-   return Action(AC_DataFeed, Object, &args);
+   return Action(AC::DataFeed, Object, &args);
 }
 
 inline ERR acGetKey(OBJECTPTR Object, CSTRING Key, STRING Value, LONG Size) {
    struct acGetKey args = { Key, Value, Size };
-   ERR error = Action(AC_GetKey, Object, &args);
+   ERR error = Action(AC::GetKey, Object, &args);
    if ((error != ERR::Okay) and (Value)) Value[0] = 0;
    return error;
 }
 
 inline ERR acMove(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    struct acMove args = { X, Y, Z };
-   return Action(AC_Move, Object, &args);
+   return Action(AC::Move, Object, &args);
 }
 
 inline ERR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
    struct acRead read = { (BYTE *)Buffer, Bytes };
-   if (auto error = Action(AC_Read, Object, &read); error IS ERR::Okay) {
+   if (auto error = Action(AC::Read, Object, &read); error IS ERR::Okay) {
       if (Read) *Read = read.Result;
       return ERR::Okay;
    }
@@ -2942,42 +2947,42 @@ inline ERR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
 
 inline ERR acRedo(OBJECTPTR Object, LONG Steps = 1) {
    struct acRedo args = { Steps };
-   return Action(AC_Redo, Object, &args);
+   return Action(AC::Redo, Object, &args);
 }
 
 inline ERR acRedimension(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-   return Action(AC_Redimension, Object, &args);
+   return Action(AC::Redimension, Object, &args);
 }
 
 inline ERR acRename(OBJECTPTR Object, CSTRING Name) {
    struct acRename args = { Name };
-   return Action(AC_Rename, Object, &args);
+   return Action(AC::Rename, Object, &args);
 }
 
 inline ERR acResize(OBJECTPTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
    struct acResize args = { Width, Height, Depth };
-   return Action(AC_Resize, Object, &args);
+   return Action(AC::Resize, Object, &args);
 }
 
 inline ERR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
-   return Action(AC_MoveToPoint, Object, &moveto);
+   return Action(AC::MoveToPoint, Object, &moveto);
 }
 
 inline ERR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) {
    struct acSaveImage args = { Dest, { ClassID } };
-   return Action(AC_SaveImage, Object, &args);
+   return Action(AC::SaveImage, Object, &args);
 }
 
 inline ERR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) {
    struct acSaveToObject args = { Dest, { ClassID } };
-   return Action(AC_SaveToObject, Object, &args);
+   return Action(AC::SaveToObject, Object, &args);
 }
 
 inline ERR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
    struct acSeek args = { Offset, Position };
-   return Action(AC_Seek, Object, &args);
+   return Action(AC::Seek, Object, &args);
 }
 
 inline ERR acSetKeys(OBJECTPTR Object, CSTRING tags, ...) {
@@ -2987,7 +2992,7 @@ inline ERR acSetKeys(OBJECTPTR Object, CSTRING tags, ...) {
    va_start(list, tags);
    while ((args.Key = va_arg(list, STRING)) != TAGEND) {
       args.Value = va_arg(list, STRING);
-      if (Action(AC_SetKey, Object, &args) != ERR::Okay) {
+      if (Action(AC::SetKey, Object, &args) != ERR::Okay) {
          va_end(list);
          return ERR::Failed;
       }
@@ -2998,12 +3003,12 @@ inline ERR acSetKeys(OBJECTPTR Object, CSTRING tags, ...) {
 
 inline ERR acUndo(OBJECTPTR Object, LONG Steps) {
    struct acUndo args = { Steps };
-   return Action(AC_Undo, Object, &args);
+   return Action(AC::Undo, Object, &args);
 }
 
 inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (auto error = Action(AC_Write, Object, &write); error IS ERR::Okay) {
+   if (auto error = Action(AC::Write, Object, &write); error IS ERR::Okay) {
       if (Result) *Result = write.Result;
       return error;
    }
@@ -3015,7 +3020,7 @@ inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result = NUL
 
 inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
-   if (Action(AC_Write, Object, &write) IS ERR::Okay) return write.Result;
+   if (Action(AC::Write, Object, &write) IS ERR::Okay) return write.Result;
    else return 0;
 }
 
@@ -3025,7 +3030,7 @@ inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
 
 inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
    struct acSetKey args = { Key, Value };
-   return Action(AC_SetKey, Object, &args);
+   return Action(AC::SetKey, Object, &args);
 }
 
 
@@ -3036,7 +3041,7 @@ inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
 // MetaClass methods
 
 namespace mc {
-struct FindField { LONG ID; struct Field * Field; objMetaClass * Source; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindField { LONG ID; struct Field * Field; objMetaClass * Source; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3063,7 +3068,7 @@ class objMetaClass : public Object {
    CCF     Category;                    // The system category that a class belongs to.
    inline ERR findField(LONG ID, struct Field ** Field, objMetaClass ** Source) noexcept {
       struct mc::FindField args = { ID, (struct Field *)0, (objMetaClass *)0 };
-      ERR error = Action(-1, this, &args);
+      ERR error = Action(AC(-1), this, &args);
       if (Field) *Field = args.Field;
       if (Source) *Source = args.Source;
       return(error);
@@ -3201,16 +3206,16 @@ class objStorageDevice : public Object {
 // File methods
 
 namespace fl {
-struct StartStream { OBJECTID SubscriberID; FL Flags; LONG Length; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct StopStream { static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Delete { FUNCTION * Callback; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Move { CSTRING Dest; FUNCTION * Callback; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Copy { CSTRING Dest; FUNCTION * Callback; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; FDT Type; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ReadLine { STRING Result; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct BufferContent { static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Next { objFile * File; static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Watch { FUNCTION * Callback; LARGE Custom; MFF Flags; static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct StartStream { OBJECTID SubscriberID; FL Flags; LONG Length; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct StopStream { static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Delete { FUNCTION * Callback; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Move { CSTRING Dest; FUNCTION * Callback; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Copy { CSTRING Dest; FUNCTION * Callback; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; FDT Type; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReadLine { STRING Result; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct BufferContent { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Next { objFile * File; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Watch { FUNCTION * Callback; LARGE Custom; MFF Flags; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3235,19 +3240,19 @@ class objFile : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
-      return Action(AC_DataFeed, this, &args);
+      return Action(AC::DataFeed, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR query() noexcept { return Action(AC_Query, this, NULL); }
+   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+      if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
       }
@@ -3257,23 +3262,23 @@ class objFile : public Object {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      return Action(AC_Read, this, &read);
+      return Action(AC::Read, this, &read);
    }
    inline ERR rename(CSTRING Name) noexcept {
       struct acRename args = { Name };
-      return Action(AC_Rename, this, &args);
+      return Action(AC::Rename, this, &args);
    }
-   inline ERR reset() noexcept { return Action(AC_Reset, this, NULL); }
+   inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }
    inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
-      return Action(AC_Seek, this, &args);
+      return Action(AC::Seek, this, &args);
    }
    inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
    inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
    inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
    inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -3284,7 +3289,7 @@ class objFile : public Object {
    }
    inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -3295,50 +3300,50 @@ class objFile : public Object {
    }
    inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
+      if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
    inline ERR startStream(OBJECTID SubscriberID, FL Flags, LONG Length) noexcept {
       struct fl::StartStream args = { SubscriberID, Flags, Length };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR stopStream() noexcept {
-      return(Action(-2, this, NULL));
+      return(Action(AC(-2), this, NULL));
    }
    inline ERR del(FUNCTION Callback) noexcept {
       struct fl::Delete args = { &Callback };
-      return(Action(-3, this, &args));
+      return(Action(AC(-3), this, &args));
    }
    inline ERR move(CSTRING Dest, FUNCTION Callback) noexcept {
       struct fl::Move args = { Dest, &Callback };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR copy(CSTRING Dest, FUNCTION Callback) noexcept {
       struct fl::Copy args = { Dest, &Callback };
-      return(Action(-5, this, &args));
+      return(Action(AC(-5), this, &args));
    }
    inline ERR setDate(LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type) noexcept {
       struct fl::SetDate args = { Year, Month, Day, Hour, Minute, Second, Type };
-      return(Action(-6, this, &args));
+      return(Action(AC(-6), this, &args));
    }
    inline ERR readLine(STRING * Result) noexcept {
       struct fl::ReadLine args = { (STRING)0 };
-      ERR error = Action(-7, this, &args);
+      ERR error = Action(AC(-7), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR bufferContent() noexcept {
-      return(Action(-8, this, NULL));
+      return(Action(AC(-8), this, NULL));
    }
    inline ERR next(objFile ** File) noexcept {
       struct fl::Next args = { (objFile *)0 };
-      ERR error = Action(-9, this, &args);
+      ERR error = Action(AC(-9), this, &args);
       if (File) *File = args.File;
       return(error);
    }
    inline ERR watch(FUNCTION Callback, LARGE Custom, MFF Flags) noexcept {
       struct fl::Watch args = { &Callback, Custom, Flags };
-      return(Action(-10, this, &args));
+      return(Action(AC(-10), this, &args));
    }
 
    // Customised field setting
@@ -3423,15 +3428,15 @@ class objFile : public Object {
 // Config methods
 
 namespace cfg {
-struct ReadValue { CSTRING Group; CSTRING Key; CSTRING Data; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Set { CSTRING Group; CSTRING Key; CSTRING Data; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct WriteValue { CSTRING Group; CSTRING Key; CSTRING Data; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DeleteKey { CSTRING Group; CSTRING Key; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DeleteGroup { CSTRING Group; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetGroupFromIndex { LONG Index; CSTRING Group; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SortByKey { CSTRING Key; LONG Descending; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct MergeFile { CSTRING Path; static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Merge { OBJECTPTR Source; static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReadValue { CSTRING Group; CSTRING Key; CSTRING Data; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Set { CSTRING Group; CSTRING Key; CSTRING Data; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct WriteValue { CSTRING Group; CSTRING Key; CSTRING Data; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DeleteKey { CSTRING Group; CSTRING Key; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DeleteGroup { CSTRING Group; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetGroupFromIndex { LONG Index; CSTRING Group; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SortByKey { CSTRING Key; LONG Descending; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct MergeFile { CSTRING Path; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Merge { OBJECTPTR Source; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3503,57 +3508,57 @@ class objConfig : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
-      return Action(AC_DataFeed, this, &args);
+      return Action(AC::DataFeed, this, &args);
    }
-   inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
+   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, NULL); }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
-      return Action(AC_SaveToObject, this, &args);
+      return Action(AC::SaveToObject, this, &args);
    }
    inline ERR readValue(CSTRING Group, CSTRING Key, CSTRING * Data) noexcept {
       struct cfg::ReadValue args = { Group, Key, (CSTRING)0 };
-      ERR error = Action(-1, this, &args);
+      ERR error = Action(AC(-1), this, &args);
       if (Data) *Data = args.Data;
       return(error);
    }
    inline ERR set(CSTRING Group, CSTRING Key, CSTRING Data) noexcept {
       struct cfg::Set args = { Group, Key, Data };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR writeValue(CSTRING Group, CSTRING Key, CSTRING Data) noexcept {
       struct cfg::WriteValue args = { Group, Key, Data };
-      return(Action(-3, this, &args));
+      return(Action(AC(-3), this, &args));
    }
    inline ERR deleteKey(CSTRING Group, CSTRING Key) noexcept {
       struct cfg::DeleteKey args = { Group, Key };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR deleteGroup(CSTRING Group) noexcept {
       struct cfg::DeleteGroup args = { Group };
-      return(Action(-5, this, &args));
+      return(Action(AC(-5), this, &args));
    }
    inline ERR getGroupFromIndex(LONG Index, CSTRING * Group) noexcept {
       struct cfg::GetGroupFromIndex args = { Index, (CSTRING)0 };
-      ERR error = Action(-6, this, &args);
+      ERR error = Action(AC(-6), this, &args);
       if (Group) *Group = args.Group;
       return(error);
    }
    inline ERR sortByKey(CSTRING Key, LONG Descending) noexcept {
       struct cfg::SortByKey args = { Key, Descending };
-      return(Action(-7, this, &args));
+      return(Action(AC(-7), this, &args));
    }
    inline ERR mergeFile(CSTRING Path) noexcept {
       struct cfg::MergeFile args = { Path };
-      return(Action(-9, this, &args));
+      return(Action(AC(-9), this, &args));
    }
    inline ERR merge(OBJECTPTR Source) noexcept {
       struct cfg::Merge args = { Source };
-      return(Action(-10, this, &args));
+      return(Action(AC(-10), this, &args));
    }
 
    // Customised field setting
@@ -3590,10 +3595,10 @@ class objConfig : public Object {
 // Script methods
 
 namespace sc {
-struct Exec { CSTRING Procedure; const struct ScriptArg * Args; LONG TotalArgs; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DerefProcedure { FUNCTION * Procedure; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Callback { LARGE ProcedureID; const struct ScriptArg * Args; LONG TotalArgs; ERR Error; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetProcedureID { CSTRING Procedure; LARGE ProcedureID; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Exec { CSTRING Procedure; const struct ScriptArg * Args; LONG TotalArgs; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DerefProcedure { FUNCTION * Procedure; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Callback { LARGE ProcedureID; const struct ScriptArg * Args; LONG TotalArgs; ERR Error; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetProcedureID { CSTRING Procedure; LARGE ProcedureID; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3631,40 +3636,40 @@ class objScript : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
-      return Action(AC_DataFeed, this, &args);
+      return Action(AC::DataFeed, this, &args);
    }
    inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
-      auto error = Action(AC_GetKey, this, &args);
+      auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR reset() noexcept { return Action(AC_Reset, this, NULL); }
+   inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }
    inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetKey args = { FieldName, Value };
-      return Action(AC_SetKey, this, &args);
+      return Action(AC::SetKey, this, &args);
    }
    inline ERR exec(CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs) noexcept {
       struct sc::Exec args = { Procedure, Args, TotalArgs };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR derefProcedure(FUNCTION Procedure) noexcept {
       struct sc::DerefProcedure args = { &Procedure };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR callback(LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error) noexcept {
       struct sc::Callback args = { ProcedureID, Args, TotalArgs, (ERR)0 };
-      ERR error = Action(-3, this, &args);
+      ERR error = Action(AC(-3), this, &args);
       if (Error) *Error = args.Error;
       return(error);
    }
    inline ERR getProcedureID(CSTRING Procedure, LARGE * ProcedureID) noexcept {
       struct sc::GetProcedureID args = { Procedure, (LARGE)0 };
-      ERR error = Action(-4, this, &args);
+      ERR error = Action(AC(-4), this, &args);
       if (ProcedureID) *ProcedureID = args.ProcedureID;
       return(error);
    }
@@ -3779,11 +3784,11 @@ struct ActionEntry {
 // Task methods
 
 namespace task {
-struct Expunge { static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct AddArgument { CSTRING Argument; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Quit { static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetEnv { CSTRING Name; CSTRING Value; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetEnv { CSTRING Name; CSTRING Value; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Expunge { static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddArgument { CSTRING Argument; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Quit { static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetEnv { CSTRING Name; CSTRING Value; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetEnv { CSTRING Name; CSTRING Value; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3801,21 +3806,21 @@ class objTask : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
    inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
-      auto error = Action(AC_GetKey, this, &args);
+      auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetKey args = { FieldName, Value };
-      return Action(AC_SetKey, this, &args);
+      return Action(AC::SetKey, this, &args);
    }
    inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -3826,7 +3831,7 @@ class objTask : public Object {
    }
    inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -3837,28 +3842,28 @@ class objTask : public Object {
    }
    inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
+      if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
    inline ERR expunge() noexcept {
-      return(Action(-1, this, NULL));
+      return(Action(AC(-1), this, NULL));
    }
    inline ERR addArgument(CSTRING Argument) noexcept {
       struct task::AddArgument args = { Argument };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR quit() noexcept {
-      return(Action(-3, this, NULL));
+      return(Action(AC(-3), this, NULL));
    }
    inline ERR getEnv(CSTRING Name, CSTRING * Value) noexcept {
       struct task::GetEnv args = { Name, (CSTRING)0 };
-      ERR error = Action(-4, this, &args);
+      ERR error = Action(AC(-4), this, &args);
       if (Value) *Value = args.Value;
       return(error);
    }
    inline ERR setEnv(CSTRING Name, CSTRING Value) noexcept {
       struct task::SetEnv args = { Name, Value };
-      return(Action(-5, this, &args));
+      return(Action(AC(-5), this, &args));
    }
 
    // Customised field setting
@@ -3961,7 +3966,7 @@ class objTask : public Object {
 // Thread methods
 
 namespace th {
-struct SetData { APTR Data; LONG Size; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetData { APTR Data; LONG Size; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3980,12 +3985,12 @@ class objThread : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
-   inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR setData(APTR Data, LONG Size) noexcept {
       struct th::SetData args = { Data, Size };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
 
    // Customised field setting
@@ -4022,7 +4027,7 @@ class objThread : public Object {
 // Module methods
 
 namespace mod {
-struct ResolveSymbol { CSTRING Name; APTR Address; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResolveSymbol { CSTRING Name; APTR Address; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -4063,7 +4068,7 @@ class objModule : public Object {
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR resolveSymbol(CSTRING Name, APTR * Address) noexcept {
       struct mod::ResolveSymbol args = { Name, (APTR)0 };
-      ERR error = Action(-1, this, &args);
+      ERR error = Action(AC(-1), this, &args);
       if (Address) *Address = args.Address;
       return(error);
    }
@@ -4102,7 +4107,7 @@ class objModule : public Object {
 // Time methods
 
 namespace pt {
-struct SetTime { static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetTime { static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -4127,10 +4132,10 @@ class objTime : public Object {
 
    // Action stubs
 
-   inline ERR query() noexcept { return Action(AC_Query, this, NULL); }
+   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR setTime() noexcept {
-      return(Action(-1, this, NULL));
+      return(Action(AC(-1), this, NULL));
    }
 
    // Customised field setting
@@ -4199,20 +4204,20 @@ class objTime : public Object {
 // Compression methods
 
 namespace cmp {
-struct CompressBuffer { APTR Input; LONG InputSize; APTR Output; LONG OutputSize; LONG Result; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct CompressFile { CSTRING Location; CSTRING Path; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DecompressBuffer { APTR Input; APTR Output; LONG OutputSize; LONG Result; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DecompressFile { CSTRING Path; CSTRING Dest; LONG Flags; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveFile { CSTRING Path; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct CompressStream { APTR Input; LONG Length; FUNCTION * Callback; APTR Output; LONG OutputSize; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DecompressStream { APTR Input; LONG Length; FUNCTION * Callback; APTR Output; LONG OutputSize; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct CompressStreamStart { static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct CompressStreamEnd { FUNCTION * Callback; APTR Output; LONG OutputSize; static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DecompressStreamEnd { FUNCTION * Callback; static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DecompressStreamStart { static const ACTIONID id = -11; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DecompressObject { CSTRING Path; OBJECTPTR Object; static const ACTIONID id = -12; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Scan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback; static const ACTIONID id = -13; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Find { CSTRING Path; LONG CaseSensitive; LONG Wildcard; struct CompressedItem * Item; static const ACTIONID id = -14; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CompressBuffer { APTR Input; LONG InputSize; APTR Output; LONG OutputSize; LONG Result; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CompressFile { CSTRING Location; CSTRING Path; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DecompressBuffer { APTR Input; APTR Output; LONG OutputSize; LONG Result; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DecompressFile { CSTRING Path; CSTRING Dest; LONG Flags; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveFile { CSTRING Path; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CompressStream { APTR Input; LONG Length; FUNCTION * Callback; APTR Output; LONG OutputSize; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DecompressStream { APTR Input; LONG Length; FUNCTION * Callback; APTR Output; LONG OutputSize; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CompressStreamStart { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CompressStreamEnd { FUNCTION * Callback; APTR Output; LONG OutputSize; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DecompressStreamEnd { FUNCTION * Callback; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DecompressStreamStart { static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DecompressObject { CSTRING Path; OBJECTPTR Object; static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Scan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback; static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Find { CSTRING Path; LONG CaseSensitive; LONG Wildcard; struct CompressedItem * Item; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -4234,65 +4239,65 @@ class objCompression : public Object {
 
    // Action stubs
 
-   inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR compressBuffer(APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) noexcept {
       struct cmp::CompressBuffer args = { Input, InputSize, Output, OutputSize, (LONG)0 };
-      ERR error = Action(-1, this, &args);
+      ERR error = Action(AC(-1), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR compressFile(CSTRING Location, CSTRING Path) noexcept {
       struct cmp::CompressFile args = { Location, Path };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR decompressBuffer(APTR Input, APTR Output, LONG OutputSize, LONG * Result) noexcept {
       struct cmp::DecompressBuffer args = { Input, Output, OutputSize, (LONG)0 };
-      ERR error = Action(-3, this, &args);
+      ERR error = Action(AC(-3), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR decompressFile(CSTRING Path, CSTRING Dest, LONG Flags) noexcept {
       struct cmp::DecompressFile args = { Path, Dest, Flags };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR removeFile(CSTRING Path) noexcept {
       struct cmp::RemoveFile args = { Path };
-      return(Action(-5, this, &args));
+      return(Action(AC(-5), this, &args));
    }
    inline ERR compressStream(APTR Input, LONG Length, FUNCTION Callback, APTR Output, LONG OutputSize) noexcept {
       struct cmp::CompressStream args = { Input, Length, &Callback, Output, OutputSize };
-      return(Action(-6, this, &args));
+      return(Action(AC(-6), this, &args));
    }
    inline ERR decompressStream(APTR Input, LONG Length, FUNCTION Callback, APTR Output, LONG OutputSize) noexcept {
       struct cmp::DecompressStream args = { Input, Length, &Callback, Output, OutputSize };
-      return(Action(-7, this, &args));
+      return(Action(AC(-7), this, &args));
    }
    inline ERR compressStreamStart() noexcept {
-      return(Action(-8, this, NULL));
+      return(Action(AC(-8), this, NULL));
    }
    inline ERR compressStreamEnd(FUNCTION Callback, APTR Output, LONG OutputSize) noexcept {
       struct cmp::CompressStreamEnd args = { &Callback, Output, OutputSize };
-      return(Action(-9, this, &args));
+      return(Action(AC(-9), this, &args));
    }
    inline ERR decompressStreamEnd(FUNCTION Callback) noexcept {
       struct cmp::DecompressStreamEnd args = { &Callback };
-      return(Action(-10, this, &args));
+      return(Action(AC(-10), this, &args));
    }
    inline ERR decompressStreamStart() noexcept {
-      return(Action(-11, this, NULL));
+      return(Action(AC(-11), this, NULL));
    }
    inline ERR decompressObject(CSTRING Path, OBJECTPTR Object) noexcept {
       struct cmp::DecompressObject args = { Path, Object };
-      return(Action(-12, this, &args));
+      return(Action(AC(-12), this, &args));
    }
    inline ERR scan(CSTRING Folder, CSTRING Filter, FUNCTION Callback) noexcept {
       struct cmp::Scan args = { Folder, Filter, &Callback };
-      return(Action(-13, this, &args));
+      return(Action(AC(-13), this, &args));
    }
    inline ERR find(CSTRING Path, LONG CaseSensitive, LONG Wildcard, struct CompressedItem ** Item) noexcept {
       struct cmp::Find args = { Path, CaseSensitive, Wildcard, (struct CompressedItem *)0 };
-      ERR error = Action(-14, this, &args);
+      ERR error = Action(AC(-14), this, &args);
       if (Item) *Item = args.Item;
       return(error);
    }
@@ -4414,10 +4419,10 @@ class objCompressedStream : public Object {
 #ifdef __system__
 
 struct ActionMessage {
-   OBJECTID ObjectID;        // The object that is to receive the action
+   OBJECTID ObjectID;  // The object that is to receive the action
    LONG  Time;
-   ACTIONID ActionID;        // ID of the action or method to execute
-   bool SendArgs;            //
+   AC ActionID;        // ID of the action or method to execute
+   bool SendArgs;
 
    // Action arguments follow this structure in a buffer
 };
@@ -4505,7 +4510,7 @@ template<class T> ERR ReadLE(OBJECTPTR Object, T *Result)
 {
    UBYTE data[sizeof(T)];
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
-   if (Action(AC_Read, Object, &read) IS ERR::Okay) {
+   if (Action(AC::Read, Object, &read) IS ERR::Okay) {
       if (read.Result IS sizeof(T)) {
          if constexpr (std::endian::native == std::endian::little) {
             *Result = ((T *)data)[0];
@@ -4529,7 +4534,7 @@ template<class T> ERR ReadBE(OBJECTPTR Object, T *Result)
 {
    UBYTE data[sizeof(T)];
    struct acRead read = { .Buffer = data, .Length = sizeof(T) };
-   if (Action(AC_Read, Object, &read) IS ERR::Okay) {
+   if (Action(AC::Read, Object, &read) IS ERR::Okay) {
       if (read.Result IS sizeof(T)) {
          if constexpr (std::endian::native == std::endian::little) {
             switch(sizeof(T)) {

@@ -601,14 +601,14 @@ static ERR DOCUMENT_Free(extDocument *Self)
    Self->Page = NULL; // Page and View are freed by their parent Viewport.
    Self->View = NULL;
 
-   if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
+   if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, AC::NIL);
 
    if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
 
-   if (Self->Viewport) UnsubscribeAction(Self->Viewport, 0);
+   if (Self->Viewport) UnsubscribeAction(Self->Viewport, AC::NIL);
 
    if (Self->EventCallback.isScript()) {
-      UnsubscribeAction(Self->EventCallback.Context, AC_Free);
+      UnsubscribeAction(Self->EventCallback.Context, AC::Free);
       Self->EventCallback.clear();
    }
 
@@ -666,13 +666,13 @@ static ERR DOCUMENT_Init(extDocument *Self)
 
    if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
       Self->Viewport->subscribeKeyboard(C_FUNCTION(key_event));
-      SubscribeAction(Self->Focus, AC_Focus, C_FUNCTION(notify_focus_viewport));
-      SubscribeAction(Self->Focus, AC_LostFocus, C_FUNCTION(notify_lostfocus_viewport));
-      SubscribeAction(Self->Viewport, AC_Disable, C_FUNCTION(notify_disable_viewport));
-      SubscribeAction(Self->Viewport, AC_Enable, C_FUNCTION(notify_enable_viewport));
+      SubscribeAction(Self->Focus, AC::Focus, C_FUNCTION(notify_focus_viewport));
+      SubscribeAction(Self->Focus, AC::LostFocus, C_FUNCTION(notify_lostfocus_viewport));
+      SubscribeAction(Self->Viewport, AC::Disable, C_FUNCTION(notify_disable_viewport));
+      SubscribeAction(Self->Viewport, AC::Enable, C_FUNCTION(notify_enable_viewport));
    }
 
-   SubscribeAction(Self->Viewport, AC_Free, C_FUNCTION(notify_free_viewport));
+   SubscribeAction(Self->Viewport, AC::Free, C_FUNCTION(notify_free_viewport));
 
    Self->VPWidth  = Self->Viewport->get<DOUBLE>(FID_Width);
    Self->VPHeight = Self->Viewport->get<DOUBLE>(FID_Height);
@@ -1024,7 +1024,7 @@ static ERR DOCUMENT_Refresh(extDocument *Self)
 
    if (Self->Processing) {
       log.msg("Recursion detected - refresh will be delayed.");
-      QueueAction(AC_Refresh, Self->UID);
+      QueueAction(AC::Refresh, Self->UID);
       return ERR::Okay;
    }
 

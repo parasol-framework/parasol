@@ -29,31 +29,31 @@ FDEF maNext[] = { { "File", FD_OBJECTPTR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF maWatch[] = { { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_LARGE }, { "Flags", FD_LONG }, { 0, 0 } };
 
 static const struct MethodEntry clFileMethods[] = {
-   { -1, (APTR)FILE_StartStream, "StartStream", maStartStream, sizeof(struct fl::StartStream) },
-   { -2, (APTR)FILE_StopStream, "StopStream", 0, 0 },
-   { -3, (APTR)FILE_Delete, "Delete", maDelete, sizeof(struct fl::Delete) },
-   { -4, (APTR)FILE_MoveFile, "Move", maMove, sizeof(struct fl::Move) },
-   { -5, (APTR)FILE_Copy, "Copy", maCopy, sizeof(struct fl::Copy) },
-   { -6, (APTR)FILE_SetDate, "SetDate", maSetDate, sizeof(struct fl::SetDate) },
-   { -7, (APTR)FILE_ReadLine, "ReadLine", maReadLine, sizeof(struct fl::ReadLine) },
-   { -8, (APTR)FILE_BufferContent, "BufferContent", 0, 0 },
-   { -9, (APTR)FILE_NextFile, "Next", maNext, sizeof(struct fl::Next) },
-   { -10, (APTR)FILE_Watch, "Watch", maWatch, sizeof(struct fl::Watch) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)FILE_StartStream, "StartStream", maStartStream, sizeof(struct fl::StartStream) },
+   { AC(-2), (APTR)FILE_StopStream, "StopStream", 0, 0 },
+   { AC(-3), (APTR)FILE_Delete, "Delete", maDelete, sizeof(struct fl::Delete) },
+   { AC(-4), (APTR)FILE_MoveFile, "Move", maMove, sizeof(struct fl::Move) },
+   { AC(-5), (APTR)FILE_Copy, "Copy", maCopy, sizeof(struct fl::Copy) },
+   { AC(-6), (APTR)FILE_SetDate, "SetDate", maSetDate, sizeof(struct fl::SetDate) },
+   { AC(-7), (APTR)FILE_ReadLine, "ReadLine", maReadLine, sizeof(struct fl::ReadLine) },
+   { AC(-8), (APTR)FILE_BufferContent, "BufferContent", 0, 0 },
+   { AC(-9), (APTR)FILE_NextFile, "Next", maNext, sizeof(struct fl::Next) },
+   { AC(-10), (APTR)FILE_Watch, "Watch", maWatch, sizeof(struct fl::Watch) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clFileActions[] = {
-   { AC_Activate, FILE_Activate },
-   { AC_DataFeed, FILE_DataFeed },
-   { AC_Free, FILE_Free },
-   { AC_Init, FILE_Init },
-   { AC_NewObject, FILE_NewObject },
-   { AC_Query, FILE_Query },
-   { AC_Read, FILE_Read },
-   { AC_Rename, FILE_Rename },
-   { AC_Reset, FILE_Reset },
-   { AC_Seek, FILE_Seek },
-   { AC_Write, FILE_Write },
-   { 0, NULL }
+   { AC::Activate, FILE_Activate },
+   { AC::DataFeed, FILE_DataFeed },
+   { AC::Free, FILE_Free },
+   { AC::Init, FILE_Init },
+   { AC::NewObject, FILE_NewObject },
+   { AC::Query, FILE_Query },
+   { AC::Read, FILE_Read },
+   { AC::Rename, FILE_Rename },
+   { AC::Reset, FILE_Reset },
+   { AC::Seek, FILE_Seek },
+   { AC::Write, FILE_Write },
+   { AC::NIL, NULL }
 };
 

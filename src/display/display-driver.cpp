@@ -1000,7 +1000,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          if (file.ok()) {
             auto write_string = [](objFile *File, CSTRING String) {
                struct acWrite write = { .Buffer = String, .Length = LONG(strlen(String)) };
-               Action(AC_Write, File, &write);
+               Action(AC::Write, File, &write);
             };
 
             write_string(*file, "<?xml version=\"1.0\"?>\n\n");

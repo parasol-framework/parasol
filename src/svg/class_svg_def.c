@@ -10,20 +10,20 @@ FDEF maRender[] = { { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG
 FDEF maParseSymbol[] = { { "ID", FD_STR }, { "Viewport", FD_OBJECTPTR }, { 0, 0 } };
 
 static const struct MethodEntry clSVGMethods[] = {
-   { -1, (APTR)SVG_Render, "Render", maRender, sizeof(struct svg::Render) },
-   { -2, (APTR)SVG_ParseSymbol, "ParseSymbol", maParseSymbol, sizeof(struct svg::ParseSymbol) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)SVG_Render, "Render", maRender, sizeof(struct svg::Render) },
+   { AC(-2), (APTR)SVG_ParseSymbol, "ParseSymbol", maParseSymbol, sizeof(struct svg::ParseSymbol) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clSVGActions[] = {
-   { AC_Activate, SVG_Activate },
-   { AC_DataFeed, SVG_DataFeed },
-   { AC_Deactivate, SVG_Deactivate },
-   { AC_Free, SVG_Free },
-   { AC_Init, SVG_Init },
-   { AC_NewObject, SVG_NewObject },
-   { AC_SaveImage, SVG_SaveImage },
-   { AC_SaveToObject, SVG_SaveToObject },
-   { 0, NULL }
+   { AC::Activate, SVG_Activate },
+   { AC::DataFeed, SVG_DataFeed },
+   { AC::Deactivate, SVG_Deactivate },
+   { AC::Free, SVG_Free },
+   { AC::Init, SVG_Init },
+   { AC::NewObject, SVG_NewObject },
+   { AC::SaveImage, SVG_SaveImage },
+   { AC::SaveToObject, SVG_SaveToObject },
+   { AC::NIL, NULL }
 };
 

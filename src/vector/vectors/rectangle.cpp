@@ -556,12 +556,12 @@ static const FieldArray clRectangleFields[] = {
 };
 
 static const ActionArray clRectangleActions[] = {
-   { AC_Move,          RECTANGLE_Move },
-   { AC_MoveToPoint,   RECTANGLE_MoveToPoint },
-   { AC_NewObject,     RECTANGLE_NewObject },
-   //{ AC_Redimension, RECTANGLE_Redimension },
-   { AC_Resize,      RECTANGLE_Resize },
-   { 0, NULL }
+   { AC::Move,          RECTANGLE_Move },
+   { AC::MoveToPoint,   RECTANGLE_MoveToPoint },
+   { AC::NewObject,     RECTANGLE_NewObject },
+   //{ AC::Redimension, RECTANGLE_Redimension },
+   { AC::Resize,      RECTANGLE_Resize },
+   { AC::NIL, NULL }
 };
 
 static ERR init_rectangle(void)

@@ -172,9 +172,9 @@ static const FieldArray clFields[] = {
 };
 
 static const ActionArray clActions[] = {
-   { AC_Free, STORAGE_Free },
-   { AC_Init, STORAGE_Init },
-   { 0, NULL }
+   { AC::Free, STORAGE_Free },
+   { AC::Init, STORAGE_Init },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************

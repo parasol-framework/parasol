@@ -525,7 +525,7 @@ class FieldContext : public ObjectContext {
    bool success;
 
    public:
-   FieldContext(OBJECTPTR Object, struct Field *Field) : ObjectContext(Object, AC_SetField, NULL) {
+   FieldContext(OBJECTPTR Object, struct Field *Field) : ObjectContext(Object, AC::SetField, NULL) {
       if ((tlContext->field IS Field) and (tlContext->object() IS Object)) { // Detect recursion
          success = false;
          return;

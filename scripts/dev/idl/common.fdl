@@ -44,7 +44,7 @@ flags("CCF", { comment="Class categories", module="Core" },
     "NETWORK: Network classes interface with system drivers to simplify network communications.",
     "MULTIMEDIA: Classes that represent more than one media type, e.g. video files.")
 
-enum("AC", { weak=true, start=1, comment="Action identifiers.", module="Core" },
+enum("AC", { type="int", start=1, comment="Action identifiers.", module="Core" },
     "Signal",       "Activate",       "Redimension",  "Clear",    "FreeWarning",  "Enable",       "CopyData",
     "DataFeed",     "Deactivate",     "Draw",         "Flush",    "Focus",        "Free",         "SaveSettings",
     "GetKey",       "DragDrop",       "Hide",         "Init",     "Lock",         "LostFocus",    "Move",
@@ -186,7 +186,7 @@ flags("JTYPE", { comment="JTYPE flags are used to categorise input types.", modu
     "EXT_MOVEMENT: Extended or indirect movement information.  This covers all types of movement that are unconnected to coordinate positioning -  mouse wheel movement and pen tilt are two such examples.",
     "BUTTON: Input is a physical button or switch",
     "MOVEMENT: X/Y coordinate movement only. Movement such as the wheel mouse spinning is not covered by this type as it does not influence the coordinate system.",
-    "DBL_CLICK: Set by the input system if the Type is a button and the button has been clicked in quick succession so as to be classed as a double-click.",
+    "DBL_CLICK: Set by the input system if the `Type` is a button and the button has been clicked in quick succession so as to be classed as a double-click.",
     "REPEATED: Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)",
     "DRAG_ITEM: This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.")
 

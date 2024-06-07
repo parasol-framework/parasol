@@ -213,9 +213,9 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       auto ctx = tlContext;
       auto obj = ctx->object();
-      if (ctx->action > 0) action = ActionTable[ctx->action].Name;
-      else if (ctx->action < 0) {
-         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->action].Name;
+      if (ctx->action > AC::NIL) action = ActionTable[LONG(ctx->action)].Name;
+      else if (ctx->action < AC::NIL) {
+         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-LONG(ctx->action)].Name;
          else action = "Method";
       }
       else action = "App";
@@ -331,9 +331,9 @@ ERR FuncError(CSTRING Header, ERR Code)
    auto ctx = tlContext;
    auto obj = tlContext->object();
    if (!Header) {
-      if (ctx->action > 0) Header = ActionTable[ctx->action].Name;
-      else if (ctx->action < 0) {
-         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-ctx->action].Name;
+      if (ctx->action > AC::NIL) Header = ActionTable[LONG(ctx->action)].Name;
+      else if (ctx->action < AC::NIL) {
+         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-LONG(ctx->action)].Name;
          else Header = "Method";
       }
       else Header = "Function";

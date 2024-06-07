@@ -137,7 +137,7 @@ inline void build_read_table(object *Def)
 
    // Every possible action is hashed because both sub-class and base-class actions require support.
 
-   for (LONG code=1; code < AC_END; code++) {
+   for (LONG code=1; code < LONG(AC::END); code++) {
       auto hash = simple_hash(glActions[code].Name, simple_hash("ac"));
       jmp.insert(obj_read(hash, glJumpActions[code]));
    }
@@ -146,7 +146,7 @@ inline void build_read_table(object *Def)
    LONG total_methods;
    if (GetFieldArray(Def->Class, FID_Methods, (APTR *)&methods, &total_methods) IS ERR::Okay) {
       for (LONG i=1; i < total_methods; i++) {
-         if (methods[i].MethodID) {
+         if (methods[i].MethodID != AC::NIL) {
             auto hash = simple_hash(methods[i].Name, simple_hash("mt"));
             jmp.insert(obj_read(hash, obj_jump_method, &methods[i]));
          }
@@ -305,7 +305,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
    else {
       auto it = glActionLookup.find(action);
       if (it != glActionLookup.end()) {
-         *Args = glActions[it->second].Args;
+         *Args = glActions[LONG(it->second)].Args;
          return it->second;
       }
    }
@@ -329,7 +329,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
    }
    else luaL_error(Lua, GetErrorMsg(ERR::Search));
 
-   return 0;
+   return AC::NIL;
 }
 
 /*********************************************************************************************************************
@@ -878,7 +878,7 @@ static int object_subscribe(lua_State *Lua)
    const FunctionField *arglist;
    ACTIONID action_id = get_action_info(Lua, def->Class->ClassID, action, &arglist);
 
-   if (!action_id) {
+   if (action_id IS AC::NIL) {
       luaL_argerror(Lua, 1, "Action/Method name is invalid.");
       return 0;
    }
@@ -942,7 +942,7 @@ static int object_unsubscribe(lua_State *Lua)
    const FunctionField *arglist;
    ACTIONID action_id = get_action_info(Lua, def->Class->ClassID, action, &arglist);
 
-   if (!action_id) {
+   if (action_id IS AC::NIL) {
       luaL_argerror(Lua, 1, "Action/Method name is invalid.");
       return 0;
    }
@@ -952,7 +952,7 @@ static int object_unsubscribe(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    for (auto it=prv->ActionList.begin(); it != prv->ActionList.end(); ) {
       if ((it->ObjectID IS def->UID) and
-          ((!action_id) or (it->ActionID IS action_id))) {
+          ((action_id IS AC::NIL) or (it->ActionID IS action_id))) {
          luaL_unref(Lua, LUA_REGISTRYINDEX, it->Function);
          if (it->Reference) luaL_unref(Lua, LUA_REGISTRYINDEX, it->Reference);
          it = prv->ActionList.erase(it);

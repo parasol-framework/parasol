@@ -326,7 +326,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
             .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
          };
 
-         if (Action(AC_Read, prv->FileStream, &read) != ERR::Okay) return ERR::Read;
+         if (Action(AC::Read, prv->FileStream, &read) != ERR::Okay) return ERR::Read;
          if (read.Result <= 0) return ERR::Read;
 
          prv->ReadPtr          = prv->OutputBuffer;
@@ -376,7 +376,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
             if (prv->InputLength < SIZE_COMPRESSION_BUFFER) read.Length = prv->InputLength;
             else read.Length = SIZE_COMPRESSION_BUFFER;
 
-            if (Action(AC_Read, prv->FileStream, &read) != ERR::Okay) return ERR::Read;
+            if (Action(AC::Read, prv->FileStream, &read) != ERR::Okay) return ERR::Read;
             if (read.Result <= 0) return ERR::Read;
 
             prv->InputLength -= read.Result;
@@ -421,7 +421,7 @@ static ERR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
    while (Self->Position < pos) {
       struct acRead read = { .Buffer = buffer, .Length = (LONG)(pos - Self->Position) };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
-      if (Action(AC_Read, Self, &read) != ERR::Okay) return ERR::Decompression;
+      if (Action(AC::Read, Self, &read) != ERR::Okay) return ERR::Decompression;
    }
 
    return ERR::Okay;
@@ -664,23 +664,23 @@ static ERR test_path(STRING Path, RSF Flags, LOC *Type)
 //********************************************************************************************************************
 
 static const ActionArray clArchiveActions[] = {
-   { AC_Activate, ARCHIVE_Activate },
-   { AC_Free,     ARCHIVE_Free },
-   { AC_Init,     ARCHIVE_Init },
-   { AC_Query,    ARCHIVE_Query },
-   { AC_Read,     ARCHIVE_Read },
-   { AC_Seek,     ARCHIVE_Seek },
-   { AC_Write,    ARCHIVE_Write },
-   { 0, NULL }
+   { AC::Activate, ARCHIVE_Activate },
+   { AC::Free,     ARCHIVE_Free },
+   { AC::Init,     ARCHIVE_Init },
+   { AC::Query,    ARCHIVE_Query },
+   { AC::Read,     ARCHIVE_Read },
+   { AC::Seek,     ARCHIVE_Seek },
+   { AC::Write,    ARCHIVE_Write },
+   { AC::NIL, NULL }
 };
 
 static const MethodEntry clArchiveMethods[] = {
-   { 0, NULL, NULL, NULL, 0 }
+   { AC::NIL, NULL, NULL, NULL, 0 }
 };
 
 static const struct FieldArray clArchiveFields[] = {
    { "Size", FDF_LARGE|FDF_R, ARCHIVE_GET_Size },
-    END_FIELD
+   END_FIELD
 };
 
 //********************************************************************************************************************

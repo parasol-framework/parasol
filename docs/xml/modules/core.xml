@@ -92,21 +92,21 @@
     <name>Action</name>
     <category>Objects</category>
     <comment>This function is responsible for executing action routines.</comment>
-    <prototype>ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters)</prototype>
+    <prototype>ERR Action(AC Action, OBJECTPTR Object, APTR Parameters)</prototype>
     <input>
-      <param type="LONG" name="Action" lookup="AC">An action or method ID must be specified here (e.g. <code>AC_Query</code>).</param>
-      <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
-      <param type="APTR" name="Parameters">If the action or method is documented as taking parameters, point to the relevant parameter structure here.</param>
+      <param type="AC" name="Action" lookup="AC">An action or method ID must be specified.</param>
+      <param type="OBJECTPTR" name="Object">The target object.</param>
+      <param type="APTR" name="Parameters">Optional parameter structure associated with <code>Action</code>.</param>
     </input>
     <description>
 <p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a class implementation. You can find a complete list of available actions and their associated details in the Parasol Wiki. The actions and methods supported by any class will be referenced in their auto-generated documentation.</p>
 <p>Here are two examples that demonstrate how to make an action call.  The first performs an activation, which does not require any additional arguments.  The second performs a move operation, which requires three additional arguments to be passed to the Action() function:</p>
-<pre>1. Action(AC_Activate, Picture, NULL);
+<pre>1. Action(AC::Activate, Picture, NULL);
 
 2. struct acMove move = { 30, 15, 0 };
-   Action(AC_Move, Window, &amp;move);
+   Action(AC::Move, Window, &amp;move);
 </pre>
-<p>In all cases, action calls in C++ can be simplified by using their corresponding helper functions:</p>
+<p>In all cases, action calls in C++ can be simplified by using their corresponding stub functions:</p>
 <pre>1.  acActivate(Picture);
 
 2a. acMove(Window, 30, 15, 0);
@@ -117,9 +117,9 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="NoAction">The action is not supported by the object's supporting class.</error>
-      <error code="IllegalActionID">The Action parameter is invalid.</error>
-      <error code="ObjectCorrupt">The object that was received is badly corrupted in a critical area.</error>
+      <error code="NoAction">The <code>Action</code> is not supported by the object's supporting class.</error>
+      <error code="IllegalActionID">The <code>Action</code> parameter is invalid.</error>
+      <error code="ObjectCorrupt">The <code>Object</code> state is corrupted.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -166,9 +166,9 @@ struct FunctionField argsResize[] = {
     <name>ActionThread</name>
     <category>Objects</category>
     <comment>Execute an action in parallel, via a separate thread.</comment>
-    <prototype>ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key)</prototype>
+    <prototype>ERR ActionThread(AC Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key)</prototype>
     <input>
-      <param type="LONG" name="Action" lookup="AC">An action or method ID must be specified here.</param>
+      <param type="AC" name="Action" lookup="AC">An action or method ID must be specified here.</param>
       <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
       <param type="APTR" name="Args">If the action or method is documented as taking parameters, provide the correct parameter structure here.</param>
       <param type="FUNCTION *" name="Callback">This function will be called after the thread has finished executing the action.</param>
@@ -351,14 +351,14 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <name>CheckAction</name>
     <category>Objects</category>
     <comment>Checks objects to see whether or not they support certain actions.</comment>
-    <prototype>ERR CheckAction(OBJECTPTR Object, LONG Action)</prototype>
+    <prototype>ERR CheckAction(OBJECTPTR Object, AC Action)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
-      <param type="LONG" name="Action">A registered action or method ID.</param>
+      <param type="AC" name="Action" lookup="AC">A registered action or method ID.</param>
     </input>
     <description>
 <p>This function returns <code>ERR::True</code> if an object's class supports a given action or method ID.  For example:</p>
-<pre>if (CheckAction(pic, AC_Query) IS ERR::True) {
+<pre>if (CheckAction(pic, AC::Query) IS ERR::True) {
    // The Query action is supported.
 }
 </pre>
@@ -513,9 +513,9 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <prototype>OBJECTPTR CurrentContext()</prototype>
     <description>
 <p>This function returns a pointer to the object that has the current context.  Context is primarily used to manage resource allocations.  Manipulating the context is sometimes necessary to ensure that a resource is tracked to the correct object.</p>
-<p>To get the parent context (technically the 'context of the current context'), use <code>GetParentContext()</code>, which is implemented as a macro.  This is used in method and action routines where the context of the object's caller may be needed.</p>
+<p>To get the context of the caller (the client), use <function>ParentContext</function>.</p>
     </description>
-    <result type="OBJECTPTR">Returns an object pointer (of which the Task has exclusive access to).  Cannot return <code>NULL</code> except in the initial start-up and late shut-down sequence of the Core.</result>
+    <result type="OBJECTPTR">Returns an object pointer (of which the process has exclusive access to).  Cannot return <code>NULL</code> except in the initial start-up and late shut-down sequence of the Core.</result>
   </function>
 
   <function>
@@ -697,7 +697,7 @@ FindObject("SystemPointer", CLASSID::POINTER, 0, &amp;id);
     <comment>Returns a message structure if called from an action that was executed by the message system.</comment>
     <prototype>struct Message * GetActionMsg()</prototype>
     <description>
-<p>This function is for use by action and method support routines only.  It will return a Message structure if the action currently under execution has been called directly from the <function>ProcessMessages</function> function.  In all other cases a <code>NULL</code> pointer is returned.</p>
+<p>This function is for use by action and method support routines only.  It will return a <st>Message</st> structure if the action currently under execution has been called directly from the <function>ProcessMessages</function> function.  In all other cases a <code>NULL</code> pointer is returned.</p>
 <p>The <st>Message</st> structure reflects the contents of a standard <function>GetMessage</function> call.  Of particular interest may be the <code>Time</code> field, which indicates the time-stamp at which the action message was originally sent to the object.</p>
     </description>
     <result type="struct Message *">A <st>Message</st> structure is returned if the function is called in valid circumstances, otherwise <code>NULL</code>.  The <st>Message</st> structure's fields are described in the <function>GetMessage</function> function.</result>
@@ -1148,10 +1148,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>NotifySubscribers</name>
     <category>Objects</category>
     <comment>Used to send notification messages to action subscribers.</comment>
-    <prototype>void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error)</prototype>
+    <prototype>void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object that is to receive the notification message.</param>
-      <param type="LONG" name="Action" lookup="AC">The action ID for notification.</param>
+      <param type="AC" name="Action" lookup="AC">The action ID for notification.</param>
       <param type="APTR" name="Args">Pointer to an action parameter structure that is relevant to the <code>Action</code> ID.</param>
       <param type="ERR" name="Error">The error code that is associated with the action result.</param>
     </input>
@@ -1188,11 +1188,11 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   <function>
     <name>ParentContext</name>
     <category>Objects</category>
-    <comment>Returns the first parent context that differs to the current context.</comment>
+    <comment>Returns the context of the client.</comment>
     <prototype>OBJECTPTR ParentContext()</prototype>
     <description>
 <p>This function is used to return the context of the caller (the client), as opposed to <function>CurrentContext</function>, which returns the operating context.  This feature is commonly used by methods that need to acquire a reference to the client for resource management reasons.</p>
-<p>Note that this function can return <code>NULL</code> if used in system calls at the operating level of the running process.</p>
+<p>Note that this function can return <code>NULL</code> if called when running at process-level, although this would never be the case when called from an action or method.</p>
     </description>
     <result type="OBJECTPTR">An object reference is returned, or <code>NULL</code> if there is no parent context.</result>
   </function>
@@ -1234,9 +1234,9 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>QueueAction</name>
     <category>Objects</category>
     <comment>Delay the execution of an action by adding the call to the message queue.</comment>
-    <prototype>ERR QueueAction(LONG Action, OBJECTID Object, APTR Args)</prototype>
+    <prototype>ERR QueueAction(AC Action, OBJECTID Object, APTR Args)</prototype>
     <input>
-      <param type="LONG" name="Action">The ID of an action or method to execute.</param>
+      <param type="AC" name="Action" lookup="AC">The ID of an action or method to execute.</param>
       <param type="OBJECTID" name="Object">The target object.</param>
       <param type="APTR" name="Args">The relevant argument structure for the <code>Action</code>, or <code>NULL</code> if not required.</param>
     </input>
@@ -1580,7 +1580,7 @@ SetArray(Object, FID_Table|TLONG, array, 100);
     <comment>Alters the nominated owner of newly created objects.</comment>
     <prototype>OBJECTPTR SetContext(OBJECTPTR Object)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that will take on the new context.  If NULL, no change to the context will be made.</param>
+      <param type="OBJECTPTR" name="Object">Pointer to the object that will take on the new context.  If <code>NULL</code>, no change to the context will be made.</param>
     </input>
     <description>
 <p>This function defines the object that has control of the current thread.  Once called, all further resource allocations are assigned to that object.  This is significant for the automatic collection of memory and object allocations.  For example:</p>
@@ -1783,17 +1783,17 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SubscribeAction</name>
     <category>Objects</category>
     <comment>Monitor action calls made against an object.</comment>
-    <prototype>ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback)</prototype>
+    <prototype>ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION * Callback)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
-      <param type="LONG" name="Action">The ID of the action that will be monitored.  Methods are not supported.</param>
+      <param type="AC" name="Action" lookup="AC">The ID of the action that will be monitored.  Methods are not supported.</param>
       <param type="FUNCTION *" name="Callback">A C/C++ function to callback when the action is triggered.</param>
     </input>
     <description>
 <p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This strategy is referred to as "action monitoring" and is often used for responding to UI events and the termination of objects.</p>
 <p>Subscriptions are context sensitive, so the <code>Callback</code> will execute in the space attributed to to the caller.</p>
 <p>The following example illustrates how to listen to a <class name="Surface">Surface</class> object's Redimension action and respond to resize events:</p>
-<pre>SubscribeAction(surface, AC_Redimension, C_FUNCTION(notify_resize, meta_ptr));
+<pre>SubscribeAction(surface, AC::Redimension, C_FUNCTION(notify_resize, meta_ptr));
 </pre>
 <p>The template below illustrates how the <code>Callback</code> function should be constructed:</p>
 <pre>void notify_resize(OBJECTPTR Object, ACTIONID Action, ERR Result, APTR Parameters, APTR CallbackMeta)
@@ -1884,14 +1884,14 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>UnsubscribeAction</name>
     <category>Objects</category>
     <comment>Terminates action subscriptions.</comment>
-    <prototype>ERR UnsubscribeAction(OBJECTPTR Object, LONG Action)</prototype>
+    <prototype>ERR UnsubscribeAction(OBJECTPTR Object, AC Action)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The object that you are unsubscribing from.</param>
-      <param type="LONG" name="Action" lookup="AC">The ID of the action that will be unsubscribed, or zero for all actions.</param>
+      <param type="AC" name="Action" lookup="AC">The ID of the action that will be unsubscribed, or zero for all actions.</param>
     </input>
     <description>
 <p>The UnsubscribeAction() function will terminate subscriptions made by <function>SubscribeAction</function>.</p>
-<p>To terminate multiple subscriptions in a single call, set the Action parameter to zero.</p>
+<p>To terminate multiple subscriptions in a single call, set the <code>Action</code> parameter to zero.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -2371,7 +2371,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="ANCHORED">Cursor has been anchored with LockCursor()</const>
       <const name="BUTTON">Input is a physical button or switch</const>
       <const name="CROSSING">Crossing events manage the entering and leaving of an area.</const>
-      <const name="DBL_CLICK">Set by the input system if the Type is a button and the button has been clicked in quick succession so as to be classed as a double-click.</const>
+      <const name="DBL_CLICK">Set by the input system if the <code>Type</code> is a button and the button has been clicked in quick succession so as to be classed as a double-click.</const>
       <const name="DIGITAL">D-Pad or digital joystick source (restricted to +/- 1)</const>
       <const name="DRAGGED">Set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).</const>
       <const name="DRAG_ITEM">This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.</const>
@@ -2965,7 +2965,7 @@ SetField(Object, FID_Statement|TSTR, "string");
   <structs>
     <struct name="ActionArray">
       <field name="Routine" type="APTR">Pointer to the function entry point</field>
-      <field name="ActionCode" type="LONG">Action identifier</field>
+      <field name="ActionCode" type="AC" lookup="AC">Action identifier</field>
     </struct>
 
     <struct name="ActionTable" comment="Structure for ActionList">
