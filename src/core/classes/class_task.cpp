@@ -123,14 +123,14 @@ static const FieldDef clFlags[] = {
 };
 
 static const ActionArray clActions[] = {
-   { AC_Activate,      TASK_Activate },
-   { AC_Free,          TASK_Free },
-   { AC_GetKey,        TASK_GetKey },
-   { AC_NewObject,     TASK_NewObject },
-   { AC_SetKey,        TASK_SetKey },
-   { AC_Init,          TASK_Init },
-   { AC_Write,         TASK_Write },
-   { 0, NULL }
+   { AC::Activate,      TASK_Activate },
+   { AC::Free,          TASK_Free },
+   { AC::GetKey,        TASK_GetKey },
+   { AC::NewObject,     TASK_NewObject },
+   { AC::SetKey,        TASK_SetKey },
+   { AC::Init,          TASK_Init },
+   { AC::Write,         TASK_Write },
+   { AC::NIL, NULL }
 };
 
 #include "class_task_def.c"
@@ -359,14 +359,14 @@ static ERR msg_waitforobjects(APTR Custom, LONG MsgID, LONG MsgType, APTR Messag
 
 //********************************************************************************************************************
 
-static CSTRING action_id_name(LONG ActionID)
+static CSTRING action_id_name(ACTIONID ActionID)
 {
    static char idname[20];
-   if ((ActionID > 0) and (ActionID < AC_END)) {
-      return ActionTable[ActionID].Name;
+   if ((ActionID > AC::NIL) and (ActionID < AC::END)) {
+      return ActionTable[LONG(ActionID)].Name;
    }
    else {
-      snprintf(idname, sizeof(idname), "%d", ActionID);
+      snprintf(idname, sizeof(idname), "%d", LONG(ActionID));
       return idname;
    }
 }
@@ -387,7 +387,7 @@ static ERR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
       log.function("Executing action %s on object #%d, Data: %p, Size: %d", action_id_name(action->ActionID), action->ObjectID, Message, MsgSize);
    #endif
 
-   if ((action->ObjectID) and (action->ActionID)) {
+   if ((action->ObjectID) and (action->ActionID != AC::NIL)) {
       OBJECTPTR obj;
       ERR error;
       if ((error = AccessObject(action->ObjectID, 5000, &obj)) IS ERR::Okay) {
@@ -399,11 +399,11 @@ static ERR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
          }
          else {
             const FunctionField *fields;
-            if (action->ActionID > 0) fields = ActionTable[action->ActionID].Args;
+            if (action->ActionID > AC::NIL) fields = ActionTable[LONG(action->ActionID)].Args;
             else {
                auto cl = obj->ExtClass;
                if (cl->Base) cl = cl->Base;
-               fields = cl->Methods[-action->ActionID].Args;
+               fields = cl->Methods[-LONG(action->ActionID)].Args;
             }
 
             // Use resolve_args() to process the args structure back into something readable
@@ -426,7 +426,7 @@ static ERR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
       }
       else {
          if ((error != ERR::NoMatchingObject) and (error != ERR::MarkedForDeletion)) {
-            if (action->ActionID > 0) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
+            if (action->ActionID > AC::NIL) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
             else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, action->ActionID);
          }
       }
@@ -1686,7 +1686,7 @@ index in the table with a pointer to the action routine.  For example:
 <pre>
 if (!AccessObject(CurrentTask(), 5000, &task)) {
    task->getPtr(FID_Actions, &amp;actions);
-   actions[AC_Seek] = PROGRAM_Seek;
+   actions[AC::Seek] = PROGRAM_Seek;
    ReleaseObject(task);
 }
 </pre>

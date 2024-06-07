@@ -170,22 +170,22 @@ class objHTTP : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
-   inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
    inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
-      auto error = Action(AC_GetKey, this, &args);
+      auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetKey args = { FieldName, Value };
-      return Action(AC_SetKey, this, &args);
+      return Action(AC::SetKey, this, &args);
    }
    inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -196,7 +196,7 @@ class objHTTP : public Object {
    }
    inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -207,7 +207,7 @@ class objHTTP : public Object {
    }
    inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
+      if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
 

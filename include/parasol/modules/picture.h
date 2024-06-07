@@ -48,15 +48,15 @@ class objPicture : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR query() noexcept { return Action(AC_Query, this, NULL); }
+   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+      if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
       }
@@ -66,27 +66,27 @@ class objPicture : public Object {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      return Action(AC_Read, this, &read);
+      return Action(AC::Read, this, &read);
    }
-   inline ERR refresh() noexcept { return Action(AC_Refresh, this, NULL); }
+   inline ERR refresh() noexcept { return Action(AC::Refresh, this, NULL); }
    inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
-      return Action(AC_SaveImage, this, &args);
+      return Action(AC::SaveImage, this, &args);
    }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
-      return Action(AC_SaveToObject, this, &args);
+      return Action(AC::SaveToObject, this, &args);
    }
    inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
-      return Action(AC_Seek, this, &args);
+      return Action(AC::Seek, this, &args);
    }
    inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
    inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
    inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
    inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -97,7 +97,7 @@ class objPicture : public Object {
    }
    inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -108,7 +108,7 @@ class objPicture : public Object {
    }
    inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
+      if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
 

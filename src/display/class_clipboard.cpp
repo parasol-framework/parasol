@@ -430,7 +430,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 static ERR CLIPBOARD_Free(objClipboard *Self)
 {
    if (Self->RequestHandler.isScript()) {
-      UnsubscribeAction(Self->RequestHandler.Context, AC_Free);
+      UnsubscribeAction(Self->RequestHandler.Context, AC::Free);
       Self->RequestHandler.clear();
    }
 
@@ -638,10 +638,10 @@ static ERR GET_RequestHandler(objClipboard *Self, FUNCTION **Value)
 static ERR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->RequestHandler.isScript()) UnsubscribeAction(Self->RequestHandler.Context, AC_Free);
+      if (Self->RequestHandler.isScript()) UnsubscribeAction(Self->RequestHandler.Context, AC::Free);
       Self->RequestHandler = *Value;
       if (Self->RequestHandler.isScript()) {
-         SubscribeAction(Self->RequestHandler.Context, AC_Free, C_FUNCTION(notify_script_free));
+         SubscribeAction(Self->RequestHandler.Context, AC::Free, C_FUNCTION(notify_script_free));
       }
    }
    else Self->RequestHandler.clear();

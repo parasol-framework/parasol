@@ -287,7 +287,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_Drop(struct rkDropTarget *Self, IDataObjec
       return S_OK;
    }
 
-   // Calling winDragDropFromHost() will send an AC_DragDrop to the underlying surface.  If an object accepts the data,
+   // Calling winDragDropFromHost() will send an AC::DragDrop to the underlying surface.  If an object accepts the data,
    // it will send a DATA_REQUEST to the Display that represents the surface.  At this point we can copy the
    // clipboard from the host and send it to the client.  This entire process will occur within this call, so long as
    // all the calls are direct and the messaging system isn't used.  Otherwise the data will be lost as Windows

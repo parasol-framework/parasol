@@ -81,8 +81,8 @@ static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERR Result, A
 
       // Clean up subscriptions and clear the signal
 
-      UnsubscribeAction(ref.Object, AC_Free);
-      UnsubscribeAction(ref.Object, AC_Signal);
+      UnsubscribeAction(ref.Object, AC::Free);
+      UnsubscribeAction(ref.Object, AC::Signal);
       ref.Object->Flags = ref.Object->Flags & (~NF::SIGNALLED);
 
       glWFOList.erase(lref);
@@ -613,7 +613,7 @@ ERR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)
    if (glLogLevel >= 9) {
       if (Type IS MSGID_ACTION) {
          auto action = (ActionMessage *)Data;
-         if (action->ActionID > 0) log.branch("Action: %s, Object: %d, Size: %d", ActionTable[action->ActionID].Name, action->ObjectID, Size);
+         if (action->ActionID > AC::NIL) log.branch("Action: %s, Object: %d, Size: %d", ActionTable[LONG(action->ActionID)].Name, action->ObjectID, Size);
       }
       else log.branch("Type: %d, Data: %p, Size: %d", Type, Data, Size);
    }
@@ -701,8 +701,8 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
             // NB: An object being freed is treated as equivalent to it receiving a signal.
             // Refer to notify_signal_wfo() for notification handling and clearing of signals.
             log.detail("Monitoring object #%d", ObjectSignals[i].Object->UID);
-            if ((SubscribeAction(ObjectSignals[i].Object, AC_Free, C_FUNCTION(notify_signal_wfo)) IS ERR::Okay) and
-                (SubscribeAction(ObjectSignals[i].Object, AC_Signal, C_FUNCTION(notify_signal_wfo)) IS ERR::Okay)) {
+            if ((SubscribeAction(ObjectSignals[i].Object, AC::Free, C_FUNCTION(notify_signal_wfo)) IS ERR::Okay) and
+                (SubscribeAction(ObjectSignals[i].Object, AC::Signal, C_FUNCTION(notify_signal_wfo)) IS ERR::Okay)) {
                glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
             }
             else error = ERR::Failed;
@@ -735,8 +735,8 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
    if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions
       for (auto &ref : glWFOList) {
          pf::ScopedObjectLock<OBJECTPTR> lock(ref.second.Object); // For thread safety
-         UnsubscribeAction(ref.second.Object, AC_Free);
-         UnsubscribeAction(ref.second.Object, AC_Signal);
+         UnsubscribeAction(ref.second.Object, AC::Free);
+         UnsubscribeAction(ref.second.Object, AC::Signal);
       }
       glWFOList.clear();
    }

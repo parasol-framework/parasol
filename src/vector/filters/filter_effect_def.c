@@ -73,12 +73,12 @@ static const struct FieldDef clFilterEffectVSF[] = {
 };
 
 static const struct ActionArray clFilterEffectActions[] = {
-   { AC_Free, FILTEREFFECT_Free },
-   { AC_Init, FILTEREFFECT_Init },
-   { AC_MoveToBack, FILTEREFFECT_MoveToBack },
-   { AC_MoveToFront, FILTEREFFECT_MoveToFront },
-   { AC_NewObject, FILTEREFFECT_NewObject },
-   { AC_NewOwner, FILTEREFFECT_NewOwner },
-   { 0, NULL }
+   { AC::Free, FILTEREFFECT_Free },
+   { AC::Init, FILTEREFFECT_Init },
+   { AC::MoveToBack, FILTEREFFECT_MoveToBack },
+   { AC::MoveToFront, FILTEREFFECT_MoveToFront },
+   { AC::NewObject, FILTEREFFECT_NewObject },
+   { AC::NewOwner, FILTEREFFECT_NewOwner },
+   { AC::NIL, NULL }
 };
 

@@ -31,7 +31,7 @@ static ERR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
       LONG index = 0;
       while (ScanMessages(&index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
          auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
-         if ((action->ActionID IS AC_Redimension) and (action->ObjectID IS Self->UID)) {
+         if ((action->ActionID IS AC::Redimension) and (action->ObjectID IS Self->UID)) {
             return ERR::Okay|ERR::Notified;
          }
       }
@@ -105,7 +105,7 @@ static ERR SURFACE_Resize(extSurface *Self, struct acResize *Args)
        ((!Args->Height) or (Args->Height IS Self->Height))) return ERR::Okay|ERR::Notified;
 
    struct acRedimension redimension = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, Args->Width, Args->Height, Args->Depth };
-   return Action(AC_Redimension, Self, &redimension)|ERR::Notified;
+   return Action(AC::Redimension, Self, &redimension)|ERR::Notified;
 }
 
 /*********************************************************************************************************************

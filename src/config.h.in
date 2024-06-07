@@ -114,7 +114,6 @@ typedef LONG ERROR;     // Standard error code
 typedef LONG OBJECTID;  // 32-bit object ID
 #endif
 typedef LONG MEMORYID;  // 32-bit memory ID
-typedef LONG ACTIONID;  // 32-bit action ID
 typedef LARGE FIELD;    // 64-bit field ID - used for flag combos
 
 /*****************************************************************************

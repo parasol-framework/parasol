@@ -112,9 +112,9 @@ Y: Apply a vertical offset to the image, the origin of which is determined by th
 *********************************************************************************************************************/
 
 static const ActionArray clImageActions[] = {
-   { AC_Init,      IMAGE_Init },
-   { AC_NewObject, IMAGE_NewObject },
-   { 0, NULL }
+   { AC::Init,      IMAGE_Init },
+   { AC::NewObject, IMAGE_NewObject },
+   { AC::NIL, NULL }
 };
 
 static const FieldDef clImageSpread[] = {

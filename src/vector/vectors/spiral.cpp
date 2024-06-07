@@ -336,8 +336,8 @@ static ERR SPIRAL_SET_Width(extVectorSpiral *Self, Unit &Value)
 //********************************************************************************************************************
 
 static const ActionArray clVectorSpiralActions[] = {
-   { AC_NewObject, SPIRAL_NewObject },
-   { 0, NULL }
+   { AC::NewObject, SPIRAL_NewObject },
+   { AC::NIL, NULL }
 };
 
 static const FieldArray clVectorSpiralFields[] = {

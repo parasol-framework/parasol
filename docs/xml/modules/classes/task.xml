@@ -188,7 +188,7 @@
 <p>The Actions field points to a lookup table of ActionEntry items.  Hooking into an action involves writing its <code>AC</code> index in the table with a pointer to the action routine.  For example:</p>
 <pre>if (!AccessObject(CurrentTask(), 5000, &amp;task)) {
    task-&gt;getPtr(FID_Actions, &amp;actions);
-   actions[AC_Seek] = PROGRAM_Seek;
+   actions[AC::Seek] = PROGRAM_Seek;
    ReleaseObject(task);
 }
 </pre>

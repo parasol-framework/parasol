@@ -188,7 +188,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
       pf::Log log;
       if ((!surface->hasFocus()) and (surface->visible())) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
-         QueueAction(AC_Focus, SurfaceID);
+         QueueAction(AC::Focus, SurfaceID);
       }
       else log.trace("WM_SETFOCUS: Surface #%d already has the focus, or is hidden.", SurfaceID);
    }

@@ -477,13 +477,13 @@ static ERR POLY_SET_Y2(extVectorPoly *Self, Unit &Value)
 //********************************************************************************************************************
 
 static const ActionArray clPolygonActions[] = {
-   { AC_Free,        POLYGON_Free },
-   { AC_NewObject,   POLYGON_NewObject },
-   { AC_Move,        POLYGON_Move },
-   { AC_MoveToPoint, POLYGON_MoveToPoint },
-   //{ AC_Redimension, POLYGON_Redimension },
-   { AC_Resize,      POLYGON_Resize },
-   { 0, NULL }
+   { AC::Free,        POLYGON_Free },
+   { AC::NewObject,   POLYGON_NewObject },
+   { AC::Move,        POLYGON_Move },
+   { AC::MoveToPoint, POLYGON_MoveToPoint },
+   //{ AC::Redimension, POLYGON_Redimension },
+   { AC::Resize,      POLYGON_Resize },
+   { AC::NIL, NULL }
 };
 
 static const FieldArray clPolygonFields[] = {

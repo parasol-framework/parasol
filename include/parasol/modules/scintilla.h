@@ -87,18 +87,18 @@ DEFINE_ENUM_FLAG_OPERATORS(STF)
 // Scintilla methods
 
 namespace sci {
-struct SetFont { CSTRING Face; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ReplaceText { CSTRING Find; CSTRING Replace; STF Flags; LONG Start; LONG End; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DeleteLine { LONG Line; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectRange { LONG Start; LONG End; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct InsertText { CSTRING String; LONG Pos; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetLine { LONG Line; STRING Buffer; LONG Length; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ReplaceLine { LONG Line; CSTRING String; LONG Length; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GotoLine { LONG Line; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct TrimWhitespace { static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetPos { LONG Line; LONG Column; LONG Pos; static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ReportEvent { static const ACTIONID id = -11; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ScrollToPoint { LONG X; LONG Y; static const ACTIONID id = -12; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetFont { CSTRING Face; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReplaceText { CSTRING Find; CSTRING Replace; STF Flags; LONG Start; LONG End; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DeleteLine { LONG Line; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectRange { LONG Start; LONG End; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertText { CSTRING String; LONG Pos; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetLine { LONG Line; STRING Buffer; LONG Length; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReplaceLine { LONG Line; CSTRING String; LONG Length; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GotoLine { LONG Line; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct TrimWhitespace { static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetPos { LONG Line; LONG Column; LONG Pos; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReportEvent { static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ScrollToPoint { LONG X; LONG Y; static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -131,85 +131,85 @@ class objScintilla : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
    inline ERR clipboard(CLIPMODE Mode) noexcept {
       struct acClipboard args = { Mode };
-      return Action(AC_Clipboard, this, &args);
+      return Action(AC::Clipboard, this, &args);
    }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
-      return Action(AC_DataFeed, this, &args);
+      return Action(AC::DataFeed, this, &args);
    }
-   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
-   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
-   inline ERR focus() noexcept { return Action(AC_Focus, this, NULL); }
-   inline ERR hide() noexcept { return Action(AC_Hide, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
+   inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }
+   inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR redo(LONG Steps) noexcept {
       struct acRedo args = { Steps };
-      return Action(AC_Redo, this, &args);
+      return Action(AC::Redo, this, &args);
    }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
-      return Action(AC_SaveToObject, this, &args);
+      return Action(AC::SaveToObject, this, &args);
    }
-   inline ERR show() noexcept { return Action(AC_Show, this, NULL); }
+   inline ERR show() noexcept { return Action(AC::Show, this, NULL); }
    inline ERR undo(LONG Steps) noexcept {
       struct acUndo args = { Steps };
-      return Action(AC_Undo, this, &args);
+      return Action(AC::Undo, this, &args);
    }
    inline ERR setFont(CSTRING Face) noexcept {
       struct sci::SetFont args = { Face };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR replaceText(CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End) noexcept {
       struct sci::ReplaceText args = { Find, Replace, Flags, Start, End };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR deleteLine(LONG Line) noexcept {
       struct sci::DeleteLine args = { Line };
-      return(Action(-3, this, &args));
+      return(Action(AC(-3), this, &args));
    }
    inline ERR selectRange(LONG Start, LONG End) noexcept {
       struct sci::SelectRange args = { Start, End };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR insertText(CSTRING String, LONG Pos) noexcept {
       struct sci::InsertText args = { String, Pos };
-      return(Action(-5, this, &args));
+      return(Action(AC(-5), this, &args));
    }
    inline ERR getLine(LONG Line, STRING Buffer, LONG Length) noexcept {
       struct sci::GetLine args = { Line, Buffer, Length };
-      return(Action(-6, this, &args));
+      return(Action(AC(-6), this, &args));
    }
    inline ERR replaceLine(LONG Line, CSTRING String, LONG Length) noexcept {
       struct sci::ReplaceLine args = { Line, String, Length };
-      return(Action(-7, this, &args));
+      return(Action(AC(-7), this, &args));
    }
    inline ERR gotoLine(LONG Line) noexcept {
       struct sci::GotoLine args = { Line };
-      return(Action(-8, this, &args));
+      return(Action(AC(-8), this, &args));
    }
    inline ERR trimWhitespace() noexcept {
-      return(Action(-9, this, NULL));
+      return(Action(AC(-9), this, NULL));
    }
    inline ERR getPos(LONG Line, LONG Column, LONG * Pos) noexcept {
       struct sci::GetPos args = { Line, Column, (LONG)0 };
-      ERR error = Action(-10, this, &args);
+      ERR error = Action(AC(-10), this, &args);
       if (Pos) *Pos = args.Pos;
       return(error);
    }
    inline ERR reportEvent() noexcept {
-      return(Action(-11, this, NULL));
+      return(Action(AC(-11), this, NULL));
    }
    inline ERR scrollToPoint(LONG X, LONG Y) noexcept {
       struct sci::ScrollToPoint args = { X, Y };
-      return(Action(-12, this, &args));
+      return(Action(AC(-12), this, &args));
    }
 
    // Customised field setting
@@ -400,9 +400,9 @@ class objScintilla : public Object {
 // ScintillaSearch methods
 
 namespace ss {
-struct Next { LONG Pos; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Prev { LONG Pos; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Find { LONG Pos; STF Flags; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Next { LONG Pos; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Prev { LONG Pos; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Find { LONG Pos; STF Flags; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -420,19 +420,19 @@ class objScintillaSearch : public Object {
    LONG    End;                 // End of the current/most recent selection
    inline ERR next(LONG * Pos) noexcept {
       struct ss::Next args = { (LONG)0 };
-      ERR error = Action(-1, this, &args);
+      ERR error = Action(AC(-1), this, &args);
       if (Pos) *Pos = args.Pos;
       return(error);
    }
    inline ERR prev(LONG * Pos) noexcept {
       struct ss::Prev args = { (LONG)0 };
-      ERR error = Action(-2, this, &args);
+      ERR error = Action(AC(-2), this, &args);
       if (Pos) *Pos = args.Pos;
       return(error);
    }
    inline ERR find(LONG * Pos, STF Flags) noexcept {
       struct ss::Find args = { (LONG)0, Flags };
-      ERR error = Action(-3, this, &args);
+      ERR error = Action(AC(-3), this, &args);
       if (Pos) *Pos = args.Pos;
       return(error);
    }

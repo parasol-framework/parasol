@@ -23,7 +23,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
    log.branch("Surface: %d", SurfaceID);
 
    if (auto pointer = gfx::AccessPointer()) {
-      // Pass AC_DragDrop to the surface underneath the mouse cursor.  If a surface subscriber accepts the data, it
+      // Pass AC::DragDrop to the surface underneath the mouse cursor.  If a surface subscriber accepts the data, it
       // will send a DATA::REQUEST to the relevant display object.  See DISPLAY_DataFeed() and winGetData().
 
       OBJECTID modal_id = gfx::GetModalSurface();
@@ -770,7 +770,7 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
    forbidDrawing();
 
    struct acRedimension redimension = { (DOUBLE)X, (DOUBLE)Y, 0, (DOUBLE)Width, (DOUBLE)Height, (DOUBLE)BPP };
-   NotifySubscribers(Self, AC_Redimension, &redimension, ERR::Okay);
+   NotifySubscribers(Self, AC::Redimension, &redimension, ERR::Okay);
 
    permitDrawing();
 

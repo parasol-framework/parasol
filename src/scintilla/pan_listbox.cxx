@@ -98,7 +98,7 @@ void ListBoxImp::Create(Scintilla::Window &Window, int, Scintilla::Point, int, b
       </item>\
    </menu>";
    dc_args.Size = StrLength((STRING)dc_args.Buffer);
-   Action(AC_DataFeed, menu, &dc_args);
+   Action(AC::DataFeed, menu, &dc_args);
    acShow(menu);
 */
 }

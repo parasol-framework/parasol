@@ -376,12 +376,12 @@ static const FieldArray clEllipseFields[] = {
 };
 
 static const ActionArray clEllipseActions[] = {
-   { AC_NewObject,     ELLIPSE_NewObject },
-   { AC_Move,          ELLIPSE_Move },
-   { AC_MoveToPoint,   ELLIPSE_MoveToPoint },
-   //{ AC_Redimension, ELLIPSE_Redimension },
-   //{ AC_Resize,      ELLIPSE_Resize },
-   { 0, NULL }
+   { AC::NewObject,     ELLIPSE_NewObject },
+   { AC::Move,          ELLIPSE_Move },
+   { AC::MoveToPoint,   ELLIPSE_MoveToPoint },
+   //{ AC::Redimension, ELLIPSE_Redimension },
+   //{ AC::Resize,      ELLIPSE_Resize },
+   { AC::NIL, NULL }
 };
 
 static ERR init_ellipse(void)

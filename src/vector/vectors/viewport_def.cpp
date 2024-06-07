@@ -39,14 +39,14 @@ static const struct FieldDef clVectorViewportDMF[] = {
 };
 
 static const struct ActionArray clVectorViewportActions[] = {
-   { AC_Clear, VECTORVIEWPORT_Clear },
-   { AC_Free, VECTORVIEWPORT_Free },
-   { AC_Init, VECTORVIEWPORT_Init },
-   { AC_Move, VECTORVIEWPORT_Move },
-   { AC_MoveToPoint, VECTORVIEWPORT_MoveToPoint },
-   { AC_NewObject, VECTORVIEWPORT_NewObject },
-   { AC_Redimension, VECTORVIEWPORT_Redimension },
-   { AC_Resize, VECTORVIEWPORT_Resize },
-   { 0, NULL }
+   { AC::Clear, VECTORVIEWPORT_Clear },
+   { AC::Free, VECTORVIEWPORT_Free },
+   { AC::Init, VECTORVIEWPORT_Init },
+   { AC::Move, VECTORVIEWPORT_Move },
+   { AC::MoveToPoint, VECTORVIEWPORT_MoveToPoint },
+   { AC::NewObject, VECTORVIEWPORT_NewObject },
+   { AC::Redimension, VECTORVIEWPORT_Redimension },
+   { AC::Resize, VECTORVIEWPORT_Resize },
+   { AC::NIL, NULL }
 };
 

@@ -240,7 +240,7 @@ static ERR NETLOOKUP_Free(extNetLookup *Self)
    if (Self->ThreadLock) { delete Self->ThreadLock; Self->ThreadLock = NULL; }
 
    if (Self->Callback.isScript()) {
-      UnsubscribeAction(Self->Callback.Context, AC_Free);
+      UnsubscribeAction(Self->Callback.Context, AC::Free);
       Self->Callback.Type = CALL::NIL;
    }
 
@@ -453,10 +453,10 @@ static ERR GET_Callback(extNetLookup *Self, FUNCTION **Value)
 static ERR SET_Callback(extNetLookup *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Callback.isScript()) UnsubscribeAction(Self->Callback.Context, AC_Free);
+      if (Self->Callback.isScript()) UnsubscribeAction(Self->Callback.Context, AC::Free);
       Self->Callback = *Value;
       if (Self->Callback.isScript()) {
-         SubscribeAction(Self->Callback.Context, AC_Free, C_FUNCTION(notify_free_callback));
+         SubscribeAction(Self->Callback.Context, AC::Free, C_FUNCTION(notify_free_callback));
       }
    }
    else Self->Callback.clear();

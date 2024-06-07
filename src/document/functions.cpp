@@ -248,7 +248,7 @@ static ERR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML::T
       }
    }
 
-   // Check that the FocusIndex is valid (there's a slim possibility that it may not be if AC_Focus has been
+   // Check that the FocusIndex is valid (there's a slim possibility that it may not be if AC::Focus has been
    // incorrectly used).
 
    if (Self->FocusIndex >= std::ssize(Self->Tabs)) Self->FocusIndex = -1;

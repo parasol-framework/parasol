@@ -556,8 +556,8 @@ static const FieldDef clSuperDimensions[] = {
 };
 
 static const ActionArray clVectorShapeActions[] = {
-   { AC_NewObject, SUPER_NewObject },
-   { 0, NULL }
+   { AC::NewObject, SUPER_NewObject },
+   { AC::NIL, NULL }
 };
 
 static const FieldArray clVectorShapeFields[] = {

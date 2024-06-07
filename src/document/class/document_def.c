@@ -36,38 +36,38 @@ FDEF maEdit[] = { { "Name", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maReadContent[] = { { "Format", FD_LONG }, { "Start", FD_LONG }, { "End", FD_LONG }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clDocumentMethods[] = {
-   { -1, (APTR)DOCUMENT_FeedParser, "FeedParser", maFeedParser, sizeof(struct doc::FeedParser) },
-   { -2, (APTR)DOCUMENT_SelectLink, "SelectLink", maSelectLink, sizeof(struct doc::SelectLink) },
-   { -4, (APTR)DOCUMENT_FindIndex, "FindIndex", maFindIndex, sizeof(struct doc::FindIndex) },
-   { -5, (APTR)DOCUMENT_InsertXML, "InsertXML", maInsertXML, sizeof(struct doc::InsertXML) },
-   { -6, (APTR)DOCUMENT_RemoveContent, "RemoveContent", maRemoveContent, sizeof(struct doc::RemoveContent) },
-   { -7, (APTR)DOCUMENT_InsertText, "InsertText", maInsertText, sizeof(struct doc::InsertText) },
-   { -8, (APTR)DOCUMENT_CallFunction, "CallFunction", maCallFunction, sizeof(struct doc::CallFunction) },
-   { -9, (APTR)DOCUMENT_AddListener, "AddListener", maAddListener, sizeof(struct doc::AddListener) },
-   { -10, (APTR)DOCUMENT_RemoveListener, "RemoveListener", maRemoveListener, sizeof(struct doc::RemoveListener) },
-   { -11, (APTR)DOCUMENT_ShowIndex, "ShowIndex", maShowIndex, sizeof(struct doc::ShowIndex) },
-   { -12, (APTR)DOCUMENT_HideIndex, "HideIndex", maHideIndex, sizeof(struct doc::HideIndex) },
-   { -13, (APTR)DOCUMENT_Edit, "Edit", maEdit, sizeof(struct doc::Edit) },
-   { -14, (APTR)DOCUMENT_ReadContent, "ReadContent", maReadContent, sizeof(struct doc::ReadContent) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)DOCUMENT_FeedParser, "FeedParser", maFeedParser, sizeof(struct doc::FeedParser) },
+   { AC(-2), (APTR)DOCUMENT_SelectLink, "SelectLink", maSelectLink, sizeof(struct doc::SelectLink) },
+   { AC(-4), (APTR)DOCUMENT_FindIndex, "FindIndex", maFindIndex, sizeof(struct doc::FindIndex) },
+   { AC(-5), (APTR)DOCUMENT_InsertXML, "InsertXML", maInsertXML, sizeof(struct doc::InsertXML) },
+   { AC(-6), (APTR)DOCUMENT_RemoveContent, "RemoveContent", maRemoveContent, sizeof(struct doc::RemoveContent) },
+   { AC(-7), (APTR)DOCUMENT_InsertText, "InsertText", maInsertText, sizeof(struct doc::InsertText) },
+   { AC(-8), (APTR)DOCUMENT_CallFunction, "CallFunction", maCallFunction, sizeof(struct doc::CallFunction) },
+   { AC(-9), (APTR)DOCUMENT_AddListener, "AddListener", maAddListener, sizeof(struct doc::AddListener) },
+   { AC(-10), (APTR)DOCUMENT_RemoveListener, "RemoveListener", maRemoveListener, sizeof(struct doc::RemoveListener) },
+   { AC(-11), (APTR)DOCUMENT_ShowIndex, "ShowIndex", maShowIndex, sizeof(struct doc::ShowIndex) },
+   { AC(-12), (APTR)DOCUMENT_HideIndex, "HideIndex", maHideIndex, sizeof(struct doc::HideIndex) },
+   { AC(-13), (APTR)DOCUMENT_Edit, "Edit", maEdit, sizeof(struct doc::Edit) },
+   { AC(-14), (APTR)DOCUMENT_ReadContent, "ReadContent", maReadContent, sizeof(struct doc::ReadContent) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clDocumentActions[] = {
-   { AC_Activate, DOCUMENT_Activate },
-   { AC_Clear, DOCUMENT_Clear },
-   { AC_Clipboard, DOCUMENT_Clipboard },
-   { AC_DataFeed, DOCUMENT_DataFeed },
-   { AC_Disable, DOCUMENT_Disable },
-   { AC_Draw, DOCUMENT_Draw },
-   { AC_Enable, DOCUMENT_Enable },
-   { AC_Focus, DOCUMENT_Focus },
-   { AC_Free, DOCUMENT_Free },
-   { AC_GetKey, DOCUMENT_GetKey },
-   { AC_Init, DOCUMENT_Init },
-   { AC_NewObject, DOCUMENT_NewObject },
-   { AC_Refresh, DOCUMENT_Refresh },
-   { AC_SaveToObject, DOCUMENT_SaveToObject },
-   { AC_SetKey, DOCUMENT_SetKey },
-   { 0, NULL }
+   { AC::Activate, DOCUMENT_Activate },
+   { AC::Clear, DOCUMENT_Clear },
+   { AC::Clipboard, DOCUMENT_Clipboard },
+   { AC::DataFeed, DOCUMENT_DataFeed },
+   { AC::Disable, DOCUMENT_Disable },
+   { AC::Draw, DOCUMENT_Draw },
+   { AC::Enable, DOCUMENT_Enable },
+   { AC::Focus, DOCUMENT_Focus },
+   { AC::Free, DOCUMENT_Free },
+   { AC::GetKey, DOCUMENT_GetKey },
+   { AC::Init, DOCUMENT_Init },
+   { AC::NewObject, DOCUMENT_NewObject },
+   { AC::Refresh, DOCUMENT_Refresh },
+   { AC::SaveToObject, DOCUMENT_SaveToObject },
+   { AC::SetKey, DOCUMENT_SetKey },
+   { AC::NIL, NULL }
 };
 

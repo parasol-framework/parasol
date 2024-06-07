@@ -600,7 +600,7 @@ static ERR SOUND_Free(extSound *Self)
    if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
 
    if (Self->OnStop.isScript()) {
-      UnsubscribeAction(Self->OnStop.Context, AC_Free);
+      UnsubscribeAction(Self->OnStop.Context, AC::Free);
       Self->OnStop.clear();
    }
 
@@ -966,8 +966,8 @@ static ERR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
 
       ERR (**routine)(OBJECTPTR, APTR);
       if ((mclass->getPtr(FID_ActionTable, (APTR *)&routine) IS ERR::Okay) and (routine)) {
-         if (routine[AC_SaveToObject]) {
-            return routine[AC_SaveToObject](Self, Args);
+         if (routine[LONG(AC::SaveToObject)]) {
+            return routine[LONG(AC::SaveToObject)](Self, Args);
          }
          else return log.warning(ERR::NoSupport);
       }
@@ -1460,10 +1460,10 @@ static ERR SOUND_GET_OnStop(extSound *Self, FUNCTION **Value)
 static ERR SOUND_SET_OnStop(extSound *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->OnStop.isScript()) UnsubscribeAction(Self->OnStop.Context, AC_Free);
+      if (Self->OnStop.isScript()) UnsubscribeAction(Self->OnStop.Context, AC::Free);
       Self->OnStop = *Value;
       if (Self->OnStop.isScript()) {
-         SubscribeAction(Self->OnStop.Context, AC_Free, C_FUNCTION(notify_onstop_free));
+         SubscribeAction(Self->OnStop.Context, AC::Free, C_FUNCTION(notify_onstop_free));
       }
    }
    else Self->OnStop.clear();
@@ -1741,19 +1741,19 @@ static const FieldArray clFields[] = {
 };
 
 static const ActionArray clActions[] = {
-   { AC_Activate,      SOUND_Activate },
-   { AC_Deactivate,    SOUND_Deactivate },
-   { AC_Disable,       SOUND_Disable },
-   { AC_Enable,        SOUND_Enable },
-   { AC_Free,          SOUND_Free },
-   { AC_GetKey,        SOUND_GetKey },
-   { AC_Init,          SOUND_Init },
-   { AC_NewObject,     SOUND_NewObject },
-   { AC_Read,          SOUND_Read },
-   { AC_SaveToObject,  SOUND_SaveToObject },
-   { AC_Seek,          SOUND_Seek },
-   { AC_SetKey,        SOUND_SetKey },
-   { 0, NULL }
+   { AC::Activate,      SOUND_Activate },
+   { AC::Deactivate,    SOUND_Deactivate },
+   { AC::Disable,       SOUND_Disable },
+   { AC::Enable,        SOUND_Enable },
+   { AC::Free,          SOUND_Free },
+   { AC::GetKey,        SOUND_GetKey },
+   { AC::Init,          SOUND_Init },
+   { AC::NewObject,     SOUND_NewObject },
+   { AC::Read,          SOUND_Read },
+   { AC::SaveToObject,  SOUND_SaveToObject },
+   { AC::Seek,          SOUND_Seek },
+   { AC::SetKey,        SOUND_SetKey },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************

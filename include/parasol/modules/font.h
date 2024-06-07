@@ -106,10 +106,10 @@ class objFont : public Object {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 

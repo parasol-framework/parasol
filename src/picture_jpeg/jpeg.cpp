@@ -314,11 +314,11 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 //********************************************************************************************************************
 
 static ActionArray clActions[] = {
-   { AC_Activate,  JPEG_Activate },
-   { AC_Init,      JPEG_Init },
-   { AC_Query,     JPEG_Query },
-   { AC_SaveImage, JPEG_SaveImage },
-   { 0, NULL }
+   { AC::Activate,  JPEG_Activate },
+   { AC::Init,      JPEG_Init },
+   { AC::Query,     JPEG_Query },
+   { AC::SaveImage, JPEG_SaveImage },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************

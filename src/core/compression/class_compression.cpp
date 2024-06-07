@@ -1214,7 +1214,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
                   // This routine is used if the file is stored rather than compressed
 
                   struct acRead read = { .Buffer = Self->Input, .Length = SIZE_COMPRESSION_BUFFER-1 };
-                  if ((error = Action(AC_Read, Self->FileIO, &read)) IS ERR::Okay) {
+                  if ((error = Action(AC::Read, Self->FileIO, &read)) IS ERR::Okay) {
                      Self->Input[read.Result] = 0;
                      DeleteFile(destpath.c_str(), NULL);
                      error = CreateLink(destpath.c_str(), (CSTRING)Self->Input);
@@ -1234,7 +1234,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
                   else read.Length = SIZE_COMPRESSION_BUFFER;
 
                   auto err = Z_OK;
-                  if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
+                  if ((error = Action(AC::Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
                   if (read.Result <= 0) { error = ERR::Read; goto exit; }
 
                   Self->Zip.next_in   = Self->Input;
@@ -1312,9 +1312,9 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
                      .Length = (inputlen < SIZE_COMPRESSION_BUFFER) ? inputlen : SIZE_COMPRESSION_BUFFER
                   };
 
-                  while (((error = Action(AC_Read, Self->FileIO, &read)) IS ERR::Okay) and (read.Result > 0)) {
+                  while (((error = Action(AC::Read, Self->FileIO, &read)) IS ERR::Okay) and (read.Result > 0)) {
                      struct acWrite write = { .Buffer = Self->Input, .Length = read.Result };
-                     if (Action(AC_Write, *file, &write) != ERR::Okay) { error = log.warning(ERR::Write); goto exit; }
+                     if (Action(AC::Write, *file, &write) != ERR::Okay) { error = log.warning(ERR::Write); goto exit; }
 
                      inputlen -= read.Result;
                      if (inputlen <= 0) break;
@@ -1336,7 +1336,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
                      .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
                   };
 
-                  if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
+                  if ((error = Action(AC::Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
                   if (read.Result <= 0) { error = ERR::Read; goto exit; }
                   LONG inputlen = zf.CompressedSize - read.Result;
 
@@ -1363,7 +1363,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
                         .Buffer = Self->Output,
                         .Length = (LONG)(SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out)
                      };
-                     if (Action(AC_Write, *file, &write) != ERR::Okay) { error = log.warning(ERR::Write); goto exit; }
+                     if (Action(AC::Write, *file, &write) != ERR::Okay) { error = log.warning(ERR::Write); goto exit; }
 
                      // Exit if all data has been written out
 
@@ -1383,7 +1383,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
                         if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                         else read.Length = SIZE_COMPRESSION_BUFFER;
 
-                        if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
+                        if ((error = Action(AC::Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
                         if (read.Result <= 0) { error = ERR::Read; break; }
                         inputlen -= read.Result;
 
@@ -1529,9 +1529,9 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
                if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                else read.Length = SIZE_COMPRESSION_BUFFER;
 
-               while (((error = Action(AC_Read, Self->FileIO, &read)) IS ERR::Okay) and (read.Result > 0)) {
+               while (((error = Action(AC::Read, Self->FileIO, &read)) IS ERR::Okay) and (read.Result > 0)) {
                   struct acWrite write = { .Buffer = Self->Input, .Length = read.Result };
-                  if (Action(AC_Write, Args->Object, &write) != ERR::Okay) { error = ERR::Write; goto exit; }
+                  if (Action(AC::Write, Args->Object, &write) != ERR::Okay) { error = ERR::Write; goto exit; }
 
                   inputlen -= read.Result;
                   if (inputlen <= 0) break;
@@ -1552,7 +1552,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
                else read.Length = SIZE_COMPRESSION_BUFFER;
 
                auto err = Z_OK;
-               if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
+               if ((error = Action(AC::Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
                if (read.Result <= 0) { error = ERR::Read; goto exit; }
                LONG inputlen = list.CompressedSize - read.Result;
 
@@ -1575,7 +1575,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
                   // Write out the decompressed data
 
                   struct acWrite write = { Self->Output, (LONG)(SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out) };
-                  if (Action(AC_Write, Args->Object, &write) != ERR::Okay) { error = ERR::Write; goto exit; }
+                  if (Action(AC::Write, Args->Object, &write) != ERR::Okay) { error = ERR::Write; goto exit; }
 
                   // Exit if all data has been written out
 
@@ -1595,7 +1595,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
                      if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
                      else read.Length = SIZE_COMPRESSION_BUFFER;
 
-                     if ((error = Action(AC_Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
+                     if ((error = Action(AC::Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
                      if (read.Result <= 0) { error = ERR::Read; break; }
                      inputlen -= read.Result;
 
@@ -1705,7 +1705,7 @@ static ERR COMPRESSION_Flush(extCompression *Self)
       LONG length, zerror;
       if ((length = SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out) > 0) {
          struct acWrite write = { Self->Output, length };
-         if (Action(AC_Write, Self->FileIO, &write) != ERR::Okay) return ERR::Write;
+         if (Action(AC::Write, Self->FileIO, &write) != ERR::Okay) return ERR::Write;
          Self->Zip.next_out  = Self->Output;
          Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
       }
@@ -1742,7 +1742,7 @@ static ERR COMPRESSION_Free(extCompression *Self)
    }
 
    if (Self->Feedback.isScript()) {
-      UnsubscribeAction(Self->Feedback.Context, AC_Free);
+      UnsubscribeAction(Self->Feedback.Context, AC::Free);
       Self->Feedback.clear();
    }
 

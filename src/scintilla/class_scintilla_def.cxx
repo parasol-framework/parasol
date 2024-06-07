@@ -54,38 +54,38 @@ FDEF maGetPos[] = { { "Line", FD_LONG }, { "Column", FD_LONG }, { "Pos", FD_LONG
 FDEF maScrollToPoint[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { 0, 0 } };
 
 static const struct MethodEntry clScintillaMethods[] = {
-   { -1, (APTR)SCINTILLA_SetFont, "SetFont", maSetFont, sizeof(struct sci::SetFont) },
-   { -2, (APTR)SCINTILLA_ReplaceText, "ReplaceText", maReplaceText, sizeof(struct sci::ReplaceText) },
-   { -3, (APTR)SCINTILLA_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct sci::DeleteLine) },
-   { -4, (APTR)SCINTILLA_SelectRange, "SelectRange", maSelectRange, sizeof(struct sci::SelectRange) },
-   { -5, (APTR)SCINTILLA_InsertText, "InsertText", maInsertText, sizeof(struct sci::InsertText) },
-   { -6, (APTR)SCINTILLA_GetLine, "GetLine", maGetLine, sizeof(struct sci::GetLine) },
-   { -7, (APTR)SCINTILLA_ReplaceLine, "ReplaceLine", maReplaceLine, sizeof(struct sci::ReplaceLine) },
-   { -8, (APTR)SCINTILLA_GotoLine, "GotoLine", maGotoLine, sizeof(struct sci::GotoLine) },
-   { -9, (APTR)SCINTILLA_TrimWhitespace, "TrimWhitespace", 0, 0 },
-   { -10, (APTR)SCINTILLA_GetPos, "GetPos", maGetPos, sizeof(struct sci::GetPos) },
-   { -11, (APTR)SCINTILLA_ReportEvent, "ReportEvent", 0, 0 },
-   { -12, (APTR)SCINTILLA_ScrollToPoint, "ScrollToPoint", maScrollToPoint, sizeof(struct sci::ScrollToPoint) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)SCINTILLA_SetFont, "SetFont", maSetFont, sizeof(struct sci::SetFont) },
+   { AC(-2), (APTR)SCINTILLA_ReplaceText, "ReplaceText", maReplaceText, sizeof(struct sci::ReplaceText) },
+   { AC(-3), (APTR)SCINTILLA_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct sci::DeleteLine) },
+   { AC(-4), (APTR)SCINTILLA_SelectRange, "SelectRange", maSelectRange, sizeof(struct sci::SelectRange) },
+   { AC(-5), (APTR)SCINTILLA_InsertText, "InsertText", maInsertText, sizeof(struct sci::InsertText) },
+   { AC(-6), (APTR)SCINTILLA_GetLine, "GetLine", maGetLine, sizeof(struct sci::GetLine) },
+   { AC(-7), (APTR)SCINTILLA_ReplaceLine, "ReplaceLine", maReplaceLine, sizeof(struct sci::ReplaceLine) },
+   { AC(-8), (APTR)SCINTILLA_GotoLine, "GotoLine", maGotoLine, sizeof(struct sci::GotoLine) },
+   { AC(-9), (APTR)SCINTILLA_TrimWhitespace, "TrimWhitespace", 0, 0 },
+   { AC(-10), (APTR)SCINTILLA_GetPos, "GetPos", maGetPos, sizeof(struct sci::GetPos) },
+   { AC(-11), (APTR)SCINTILLA_ReportEvent, "ReportEvent", 0, 0 },
+   { AC(-12), (APTR)SCINTILLA_ScrollToPoint, "ScrollToPoint", maScrollToPoint, sizeof(struct sci::ScrollToPoint) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clScintillaActions[] = {
-   { AC_Clear, SCINTILLA_Clear },
-   { AC_Clipboard, SCINTILLA_Clipboard },
-   { AC_DataFeed, SCINTILLA_DataFeed },
-   { AC_Disable, SCINTILLA_Disable },
-   { AC_Draw, SCINTILLA_Draw },
-   { AC_Enable, SCINTILLA_Enable },
-   { AC_Focus, SCINTILLA_Focus },
-   { AC_Free, SCINTILLA_Free },
-   { AC_Hide, SCINTILLA_Hide },
-   { AC_Init, SCINTILLA_Init },
-   { AC_NewObject, SCINTILLA_NewObject },
-   { AC_NewOwner, SCINTILLA_NewOwner },
-   { AC_Redo, SCINTILLA_Redo },
-   { AC_SaveToObject, SCINTILLA_SaveToObject },
-   { AC_Show, SCINTILLA_Show },
-   { AC_Undo, SCINTILLA_Undo },
-   { 0, NULL }
+   { AC::Clear, SCINTILLA_Clear },
+   { AC::Clipboard, SCINTILLA_Clipboard },
+   { AC::DataFeed, SCINTILLA_DataFeed },
+   { AC::Disable, SCINTILLA_Disable },
+   { AC::Draw, SCINTILLA_Draw },
+   { AC::Enable, SCINTILLA_Enable },
+   { AC::Focus, SCINTILLA_Focus },
+   { AC::Free, SCINTILLA_Free },
+   { AC::Hide, SCINTILLA_Hide },
+   { AC::Init, SCINTILLA_Init },
+   { AC::NewObject, SCINTILLA_NewObject },
+   { AC::NewOwner, SCINTILLA_NewOwner },
+   { AC::Redo, SCINTILLA_Redo },
+   { AC::SaveToObject, SCINTILLA_SaveToObject },
+   { AC::Show, SCINTILLA_Show },
+   { AC::Undo, SCINTILLA_Undo },
+   { AC::NIL, NULL }
 };
 

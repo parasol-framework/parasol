@@ -19,22 +19,22 @@ FDEF maGetEnv[] = { { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } 
 FDEF maSetEnv[] = { { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 
 static const struct MethodEntry clTaskMethods[] = {
-   { -1, (APTR)TASK_Expunge, "Expunge", 0, 0 },
-   { -2, (APTR)TASK_AddArgument, "AddArgument", maAddArgument, sizeof(struct task::AddArgument) },
-   { -3, (APTR)TASK_Quit, "Quit", 0, 0 },
-   { -4, (APTR)TASK_GetEnv, "GetEnv", maGetEnv, sizeof(struct task::GetEnv) },
-   { -5, (APTR)TASK_SetEnv, "SetEnv", maSetEnv, sizeof(struct task::SetEnv) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)TASK_Expunge, "Expunge", 0, 0 },
+   { AC(-2), (APTR)TASK_AddArgument, "AddArgument", maAddArgument, sizeof(struct task::AddArgument) },
+   { AC(-3), (APTR)TASK_Quit, "Quit", 0, 0 },
+   { AC(-4), (APTR)TASK_GetEnv, "GetEnv", maGetEnv, sizeof(struct task::GetEnv) },
+   { AC(-5), (APTR)TASK_SetEnv, "SetEnv", maSetEnv, sizeof(struct task::SetEnv) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clTaskActions[] = {
-   { AC_Activate, TASK_Activate },
-   { AC_Free, TASK_Free },
-   { AC_GetKey, TASK_GetKey },
-   { AC_Init, TASK_Init },
-   { AC_NewObject, TASK_NewObject },
-   { AC_SetKey, TASK_SetKey },
-   { AC_Write, TASK_Write },
-   { 0, NULL }
+   { AC::Activate, TASK_Activate },
+   { AC::Free, TASK_Free },
+   { AC::GetKey, TASK_GetKey },
+   { AC::Init, TASK_Init },
+   { AC::NewObject, TASK_NewObject },
+   { AC::SetKey, TASK_SetKey },
+   { AC::Write, TASK_Write },
+   { AC::NIL, NULL }
 };
 

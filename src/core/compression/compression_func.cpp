@@ -347,7 +347,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    }
    else {
       struct acRead read = { .Buffer = Self->Input, .Length = SIZE_COMPRESSION_BUFFER };
-      while ((Action(AC_Read, *file, &read) IS ERR::Okay) and (read.Result > 0)) {
+      while ((Action(AC::Read, *file, &read) IS ERR::Okay) and (read.Result > 0)) {
          Self->Zip.next_in  = Self->Input;
          Self->Zip.avail_in = read.Result;
 
@@ -355,7 +355,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
             if (!Self->Zip.avail_out) {
                // Write out the compression buffer because it is at capacity
                struct acWrite write = { .Buffer = Self->Output, .Length = SIZE_COMPRESSION_BUFFER };
-               Action(AC_Write, Self->FileIO, &write);
+               Action(AC::Write, Self->FileIO, &write);
 
                // Reset the compression buffer
                Self->Zip.next_out  = Self->Output;
@@ -447,10 +447,10 @@ static ERR remove_file(extCompression *Self, std::list<ZipFile>::iterator &File)
    DOUBLE writepos = File->Offset;
 
    struct acRead read = { Self->Input, SIZE_COMPRESSION_BUFFER };
-   while ((Action(AC_Read, Self->FileIO, &read) IS ERR::Okay) and (read.Result > 0)) {
+   while ((Action(AC::Read, Self->FileIO, &read) IS ERR::Okay) and (read.Result > 0)) {
       if (acSeekStart(Self->FileIO, writepos) != ERR::Okay) return log.warning(ERR::Seek);
       struct acWrite write = { Self->Input, read.Result };
-      if (Action(AC_Write, Self->FileIO, &write) != ERR::Okay) return log.warning(ERR::Write);
+      if (Action(AC::Write, Self->FileIO, &write) != ERR::Okay) return log.warning(ERR::Write);
       writepos += write.Result;
 
       currentpos += read.Result;
@@ -643,7 +643,7 @@ static ERR scan_zip(extCompression *Self)
          if (zipentry.extralen > 0) { // Not currently used
             std::string extra(zipentry.extralen, '\0');
             struct acRead read = { (APTR)extra.c_str(), zipentry.extralen };
-            if (Action(AC_Read, Self->FileIO, &read) != ERR::Okay) return log.warning(ERR::Read);
+            if (Action(AC::Read, Self->FileIO, &read) != ERR::Okay) return log.warning(ERR::Read);
          }
 
          if (zipentry.commentlen > 0) {

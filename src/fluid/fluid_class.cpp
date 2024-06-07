@@ -69,12 +69,12 @@ static ERR FLUID_Init(objScript *);
 static ERR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const ActionArray clActions[] = {
-   { AC_Activate,     FLUID_Activate },
-   { AC_DataFeed,     FLUID_DataFeed },
-   { AC_Free,         FLUID_Free },
-   { AC_Init,         FLUID_Init },
-   { AC_SaveToObject, FLUID_SaveToObject },
-   { 0, NULL }
+   { AC::Activate,     FLUID_Activate },
+   { AC::DataFeed,     FLUID_DataFeed },
+   { AC::Free,         FLUID_Free },
+   { AC::Init,         FLUID_Init },
+   { AC::SaveToObject, FLUID_SaveToObject },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************
@@ -85,7 +85,7 @@ static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);
 static const MethodEntry clMethods[] = {
    { sc::GetProcedureID::id, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
    { sc::DerefProcedure::id, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
-   { 0, NULL, NULL, NULL, 0 }
+   { AC::NIL, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************

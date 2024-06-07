@@ -178,12 +178,12 @@ void init_metaclass(void)
    glMetaClass.Local[0]        = 0xff;
 
    glMetaClass.Methods.resize(2);
-   glMetaClass.Methods[1] = { -1, (APTR)CLASS_FindField, "FindField", argsFindField, sizeof(struct mc::FindField) };
+   glMetaClass.Methods[1] = { AC(-1), (APTR)CLASS_FindField, "FindField", argsFindField, sizeof(struct mc::FindField) };
 
-   glMetaClass.ActionTable[AC_Free].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Free;
-   glMetaClass.ActionTable[AC_Init].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Init;
-   glMetaClass.ActionTable[AC_NewObject].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_NewObject;
-   glMetaClass.ActionTable[AC_Signal].PerformAction = &DEFAULT_Signal;
+   glMetaClass.ActionTable[LONG(AC::Free)].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Free;
+   glMetaClass.ActionTable[LONG(AC::Init)].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Init;
+   glMetaClass.ActionTable[LONG(AC::NewObject)].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_NewObject;
+   glMetaClass.ActionTable[LONG(AC::Signal)].PerformAction = &DEFAULT_Signal;
 
    sort_class_fields(&glMetaClass, glMetaClass.FieldLookup);
 
@@ -402,14 +402,14 @@ can also be auto-generated using our IDL scripts - an approach that we strongly 
 
 <pre>
 ActionArray clActions[] = {
-   { AC_Free,          PIC_Free },
-   { AC_NewObject,     PIC_NewObject },
-   { AC_Init,          PIC_Init },
-   { AC_Query,         PIC_Query },
-   { AC_Read,          PIC_Read },
-   { AC_SaveToObject,  PIC_SaveToObject },
-   { AC_Seek,          PIC_Seek },
-   { AC_Write,         PIC_Write },
+   { AC::Free,          PIC_Free },
+   { AC::NewObject,     PIC_NewObject },
+   { AC::Init,          PIC_Init },
+   { AC::Query,         PIC_Query },
+   { AC::Read,          PIC_Read },
+   { AC::SaveToObject,  PIC_SaveToObject },
+   { AC::Seek,          PIC_Seek },
+   { AC::Write,         PIC_Write },
    { 0, NULL }
 };
 </pre>
@@ -422,12 +422,12 @@ static ERR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
 {
    if (!Actions) return ERR::Failed;
 
-   Self->ActionTable[AC_Signal].PerformAction = &DEFAULT_Signal;
+   Self->ActionTable[LONG(AC::Signal)].PerformAction = &DEFAULT_Signal;
 
-   for (auto i=0; Actions[i].ActionCode; i++) {
+   for (auto i=0; Actions[i].ActionCode != AC::NIL; i++) {
       auto code = Actions[i].ActionCode;
-      if ((code < AC_END) and (code > 0)) {
-         Self->ActionTable[code].PerformAction = (ERR (*)(OBJECTPTR, APTR))Actions[i].Routine;
+      if ((code < AC::END) and (code > AC::NIL)) {
+         Self->ActionTable[LONG(code)].PerformAction = (ERR (*)(OBJECTPTR, APTR))Actions[i].Routine;
       }
    }
 
@@ -441,17 +441,17 @@ ActionTable: This field can be read to retrieve a MetaClass object's internal ac
 
 This field retrieves the internal action table of a class. The action table is arranged into a jump
 table of action routines, with each routine pointing directly to the object support functions.  The size of the
-jump table is defined by the global constant `AC_END`.  The table is sorted by action ID.
+jump table is defined by the global constant `AC::END`.  The table is sorted by action ID.
 
 It is possible to check if an action is supported by a class by looking up its index within the ActionTable, for
-example `Routine[AC_Read]`.  Calling an action routine directly from client code is an illegal operation.
+example `Routine[AC::Read]`.  Calling an action routine directly from client code is an illegal operation.
 
 *********************************************************************************************************************/
 
 static ERR GET_ActionTable(extMetaClass *Self, ActionEntry **Value, LONG *Elements)
 {
    *Value = Self->ActionTable;
-   *Elements = AC_END;
+   *Elements = LONG(AC::END);
    return ERR::Okay;
 }
 
@@ -649,8 +649,8 @@ static ERR SET_Methods(extMetaClass *Self, const MethodEntry *Methods, LONG Elem
    // Search for the method with the lowest ID number
 
    LONG lowest = 0;
-   for (LONG i=0; Methods[i].MethodID; i++) {
-      if (Methods[i].MethodID < lowest) lowest = Methods[i].MethodID;
+   for (LONG i=0; Methods[i].MethodID != AC::NIL; i++) {
+      if (LONG(Methods[i].MethodID) < lowest) lowest = LONG(Methods[i].MethodID);
    }
 
    // Generate the method array.  Note that the first entry that we put in the array will
@@ -659,12 +659,13 @@ static ERR SET_Methods(extMetaClass *Self, const MethodEntry *Methods, LONG Elem
    if (lowest < 0) {
       log.msg("Detected %d methods in class %s.", -lowest, Self->ClassName ? Self->ClassName : (STRING)"Unnamed");
       Self->Methods.resize((-lowest) + 1);
-      for (unsigned i=0; Methods[i].MethodID; i++) {
-         Self->Methods[-Methods[i].MethodID].MethodID = Methods[i].MethodID;
-         Self->Methods[-Methods[i].MethodID].Routine  = Methods[i].Routine;
-         Self->Methods[-Methods[i].MethodID].Size     = Methods[i].Size;
-         Self->Methods[-Methods[i].MethodID].Name     = Methods[i].Name;
-         Self->Methods[-Methods[i].MethodID].Args     = Methods[i].Args;
+      for (unsigned i=0; Methods[i].MethodID != AC::NIL; i++) {
+         const LONG lk = -LONG(Methods[i].MethodID);
+         Self->Methods[lk].MethodID = Methods[i].MethodID;
+         Self->Methods[lk].Routine  = Methods[i].Routine;
+         Self->Methods[lk].Size     = Methods[i].Size;
+         Self->Methods[lk].Name     = Methods[i].Name;
+         Self->Methods[lk].Args     = Methods[i].Args;
       }
 
       // NOTE: If this is a sub-class, the initialisation process will add the base-class methods to the list.

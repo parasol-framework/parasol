@@ -498,13 +498,13 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
       return ERR::Okay;
    }
    else {
-      if (CheckAction(Object, AC_GetKey) IS ERR::Okay) {
+      if (CheckAction(Object, AC::GetKey) IS ERR::Okay) {
          struct acGetKey var = {
             FieldName, // Must use the original field name argument, not the modified fname
             Buffer,
             BufferSize
          };
-         if (Action(AC_GetKey, Object, &var) IS ERR::Okay) {
+         if (Action(AC::GetKey, Object, &var) IS ERR::Okay) {
             return ERR::Okay;
          }
          else log.msg("Could not find field %s from object %p (%s).", FieldName, Object, Object->className());
@@ -536,7 +536,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
 
       Unit var;
       ERR error;
-      ObjectContext ctx(Object, 0, Field);
+      ObjectContext ctx(Object, AC::NIL, Field);
 
       if (DestFlags & FD_UNIT) {
          error = Field->GetValue(Object, Result);
@@ -570,7 +570,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
    }
 
    if (Field->GetValue) {
-      ObjectContext ctx(Object, 0, Field);
+      ObjectContext ctx(Object, AC::NIL, Field);
       auto get_field = (ERR (*)(APTR, APTR, LONG *))Field->GetValue;
       ERR error = get_field(Object, value, &array_size);
       if (error != ERR::Okay) return error;

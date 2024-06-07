@@ -363,9 +363,9 @@ static ERR SET_Text(objScintillaSearch *Self, CSTRING Value)
 //********************************************************************************************************************
 
 static const ActionArray clActions[] = {
-   { AC_Free, SEARCH_Free },
-   { AC_Init, SEARCH_Init },
-   { 0, NULL }
+   { AC::Free, SEARCH_Free },
+   { AC::Init, SEARCH_Init },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************
@@ -378,7 +378,7 @@ static const MethodEntry clMethods[] = {
    { ss::Next::id, (APTR)SEARCH_Next, "Next", argsNext, sizeof(struct ss::Next) },
    { ss::Prev::id, (APTR)SEARCH_Prev, "Prev", argsPrev, sizeof(struct ss::Prev) },
    { ss::Find::id, (APTR)SEARCH_Find, "Find", argsFind, sizeof(struct ss::Find) },
-   { 0, NULL, NULL, NULL, 0 }
+   { AC::NIL, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************

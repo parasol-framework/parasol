@@ -19,27 +19,27 @@ FDEF maMergeFile[] = { { "Path", FD_STR }, { 0, 0 } };
 FDEF maMerge[] = { { "Source", FD_OBJECTPTR }, { 0, 0 } };
 
 static const struct MethodEntry clConfigMethods[] = {
-   { -1, (APTR)CONFIG_ReadValue, "ReadValue", maReadValue, sizeof(struct cfg::ReadValue) },
-   { -2, (APTR)CONFIG_Set, "Set", maSet, sizeof(struct cfg::Set) },
-   { -3, (APTR)CONFIG_WriteValue, "WriteValue", maWriteValue, sizeof(struct cfg::WriteValue) },
-   { -4, (APTR)CONFIG_DeleteKey, "DeleteKey", maDeleteKey, sizeof(struct cfg::DeleteKey) },
-   { -5, (APTR)CONFIG_DeleteGroup, "DeleteGroup", maDeleteGroup, sizeof(struct cfg::DeleteGroup) },
-   { -6, (APTR)CONFIG_GetGroupFromIndex, "GetGroupFromIndex", maGetGroupFromIndex, sizeof(struct cfg::GetGroupFromIndex) },
-   { -7, (APTR)CONFIG_SortByKey, "SortByKey", maSortByKey, sizeof(struct cfg::SortByKey) },
-   { -9, (APTR)CONFIG_MergeFile, "MergeFile", maMergeFile, sizeof(struct cfg::MergeFile) },
-   { -10, (APTR)CONFIG_Merge, "Merge", maMerge, sizeof(struct cfg::Merge) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)CONFIG_ReadValue, "ReadValue", maReadValue, sizeof(struct cfg::ReadValue) },
+   { AC(-2), (APTR)CONFIG_Set, "Set", maSet, sizeof(struct cfg::Set) },
+   { AC(-3), (APTR)CONFIG_WriteValue, "WriteValue", maWriteValue, sizeof(struct cfg::WriteValue) },
+   { AC(-4), (APTR)CONFIG_DeleteKey, "DeleteKey", maDeleteKey, sizeof(struct cfg::DeleteKey) },
+   { AC(-5), (APTR)CONFIG_DeleteGroup, "DeleteGroup", maDeleteGroup, sizeof(struct cfg::DeleteGroup) },
+   { AC(-6), (APTR)CONFIG_GetGroupFromIndex, "GetGroupFromIndex", maGetGroupFromIndex, sizeof(struct cfg::GetGroupFromIndex) },
+   { AC(-7), (APTR)CONFIG_SortByKey, "SortByKey", maSortByKey, sizeof(struct cfg::SortByKey) },
+   { AC(-9), (APTR)CONFIG_MergeFile, "MergeFile", maMergeFile, sizeof(struct cfg::MergeFile) },
+   { AC(-10), (APTR)CONFIG_Merge, "Merge", maMerge, sizeof(struct cfg::Merge) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clConfigActions[] = {
-   { AC_Clear, CONFIG_Clear },
-   { AC_DataFeed, CONFIG_DataFeed },
-   { AC_Flush, CONFIG_Flush },
-   { AC_Free, CONFIG_Free },
-   { AC_Init, CONFIG_Init },
-   { AC_NewObject, CONFIG_NewObject },
-   { AC_SaveSettings, CONFIG_SaveSettings },
-   { AC_SaveToObject, CONFIG_SaveToObject },
-   { 0, NULL }
+   { AC::Clear, CONFIG_Clear },
+   { AC::DataFeed, CONFIG_DataFeed },
+   { AC::Flush, CONFIG_Flush },
+   { AC::Free, CONFIG_Free },
+   { AC::Init, CONFIG_Init },
+   { AC::NewObject, CONFIG_NewObject },
+   { AC::SaveSettings, CONFIG_SaveSettings },
+   { AC::SaveToObject, CONFIG_SaveToObject },
+   { AC::NIL, NULL }
 };
 

@@ -67,9 +67,9 @@ static ERR JSON_SaveToObject(objXML *, struct acSaveToObject *);
 static UWORD glTagID = 1;
 
 static ActionArray clActions[] = {
-   { AC_Init,         JSON_Init },
-   { AC_SaveToObject, JSON_SaveToObject },
-   { 0, NULL }
+   { AC::Init,         JSON_Init },
+   { AC::SaveToObject, JSON_SaveToObject },
+   { AC::NIL, NULL }
 };
 
 static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags);

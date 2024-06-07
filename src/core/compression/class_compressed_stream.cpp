@@ -221,7 +221,7 @@ static ERR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
    while (pos > 0) {
       struct acRead read = { .Buffer = buffer, .Length = (LONG)pos };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
-      if (Action(AC_Read, Self, &read) != ERR::Okay) return ERR::Decompression;
+      if (Action(AC::Read, Self, &read) != ERR::Okay) return ERR::Decompression;
       pos -= read.Result;
    }
 
@@ -390,14 +390,14 @@ static const FieldArray clStreamFields[] = {
 };
 
 static const ActionArray clStreamActions[] = {
-   { AC_Free,      CSTREAM_Free },
-   { AC_Init,      CSTREAM_Init },
-   { AC_NewObject, CSTREAM_NewObject },
-   { AC_Read,      CSTREAM_Read },
-   { AC_Reset,     CSTREAM_Reset },
-   { AC_Seek,      CSTREAM_Seek },
-   { AC_Write,     CSTREAM_Write },
-   { 0, NULL }
+   { AC::Free,      CSTREAM_Free },
+   { AC::Init,      CSTREAM_Init },
+   { AC::NewObject, CSTREAM_NewObject },
+   { AC::Read,      CSTREAM_Read },
+   { AC::Reset,     CSTREAM_Reset },
+   { AC::Seek,      CSTREAM_Seek },
+   { AC::Write,     CSTREAM_Write },
+   { AC::NIL, NULL }
 };
 
 extern "C" ERR add_compressed_stream_class(void)

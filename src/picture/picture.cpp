@@ -528,7 +528,7 @@ Read: Reads raw image data from a Picture object.
 
 static ERR PICTURE_Read(extPicture *Self, struct acRead *Args)
 {
-   return Action(AC_Read, Self->Bitmap, Args);
+   return Action(AC::Read, Self->Bitmap, Args);
 }
 
 /*********************************************************************************************************************
@@ -813,13 +813,13 @@ static ERR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::PICTURE)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((mc->getPtr(FID_ActionTable, &routine) IS ERR::Okay) and (routine)) {
-         if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)PICTURE_SaveToObject)) {
-            return routine[AC_SaveToObject](Self, Args);
+         if ((routine[LONG(AC::SaveToObject)]) and (routine[LONG(AC::SaveToObject)] != (APTR)PICTURE_SaveToObject)) {
+            return routine[LONG(AC::SaveToObject)](Self, Args);
          }
-         else if ((routine[AC_SaveImage]) and (routine[AC_SaveImage] != (APTR)PICTURE_SaveImage)) {
+         else if ((routine[LONG(AC::SaveImage)]) and (routine[LONG(AC::SaveImage)] != (APTR)PICTURE_SaveImage)) {
             struct acSaveImage saveimage;
             saveimage.Dest = Args->Dest;
-            return routine[AC_SaveImage](Self, &saveimage);
+            return routine[LONG(AC::SaveImage)](Self, &saveimage);
          }
          else return log.warning(ERR::NoSupport);
       }
@@ -836,7 +836,7 @@ Seek: Seeks to a new read/write position within a Picture object.
 
 static ERR PICTURE_Seek(extPicture *Self, struct acSeek *Args)
 {
-   return Action(AC_Seek, Self->Bitmap, Args);
+   return Action(AC::Seek, Self->Bitmap, Args);
 }
 
 /*********************************************************************************************************************
@@ -847,7 +847,7 @@ Write: Writes raw image data to a picture object.
 
 static ERR PICTURE_Write(extPicture *Self, struct acWrite *Args)
 {
-   return Action(AC_Write, Self->Bitmap, Args);
+   return Action(AC::Write, Self->Bitmap, Args);
 }
 
 /*********************************************************************************************************************
@@ -1117,7 +1117,7 @@ static void write_row_callback(png_structp write_ptr, png_uint_32 row, int pass)
 void png_read_data(png_structp png, png_bytep data, png_size_t length)
 {
    struct acRead read = { data, (LONG)length };
-   if ((Action(AC_Read, (OBJECTPTR)png->io_ptr, &read) != ERR::Okay) or ((png_size_t)read.Result != length)) {
+   if ((Action(AC::Read, (OBJECTPTR)png->io_ptr, &read) != ERR::Okay) or ((png_size_t)read.Result != length)) {
       png_error(png, "File read error");
    }
 }
@@ -1135,7 +1135,7 @@ void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data
 void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
 {
    struct acWrite write = { data, (LONG)length };
-   if ((Action(AC_Write, (OBJECTPTR)png->io_ptr, &write) != ERR::Okay) or ((png_size_t)write.Result != length)) {
+   if ((Action(AC::Write, (OBJECTPTR)png->io_ptr, &write) != ERR::Okay) or ((png_size_t)write.Result != length)) {
       png_error(png, "File write error");
    }
 }

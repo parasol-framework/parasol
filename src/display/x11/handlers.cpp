@@ -687,7 +687,7 @@ void process_movement(Window Window, LONG X, LONG Y)
       input.Values[0] = X;
       input.Values[1] = Y;
       input.Timestamp = PreciseTime();
-      Action(AC_DataFeed, pointer, &feed);
+      Action(AC::DataFeed, pointer, &feed);
 
       ReleaseObject(pointer);
    }

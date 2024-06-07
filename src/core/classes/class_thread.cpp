@@ -176,7 +176,7 @@ ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG M
       auto script = msg->Callback.Context;
       if (LockObject(script, 5000) IS ERR::Okay) {
          sc::Call(msg->Callback, std::to_array<ScriptArg>({
-            { "ActionID", msg->ActionID },
+            { "ActionID", LONG(msg->ActionID) },
             { "Object",   msg->Object, FD_OBJECTPTR },
             { "Error",    LONG(msg->Error) },
             { "Key",      msg->Key }
@@ -256,7 +256,7 @@ static void * thread_entry(extThread *Self)
 
    {
       // Replace the default dummy context with one that pertains to the thread
-      ObjectContext thread_ctx(Self, 0);
+      ObjectContext thread_ctx(Self, AC::NIL);
 
       if (Self->Routine.isC()) {
          auto routine = (ERR (*)(extThread *, APTR))Self->Routine.Routine;

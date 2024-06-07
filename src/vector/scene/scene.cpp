@@ -377,7 +377,7 @@ static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
    if (Self->SurfaceID) {
       OBJECTPTR surface;
       if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR::Okay) {
-         UnsubscribeAction(surface, 0);
+         UnsubscribeAction(surface, AC::NIL);
          ReleaseObject(surface);
       }
    }
@@ -405,10 +405,10 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
             Self->PageHeight = surface->get<LONG>(FID_Height);
          }
 
-         SubscribeAction(*surface, AC_Redimension, C_FUNCTION(notify_redimension));
-         SubscribeAction(*surface, AC_Free, C_FUNCTION(notify_free));
-         SubscribeAction(*surface, AC_Focus, C_FUNCTION(notify_focus));
-         SubscribeAction(*surface, AC_LostFocus, C_FUNCTION(notify_lostfocus));
+         SubscribeAction(*surface, AC::Redimension, C_FUNCTION(notify_redimension));
+         SubscribeAction(*surface, AC::Free, C_FUNCTION(notify_free));
+         SubscribeAction(*surface, AC::Focus, C_FUNCTION(notify_focus));
+         SubscribeAction(*surface, AC::LostFocus, C_FUNCTION(notify_lostfocus));
 
          if (surface->hasFocus()) {
             SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event), Self, &Self->KeyHandle);

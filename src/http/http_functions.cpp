@@ -437,7 +437,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   log.msg("Authentication successful, reactivating...");
                   Self->SecurePath = false;
                   Self->setCurrentState(HGS::AUTHENTICATED);
-                  QueueAction(AC_Activate, Self->UID);
+                  QueueAction(AC::Activate, Self->UID);
                   return ERR::Okay;
                }
 

@@ -77,7 +77,7 @@ METHODDEF(void) term_destination(j_compress_ptr cinfo)
    if (datacount > 0) {
       write.Buffer = dest->buffer;
       write.Length = datacount;
-      if (Action(AC_Write, dest->outfile, &write) != ERR::Okay) ERREXIT(cinfo, JERR_FILE_WRITE);
+      if (Action(AC::Write, dest->outfile, &write) != ERR::Okay) ERREXIT(cinfo, JERR_FILE_WRITE);
    }
 }
 

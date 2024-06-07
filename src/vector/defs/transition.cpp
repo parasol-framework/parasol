@@ -206,10 +206,10 @@ This read-only field indicates the total number of stops that have been defined 
 *********************************************************************************************************************/
 
 static const ActionArray clTransitionActions[] = {
-   { AC_Free,      TRANSITION_Free },
-   { AC_Init,      TRANSITION_Init },
-   { AC_NewObject, TRANSITION_NewObject },
-   { 0, NULL }
+   { AC::Free,      TRANSITION_Free },
+   { AC::Init,      TRANSITION_Init },
+   { AC::NewObject, TRANSITION_NewObject },
+   { AC::NIL, NULL }
 };
 
 static const FieldArray clTransitionFields[] = {

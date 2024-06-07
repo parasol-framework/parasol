@@ -292,7 +292,7 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERR Result, str
    dc.Datatype = DATA::REQUEST;
    dc.Buffer   = &request;
    dc.Size     = sizeof(request);
-   if (Action(AC_DataFeed, Args->Source, &dc) IS ERR::Okay) {
+   if (Action(AC::DataFeed, Args->Source, &dc) IS ERR::Okay) {
       // The source will return a DATA::RECEIPT for the items that we've asked for (see the DataFeed action).
    }
 }
@@ -573,7 +573,7 @@ Disable: Disables the target #Surface.
 static ERR SCINTILLA_Disable(extScintilla *Self)
 {
    Self->Flags |= SCIF::DISABLED;
-   QueueAction(AC_Draw, Self->SurfaceID);
+   QueueAction(AC::Draw, Self->SurfaceID);
    return ERR::Okay;
 }
 
@@ -586,7 +586,7 @@ Draw: Draws the Scintilla object's graphics.
 static ERR SCINTILLA_Draw(extScintilla *Self, struct acDraw *Args)
 {
    pf::ScopedObjectLock surface(Self->SurfaceID);
-   if (surface.granted()) Action(AC_Draw, *surface, Args);
+   if (surface.granted()) Action(AC::Draw, *surface, Args);
    return ERR::Okay;
 }
 
@@ -599,7 +599,7 @@ Enable: Enables the target #Surface.
 static ERR SCINTILLA_Enable(extScintilla *Self)
 {
    Self->Flags &= ~SCIF::DISABLED;
-   QueueAction(AC_Draw, Self->SurfaceID);
+   QueueAction(AC::Draw, Self->SurfaceID);
    return ERR::Okay;
 }
 
@@ -630,14 +630,14 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
 
       if (pf::ScopedObjectLock object(Self->FocusID, 500); object.granted()) {
-         UnsubscribeAction(*object, 0);
+         UnsubscribeAction(*object, AC::NIL);
       }
    }
 
    if (Self->SurfaceID) {
       if (pf::ScopedObjectLock<objSurface> object(Self->SurfaceID, 500); object.granted()) {
          object->removeCallback(C_FUNCTION(&draw_scintilla));
-         UnsubscribeAction(*object, 0);
+         UnsubscribeAction(*object, AC::NIL);
       }
    }
 
@@ -782,8 +782,8 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    // Subscribe to the object responsible for the user focus
 
    if (pf::ScopedObjectLock object(Self->FocusID, 5000); object.granted()) {
-      SubscribeAction(*object, AC_Focus, C_FUNCTION(notify_focus));
-      SubscribeAction(*object, AC_LostFocus, C_FUNCTION(notify_lostfocus));
+      SubscribeAction(*object, AC::Focus, C_FUNCTION(notify_focus));
+      SubscribeAction(*object, AC::LostFocus, C_FUNCTION(notify_lostfocus));
    }
 
    // Set up the target surface
@@ -802,10 +802,10 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
 
       //SubscribeFeed(surface); TODO: Deprecated
 
-      SubscribeAction(*surface, AC_DragDrop, C_FUNCTION(notify_dragdrop));
-      SubscribeAction(*surface, AC_Hide, C_FUNCTION(notify_hide));
-      SubscribeAction(*surface, AC_Redimension, C_FUNCTION(notify_redimension));
-      SubscribeAction(*surface, AC_Show, C_FUNCTION(notify_show));
+      SubscribeAction(*surface, AC::DragDrop, C_FUNCTION(notify_dragdrop));
+      SubscribeAction(*surface, AC::Hide, C_FUNCTION(notify_hide));
+      SubscribeAction(*surface, AC::Redimension, C_FUNCTION(notify_redimension));
+      SubscribeAction(*surface, AC::Show, C_FUNCTION(notify_show));
 
       if (surface->hasFocus()) {
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), Self, &Self->prvKeyEvent);
@@ -850,7 +850,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
       Self->API->SetLexer(LONG(Self->Lexer));
    }
 
-   QueueAction(AC_Draw, Self->SurfaceID);
+   QueueAction(AC::Draw, Self->SurfaceID);
 
    if (Self->LongestWidth) SCICALL(SCI_SETSCROLLWIDTH, Self->LongestWidth);
    else SCICALL(SCI_SETSCROLLWIDTH, 1UL);
@@ -1877,10 +1877,10 @@ static ERR GET_EventCallback(extScintilla *Self, FUNCTION **Value)
 static ERR SET_EventCallback(extScintilla *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Context, AC_Free);
+      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Context, AC::Free);
       Self->EventCallback = *Value;
       if (Self->EventCallback.isScript()) {
-         SubscribeAction(Self->EventCallback.Context, AC_Free, C_FUNCTION(notify_free_event));
+         SubscribeAction(Self->EventCallback.Context, AC::Free, C_FUNCTION(notify_free_event));
       }
    }
    else Self->EventCallback.clear();
@@ -2204,7 +2204,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
          if (file->startStream(Self->UID, FL::READ, 0) IS ERR::Okay) {
             acClear(Self);
 
-            SubscribeAction(file, AC_Write, C_FUNCTION(notify_write));
+            SubscribeAction(file, AC::Write, C_FUNCTION(notify_write));
             Self->FileStream = file;
             file = NULL;
          }
