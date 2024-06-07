@@ -427,7 +427,7 @@ static ERR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
       else {
          if ((error != ERR::NoMatchingObject) and (error != ERR::MarkedForDeletion)) {
             if (action->ActionID > AC::NIL) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
-            else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, action->ActionID);
+            else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, LONG(action->ActionID));
          }
       }
    }

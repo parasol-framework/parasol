@@ -549,7 +549,7 @@ ERR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION 
 
    if ((ActionID IS AC::NIL) or (!Object)) return ERR::NullArgs;
 
-   log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p, Key: %d", ActionID, Object->UID, Parameters, Callback, Key);
+   log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p, Key: %d", LONG(ActionID), Object->UID, Parameters, Callback, Key);
 
    ++Object->ThreadPending;
 
@@ -1437,7 +1437,7 @@ void NotifySubscribers(OBJECTPTR Object, AC ActionID, APTR Parameters, ERR Error
       }
    }
    else {
-      log.warning("Unstable subscription flags discovered for object #%d, action %d", Object->UID, ActionID);
+      log.warning("Unstable subscription flags discovered for object #%d, action %d", Object->UID, LONG(ActionID));
       Object->NotifyFlags.fetch_and(~(1<<(LONG(ActionID) & 63)), std::memory_order::relaxed);
    }
 }
@@ -1521,7 +1521,7 @@ ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
       if (ActionID > AC::NIL) {
          log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[LONG(ActionID)].Name, ObjectID, glMessages[LONG(error)]);
       }
-      else log.warning("Method %d on object #%d failed, SendMsg error: %s", ActionID, ObjectID, glMessages[LONG(error)]);
+      else log.warning("Method %d on object #%d failed, SendMsg error: %s", LONG(ActionID), ObjectID, glMessages[LONG(error)]);
 
       if (error IS ERR::MemoryDoesNotExist) error = ERR::NoMatchingObject;
    }
