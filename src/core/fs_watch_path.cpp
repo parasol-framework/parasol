@@ -276,7 +276,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
    else {
       auto routine = (ERR (*)(extFile *, CSTRING, LARGE, LONG, APTR))File->prvWatch->Routine.Routine;
       pf::SwitchContext context(File->prvWatch->Routine.Context);
-      error = routine(File, File->Path, File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
+      error = routine(File, File->Path.c_str(), File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
 
       if (error IS ERR::Terminate) Action(fl::Watch::id, File, NULL);
    }

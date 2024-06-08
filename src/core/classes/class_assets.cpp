@@ -375,7 +375,7 @@ static ERROR open_dir(DirInfo *Dir)
    AAssetManager *mgr;
    LONG len;
 
-   log.traceBranch("%s", Dir->prvResolvedPath);
+   log.traceBranch("%s", Dir->prvResolvedPath.c_str());
 
    if (!(mgr = get_asset_manager())) return log.warning(ERR::SystemCall);
 

@@ -87,6 +87,8 @@ end
          })
 
          print('Found ' .. #glPictures .. ' SVG files: ' .. list)
+
+         if #glPictures == 0 then error('Failed to find any SVG files.') end
       end,
       tests = { 'initPictures', 'testParallel', 'freePictures', 'initPictures', 'testSequential', 'freePictures' }
    }

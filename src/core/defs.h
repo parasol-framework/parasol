@@ -262,7 +262,7 @@ struct virtual_drive {
    ERR (*TestPath)(CSTRING, RSF, LOC *);
    ERR (*WatchPath)(class extFile *);
    void  (*IgnoreFile)(class extFile *);
-   ERR (*GetInfo)(CSTRING, FileInfo *, LONG);
+   ERR (*GetInfo)(std::string_view, FileInfo *, LONG);
    ERR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
    ERR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
    ERR (*CreateFolder)(CSTRING, PERMIT);
@@ -372,17 +372,17 @@ class extFile : public objFile {
    #else
       APTR  Stream;
    #endif
-   STRING Path;
+   std::string Path;
    STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
    STRING prvLink;
    STRING prvLine;
-   CSTRING prvIcon;
+   std::string prvIcon;
    struct rkWatchPath *prvWatch;
    OBJECTPTR ProgressDialog;
    struct DirInfo *prvList;
    LARGE  ProgressTime;
    PERMIT Permissions;
-   LONG   prvType;
+   bool   isFolder;
    LONG   Handle;         // Native system file handle
    WORD   prvLineLen;
 };
@@ -960,7 +960,7 @@ ERR SetFieldF(OBJECTPTR, FIELD, va_list);
 ERR fs_closedir(DirInfo *);
 ERR fs_createlink(CSTRING, CSTRING);
 ERR fs_delete(STRING, FUNCTION *);
-ERR fs_getinfo(CSTRING, FileInfo *, LONG);
+ERR fs_getinfo(std::string_view, FileInfo *, LONG);
 ERR fs_getdeviceinfo(CSTRING, objStorageDevice *);
 void  fs_ignore_file(class extFile *);
 ERR fs_makedir(CSTRING, PERMIT);
@@ -972,13 +972,13 @@ ERR fs_scandir(DirInfo *);
 ERR fs_testpath(CSTRING, RSF, LOC *);
 ERR fs_watch_path(class extFile *);
 
-const virtual_drive * get_fs(CSTRING Path);
+const virtual_drive * get_fs(std::string_view Path);
 void  free_storage_class(void);
 
 ERR  convert_zip_error(struct z_stream_s *, LONG);
 ERR  check_cache(OBJECTPTR, LARGE, LARGE);
 ERR  get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
-ERR  fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
+ERR  fs_copy(std::string_view, std::string_view, FUNCTION *, BYTE);
 ERR  fs_copydir(STRING, STRING, FileFeedback *, FUNCTION *, BYTE);
 PERMIT get_parent_permissions(CSTRING, LONG *, LONG *);
 ERR  load_datatypes(void);
@@ -988,7 +988,7 @@ PERMIT convert_fs_permissions(LONG);
 LONG convert_permissions(PERMIT);
 bool strip_folder(STRING) __attribute__ ((unused));
 void set_memory_manager(APTR, ResourceManager *);
-ERR  get_file_info(CSTRING, FileInfo *, LONG);
+ERR  get_file_info(std::string_view, FileInfo *, LONG);
 extern "C" ERR  convert_errno(LONG Error, ERR Default);
 void   free_file_cache(void);
 

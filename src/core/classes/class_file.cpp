@@ -388,7 +388,7 @@ AllocMemory:
 
 static ERR FILE_Copy(extFile *Self, struct fl::Copy *Args)
 {
-   return CopyFile(Self->Path, Args->Dest, Args->Callback);
+   return CopyFile(Self->Path.c_str(), Args->Dest, Args->Callback);
 }
 
 /*********************************************************************************************************************
@@ -419,16 +419,15 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
 {
    pf::Log log;
 
-   if ((!Self->Path) or (!*Self->Path)) return log.warning(ERR::MissingPath);
+   if (Self->Path.empty()) return log.warning(ERR::MissingPath);
 
    if ((Self->Stream) and ((Self->Flags & FL::LINK) IS FL::NIL)) {
-      log.branch("Delete Folder: %s", Self->Path);
+      log.branch("Delete Folder: %s", Self->Path.c_str());
 
       // Check if the Path is a volume
 
-      LONG len = strlen(Self->Path);
-      if (Self->Path[len-1] IS ':') {
-         if (DeleteVolume(Self->Path) IS ERR::Okay) {
+      if (Self->Path.ends_with(':')) {
+         if (DeleteVolume(Self->Path.c_str()) IS ERR::Okay) {
             #ifdef __unix__
                closedir((DIR *)Self->Stream);
             #endif
@@ -468,7 +467,7 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
       else return log.warning(ERR::ResolvePath);
    }
    else {
-      log.branch("Delete File: %s", Self->Path);
+      log.branch("Delete File: %s", Self->Path.c_str());
 
       CSTRING path;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
@@ -502,14 +501,12 @@ static ERR FILE_Free(extFile *Self)
    if ((Self->Flags & FL::RESET_DATE) != FL::NIL) {
       // If we have to reset the date, get the file path
       log.trace("Resetting the file date.");
-      ResolvePath(Self->Path, RSF::NIL, &path);
+      ResolvePath(Self->Path.c_str(), RSF::NIL, &path);
    }
 #endif
 
-   if (Self->prvIcon) { FreeResource(Self->prvIcon); Self->prvIcon = NULL; }
    if (Self->ProgressDialog) { FreeResource(Self->ProgressDialog); Self->ProgressDialog = NULL; }
    if (Self->prvLine) { FreeResource(Self->prvLine); Self->prvLine = NULL; }
-   if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
    if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
    if (Self->prvLink) { FreeResource(Self->prvLink); Self->prvLink = NULL; }
@@ -538,6 +535,7 @@ static ERR FILE_Free(extFile *Self)
    }
 #endif
 
+   Self->~extFile();
    return ERR::Okay;
 }
 
@@ -585,7 +583,7 @@ static ERR FILE_Init(extFile *Self)
    // If a path has been specified, we'll load the entire file into memory.  Please see the end of this
    // initialisation routine for more info.
 
-   if (((Self->Flags & FL::BUFFER) != FL::NIL) and (!Self->Path)) {
+   if (((Self->Flags & FL::BUFFER) != FL::NIL) and (Self->Path.empty())) {
       if (Self->Size < 0) Self->Size = 0;
       Self->Flags |= FL::READ|FL::WRITE;
       if (!Self->Buffer) {
@@ -600,17 +598,17 @@ static ERR FILE_Init(extFile *Self)
       return ERR::Okay;
    }
 
-   if (!Self->Path) return log.warning(ERR::MissingPath);
+   if (Self->Path.empty()) return log.warning(ERR::MissingPath);
 
    if (glDefaultPermissions != PERMIT::NIL) Self->Permissions = glDefaultPermissions;
 
    if (pf::startswith("string:", Self->Path)) {
-      Self->Size = strlen(Self->Path + 7);
+      Self->Size = Self->Path.size() - 7;
 
       if (Self->Size > 0) {
          if (AllocMemory(Self->Size, MEM::DATA, (APTR *)&Self->Buffer, NULL) IS ERR::Okay) {
             Self->Flags |= FL::READ|FL::WRITE;
-            copymem(Self->Path + 7, Self->Buffer, Self->Size);
+            copymem(Self->Path.c_str() + 7, Self->Buffer, Self->Size);
             return ERR::Okay;
          }
          else return log.warning(ERR::AllocMemory);
@@ -641,24 +639,21 @@ static ERR FILE_Init(extFile *Self)
 
    // Do not do anything if the File is used as a static object in a script
 
-   if ((Self->Static) and ((!Self->Path) or (!Self->Path[0]))) return ERR::Okay;
+   if (Self->Static and Self->Path.empty()) return ERR::Okay;
 
-   if (Self->Path[0] IS ':') {
+   if (Self->Path.starts_with(':')) {
       if ((Self->Flags & FL::FILE) != FL::NIL) return log.warning(ERR::ExpectedFile);
       log.trace("Root folder initialised.");
       return ERR::Okay;
    }
 
-   // If the FL::FOLDER flag was set after the Path field was set, we may need to reset the Path field so
+   // If the FL::FOLDER flag was defined AFTER the Path field was set, we may need to reset the Path field so
    // that the trailing folder slash is added to it.
 
 retrydir:
    if ((Self->Flags & FL::FOLDER) != FL::NIL) {
-      LONG len = strlen(Self->Path);
-      if (len > 512) return log.warning(ERR::BufferOverflow);
-
-      if ((Self->Path[len-1] != '/') and (Self->Path[len-1] != '\\') and (Self->Path[len-1] != ':')) {
-         std::string buffer(Self->Path, len);
+      if ((!Self->Path.ends_with('/')) and (!Self->Path.ends_with('\\')) and (!Self->Path.ends_with(':'))) {
+         std::string buffer(Self->Path);
          if (Self->setPath(buffer.c_str()) != ERR::Okay) {
             return log.warning(ERR::SetField);
          }
@@ -679,7 +674,7 @@ retrydir:
 
    if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
 
-   if ((error = ResolvePath(Self->Path, resolveflags|RSF::CHECK_VIRTUAL, &Self->prvResolvedPath)) != ERR::Okay) {
+   if ((error = ResolvePath(Self->Path.c_str(), resolveflags|RSF::CHECK_VIRTUAL, &Self->prvResolvedPath)) != ERR::Okay) {
       if (error IS ERR::VirtualVolume) {
          // For virtual volumes, update the path to ensure that the volume name is referenced in the path string.
          // Then return ERR::UseSubClass to have support delegated to the correct File sub-class.
@@ -697,16 +692,17 @@ retrydir:
             goto retrydir;
          }
 
-         log.msg("File not found \"%s\".", Self->Path);
+         log.msg("File not found \"%s\".", Self->Path.c_str());
          return ERR::FileNotFound;
       }
    }
 
-   len = strlen(Self->prvResolvedPath);
-
    // Check if ResolvePath() resolved the path from a file string to a folder
-
-   if ((!(Self->prvType & STAT_FOLDER)) and (Self->prvResolvedPath[len-1] IS '/') and ((Self->Flags & FL::FOLDER) IS FL::NIL)) {
+   
+   len = strlen(Self->prvResolvedPath);
+   if ((!Self->isFolder) and 
+       ((Self->prvResolvedPath[len-1] IS '/') or (Self->prvResolvedPath[len-1] IS '\\')) and 
+       ((Self->Flags & FL::FOLDER) IS FL::NIL)) {
       Self->Flags |= FL::FOLDER;
       goto retrydir;
    }
@@ -720,7 +716,7 @@ retrydir:
    }
 #endif
 
-   if (Self->prvType & STAT_FOLDER) { // Open the folder
+   if (Self->isFolder) { // Open the folder
       if ((Self->Flags & FL::FILE) != FL::NIL) return log.warning(ERR::ExpectedFile);
 
       Self->Flags |= FL::FOLDER;
@@ -804,76 +800,51 @@ static ERR FILE_MoveFile(extFile *Self, struct fl::Move *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
-   if (!Self->Path) return log.warning(ERR::FieldNotSet);
+   if ((!Args) or (!Args->Dest) or (!Args->Dest[0])) return log.warning(ERR::NullArgs);
+   if (Self->Path.empty()) return log.warning(ERR::FieldNotSet);
 
-   STRING src   = Self->Path;
-   CSTRING dest = Args->Dest;
+   auto src = std::string_view(Self->Path);
+   auto dest = std::string_view(Args->Dest, strlen(Args->Dest));
 
-   LONG len = strlen(dest);
-   if (len <= 1) return log.warning(ERR::Args);
+   log.msg("%s to %s", src.data(), dest.data());
 
-   log.msg("%s to %s", src, dest);
-
-   if ((dest[len-1] IS '/') or (dest[len-1] IS '\\') or (dest[len-1] IS ':')) {
+   if ((dest.ends_with('/')) or (dest.ends_with('\\')) or (dest.ends_with(':'))) {
       // If a trailing slash has been specified, we are moving the file into a folder, rather than to a direct path.
 
-      LONG i = strlen(src) - 1;
-      if (src[i] IS ':') {
+      while ((src.ends_with('/')) or (src.ends_with('\\'))) src.remove_suffix(1);
+
+      if (src.ends_with(':')) {
          log.warning("Moving volumes is illegal.");
          return ERR::Failed;
       }
-      else if ((src[i] IS '/') or (src[i] IS '\\')) i--;
 
-      while ((i > 0) and (src[i] != ':') and (src[i] != '/') and (src[i] != '\\')) {
-         i--;
-         len++;
+      auto i = src.find_last_of(":/\\");
+      auto folder = src.substr(0, i);
+      auto newpath = std::string(dest);
+      newpath.append(src.substr(i + 1));
+
+      #ifdef _WIN32
+         if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
+      #endif
+
+      ERR error;
+      if ((error = fs_copy(src, newpath, Args->Callback, true)) IS ERR::Okay) {
+         Self->Path.assign(newpath);
       }
+      else log.warning("Failed to move %s to %s", src.data(), newpath.data());
 
-      STRING newpath;
-      if (AllocMemory(len + 1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&newpath, NULL) IS ERR::Okay) {
-         LONG j = strcopy(dest, newpath);
-         i++;
-         while ((src[i]) and (src[i] != '/') and (src[i] != '\\')) newpath[j++] = src[i++];
-         newpath[j] = 0;
-
-         #ifdef _WIN32
-            if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
-         #endif
-
-         ERR error;
-         if ((error = fs_copy(src, newpath, Args->Callback, true)) IS ERR::Okay) {
-            FreeResource(Self->Path);
-            Self->Path = newpath;
-         }
-         else {
-            log.warning("Failed to move %s to %s", src, newpath);
-            FreeResource(newpath);
-         }
-         return error;
-      }
-      else return log.warning(ERR::AllocMemory);
+      return error;
    }
    else {
-      STRING newpath;
-      if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&newpath, NULL) IS ERR::Okay) {
-         copymem(dest, newpath, len+1);
+      #ifdef _WIN32
+         if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
+      #endif
 
-         #ifdef _WIN32
-            if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
-         #endif
-
-         if (auto error = fs_copy(src, newpath, Args->Callback, true); error IS ERR::Okay) {
-            FreeResource(Self->Path);
-            Self->Path = newpath;
-            return ERR::Okay;
-         }
-         else {
-            FreeResource(newpath);
-            return log.warning(error);
-         }
+      if (auto error = fs_copy(src, dest, Args->Callback, true); error IS ERR::Okay) {
+         Self->Path.assign(dest);
+         return ERR::Okay;
       }
-      else return log.warning(ERR::AllocMemory);
+      else return log.warning(error);
    }
 }
 
@@ -883,6 +854,7 @@ static ERR FILE_NewObject(extFile *Self)
 {
    Self->Handle = -1;
    Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
+   new (Self) extFile;
    return ERR::Okay;
 }
 
@@ -927,7 +899,7 @@ static ERR FILE_NextFile(extFile *Self, struct fl::Next *Args)
       else if ((Self->Flags & FL::EXCLUDE_FILES) != FL::NIL) flags |= RDF::FOLDER;
       else flags |= RDF::FILE|RDF::FOLDER;
 
-      if (auto error = OpenDir(Self->Path, flags, &Self->prvList); error != ERR::Okay) return error;
+      if (auto error = OpenDir(Self->Path.c_str(), flags, &Self->prvList); error != ERR::Okay) return error;
    }
 
    ERR error;
@@ -1037,7 +1009,7 @@ static ERR FILE_Read(extFile *Self, struct acRead *Args)
       }
    }
 
-   if (Self->prvType & STAT_FOLDER) return log.warning(ERR::ExpectedFile);
+   if (Self->isFolder) return log.warning(ERR::ExpectedFile);
 
    if (Self->Handle IS -1) return ERR::NotInitialised;
 
@@ -1110,7 +1082,7 @@ static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
       Self->Position = i;
    }
    else {
-      if (Self->prvType & STAT_FOLDER) return log.warning(ERR::ExpectedFile);
+      if (Self->isFolder) return log.warning(ERR::ExpectedFile);
       if (Self->Handle IS -1) return log.warning(ERR::ObjectCorrupt);
 
       // Read the line
@@ -1166,92 +1138,51 @@ Rename: Changes the name of a file.
 static ERR FILE_Rename(extFile *Self, struct acRename *Args)
 {
    pf::Log log;
-   LONG j;
-   STRING n;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
-   LONG namelen = strlen(Args->Name);
-   if (!namelen) return log.warning(ERR::NullArgs);
-   if (!Self->Path) return log.warning(ERR::FieldNotSet);
+   if ((!Args) or (!Args->Name) or (!Args->Name[0])) return log.warning(ERR::NullArgs);
+   if (Self->Path.empty()) return log.warning(ERR::FieldNotSet);
 
-   log.branch("%s to %s", Self->Path, Args->Name);
+   log.branch("%s to %s", Self->Path.c_str(), Args->Name);
 
-   LONG i = strlen(Self->Path);
+   auto name = std::string_view(Args->Name, strlen(Args->Name));
 
-   if ((Self->prvType & STAT_FOLDER) or ((Self->Flags & FL::FOLDER) != FL::NIL)) {
-      if (Self->Path[i-1] IS ':') { // Renaming a volume
-         if (AllocMemory(namelen+2, MEM::STRING, (APTR *)&n, NULL) IS ERR::Okay) {
-            for (i=0; (Args->Name[i]) and (Args->Name[i] != ':') and (Args->Name[i] != '/') and (Args->Name[i] != '\\'); i++) n[i] = Args->Name[i];
-            n[i] = 0;
-            if (RenameVolume(Self->Path, n) IS ERR::Okay) {
-               n[i++] = ':';
-               n[i++] = 0;
-               FreeResource(Self->Path);
-               Self->Path = n;
-               return ERR::Okay;
-            }
-            else {
-               FreeResource(n);
-               return log.warning(ERR::Failed);
-            }
+   if ((Self->isFolder) or ((Self->Flags & FL::FOLDER) != FL::NIL)) {
+      if (Self->Path.ends_with(':')) { // Renaming a volume
+         std::string n(name, 0, name.find_first_of(":/\\"));
+         if (RenameVolume(Self->Path.c_str(), n.c_str()) IS ERR::Okay) {
+            Self->Path = n + ":";
+            return ERR::Okay;
          }
-         else return log.warning(ERR::AllocMemory);
+         else return log.warning(ERR::Failed);
       }
-      else {
-         // We are renaming a folder
-         for (--i; (i > 0) and (Self->Path[i-1] != ':') and (Self->Path[i-1] != '/') and (Self->Path[i-1] != '\\'); i--);
+      else { // We are renaming a folder
+         std::string n(Self->Path, 0, Self->Path.find_last_of(":/\\"));
+         n.append(name, 0, name.find_last_of("/\\:"));
 
-         if (AllocMemory(i+namelen+2, MEM::STRING, (APTR *)&n, NULL) IS ERR::Okay) {
-            for (j=0; j < i; j++) n[j] = Self->Path[j];
-
-            for (i=0; (Args->Name[i]) and (Args->Name[i] != '/') and (Args->Name[i] != '\\') and (Args->Name[i] != ':'); i++) {
-               n[j++] = Args->Name[i];
-            }
-
-            if (fs_copy(Self->Path, n, NULL, true) IS ERR::Okay) {
-               // Add the trailing slash
-               if (n[j-1] != '/') n[j++] = '/';
-               n[j] = 0;
-
-               FreeResource(Self->Path);
-               Self->Path = n;
-               return ERR::Okay;
-            }
-            else {
-               FreeResource(n);
-               return log.warning(ERR::Failed);
-            }
+         if (fs_copy(Self->Path, n, NULL, true) IS ERR::Okay) {
+            if (!n.ends_with('/')) Self->Path = n + "/";
+            else Self->Path = n;
+            return ERR::Okay;
          }
-         else return log.warning(ERR::AllocMemory);
+         else return log.warning(ERR::Failed);
       }
    }
    else { // We are renaming a file
-      while ((i > 0) and (Self->Path[i-1] != ':') and (Self->Path[i-1] != '/') and (Self->Path[i-1] != '\\')) i--;
-      if (AllocMemory(i+namelen+1, MEM::STRING, (APTR *)&n, NULL) IS ERR::Okay) {
-         // Generate the new path, then rename the file
+      std::string n(Self->Path, 0, Self->Path.find_last_of(":/\\"));
 
-         for (j=0; j < i; j++) n[j] = Self->Path[j];
-         for (i=0; Args->Name[i]; i++);
-         while ((i > 0) and (Args->Name[i] != '/') and (Args->Name[i] != '\\') and (Args->Name[i] != ':')) i--;
-         if ((Args->Name[i] IS '/') or (Args->Name[i] IS '\\') or (Args->Name[i] IS ':')) i++;
-         while (Args->Name[i]) n[j++] = Args->Name[i++];
-         n[j] = 0;
+      auto i = name.find_last_of("/\\:");
+      if (i IS std::string::npos) n.append(name);
+      else n.append(name, 0, i + 1);
 
-         #ifdef _WIN32
-            if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
-         #endif
+      #ifdef _WIN32
+         if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
+      #endif
 
-         if (fs_copy(Self->Path, n, NULL, true) IS ERR::Okay) {
-            FreeResource(Self->Path);
-            Self->Path = n;
-            return ERR::Okay;
-         }
-         else {
-            FreeResource(n);
-            return log.warning(ERR::Failed);
-         }
+      if (fs_copy(Self->Path, n, NULL, true) IS ERR::Okay) {
+         Self->Path = n;
+         return ERR::Okay;
       }
-      else return log.warning(ERR::AllocMemory);
+      else return log.warning(ERR::Failed);
    }
 }
 
@@ -1519,7 +1450,7 @@ static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
 {
    pf::Log log;
 
-   log.branch("%s, Flags: $%.8x", Self->Path, (Args) ? LONG(Args->Flags) : 0);
+   log.branch("%s, Flags: $%.8x", Self->Path.c_str(), (Args) ? LONG(Args->Flags) : 0);
 
    // Drop any previously configured watch.
 
@@ -1653,7 +1584,7 @@ static ERR FILE_Write(extFile *Self, struct acWrite *Args)
       }
    }
 
-   if ((Self->prvType & STAT_FOLDER) or ((Self->Flags & FL::FOLDER) != FL::NIL)) return log.warning(ERR::ExpectedFile);
+   if ((Self->isFolder) or ((Self->Flags & FL::FOLDER) != FL::NIL)) return log.warning(ERR::ExpectedFile);
 
    if (Self->Handle IS -1) return log.warning(ERR::ObjectCorrupt);
 
@@ -1987,35 +1918,34 @@ The resulting string is returned in the format `icons:category/name` and can be 
 
 static ERR GET_Icon(extFile *Self, CSTRING *Value)
 {
-   if (Self->prvIcon) {
-      *Value = Self->prvIcon;
+   if (!Self->prvIcon.empty()) {
+      *Value = Self->prvIcon.c_str();
       return ERR::Okay;
    }
 
    pf::SwitchContext context(Self);
 
-   if ((!Self->Path) or (!Self->Path[0])) {
-      *Value = Self->prvIcon = strclone("icons:filetypes/empty");
+   if (Self->Path.empty()) {
+      Self->prvIcon = "icons:filetypes/empty";
+      *Value = Self->prvIcon.c_str();
       return ERR::Okay;
    }
 
    // If the location is a volume, look the icon up in the SystemVolumes object
 
-   LONG i;
-   for (i=0; (Self->Path[i]) and (Self->Path[i] != ':'); i++);
-
-   if ((Self->Path[i] IS ':') and (!Self->Path[i+1])) {
+   if (Self->Path.ends_with(':')) {
       std::string icon("icons:folders/folder");
 
       if (auto lock = std::unique_lock{glmVolumes, 6s}) {
-         std::string volume(Self->Path, i);
+         std::string volume(Self->Path, 0, Self->Path.size()-1);
 
          if ((glVolumes.contains(volume)) and (glVolumes[volume].contains("Icon"))) {
             icon = "icons:" + glVolumes[volume]["Icon"];
          }
       }
 
-      *Value = Self->prvIcon = strclone(icon);
+      Self->prvIcon = icon;
+      *Value = Self->prvIcon.c_str();
       return ERR::Okay;
    }
 
@@ -2025,21 +1955,23 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       if ((info.Flags & RDF::LINK) != RDF::NIL) link = true;
 
       if ((info.Flags & RDF::VIRTUAL) != RDF::NIL) { // Virtual drives can specify custom icons, even for folders
-         *Value = Self->prvIcon = info.Tags[0]["Icon"].c_str();
+         Self->prvIcon = info.Tags[0]["Icon"];
+         *Value = Self->prvIcon.c_str();
          if (*Value) return ERR::Okay;
       }
 
       if ((info.Flags & RDF::FOLDER) != RDF::NIL) {
-         if (link) *Value = Self->prvIcon = strclone("icons:folders/folder_shortcut");
-         else *Value = Self->prvIcon = strclone("icons:folders/folder");
+         if (link) Self->prvIcon = "icons:folders/folder_shortcut";
+         else Self->prvIcon = "icons:folders/folder";
+         *Value = Self->prvIcon.c_str();
          return ERR::Okay;
       }
    }
 
-   while (Self->Path[i]) i++;
-   if ((Self->Path[i-1] IS '/') or (Self->Path[i-1] IS '\\')) {
-      if (link) *Value = Self->prvIcon = strclone("icons:folders/folder_shortcut");
-      else *Value = Self->prvIcon = strclone("icons:folders/folder");
+   if ((Self->Path.ends_with('/')) or (Self->Path.ends_with('\\'))) {
+      if (link) Self->prvIcon = "icons:folders/folder_shortcut";
+      else Self->prvIcon = "icons:folders/folder";
+      *Value = Self->prvIcon.c_str();
       return ERR::Okay;
    }
 
@@ -2048,26 +1980,26 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
 
    if (!glDatatypes) {
       if (load_datatypes() != ERR::Okay) {
-         if (link) *Value = Self->prvIcon = strclone("icons:filetypes/empty_shortcut");
-         else *Value = Self->prvIcon = strclone("icons:filetypes/empty");
+         if (link) Self->prvIcon = "icons:filetypes/empty_shortcut";
+         else Self->prvIcon = "icons:filetypes/empty";
+         *Value = Self->prvIcon.c_str();
          return ERR::Okay;
       }
    }
 
    ConfigGroups *groups;
-   char icon[80] = "";
+   std::string icon;
    if (glDatatypes->getPtr(FID_Data, &groups) IS ERR::Okay) {
       // Scan file extensions first, because this saves us from having to open and read the file content.
 
-      LONG k;
-      for (k=i; (k > 0) and (Self->Path[k-1] != ':') and (Self->Path[k-1] != '/') and (Self->Path[k-1] != '\\'); k--);
-
-      if (Self->Path[k]) {
+      auto k = Self->Path.find_last_of(":/\\");
+      if (k != std::string::npos) {
          for (auto& [group, keys] : groups[0]) {
             if (keys.contains("Match")) {
-               if (wildcmp(keys["Match"], std::string_view(Self->Path+k, strlen(Self->Path)-k))) {
+               auto pv = std::string_view(Self->Path.data()+k+1, Self->Path.size()-k-1);
+               if (wildcmp(keys["Match"], pv)) {
                   if (keys.contains("Icon")) {
-                     strcopy(keys["Icon"], icon, sizeof(icon));
+                     icon = keys["Icon"];
                      break;
                   }
                }
@@ -2077,11 +2009,11 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
 
       // Use IdentifyFile() to see if this file can be associated with a class
 
-      if (!icon[0]) {
+      if (icon.empty()) {
          std::string subclass, baseclass;
 
          CLASSID class_id, subclass_id;
-         if (IdentifyFile(Self->Path, &class_id, &subclass_id) IS ERR::Okay) {
+         if (IdentifyFile(Self->Path.c_str(), &class_id, &subclass_id) IS ERR::Okay) {
             if (glClassDB.contains(subclass_id)) {
                subclass = glClassDB[subclass_id].Name;
             }
@@ -2097,11 +2029,11 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
             for (auto& [group, keys] : groups[0]) {
                if (keys.contains("Class")) {
                   if (iequals(keys["Class"], subclass)) {
-                     if (keys.contains("Icon")) strcopy(keys["Icon"], icon, sizeof(icon));
+                     if (keys.contains("Icon")) icon = keys["Icon"];
                      break;
                   }
                   else if (iequals(keys["Class"], baseclass)) {
-                     if (keys.contains("Icon")) strcopy(keys["Icon"], icon, sizeof(icon));
+                     if (keys.contains("Icon")) icon = keys["Icon"];
                      // Don't break as sub-class would have priority
                   }
                }
@@ -2111,17 +2043,16 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
    }
 
    if (!icon[0]) {
-      if (link) *Value = Self->prvIcon = strclone("icons:filetypes/empty_shortcut");
-      else *Value = Self->prvIcon = strclone("icons:filetypes/empty");
+      if (link) Self->prvIcon = "icons:filetypes/empty_shortcut";
+      else Self->prvIcon = "icons:filetypes/empty";
+      *Value = Self->prvIcon.c_str();
       return ERR::Okay;
    }
 
-   if (!pf::startswith("icons:", icon)) {
-      copymem(icon, icon+6, sizeof(icon) - 6);
-      for (LONG i=0; i < 6; i++) icon[i] = "icons:"[i];
-   }
+   if (!pf::startswith("icons:", icon)) Self->prvIcon = "icons:" + icon;
+   else Self->prvIcon = icon;
 
-   *Value = Self->prvIcon = strclone(icon);
+   *Value = Self->prvIcon.c_str();
    return ERR::Okay;
 }
 
@@ -2197,10 +2128,10 @@ to traverse the folder hierarchy.
 
 *********************************************************************************************************************/
 
-static ERR GET_Path(extFile *Self, STRING *Value)
+static ERR GET_Path(extFile *Self, CSTRING *Value)
 {
-   if (Self->Path) {
-      *Value = Self->Path;
+   if (!Self->Path.empty()) {
+      *Value = Self->Path.c_str();
       return ERR::Okay;
    }
    else {
@@ -2226,73 +2157,41 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
       Self->Handle = -1;
    }
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-
-   LONG i, j, len;
    if ((Value) and (*Value)) {
-      if (!pf::startswith("string:", Value)) {
+      std::string_view val;
+      if (pf::startswith("string:", Value)) {
+         LONG len;
          for (len=0; (Value[len]) and (Value[len] != '|'); len++);
+         Self->Path.assign(Value, 0, len);
       }
-      else len = strlen(Value);
-
-      // Note: An extra byte is allocated in case the FL::FOLDER flag is set
-      if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, NULL) IS ERR::Okay) {
+      else {
          // If the path is set to ':' then this is the equivalent of asking for a folder list of all volumes in
          // the system.  No further initialisation is necessary in such a case.
 
-         if ((Value[0] IS ':') and (!Value[1])) {
-            Self->Path[0] = ':';
-            Self->Path[1] = 0;
-            Self->prvType |= STAT_FOLDER;
+         val = std::string_view(Value, strlen(Value));
+         if (val == ":") {
+            Self->Path.assign(":");
+            Self->isFolder = true;
          }
          else {
-            // Copy the path across and skip any trailing colons at the start.  We also eliminate any double slashes,
-            // e.g. "drive1:documents//tutorials/"
-
-            for (j=0; Value[j] IS ':'; j++);
-            if (pf::startswith("string:", Value)) {
-               i = strcopy(Value, Self->Path);
-            }
-            else {
-               i = 0;
-               while ((Value[j]) and (Value[j] != '|')) {
-                  if ((Value[j] IS '\\') and (Value[j+1] IS '\\')) {
-                     #ifdef _WIN32
-                        // Double slash is okay for UNC paths
-                        if (!j) Self->Path[i++] = Value[j++];
-                        else j++;
-                     #else
-                        j++;
-                     #endif
-                  }
-                  else if ((Value[j] IS '/') and (Value[j+1] IS '/')) {
-                     #ifdef _WIN32
-                        // Double slash is okay for UNC paths
-                        if (!j) Self->Path[i++] = Value[j++];
-                        else j++;
-                     #else
-                        j++;
-                     #endif
-                  }
-                  else Self->Path[i++] = Value[j++];
-               }
-               Self->Path[i] = 0;
-            }
+            while (val.starts_with(':')) val.remove_prefix(1);
+            auto sep = val.find('|');
+            if (sep != std::string::npos) val = val.substr(0, sep);
+            Self->Path.assign(val);
 
             // Check if the path is a folder/volume or a file
 
-            if ((Self->Path[i-1] IS ':') or (Self->Path[i-1] IS '/') or (Self->Path[i-1] IS '\\')) {
-               Self->prvType |= STAT_FOLDER;
+            if (Self->Path.ends_with(':') or Self->Path.ends_with('/') or Self->Path.ends_with('\\')) {
+               Self->isFolder = true;
             }
             else if ((Self->Flags & FL::FOLDER) != FL::NIL) {
-               Self->Path[i++] = '/';
-               Self->Path[i] = 0;
-               Self->prvType |= STAT_FOLDER;
+               Self->Path.append("/");
+               Self->isFolder = true;
             }
          }
       }
-      else return log.warning(ERR::AllocMemory);
    }
+   else Self->Path.clear();
 
    if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
    return ERR::Okay;
@@ -2485,13 +2384,13 @@ to the host platform.  Please refer to the ~ResolvePath() function for further i
 
 static ERR GET_ResolvedPath(extFile *Self, CSTRING *Value)
 {
-   if (!Self->Path) return ERR::FieldNotSet;
+   if (Self->Path.empty()) return ERR::FieldNotSet;
 
    if (!Self->prvResolvedPath) {
       auto flags = ((Self->Flags & FL::APPROXIMATE) != FL::NIL) ? RSF::APPROXIMATE : RSF::NO_FILE_CHECK;
 
       pf::SwitchContext ctx(Self);
-      if (ResolvePath(Self->Path, flags, &Self->prvResolvedPath) != ERR::Okay) {
+      if (ResolvePath(Self->Path.c_str(), flags, &Self->prvResolvedPath) != ERR::Okay) {
          return ERR::ResolvePath;
       }
    }

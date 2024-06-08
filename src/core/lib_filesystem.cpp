@@ -152,13 +152,12 @@ static std::mutex glCacheLock;
 
 //********************************************************************************************************************
 
-static const ULONG get_volume_id(CSTRING Path)
+static const ULONG get_volume_id(std::string_view Path)
 {
-   if ((Path[0] IS ':') or (!Path[0])) return 0;
+   if ((Path.starts_with(':')) or (Path.empty())) return 0;
 
-   LONG len;
    ULONG hash = 5381;
-   for (len=0; (Path[len]) and (Path[len] != ':'); len++) {
+   for (LONG len=0; (len < std::ssize(Path)) and (Path[len] != ':'); len++) {
       char c = Path[len];
       if ((c IS '/') or (c IS '\\')) return 0; // If a slash is encountered early, the path belongs to the local FS
       if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
@@ -256,7 +255,7 @@ static const virtual_drive * get_virtual(CSTRING Path)
 // The Path must be resolved before you call this function, this is necessary to solve cases where a volume is a
 // shortcut to multiple paths for example.
 
-const virtual_drive * get_fs(CSTRING Path)
+const virtual_drive * get_fs(std::string_view Path)
 {
    auto id = get_volume_id(Path);
    if (glVirtual.contains(id)) return &glVirtual[id];
@@ -788,43 +787,42 @@ void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions)
 // Internal function for getting information from files, particularly virtual volumes.  If you know that a path
 // refers directly to the client's filesystem then you can revert to calling fs_getinfo() instead.
 
-ERR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
+static THREADVAR char glNameBuffer[MAX_FILENAME]; // Not thread-safe
+
+ERR get_file_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
 {
    pf::Log log(__FUNCTION__);
-   LONG i, len;
+   LONG i;
    ERR error;
 
-   if ((!Path) or (!Path[0]) or (!Info) or (InfoSize <= 0)) return log.warning(ERR::Args);
+   if (Path.empty() or (!Info) or (InfoSize <= 0)) return log.warning(ERR::Args);
 
-   char NameBuffer[MAX_FILENAME];
    clearmem(Info, InfoSize);
-   Info->Name = NameBuffer;
+   Info->Name = glNameBuffer;
 
    // Check if the location is a volume with no file reference
 
-   for (len=0; (Path[len]) and (Path[len] != ':'); len++);
-
-   if ((Path[len] IS ':') and (!Path[len+1])) {
+   if (Path.ends_with(':')) {
       const virtual_drive *vfs = get_fs(Path);
 
       Info->Flags = RDF::VOLUME;
 
-      for (i=0; (i < MAX_FILENAME-1) and (Path[i]) and (Path[i] != ':'); i++) NameBuffer[i] = Path[i];
+      for (i=0; (i < MAX_FILENAME-1) and (i < std::ssize(Path)) and (Path[i] != ':'); i++) glNameBuffer[i] = Path[i];
       LONG pos = i;
-      NameBuffer[i] = 0;
+      glNameBuffer[i] = 0;
 
       error = ERR::Okay;
 
       if (auto lock = std::unique_lock{glmVolumes, 4s}) {
-         if (glVolumes.contains(NameBuffer)) {
-            if (glVolumes[NameBuffer]["Hidden"] == "Yes") Info->Flags |= RDF::HIDDEN;
+         if (glVolumes.contains(glNameBuffer)) {
+            if (glVolumes[glNameBuffer]["Hidden"] == "Yes") Info->Flags |= RDF::HIDDEN;
          }
       }
       else error = ERR::LockFailed;
 
       if (pos < MAX_FILENAME-2) {
-         NameBuffer[pos++] = ':';
-         NameBuffer[pos] = 0;
+         glNameBuffer[pos++] = ':';
+         glNameBuffer[pos] = 0;
 
          if (vfs->is_virtual()) {
             Info->Flags |= RDF::VIRTUAL;
@@ -836,10 +834,10 @@ ERR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
       else return log.warning(ERR::BufferOverflow);
    }
 
-   log.traceBranch("%s", Path);
+   log.traceBranch("%s", Path.data());
 
    STRING path;
-   if ((error = ResolvePath(Path, RSF::NIL, &path)) IS ERR::Okay) {
+   if ((error = ResolvePath(Path.data(), RSF::NIL, &path)) IS ERR::Okay) {
       auto vfs = get_fs(path);
 
       if (vfs->GetInfo) {
@@ -1548,7 +1546,7 @@ ERR check_paths(CSTRING Path, PERMIT Permissions)
 //********************************************************************************************************************
 // This low level function is used for copying/moving/renaming files and folders.
 
-ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
+ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, BYTE Move)
 {
    pf::Log log(Move ? "MoveFile" : "CopyFile");
 #ifdef __unix__
@@ -1568,15 +1566,15 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    bool srcdir;
    ERR error;
 
-   if ((!Source) or (!Source[0]) or (!Dest) or (!Dest[0])) return log.warning(ERR::NullArgs);
+   if ((Source.empty()) or (Dest.empty())) return log.warning(ERR::NullArgs);
 
-   log.traceBranch("\"%s\" to \"%s\"", Source, Dest);
+   log.traceBranch("\"%s\" to \"%s\"", Source.data(), Dest.data());
 
-   if ((error = ResolvePath(Source, RSF::NIL, &src)) != ERR::Okay) {
+   if ((error = ResolvePath(Source.data(), RSF::NIL, &src)) != ERR::Okay) {
       return ERR::FileNotFound;
    }
 
-   if ((error = ResolvePath(Dest, RSF::NO_FILE_CHECK, &tmp)) != ERR::Okay) {
+   if ((error = ResolvePath(Dest.data(), RSF::NO_FILE_CHECK, &tmp)) != ERR::Okay) {
       FreeResource(src);
       return ERR::ResolvePath;
    }
@@ -1630,12 +1628,12 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Open the source and destination
 
-      extFile::create srcfile = { fl::Path(Source), fl::Flags(FL::READ) };
+      extFile::create srcfile = { fl::Path(Source.data()), fl::Flags(FL::READ) };
 
       if (srcfile.ok()) {
          if ((Move) and (srcvirtual IS destvirtual)) {
             // If the source and destination use the same virtual volume, execute the move method.
-            fl::Move args = { Dest, NULL };
+            fl::Move args = { Dest.data(), NULL };
             error = Action(fl::Move::id, *srcfile, &args);
             goto exit;
          }
@@ -1646,7 +1644,7 @@ ERR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       }
 
       extFile::create destfile = {
-         fl::Path(Dest),
+         fl::Path(Dest.data()),
          fl::Flags(FL::WRITE|FL::NEW),
          fl::Permissions(srcfile->Permissions)
       };
@@ -2587,7 +2585,7 @@ ERR fs_testpath(CSTRING Path, RSF Flags, LOC *Type)
 
 //********************************************************************************************************************
 
-ERR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
+ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2668,12 +2666,12 @@ ERR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
    LONG i, len;
 
    Info->Flags = RDF::NIL;
-   if (!winFileInfo(Path, &Info->Size, &Info->Modified, &dir)) return ERR::File;
+   if (!winFileInfo(Path.data(), &Info->Size, &Info->Modified, &dir)) return ERR::File;
 
    // TimeStamp has to match that produced by GET_TimeStamp
 
    struct stat64 stats;
-   if (!stat64(Path, &stats)) {
+   if (!stat64(Path.data(), &stats)) {
       if (auto local = localtime(&stats.st_mtime)) {
          Info->Modified.Year   = 1900 + local->tm_year;
          Info->Modified.Month  = local->tm_mon + 1;
@@ -2697,7 +2695,7 @@ ERR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
 
-   i = strcopy(Path + i, Info->Name, MAX_FILENAME-2);
+   i = strcopy(Path.data() + i, Info->Name, MAX_FILENAME-2);
 
    if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
       if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';

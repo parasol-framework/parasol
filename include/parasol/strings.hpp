@@ -11,7 +11,7 @@ namespace pf {
 // USAGE: std::vector<std::string> list; pf::split(value, std::back_inserter(list));
 
 template <class InType, class OutIt>
-void split(InType Input, OutIt Output)
+void split(InType Input, OutIt Output) noexcept
 {
    auto begin = Input.begin();
    auto end = Input.end();
@@ -26,19 +26,19 @@ void split(InType Input, OutIt Output)
    *Output++ = std::string(current, begin);
 }
 
-inline void ltrim(std::string &String, const std::string &Whitespace = " \n\r\t")
+inline void ltrim(std::string &String, const std::string &Whitespace = " \n\r\t") noexcept
 {
    const auto start = String.find_first_not_of(Whitespace);
    if ((start != std::string::npos) and (start != 0)) String.erase(0, start);
 }
 
-inline void rtrim(std::string &String, const std::string &Whitespace = " \n\r\t")
+inline void rtrim(std::string &String, const std::string &Whitespace = " \n\r\t") noexcept
 {
    const auto end = String.find_last_not_of(Whitespace);
    if ((end != std::string::npos) and (end != String.size()-1)) String.erase(end+1, String.size()-end);
 }
 
-inline void trim(std::string &String, const std::string &Whitespace = " \n\r\t")
+inline void trim(std::string &String, const std::string &Whitespace = " \n\r\t") noexcept
 {
    const auto start = String.find_first_not_of(Whitespace);
    if ((start != std::string::npos) and (start != 0)) String.erase(0, start);
@@ -47,7 +47,7 @@ inline void trim(std::string &String, const std::string &Whitespace = " \n\r\t")
    if ((end != std::string::npos) and (end != String.size()-1)) String.erase(end+1, String.size()-end);
 }
 
-inline void camelcase(std::string &s) {
+inline void camelcase(std::string &s) noexcept {
    bool raise = true;
    for (std::size_t i=0; i < s.size(); i++) {
       if (raise) {
@@ -60,7 +60,7 @@ inline void camelcase(std::string &s) {
 
 // Case-insensitive string comparison, both of which must be the same length.
 
-[[nodiscard]] inline bool iequals(std::string_view lhs, std::string_view rhs)
+[[nodiscard]] inline bool iequals(std::string_view lhs, std::string_view rhs) noexcept
 {
    auto ichar_equals = [](char a, char b) {
        return std::tolower((unsigned char)(a)) == std::tolower((unsigned char)(b));
@@ -70,7 +70,7 @@ inline void camelcase(std::string &s) {
    return std::ranges::equal(lhs, rhs, ichar_equals);
 }
 
-[[nodiscard]] inline bool wildcmp(std::string_view Wildcard, std::string_view String, bool Case = false)
+[[nodiscard]] inline bool wildcmp(std::string_view Wildcard, std::string_view String, bool Case = false) noexcept
 {
    auto Original = String;
 
@@ -160,7 +160,7 @@ inline void camelcase(std::string &s) {
 
 // A case insensitive alternative to std::string_view.starts_with()
 
-[[nodiscard]] inline bool startswith(std::string_view StringA, std::string_view StringB)
+[[nodiscard]] inline bool startswith(std::string_view StringA, std::string_view StringB) noexcept
 {
    std::size_t a = 0, b = 0;
 
@@ -181,7 +181,7 @@ inline void camelcase(std::string &s) {
 
 // Inline C++ implementations of the StrHash() function
 
-[[nodiscard]] inline ULONG strhash(std::string_view String)
+[[nodiscard]] inline ULONG strhash(std::string_view String) noexcept
 {
    ULONG hash = 5381;
    std::for_each(String.begin(), String.end(), [&hash](char a) {
@@ -190,7 +190,7 @@ inline void camelcase(std::string &s) {
    return hash;
 }
 
-[[nodiscard]] inline ULONG strihash(std::string_view String)
+[[nodiscard]] inline ULONG strihash(std::string_view String) noexcept
 {
    ULONG hash = 5381;
    std::for_each(String.begin(), String.end(), [&hash](char c) {
@@ -199,7 +199,7 @@ inline void camelcase(std::string &s) {
    return hash;
 }
 
-template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
+template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff) noexcept
 {
    auto src = to_cstring(Source);
    if ((Length > 0) and (src) and (Dest)) {
@@ -220,7 +220,7 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 // Case-sensitive keyword search
 
-[[nodiscard]] inline LONG strsearch(std::string_view Keyword, CSTRING String)
+[[nodiscard]] inline LONG strsearch(std::string_view Keyword, CSTRING String) noexcept
 {
    LONG i;
    LONG pos = 0;
@@ -235,7 +235,7 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 // Case-insensitive keyword search
 
-[[nodiscard]] inline LONG strisearch(std::string_view Keyword, CSTRING String)
+[[nodiscard]] inline LONG strisearch(std::string_view Keyword, CSTRING String) noexcept
 {
    LONG i;
    LONG pos = 0;
@@ -248,7 +248,7 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
    return -1;
 }
 
-[[nodiscard]] inline STRING strclone(std::string_view String)
+[[nodiscard]] inline STRING strclone(std::string_view String) noexcept
 {
    STRING newstr;
    if (AllocMemory(String.size()+1, MEM::STRING, (APTR *)&newstr, NULL) IS ERR::Okay) {
@@ -266,6 +266,30 @@ template <class T> [[nodiscard]] T svtonum(std::string_view String) noexcept {
    auto [ v, error ] = std::from_chars(String.data(), String.data() + String.size(), val);
    if (error IS std::errc()) return val;
    else return 0;
+}
+
+// Speed efficient way of setting a string field that is managed with AllocMemory().
+
+inline ERR set_string_field(std::string_view Source, STRING &Dest) 
+{
+   MemInfo info;
+   if (auto error = MemoryIDInfo(GetMemoryID(Dest), &info, sizeof(info)); error IS ERR::Okay) {
+      if (Source.size()+1 < info.Size) {
+         copymem(Source.data(), Dest, Source.size());
+         Dest[Source.size()] = 0;
+         return ERR::Okay;
+      }
+      else {
+         FreeResource(GetMemoryID(Dest));
+         if (AllocMemory(Source.size() + 1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Dest, NULL) IS ERR::Okay) {
+            copymem(Source.data(), Dest, Source.size());
+            Dest[Source.size()] = 0;
+            return ERR::Okay;
+         }
+         else return ERR::AllocMemory;
+      }
+   }
+   else return error;
 }
 
 } // namespace

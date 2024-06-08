@@ -192,7 +192,7 @@ Exists: The named volume already exists.
 
 using CALL_CLOSE_DIR       = ERR (*)(DirInfo *);
 using CALL_DELETE          = ERR (*)(STRING, FUNCTION *);
-using CALL_GET_INFO        = ERR (*)(CSTRING, FileInfo*, LONG);
+using CALL_GET_INFO        = ERR (*)(std::string_view, FileInfo*, LONG);
 using CALL_GET_DEVICE_INFO = ERR (*)(CSTRING, objStorageDevice*);
 using CALL_IDENTIFY_FILE   = ERR (*)(STRING, CLASSID*, CLASSID*);
 using CALL_IGNORE_FILE     = void  (*)(extFile*);
