@@ -2209,36 +2209,27 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
 // Gets the permissions of the parent folder.  Typically used for permission inheritance. NB: It is often wise to
 // remove exec and suid flags returned from this function.
 
-PERMIT get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
+PERMIT get_parent_permissions(std::string_view Path, LONG *UserID, LONG *GroupID)
 {
-   pf::Log log(__FUNCTION__);
-   char folder[512];
-   LONG i;
+   std::string_view folder(Path);
+   while (folder.ends_with('/') or folder.ends_with('\\') or folder.ends_with(':')) folder.remove_suffix(1);
 
-   // Make a copy of the location
+   while (!folder.empty()) {
+      auto i = folder.find_last_of("/\\:");
+      if (i IS std::string::npos) break;
+      folder = folder.substr(0, i);
 
-   folder[0] = 0;
-   for (i=0; (Path[i]) and ((size_t)i < sizeof(folder)); i++) folder[i] = Path[i];
-   if (i > 0) {
-      i--;
-      if ((folder[i] IS '/') or (folder[i] IS '\\') or (folder[i] IS ':')) i--;
-   }
-
-   while (i > 0) {
-      while ((i > 0) and (folder[i] != '/') and (folder[i] != '\\') and (folder[i] != ':')) i--;
-      folder[i+1] = 0;
-
-      FileInfo info;
-      if ((i > 0) and (get_file_info(folder, &info, sizeof(info)) IS ERR::Okay)) {
-         //log.msg("%s [$%.8x]", Path, info.Permissions);
-         if (UserID) *UserID = info.UserID;
-         if (GroupID) *GroupID = info.GroupID;
-         return info.Permissions;
+      if (!folder.empty()) {
+         FileInfo info;
+         if (get_file_info(folder, &info, sizeof(info)) IS ERR::Okay) {
+            if (UserID) *UserID = info.UserID;
+            if (GroupID) *GroupID = info.GroupID;
+            return info.Permissions;
+         }
+         folder.remove_suffix(1);
       }
-      i--;
    }
 
-   //log.msg("%s [FAIL]", Path);
    return PERMIT::NIL;
 }
 
@@ -2593,7 +2584,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
    // In order to tell if a folder is a symbolic link or not, we have to remove any trailing slash...
 
    char path_ref[256];
-   LONG len = strcopy(Path, path_ref, sizeof(path_ref));
+   LONG len = strcopy(Path.data(), path_ref, sizeof(path_ref));
    if ((size_t)len >= sizeof(path_ref)-1) return ERR::BufferOverflow;
    if ((path_ref[len-1] IS '/') or (path_ref[len-1] IS '\\')) path_ref[len-1] = 0;
 

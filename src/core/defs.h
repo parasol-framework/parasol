@@ -981,7 +981,7 @@ ERR  check_cache(OBJECTPTR, LARGE, LARGE);
 ERR  get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
 ERR  fs_copy(std::string_view, std::string_view, FUNCTION *, BYTE);
 ERR  fs_copydir(STRING, STRING, FileFeedback *, FUNCTION *, BYTE);
-PERMIT get_parent_permissions(CSTRING, LONG *, LONG *);
+PERMIT get_parent_permissions(std::string_view, LONG *, LONG *);
 ERR  load_datatypes(void);
 ERR  RenameVolume(CSTRING, CSTRING);
 ERR  findfile(STRING);
