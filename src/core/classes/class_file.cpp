@@ -508,7 +508,6 @@ static ERR FILE_Free(extFile *Self)
    if (Self->ProgressDialog) { FreeResource(Self->ProgressDialog); Self->ProgressDialog = NULL; }
    if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
    if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
-   if (Self->prvLink) { FreeResource(Self->prvLink); Self->prvLink = NULL; }
    if (Self->Buffer)  { FreeResource(Self->Buffer); Self->Buffer = NULL; }
 
    if (Self->Handle != -1) {
@@ -2057,8 +2056,8 @@ static ERR GET_Link(extFile *Self, STRING *Value)
    STRING path;
    char buffer[512];
 
-   if (Self->prvLink) { // The link has already been read previously, just re-use it
-      *Value = Self->prvLink;
+   if (!Self->prvLink.empty()) { // The link has already been read previously, just re-use it
+      *Value = Self->prvLink.data();
       return ERR::Okay;
    }
 
@@ -2068,9 +2067,8 @@ static ERR GET_Link(extFile *Self, STRING *Value)
          LONG i = strlen(path);
          if (path[i-1] IS '/') path[i-1] = 0;
          if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
-            buffer[i] = 0;
-            Self->prvLink = strclone(buffer);
-            *Value = Self->prvLink;
+            Self->prvLink.assign(buffer, 0, i);
+            *Value = Self->prvLink.data();
          }
          FreeResource(path);
 

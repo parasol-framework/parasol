@@ -368,6 +368,10 @@ class extFile : public objFile {
    struct DateTime prvCreated;
    std::string Path;
    std::string prvIcon;
+   std::string prvLine;
+   #ifdef __unix__
+      std::string prvLink;
+   #endif
    LARGE Size;
    LARGE ProgressTime;
    #ifdef _WIN32
@@ -376,8 +380,6 @@ class extFile : public objFile {
       APTR  Stream;
    #endif
    STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
-   STRING prvLink;
-   std::string prvLine;
    struct rkWatchPath *prvWatch;
    OBJECTPTR ProgressDialog;
    struct DirInfo *prvList;
