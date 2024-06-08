@@ -571,7 +571,7 @@ static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
    Log log(__FUNCTION__);
 
    log.traceBranch("%s", Path.data());
-   
+
    CompressedItem *item;
    std::string file_path;
    if (auto cmp = find_archive(Path, file_path)) {
