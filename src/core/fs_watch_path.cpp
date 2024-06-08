@@ -35,37 +35,27 @@ extern "C" void path_monitor(HOSTHANDLE, extFile *);
 
 ERR fs_watch_path(extFile *File)
 {
-   pf::Log log;
-   if (auto path = strclone(File->prvResolvedPath.c_str())) {
-      strip_folder(path); // Remove trailing slash if there is one
+   LONG nflags = 0;
+   if ((File->prvWatch->Flags & MFF::READ) != MFF::NIL) nflags |= IN_ACCESS;
+   if ((File->prvWatch->Flags & MFF::MODIFY) != MFF::NIL) nflags |= IN_MODIFY;
+   if ((File->prvWatch->Flags & MFF::CREATE) != MFF::NIL) nflags |= IN_CREATE;
+   if ((File->prvWatch->Flags & MFF::DELETE) != MFF::NIL) nflags |= IN_DELETE | IN_DELETE_SELF;
+   if ((File->prvWatch->Flags & MFF::OPENED) != MFF::NIL) nflags |= IN_OPEN;
+   if ((File->prvWatch->Flags & MFF::ATTRIB) != MFF::NIL) nflags |= IN_ATTRIB;
+   if ((File->prvWatch->Flags & MFF::CLOSED) != MFF::NIL) nflags |= IN_CLOSE_WRITE | IN_CLOSE_NOWRITE;
+   if ((File->prvWatch->Flags & (MFF::MOVED|MFF::RENAME)) != MFF::NIL)  nflags |= IN_MOVED_FROM | IN_MOVED_TO;
 
-      // Add a watch for this file
-
-      LONG nflags = 0;
-      if ((File->prvWatch->Flags & MFF::READ) != MFF::NIL) nflags |= IN_ACCESS;
-      if ((File->prvWatch->Flags & MFF::MODIFY) != MFF::NIL) nflags |= IN_MODIFY;
-      if ((File->prvWatch->Flags & MFF::CREATE) != MFF::NIL) nflags |= IN_CREATE;
-      if ((File->prvWatch->Flags & MFF::DELETE) != MFF::NIL) nflags |= IN_DELETE | IN_DELETE_SELF;
-      if ((File->prvWatch->Flags & MFF::OPENED) != MFF::NIL) nflags |= IN_OPEN;
-      if ((File->prvWatch->Flags & MFF::ATTRIB) != MFF::NIL) nflags |= IN_ATTRIB;
-      if ((File->prvWatch->Flags & MFF::CLOSED) != MFF::NIL) nflags |= IN_CLOSE_WRITE | IN_CLOSE_NOWRITE;
-      if ((File->prvWatch->Flags & (MFF::MOVED|MFF::RENAME)) != MFF::NIL)  nflags |= IN_MOVED_FROM | IN_MOVED_TO;
-
-      LONG handle = inotify_add_watch(glInotify, path, nflags);
-
-      if (handle IS -1) {
-         log.warning("%s", strerror(errno));
-         FreeResource(path);
-         return ERR::SystemCall;
-      }
-
+   auto path = File->prvResolvedPath;
+   if (path.ends_with('/')) path.pop_back();
+   if (auto handle = inotify_add_watch(glInotify, path.c_str(), nflags); handle != -1) {
       File->prvWatch->Handle = handle;
-
-      FreeResource(path);
       return ERR::Okay;
    }
-
-   return ERR::AllocMemory;
+   else {
+      pf::Log log;
+      log.warning("%s", strerror(errno));
+      return ERR::SystemCall;
+   }
 }
 
 #elif _WIN32

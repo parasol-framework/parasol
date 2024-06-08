@@ -726,7 +726,7 @@ retrydir:
       acQuery(Self);
 
       #ifdef __unix__
-         if ((Self->Stream = opendir(Self->prvResolvedPath))) return ERR::Okay;
+         if ((Self->Stream = opendir(Self->prvResolvedPath.c_str()))) return ERR::Okay;
       #elif _WIN32
          // Note: The CheckDiretoryExists() function does not return a true handle, just a code of 1 to indicate that the folder is present.
 
@@ -739,7 +739,7 @@ retrydir:
          log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath.c_str(), LONG(Self->Permissions));
          if (CreateFolder(Self->prvResolvedPath.c_str(), Self->Permissions) IS ERR::Okay) {
             #ifdef __unix__
-               if (!(Self->Stream = opendir(Self->prvResolvedPath))) {
+               if (!(Self->Stream = opendir(Self->prvResolvedPath.c_str()))) {
                   log.warning("Failed to open the folder after creating it.");
                }
             #elif _WIN32
@@ -2067,7 +2067,7 @@ static ERR GET_Link(extFile *Self, STRING *Value)
 
    *Value = NULL;
    if ((Self->Flags & FL::LINK) != FL::NIL) {
-      if (ResolvePath(Self->Path, RSF::NIL, &path) IS ERR::Okay) {
+      if (ResolvePath(Self->Path.c_str(), RSF::NIL, &path) IS ERR::Okay) {
          LONG i = strlen(path);
          if (path[i-1] IS '/') path[i-1] = 0;
          if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
