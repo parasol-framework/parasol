@@ -366,25 +366,24 @@ class extFile : public objFile {
    using create = pf::Create<extFile>;
    struct DateTime prvModified;
    struct DateTime prvCreated;
+   std::string Path;
+   std::string prvIcon;
    LARGE Size;
+   LARGE ProgressTime;
    #ifdef _WIN32
       LONG  Stream;
    #else
       APTR  Stream;
    #endif
-   std::string Path;
    STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
    STRING prvLink;
-   STRING prvLine;
-   std::string prvIcon;
+   std::string prvLine;
    struct rkWatchPath *prvWatch;
    OBJECTPTR ProgressDialog;
    struct DirInfo *prvList;
-   LARGE  ProgressTime;
    PERMIT Permissions;
    bool   isFolder;
    LONG   Handle;         // Native system file handle
-   WORD   prvLineLen;
 };
 
 class extConfig : public objConfig {

@@ -506,7 +506,6 @@ static ERR FILE_Free(extFile *Self)
 #endif
 
    if (Self->ProgressDialog) { FreeResource(Self->ProgressDialog); Self->ProgressDialog = NULL; }
-   if (Self->prvLine) { FreeResource(Self->prvLine); Self->prvLine = NULL; }
    if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
    if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
    if (Self->prvLink) { FreeResource(Self->prvLink); Self->prvLink = NULL; }
@@ -698,10 +697,10 @@ retrydir:
    }
 
    // Check if ResolvePath() resolved the path from a file string to a folder
-   
+
    len = strlen(Self->prvResolvedPath);
-   if ((!Self->isFolder) and 
-       ((Self->prvResolvedPath[len-1] IS '/') or (Self->prvResolvedPath[len-1] IS '\\')) and 
+   if ((!Self->isFolder) and
+       ((Self->prvResolvedPath[len-1] IS '/') or (Self->prvResolvedPath[len-1] IS '\\')) and
        ((Self->Flags & FL::FOLDER) IS FL::NIL)) {
       Self->Flags |= FL::FOLDER;
       goto retrydir;
@@ -1043,8 +1042,8 @@ Reads one line from the file into an internal buffer, which is returned in the R
 increase the #Position field by the amount of bytes read from the file.  You must have set the `FL::READ` bit in
 the #Flags field when you initialised the file, or the call will fail.
 
-The line buffer is managed internally, so there is no need for you to free the result string.  This method returns
-`ERR::NoData` when it runs out of information to read from the file.
+The line buffer is managed internally, so there is no need to free the `Result` string.  `ERR::NoData` is returned 
+once all lines have been read.
 
 -INPUT-
 &str Result: The resulting string is returned in this parameter.
@@ -1067,64 +1066,49 @@ static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
    if (!Args) return log.warning(ERR::NullArgs);
    if ((Self->Flags & FL::READ) IS FL::NIL) return log.warning(ERR::FileReadFlag);
 
-   LONG len;
-   char line[4096];
-   LONG pos = Self->Position;
    if (Self->Buffer) {
-      len = 0;
-      LONG i = Self->Position;
-      while ((i < Self->Size) and ((size_t)len < sizeof(line)-1)) {
-         line[len] = Self->Buffer[i++];
-         if (line[len] IS '\n') break;
-         len++;
+      if (Self->Position >= Self->Size) return ERR::NoData;
+      auto content = std::string_view(Self->Buffer, Self->Size);
+      auto line_feed = content.find('\n', Self->Position);
+      if (line_feed IS std::string::npos) {
+         Self->prvLine.assign(Self->Buffer, Self->Position);
+         Self->Position = Self->Size;
       }
-      line[len] = 0;
-      Self->Position = i;
+      else {
+         Self->prvLine.assign(Self->Buffer, Self->Position, line_feed - Self->Position);
+         Self->Position = line_feed + 1;
+      }
+      return ERR::Okay;
    }
    else {
       if (Self->isFolder) return log.warning(ERR::ExpectedFile);
       if (Self->Handle IS -1) return log.warning(ERR::ObjectCorrupt);
 
-      // Read the line
-
+      Self->prvLine.reserve(4096);
       LONG result;
-      LONG bytes = 256;
-      len = 0;
-      while ((result = read(Self->Handle, line+len, bytes)) > 0) {
-         for (LONG i=0; i < result; i++) {
-            if (line[len] IS '\n') break;
-            if (++len >= (LONG)sizeof(line)) { // Buffer overflow
-               lseek64(Self->Handle, Self->Position, SEEK_SET); // Reset the file position back to normal
-               return log.warning(ERR::BufferOverflow);
-            }
+      const LONG CHUNK = 256;
+      std::size_t line_offset = 0;
+      while ((result = read(Self->Handle, Self->prvLine.data()+line_offset, CHUNK)) > 0) {
+         LONG i;
+         for (i=0; (i < result) and (Self->prvLine[line_offset] != '\n'); i++, line_offset++);
+         if (i < result) break;
+
+         if (line_offset + CHUNK >= Self->prvLine.size()) {
+            lseek64(Self->Handle, Self->Position, SEEK_SET); // Reset the file position back to normal
+            return log.warning(ERR::BufferOverflow);
          }
-         if (line[len] IS '\n') break;
-
-         if ((size_t)len + bytes > sizeof(line)) bytes = sizeof(line) - len;
       }
 
-      Self->Position += len;
+      if (!line_offset) return ERR::NoData;
 
-      if (line[len] IS '\n') {
-         Self->Position++; // Add 1 to skip the line feed
-         lseek64(Self->Handle, Self->Position, SEEK_SET); // Reset the file position to the start of the next line
+      Self->Position += line_offset;
+      if (Self->prvLine[line_offset] IS '\n') {
+         Self->Position++; // Skip the line feed
+         lseek64(Self->Handle, Self->Position, SEEK_SET); // Reset position to the start of the next line
       }
 
-      line[len] = 0;
-   }
-
-   if (Self->Position IS pos) return ERR::NoData;
-
-   if (Self->prvLineLen >= len+1) {
-      copymem(line, Self->prvLine, len+1);
-      Args->Result = Self->prvLine;
-      return ERR::Okay;
-   }
-   else {
-      if (Self->prvLine) { FreeResource(Self->prvLine); Self->prvLine = NULL; }
-      Self->prvLine    = strclone(line);
-      Self->prvLineLen = len + 1;
-      Args->Result = Self->prvLine;
+      Self->prvLine.resize(line_offset);
+      Args->Result = Self->prvLine.data();
       return ERR::Okay;
    }
 }
