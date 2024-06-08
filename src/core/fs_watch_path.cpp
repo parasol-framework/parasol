@@ -36,7 +36,7 @@ extern "C" void path_monitor(HOSTHANDLE, extFile *);
 ERR fs_watch_path(extFile *File)
 {
    pf::Log log;
-   if (auto path = strclone(File->prvResolvedPath)) {
+   if (auto path = strclone(File->prvResolvedPath.c_str())) {
       strip_folder(path); // Remove trailing slash if there is one
 
       // Add a watch for this file
@@ -79,14 +79,14 @@ ERR fs_watch_path(extFile *File)
 
    // The path_monitor() function will be called whenever the Path or its content is modified.
 
-   if ((error = winWatchFile(LONG(File->prvWatch->Flags), File->prvResolvedPath, (File->prvWatch + 1), &handle, &winflags)) IS ERR::Okay) {
+   if ((error = winWatchFile(LONG(File->prvWatch->Flags), File->prvResolvedPath.c_str(), (File->prvWatch + 1), &handle, &winflags)) IS ERR::Okay) {
       File->prvWatch->Handle   = handle;
       File->prvWatch->WinFlags = winflags;
       if ((error = RegisterFD(handle, RFD::READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File)) IS ERR::Okay) {
       }
       else log.warning("Failed to register folder handle.");
    }
-   else log.warning("Failed to watch path %s, %s", File->prvResolvedPath, GetErrorMsg(error));
+   else log.warning("Failed to watch path %s, %s", File->prvResolvedPath.c_str(), GetErrorMsg(error));
 
    return error;
 }

@@ -507,7 +507,6 @@ static ERR FILE_Free(extFile *Self)
 
    if (Self->ProgressDialog) { FreeResource(Self->ProgressDialog); Self->ProgressDialog = NULL; }
    if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
-   if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
    if (Self->Buffer)  { FreeResource(Self->Buffer); Self->Buffer = NULL; }
 
    if (Self->Handle != -1) {
@@ -574,7 +573,6 @@ NoPermission: Permission was denied when accessing or creating the file.
 static ERR FILE_Init(extFile *Self)
 {
    pf::Log log;
-   LONG len;
    ERR error;
 
    // If the BUFFER flag is set then the file will be located in RAM.  Very little initialisation is needed for this.
@@ -670,14 +668,17 @@ retrydir:
    if ((Self->Flags & FL::NEW) != FL::NIL) resolveflags |= RSF::NO_FILE_CHECK;
    if ((Self->Flags & FL::APPROXIMATE) != FL::NIL) resolveflags |= RSF::APPROXIMATE;
 
-   if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
+   Self->prvResolvedPath.clear();
 
-   if ((error = ResolvePath(Self->Path.c_str(), resolveflags|RSF::CHECK_VIRTUAL, &Self->prvResolvedPath)) != ERR::Okay) {
+   STRING rpath;
+   if ((error = ResolvePath(Self->Path.c_str(), resolveflags|RSF::CHECK_VIRTUAL, &rpath)) != ERR::Okay) {
       if (error IS ERR::VirtualVolume) {
          // For virtual volumes, update the path to ensure that the volume name is referenced in the path string.
          // Then return ERR::UseSubClass to have support delegated to the correct File sub-class.
+         Self->prvResolvedPath.assign(rpath);
+         FreeResource(rpath);
          if (!iequals(Self->Path, Self->prvResolvedPath)) {
-            SET_Path(Self, Self->prvResolvedPath);
+            SET_Path(Self, Self->prvResolvedPath.c_str());
          }
          log.trace("ResolvePath() reports virtual volume, will delegate to sub-class...");
          return ERR::UseSubClass;
@@ -694,12 +695,15 @@ retrydir:
          return ERR::FileNotFound;
       }
    }
+   else {
+      Self->prvResolvedPath.assign(rpath);
+      FreeResource(rpath);
+   }
 
    // Check if ResolvePath() resolved the path from a file string to a folder
 
-   len = strlen(Self->prvResolvedPath);
    if ((!Self->isFolder) and
-       ((Self->prvResolvedPath[len-1] IS '/') or (Self->prvResolvedPath[len-1] IS '\\')) and
+       (Self->prvResolvedPath.ends_with('/') or Self->prvResolvedPath.ends_with('\\')) and
        ((Self->Flags & FL::FOLDER) IS FL::NIL)) {
       Self->Flags |= FL::FOLDER;
       goto retrydir;
@@ -708,8 +712,8 @@ retrydir:
 #ifdef __unix__
    // Establishing whether or not the path is a link is required on initialisation.
    struct stat64 info;
-   if (Self->prvResolvedPath[len-1] IS '/') Self->prvResolvedPath[len-1] = 0; // For lstat64() symlink we need to remove the slash
-   if (lstat64(Self->prvResolvedPath, &info) != -1) { // Prefer to get a stat on the link rather than the file it refers to
+   if (Self->prvResolvedPath.ends_with('/')) Self->prvResolvedPath.pop_back(); // For lstat64() symlink we need to remove the slash
+   if (lstat64(Self->prvResolvedPath.c_str(), &info) != -1) { // Prefer to get a stat on the link rather than the file it refers to
       if (S_ISLNK(info.st_mode)) Self->Flags |= FL::LINK;
    }
 #endif
@@ -726,20 +730,20 @@ retrydir:
       #elif _WIN32
          // Note: The CheckDiretoryExists() function does not return a true handle, just a code of 1 to indicate that the folder is present.
 
-         if ((Self->Stream = winCheckDirectoryExists(Self->prvResolvedPath))) return ERR::Okay;
+         if ((Self->Stream = winCheckDirectoryExists(Self->prvResolvedPath.c_str()))) return ERR::Okay;
       #else
          #error Require folder open or folder marking code.
       #endif
 
       if ((Self->Flags & FL::NEW) != FL::NIL) {
-         log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath, LONG(Self->Permissions));
-         if (CreateFolder(Self->prvResolvedPath, Self->Permissions) IS ERR::Okay) {
+         log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath.c_str(), LONG(Self->Permissions));
+         if (CreateFolder(Self->prvResolvedPath.c_str(), Self->Permissions) IS ERR::Okay) {
             #ifdef __unix__
                if (!(Self->Stream = opendir(Self->prvResolvedPath))) {
                   log.warning("Failed to open the folder after creating it.");
                }
             #elif _WIN32
-               if (!(Self->Stream = winCheckDirectoryExists(Self->prvResolvedPath))) {
+               if (!(Self->Stream = winCheckDirectoryExists(Self->prvResolvedPath.c_str()))) {
                   log.warning("Failed to open the folder after creating it.");
                }
             #else
@@ -751,7 +755,7 @@ retrydir:
          else return log.warning(ERR::CreateFile);
       }
       else {
-         log.warning("Could not open folder \"%s\", %s.", Self->prvResolvedPath, strerror(errno));
+         log.warning("Could not open folder \"%s\", %s.", Self->prvResolvedPath.c_str(), strerror(errno));
          return ERR::File;
       }
    }
@@ -1041,7 +1045,7 @@ Reads one line from the file into an internal buffer, which is returned in the R
 increase the #Position field by the amount of bytes read from the file.  You must have set the `FL::READ` bit in
 the #Flags field when you initialised the file, or the call will fail.
 
-The line buffer is managed internally, so there is no need to free the `Result` string.  `ERR::NoData` is returned 
+The line buffer is managed internally, so there is no need to free the `Result` string.  `ERR::NoData` is returned
 once all lines have been read.
 
 -INPUT-
@@ -2175,7 +2179,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
    }
    else Self->Path.clear();
 
-   if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
+   Self->prvResolvedPath.clear();
    return ERR::Okay;
 }
 
@@ -2368,16 +2372,18 @@ static ERR GET_ResolvedPath(extFile *Self, CSTRING *Value)
 {
    if (Self->Path.empty()) return ERR::FieldNotSet;
 
-   if (!Self->prvResolvedPath) {
+   if (Self->prvResolvedPath.empty()) {
       auto flags = ((Self->Flags & FL::APPROXIMATE) != FL::NIL) ? RSF::APPROXIMATE : RSF::NO_FILE_CHECK;
 
-      pf::SwitchContext ctx(Self);
-      if (ResolvePath(Self->Path.c_str(), flags, &Self->prvResolvedPath) != ERR::Okay) {
-         return ERR::ResolvePath;
+      STRING rpath;
+      if (ResolvePath(Self->Path.c_str(), flags, &rpath) IS ERR::Okay) {
+         Self->prvResolvedPath.assign(rpath);
+         FreeResource(rpath);
       }
+      else return ERR::ResolvePath;
    }
 
-   *Value = Self->prvResolvedPath;
+   *Value = Self->prvResolvedPath.c_str();
    return ERR::Okay;
 }
 

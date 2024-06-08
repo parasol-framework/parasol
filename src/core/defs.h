@@ -369,6 +369,7 @@ class extFile : public objFile {
    std::string Path;
    std::string prvIcon;
    std::string prvLine;
+   std::string prvResolvedPath;
    #ifdef __unix__
       std::string prvLink;
    #endif
@@ -379,7 +380,6 @@ class extFile : public objFile {
    #else
       APTR  Stream;
    #endif
-   STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
    struct rkWatchPath *prvWatch;
    OBJECTPTR ProgressDialog;
    struct DirInfo *prvList;
