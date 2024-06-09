@@ -2645,7 +2645,7 @@ ERR fs_getdeviceinfo(std::string_view Path, objStorageDevice *Info)
 
    if ((Info->DeviceFlags & DEVICE::HARD_DISK) != DEVICE::NIL) {
       if (!location) {
-         error = ResolvePath(Path.c_str(), RSF::NO_FILE_CHECK, &location);
+         error = ResolvePath(Path.data(), RSF::NO_FILE_CHECK, &location);
       }
       else error = ERR::Okay;
 
@@ -2713,7 +2713,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
       auto buffer = std::make_unique<char[]>(Path.size()+1);
 
       if (errno IS EEXIST) {
-         log.msg("A folder or file already exists at \"%s\"", Path.c_str());
+         log.msg("A folder or file already exists at \"%s\"", Path.data());
          return ERR::FileExists;
       }
 
@@ -2755,7 +2755,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
    }
    else {
       if ((glForceUID != -1) or (glForceGID != -1)) chown(Path.data(), glForceUID, glForceGID);
-      if (secureflags & (S_ISUID|S_ISGID)) chmod(Path.c_str(), secureflags);
+      if (secureflags & (S_ISUID|S_ISGID)) chmod(Path.data(), secureflags);
    }
 
    return ERR::Okay;
