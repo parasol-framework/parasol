@@ -1212,7 +1212,7 @@ static ERR test_path(std::string &Path, RSF Flags)
 
          Path.pop_back();
          struct stat64 info;
-         auto result = lstat64(Path, &info);
+         auto result = lstat64(Path.c_str(), &info);
          Path.push_back('/');
 
          if (!result) return ERR::Okay;
@@ -1229,15 +1229,16 @@ static ERR test_path(std::string &Path, RSF Flags)
    else {
       // This code handles testing for file locations
 
+      struct stat64 info;
       if ((Flags & RSF::APPROXIMATE) != RSF::NIL) {
          if (findfile(Path) IS ERR::Okay) return ERR::Okay;
       }
-#ifdef __unix__
-      else if (!lstat64(Path, &info)) {
+      #ifdef __unix__
+      else if (!lstat64(Path.c_str(), &info)) {
          if (S_ISDIR(info.st_mode)) Path.append("/");
          return ERR::Okay;
       }
-#else
+      #else
       else if (!access(Path.c_str(), 0)) {
          return ERR::Okay;
       }
@@ -1291,24 +1292,22 @@ struct olddirent {
 ERR findfile(std::string &Path)
 {
    pf::Log log("FindFile");
-   struct stat64 info;
    DIR *dummydir;
-   LONG namelen, len;
-   char save;
 
    if (Path.empty() or Path.starts_with(':')) return ERR::Args;
 
    // Return if the file exists at the specified Path and is not a folder
 
-   if (lstat64(Path, &info) != -1) {
+   struct stat64 info;
+   if (lstat64(Path.c_str(), &info) != -1) {
       if (!S_ISDIR(info.st_mode)) return ERR::Okay;
    }
 
-   for (len=0; Path[len]; len++);
-   while ((len > 0) and (Path[len-1] != ':') and (Path[len-1] != '/') and (Path[len-1] != '\\')) len--;
-   for (namelen=0; Path[len+namelen]; namelen++);
+   auto len = Path.find_last_of(":/\\");
+   if (len IS std::string::npos) len = 0;
+   auto namelen = Path.size() - len;
 
-   save = Path[len];
+   auto save = Path[len];
    Path[len] = 0;
 
    // Scan the files at the Path to find a similar filename (ignore the filename extension).
@@ -1318,25 +1317,22 @@ ERR findfile(std::string &Path)
    log.trace("Scanning Path %s", Path);
 
 #if 1
-
-   struct dirent *entry;
-   DIR *dir;
-
-   if ((dir = opendir(Path))) {
+   if (auto dir = opendir(Path.c_str())) {
       rewinddir(dir);
       Path[len] = save;
 
+      struct dirent *entry;
       while ((entry = readdir(dir))) {
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-         if ((iequals(Path+len, entry->d_name)) and
+         if ((iequals(Path.c_str()+len, entry->d_name)) and
              ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
-            strcopy(entry->d_name, Path+len);
+            strcopy(entry->d_name, Path.data()+len);
 
             // If it turns out that the Path is a folder, ignore it
 
-            if ((dummydir = opendir(Path))) {
+            if ((dummydir = opendir(Path.c_str()))) {
                closedir(dummydir);
                continue;
             }
@@ -2493,11 +2489,11 @@ ERR fs_testpath(std::string &Path, RSF Flags, LOC *Type)
 
       struct stat64 info;
       type = LOC::NIL;
-      if (!stat64(Path, &info)) {
+      if (!stat64(Path.c_str(), &info)) {
          if (S_ISDIR(info.st_mode)) type = LOC::DIRECTORY;
          else type = LOC::FILE;
       }
-      else if (!lstat64(Path, &info)) type = LOC::FILE; // The file is a broken symbolic link
+      else if (!lstat64(Path.c_str(), &info)) type = LOC::FILE; // The file is a broken symbolic link
 
    #elif _WIN32
 

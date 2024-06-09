@@ -258,11 +258,11 @@ static ERR resolve_path_env(std::string_view RelativePath, STRING *Result)
          src.append(RelativePath);
 
          struct stat64 info;
-         if (!stat64(src, &info)) {
+         if (!stat64(src.c_str(), &info)) {
             if (!S_ISDIR(info.st_mode)) { // Successfully identified file location
                if (Result) {
-                  auto true_path = true_path(src.c_str());
-                  if (true_path.has_value()) *Result = strclone(true_path.value());
+                  auto tp = true_path(src.c_str());
+                  if (tp.has_value()) *Result = strclone(tp.value());
                   else *Result = strclone(src);
                }
                return ERR::Okay;
