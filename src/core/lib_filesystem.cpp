@@ -1523,7 +1523,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 {
    pf::Log log(Move ? "MoveFile" : "CopyFile");
 #ifdef __unix__
-   LONG gid, uid, i;
+   LONG gid, uid;
 #endif
    LONG permissions;
    ERR error;
@@ -1721,7 +1721,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
       if (srcdir) src.pop_back();
 
-      if (auto i = readlink(src, linkto, sizeof(linkto)-1); i != -1) {
+      if (auto i = readlink(src.c_str(), linkto, sizeof(linkto)-1); i != -1) {
          linkto[i] = 0;
 
          if ((Callback) and (Callback->defined())) {
@@ -1737,7 +1737,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
             // On failure, it may be possible that precursing folders need to be created for the link.  Do this here and then try
             // creating the link a second time.
 
-            check_paths(dest, PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE);
+            check_paths(dest.c_str(), PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE);
 
             if (!symlink(linkto, dest.c_str())) error = ERR::Okay;
             else {
@@ -1779,7 +1779,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       }
       else return ERR::Okay;
 #else
-      if (rename(src, dest) IS -1) {
+      if (rename(src.c_str(), dest.c_str()) IS -1) {
          // failed - drop through to file copy
       }
       else {
@@ -1798,7 +1798,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          if (glForceGID != -1) gid = glForceGID;
          if (glForceUID != -1) uid = glForceUID;
 
-         if ((uid != -1) or (gid != -1)) chown(dest, uid, gid);
+         if ((uid != -1) or (gid != -1)) chown(dest.c_str(), uid, gid);
 
          return ERR::Okay;
       }
@@ -1813,7 +1813,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          else return ERR::File;
       #else
          DIR *dirhandle;
-         if ((dirhandle = opendir(src))) closedir(dirhandle);
+         if ((dirhandle = opendir(src.c_str()))) closedir(dirhandle);
          else return ERR::File;
       #endif
 
@@ -1838,7 +1838,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
             chown(dest.c_str(), (glForceUID != -1) ? glForceUID : stinfo.st_uid, (glForceGID != -1) ? glForceGID : stinfo.st_gid);
          }
          else {
-            log.warning("stat64() failed for %s", src);
+            log.warning("stat64() failed for %s", src.c_str());
             CreateFolder(dest.c_str(), PERMIT::USER|PERMIT::GROUP);
          }
 #endif
@@ -2055,7 +2055,7 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
                error = CreateFolder(Dest.c_str(), (glDefaultPermissions != PERMIT::NIL) ? glDefaultPermissions : file->Permissions);
 #ifdef __unix__
                if (vdest->is_default()) {
-                  chown(Dest, (glForceUID != -1) ? glForceUID : file->UserID, (glForceGID != -1) ? glForceGID : file->GroupID);
+                  chown(Dest.c_str(), (glForceUID != -1) ? glForceUID : file->UserID, (glForceGID != -1) ? glForceGID : file->GroupID);
                }
 #endif
                if (error IS ERR::FileExists) error = ERR::Okay;
@@ -2133,7 +2133,7 @@ ERR fs_readlink(std::string_view Source, STRING *Link)
 ERR fs_createlink(std::string_view Target, std::string_view Link)
 {
 #ifdef __unix__
-   if (symlink(Link, Target.data()) IS -1) {
+   if (symlink(Link.data(), Target.data()) IS -1) {
       return convert_errno(errno, ERR::CreateFile);
    }
    else return ERR::Okay;
@@ -2645,7 +2645,7 @@ ERR fs_getdeviceinfo(std::string_view Path, objStorageDevice *Info)
 
    if ((Info->DeviceFlags & DEVICE::HARD_DISK) != DEVICE::NIL) {
       if (!location) {
-         error = ResolvePath(Path, RSF::NO_FILE_CHECK, &location);
+         error = ResolvePath(Path.c_str(), RSF::NO_FILE_CHECK, &location);
       }
       else error = ERR::Okay;
 
@@ -2713,7 +2713,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
       auto buffer = std::make_unique<char[]>(Path.size()+1);
 
       if (errno IS EEXIST) {
-         log.msg("A folder or file already exists at \"%s\"", Path);
+         log.msg("A folder or file already exists at \"%s\"", Path.c_str());
          return ERR::FileExists;
       }
 
@@ -2736,7 +2736,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
       }
 
       if (i < std::ssize(Path)) {
-         log.warning("Failed to create folder \"%s\".", Path.c_str());
+         log.warning("Failed to create folder \"%s\".", Path.data());
          return ERR::Failed;
       }
       else if (!Path.ends_with('/')) {
@@ -2744,7 +2744,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
          buffer[i] = 0;
          log.msg("%s", buffer.get());
          if (((err = mkdir(buffer.get(), secureflags)) IS -1) and (errno != EEXIST)) {
-            log.warning("Failed to create folder \"%s\".", Path.c_str());
+            log.warning("Failed to create folder \"%s\".", Path.data());
             return convert_errno(errno, ERR::SystemCall);
          }
          if (!err) {
@@ -2754,7 +2754,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
       }
    }
    else {
-      if ((glForceUID != -1) or (glForceGID != -1)) chown(Path.c_str(), glForceUID, glForceGID);
+      if ((glForceUID != -1) or (glForceGID != -1)) chown(Path.data(), glForceUID, glForceGID);
       if (secureflags & (S_ISUID|S_ISGID)) chmod(Path.c_str(), secureflags);
    }
 
@@ -2887,8 +2887,8 @@ ERR delete_tree(std::string &Path, FUNCTION *Callback, FileFeedback *Feedback)
       }
    }
 
-   if (auto stream = opendir(Path)) {
-      Path.append('/');
+   if (auto stream = opendir(Path.c_str())) {
+      Path.append("/");
       auto folder_len = Path.size();
       error = ERR::Okay;
       rewinddir(stream);
