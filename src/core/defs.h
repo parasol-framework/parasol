@@ -556,28 +556,28 @@ struct ClassRecord {
       char buffer[256];
       LONG size = 0;
       File->read(&size, sizeof(size));
-      if (size < (LONG)sizeof(buffer)) {
+      if (size < std::ssize(buffer)) {
          File->read(buffer, size);
          Name.assign(buffer, size);
       }
       else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
-      if (size < (LONG)sizeof(buffer)) {
+      if (size < std::ssize(buffer)) {
          File->read(buffer, size);
          Path.assign(buffer, size);
       }
       else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
-      if (size < (LONG)sizeof(buffer)) {
+      if (size < std::ssize(buffer)) {
          File->read(buffer, size);
          Match.assign(buffer, size);
       }
       else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
-      if (size < (LONG)sizeof(buffer)) {
+      if (size < std::ssize(buffer)) {
          File->read(buffer, size);
          Header.assign(buffer, size);
       }
@@ -1038,14 +1038,14 @@ void merge_groups(ConfigGroups &, ConfigGroups &);
 extern "C" ERR validate_process(LONG);
 
 #ifdef _WIN32
-   extern "C" ERR open_public_waitlock(WINHANDLE *, CSTRING);
    extern "C" WINHANDLE get_threadlock(void);
-   extern "C" void  free_threadlocks(void);
-   extern "C" ERR wake_waitlock(WINHANDLE, LONG);
-   extern "C" ERR alloc_public_waitlock(WINHANDLE *, const char *Name);
-   extern "C" void  free_public_waitlock(WINHANDLE);
-   extern "C" ERR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
-   extern "C" LONG  sleep_waitlock(WINHANDLE, LONG);
+   extern "C" ERR  open_public_waitlock(WINHANDLE *, CSTRING);
+   extern "C" void free_threadlocks(void);
+   extern "C" ERR  wake_waitlock(WINHANDLE, LONG);
+   extern "C" ERR  alloc_public_waitlock(WINHANDLE *, const char *Name);
+   extern "C" void free_public_waitlock(WINHANDLE);
+   extern "C" ERR  send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
+   extern "C" LONG sleep_waitlock(WINHANDLE, LONG);
 #else
    struct sockaddr_un * get_socket_path(LONG, socklen_t *);
    ERR alloc_public_cond(CONDLOCK *, ALF);

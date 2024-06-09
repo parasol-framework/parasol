@@ -326,12 +326,10 @@ exit:
 
 static ERR PICTURE_Free(extPicture *Self)
 {
-   if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
-   if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
-   if (Self->prvDisclaimer)  { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
-   if (Self->prvFile)        { FreeResource(Self->prvFile); Self->prvFile = NULL; }
-   if (Self->Bitmap)         { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Mask)           { FreeResource(Self->Mask); Self->Mask = NULL; }
+   Self->~extPicture();
+   if (Self->prvFile) { FreeResource(Self->prvFile); Self->prvFile = NULL; }
+   if (Self->Bitmap)  { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
+   if (Self->Mask)    { FreeResource(Self->Mask); Self->Mask = NULL; }
    return ERR::Okay;
 }
 
@@ -358,7 +356,7 @@ static ERR PICTURE_Init(extPicture *Self)
 {
    pf::Log log;
 
-   if ((!Self->prvPath) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
+   if ((Self->prvPath.empty()) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       // If no path has been specified, assume that the picture is being created from scratch (e.g. to save an
       // image to disk).  The programmer is required to specify the dimensions and colours of the Bitmap so that we can
       // initialise it.
@@ -421,7 +419,7 @@ static ERR PICTURE_Init(extPicture *Self)
             else return ERR::NoSupport;
          }
          else {
-            log.warning("Failed to read '%s'", res_path);
+            log.warning("Failed to read '%s'", Self->prvPath.c_str());
             return ERR::File;
          }
       }
@@ -435,14 +433,9 @@ static ERR PICTURE_Init(extPicture *Self)
 
 static ERR PICTURE_NewObject(extPicture *Self)
 {
-   pf::Log log;
-
+   new (Self) extPicture;
    Self->Quality = 80; // 80% quality rating when saving
-
-   if (NewLocalObject(CLASSID::BITMAP, &Self->Bitmap) IS ERR::Okay) {
-      return ERR::Okay;
-   }
-   else return log.warning(ERR::NewObject);
+   return NewLocalObject(CLASSID::BITMAP, &Self->Bitmap);
 }
 
 //********************************************************************************************************************
@@ -859,14 +852,20 @@ Author: The name of the person or company that created the image.
 
 static ERR GET_Author(extPicture *Self, STRING *Value)
 {
-   *Value = Self->prvAuthor;
-   return ERR::Okay;
+   if (!Self->prvAuthor.empty()) {
+      *Value = Self->prvAuthor.data();
+      return ERR::Okay;
+   }
+   else {
+      *Value = NULL;
+      return ERR::FieldNotSet;
+   }
 }
 
 static ERR SET_Author(extPicture *Self, CSTRING Value)
 {
-   if (Value) strcopy(Value, Self->prvAuthor, sizeof(Self->prvAuthor));
-   else Self->prvAuthor[0] = 0;
+   if ((Value) and (*Value)) Self->prvAuthor.assign(Value);
+   else Self->prvAuthor.clear();
    return ERR::Okay;
 }
 
@@ -891,14 +890,20 @@ example `Copyright J. Bloggs (c) 1992.`
 
 static ERR GET_Copyright(extPicture *Self, STRING *Value)
 {
-   *Value = Self->prvCopyright;
-   return ERR::Okay;
+   if (!Self->prvCopyright.empty()) {
+      *Value = Self->prvCopyright.data();
+      return ERR::Okay;
+   }
+   else {
+      *Value = NULL;
+      return ERR::FieldNotSet;
+   }
 }
 
 static ERR SET_Copyright(extPicture *Self, CSTRING Value)
 {
-   if (Value) strcopy(Value, Self->prvCopyright, sizeof(Self->prvCopyright));
-   else Self->prvCopyright[0] = 0;
+   if ((Value) and (*Value)) Self->prvCopyright.assign(Value);
+   else Self->prvCopyright.clear();
    return ERR::Okay;
 }
 
@@ -913,8 +918,8 @@ description.
 
 static ERR GET_Description(extPicture *Self, STRING *Value)
 {
-   if (Self->prvDescription) {
-      *Value = Self->prvDescription;
+   if (!Self->prvDescription.empty()) {
+      *Value = Self->prvDescription.data();
       return ERR::Okay;
    }
    else {
@@ -925,13 +930,8 @@ static ERR GET_Description(extPicture *Self, STRING *Value)
 
 static ERR SET_Description(extPicture *Self, CSTRING Value)
 {
-   pf::Log log;
-
-   if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
-
-   if ((Value) and (*Value)) {
-      if (!(Self->prvDescription = pf::strclone(Value))) return log.warning(ERR::AllocMemory);
-   }
+   if ((Value) and (*Value)) Self->prvDescription.assign(Value);
+   else Self->prvDescription.clear();
    return ERR::Okay;
 }
 
@@ -945,8 +945,8 @@ If it is necessary to associate a disclaimer with an image, the legal text may b
 
 static ERR GET_Disclaimer(extPicture *Self, STRING *Value)
 {
-   if (Self->prvDisclaimer) {
-      *Value = Self->prvDisclaimer;
+   if (!Self->prvDisclaimer.empty()) {
+      *Value = Self->prvDisclaimer.data();
       return ERR::Okay;
    }
    else {
@@ -957,13 +957,8 @@ static ERR GET_Disclaimer(extPicture *Self, STRING *Value)
 
 static ERR SET_Disclaimer(extPicture *Self, CSTRING Value)
 {
-   pf::Log log;
-
-   if (Self->prvDisclaimer) { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
-
-   if ((Value) and (*Value)) {
-      if (!(Self->prvDisclaimer = pf::strclone(Value))) return log.warning(ERR::AllocMemory);
-   }
+   if ((Value) and (*Value)) Self->prvDisclaimer.assign(Value);
+   else Self->prvDisclaimer.clear();
    return ERR::Okay;
 }
 
@@ -1019,8 +1014,8 @@ Path: The location of source image data.
 
 static ERR GET_Path(extPicture *Self, STRING *Value)
 {
-   if (Self->prvPath) {
-      *Value = Self->prvPath;
+   if (!Self->prvPath.empty()) {
+      *Value = Self->prvPath.data();
       return ERR::Okay;
    }
    else {
@@ -1031,13 +1026,8 @@ static ERR GET_Path(extPicture *Self, STRING *Value)
 
 static ERR SET_Path(extPicture *Self, CSTRING Value)
 {
-   pf::Log log;
-
-   if (Self->prvPath) { FreeResource(Self->prvPath); Self->prvPath = NULL; }
-
-   if ((Value) and (*Value)) {
-      if (!(Self->prvPath = pf::strclone(Value))) return log.warning(ERR::AllocMemory);
-   }
+   if ((Value) and (*Value)) Self->prvPath.assign(Value);
+   else Self->prvPath.clear();
    return ERR::Okay;
 }
 
@@ -1069,14 +1059,20 @@ Software: The name of the application that was used to draw the image.
 
 static ERR GET_Software(extPicture *Self, STRING *Value)
 {
-   *Value = Self->prvSoftware;
-   return ERR::Okay;
+   if (!Self->prvPath.empty()) {
+      *Value = Self->prvSoftware.data();
+      return ERR::Okay;
+   }
+   else {
+      *Value = NULL;
+      return ERR::FieldNotSet;
+   }
 }
 
 static ERR SET_Software(extPicture *Self, CSTRING Value)
 {
-   if (Value) strcopy(Value, Self->prvSoftware, sizeof(Self->prvSoftware));
-   else Self->prvSoftware[0] = 0;
+   if ((Value) and (*Value)) Self->prvSoftware.assign(Value);
+   else Self->prvSoftware.clear();
    return ERR::Okay;
 }
 
@@ -1088,14 +1084,20 @@ Title: The title of the image.
 
 static ERR GET_Title(extPicture *Self, STRING *Value)
 {
-   *Value = Self->prvTitle;
-   return ERR::Okay;
+   if (!Self->prvTitle.empty()) {
+      *Value = Self->prvTitle.data();
+      return ERR::Okay;
+   }
+   else {
+      *Value = NULL;
+      return ERR::FieldNotSet;
+   }
 }
 
 static ERR SET_Title(extPicture *Self, CSTRING Value)
 {
-   if (Value) strcopy(Value, Self->prvTitle, sizeof(Self->prvTitle));
-   else Self->prvTitle[0] = 0;
+   if ((Value) and (*Value)) Self->prvTitle.assign(Value);
+   else Self->prvTitle.clear();
    return ERR::Okay;
 }
 
