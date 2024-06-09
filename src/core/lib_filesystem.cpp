@@ -208,41 +208,11 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 }
 
 //********************************************************************************************************************
-// Cleans up path strings such as "../../myfile.txt".  Note that for Linux, the targeted file/folder has to exist or
-// NULL will be returned.
-//
-// The Path must be resolved to the native OS format.
-
-static STRING cleaned_path(CSTRING Path)
-{
-#ifdef _WIN32
-   char buffer[512];
-   if (winGetFullPathName(Path, sizeof(buffer), buffer, NULL) > 0) {
-      STRING p = strclone(buffer);
-      /*LONG i;
-      for (i=0; p[i]; i++) {
-         if (p[i] IS '/') p[i] = '\\';
-      }*/
-      return p;
-   }
-   else return NULL;
-#else
-   char *rp = realpath(Path, NULL);
-   if (rp) {
-      STRING p = strclone(rp);
-      free(rp);
-      return p;
-   }
-   else return NULL;
-#endif
-}
-
-//********************************************************************************************************************
 // Check if a Path refers to a virtual volume, and if so, return the matching virtual_drive definition.
 
-static const virtual_drive * get_virtual(CSTRING Path)
+static const virtual_drive * get_virtual(std::string_view Path)
 {
-   if ((Path[0] IS ':') or (!Path[0])) return &glVirtual[0]; // Root level counts as virtual
+   if (Path.empty() or Path.starts_with(':')) return &glVirtual[0]; // Root level counts as virtual
    auto id = get_volume_id(Path);
    if ((id) and (glVirtual.contains(id))) return &glVirtual[id];
    return NULL;
@@ -394,7 +364,8 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
       if (vd->TestPath) {
          LOC dummy;
          if (!PathType) PathType = &dummy; // Dummy variable, helps to avoid bugs
-         error = vd->TestPath(test_path, RSF::NIL, PathType);
+         auto stp = std::string(test_path);
+         error = vd->TestPath(stp, RSF::NIL, PathType);
       }
       else error = ERR::NoSupport;
 
@@ -1207,24 +1178,14 @@ ERR ReadInfoTag(FileInfo *Info, CSTRING Name, CSTRING *Value)
    return ERR::NotFound;
 }
 
-/*********************************************************************************************************************
-** The Path passed to this function must be a completely resolved path.  Note that the Path argument needs to be a
-** large buffer as this function will modify it.
-*/
+//********************************************************************************************************************
+// The Path passed to this function must be a completely resolved path.
 
-ERR test_path(STRING Path, RSF Flags)
+static ERR test_path(std::string &Path, RSF Flags)
 {
    pf::Log log(__FUNCTION__);
-   LONG len;
-#ifdef _WIN32
-   LONG j;
-#elif __unix__
-   struct stat64 info;
-#endif
 
-   if (!Path) return ERR::NullArgs;
-
-   log.trace("%s", Path);
+   log.trace("%s", Path.c_str());
 
    if (auto vd = get_virtual(Path)) {
       if (vd->TestPath) {
@@ -1239,26 +1200,26 @@ ERR test_path(STRING Path, RSF Flags)
 
 #ifdef _WIN32
    // Convert forward slashes to back slashes
-   for (j=0; Path[j]; j++) if (Path[j] IS '/') Path[j] = '\\';
+   for (LONG j=0; j < std::ssize(Path); j++) if (Path[j] IS '/') Path[j] = '\\';
 #endif
 
-   len = strlen(Path);
-   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) {
+   if (Path.ends_with('/') or Path.ends_with('\\')) {
       // This code handles testing for folder locations
 
       #ifdef __unix__
 
-         if (len IS 1) return ERR::Okay; // Do not lstat() the root '/' folder
+         if (Path.size() IS 1) return ERR::Okay; // Do not lstat() the root '/' folder
 
-         Path[len-1] = 0;
-         LONG result = lstat64(Path, &info);
-         Path[len-1] = '/';
+         Path.pop_back();
+         struct stat64 info;
+         auto result = lstat64(Path, &info);
+         Path.push_back('/');
 
          if (!result) return ERR::Okay;
 
       #elif _WIN32
 
-         if (winCheckDirectoryExists(Path)) return ERR::Okay;
+         if (winCheckDirectoryExists(Path.c_str())) return ERR::Okay;
          else log.trace("Folder does not exist.");
 
       #else
@@ -1273,15 +1234,11 @@ ERR test_path(STRING Path, RSF Flags)
       }
 #ifdef __unix__
       else if (!lstat64(Path, &info)) {
-         if (S_ISDIR(info.st_mode)) {
-            Path[len++] = '/';
-            Path[len] = 0;
-         }
-
+         if (S_ISDIR(info.st_mode)) Path.append("/");
          return ERR::Okay;
       }
 #else
-      else if (!access(Path, 0)) {
+      else if (!access(Path.c_str(), 0)) {
          return ERR::Okay;
       }
       //else log.trace("access() failed.");
@@ -1331,7 +1288,7 @@ struct olddirent {
    char d_name[];              // file name (null-terminated)
 };
 
-ERR findfile(STRING Path)
+ERR findfile(std::string &Path)
 {
    pf::Log log("FindFile");
    struct stat64 info;
@@ -1339,7 +1296,7 @@ ERR findfile(STRING Path)
    LONG namelen, len;
    char save;
 
-   if ((!Path) or (Path[0] IS ':')) return ERR::Args;
+   if (Path.empty() or Path.starts_with(':')) return ERR::Args;
 
    // Return if the file exists at the specified Path and is not a folder
 
@@ -1435,30 +1392,28 @@ ERR findfile(STRING Path)
 
 #elif _WIN32
 
-ERR findfile(STRING Path)
+ERR findfile(std::string &Path)
 {
-   if ((!Path) or (Path[0] IS ':')) return ERR::Args;
+   if (Path.empty() or Path.starts_with(':')) return ERR::Args;
 
    // Find a file with the standard Path
 
-   LONG filehandle;
-   if ((filehandle = open(Path, O_RDONLY|O_LARGEFILE|WIN32OPEN, NULL)) != -1) {
+   if (auto filehandle = open(Path.c_str(), O_RDONLY|O_LARGEFILE|WIN32OPEN, NULL); filehandle != -1) {
       close(filehandle);
       return ERR::Okay;
    }
 
    // Find a file with an extension
 
-   LONG len = strlen(Path);
-   Path[len] = '.';
-   Path[len+1] = '*';
-   Path[len+2] = 0;
+   Path.append(".*");
 
    char buffer[130];
    APTR handle = NULL;
-   if ((handle = winFindFile(Path, &handle, buffer))) {
-      while ((len > 0) and (Path[len-1] != ':') and (Path[len-1] != '/') and (Path[len-1] != '\\')) len--;
-      strcopy(buffer, Path+len);
+   if ((handle = winFindFile(Path.data(), &handle, buffer))) {
+      auto len = Path.find_last_of(":/\\");
+      if (len IS std::string::npos) len = 0;
+      Path.resize(len + 1);
+      Path.append(buffer);
       winFindClose(handle);
       return ERR::Okay;
    }
@@ -2234,21 +2189,6 @@ PERMIT get_parent_permissions(std::string_view Path, LONG *UserID, LONG *GroupID
 }
 
 //********************************************************************************************************************
-// Strips trailing slashes from folder locations.
-
-bool strip_folder(STRING Path)
-{
-   LONG i = strlen(Path);
-   if (i > 1) {
-      if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) {
-         Path[i-1] = 0;
-         return true;
-      }
-   }
-   return false;
-}
-
-//********************************************************************************************************************
 
 ERR fs_readlink(STRING Source, STRING *Link)
 {
@@ -2535,21 +2475,19 @@ ERR fs_rename(STRING CurrentPath, STRING NewPath)
 
 //********************************************************************************************************************
 
-ERR fs_testpath(CSTRING Path, RSF Flags, LOC *Type)
+ERR fs_testpath(std::string &Path, RSF Flags, LOC *Type)
 {
-   LOC type;
-
-   auto len = strlen(Path);
-
-   if (Path[len-1] IS ':') {
+   if (Path.ends_with(':')) {
       STRING str;
-      if (ResolvePath(Path, RSF::NIL, &str) IS ERR::Okay) {
+      if (ResolvePath(Path.c_str(), RSF::NIL, &str) IS ERR::Okay) {
          if (Type) *Type = LOC::VOLUME;
          FreeResource(str);
          return ERR::Okay;
       }
       else return ERR::DoesNotExist;
    }
+   
+   LOC type;
 
    #ifdef __unix__
 
@@ -2563,7 +2501,7 @@ ERR fs_testpath(CSTRING Path, RSF Flags, LOC *Type)
 
    #elif _WIN32
 
-      type = LOC(winTestLocation(Path, ((Flags & RSF::CASE_SENSITIVE) != RSF::NIL) ? true : false));
+      type = LOC(winTestLocation(Path.c_str(), ((Flags & RSF::CASE_SENSITIVE) != RSF::NIL) ? true : false));
 
    #endif
 

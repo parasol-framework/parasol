@@ -201,7 +201,7 @@ using CALL_OPEN_DIR        = ERR (*)(DirInfo*);
 using CALL_RENAME          = ERR (*)(STRING, STRING);
 using CALL_SAME_FILE       = ERR (*)(CSTRING, CSTRING);
 using CALL_SCAN_DIR        = ERR (*)(DirInfo*);
-using CALL_TEST_PATH       = ERR (*)(CSTRING, RSF, LOC *);
+using CALL_TEST_PATH       = ERR (*)(std::string &, RSF, LOC *);
 using CALL_WATCH_PATH      = ERR (*)(extFile*);
 
 ERR VirtualVolume(CSTRING Name, ...)

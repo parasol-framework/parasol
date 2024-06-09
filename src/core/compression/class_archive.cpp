@@ -57,7 +57,7 @@ static ERR close_folder(DirInfo *);
 static ERR open_folder(DirInfo *);
 static ERR get_info(std::string_view, FileInfo *, LONG);
 static ERR scan_folder(DirInfo *);
-static ERR test_path(STRING, RSF, LOC *);
+static ERR test_path(std::string &, RSF, LOC *);
 
 //********************************************************************************************************************
 
@@ -608,11 +608,11 @@ static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
 //********************************************************************************************************************
 // Test an archive: location.
 
-static ERR test_path(STRING Path, RSF Flags, LOC *Type)
+static ERR test_path(std::string &Path, RSF Flags, LOC *Type)
 {
    Log log(__FUNCTION__);
 
-   log.traceBranch("%s", Path);
+   log.traceBranch("%s", Path.c_str());
 
    std::string file_path;
    extCompression *cmp;
@@ -630,9 +630,10 @@ static ERR test_path(STRING Path, RSF Flags, LOC *Type)
       file_path.append(".*");
       if ((error = cmp->find(file_path.c_str(), TRUE, TRUE, &item)) IS ERR::Okay) {
          // Point the path to the discovered item
-         LONG i;
-         for (i=0; (Path[i] != '/') and (Path[i]); i++);
-         if (Path[i] IS '/') strcopy(item->Path, Path + i + 1, MAX_FILENAME);
+         if (auto i = Path.find('/'); i != std::string::npos) {
+            Path.resize(i + 1);
+            Path.append(item->Path);
+         }
       }
    }
 

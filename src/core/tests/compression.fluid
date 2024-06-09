@@ -18,7 +18,7 @@ function testIconArchive()
 
    if not cmp then return end -- Non-existance of the icon archive means this test is skipped
 
-   err = cmp.mtDecompressFile('devices/harddisk.svg', 'temp:cmp_icons/')
+   local err = cmp.mtDecompressFile('devices/harddisk.svg', 'temp:cmp_icons/')
    assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    err = cmp.mtDecompressFile('nature/*', 'temp:cmp_icons/')
@@ -33,7 +33,7 @@ end
 function testCreateCompress()
    local cmp = obj.new('compression', { path='temp:cmp_test_json.zip', flags='!NEW' } )
 
-   err = cmp.mtCompressFile('config:fonts/fixed/clean.fon', '')
+   local err = cmp.mtCompressFile('config:fonts/fixed/clean.fon', '')
    if (err != ERR_Okay) then error('CompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
 
    err = cmp.mtCompressFile('fonts:fonts.cfg', '')
@@ -46,7 +46,7 @@ end
 function testDecompressWild()
    local cmp = obj.new('compression', { path='temp:cmp_test_json.zip' } )
 
-   err = cmp.mtDecompressFile('*.fon', 'temp:')
+   local err = cmp.mtDecompressFile('*.fon', 'temp:')
    assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 end
 
@@ -69,7 +69,7 @@ function testCompressFolder()
       end
    } )
 
-   err = cmp.mtCompressFile('system:scripts/dev/', 'scripts')
+   local err = cmp.mtCompressFile('system:scripts/dev/', 'scripts')
    assert(err == ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    print('Compressed ' .. file_count .. ' files.')
@@ -95,7 +95,7 @@ function testDecompressFolder()
       end
    } )
 
-   err = cmp.mtDecompressFile('*', 'temp:cmp_test/')
+   local err = cmp.mtDecompressFile('*', 'temp:cmp_test/')
    assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
    assert(file_count == glCompressedFiles['COUNT'], 'Decompressed file count of ' .. file_count .. ' != ' .. glCompressedFiles['COUNT'])
 end
@@ -106,13 +106,14 @@ end
 function testStreamedCompression()
    local cmp = obj.new('compression' , { } )
 
-   local file = obj.new('file', { src='fonts:truetype/OpenSans-Regular.ttf', flags='!READ' } )
+   local file = obj.new('file', { src='fonts:truetype/Courier Prime.ttf', flags='!READ' } )
    assert(file, 'Failed to open source file.')
 
    glOutFile = obj.new('file', { src='temp:fonts.gz', flags='!WRITE|NEW' } )
    if nz(glOutFile) then
       if (cmp.mtCompressStreamStart() == ERR_Okay) then
          local input = string.rep(' ', 16384)
+         local err = ERR_Okay
          while (err == ERR_Okay) do
             local len
             err, len = file.acRead(input)
@@ -180,10 +181,11 @@ function testStreamedDecompression()
    local file = obj.new('file', { src='temp:fonts.gz', flags='!READ' } )
    assert(file, 'Failed to open source file.')
 
-   glOutFile = obj.new('file', { src='temp:OpenSans-Regular.ttf', flags='!WRITE|NEW' } )
+   glOutFile = obj.new('file', { src='temp:Courier Prime.ttf', flags='!WRITE|NEW' } )
    if nz(glOutFile) then
       if (cmp.mtDecompressStreamStart() == ERR_Okay) then
          local input = string.rep(' ', 16384)
+         local err = ERR_Okay
          while (err == ERR_Okay) do
             local len
             err, len = file.acRead(input)
