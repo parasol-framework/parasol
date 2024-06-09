@@ -251,24 +251,24 @@ struct ActionSubscription {
 struct virtual_drive {
    ULONG VirtualID;   // Hash name of the volume, not including the trailing colon
    LONG  DriverSize;  // The driver may reserve a private area for its own structure attached to DirInfo.
-   char  Name[32];    // Volume name, including the trailing colon at the end
-   ULONG CaseSensitive:1;
+   std::string Name;  // Volume name, including the trailing colon at the end
+   bool CaseSensitive;
    ERR (*ScanDir)(DirInfo *);
-   ERR (*Rename)(STRING, STRING);
-   ERR (*Delete)(STRING, FUNCTION *);
+   ERR (*Rename)(std::string_view, std::string_view);
+   ERR (*Delete)(std::string_view, FUNCTION *);
    ERR (*OpenDir)(DirInfo *);
    ERR (*CloseDir)(DirInfo *);
-   ERR (*Obsolete)(CSTRING, DirInfo **, LONG);
+   ERR (*Obsolete)(std::string_view, DirInfo **, LONG);
    ERR (*TestPath)(std::string &, RSF, LOC *);
    ERR (*WatchPath)(class extFile *);
    void  (*IgnoreFile)(class extFile *);
    ERR (*GetInfo)(std::string_view, FileInfo *, LONG);
-   ERR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
-   ERR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
-   ERR (*CreateFolder)(CSTRING, PERMIT);
-   ERR (*SameFile)(CSTRING, CSTRING);
-   ERR (*ReadLink)(STRING, STRING *);
-   ERR (*CreateLink)(CSTRING, CSTRING);
+   ERR (*GetDeviceInfo)(std::string_view, objStorageDevice *);
+   ERR (*IdentifyFile)(std::string_view, CLASSID *, CLASSID *);
+   ERR (*CreateFolder)(std::string_view, PERMIT);
+   ERR (*SameFile)(std::string_view, std::string_view);
+   ERR (*ReadLink)(std::string_view, STRING *);
+   ERR (*CreateLink)(std::string_view, std::string_view);
    inline bool is_default() const { return VirtualID IS 0; }
    inline bool is_virtual() const { return VirtualID != 0; }
 };
@@ -959,16 +959,16 @@ extern "C" {
 ERR SetFieldF(OBJECTPTR, FIELD, va_list);
 
 ERR fs_closedir(DirInfo *);
-ERR fs_createlink(CSTRING, CSTRING);
-ERR fs_delete(STRING, FUNCTION *);
+ERR fs_createlink(std::string_view, std::string_view);
+ERR fs_delete(std::string_view, FUNCTION *);
 ERR fs_getinfo(std::string_view, FileInfo *, LONG);
-ERR fs_getdeviceinfo(CSTRING, objStorageDevice *);
+ERR fs_getdeviceinfo(std::string_view, objStorageDevice *);
 void  fs_ignore_file(class extFile *);
-ERR fs_makedir(CSTRING, PERMIT);
+ERR fs_makedir(std::string_view, PERMIT);
 ERR fs_opendir(DirInfo *);
-ERR fs_readlink(STRING, STRING *);
-ERR fs_rename(STRING, STRING);
-ERR fs_samefile(CSTRING, CSTRING);
+ERR fs_readlink(std::string_view, STRING *);
+ERR fs_rename(std::string_view, std::string_view);
+ERR fs_samefile(std::string_view, std::string_view);
 ERR fs_scandir(DirInfo *);
 ERR fs_testpath(std::string &, RSF, LOC *);
 ERR fs_watch_path(class extFile *);
@@ -978,8 +978,8 @@ void  free_storage_class(void);
 
 ERR  convert_zip_error(struct z_stream_s *, LONG);
 ERR  check_cache(OBJECTPTR, LARGE, LARGE);
-ERR  fs_copy(std::string_view, std::string_view, FUNCTION *, BYTE);
-ERR  fs_copydir(STRING, STRING, FileFeedback *, FUNCTION *, BYTE);
+ERR  fs_copy(std::string_view, std::string_view, FUNCTION *, bool);
+ERR  fs_copydir(std::string &, std::string &, FileFeedback *, FUNCTION *, BYTE);
 PERMIT get_parent_permissions(std::string_view, LONG *, LONG *);
 ERR  load_datatypes(void);
 ERR  RenameVolume(CSTRING, CSTRING);
@@ -988,8 +988,8 @@ PERMIT convert_fs_permissions(LONG);
 LONG convert_permissions(PERMIT);
 void set_memory_manager(APTR, ResourceManager *);
 ERR  get_file_info(std::string_view, FileInfo *, LONG);
-extern "C" ERR  convert_errno(LONG Error, ERR Default);
-void   free_file_cache(void);
+extern "C" ERR convert_errno(LONG Error, ERR Default);
+void free_file_cache(void);
 
 __export void Expunge(WORD);
 
@@ -1001,41 +1001,41 @@ CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 #ifndef PARASOL_STATIC
 APTR   build_jump_table(const Function *);
 #endif
-ERR  copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
-ERR  copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
-ERR  create_archive_volume(void);
-ERR  delete_tree(STRING, LONG, FUNCTION *, FileFeedback *);
+ERR    copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
+ERR    copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
+ERR    create_archive_volume(void);
+ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
-ERR  find_private_object_entry(OBJECTID, LONG *);
+ERR    find_private_object_entry(OBJECTID, LONG *);
 void   free_events(void);
 void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
-ERR  init_sleep(LONG, LONG, LONG);
+ERR    init_sleep(LONG, LONG, LONG);
 void   local_free_args(APTR, const FunctionField *);
 Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
-ERR  msg_event(APTR, LONG, LONG, APTR, LONG);
-ERR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
-ERR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);
-ERR  msg_free(APTR, LONG, LONG, APTR, LONG);
+ERR    msg_event(APTR, LONG, LONG, APTR, LONG);
+ERR    msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
+ERR    msg_threadaction(APTR, LONG, LONG, APTR, LONG);
+ERR    msg_free(APTR, LONG, LONG, APTR, LONG);
 void   optimise_write_field(Field &);
 void   PrepareSleep(void);
-ERR  process_janitor(OBJECTID, LONG, LONG);
+ERR    process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
-ERR  resolve_args(APTR, const FunctionField *);
+ERR    resolve_args(APTR, const FunctionField *);
 
 #ifndef PARASOL_STATIC
 void   scan_classes(void);
 #endif
 
-void   remove_threadpool(void);
+void remove_threadpool(void);
 ERR  threadpool_get(extThread **);
-void   threadpool_release(extThread *);
+void threadpool_release(extThread *);
 ERR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
-extern "C" ERR validate_process(LONG);
 ERR  check_paths(CSTRING, PERMIT);
-void   merge_groups(ConfigGroups &, ConfigGroups &);
+void merge_groups(ConfigGroups &, ConfigGroups &);
+extern "C" ERR validate_process(LONG);
 
 #ifdef _WIN32
    extern "C" ERR open_public_waitlock(WINHANDLE *, CSTRING);

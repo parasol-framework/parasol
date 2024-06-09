@@ -1782,33 +1782,29 @@ extern "C" LONG winTestLocation(STRING Location, BYTE CaseSensitive)
 }
 
 //********************************************************************************************************************
+// The Path must not include a trailing slash.
 
-extern "C" ERR delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
+extern "C" ERR delete_tree(std::string &Path, int Size, struct FileFeedback *Feedback)
 {
-   LONG len, cont, i;
-   WIN32_FIND_DATA find;
-   HANDLE handle;
-
    if (Feedback) {
-      Feedback->Path = Path;
-      i = CALL_FEEDBACK(Feedback);
+      Feedback->Path = Path.data();
+      auto i = CALL_FEEDBACK(Feedback);
       if (i IS FFR_ABORT) return ERR::Cancelled;
       else if (i IS FFR_SKIP) return ERR::Okay;
    }
 
-   for (len=0; Path[len]; len++);
-   Path[len] = '\\';
-   Path[len+1] = '*';
-   Path[len+2] = 0;
+   WIN32_FIND_DATA find;
+   Path.append("\\*");
+   auto handle = FindFirstFile(Path.c_str(), &find);
+   Path.pop_back();
 
-   if ((handle = FindFirstFile(Path, &find)) != INVALID_HANDLE_VALUE) {
-      cont = 1;
+   if (handle != INVALID_HANDLE_VALUE) {
+      LONG cont = 1;
       while (cont) {
          if ((find.cFileName[0] IS '.') and (find.cFileName[1] IS 0));
          else if ((find.cFileName[0] IS '.') and (find.cFileName[1] IS '.') and (find.cFileName[2] IS 0));
          else {
-            for (i=0; find.cFileName[i]; i++) Path[len+1+i] = find.cFileName[i];
-            Path[len+1+i] = 0;
+            Path.append(find.cFileName);
 
             if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                delete_tree(Path, Size, Feedback);
@@ -1816,10 +1812,10 @@ extern "C" ERR delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
             else {
                if (find.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
                   find.dwFileAttributes &= ~FILE_ATTRIBUTE_READONLY;
-                  SetFileAttributes(Path, find.dwFileAttributes);
+                  SetFileAttributes(Path.c_str(), find.dwFileAttributes);
                }
 
-               unlink(Path); // Delete a file or empty folder
+               unlink(Path.c_str()); // Delete a file or empty folder
             }
          }
 
@@ -1829,23 +1825,23 @@ extern "C" ERR delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
       FindClose(handle);
    }
 
-   Path[len] = 0;
+   Path.pop_back();
 
    // Remove the file/folder itself - first check if it is read-only
 
-   auto attrib = GetFileAttributes(Path);
+   auto attrib = GetFileAttributes(Path.c_str());
    if (attrib != INVALID_FILE_ATTRIBUTES) {
       if (attrib & FILE_ATTRIBUTE_READONLY) {
          attrib &= ~FILE_ATTRIBUTE_READONLY;
-         SetFileAttributes(Path, attrib);
+         SetFileAttributes(Path.c_str(), attrib);
       }
    }
 
    if (attrib & FILE_ATTRIBUTE_DIRECTORY) {
-      if (RemoveDirectory(Path)) return ERR::Okay;
+      if (RemoveDirectory(Path.c_str())) return ERR::Okay;
       else return ERR::Failed;
    }
-   else if (!unlink(Path)) {
+   else if (!unlink(Path.c_str())) {
       return ERR::Okay;
    }
    else {

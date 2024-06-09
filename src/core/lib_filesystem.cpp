@@ -444,14 +444,35 @@ ERR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    return error;
 }
 
+// In this variant it is assumed that the paths are already resolved.
+
+static ERR CompareResolvedPaths(std::string_view PathA, std::string_view PathB)
+{
+   const auto v1 = get_fs(PathA);
+   const auto v2 = get_fs(PathB);
+
+   ERR error;
+   if ((!v1->CaseSensitive) and (!v2->CaseSensitive)) error = iequals(PathA, PathB) ? ERR::True : ERR::False;
+   else error = (std::string_view(PathA) IS std::string_view(PathB)) ? ERR::True : ERR::False;
+
+   if (error != ERR::Okay) {
+      if (v1 IS v2) { // Ask the virtual FS if the paths match
+         if (v1->SameFile) return v1->SameFile(PathA, PathB);
+         else return ERR::False; // Assume the earlier string comparison is sufficient
+      }
+      else return ERR::False;
+   }
+   return error;
+}
+
 //********************************************************************************************************************
 
-ERR fs_samefile(CSTRING Path1, CSTRING Path2)
+ERR fs_samefile(std::string_view Path1, std::string_view Path2)
 {
 #ifdef __unix__
    struct stat64 stat1, stat2;
 
-   if ((!stat64(Path1, &stat1)) and (!stat64(Path2, &stat2))) {
+   if ((!stat64(Path1.data(), &stat1)) and (!stat64(Path2.data(), &stat2))) {
       if ((stat1.st_ino IS stat2.st_ino)
             and (stat1.st_dev IS stat2.st_dev)
             and (stat1.st_mode IS stat2.st_mode)
@@ -1229,7 +1250,10 @@ static ERR test_path(std::string &Path, RSF Flags)
    else {
       // This code handles testing for file locations
 
+      #ifdef __unix__
       struct stat64 info;
+      #endif
+
       if ((Flags & RSF::APPROXIMATE) != RSF::NIL) {
          if (findfile(Path) IS ERR::Okay) return ERR::Okay;
       }
@@ -1239,11 +1263,9 @@ static ERR test_path(std::string &Path, RSF Flags)
          return ERR::Okay;
       }
       #else
-      else if (!access(Path.c_str(), 0)) {
-         return ERR::Okay;
-      }
+      else if (!access(Path.c_str(), 0)) return ERR::Okay;
       //else log.trace("access() failed.");
-#endif
+      #endif
    }
 
    return ERR::FileNotFound;
@@ -1497,82 +1519,61 @@ ERR check_paths(CSTRING Path, PERMIT Permissions)
 //********************************************************************************************************************
 // This low level function is used for copying/moving/renaming files and folders.
 
-ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, BYTE Move)
+ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, bool Move)
 {
    pf::Log log(Move ? "MoveFile" : "CopyFile");
 #ifdef __unix__
-   struct stat64 stinfo;
-   PERMIT parentpermissions;
    LONG gid, uid, i;
 #endif
-#ifdef _WIN32
-   LONG handle;
-#else
-   LONG handle;
-#endif
-   STRING src, tmp;
-   LONG permissions, dhandle, len;
-   LONG srclen;
-   char dest[2000];
-   bool srcdir;
+   LONG permissions;
    ERR error;
 
    if ((Source.empty()) or (Dest.empty())) return log.warning(ERR::NullArgs);
 
    log.traceBranch("\"%s\" to \"%s\"", Source.data(), Dest.data());
 
-   if ((error = ResolvePath(Source.data(), RSF::NIL, &src)) != ERR::Okay) {
-      return ERR::FileNotFound;
+   std::string src;
+   STRING tmp;
+   if ((error = ResolvePath(Source.data(), RSF::NIL, &tmp)) IS ERR::Okay) {
+      src.assign(tmp);
+      FreeResource(tmp);
    }
+   else return ERR::FileNotFound;
 
-   if ((error = ResolvePath(Dest.data(), RSF::NO_FILE_CHECK, &tmp)) != ERR::Okay) {
-      FreeResource(src);
-      return ERR::ResolvePath;
+   std::string dest;
+   if ((error = ResolvePath(Dest.data(), RSF::NO_FILE_CHECK, &tmp)) IS ERR::Okay) {
+      dest.assign(tmp);
+      FreeResource(tmp);
    }
+   else return ERR::ResolvePath;
 
    const virtual_drive *srcvirtual  = get_fs(src);
    const virtual_drive *destvirtual = get_fs(tmp);
 
-   LONG destlen = strcopy(tmp, dest, sizeof(dest));
-   FreeResource(tmp);
-
-   // Check if the source is a folder
-
-   for (srclen=0; src[srclen]; srclen++);
-   if ((src[srclen-1] IS '/') or (src[srclen-1] IS '\\')) srcdir = true;
-   else srcdir = false;
+   bool srcdir = (src.ends_with('/') or src.ends_with('\\'));
 
    // If the destination is a folder, we need to copy the name of the source to create the new file or dir.
 
-   if ((dest[destlen-1] IS '/') or (dest[destlen-1] IS '\\') or (dest[destlen-1] IS ':')) {
-      len = srclen;
-      if ((src[len-1] IS '/') or (src[len-1] IS '\\') or (src[len-1] IS ':')) len--;
-      while ((len > 0) and (src[len-1] != '/') and (src[len-1] != '\\') and (src[len-1] != ':')) len--;
-
-      while (((size_t)destlen < sizeof(dest)-1) and (src[len]) and (src[len] != '/') and (src[len] != '\\')) dest[destlen++] = src[len++];
-      dest[destlen] = 0;
+   if (dest.ends_with('/') or dest.ends_with('\\') or dest.ends_with(':')) {
+      if (src.ends_with('/') or src.ends_with('\\') or src.ends_with(':')) src.pop_back();
+      auto len = src.find_last_of("/\\:");
+      dest.append(src, len, std::string::npos);
    }
 
-   if ((size_t)destlen >= sizeof(dest)) {
-      error = ERR::BufferOverflow;
-      goto exit;
-   }
+   log.trace("Copy: %s TO %s", src.c_str(), dest.c_str());
 
-   log.trace("Copy: %s TO %s", src, dest);
-
-   if (CompareFilePaths(src, dest) IS ERR::Okay) {
+   if (CompareResolvedPaths(src, dest) IS ERR::Okay) {
       log.trace("The source and destination refer to the same location.");
       if (Move) return ERR::IdenticalPaths; // Move fails if source and dest are identical, since the source is not deleted
       else return ERR::Okay; // Copy succeeds if source and dest are identical
    }
 
    FileFeedback feedback;
-   clearmem(&feedback, sizeof(feedback));
    if (Move) feedback.FeedbackID = FBK::MOVE_FILE;
    else feedback.FeedbackID = FBK::COPY_FILE;
 
-   feedback.Path = src;
-   feedback.Dest = dest;
+   feedback.Path = src.data();
+   feedback.Dest = dest.data();
 
    if (srcvirtual->is_virtual() or destvirtual->is_virtual()) {
       log.trace("Using virtual copy routine.");
@@ -1585,14 +1586,10 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          if ((Move) and (srcvirtual IS destvirtual)) {
             // If the source and destination use the same virtual volume, execute the move method.
             fl::Move args = { Dest.data(), NULL };
-            error = Action(fl::Move::id, *srcfile, &args);
-            goto exit;
+            return Action(fl::Move::id, *srcfile, &args);
          }
       }
-      else {
-         error = ERR::FileNotFound;
-         goto exit;
-      }
+      else return ERR::FileNotFound;
 
       extFile::create destfile = {
          fl::Path(Dest.data()),
@@ -1600,46 +1597,38 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          fl::Permissions(srcfile->Permissions)
       };
 
-      if (!destfile.ok()) {
-         error = ERR::CreateFile;
-         goto exit;
-      }
+      if (!destfile.ok()) return ERR::CreateFile;
 
       // Folder copy
 
       if ((srcfile->Flags & FL::FOLDER) != FL::NIL) {
-         char srcbuffer[2000];
-
-         if ((destfile->Flags & FL::FOLDER) IS FL::NIL) {
-            // You cannot copy from a folder to a file
-            error = ERR::Mismatch;
-            goto exit;
+         if ((destfile->Flags & FL::FOLDER) IS FL::NIL) { // You cannot copy from a folder to a file
+            return ERR::Mismatch;
          }
 
-         srclen = strcopy(src, srcbuffer, sizeof(srcbuffer));
+         std::string srcbuffer(src);
 
          // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
-         if (srclen <= destlen) {
+         if (src.size() <= dest.size()) {
             if (pf::startswith(src, dest)) {
-               log.warning("The requested copy would cause recursion.");
-               error = ERR::Loop;
-               goto exit;
+               log.warning("The copy operation would cause recursion.");
+               return ERR::Loop;
             }
          }
 
          // Create the destination folder, then copy the source folder across using a recursive routine.
 
-         if (glDefaultPermissions != PERMIT::NIL) CreateFolder(dest, glDefaultPermissions);
-         else CreateFolder(dest, PERMIT::USER|PERMIT::GROUP);
+         if (glDefaultPermissions != PERMIT::NIL) CreateFolder(dest.c_str(), glDefaultPermissions);
+         else CreateFolder(dest.c_str(), PERMIT::USER|PERMIT::GROUP);
 
          if ((error = fs_copydir(srcbuffer, dest, &feedback, Callback, Move)) IS ERR::Okay) {
             // Delete the source if we are moving folders
-            if (Move) error = DeleteFile(srcbuffer, NULL);
+            if (Move) return DeleteFile(srcbuffer.c_str(), NULL);
          }
          else log.warning("Folder copy process failed, error %d.", LONG(error));
 
-         goto exit;
+         return error;
       }
 
       // Standard file copy
@@ -1648,143 +1637,125 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
       // Use a reasonably small read buffer so that we can provide continuous feedback
 
-      LONG bufsize = ((Callback) and (Callback->defined())) ? 65536 : 65536 * 2;
+      const LONG bufsize = ((Callback) and (Callback->defined())) ? 65536 : 65536 * 2;
 
       // This routine is designed to handle streams - where either the source is a stream or the destination is a stream.
 
-      APTR data;
+      std::vector<BYTE> data(bufsize);
       error = ERR::Okay;
-      if (AllocMemory(bufsize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, NULL) IS ERR::Okay) {
-         #define STREAM_TIMEOUT (10000LL)
-
-         LARGE time = (PreciseTime() / 1000LL);
-         while (srcfile->Position < srcfile->Size) {
-            error = srcfile->read(data, bufsize, &len);
-            if (error != ERR::Okay) {
-               log.warning("acRead() failed: %s", GetErrorMsg(error));
-               break;
-            }
-
-            feedback.Position += len;
-
-            if (len) {
-               time = (PreciseTime() / 1000LL);
-            }
-            else {
-               log.msg("Failed to read any data, position %" PF64 " / %" PF64 ".", srcfile->Position, srcfile->Size);
-
-               if ((PreciseTime() / 1000LL) - time > STREAM_TIMEOUT) {
-                  log.warning("Timeout - stopped reading at offset %" PF64 " of %" PF64 "", srcfile->Position, srcfile->Size);
-                  error = ERR::TimeOut;
-                  break;
-               }
-            }
-
-            // Write the data
-
-            while (len > 0) {
-               LONG result;
-               if ((error = acWrite(*destfile, data, len, &result)) != ERR::Okay) {
-                  error = ERR::Write;
-                  break;
-               }
-
-               if (result) time = (PreciseTime() / 1000LL);
-               else if ((PreciseTime() / 1000LL) - time > STREAM_TIMEOUT) {
-                  log.warning("Timeout - failed to write remaining %d bytes.", len);
-                  error = ERR::TimeOut;
-                  break;
-               }
-
-               len -= result;
-               if ((destfile->Flags & FL::STREAM) != FL::NIL) {
-
-               }
-               else if (len > 0) {
-                  log.warning("Out of space - wrote %d bytes, %d left.", result, len);
-                  error = ERR::OutOfSpace;
-                  break;
-               }
-
-               if (len > 0) ProcessMessages(PMF::NIL, 0);
-            }
-
-            if (error != ERR::Okay) break;
-
-            if ((Callback) and (Callback->defined())) {
-               if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
-
-               FFR result = CALL_FEEDBACK(Callback, &feedback);
-
-               if (result IS FFR::ABORT) { error = ERR::Cancelled; break; }
-               else if (result IS FFR::SKIP) break;
-            }
-
-            ProcessMessages(PMF::NIL, 0);
+      const LARGE STREAM_TIMEOUT = 10000LL;
+      LARGE time = PreciseTime() / 1000LL;
+      while (srcfile->Position < srcfile->Size) {
+         LONG len;
+         error = srcfile->read(data.data(), bufsize, &len);
+         if (error != ERR::Okay) {
+            log.warning("acRead() failed: %s", GetErrorMsg(error));
+            return error;
          }
 
-         FreeResource(data);
-      }
-      else error = log.warning(ERR::AllocMemory);
+         feedback.Position += len;
 
-      if ((Move) and (error IS ERR::Okay)) {
-         Action(fl::Delete::id, *srcfile, NULL);
-      }
+         if (len) time = PreciseTime() / 1000LL;
+         else {
+            log.msg("Failed to read any data, position %" PF64 " / %" PF64 ".", srcfile->Position, srcfile->Size);
 
-      goto exit;
+            if ((PreciseTime() / 1000LL) - time > STREAM_TIMEOUT) {
+               log.warning("Timeout - stopped reading at offset %" PF64 " of %" PF64 "", srcfile->Position, srcfile->Size);
+               return ERR::TimeOut;
+            }
+         }
+
+         // Write the data
+
+         while (len > 0) {
+            LONG result;
+            if (acWrite(*destfile, data.data(), len, &result) != ERR::Okay) return ERR::Write;
+
+            if (result) time = (PreciseTime() / 1000LL);
+            else if ((PreciseTime() / 1000LL) - time > STREAM_TIMEOUT) {
+               log.warning("Timeout - failed to write remaining %d bytes.", len);
+               return ERR::TimeOut;
+            }
+
+            len -= result;
+            if ((destfile->Flags & FL::STREAM) != FL::NIL) {
+
+            }
+            else if (len > 0) {
+               log.warning("Out of space - wrote %d bytes, %d left.", result, len);
+               return ERR::OutOfSpace;
+            }
+
+            if (len > 0) ProcessMessages(PMF::NIL, 0);
+         } // while()
+
+         if ((Callback) and (Callback->defined())) {
+            if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
+            FFR result = CALL_FEEDBACK(Callback, &feedback);
+            if (result IS FFR::ABORT) return ERR::Cancelled;
+            else if (result IS FFR::SKIP) break;
+         }
+
+         ProcessMessages(PMF::NIL, 0);
+      } // while()
+
+      if ((Move) and (error IS ERR::Okay)) Action(fl::Delete::id, *srcfile, NULL);
+
+      return error;
    }
 
 #ifdef __unix__
    // This code manages symbolic links
 
+   struct stat64 stinfo;
    LONG result;
    if (srcdir) {
-      src[srclen-1] = 0;
-      result = lstat64(src, &stinfo);
-      src[srclen-1] = '/';
+      src.pop_back();
+      result = lstat64(src.c_str(), &stinfo);
+      src.append("/");
    }
-   else result = lstat64(src, &stinfo);
+   else result = lstat64(src.c_str(), &stinfo);
 
    if ((!result) and (S_ISLNK(stinfo.st_mode))) {
       BYTE linkto[512];
 
-      if (srcdir) src[srclen-1] = 0;
+      if (srcdir) src.pop_back();
 
-      if ((i = readlink(src, linkto, sizeof(linkto)-1)) != -1) {
+      if (auto i = readlink(src, linkto, sizeof(linkto)-1); i != -1) {
          linkto[i] = 0;
 
          if ((Callback) and (Callback->defined())) {
             FFR result = CALL_FEEDBACK(Callback, &feedback);
-            if (result IS FFR::ABORT) { error = ERR::Cancelled; goto exit; }
-            else if (result IS FFR::SKIP) { error = ERR::Okay; goto exit; }
+            if (result IS FFR::ABORT) return ERR::Cancelled;
+            else if (result IS FFR::SKIP) return ERR::Okay;
          }
 
-         unlink(dest); // Remove any existing file first
+         unlink(dest.c_str()); // Remove any existing file first
 
-         if (!symlink(linkto, dest)) error = ERR::Okay;
+         if (!symlink(linkto, dest.c_str())) return ERR::Okay;
          else {
             // On failure, it may be possible that precursing folders need to be created for the link.  Do this here and then try
             // creating the link a second time.
 
             check_paths(dest, PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE);
 
-            if (!symlink(linkto, dest)) error = ERR::Okay;
+            if (!symlink(linkto, dest.c_str())) error = ERR::Okay;
             else {
-               log.warning("Failed to create link \"%s\"", dest);
-               error = ERR::CreateFile;
+               log.warning("Failed to create link \"%s\"", dest.c_str());
+               return ERR::CreateFile;
             }
          }
       }
       else {
-        log.warning("Failed to read link \"%s\"", src);
-        error = ERR::Read;
+        log.warning("Failed to read link \"%s\"", src.c_str());
+        return ERR::Read;
       }
 
       if ((Move) and (error IS ERR::Okay)) { // Delete the source
-         error = DeleteFile(src, NULL);
+         return DeleteFile(src.c_str(), NULL);
       }
 
-      goto exit;
+      return error;
    }
 
    feedback.Size = stinfo.st_size;
@@ -1798,15 +1769,15 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
       if ((Callback) and (Callback->defined())) {
          FFR result = CALL_FEEDBACK(Callback, &feedback);
-         if (result IS FFR::ABORT) { error = ERR::Cancelled; goto exit; }
-         else if (result IS FFR::SKIP) goto exit;
+         if (result IS FFR::ABORT) return ERR::Cancelled;
+         else if (result IS FFR::SKIP) return ERR::Okay;
       }
 
 #ifdef _WIN32
-      if (rename(src, dest)) {
+      if (rename(src.c_str(), dest.c_str())) {
          // failed - drop through to file copy
       }
-      else goto exit; // success
+      else return ERR::Okay;
 #else
       if (rename(src, dest) IS -1) {
          // failed - drop through to file copy
@@ -1816,7 +1787,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
          // Move successful.  Now assign the user and group id's from the parent folder to the file.
 
-         parentpermissions = get_parent_permissions(dest, &parent_uid, &parent_gid) & (~PERMIT::ALL_EXEC);
+         auto parentpermissions = get_parent_permissions(dest, &parent_uid, &parent_gid) & (~PERMIT::ALL_EXEC);
 
          gid = -1;
          uid = -1;
@@ -1829,99 +1800,87 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
          if ((uid != -1) or (gid != -1)) chown(dest, uid, gid);
 
-         goto exit; // success
+         return ERR::Okay;
       }
 #endif
    }
 
    if (srcdir) {
-      char srcbuffer[2000];
-
       // The source location is expressed as a folder string.  Confirm that the folder exists before continuing.
 
       #ifdef _WIN32
-         if (winCheckDirectoryExists(src));
-         else {
-            error = ERR::File;
-            goto exit;
-         }
+         if (winCheckDirectoryExists(src.c_str()));
+         else return ERR::File;
       #else
          DIR *dirhandle;
-         if ((dirhandle = opendir(src))) {
-            closedir(dirhandle);
-         }
-         else {
-            error = ERR::File;
-            goto exit;
-         }
+         if ((dirhandle = opendir(src))) closedir(dirhandle);
+         else return ERR::File;
       #endif
-
-      srclen = strcopy(src, srcbuffer, sizeof(srcbuffer));
 
       // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
-      if (srclen <= destlen) {
+      if (src.size() <= dest.size()) {
          if (pf::startswith(src, dest)) {
             log.warning("The requested copy would cause recursion.");
-            error = ERR::Loop;
-            goto exit;
+            return ERR::Loop;
          }
       }
 
       // Create the destination folder, then copy the source folder across using a recursive routine.
 
-      if (glDefaultPermissions != PERMIT::NIL) CreateFolder(dest, glDefaultPermissions);
+      if (glDefaultPermissions != PERMIT::NIL) CreateFolder(dest.c_str(), glDefaultPermissions);
       else {
 #ifdef _WIN32
-         CreateFolder(dest, PERMIT::USER|PERMIT::GROUP);
+         CreateFolder(dest.c_str(), PERMIT::USER|PERMIT::GROUP);
 #else
-         if (stat64(src, &stinfo) != -1) {
-            CreateFolder(dest, convert_fs_permissions(stinfo.st_mode));
-            chown(dest, (glForceUID != -1) ? glForceUID : stinfo.st_uid, (glForceGID != -1) ? glForceGID : stinfo.st_gid);
+         if (stat64(src.c_str(), &stinfo) != -1) {
+            CreateFolder(dest.c_str(), convert_fs_permissions(stinfo.st_mode));
+            chown(dest.c_str(), (glForceUID != -1) ? glForceUID : stinfo.st_uid, (glForceGID != -1) ? glForceGID : stinfo.st_gid);
          }
          else {
             log.warning("stat64() failed for %s", src);
-            CreateFolder(dest, PERMIT::USER|PERMIT::GROUP);
+            CreateFolder(dest.c_str(), PERMIT::USER|PERMIT::GROUP);
          }
 #endif
       }
 
+      std::string srcbuffer(src);
       if ((error = fs_copydir(srcbuffer, dest, &feedback, Callback, Move)) IS ERR::Okay) {
          // Delete the source if we are moving folders
-         if (Move) error = DeleteFile(srcbuffer, NULL);
+         if (Move) return DeleteFile(srcbuffer.c_str(), NULL);
       }
       else log.warning("Folder copy process failed, error %d.", LONG(error));
 
-      goto exit;
+      return error;
    }
 
    if (!Move) { // (If Move is enabled, we would have already sent feedback during the earlier rename() attempt
       if ((Callback) and (Callback->defined())) {
          FFR result = CALL_FEEDBACK(Callback, &feedback);
-         if (result IS FFR::ABORT) { error = ERR::Cancelled; goto exit; }
-         else if (result IS FFR::SKIP) { error = ERR::Okay; goto exit; }
+         if (result IS FFR::ABORT) return ERR::Cancelled;
+         else if (result IS FFR::SKIP) return ERR::Okay;
       }
    }
 
-   if ((handle = open(src, O_RDONLY|O_NONBLOCK|WIN32OPEN|O_LARGEFILE, NULL)) != -1) {
+   if (LONG handle = open(src.c_str(), O_RDONLY|O_NONBLOCK|WIN32OPEN|O_LARGEFILE, NULL); handle != -1) {
+      auto dc_handle = deferred_call([&handle] { close(handle); });
 
       // Get permissions of the source file to apply to the destination file
 
-#ifdef _WIN32
+      #ifdef _WIN32
       if (glDefaultPermissions != PERMIT::NIL) {
          if ((glDefaultPermissions & PERMIT::INHERIT) != PERMIT::NIL) {
-            //LONG parentpermissions;
-            //parentpermissions = get_parent_permissions(dest, NULL, NULL) & (~PERMIT::ALL_EXEC);
+            //auto parentpermissions = get_parent_permissions(dest, NULL, NULL) & (~PERMIT::ALL_EXEC);
             //permissions = convert_permissions((parentpermissions & (~(PERMIT::USERID|PERMIT::GROUPID))) | glDefaultPermissions);
-             permissions = S_IREAD|S_IWRITE;
+            permissions = S_IREAD|S_IWRITE;
          }
          else permissions = convert_permissions(glDefaultPermissions);
       }
       else permissions = S_IREAD|S_IWRITE;
 
-      winFileInfo(src, &feedback.Size, NULL, NULL);
-#else
-      parentpermissions = get_parent_permissions(dest, NULL, NULL) & (~PERMIT::ALL_EXEC);
+      winFileInfo(src.c_str(), &feedback.Size, NULL, NULL);
+      #else
+      auto parentpermissions = get_parent_permissions(dest, NULL, NULL) & (~PERMIT::ALL_EXEC);
       if (glDefaultPermissions != PERMIT::NIL) {
          if ((glDefaultPermissions & PERMIT::INHERIT) != PERMIT::NIL) {
             permissions = convert_permissions((parentpermissions & (~(PERMIT::USERID|PERMIT::GROUPID))) | glDefaultPermissions);
@@ -1934,35 +1893,32 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       }
 
       feedback.Size = stinfo.st_size;
-#endif
+      #endif
 
       // Delete any existing destination file first so that we can give it new permissions.
       // This will also help when assessing the amount of free space on the destination device.
 
-#if defined(__unix__) || defined(_WIN32)
-      unlink(dest);
-#else
-      DeleteFile(dest, NULL);
-#endif
+      #if defined(__unix__) || defined(_WIN32)
+      unlink(dest.c_str());
+      #else
+      DeleteFile(dest.c_str(), NULL);
+      #endif
 
       // Check if there is enough room to copy this file to the destination
 
       objStorageDevice::create device = { fl::Volume(dest) };
       if (device.ok()) {
-         if (device->BytesFree >= 0) {
-            if (device->BytesFree - 1024LL <= feedback.Size) {
-               close(handle);
-               log.warning("Not enough space on device (%" PF64 "/%" PF64 " < %" PF64 ")", device->BytesFree, device->DeviceSize, (LARGE)feedback.Size);
-               error = ERR::OutOfSpace;
-               goto exit;
-            }
+         if ((device->BytesFree >= 0) and (device->BytesFree - 1024LL <= feedback.Size)) {
+            log.warning("Not enough space on device (%" PF64 "/%" PF64 " < %" PF64 ")", device->BytesFree, device->DeviceSize, (LARGE)feedback.Size);
+            return ERR::OutOfSpace;
          }
       }
 
-      if ((dhandle = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions)) IS -1) {
+      LONG dhandle;
+      if ((dhandle = open(dest.c_str(), O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions)) IS -1) {
          // If the initial open failed, we may need to create preceding paths
-         check_paths(dest, convert_fs_permissions(permissions));
-         dhandle = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions);
+         check_paths(dest.c_str(), convert_fs_permissions(permissions));
+         dhandle = open(dest.c_str(), O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE|WIN32OPEN, permissions);
       }
 
 #ifdef __unix__
@@ -1987,43 +1943,31 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       feedback.Position = 0;
 
       if (dhandle != -1) {
-         APTR data;
+         auto dc_dhandle = deferred_call([&dhandle] { close(dhandle); });
 
          // Use a reasonably small read buffer so that we can provide continuous feedback
 
          LONG bufsize = ((Callback) and (Callback->defined())) ? 65536 : 524288;
+         std::vector<BYTE> data(bufsize);
+         LONG len;
          error = ERR::Okay;
-         if (AllocMemory(bufsize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, NULL) IS ERR::Okay) {
-            while ((len = read(handle, data, bufsize)) > 0) {
-               LONG result;
-               if ((result = write(dhandle, data, len)) IS -1) {
-                  if (errno IS ENOSPC) error = log.warning(ERR::OutOfSpace);
-                  else error = log.warning(ERR::Write);
-                  break;
-               }
-               else if (result < len) {
-                  log.warning("Wrote %d of %d bytes.", result, len);
-                  error = ERR::OutOfSpace;
-                  break;
-               }
-
-               if ((Callback) and (Callback->defined())) {
-                  feedback.Position += len;
-                  if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
-                  FFR result = CALL_FEEDBACK(Callback, &feedback);
-                  if (result IS FFR::ABORT) { error = ERR::Cancelled; break; }
-                  else if (result IS FFR::SKIP) break;
-               }
+         while ((len = read(handle, data.data(), bufsize)) > 0) {
+            if (LONG result = write(dhandle, data.data(), len); result IS -1) {
+               if (errno IS ENOSPC) return log.warning(ERR::OutOfSpace);
+               else return log.warning(ERR::Write);
             }
+            else if (result < len) return log.warning(ERR::OutOfSpace);
 
-            if (len IS -1) {
-               log.warning("Error reading source file.");
-               error = ERR::Read;
+            if ((Callback) and (Callback->defined())) {
+               feedback.Position += len;
+               if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
+               FFR result = CALL_FEEDBACK(Callback, &feedback);
+               if (result IS FFR::ABORT) return ERR::Cancelled;
+               else if (result IS FFR::SKIP) break;
             }
-
-            FreeResource(data);
          }
-         else error = log.warning(ERR::AllocMemory);
+
+         if (len IS -1) return log.warning(ERR::Read);
 
 #ifdef __unix__
          // If the sticky bits were set, we need to set them again because Linux sneakily turns off those bits when a
@@ -2033,62 +1977,45 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
             fchmod(dhandle, permissions);
          }
 #endif
-
-         close(dhandle);
       }
-      else error = log.warning(ERR::CreateFile);
-
-      close(handle);
+      else return log.warning(ERR::CreateFile);
    }
-   else error = log.warning(ERR::FileNotFound);
+   else return log.warning(ERR::FileNotFound);
 
    if ((Move) and (error IS ERR::Okay)) { // Delete the source
-      error = DeleteFile(src, NULL);
+      return DeleteFile(src.c_str(), NULL);
    }
-
-exit:
-   FreeResource(src);
-   return error;
+   else return error;
 }
 
 //********************************************************************************************************************
 // Generic routine for copying folders, intended to be used in conjunction with fs_copy()
 
-ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Callback, BYTE Move)
+ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, FUNCTION *Callback, BYTE Move)
 {
    pf::Log log("copy_file");
 
-   const virtual_drive *vsrc = get_fs(Source);
-   const virtual_drive *vdest = get_fs(Dest);
+   const auto vsrc = get_fs(Source);
+   const auto vdest = get_fs(Dest);
 
-   // This is a recursive copier for folders
+   auto src_len = Source.size();
+   auto dest_len = Dest.size();
 
-   LONG srclen, destlen;
-   for (srclen=0; Source[srclen]; srclen++);
-   for (destlen=0; Dest[destlen]; destlen++);
-
-   if ((Source[srclen-1] != '/') and (Source[srclen-1] != '\\') and (Source[srclen-1] != ':')) {
-      Source[srclen++] = '/';
-      Source[srclen] = 0;
-   }
-
-   if ((Dest[destlen-1] != '/') and (Dest[destlen-1] != '\\') and (Dest[destlen-1] != ':')) {
-      Dest[destlen++] = '/';
-      Dest[destlen] = 0;
-   }
+   if ((!Source.ends_with('/')) and (!Source.ends_with('\\')) and (!Source.ends_with(':'))) Source.append("/");
+   if ((!Dest.ends_with('/')) and (!Dest.ends_with('\\')) and (!Dest.ends_with(':'))) Dest.append("/");
 
    DirInfo *dir;
-   if (auto error = OpenDir(Source, RDF::FILE|RDF::FOLDER|RDF::PERMISSIONS, &dir); error IS ERR::Okay) {
+   if (auto error = OpenDir(Source.c_str(), RDF::FILE|RDF::FOLDER|RDF::PERMISSIONS, &dir); error IS ERR::Okay) {
       while ((error = ScanDir(dir)) IS ERR::Okay) {
          FileInfo *file = dir->Info;
          if ((file->Flags & RDF::LINK) != RDF::NIL) {
             if ((vsrc->ReadLink) and (vdest->CreateLink)) {
-               strcopy(file->Name, Source+srclen);
-               strcopy(file->Name, Dest+destlen);
+               Source.append(file->Name);
+               Dest.append(file->Name);
 
                if ((Callback) and (Callback->defined())) {
-                  Feedback->Path = Source;
-                  Feedback->Dest = Dest;
+                  Feedback->Path = Source.data();
+                  Feedback->Dest = Dest.data();
                   FFR result = CALL_FEEDBACK(Callback, Feedback);
                   if (result IS FFR::ABORT) { error = ERR::Cancelled; break; }
                   else if (result IS FFR::SKIP) continue;
@@ -2096,7 +2023,7 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
 
                STRING link;
                if ((error = vsrc->ReadLink(Source, &link)) IS ERR::Okay) {
-                  DeleteFile(Dest, NULL);
+                  DeleteFile(Dest.c_str(), NULL);
                   error = vdest->CreateLink(Dest, link);
                }
             }
@@ -2106,26 +2033,26 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
             }
          }
          else if ((file->Flags & RDF::FILE) != RDF::NIL) {
-            strcopy(file->Name, Source+srclen);
-            strcopy(file->Name, Dest+destlen);
+            Source.append(file->Name);
+            Dest.append(file->Name);
 
             AdjustLogLevel(1);
-               error = fs_copy(Source, Dest, Callback, FALSE);
+               error = fs_copy(Source, Dest, Callback, false);
             AdjustLogLevel(-1);
          }
          else if ((file->Flags & RDF::FOLDER) != RDF::NIL) {
-            strcopy(file->Name, Dest+destlen);
+            Dest.append(file->Name);
 
             if ((Callback) and (Callback->defined())) {
-               Feedback->Path = Source;
-               Feedback->Dest = Dest;
+               Feedback->Path = Source.data();
+               Feedback->Dest = Dest.data();
                FFR result = CALL_FEEDBACK(Callback, Feedback);
                if (result IS FFR::ABORT) { error = ERR::Cancelled; break; }
                else if (result IS FFR::SKIP) continue;
             }
 
             AdjustLogLevel(1);
-               error = CreateFolder(Dest, (glDefaultPermissions != PERMIT::NIL) ? glDefaultPermissions : file->Permissions);
+               error = CreateFolder(Dest.c_str(), (glDefaultPermissions != PERMIT::NIL) ? glDefaultPermissions : file->Permissions);
 #ifdef __unix__
                if (vdest->is_default()) {
                   chown(Dest, (glForceUID != -1) ? glForceUID : file->UserID, (glForceGID != -1) ? glForceGID : file->GroupID);
@@ -2137,7 +2064,7 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
             // Copy everything under the folder to the destination
 
             if (error IS ERR::Okay) {
-               strcopy(file->Name, Source+srclen);
+               Source.append(file->Name);
                fs_copydir(Source, Dest, Feedback, Callback, Move);
             }
          }
@@ -2145,13 +2072,13 @@ ERR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *Cal
 
       FreeResource(dir);
 
-      Source[srclen] = 0;
-      Dest[destlen]  = 0;
+      Source.resize(src_len);
+      Dest.resize(dest_len);
       return error;
    }
    else if (error IS ERR::DirEmpty) return ERR::Okay;
    else {
-      log.msg("Folder list failed for \"%s\"", Source);
+      log.msg("Folder list failed for \"%s\"", Source.c_str());
       return error;
    }
 }
@@ -2186,13 +2113,11 @@ PERMIT get_parent_permissions(std::string_view Path, LONG *UserID, LONG *GroupID
 
 //********************************************************************************************************************
 
-ERR fs_readlink(STRING Source, STRING *Link)
+ERR fs_readlink(std::string_view Source, STRING *Link)
 {
 #ifdef __unix__
    char buffer[512];
-   LONG i;
-
-   if ((i = readlink(Source, buffer, sizeof(buffer)-1)) != -1) {
+   if (LONG i = readlink(Source.data(), buffer, sizeof(buffer)-1); i != -1) {
       buffer[i] = 0;
       *Link = strclone(buffer);
       return ERR::Okay;
@@ -2205,10 +2130,10 @@ ERR fs_readlink(STRING Source, STRING *Link)
 
 //********************************************************************************************************************
 
-ERR fs_createlink(CSTRING Target, CSTRING Link)
+ERR fs_createlink(std::string_view Target, std::string_view Link)
 {
 #ifdef __unix__
-   if (symlink(Link, Target) IS -1) {
+   if (symlink(Link, Target.data()) IS -1) {
       return convert_errno(errno, ERR::CreateFile);
    }
    else return ERR::Okay;
@@ -2218,51 +2143,28 @@ ERR fs_createlink(CSTRING Target, CSTRING Link)
 }
 
 //********************************************************************************************************************
-// NB: The path that is received is already resolved.
 
-ERR fs_delete(STRING Path, FUNCTION *Callback)
+ERR fs_delete(std::string_view ResolvedPath, FUNCTION *Callback)
 {
-   ERR error;
-   LONG len;
+   if (ResolvedPath.ends_with('/') or ResolvedPath.ends_with('\\')) ResolvedPath.remove_suffix(1);
 
-   for (len=0; Path[len]; len++);
-   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Path[len-1] = 0;
-
-   #ifdef _WIN32
+#ifdef _WIN32
+   FileFeedback feedback;
+   std::string buffer(ResolvedPath);
+   if ((Callback) and (Callback->defined())) feedback.FeedbackID = FBK::DELETE_FILE;
+   return delete_tree(buffer, Callback, &feedback);
+#else
+   if (!unlink(ResolvedPath.data())) { // unlink() works if the folder is empty
+      return ERR::Okay;
+   }
+   else if (errno IS EISDIR) {
       FileFeedback feedback;
-      char buffer[MAX_FILENAME];
-
-      strcopy(Path, buffer, sizeof(buffer));
-
-      if ((Callback) and (Callback->defined())) {
-         clearmem(&feedback, sizeof(feedback));
-         feedback.FeedbackID = FBK::DELETE_FILE;
-         feedback.Path = buffer;
-      }
-
-      error = delete_tree(buffer, sizeof(buffer), Callback, &feedback);
-   #else
-      if (!unlink(Path)) { // unlink() works if the folder is empty
-         error = ERR::Okay;
-      }
-      else if (errno IS EISDIR) {
-         FileFeedback feedback;
-         char buffer[MAX_FILENAME];
-
-         strcopy(Path, buffer, sizeof(buffer));
-
-         if ((Callback) and (Callback->defined())) {
-            clearmem(&feedback, sizeof(feedback));
-            feedback.FeedbackID = FBK::DELETE_FILE;
-            feedback.Path = buffer;
-         }
-
-         error = delete_tree(buffer, sizeof(buffer), Callback, &feedback);
-      }
-      else error = convert_errno(errno, ERR::Failed);
-   #endif
-
-   return error;
+      std::string buffer(ResolvedPath);
+      if ((Callback) and (Callback->defined())) feedback.FeedbackID = FBK::DELETE_FILE;
+      return delete_tree(buffer, Callback, &feedback);
+   }
+   else return convert_errno(errno, ERR::Failed);
+#endif
 }
 
 //********************************************************************************************************************
@@ -2464,7 +2366,7 @@ ERR fs_closedir(DirInfo *Dir)
 
 //********************************************************************************************************************
 
-ERR fs_rename(STRING CurrentPath, STRING NewPath)
+ERR fs_rename(std::string_view CurrentPath, std::string_view NewPath)
 {
    return ERR::NoSupport;
 }
@@ -2482,7 +2384,7 @@ ERR fs_testpath(std::string &Path, RSF Flags, LOC *Type)
       }
       else return ERR::DoesNotExist;
    }
-   
+
    LOC type;
 
    #ifdef __unix__
@@ -2642,7 +2544,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
 
 //********************************************************************************************************************
 
-ERR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
+ERR fs_getdeviceinfo(std::string_view Path, objStorageDevice *Info)
 {
    pf::Log log("GetDeviceInfo");
 
@@ -2652,13 +2554,12 @@ ERR fs_getdeviceinfo(CSTRING Path, objStorageDevice *Info)
    // Device information is stored in the SystemVolumes object
 
    {
-      ULONG pathend;
       STRING resolve = NULL;
       location = NULL;
 
-restart:
-      for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
-      std::string vol(Path, pathend);
+   restart:
+      auto pathend = Path.find(':');
+      std::string vol(Path, 0, pathend);
 
       if (auto lock = std::unique_lock{glmVolumes, 2s}) {
          // We keep this lock localised so that it doesn't impact ResolvePath()
@@ -2692,7 +2593,7 @@ restart:
             resolve = NULL;
          }
          else {
-            if (ResolvePath(Path, RSF::NO_FILE_CHECK, &resolve) != ERR::Okay) {
+            if (ResolvePath(Path.data(), RSF::NO_FILE_CHECK, &resolve) != ERR::Okay) {
                if (resolve) FreeResource(resolve);
                return ERR::ResolvePath;
             }
@@ -2715,12 +2616,12 @@ restart:
 
    LARGE bytes_avail, total_size;
 
-   if (!location) error = ResolvePath(Path, RSF::NO_FILE_CHECK, &location);
+   if (!location) error = ResolvePath(Path.data(), RSF::NO_FILE_CHECK, &location);
    else error = ERR::Okay;
 
    if (error IS ERR::Okay) {
       if (!(winGetFreeDiskSpace(location[0], &bytes_avail, &total_size))) {
-         log.msg("Failed to read location \"%s\" (from \"%s\")", location, Path);
+         log.msg("Failed to read location \"%s\" (from \"%s\")", location, Path.data());
          Info->BytesFree  = -1;
          Info->BytesUsed  = 0;
          Info->DeviceSize = -1;
@@ -2789,7 +2690,7 @@ restart:
 
 //********************************************************************************************************************
 
-ERR fs_makedir(CSTRING Path, PERMIT Permissions)
+ERR fs_makedir(std::string_view Path, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2804,12 +2705,12 @@ ERR fs_makedir(CSTRING Path, PERMIT Permissions)
    if ((Permissions & PERMIT::GROUP) != PERMIT::NIL) Permissions |= PERMIT::GROUP_EXEC;
    if ((Permissions & PERMIT::OTHERS) != PERMIT::NIL) Permissions |= PERMIT::OTHERS_EXEC;
 
-   log.branch("%s, Permissions: $%.8x %s", Path, LONG(Permissions), (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
+   log.branch("%s, Permissions: $%.8x %s", Path.data(), LONG(Permissions), (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
 
    LONG secureflags = convert_permissions(Permissions);
 
-   if (mkdir(Path, secureflags) IS -1) {
-      auto buffer = std::make_unique<char[]>(strlen(Path)+1);
+   if (mkdir(Path.data(), secureflags) IS -1) {
+      auto buffer = std::make_unique<char[]>(Path.size()+1);
 
       if (errno IS EEXIST) {
          log.msg("A folder or file already exists at \"%s\"", Path);
@@ -2818,7 +2719,7 @@ ERR fs_makedir(CSTRING Path, PERMIT Permissions)
 
       // This loop will go through the complete path attempting to create multiple folders.
 
-      for (i=0; Path[i]; i++) {
+      for (i=0; i < std::ssize(Path); i++) {
          buffer[i] = Path[i];
          if ((i > 0) and (buffer[i] IS '/')) {
             buffer[i+1] = 0;
@@ -2834,16 +2735,16 @@ ERR fs_makedir(CSTRING Path, PERMIT Permissions)
          }
       }
 
-      if (Path[i]) {
-         log.warning("Failed to create folder \"%s\".", Path);
+      if (i < std::ssize(Path)) {
+         log.warning("Failed to create folder \"%s\".", Path.c_str());
          return ERR::Failed;
       }
-      else if (Path[i-1] != '/') {
+      else if (!Path.ends_with('/')) {
          // If the path did not end with a slash, there is still one last folder to create
          buffer[i] = 0;
          log.msg("%s", buffer.get());
          if (((err = mkdir(buffer.get(), secureflags)) IS -1) and (errno != EEXIST)) {
-            log.warning("Failed to create folder \"%s\".", Path);
+            log.warning("Failed to create folder \"%s\".", Path.c_str());
             return convert_errno(errno, ERR::SystemCall);
          }
          if (!err) {
@@ -2853,17 +2754,16 @@ ERR fs_makedir(CSTRING Path, PERMIT Permissions)
       }
    }
    else {
-      if ((glForceUID != -1) or (glForceGID != -1)) chown(Path, glForceUID, glForceGID);
-      if (secureflags & (S_ISUID|S_ISGID)) chmod(Path, secureflags);
+      if ((glForceUID != -1) or (glForceGID != -1)) chown(Path.c_str(), glForceUID, glForceGID);
+      if (secureflags & (S_ISUID|S_ISGID)) chmod(Path.c_str(), secureflags);
    }
 
    return ERR::Okay;
 
 #elif _WIN32
 
-   LONG i;
-   if (auto error = winCreateDir(Path); error != ERR::Okay) {
-      auto buffer = std::make_unique<char[]>(strlen(Path)+1);
+   if (auto error = winCreateDir(Path.data()); error != ERR::Okay) {
+      auto buffer = std::make_unique<char[]>(Path.size()+1);
 
       if (error IS ERR::FileExists) return ERR::FileExists;
 
@@ -2871,6 +2771,7 @@ ERR fs_makedir(CSTRING Path, PERMIT Permissions)
 
       log.trace("Creating multiple folders.");
 
+      LONG i;
       for (i=0; Path[i]; i++) {
          buffer[i] = Path[i];
          if ((i >= 3) and (buffer[i] IS '\\')) {
@@ -2880,8 +2781,8 @@ ERR fs_makedir(CSTRING Path, PERMIT Permissions)
          }
       }
 
-      if (Path[i]) {
-         log.traceWarning("Failed to create folder \"%s\".", Path);
+      if (i < std::ssize(Path)) {
+         log.traceWarning("Failed to create folder \"%s\".", Path.data());
          return ERR::Failed;
       }
    }
@@ -2951,36 +2852,33 @@ ERR load_datatypes(void)
 
 #ifdef __unix__
 
-ERR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feedback)
+ERR delete_tree(std::string &Path, FUNCTION *Callback, FileFeedback *Feedback)
 {
    pf::Log log(__FUNCTION__);
-   struct dirent *direntry;
-   LONG len;
-   DIR *dummydir, *stream;
-   struct stat64 info;
    ERR error;
 
-   log.trace("Path: %s", Path);
+   log.trace("Path: %s", Path.c_str());
 
    if ((Callback) and (Callback->defined())) {
-      Feedback->Path = Path;
+      Feedback->Path = Path.data();
       FFR result = CALL_FEEDBACK(Callback, Feedback);
       if (result IS FFR::ABORT) {
-         log.trace("Feedback requested abort at file '%s'", Path);
+         log.trace("Feedback requested abort at file '%s'", Path.c_str());
          return ERR::Cancelled;
       }
       else if (result IS FFR::SKIP) {
-         log.trace("Feedback requested skip at file '%s'", Path);
+         log.trace("Feedback requested skip at file '%s'", Path.c_str());
          return ERR::Okay;
       }
    }
 
    // Check if the folder is actually a symbolic link (we don't want to recurse into them)
 
-   if (lstat64(Path, &info) != -1) {
+   struct stat64 info;
+   if (lstat64(Path.c_str(), &info) != -1) {
       if (S_ISLNK(info.st_mode)) {
-         if (unlink(Path)) {
-            log.error("unlink() failed on symbolic link '%s'", Path);
+         if (unlink(Path.c_str())) {
+            log.error("unlink() failed on symbolic link '%s'", Path.c_str());
             return convert_errno(errno, ERR::SystemCall);
          }
          else return ERR::Okay;
@@ -3019,15 +2917,15 @@ ERR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feedba
 
       Path[len] = 0;
 
-      if ((error IS ERR::Okay) and (rmdir(Path))) {
-         log.error("rmdir(%s) error: %s", Path, strerror(errno));
+      if ((error IS ERR::Okay) and (rmdir(Path.c_str()))) {
+         log.error("rmdir(%s) error: %s", Path.c_str(), strerror(errno));
          return convert_errno(errno, ERR::SystemCall);
       }
 
       return error;
    }
    else {
-      log.error("Failed to open folder \"%s\" using opendir().", Path);
+      log.error("Failed to open folder \"%s\" using opendir().", Path.c_str());
       return convert_errno(errno, ERR::SystemCall);
    }
 }

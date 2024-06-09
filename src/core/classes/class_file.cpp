@@ -441,26 +441,24 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
 
       CSTRING path;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
-         char buffer[512];
+         std::string buffer(path);
 
          #ifdef __unix__
             closedir((DIR *)Self->Stream);
          #endif
          Self->Stream = 0;
 
-         LONG len = strcopy(path, buffer, sizeof(buffer));
-         if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
+         if (buffer.ends_with('/') or buffer.ends_with('\\')) buffer.pop_back();
 
          FileFeedback fb;
-         clearmem(&fb, sizeof(fb));
          if ((Args->Callback) and (Args->Callback->defined())) {
             fb.FeedbackID = FBK::DELETE_FILE;
-            fb.Path       = buffer;
+            fb.Path       = buffer.data();
          }
 
          ERR error;
-         if ((error = delete_tree(buffer, sizeof(buffer), Args->Callback, &fb)) IS ERR::Okay);
-         else if (error != ERR::Cancelled) log.warning("Failed to delete folder \"%s\"", buffer);
+         if ((error = delete_tree(buffer, Args->Callback, &fb)) IS ERR::Okay);
+         else if (error != ERR::Cancelled) log.warning("Failed to delete folder \"%s\"", buffer.c_str());
 
          return error;
       }

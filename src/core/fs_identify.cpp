@@ -85,7 +85,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
          if (auto vd = get_virtual(res_path)) {
             if (vd->IdentifyFile) {
-               if (vd->IdentifyFile(res_path, ClassID, SubClassID) IS ERR::Okay) {
+               if (vd->IdentifyFile(std::string_view(res_path), ClassID, SubClassID) IS ERR::Okay) {
                   log.trace("Virtual volume identified the target file.");
                   goto class_identified;
                }
