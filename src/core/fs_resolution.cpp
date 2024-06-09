@@ -199,21 +199,20 @@ ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
             }
          #endif
 
-         // Check if the path has been resolved by looking for a ':' character
+         // Check if the path has been resolved by checking for a volume label.
 
-         LONG i;
-         for (i=0; (dest[i]) and (dest[i] != ':') and (dest[i] != '/') and (dest[i] != '\\'); i++);
+         if (auto i = dest.find_first_of(":/\\"); i != std::string::npos) {
+            #ifdef _WIN32
+            if ((dest[i] IS ':') and (i > 1)) {
+            #else
+            if (dest[i] IS ':') {
+            #endif
+               // Copy the destination to the source buffer and repeat the resolution process.
 
-         #ifdef _WIN32
-         if ((dest[i] IS ':') and (i > 1)) {
-         #else
-         if (dest[i] IS ':') {
-         #endif
-            // Copy the destination to the source buffer and repeat the resolution process.
-
-            if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) return ERR::Failed;
-            src = dest;
-            continue; // Keep resolving
+               if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) return ERR::Failed;
+               src = dest;
+               continue; // Keep resolving
+            }
          }
       }
 
@@ -230,7 +229,7 @@ resolved_path:
    } // for()
 
    if (loop > 0) { // Note that loop starts at 10 and decrements to zero
-      if ((error IS ERR::Okay) and (!dest[0])) error = ERR::Failed;
+      if ((error IS ERR::Okay) and dest.empty()) return ERR::Failed;
       return error;
    }
    else return ERR::Loop;

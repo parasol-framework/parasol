@@ -1136,7 +1136,7 @@ extern "C" ERR winWatchFile(LONG, CSTRING, APTR, WINHANDLE *, LONG *);
 extern "C" void winFindCloseChangeNotification(WINHANDLE);
 extern "C" APTR winFindDirectory(STRING, APTR *, STRING);
 extern "C" APTR winFindFile(STRING, APTR *, STRING);
-extern "C" LONG winSetFileTime(CSTRING, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second);
+extern "C" LONG winSetFileTime(CSTRING, bool, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second);
 extern "C" LONG winResetDate(STRING);
 extern "C" void winSetDllDirectory(CSTRING);
 extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, BYTE));

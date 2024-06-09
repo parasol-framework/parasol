@@ -1119,6 +1119,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
    log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, LONG(Self->Permissions));
 
    std::string destpath(Args->Dest);
+   auto dest_len = destpath.size();
 
    UWORD pathend = 0;
    for (UWORD i=0; Args->Path[i]; i++) if ((Args->Path[i] IS '/') or (Args->Path[i] IS '\\')) pathend = i + 1;
@@ -1144,13 +1145,14 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
          // If the destination path specifies a folder, add the name of the file to the destination to generate the
          // correct file name.
 
-         if ((destpath.back() IS '/') or (destpath.back() IS '\\') or (destpath.back() IS ':')) {
+         destpath.resize(dest_len);
+         if (destpath.ends_with('/') or destpath.ends_with('\\') or destpath.ends_with(':')) {
             destpath.append(zf.Name, pathend);
          }
 
          // If the destination is a folder that already exists, skip this compression entry
 
-         if ((destpath.back() IS '/') or (destpath.back() IS '\\')) {
+         if (destpath.ends_with('/') or destpath.ends_with('\\')) {
             LOC result;
             if ((AnalysePath(destpath.c_str(), &result) IS ERR::Okay) and (result IS LOC::DIRECTORY)) {
                Self->FileIndex++;

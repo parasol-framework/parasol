@@ -1892,6 +1892,14 @@ struct CompressionFeedback {
    WORD    Hour;          // Hour of the original file's datestamp.
    WORD    Minute;        // Minute of the original file's datestamp.
    WORD    Second;        // Second of the original file's datestamp.
+   CompressionFeedback() : FeedbackID(FDB::NIL), Index(0), Path(NULL), Dest(NULL), 
+      Progress(0), OriginalSize(0), CompressedSize(0),
+      Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
+
+   CompressionFeedback(FDB pFeedback, LONG pIndex, CSTRING pPath, CSTRING pDest) : 
+      FeedbackID(pFeedback), Index(pIndex), Path(pPath), Dest(pDest), 
+      Progress(0), OriginalSize(0), CompressedSize(0),
+      Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
 };
 
 struct CompressedItem {
@@ -1948,6 +1956,7 @@ struct FileFeedback {
    STRING Dest;          // Destination file/path if moving or copying
    FBK    FeedbackID;    // Set to one of the FBK values
    char   Reserved[32];  // Reserved in case of future expansion
+  FileFeedback() : Size(0), Position(0), Path(NULL), Dest(NULL), FeedbackID(FBK::NIL) { }
 };
 
 struct Field {

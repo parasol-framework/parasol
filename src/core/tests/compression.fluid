@@ -225,13 +225,12 @@ end
       },
       init = nil,
       cleanup = function()
-         mSys.DeleteFile('temp:compression.def')
-         mSys.DeleteFile('temp:core.def')
          mSys.DeleteFile('temp:cmp_test/')
          mSys.DeleteFile('temp:cmp_icons/')
          mSys.DeleteFile('temp:cmp_test_json.zip')
          mSys.DeleteFile('temp:cmp_test_scripts.zip')
          mSys.DeleteFile('temp:fonts.gz')
-         mSys.DeleteFile('temp:OpenSans-Regular.ttf')
+         mSys.DeleteFile('temp:clean.fon')
+         mSys.DeleteFile('temp:Courier Prime.ttf')
       end
    }

@@ -57,15 +57,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
 
    // Send feedback if requested to do so
 
-   CompressionFeedback feedback = {
-      .FeedbackID     = FDB::COMPRESS_FILE,
-      .Index          = Self->FileIndex,
-      .Path           = Location.c_str(),
-      .Dest           = Path.c_str(),
-      .Progress       = 0,
-      .OriginalSize   = 0,
-      .CompressedSize = 0
-   };
+   CompressionFeedback feedback(FDB::COMPRESS_FILE, Self->FileIndex, Location.c_str(), Path.c_str());
 
    ERR error = send_feedback(Self, &feedback);
 
@@ -220,14 +212,8 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    // Send feedback
 
-   CompressionFeedback fb;
-   fb.FeedbackID     = FDB::COMPRESS_FILE;
-   fb.Index          = Self->FileIndex;
-   fb.Path           = Location.c_str();
-   fb.Dest           = filename.c_str();
+   CompressionFeedback fb(FDB::COMPRESS_FILE, Self->FileIndex, Location.c_str(), filename.c_str());
    file->get(FID_Size, &fb.OriginalSize);
-   fb.CompressedSize = 0;
-   fb.Progress       = 0;
 
    switch (send_feedback(Self, &fb)) {
       case ERR::Terminate:

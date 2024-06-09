@@ -179,10 +179,14 @@ typedef struct DateTime {
 
 // Return codes available to the feedback routine
 
-#define FFR_OKAY 0
-#define FFR_CONTINUE 0
-#define FFR_SKIP 1
-#define FFR_ABORT 2
+enum class FFR : LONG {
+   NIL = 0,
+   OKAY = 0,
+   CONTINUE = 0,
+   SKIP = 1,
+   ABORT = 2,
+};
+
 
 #define PERMIT_READ 0x00000001
 #define PERMIT_WRITE 0x00000002
@@ -235,7 +239,7 @@ struct FileFeedback {
    char   Reserved[32];  // Reserved in case of future expansion
 };
 
-extern "C" LONG CALL_FEEDBACK(struct FileFeedback *);
+extern "C" FFR CALL_FEEDBACK(struct FUNCTION *, struct FileFeedback *);
 extern "C" ERR convert_errno(LONG Error, ERR Default);
 extern "C" LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size);
 
@@ -1544,14 +1548,20 @@ extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags,
 
 //********************************************************************************************************************
 
-extern "C" LONG winSetFileTime(STRING Location, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second)
+extern "C" LONG winSetFileTime(STRING Location, bool Folder, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second)
 {
    SYSTEMTIME time;
    FILETIME filetime, localtime;
-   LONG err;
 
-   if (auto handle = CreateFile(Location, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL,
-         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); handle != INVALID_HANDLE_VALUE) {
+   LONG flags = FILE_ATTRIBUTE_NORMAL, rw;
+   if (Folder) {
+      rw = FILE_SHARE_WRITE;
+      flags |= FILE_FLAG_BACKUP_SEMANTICS;
+   }
+   else rw = FILE_SHARE_READ|FILE_SHARE_WRITE;
+
+   if (auto handle = CreateFile(Location, GENERIC_WRITE, rw, NULL,
+         OPEN_EXISTING, flags, NULL); handle != INVALID_HANDLE_VALUE) {
       time.wYear         = Year;
       time.wMonth        = Month;
       time.wDayOfWeek    = 0;
@@ -1564,7 +1574,7 @@ extern "C" LONG winSetFileTime(STRING Location, WORD Year, WORD Month, WORD Day,
       SystemTimeToFileTime(&time, &localtime);
       LocalFileTimeToFileTime(&localtime, &filetime);
 
-      err = SetFileTime(handle, &filetime, &filetime, &filetime);
+      LONG err = SetFileTime(handle, &filetime, &filetime, &filetime);
       CloseHandle(handle);
       if (err) return 1;
    }
@@ -1784,16 +1794,17 @@ extern "C" LONG winTestLocation(STRING Location, BYTE CaseSensitive)
 //********************************************************************************************************************
 // The Path must not include a trailing slash.
 
-extern "C" ERR delete_tree(std::string &Path, int Size, struct FileFeedback *Feedback)
+extern "C" ERR delete_tree(std::string &Path, FUNCTION *Callback, struct FileFeedback *Feedback)
 {
-   if (Feedback) {
+   if ((Callback) and (Feedback)) {
       Feedback->Path = Path.data();
-      auto i = CALL_FEEDBACK(Feedback);
-      if (i IS FFR_ABORT) return ERR::Cancelled;
-      else if (i IS FFR_SKIP) return ERR::Okay;
+      auto result = CALL_FEEDBACK(Callback, Feedback);
+      if (result IS FFR::ABORT) return ERR::Cancelled;
+      else if (result IS FFR::SKIP) return ERR::Okay;
    }
 
    WIN32_FIND_DATA find;
+   auto path_size = Path.size();
    Path.append("\\*");
    auto handle = FindFirstFile(Path.c_str(), &find);
    Path.pop_back();
@@ -1804,10 +1815,11 @@ extern "C" ERR delete_tree(std::string &Path, int Size, struct FileFeedback *Fee
          if ((find.cFileName[0] IS '.') and (find.cFileName[1] IS 0));
          else if ((find.cFileName[0] IS '.') and (find.cFileName[1] IS '.') and (find.cFileName[2] IS 0));
          else {
+            Path.resize(path_size + 1);
             Path.append(find.cFileName);
 
             if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-               delete_tree(Path, Size, Feedback);
+               delete_tree(Path, Callback, Feedback);
             }
             else {
                if (find.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
@@ -1825,7 +1837,7 @@ extern "C" ERR delete_tree(std::string &Path, int Size, struct FileFeedback *Fee
       FindClose(handle);
    }
 
-   Path.pop_back();
+   Path.resize(path_size);
 
    // Remove the file/folder itself - first check if it is read-only
 

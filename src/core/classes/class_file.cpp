@@ -1278,7 +1278,10 @@ static ERR FILE_SetDate(extFile *Self, struct fl::SetDate *Args)
    #ifdef _WIN32
       CSTRING path;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
-         if (winSetFileTime(path, Args->Year, Args->Month, Args->Day, Args->Hour, Args->Minute, Args->Second)) {
+         auto result = winSetFileTime(path, Self->isFolder, 
+            Args->Year, Args->Month, Args->Day, Args->Hour, Args->Minute, Args->Second);
+
+         if (result) {
             Self->Flags |= FL::RESET_DATE;
             return ERR::Okay;
          }
@@ -1786,7 +1789,7 @@ ERR SET_Date(extFile *Self, DateTime *Date)
 #ifdef _WIN32
    CSTRING path;
    if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
-      if (winSetFileTime(path, Date->Year, Date->Month, Date->Day, Date->Hour, Date->Minute, Date->Second)) {
+      if (winSetFileTime(path, Self->isFolder, Date->Year, Date->Month, Date->Day, Date->Hour, Date->Minute, Date->Second)) {
          Self->Flags |= FL::RESET_DATE;
          return ERR::Okay;
       }

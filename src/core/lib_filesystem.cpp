@@ -725,7 +725,7 @@ ERR DeleteFile(CSTRING Path, FUNCTION *Callback)
 
    log.branch("%s", Path);
 
-   LONG len = strlen(Path);
+   auto len = strlen(Path);
 
    if (Path[len-1] IS ':') return DeleteVolume(Path);
 
@@ -2778,9 +2778,11 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
          if (end != std::string::npos) buffer.append(Path, start, end-start);
          else buffer.append(Path, start);
          if (buffer.size() > 3) {
-            if (winCreateDir(buffer.c_str()) != ERR::Okay) {
-               log.traceWarning("Failed to create folder \"%s\".", Path.data());
-               return ERR::File;
+            if (auto error = winCreateDir(buffer.c_str()); error != ERR::Okay) {
+               if (error != ERR::FileExists) {
+                  log.traceWarning("Failed to create folder \"%s\".", Path.data());
+                  return ERR::File;
+               }
             }
          }
          start = end;
