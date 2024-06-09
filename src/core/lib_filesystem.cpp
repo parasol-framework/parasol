@@ -2762,28 +2762,28 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
 
 #elif _WIN32
 
+   if (Path.size() < 3) return ERR::Args;
+
    if (auto error = winCreateDir(Path.data()); error != ERR::Okay) {
-      auto buffer = std::make_unique<char[]>(Path.size()+1);
+      std::string buffer;
+      buffer.reserve(Path.size()+1);
 
       if (error IS ERR::FileExists) return ERR::FileExists;
 
-      // This loop will go through the complete path attempting to create multiple folders.
+      log.trace("Creating parent folders.");
 
-      log.trace("Creating multiple folders.");
-
-      LONG i;
-      for (i=0; Path[i]; i++) {
-         buffer[i] = Path[i];
-         if ((i >= 3) and (buffer[i] IS '\\')) {
-            buffer[i+1] = 0;
-            log.trace("%s", buffer.get());
-            winCreateDir(buffer.get());
+      std::size_t start = 0;
+      while (start != std::string::npos) {
+         auto end = Path.find('\\', start+1);
+         if (end != std::string::npos) buffer.append(Path, start, end-start);
+         else buffer.append(Path, start);
+         if (buffer.size() > 3) {
+            if (winCreateDir(buffer.c_str()) != ERR::Okay) {
+               log.traceWarning("Failed to create folder \"%s\".", Path.data());
+               return ERR::File;
+            }
          }
-      }
-
-      if (i < std::ssize(Path)) {
-         log.traceWarning("Failed to create folder \"%s\".", Path.data());
-         return ERR::Failed;
+         start = end;
       }
    }
 
@@ -2885,28 +2885,28 @@ ERR delete_tree(std::string &Path, FUNCTION *Callback, FileFeedback *Feedback)
       }
    }
 
-   if ((stream = opendir(Path))) {
-      for (len=0; Path[len]; len++);
-      Path[len] = '/';
-
+   if (auto stream = opendir(Path)) {
+      Path.append('/');
+      auto folder_len = Path.size();
       error = ERR::Okay;
       rewinddir(stream);
+      struct dirent *direntry;
       while ((direntry = readdir(stream))) {
          if ((direntry->d_name[0] IS '.') and (direntry->d_name[1] IS 0));
          else if ((direntry->d_name[0] IS '.') and (direntry->d_name[1] IS '.') and (direntry->d_name[2] IS 0));
          else {
-            strcopy(direntry->d_name, Path+len+1, Size-len-1);
-            if ((dummydir = opendir(Path))) {
+            Path.resize(folder_len);
+            Path.append(direntry->d_name);
+            if (auto dummydir = opendir(Path.c_str())) {
                closedir(dummydir);
-               if (delete_tree(Path, Size, Callback, Feedback) IS ERR::Cancelled) {
+               if (delete_tree(Path, Callback, Feedback) IS ERR::Cancelled) {
                   error = ERR::Cancelled;
                   break;
                }
             }
-            else {
-               // Delete a file within the folder
-               if (unlink(Path)) {
-                  log.error("unlink() failed on '%s'", Path);
+            else { // Delete a file within the folder
+               if (unlink(Path.c_str())) {
+                  log.error("unlink() failed on '%s'", Path.c_str());
                   error = convert_errno(errno, ERR::SystemCall);
                   break;
                }
@@ -2915,7 +2915,8 @@ ERR delete_tree(std::string &Path, FUNCTION *Callback, FileFeedback *Feedback)
       }
       closedir(stream);
 
-      Path[len] = 0;
+      Path.resize(folder_len);
+      Path.pop_back();
 
       if ((error IS ERR::Okay) and (rmdir(Path.c_str()))) {
          log.error("rmdir(%s) error: %s", Path.c_str(), strerror(errno));
