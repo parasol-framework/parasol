@@ -332,7 +332,7 @@ static int module_call(lua_State *Lua)
 
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_pointer;
-         j += sizeof(STRING);
+         j += sizeof(APTR);
       }
       else if (argtype & FD_ARRAY) {
          if (argtype & FD_CPP) {

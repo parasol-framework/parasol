@@ -88,13 +88,15 @@ static ERR resolve(std::string &, std::string &, RSF);
 static ERR resolve_path_env(std::string_view, std::string *);
 static THREADVAR bool tlClassLoaded;
 
-ERR ResolvePath(std::string_view Path, RSF Flags, std::string *Result)
+ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("%s, Flags: $%.8x", Path.data(), LONG(Flags));
+   log.traceBranch("%s, Flags: $%.8x", pPath.data(), LONG(Flags));
 
    tlClassLoaded = false;
+
+   std::string_view Path = pPath; // Copy
 
    if (Path.starts_with('~')) {
       Flags |= RSF::APPROXIMATE;
