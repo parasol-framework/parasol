@@ -135,10 +135,9 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
 
    std::stringstream list;
    for (auto &item : Items) {
-      STRING path;
-      if (ResolvePath(item.Path.c_str(), RSF::NIL, &path) IS ERR::Okay) {
+      std::string path;
+      if (ResolvePath(item.Path, RSF::NIL, &path) IS ERR::Okay) {
          list << path << '\0';
-         FreeResource(path);
       }
    }
    list << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
@@ -352,11 +351,10 @@ Clear: Destroys all cached data that is stored in the clipboard.
 
 static ERR CLIPBOARD_Clear(objClipboard *Self)
 {
-   STRING path;
+   std::string path;
    if (ResolvePath("clipboard:", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-      DeleteFile(path, NULL);
-      CreateFolder(path, PERMIT::READ|PERMIT::WRITE);
-      FreeResource(path);
+      DeleteFile(path.c_str(), NULL);
+      CreateFolder(path.c_str(), PERMIT::READ|PERMIT::WRITE);
    }
 
    glClips.clear();

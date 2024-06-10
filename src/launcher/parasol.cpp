@@ -25,7 +25,7 @@ static objSurface *glTarget = NULL;
 pf::vector<std::string> *glArgs;
 static LONG glArgsIndex = 0;
 //static STRING glAllow = NULL;
-static STRING glTargetFile = NULL;
+static std::string glTargetFile;
 static OBJECTPTR glTask = NULL;
 static objScript *glScript = NULL;
 static bool glSandbox = false;
@@ -86,7 +86,7 @@ static ERR process_args(void)
             }
          }
          else { // If argument not recognised, assume this arg is the target file.
-            if (ResolvePath(args[i].c_str(), RSF::APPROXIMATE, &glTargetFile) != ERR::Okay) {
+            if (ResolvePath(args[i], RSF::APPROXIMATE, &glTargetFile) != ERR::Okay) {
                printf("Unable to find file '%s'\n", args[i].c_str());
                return ERR::Terminate;
             }
@@ -117,21 +117,20 @@ extern "C" int main(int argc, char **argv)
 
    int result = 0;
    if (process_args() IS ERR::Okay) {
-      if (glTargetFile) {
+      if (!glTargetFile.empty()) {
          STRING path;
          if (glTask->get(FID_Path, &path) IS ERR::Okay) log.msg("Path: %s", path);
          else log.error("No working path.");
 
          LOC type;
-         if ((AnalysePath(glTargetFile, &type) != ERR::Okay) or (type != LOC::FILE)) {
-            printf("File '%s' does not exist.\n", glTargetFile);
+         if ((AnalysePath(glTargetFile.c_str(), &type) != ERR::Okay) or (type != LOC::FILE)) {
+            printf("File '%s' does not exist.\n", glTargetFile.c_str());
          }
-         else result = LONG(exec_source(glTargetFile, glTime, glProcedure));
+         else result = LONG(exec_source(glTargetFile.c_str(), glTime, glProcedure));
       }
       else printf(glHelp);
    }
 
-   if (glTargetFile) { FreeResource(glTargetFile); glTargetFile = NULL; }
    if (glScript)     { FreeResource(glScript); glScript = NULL; }
 
    close_parasol();

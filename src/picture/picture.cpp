@@ -399,14 +399,10 @@ static ERR PICTURE_Init(extPicture *Self)
 
       // Test the given path to see if it matches our supported file format.
 
-      STRING res_path;
-      if (ResolvePath(Self->prvPath, RSF::APPROXIMATE, &res_path) IS ERR::Okay) {
+      if (ResolvePath(Self->prvPath, RSF::APPROXIMATE, &Self->prvPath) IS ERR::Okay) {
          LONG result;
 
-         FreeResource(Self->prvPath); // Switch to the resolved path in case it was approximated
-         Self->prvPath = res_path;
-
-         if (ReadFileToBuffer(res_path, Self->prvHeader, sizeof(Self->prvHeader)-1, &result) IS ERR::Okay) {
+         if (ReadFileToBuffer(Self->prvPath.c_str(), Self->prvHeader, sizeof(Self->prvHeader)-1, &result) IS ERR::Okay) {
             Self->prvHeader[result] = 0;
 
             auto buffer = (UBYTE *)Self->prvHeader;

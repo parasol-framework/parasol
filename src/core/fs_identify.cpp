@@ -64,7 +64,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
    // that supports the data, we then load the first 256 bytes from the file and then compare file headers.
 
    ERR error = ERR::Okay;
-   STRING res_path = NULL;
+   std::string res_path;
    if (ClassID) *ClassID = CLASSID::NIL;
    if (SubClassID) *SubClassID = CLASSID::NIL;
    UBYTE buffer[400] = { 0 };
@@ -85,7 +85,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
          if (auto vd = get_virtual(res_path)) {
             if (vd->IdentifyFile) {
-               if (vd->IdentifyFile(std::string_view(res_path), ClassID, SubClassID) IS ERR::Okay) {
+               if (vd->IdentifyFile(res_path, ClassID, SubClassID) IS ERR::Okay) {
                   log.trace("Virtual volume identified the target file.");
                   goto class_identified;
                }
@@ -107,7 +107,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
          if (Path[i] IS '|') {
             auto tmp = std::string(Path, i);
-            if (ResolvePath(tmp.c_str(), RSF::APPROXIMATE, &res_path) != ERR::Okay) {
+            if (ResolvePath(tmp, RSF::APPROXIMATE, &res_path) != ERR::Okay) {
                return ERR::FileNotFound;
             }
          }
@@ -123,7 +123,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
       log.trace("Checking extension against class database.");
 
       if (*ClassID IS CLASSID::NIL) {
-         if (auto filename = get_filename(res_path)) {
+         if (auto filename = get_filename(res_path.c_str())) {
             for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
                auto &rec = it->second;
                if (!rec.Match.empty()) {
@@ -146,7 +146,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
       if (*ClassID IS CLASSID::NIL) {
          log.trace("Loading file header to identify '%s' against class registry", res_path);
 
-         if ((ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read) IS ERR::Okay) and (bytes_read >= 4)) {
+         if ((ReadFileToBuffer(res_path.c_str(), buffer, HEADER_SIZE, &bytes_read) IS ERR::Okay) and (bytes_read >= 4)) {
             log.trace("Checking file header data (%d bytes) against %d classes....", bytes_read, glClassDB.size());
             for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
                auto &rec = it->second;
@@ -232,8 +232,6 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
    }
 
 class_identified:
-   if (res_path) FreeResource(res_path);
-
    if (error IS ERR::Okay) {
       if (*ClassID != CLASSID::NIL) log.detail("File belongs to class $%.8x:$%.8x", (unsigned int)(*ClassID), (SubClassID != NULL) ? (unsigned int)(*SubClassID) : 0);
       else {

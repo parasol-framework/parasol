@@ -221,26 +221,20 @@ inline bool add_id(extSVG *Self, const XMLTag &Tag, const std::string Name)
 
 static CSTRING folder(extSVG *Self)
 {
-   if (Self->Folder) {
-      if (Self->Folder[0]) return Self->Folder;
-      else return NULL;
-   }
+   if (!Self->Folder.empty()) return Self->Folder.c_str();
    if (!Self->Path) return NULL;
 
    // Setting a path of "my/house/is/red.svg" results in "my/house/is/"
 
-   STRING folder;
-   if (ResolvePath(Self->Path, RSF::NO_FILE_CHECK, &folder) IS ERR::Okay) {
-      WORD last = 0;
-      for (WORD i=0; folder[i]; i++) {
-         if ((folder[i] IS '/') or (folder[i] IS '\\')) last = i + 1;
+   if (ResolvePath(Self->Path, RSF::NO_FILE_CHECK, &Self->Folder) IS ERR::Okay) {
+      auto last = Self->Folder.find_last_of("/\\");
+      if (last != std::string::npos) {
+         Self->Folder.resize(last + 1);
+         return Self->Folder.c_str();
       }
-      folder[last] = 0;
-      Self->Folder = folder;
-      if (Self->Folder[0]) return Self->Folder;
-      else return NULL;
+      else Self->Folder.clear();
    }
-   else return NULL;
+   return NULL;
 }
 
 //********************************************************************************************************************

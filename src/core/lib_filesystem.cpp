@@ -103,7 +103,7 @@ struct extCacheFile : public CacheFile {
 
    extCacheFile() {}
 
-   extCacheFile(CSTRING pPath, LARGE pSize, LARGE pTimestamp) {
+   extCacheFile(std::string_view pPath, LARGE pSize, LARGE pTimestamp) {
       FullPath  = pPath;
       Path      = FullPath.c_str();
       Locks     = 1;
@@ -355,22 +355,17 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
       return ERR::DoesNotExist;
    }
 
-   STRING test_path;
+   std::string test_path;
    if (ResolvePath(Path, flags, &test_path) IS ERR::Okay) {
       log.trace("Testing path type for '%s'", test_path);
 
-      ERR error;
       auto vd = get_fs(test_path);
       if (vd->TestPath) {
          LOC dummy;
          if (!PathType) PathType = &dummy; // Dummy variable, helps to avoid bugs
-         auto stp = std::string(test_path);
-         error = vd->TestPath(stp, RSF::NIL, PathType);
+         return vd->TestPath(test_path, RSF::NIL, PathType);
       }
-      else error = ERR::NoSupport;
-
-      FreeResource(test_path);
-      return error;
+      else return ERR::NoSupport;
    }
    else {
       log.trace("Path '%s' does not exist.", Path);
@@ -407,16 +402,10 @@ ERR CompareFilePaths(CSTRING PathA, CSTRING PathB)
 {
    if ((!PathA) or (!PathB)) return ERR::NullArgs;
 
-   STRING path1, path2;
+   std::string path1, path2;
    ERR error;
-   if ((error = ResolvePath(PathA, RSF::NO_FILE_CHECK, &path1)) != ERR::Okay) {
-      return error;
-   }
-
-   if ((error = ResolvePath(PathB, RSF::NO_FILE_CHECK, &path2)) != ERR::Okay) {
-      FreeResource(path1);
-      return error;
-   }
+   if ((error = ResolvePath(PathA, RSF::NO_FILE_CHECK, &path1)) != ERR::Okay) return error;
+   if ((error = ResolvePath(PathB, RSF::NO_FILE_CHECK, &path2)) != ERR::Okay) return error;
 
    const virtual_drive *v1, *v2;
    v1 = get_fs(path1);
@@ -439,8 +428,6 @@ ERR CompareFilePaths(CSTRING PathA, CSTRING PathB)
       else error = ERR::False;
    }
 
-   FreeResource(path1);
-   FreeResource(path2);
    return error;
 }
 
@@ -663,24 +650,17 @@ ERR CreateLink(CSTRING From, CSTRING To)
 
    log.branch("From: %.40s, To: %s", From, To);
 
-   STRING src, dest;
+   std::string src, dest;
    if (ResolvePath(From, RSF::NO_FILE_CHECK, &src) IS ERR::Okay) {
       if (ResolvePath(To, RSF::NO_FILE_CHECK, &dest) IS ERR::Okay) {
-         auto err = symlink(dest, src);
-         FreeResource(dest);
-         FreeResource(src);
+         auto err = symlink(dest.c_str(), src.c_str());
 
          if (!err) return ERR::Okay;
          else return convert_errno(err, ERR::Failed);
       }
-      else {
-         FreeResource(src);
-         return ERR::ResolvePath;
-      }
+      else return ERR::ResolvePath;
    }
    else return ERR::ResolvePath;
-
-   return ERR::Okay;
 
 #endif
 }
@@ -726,19 +706,15 @@ ERR DeleteFile(CSTRING Path, FUNCTION *Callback)
    log.branch("%s", Path);
 
    auto len = strlen(Path);
-
    if (Path[len-1] IS ':') return DeleteVolume(Path);
 
-   ERR error;
-   STRING resolve;
-   if ((error = ResolvePath(Path, RSF::NIL, &resolve)) IS ERR::Okay) {
+   std::string resolve;
+   if (ResolvePath(Path, RSF::NIL, &resolve) IS ERR::Okay) {
       const virtual_drive *vd = get_fs(resolve);
-      if (vd->Delete) error = vd->Delete(resolve, NULL);
-      else error = ERR::NoSupport;
-      FreeResource(resolve);
+      if (vd->Delete) return vd->Delete(resolve, NULL);
+      else return ERR::NoSupport;
    }
-
-   return error;
+   else return ERR::ResolvePath;
 }
 
 /*********************************************************************************************************************
@@ -828,8 +804,8 @@ ERR get_file_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
 
    log.traceBranch("%s", Path.data());
 
-   STRING path;
-   if ((error = ResolvePath(Path.data(), RSF::NIL, &path)) IS ERR::Okay) {
+   std::string path;
+   if ((error = ResolvePath(Path, RSF::NIL, &path)) IS ERR::Okay) {
       auto vfs = get_fs(path);
 
       if (vfs->GetInfo) {
@@ -840,8 +816,6 @@ ERR get_file_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
          }
       }
       else log.warning(ERR::NoSupport);
-
-      FreeResource(path);
    }
 
    return error;
@@ -888,13 +862,13 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
 
    // Check if the file is already cached.  If it is, check that the file hasn't been written since the last time it was cached.
 
-   STRING path;
+   std::string path;
    ERR error;
    if ((error = ResolvePath(Path, RSF::APPROXIMATE, &path)) != ERR::Okay) return error;
 
    const std::lock_guard<std::mutex> lock(glCacheLock);
 
-   log.branch("%.80s, Flags: $%.8x", path, LONG(Flags));
+   log.branch("%.80s, Flags: $%.8x", path.c_str(), LONG(Flags));
 
    auto file = objFile::create { fl::Path(path), fl::Flags(FL::READ|FL::FILE) };
 
@@ -905,7 +879,6 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
       CacheFileIndex index(path, timestamp, file_size);
 
       if (glCache.contains(index)) {
-         FreeResource(path);
 
          *((extCacheFile **)Cache) = &glCache[index];
          if ((Flags & LDF::CHECK_EXISTS) IS LDF::NIL) glCache[index].Locks++;
@@ -915,7 +888,6 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
       // If the client just wanted to check for the existence of the file, do not proceed in loading it.
 
       if ((Flags & LDF::CHECK_EXISTS) != LDF::NIL) {
-         FreeResource(path);
          return ERR::Search;
       }
 
@@ -924,7 +896,7 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
       if (file_size) {
          LONG result;
          error = file->read(glCache[index].Data, file_size, &result);
-         if ((error IS ERR::Okay) and (file_size != result)) error = ERR::Read;
+         if ((error IS ERR::Okay) and (file_size != result)) return ERR::Read;
       }
 
       if (error IS ERR::Okay) {
@@ -936,14 +908,11 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
             SubscribeTimer(60, &call, &glCacheTimer);
          }
 
-         FreeResource(path);
          return ERR::Okay;
       }
+      else return error;
    }
-   else error = ERR::CreateObject;
-
-   FreeResource(path);
-   return error;
+   else return ERR::CreateObject;
 }
 
 /*********************************************************************************************************************
@@ -985,18 +954,13 @@ ERR CreateFolder(CSTRING Path, PERMIT Permissions)
       if (Permissions IS PERMIT::NIL) Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::EXEC|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE|PERMIT::GROUP_EXEC; // If no permissions are set, give current user full access
    }
 
-   ERR error;
-   STRING resolve;
-   if ((error = ResolvePath(Path, RSF::NO_FILE_CHECK, &resolve)) IS ERR::Okay) {
+   std::string resolve;
+   if (ResolvePath(Path, RSF::NO_FILE_CHECK, &resolve) IS ERR::Okay) {
       const virtual_drive *vd = get_fs(resolve);
-      if (vd->CreateFolder) {
-         error = vd->CreateFolder(resolve, Permissions);
-      }
-      else error = ERR::NoSupport;
-      FreeResource(resolve);
+      if (vd->CreateFolder) return vd->CreateFolder(resolve, Permissions);
+      else return ERR::NoSupport;
    }
-
-   return error;
+   else return ERR::ResolvePath;
 }
 
 /*********************************************************************************************************************
@@ -1103,48 +1067,28 @@ ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead
 
    if (BytesRead) *BytesRead = 0;
 
-   ERR error;
-   STRING res_path;
-   if ((error = ResolvePath(Path, RSF::CHECK_VIRTUAL | (approx ? RSF::APPROXIMATE : RSF::NIL), &res_path)) IS ERR::Okay) {
-      if (!strncmp("/dev/", res_path, 5)) error = ERR::InvalidPath;
-      else if (auto handle = open(res_path, O_RDONLY|O_NONBLOCK|O_LARGEFILE|WIN32OPEN, NULL); handle != -1) {
+   std::string res_path;
+   if (auto error = ResolvePath(Path, RSF::CHECK_VIRTUAL | (approx ? RSF::APPROXIMATE : RSF::NIL), &res_path); error IS ERR::Okay) {
+      if (res_path.starts_with("/dev/")) return ERR::InvalidPath;
+      else if (auto handle = open(res_path.c_str(), O_RDONLY|O_NONBLOCK|O_LARGEFILE|WIN32OPEN, NULL); handle != -1) {
          if (auto result = read(handle, Buffer, BufferSize); result IS -1) {
-            error = ERR::Read;
-            #ifdef __unix__
-               log.warning("read(%s, %p, %d): %s", Path, Buffer, BufferSize, strerror(errno));
-            #endif
+            close(handle);
+            return ERR::Read;
          }
          else if (BytesRead) *BytesRead = result;
 
          close(handle);
+         return ERR::Okay;
       }
-      else {
-         #ifdef __unix__
-            log.warning("open(%s): %s", Path, strerror(errno));
-         #endif
-         error = ERR::OpenFile;
-      }
-
-      FreeResource(res_path);
+      else return ERR::OpenFile;
    }
    else if (error IS ERR::VirtualVolume) {
       extFile::create file = { fl::Path(res_path), fl::Flags(FL::READ|FL::FILE|(approx ? FL::APPROXIMATE : FL::NIL)) };
 
-      if (file.ok()) {
-         if (file->read(Buffer, BufferSize, BytesRead) IS ERR::Okay) error = ERR::Okay;
-         else error = ERR::Read;
-      }
-      else error = ERR::File;
-
-      FreeResource(res_path);
-      return error;
+      if (file.ok()) return file->read(Buffer, BufferSize, BytesRead);
+      else return ERR::File;
    }
-   else error = ERR::FileNotFound;
-
-   #ifdef _DEBUG
-      if (error != ERR::Okay) log.warning(error);
-   #endif
-   return error;
+   else return ERR::FileNotFound;
 
 #else
 
@@ -1532,23 +1476,12 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
    log.traceBranch("\"%s\" to \"%s\"", Source.data(), Dest.data());
 
-   std::string src;
-   STRING tmp;
-   if ((error = ResolvePath(Source.data(), RSF::NIL, &tmp)) IS ERR::Okay) {
-      src.assign(tmp);
-      FreeResource(tmp);
-   }
-   else return ERR::FileNotFound;
-
-   std::string dest;
-   if ((error = ResolvePath(Dest.data(), RSF::NO_FILE_CHECK, &tmp)) IS ERR::Okay) {
-      dest.assign(tmp);
-      FreeResource(tmp);
-   }
-   else return ERR::ResolvePath;
+   std::string src, dest;
+   if ((error = ResolvePath(Source, RSF::NIL, &src)) != ERR::Okay) return ERR::FileNotFound;
+   if ((error = ResolvePath(Dest, RSF::NO_FILE_CHECK, &dest)) != ERR::Okay) return ERR::ResolvePath;
 
    const virtual_drive *srcvirtual  = get_fs(src);
-   const virtual_drive *destvirtual = get_fs(tmp);
+   const virtual_drive *destvirtual = get_fs(dest);
 
    bool srcdir = (src.ends_with('/') or src.ends_with('\\'));
 
@@ -2376,10 +2309,9 @@ ERR fs_rename(std::string_view CurrentPath, std::string_view NewPath)
 ERR fs_testpath(std::string &Path, RSF Flags, LOC *Type)
 {
    if (Path.ends_with(':')) {
-      STRING str;
-      if (ResolvePath(Path.c_str(), RSF::NIL, &str) IS ERR::Okay) {
+      std::string str;
+      if (ResolvePath(Path, RSF::NIL, &str) IS ERR::Okay) {
          if (Type) *Type = LOC::VOLUME;
-         FreeResource(str);
          return ERR::Okay;
       }
       else return ERR::DoesNotExist;
@@ -2548,62 +2480,46 @@ ERR fs_getdeviceinfo(std::string_view Path, objStorageDevice *Info)
 {
    pf::Log log("GetDeviceInfo");
 
-   STRING location;
+   std::string location, resolve;
    ERR error;
 
-   // Device information is stored in the SystemVolumes object
+restart:
+   auto pathend = Path.find(':');
+   std::string vol(Path, 0, pathend);
 
-   {
-      STRING resolve = NULL;
-      location = NULL;
+   if (auto lock = std::unique_lock{glmVolumes, 2s}) {
+      // We keep this lock localised so that it doesn't impact ResolvePath()
+      if (glVolumes.contains(vol)) {
+         if (!glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE::SOFTWARE; // Virtual device
 
-   restart:
-      auto pathend = Path.find(':');
-      std::string vol(Path, 0, pathend);
-
-      if (auto lock = std::unique_lock{glmVolumes, 2s}) {
-         // We keep this lock localised so that it doesn't impact ResolvePath()
-         if (glVolumes.contains(vol)) {
-            if (!glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE::SOFTWARE; // Virtual device
-
-            if (glVolumes[vol].contains("Device")) {
-               auto &device = glVolumes[vol]["Device"];
-               if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE::FLOPPY_DISK|DEVICE::REMOVABLE|DEVICE::READ|DEVICE::WRITE;
-               else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
-               else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE::COMPACT_DISC|DEVICE::REMOVABLE|DEVICE::READ;
-               else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE::USB|DEVICE::REMOVABLE;
-               else log.warning("Device '%s' unrecognised.", device.c_str());
-            }
+         if (glVolumes[vol].contains("Device")) {
+            auto &device = glVolumes[vol]["Device"];
+            if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE::FLOPPY_DISK|DEVICE::REMOVABLE|DEVICE::READ|DEVICE::WRITE;
+            else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
+            else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE::COMPACT_DISC|DEVICE::REMOVABLE|DEVICE::READ;
+            else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE::USB|DEVICE::REMOVABLE;
+            else log.warning("Device '%s' unrecognised.", device.c_str());
          }
       }
-      else return log.warning(ERR::SystemLocked);
+   }
+   else return log.warning(ERR::SystemLocked);
 
-      if (Info->DeviceFlags IS DEVICE::NIL) {
-         // Unable to find a device reference for the volume, so try to resolve the path and try again.
+   if (Info->DeviceFlags IS DEVICE::NIL) {
+      // Unable to find a device reference for the volume, so try to resolve the path and try again.
 
-         if (resolve) {
-            // We've done what we can - drop through
+      if (!resolve.empty()) { // We've done what we can - drop through
+         #ifdef _WIN32
+            // On win32 we can get the drive information from the drive letter
+            // TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
+         #endif
 
-            #ifdef _WIN32
-             // On win32 we can get the drive information from the drive letter
-             // TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
-            #endif
-
-            location = resolve;
-            resolve = NULL;
-         }
-         else {
-            if (ResolvePath(Path.data(), RSF::NO_FILE_CHECK, &resolve) != ERR::Okay) {
-               if (resolve) FreeResource(resolve);
-               return ERR::ResolvePath;
-            }
-
-            Path = resolve;
-            goto restart;
-         }
+         location.assign(resolve);
       }
-
-      if (resolve) FreeResource(resolve);
+      else {
+         if (ResolvePath(Path, RSF::NO_FILE_CHECK, &resolve) != ERR::Okay) return ERR::ResolvePath;
+         Path = std::string_view(resolve);
+         goto restart;
+      }
    }
 
    // Assume that the device is read/write if the device type cannot be assessed
@@ -2616,43 +2532,37 @@ ERR fs_getdeviceinfo(std::string_view Path, objStorageDevice *Info)
 
    LARGE bytes_avail, total_size;
 
-   if (!location) error = ResolvePath(Path.data(), RSF::NO_FILE_CHECK, &location);
+   if (location.empty()) error = ResolvePath(Path, RSF::NO_FILE_CHECK, &location);
    else error = ERR::Okay;
 
    if (error IS ERR::Okay) {
       if (!(winGetFreeDiskSpace(location[0], &bytes_avail, &total_size))) {
-         log.msg("Failed to read location \"%s\" (from \"%s\")", location, Path.data());
+         log.msg("Failed to read location \"%s\" (from \"%s\")", location.c_str(), Path.data());
          Info->BytesFree  = -1;
          Info->BytesUsed  = 0;
          Info->DeviceSize = -1;
-         FreeResource(location);
          return ERR::Okay; // Even though the disk space calculation failed, we succeeded on resolving other device information
       }
       else {
          Info->BytesFree  = bytes_avail;
          Info->BytesUsed  = total_size - bytes_avail;
          Info->DeviceSize = total_size;
-         FreeResource(location);
          return ERR::Okay;
       }
    }
    else error = ERR::ResolvePath;
 
-   if (location) FreeResource(location);
    return log.warning(error);
 
 #elif __unix__
 
    if ((Info->DeviceFlags & DEVICE::HARD_DISK) != DEVICE::NIL) {
-      if (!location) {
-         error = ResolvePath(Path.data(), RSF::NO_FILE_CHECK, &location);
-      }
+      if (location.empty()) error = ResolvePath(Path, RSF::NO_FILE_CHECK, &location);
       else error = ERR::Okay;
 
       if (error IS ERR::Okay) {
          struct statfs fstat;
-         LONG result = statfs(location, &fstat);
-         FreeResource(location);
+         LONG result = statfs(location.c_str(), &fstat);
 
          if (result != -1) {
             DOUBLE blocksize = (DOUBLE)fstat.f_bsize;

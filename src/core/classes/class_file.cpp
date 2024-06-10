@@ -495,11 +495,11 @@ static ERR FILE_Free(extFile *Self)
    if (Self->prvWatch) Action(fl::Watch::id, Self, NULL);
 
 #ifdef _WIN32
-   STRING path = NULL;
+   std::string path;
    if ((Self->Flags & FL::RESET_DATE) != FL::NIL) {
       // If we have to reset the date, get the file path
       log.trace("Resetting the file date.");
-      ResolvePath(Self->Path.c_str(), RSF::NIL, &path);
+      ResolvePath(Self->Path, RSF::NIL, &path);
    }
 #endif
 
@@ -524,9 +524,8 @@ static ERR FILE_Free(extFile *Self)
    }
 
 #ifdef _WIN32
-   if (((Self->Flags & FL::RESET_DATE) != FL::NIL) and (path)) {
-      winResetDate(path);
-      FreeResource(path);
+   if (((Self->Flags & FL::RESET_DATE) != FL::NIL) and (!path.empty())) {
+      winResetDate(path.data());
    }
 #endif
 
@@ -667,14 +666,10 @@ retrydir:
    if ((Self->Flags & FL::APPROXIMATE) != FL::NIL) resolveflags |= RSF::APPROXIMATE;
 
    Self->prvResolvedPath.clear();
-
-   STRING rpath;
-   if ((error = ResolvePath(Self->Path.c_str(), resolveflags|RSF::CHECK_VIRTUAL, &rpath)) != ERR::Okay) {
+   if ((error = ResolvePath(Self->Path, resolveflags|RSF::CHECK_VIRTUAL, &Self->prvResolvedPath)) != ERR::Okay) {
       if (error IS ERR::VirtualVolume) {
          // For virtual volumes, update the path to ensure that the volume name is referenced in the path string.
          // Then return ERR::UseSubClass to have support delegated to the correct File sub-class.
-         Self->prvResolvedPath.assign(rpath);
-         FreeResource(rpath);
          if (!iequals(Self->Path, Self->prvResolvedPath)) {
             SET_Path(Self, Self->prvResolvedPath.c_str());
          }
@@ -692,10 +687,6 @@ retrydir:
          log.msg("File not found \"%s\".", Self->Path.c_str());
          return ERR::FileNotFound;
       }
-   }
-   else {
-      Self->prvResolvedPath.assign(rpath);
-      FreeResource(rpath);
    }
 
    // Check if ResolvePath() resolved the path from a file string to a folder
@@ -1278,7 +1269,7 @@ static ERR FILE_SetDate(extFile *Self, struct fl::SetDate *Args)
    #ifdef _WIN32
       CSTRING path;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
-         auto result = winSetFileTime(path, Self->isFolder, 
+         auto result = winSetFileTime(path, Self->isFolder,
             Args->Year, Args->Month, Args->Day, Args->Hour, Args->Minute, Args->Second);
 
          if (result) {
@@ -2059,7 +2050,6 @@ static ERR GET_Link(extFile *Self, STRING *Value)
 #ifdef __unix__
    pf::Log log;
    STRING path;
-   char buffer[512];
 
    if (!Self->prvLink.empty()) { // The link has already been read previously, just re-use it
       *Value = Self->prvLink.data();
@@ -2068,14 +2058,14 @@ static ERR GET_Link(extFile *Self, STRING *Value)
 
    *Value = NULL;
    if ((Self->Flags & FL::LINK) != FL::NIL) {
-      if (ResolvePath(Self->Path.c_str(), RSF::NIL, &path) IS ERR::Okay) {
-         LONG i = strlen(path);
-         if (path[i-1] IS '/') path[i-1] = 0;
+      if (ResolvePath(Self->Path, RSF::NIL, &path) IS ERR::Okay) {
+         if (path.ends_with('/')) path.pop_back();
+         LONG i;
+         char buffer[512];
          if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
             Self->prvLink.assign(buffer, 0, i);
             *Value = Self->prvLink.data();
          }
-         FreeResource(path);
 
          if (*Value) return ERR::Okay;
          else return ERR::Failed;
@@ -2375,13 +2365,7 @@ static ERR GET_ResolvedPath(extFile *Self, CSTRING *Value)
 
    if (Self->prvResolvedPath.empty()) {
       auto flags = ((Self->Flags & FL::APPROXIMATE) != FL::NIL) ? RSF::APPROXIMATE : RSF::NO_FILE_CHECK;
-
-      STRING rpath;
-      if (ResolvePath(Self->Path.c_str(), flags, &rpath) IS ERR::Okay) {
-         Self->prvResolvedPath.assign(rpath);
-         FreeResource(rpath);
-      }
-      else return ERR::ResolvePath;
+      if (ResolvePath(Self->Path, flags, &Self->prvResolvedPath) != ERR::Okay) return ERR::ResolvePath;
    }
 
    *Value = Self->prvResolvedPath.c_str();

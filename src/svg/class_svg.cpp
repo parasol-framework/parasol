@@ -103,7 +103,6 @@ static ERR SVG_Free(extSVG *Self)
       Self->Target = NULL;
    }
 
-   if (Self->Folder)    { FreeResource(Self->Folder);    Self->Folder = NULL; }
    if (Self->Path)      { FreeResource(Self->Path);      Self->Path = NULL; }
    if (Self->Title)     { FreeResource(Self->Title);     Self->Title = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
@@ -495,7 +494,7 @@ static ERR GET_Path(extSVG *Self, STRING *Value)
 static ERR SET_Path(extSVG *Self, CSTRING Value)
 {
    if (Self->Path)   { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->Folder) { FreeResource(Self->Folder); Self->Folder = NULL; }
+   Self->Folder.clear();
 
    if ((Value) and (*Value)) {
       if (!(Self->Path = strclone(Value))) return ERR::AllocMemory;

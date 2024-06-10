@@ -834,9 +834,11 @@ static ERR GET_WorkingPath(objScript *Self, STRING *Value)
             if (j > 0) buf.append(Self->Path, 0, j);
 
             pf::SwitchContext ctx(Self);
-            if (ResolvePath(buf.c_str(), RSF::APPROXIMATE, &Self->WorkingPath) != ERR::Okay) {
-               Self->WorkingPath = strclone(working_path);
+            std::string rpath;
+            if (ResolvePath(buf, RSF::APPROXIMATE, &rpath) IS ERR::Okay) {
+               Self->WorkingPath = strclone(rpath);
             }
+            else Self->WorkingPath = strclone(working_path);
          }
          else log.warning("No working path.");
       }
