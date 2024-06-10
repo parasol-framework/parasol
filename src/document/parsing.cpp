@@ -354,16 +354,16 @@ void parser::translate_args(const std::string &Input, std::string &Output)
       for (i=0; i < Input.size(); i++) {
          if (Input[i] IS '[') break;
          if ((Input[i] IS '&') and
-             ((startswith("&lsqr;", Input.c_str()+i)) or
-              (startswith("&rsqr;", Input.c_str()+i)))) break;
+             ((startswith("&lsqr;", std::string_view(Input.begin()+i, Input.end()))) or
+              (startswith("&rsqr;", std::string_view(Input.begin()+i, Input.end()))))) break;
       }
       if (i >= Input.size()) return;
    }
 
    for (auto pos = std::ssize(Output)-1; pos >= 0; pos--) {
       if (Output[pos] IS '&') {
-         if (startswith("&lsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "[");
-         else if (startswith("&rsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "]");
+         if (startswith("&lsqr;", std::string_view(Output.begin()+pos, Output.end()))) Output.replace(pos, 6, "[");
+         else if (startswith("&rsqr;", std::string_view(Output.begin()+pos, Output.end()))) Output.replace(pos, 6, "]");
       }
       else if (Output[pos] IS '[') {
          if (Output[pos+1] IS '=') { // Perform a calcuation within [= ... ]

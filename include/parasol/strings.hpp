@@ -162,20 +162,19 @@ inline void camelcase(std::string &s) noexcept {
 
 [[nodiscard]] inline bool startswith(std::string_view StringA, std::string_view StringB) noexcept
 {
-   std::size_t a = 0, b = 0;
-
    if (StringA.size() > StringB.size()) return false;
-
-   while ((a < StringA.size()) and (b < StringB.size())) {
-      auto char1 = StringA[a];
-      auto char2 = StringB[b];
-      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-      if (char1 != char2) return false;
-
-      a++; b++;
+   std::size_t i;
+   for (i = 0; i < StringA.size(); i++) {
+      if (std::tolower(StringA[i]) != std::tolower(StringB[i])) return false;
    }
+   return true;
+}
 
+[[nodiscard]] inline bool startswith(std::string_view StringA, CSTRING StringB) noexcept
+{
+   for (std::size_t i = 0; i < StringA.size(); i++) {
+      if (std::tolower(StringA[i]) != std::tolower(StringB[i])) return false;
+   }
    return true;
 }
 
