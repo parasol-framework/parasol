@@ -12,6 +12,7 @@
 
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
+   glIDLTimestamp = 20240610
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -315,6 +316,12 @@ end
 -- FDL function
 
 function module(Options, Function)
+   if (nz(Options['timestamp'],0) > glIDLTimestamp) then
+      -- Do nothing if the timestamp is > than the timestamp on this idl-c release
+      glAbort = 'Timestamp on IDL file (' .. Options['timestamp'] .. ') exceeds IDL-C timestamp of ' .. glIDLTimestamp
+      return
+   end
+
    glModule = Options
 
    if nz(glModule.name) then
@@ -2591,6 +2598,11 @@ end
    loadFile(glPath .. 'idl-doc.fluid')
 
    if (processFDLFile(glSource) == ERR_Okay) then
+      if glAbort then
+         print('FDL processing cancelled, reason: ' .. glAbort)
+         return
+      end
+
       processSourceFiles()
       saveOutput()
 

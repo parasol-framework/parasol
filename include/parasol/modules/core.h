@@ -1892,12 +1892,12 @@ struct CompressionFeedback {
    WORD    Hour;          // Hour of the original file's datestamp.
    WORD    Minute;        // Minute of the original file's datestamp.
    WORD    Second;        // Second of the original file's datestamp.
-   CompressionFeedback() : FeedbackID(FDB::NIL), Index(0), Path(NULL), Dest(NULL), 
+   CompressionFeedback() : FeedbackID(FDB::NIL), Index(0), Path(NULL), Dest(NULL),
       Progress(0), OriginalSize(0), CompressedSize(0),
       Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
 
-   CompressionFeedback(FDB pFeedback, LONG pIndex, CSTRING pPath, CSTRING pDest) : 
-      FeedbackID(pFeedback), Index(pIndex), Path(pPath), Dest(pDest), 
+   CompressionFeedback(FDB pFeedback, LONG pIndex, CSTRING pPath, CSTRING pDest) :
+      FeedbackID(pFeedback), Index(pIndex), Path(pPath), Dest(pDest),
       Progress(0), OriginalSize(0), CompressedSize(0),
       Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
 };
