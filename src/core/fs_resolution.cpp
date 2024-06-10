@@ -237,7 +237,7 @@ resolved_path:
 
 #ifdef __unix__
 
-static ERR resolve_path_env(std::string_view RelativePath, STRING *Result)
+static ERR resolve_path_env(std::string_view RelativePath, std::string *Result)
 {
    // If a path to the file isn't available, scan the PATH environment variable. In Unix the separator is :
 
@@ -258,8 +258,8 @@ static ERR resolve_path_env(std::string_view RelativePath, STRING *Result)
             if (!S_ISDIR(info.st_mode)) { // Successfully identified file location
                if (Result) {
                   auto tp = true_path(src.c_str());
-                  if (tp.has_value()) *Result = strclone(tp.value());
-                  else *Result = strclone(src);
+                  if (tp.has_value()) Result->assign(tp.value());
+                  else Result->assign(src);
                }
                return ERR::Okay;
             }

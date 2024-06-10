@@ -793,77 +793,59 @@ static ERR TASK_Activate(extTask *Self)
    path = NULL;
    GET_LaunchPath(Self, &path);
 
+   std::ostringstream buffer;
+
    i = 0;
    if (((Self->Flags & TSF::RESET_PATH) != TSF::NIL) or (path)) {
       Self->Flags |= TSF::SHELL;
 
-      buffer[i++] = 'c';
-      buffer[i++] = 'd';
-      buffer[i++] = ' ';
+      buffer << "cd ";
 
       if (!path) path = Self->Location;
-      if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
-         for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
-         FreeResource(path);
+      std::string rpath;
+      if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
+         while (rpath.ends_with('/')) rpath.pop_back();
+         buffer << rpath;
       }
       else {
-         for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
-      }
-
-      while ((i > 0) and (buffer[i-1] != '/')) i--;
-      if (i > 0) {
-         buffer[i++] = ';';
-         buffer[i++] = ' ';
+         auto p = std::string_view(path);
+         while (p.ends_with('/')) p.remove_suffix(1);
+         buffer << p;
       }
    }
 
    // Resolve the location of the executable (may contain an volume) and copy it to the command line buffer.
 
-   if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
-      for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
-      buffer[i] = 0;
-      FreeResource(path);
+   std::string rpath;
+   if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
+      buffer << rpath;
    }
-   else {
-      for (j=0; (Self->Location[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = Self->Location[j++];
-      buffer[i] = 0;
-   }
-
-   CSTRING argslist[Self->Parameters.size()+2];
-   LONG bufend = i;
+   else buffer << Self->Location;
 
    // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF::SHELL is used,
    // however it is extremely useful in the debug printout to see what is being executed.
 
-   for (auto &param : Self->Parameters) {
-      buffer[i++] = ' ';
-
-      // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just
-      // copy it as normal.
-
-      for (k=0; (param[k]) and (param[k] != ' '); k++);
-
-      if (param[k] IS ' ') {
-         buffer[i++] = '"';
-         for (k=0; param[k]; k++) buffer[i++] = param[k];
-         buffer[i++] = '"';
+   std::ostringstream params;
+   if ((Self->Flags & TSF::SHELL) != TSF::NIL) {
+      for (auto &param : Self->Parameters) {
+         params << ' ';
+         if (param.find(' ') != std::string::npos) params << '"' << param << '"';
+         else params << param;
       }
-      else for (k=0; param[k]; k++) buffer[i++] = param[k];
    }
-   buffer[i] = 0;
 
    // Convert single quotes into double quotes
 
-   for (i=0; buffer[i]; i++) if (buffer[i] IS '\'') buffer[i] = '"';
+   auto final_buffer = buffer.str();
+   for (LONG i=0; i < std::ssize(final_buffer); i++) if (final_buffer[i] IS '\'') final_buffer[i] = '"';
 
-   log.warning("%s", buffer);
+   log.warning("%s", final_buffer.c_str());
 
    // If we're not going to run in shell mode, create an argument list for passing to the program.
 
+   CSTRING argslist[Self->Parameters.size()+2];
    if ((Self->Flags & TSF::SHELL) IS TSF::NIL) {
-      buffer[bufend] = 0;
-
-      argslist[0] = buffer;
+      argslist[0] = final_buffer.c_str();
       unsigned i;
       for (i=0; i < Self->Parameters.size(); i++) {
          argslist[i+1] = Self->Parameters[i].c_str();
@@ -1046,15 +1028,15 @@ static ERR TASK_Activate(extTask *Self)
       setgid(glGID);
    }
 
+   final_buffer.append(params.str());
    if (shell) { // For some reason, bash terminates the argument list if it encounters a # symbol, so we'll strip those out.
-      for (j=0,i=0; buffer[i]; i++) {
-         if (buffer[i] != '#') buffer[j++] = buffer[i];
+      for (j=0,i=0; i < std::ssize(final_buffer); i++) {
+         if (final_buffer[i] != '#') final_buffer[j++] = final_buffer[i];
       }
-      buffer[j] = 0;
 
-      execl("/bin/sh", "sh", "-c", buffer, (char *)NULL);
+      execl("/bin/sh", "sh", "-c", final_buffer.c_str(), (char *)NULL);
    }
-   else execv(buffer, (char * const *)&argslist);
+   else execv(final_buffer.c_str(), (char * const *)&argslist);
 
    exit(EXIT_FAILURE);
 #endif
@@ -2037,13 +2019,12 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
          new_path[len] = 0;
 
 #ifdef __unix__
-         STRING path;
+         std::string path;
          if (ResolvePath(new_path, RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-            if (chdir(path)) {
+            if (chdir(path.c_str())) {
                error = ERR::InvalidPath;
-               log.msg("Failed to switch current path to: %s", path);
+               log.msg("Failed to switch current path to: %s", path.c_str());
             }
-            FreeResource(path);
          }
          else error = log.warning(ERR::ResolvePath);
 #elif _WIN32

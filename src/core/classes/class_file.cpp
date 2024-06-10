@@ -2049,7 +2049,7 @@ static ERR GET_Link(extFile *Self, STRING *Value)
 {
 #ifdef __unix__
    pf::Log log;
-   STRING path;
+   std::string path;
 
    if (!Self->prvLink.empty()) { // The link has already been read previously, just re-use it
       *Value = Self->prvLink.data();
@@ -2062,7 +2062,7 @@ static ERR GET_Link(extFile *Self, STRING *Value)
          if (path.ends_with('/')) path.pop_back();
          LONG i;
          char buffer[512];
-         if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
+         if (((i = readlink(path.c_str(), buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
             Self->prvLink.assign(buffer, 0, i);
             *Value = Self->prvLink.data();
          }
