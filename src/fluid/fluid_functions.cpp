@@ -633,8 +633,8 @@ int fcmd_loadfile(lua_State *Lua)
                LONG len, i;
                char header[256];
                if (file->read(header, sizeof(header), &len) IS ERR::Okay) {
-                  if (pf::startswith(LUA_COMPILED, header)) {
-                     recompile = FALSE; // Do not recompile that which is already compiled
+                  if (pf::startswith(LUA_COMPILED, std::string_view(header, sizeof(header)))) {
+                     recompile = false; // Do not recompile that which is already compiled
                      for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
                      if (!header[i]) i++;
                      else i = 0;
@@ -723,7 +723,7 @@ int fcmd_exec(lua_State *Lua)
 
          // Check for the presence of a compiled header and skip it if present
 
-         if (pf::startswith(LUA_COMPILED, statement)) {
+         if (pf::startswith(LUA_COMPILED, std::string_view(statement, len))) {
             size_t i;
             for (i=sizeof(LUA_COMPILED)-1; statement[i]; i++);
             statement += i + 1;

@@ -272,10 +272,6 @@ static int module_call(lua_State *Lua)
             return 0;
          }
       }
-      else if (argtype & (FD_TAGS|FD_VARTAGS)) {
-         luaL_error(Lua, "Functions using tags are not supported.");
-         return 0;
-      }
       else if (argtype & FD_FUNCTION) {
          if (func.defined()) { // Is the function reserve already used?
             luaL_error(Lua, "Multiple function arguments are not supported.");
@@ -314,7 +310,7 @@ static int module_call(lua_State *Lua)
       else if (argtype & FD_STR) {
          auto type = lua_type(Lua, i);
 
-         if (argtype & FD_CPP) { // std::string_view
+         if (argtype & FD_CPP) { // std::string_view (enforced, cannot be NULL)
             size_t len;
             auto str = lua_tolstring(Lua, i, &len);
             ((std::string_view **)(buffer + j))[0] = new std::string_view(str, len);
@@ -532,6 +528,10 @@ static int module_call(lua_State *Lua)
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_sint32;
          j += sizeof(LONG);
+      }
+      else if (argtype & (FD_TAGS|FD_VARTAGS)) {
+         luaL_error(Lua, "Functions using tags are not supported.");
+         return 0;
       }
       else {
          log.warning("%s() unsupported arg '%s', flags $%.8x, aborting now.", mod->Functions[index].Name, args[i].Name, argtype);
