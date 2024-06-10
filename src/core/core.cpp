@@ -552,10 +552,9 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
 #ifdef _WIN32
    {
-      STRING libpath;
+      std::string libpath;
       if (ResolvePath("modules:lib", RSF::NO_FILE_CHECK, &libpath) IS ERR::Okay) {
-         winSetDllDirectory(libpath);
-         FreeResource(libpath);
+         winSetDllDirectory(libpath.c_str());
       }
       else log.trace("Failed to resolve modules:lib");
    }
@@ -1346,10 +1345,9 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
 
 #ifndef PARASOL_STATIC
    // Change glModulePath to an absolute path to optimise the loading of modules.
-   STRING mpath;
+   std::string mpath;
    if (ResolvePath("modules:", RSF::NO_FILE_CHECK, &mpath) IS ERR::Okay) {
-      glModulePath = mpath;
-      FreeResource(mpath);
+      glModulePath.assign(mpath);
    }
 #endif
 

@@ -414,20 +414,18 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 
    pf::SwitchContext context(Self);
 
-   STRING working_path;
+   CSTRING task_path;
    if (path) { // Extract absolute path
       Self->WorkingPath.assign(Self->Path, 0, j);
    }
-   else if ((CurrentTask()->get(FID_Path, &working_path) IS ERR::Okay) and (working_path)) {
-      std::string buf(working_path);
+   else if ((CurrentTask()->get(FID_Path, &task_path) IS ERR::Okay) and (task_path)) {
+      std::string buf(task_path);
 
       // Using ResolvePath() can help to determine relative paths such as "../path/file"
 
       if (j > 0) buf += Self->Path.substr(0, j);
 
-      if (ResolvePath(buf.c_str(), RSF::APPROXIMATE, &working_path) IS ERR::Okay) {
-         Self->WorkingPath.assign(working_path);
-      }
+      ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath);
    }
    else { *Value = NULL; return ERR::NoData; }
 

@@ -92,7 +92,7 @@ static void sslCtxMsgCallback(SSL *s, int where, int ret)
 
 static ERR sslSetup(extNetSocket *Self)
 {
-   STRING path;
+   std::string path;
    ERR error;
    pf::Log log(__FUNCTION__);
 
@@ -109,9 +109,7 @@ static ERR sslSetup(extNetSocket *Self)
       //if (GetResource(RES::LOG_LEVEL) > 3) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
 
       if (ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-         if (SSL_CTX_load_verify_locations(Self->CTX, NULL, path)) {
-            FreeResource(path);
-
+         if (SSL_CTX_load_verify_locations(Self->CTX, NULL, path.c_str())) {
             if ((Self->SSL = SSL_new(Self->CTX))) {
                log.msg("SSL connectivity has been configured successfully.");
 
@@ -122,8 +120,7 @@ static ERR sslSetup(extNetSocket *Self)
             else { log.warning("Failed to initialise new SSL object."); error = ERR::Failed; }
          }
          else {
-            FreeResource(path);
-            log.warning("Failed to define certificate folder: %s", path);
+            log.warning("Failed to define certificate folder: %s", path.c_str());
             error = ERR::Failed;
          }
       }

@@ -1892,6 +1892,14 @@ struct CompressionFeedback {
    WORD    Hour;          // Hour of the original file's datestamp.
    WORD    Minute;        // Minute of the original file's datestamp.
    WORD    Second;        // Second of the original file's datestamp.
+   CompressionFeedback() : FeedbackID(FDB::NIL), Index(0), Path(NULL), Dest(NULL), 
+      Progress(0), OriginalSize(0), CompressedSize(0),
+      Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
+
+   CompressionFeedback(FDB pFeedback, LONG pIndex, CSTRING pPath, CSTRING pDest) : 
+      FeedbackID(pFeedback), Index(pIndex), Path(pPath), Dest(pDest), 
+      Progress(0), OriginalSize(0), CompressedSize(0),
+      Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
 };
 
 struct CompressedItem {
@@ -1948,6 +1956,7 @@ struct FileFeedback {
    STRING Dest;          // Destination file/path if moving or copying
    FBK    FeedbackID;    // Set to one of the FBK values
    char   Reserved[32];  // Reserved in case of future expansion
+  FileFeedback() : Size(0), Position(0), Path(NULL), Dest(NULL), FeedbackID(FBK::NIL) { }
 };
 
 struct Field {
@@ -2020,7 +2029,7 @@ struct CoreBase {
    const struct SystemState * (*_GetSystemState)(void);
    ERR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> *List);
    ERR (*_RegisterFD)(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-   ERR (*_ResolvePath)(CSTRING Path, RSF Flags, STRING *Result);
+   ERR (*_ResolvePath)(std::string_view Path, RSF Flags, std::string *Result);
    ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo *MemInfo, LONG Size);
    ERR (*_MemoryPtrInfo)(APTR Address, struct MemInfo *MemInfo, LONG Size);
    ERR (*_NewObject)(CLASSID ClassID, NF Flags, OBJECTPTR *Object);
@@ -2119,7 +2128,7 @@ inline ERR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_Co
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List) { return CoreBase->_ListChildren(Object,List); }
 inline ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
-inline ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
+inline ERR ResolvePath(std::string_view Path, RSF Flags, std::string *Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
 inline ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
 inline ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
@@ -2212,7 +2221,7 @@ extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState(void);
 extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List);
 extern "C" ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-extern "C" ERR ResolvePath(CSTRING Path, RSF Flags, STRING *Result);
+extern "C" ERR ResolvePath(std::string_view Path, RSF Flags, std::string *Result);
 extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, LONG Size);
 extern "C" ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, LONG Size);
 extern "C" ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object);

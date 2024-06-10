@@ -140,10 +140,9 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
       log.trace("Module location is absolute.");
       path.assign(Self->Name);
 
-      STRING volume;
-      if (ResolvePath(path.c_str(), RSF::APPROXIMATE, &volume) IS ERR::Okay) {
+      std::string volume;
+      if (ResolvePath(path, RSF::APPROXIMATE, &volume) IS ERR::Okay) {
          path.assign(volume);
-         FreeResource(volume);
       }
       else {
          log.warning("Failed to resolve the path of module '%s'", Self->Name);

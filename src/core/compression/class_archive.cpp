@@ -55,9 +55,9 @@ static std::unordered_map<ULONG, extCompression *> glArchives;
 
 static ERR close_folder(DirInfo *);
 static ERR open_folder(DirInfo *);
-static ERR get_info(CSTRING, FileInfo *, LONG);
+static ERR get_info(std::string_view, FileInfo *, LONG);
 static ERR scan_folder(DirInfo *);
-static ERR test_path(STRING, RSF, LOC *);
+static ERR test_path(std::string &, RSF, LOC *);
 
 //********************************************************************************************************************
 
@@ -129,30 +129,23 @@ extern void remove_archive(extCompression *Compression)
 //********************************************************************************************************************
 // Return the archive referenced by 'archive:[NAME]/...'
 
-extern extCompression * find_archive(CSTRING Path, std::string &FilePath)
+static extCompression * find_archive(std::string_view Path, std::string &FilePath)
 {
    Log log(__FUNCTION__);
 
-   if (!Path) return NULL;
-
-   // Compute the hash of the referenced archive.
-
-   CSTRING path = Path + LEN_ARCHIVE;
-   ULONG hash = 5381;
-   char c;
-   while ((c = *path++) and (c != '/') and (c != '\\')) {
-      if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
-      else hash = (hash<<5) + hash + c;
+   Path.remove_prefix(LEN_ARCHIVE);
+   auto end = Path.find_first_of("/\\");
+   if (end != std::string::npos) {
+      auto name = Path.substr(0, end);
+      auto hash = strihash(name);
+      if (glArchives.contains(hash)) {
+         FilePath.assign(Path.substr(end+1));
+         return glArchives[hash];
+      }
    }
 
-   if (glArchives.contains(hash)) {
-      FilePath.assign(path);
-      return glArchives[hash];
-   }
-   else {
-      log.warning("No match for path '%s'", Path);
-      return NULL;
-   }
+   log.warning("No match for path '%s'", Path.data());
+   return NULL;
 }
 
 //********************************************************************************************************************
@@ -202,7 +195,7 @@ static ERR ARCHIVE_Init(extFile *Self)
 {
    Log log;
 
-   if (!Self->Path) return ERR::FieldNotSet;
+   if (Self->Path.empty()) return ERR::FieldNotSet;
 
    if (!startswith("archive:", Self->Path)) return ERR::NoSupport;
 
@@ -213,13 +206,13 @@ static ERR ARCHIVE_Init(extFile *Self)
       auto prv = (prvFileArchive *)Self->ChildPrivate;
       new (prv) prvFileArchive;
 
-      if (Self->Path[strlen(Self->Path)-1] IS ':') { // Nothing is referenced
+      if (Self->Path.ends_with(':')) { // Nothing is referenced
          return ERR::Okay;
       }
       else {
          std::string file_path;
 
-         prv->Archive = find_archive(Self->Path, file_path);
+         prv->Archive = find_archive(Self->Path.c_str(), file_path);
 
          if (prv->Archive) {
             // TODO: This is a slow scan and could be improved if a hashed directory structure was
@@ -469,13 +462,13 @@ static ERR scan_folder(DirInfo *Dir)
 
    // Retrieve the file path, skipping the "archive:name/" part.
 
-   CSTRING name = Dir->prvResolvedPath + LEN_ARCHIVE + 1;
-   while ((*name) and (*name != '/') and (*name != '\\')) name++;
-   if ((*name IS '/') or (*name IS '\\')) name++;
+   auto name = std::string_view(Dir->prvResolvedPath + LEN_ARCHIVE);
+   auto sep = name.find_first_of("/\\");
+   if (sep != std::string::npos) sep++;
 
-   log.traceBranch("Path: \"%s\", Flags: $%.8x", name, LONG(Dir->prvFlags));
+   log.traceBranch("Path: \"%s\", Flags: $%.8x", name.data(), LONG(Dir->prvFlags));
 
-   std::string path(name);
+   std::string path(name.data() + sep);
 
    auto archive = (extCompression *)Dir->prvHandle;
 
@@ -530,6 +523,7 @@ static ERR scan_folder(DirInfo *Dir)
          Dir->Info->Flags |= RDF::FILE;
          auto offset = zf.Name.find_last_of("/\\");
          if (offset IS std::string::npos) offset = 0;
+         else offset++;
          strcopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME);
 
          ((ArchiveDriver *)Dir->Driver)->Index = it;
@@ -572,17 +566,16 @@ static ERR close_folder(DirInfo *Dir)
 
 //********************************************************************************************************************
 
-static ERR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
+static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
 {
    Log log(__FUNCTION__);
+
+   log.traceBranch("%s", Path.data());
+
    CompressedItem *item;
    std::string file_path;
-   ERR error;
-
-   log.traceBranch("%s", Path);
-
    if (auto cmp = find_archive(Path, file_path)) {
-      if ((error = cmp->find(file_path.c_str(), true, false, &item)) != ERR::Okay) return error;
+      if (auto error = cmp->find(file_path.c_str(), true, false, &item); error != ERR::Okay) return error;
    }
    else return ERR::DoesNotExist;
 
@@ -596,20 +589,15 @@ static ERR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    // Extract the file name
 
-   LONG len = strlen(Path);
-   LONG i = len;
-   if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) i--;
-   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
-   i = strcopy(Path + i, Info->Name, MAX_FILENAME-2);
+   while (Path.ends_with('/') or Path.ends_with('\\') or Path.ends_with(':')) Path.remove_suffix(1);
+   auto i = Path.find_last_of("/\\:");
+   if (i != std::string::npos) i++;
+   if (Path.size()-i+1 > MAX_FILENAME) return ERR::BufferOverflow;
+   i = strcopy(Path.data() + i, Info->Name, Path.size()-i);
 
-   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
-      if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';
-      else if (Info->Name[i-1] != '/') {
-         Info->Name[i++] = '/';
-         Info->Name[i] = 0;
-      }
-   }
+   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) Info->Name[i++] = '/';
 
+   Info->Name[i] = 0;
    Info->Permissions = item->Permissions;
    Info->UserID      = item->UserID;
    Info->GroupID     = item->GroupID;
@@ -620,11 +608,11 @@ static ERR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 //********************************************************************************************************************
 // Test an archive: location.
 
-static ERR test_path(STRING Path, RSF Flags, LOC *Type)
+static ERR test_path(std::string &Path, RSF Flags, LOC *Type)
 {
    Log log(__FUNCTION__);
 
-   log.traceBranch("%s", Path);
+   log.traceBranch("%s", Path.c_str());
 
    std::string file_path;
    extCompression *cmp;
@@ -642,9 +630,10 @@ static ERR test_path(STRING Path, RSF Flags, LOC *Type)
       file_path.append(".*");
       if ((error = cmp->find(file_path.c_str(), TRUE, TRUE, &item)) IS ERR::Okay) {
          // Point the path to the discovered item
-         LONG i;
-         for (i=0; (Path[i] != '/') and (Path[i]); i++);
-         if (Path[i] IS '/') strcopy(item->Path, Path + i + 1, MAX_FILENAME);
+         if (auto i = Path.find('/'); i != std::string::npos) {
+            Path.resize(i + 1);
+            Path.append(item->Path);
+         }
       }
    }
 

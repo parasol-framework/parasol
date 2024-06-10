@@ -35,37 +35,27 @@ extern "C" void path_monitor(HOSTHANDLE, extFile *);
 
 ERR fs_watch_path(extFile *File)
 {
-   pf::Log log;
-   if (auto path = strclone(File->prvResolvedPath)) {
-      strip_folder(path); // Remove trailing slash if there is one
+   LONG nflags = 0;
+   if ((File->prvWatch->Flags & MFF::READ) != MFF::NIL) nflags |= IN_ACCESS;
+   if ((File->prvWatch->Flags & MFF::MODIFY) != MFF::NIL) nflags |= IN_MODIFY;
+   if ((File->prvWatch->Flags & MFF::CREATE) != MFF::NIL) nflags |= IN_CREATE;
+   if ((File->prvWatch->Flags & MFF::DELETE) != MFF::NIL) nflags |= IN_DELETE | IN_DELETE_SELF;
+   if ((File->prvWatch->Flags & MFF::OPENED) != MFF::NIL) nflags |= IN_OPEN;
+   if ((File->prvWatch->Flags & MFF::ATTRIB) != MFF::NIL) nflags |= IN_ATTRIB;
+   if ((File->prvWatch->Flags & MFF::CLOSED) != MFF::NIL) nflags |= IN_CLOSE_WRITE | IN_CLOSE_NOWRITE;
+   if ((File->prvWatch->Flags & (MFF::MOVED|MFF::RENAME)) != MFF::NIL)  nflags |= IN_MOVED_FROM | IN_MOVED_TO;
 
-      // Add a watch for this file
-
-      LONG nflags = 0;
-      if ((File->prvWatch->Flags & MFF::READ) != MFF::NIL) nflags |= IN_ACCESS;
-      if ((File->prvWatch->Flags & MFF::MODIFY) != MFF::NIL) nflags |= IN_MODIFY;
-      if ((File->prvWatch->Flags & MFF::CREATE) != MFF::NIL) nflags |= IN_CREATE;
-      if ((File->prvWatch->Flags & MFF::DELETE) != MFF::NIL) nflags |= IN_DELETE | IN_DELETE_SELF;
-      if ((File->prvWatch->Flags & MFF::OPENED) != MFF::NIL) nflags |= IN_OPEN;
-      if ((File->prvWatch->Flags & MFF::ATTRIB) != MFF::NIL) nflags |= IN_ATTRIB;
-      if ((File->prvWatch->Flags & MFF::CLOSED) != MFF::NIL) nflags |= IN_CLOSE_WRITE | IN_CLOSE_NOWRITE;
-      if ((File->prvWatch->Flags & (MFF::MOVED|MFF::RENAME)) != MFF::NIL)  nflags |= IN_MOVED_FROM | IN_MOVED_TO;
-
-      LONG handle = inotify_add_watch(glInotify, path, nflags);
-
-      if (handle IS -1) {
-         log.warning("%s", strerror(errno));
-         FreeResource(path);
-         return ERR::SystemCall;
-      }
-
+   auto path = File->prvResolvedPath;
+   if (path.ends_with('/')) path.pop_back();
+   if (auto handle = inotify_add_watch(glInotify, path.c_str(), nflags); handle != -1) {
       File->prvWatch->Handle = handle;
-
-      FreeResource(path);
       return ERR::Okay;
    }
-
-   return ERR::AllocMemory;
+   else {
+      pf::Log log;
+      log.warning("%s", strerror(errno));
+      return ERR::SystemCall;
+   }
 }
 
 #elif _WIN32
@@ -79,14 +69,14 @@ ERR fs_watch_path(extFile *File)
 
    // The path_monitor() function will be called whenever the Path or its content is modified.
 
-   if ((error = winWatchFile(LONG(File->prvWatch->Flags), File->prvResolvedPath, (File->prvWatch + 1), &handle, &winflags)) IS ERR::Okay) {
+   if ((error = winWatchFile(LONG(File->prvWatch->Flags), File->prvResolvedPath.c_str(), (File->prvWatch + 1), &handle, &winflags)) IS ERR::Okay) {
       File->prvWatch->Handle   = handle;
       File->prvWatch->WinFlags = winflags;
       if ((error = RegisterFD(handle, RFD::READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File)) IS ERR::Okay) {
       }
       else log.warning("Failed to register folder handle.");
    }
-   else log.warning("Failed to watch path %s, %s", File->prvResolvedPath, GetErrorMsg(error));
+   else log.warning("Failed to watch path %s, %s", File->prvResolvedPath.c_str(), GetErrorMsg(error));
 
    return error;
 }
@@ -276,7 +266,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
    else {
       auto routine = (ERR (*)(extFile *, CSTRING, LARGE, LONG, APTR))File->prvWatch->Routine.Routine;
       pf::SwitchContext context(File->prvWatch->Routine.Context);
-      error = routine(File, File->Path, File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
+      error = routine(File, File->Path.c_str(), File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
 
       if (error IS ERR::Terminate) Action(fl::Watch::id, File, NULL);
    }

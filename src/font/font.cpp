@@ -849,16 +849,15 @@ static void scan_truetype_folder(objConfig *Config)
 
    log.branch("Scanning for truetype fonts.");
 
-   STRING path;
-   if (ResolvePath("fonts:truetype/", RSF::NO_FILE_CHECK|RSF::PATH, (STRING *)&path) IS ERR::Okay) {
-      LocalResource free_path(path);
-
+   std::string ttpath;
+   if (ResolvePath("fonts:truetype/", RSF::NO_FILE_CHECK|RSF::PATH, &ttpath) IS ERR::Okay) {
       DirInfo *dir;
-      if (OpenDir(path, RDF::FILE, &dir) IS ERR::Okay) {
+      if (OpenDir(ttpath.c_str(), RDF::FILE, &dir) IS ERR::Okay) {
          LocalResource free_dir(dir);
 
+         auto ttpath_len = ttpath.size();
          while (ScanDir(dir) IS ERR::Okay) {
-            std::string ttpath(path);
+            ttpath.resize(ttpath_len);
             ttpath.append(dir->Info->Name);
 
             FT_Face ftface;

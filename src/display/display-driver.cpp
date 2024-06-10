@@ -607,7 +607,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
    if (!Info) return log.warning(ERR::NullArgs);
 
    if (InfoSize != sizeof(DisplayInfoV3)) {
-      log.error("Invalid InfoSize of %d (V3: %d)", InfoSize, (LONG)sizeof(DisplayInfoV3));
+      log.error("Invalid InfoSize of %d (V3: %d)", InfoSize, LONG(sizeof(DisplayInfoV3)));
       return log.warning(ERR::Args);
    }
 
@@ -1150,12 +1150,9 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
 
    std::string icon_path;
-   STRING path;
-   if (ResolvePath("iconsource:", RSF::NIL, &path) IS ERR::Okay) { // The client can set iconsource: to redefine the icon origins
-      icon_path.assign(path);
-      FreeResource(path);
+   if (ResolvePath("iconsource:", RSF::NIL, &icon_path) != ERR::Okay) { // The client can set iconsource: to redefine the icon origins
+      icon_path = "styles:icons/";
    }
-   else icon_path = "styles:icons/";
 
    auto src = icon_path + "Default.zip";
    if (!(glIconArchive = objCompression::create::local(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {

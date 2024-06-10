@@ -58,25 +58,25 @@ This code is based on the work of Jean-loup Gailly and Mark Adler.
 //********************************************************************************************************************
 // Central folder structure for each archived file.  This appears at the end of the zip file.
 
-#define LIST_SIGNATURE      0
-#define LIST_VERSION        4
-#define LIST_OS             5
-#define LIST_REQUIRED_VER   6
-#define LIST_REQUIRED_OS    7
-#define LIST_FLAGS          8
-#define LIST_METHOD         10
-#define LIST_TIMESTAMP      12
-#define LIST_CRC            16  // Checksum
-#define LIST_COMPRESSEDSIZE 20
-#define LIST_FILESIZE       24  // Original file size
-#define LIST_NAMELEN        28  // File name
-#define LIST_EXTRALEN       30  // System specific information
-#define LIST_COMMENTLEN     32  // Optional comment
-#define LIST_DISKNO         34  // Disk number start
-#define LIST_IFILE          36  // Internal file attributes (pkzip specific)
-#define LIST_ATTRIB         38  // System specific file attributes
-#define LIST_OFFSET         42  // Relative offset of local header
-#define LIST_LENGTH         46  // END
+static const LONG LIST_SIGNATURE      = 0;
+static const LONG LIST_VERSION        = 4;
+static const LONG LIST_OS             = 5;
+static const LONG LIST_REQUIRED_VER   = 6;
+static const LONG LIST_REQUIRED_OS    = 7;
+static const LONG LIST_FLAGS          = 8;
+static const LONG LIST_METHOD         = 10;
+static const LONG LIST_TIMESTAMP      = 12;
+static const LONG LIST_CRC            = 16;  // Checksum
+static const LONG LIST_COMPRESSEDSIZE = 20;
+static const LONG LIST_FILESIZE       = 24;  // Original file size
+static const LONG LIST_NAMELEN        = 28;  // File name
+static const LONG LIST_EXTRALEN       = 30;  // System specific information
+static const LONG LIST_COMMENTLEN     = 32;  // Optional comment
+static const LONG LIST_DISKNO         = 34;  // Disk number start
+static const LONG LIST_IFILE          = 36;  // Internal file attributes (pkzip specific)
+static const LONG LIST_ATTRIB         = 38;  // System specific file attributes
+static const LONG LIST_OFFSET         = 42;  // Relative offset of local header
+static const LONG LIST_LENGTH         = 46;  // END
 
 PACK(struct zipentry {
    UBYTE version;
@@ -100,12 +100,12 @@ PACK(struct zipentry {
 
 //********************************************************************************************************************
 
-#define TAIL_FILECOUNT      8
-#define TAIL_TOTALFILECOUNT 10
-#define TAIL_FILELISTSIZE   12
-#define TAIL_FILELISTOFFSET 16
-#define TAIL_COMMENTLEN     20
-#define TAIL_LENGTH         22
+static const LONG TAIL_FILECOUNT      = 8;
+static const LONG TAIL_TOTALFILECOUNT = 10;
+static const LONG TAIL_FILELISTSIZE   = 12;
+static const LONG TAIL_FILELISTOFFSET = 16;
+static const LONG TAIL_COMMENTLEN     = 20;
+static const LONG TAIL_LENGTH         = 22;
 
 PACK(struct ziptail {
    ULONG header;
@@ -171,14 +171,14 @@ static const LONG SIZE_COMPRESSION_BUFFER = 16384;
 //********************************************************************************************************************
 // File header.  Compressed data is prefixed with this information.
 
-#define HEAD_DEFLATEMETHOD  8
-#define HEAD_TIMESTAMP      10
-#define HEAD_CRC            14
-#define HEAD_COMPRESSEDSIZE 18
-#define HEAD_FILESIZE       22
-#define HEAD_NAMELEN        26   // File name
-#define HEAD_EXTRALEN       28   // System specific information
-#define HEAD_LENGTH         30   // END
+static const LONG HEAD_DEFLATEMETHOD  = 8;
+static const LONG HEAD_TIMESTAMP      = 10;
+static const LONG HEAD_CRC            = 14;
+static const LONG HEAD_COMPRESSEDSIZE = 18;
+static const LONG HEAD_FILESIZE       = 22;
+static const LONG HEAD_NAMELEN        = 26;  // File name
+static const LONG HEAD_EXTRALEN       = 28;  // System specific information
+static const LONG HEAD_LENGTH         = 30;  // END
 
 class extCompression : public objCompression {
    public:
@@ -1119,6 +1119,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
    log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, LONG(Self->Permissions));
 
    std::string destpath(Args->Dest);
+   auto dest_len = destpath.size();
 
    UWORD pathend = 0;
    for (UWORD i=0; Args->Path[i]; i++) if ((Args->Path[i] IS '/') or (Args->Path[i] IS '\\')) pathend = i + 1;
@@ -1144,13 +1145,14 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
          // If the destination path specifies a folder, add the name of the file to the destination to generate the
          // correct file name.
 
-         if ((destpath.back() IS '/') or (destpath.back() IS '\\') or (destpath.back() IS ':')) {
+         destpath.resize(dest_len);
+         if (destpath.ends_with('/') or destpath.ends_with('\\') or destpath.ends_with(':')) {
             destpath.append(zf.Name, pathend);
          }
 
          // If the destination is a folder that already exists, skip this compression entry
 
-         if ((destpath.back() IS '/') or (destpath.back() IS '\\')) {
+         if (destpath.ends_with('/') or destpath.ends_with('\\')) {
             LOC result;
             if ((AnalysePath(destpath.c_str(), &result) IS ERR::Okay) and (result IS LOC::DIRECTORY)) {
                Self->FileIndex++;

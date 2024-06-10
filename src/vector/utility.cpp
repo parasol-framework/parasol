@@ -510,13 +510,12 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
          auto key = strihash(location);
 
          if (!glFreetypeFonts.contains(key)) {
-            STRING resolved;
+            std::string resolved;
             if (ResolvePath(location, RSF::NIL, &resolved) IS ERR::Okay) {
                FT_Face ftface;
-               FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = resolved };
+               FT_Open_Args openargs = { .flags = FT_OPEN_PATHNAME, .pathname = resolved.data() };
                if (FT_Open_Face(glFTLibrary, &openargs, 0, &ftface)) {
-                  Log.warning("Fatal error in attempting to load font \"%s\".", resolved);
-                  FreeResource(resolved);
+                  Log.warning("Fatal error in attempting to load font \"%s\".", resolved.c_str());
                   return ERR::Failed;
                }
 
@@ -568,7 +567,6 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
                else styles.try_emplace(style);
 
                glFreetypeFonts.try_emplace(key, ftface, styles, metrics, meta);
-               FreeResource(resolved);
             }
             else return Log.warning(ERR::ResolvePath);
          }

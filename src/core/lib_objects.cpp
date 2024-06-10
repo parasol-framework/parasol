@@ -798,7 +798,7 @@ objMetaClass * FindClass(CLASSID ClassID)
       }
       else log.warning("No module path defined for class \"%s\"", glClassDB[ClassID].Name.c_str());
    }
-   else log.warning("Could not find class $%.8x in memory or dictionary (%d registered).", ULONG(ClassID), LONG(glClassDB.size()));
+   else log.warning("Could not find class $%.8x in memory or dictionary (%d registered).", ULONG(ClassID), LONG(std::ssize(glClassDB)));
 
    return NULL;
 }
@@ -1088,10 +1088,9 @@ ERR InitObject(OBJECTPTR Object)
       //
       // ERR::UseSubClass: Similar to ERR::NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
 
-      std::array<extMetaClass *, 16> sublist;
-      LONG sli = -1;
+      std::unordered_map<CLASSID, extMetaClass *>::const_iterator subindex = glClassMap.begin();
 
-      while (Object->ExtClass) {
+      while (subindex != glClassMap.end()) {
          if (Object->ExtClass->ActionTable[LONG(AC::Init)].PerformAction) {
             error = Object->ExtClass->ActionTable[LONG(AC::Init)].PerformAction(Object, NULL);
          }
@@ -1101,7 +1100,7 @@ ERR InitObject(OBJECTPTR Object)
             Object->Flags |= NF::INITIALISED;
 
             if (Object->ExtClass != cl) {
-               // Due to the switch, increase the open count of the sub-class (see NewObject() for details on object
+               // Due to the sub-class switch, increase the open count of the sub-class (see NewObject() for details on object
                // reference counting).
 
                log.msg("Object class switched to sub-class \"%s\".", Object->className());
@@ -1115,28 +1114,19 @@ ERR InitObject(OBJECTPTR Object)
 
          if (error IS ERR::UseSubClass) {
             log.trace("Requested to use registered sub-class.");
-            use_subclass = TRUE;
+            use_subclass = true;
          }
          else if (error != ERR::NoSupport) break;
 
-         if (sli IS -1) {
-            // Initialise a list of all sub-classes already in memory for querying in sequence.
-            sli = 0;
-            LONG i = 0;
-            for (auto & [ id, class_ptr ] : glClassMap) {
-               if (i >= LONG(sublist.size())-1) break;
-               if ((Object->classID() IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->classID())) {
-                  sublist[i++] = class_ptr;
-               }
-            }
-
-            sublist[i] = NULL;
-         }
-
          // Attempt to initialise with the next known sub-class.
 
-         if ((Object->Class = sublist[sli++])) {
-            log.trace("Attempting initialisation with sub-class '%s'", Object->className());
+         while (subindex != glClassMap.end()) {
+            if ((Object->Class->BaseClassID IS subindex->second->BaseClassID) and (subindex->second->ClassID != subindex->second->BaseClassID)) {
+               Object->Class = subindex->second;
+               log.trace("Attempting initialisation with sub-class '%s'", Object->className());
+               break;
+            }
+            subindex++;
          }
       }
    }

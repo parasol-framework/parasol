@@ -87,7 +87,7 @@ class extSVG : public objSVG {
    DOUBLE AnimEpoch;  // Epoch time for the animations.
    objXML *XML;
    objVectorScene *Scene;
-   STRING Folder;
+   std::string Folder;
    std::string Colour = "rgb(0,0,0)"; // Default colour, used for 'currentColor' references
    class objVectorViewport *Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
    std::list<std::variant<anim_transform, anim_motion, anim_value>> Animations; // NB: Pointer stability is a container requirement

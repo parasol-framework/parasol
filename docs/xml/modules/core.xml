@@ -1429,11 +1429,11 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ResolvePath</name>
     <category>Files</category>
     <comment>Converts volume-based paths into absolute paths applicable to the host platform.</comment>
-    <prototype>ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result)</prototype>
+    <prototype>ERR ResolvePath(std::string_view Path, RSF Flags, std::string * Result)</prototype>
     <input>
-      <param type="CSTRING" name="Path">The path to be resolved.</param>
+      <param type="std::string_view" name="Path">The path to be resolved.</param>
       <param type="RSF" name="Flags" lookup="RSF">Optional flags.</param>
-      <param type="STRING *" name="Result">Must point to an empty <code>STRING</code> variable so that the resolved path can be stored.  If <code>NULL</code>, ResolvePath() will work as normal and return a valid error code without the result string.</param>
+      <param type="std::string *" name="Result">Must point to an empty <code>STRING</code> variable so that the resolved path can be stored.  If <code>NULL</code>, ResolvePath() will work as normal and return a valid error code without the result string.</param>
     </input>
     <description>
 <p>This function will convert a file path to its resolved form, according to the host system.  For example, a Linux system might resolve <code>drive1:documents/readme.txt</code> to <code>/documents/readme.txt</code>.  A Windows system might resolve the path to <code>c:\documents\readme.txt</code>.</p>

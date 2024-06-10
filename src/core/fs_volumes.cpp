@@ -191,17 +191,17 @@ Exists: The named volume already exists.
 *********************************************************************************************************************/
 
 using CALL_CLOSE_DIR       = ERR (*)(DirInfo *);
-using CALL_DELETE          = ERR (*)(STRING, FUNCTION *);
-using CALL_GET_INFO        = ERR (*)(CSTRING, FileInfo*, LONG);
-using CALL_GET_DEVICE_INFO = ERR (*)(CSTRING, objStorageDevice*);
-using CALL_IDENTIFY_FILE   = ERR (*)(STRING, CLASSID*, CLASSID*);
-using CALL_IGNORE_FILE     = void  (*)(extFile*);
-using CALL_MAKE_DIR        = ERR (*)(CSTRING, PERMIT);
+using CALL_DELETE          = ERR (*)(std::string_view, FUNCTION *);
+using CALL_GET_INFO        = ERR (*)(std::string_view, FileInfo*, LONG);
+using CALL_GET_DEVICE_INFO = ERR (*)(std::string_view, objStorageDevice*);
+using CALL_IDENTIFY_FILE   = ERR (*)(std::string_view, CLASSID*, CLASSID*);
+using CALL_IGNORE_FILE     = void (*)(extFile*);
+using CALL_MAKE_DIR        = ERR (*)(std::string_view, PERMIT);
 using CALL_OPEN_DIR        = ERR (*)(DirInfo*);
-using CALL_RENAME          = ERR (*)(STRING, STRING);
-using CALL_SAME_FILE       = ERR (*)(CSTRING, CSTRING);
+using CALL_RENAME          = ERR (*)(std::string_view, std::string_view);
+using CALL_SAME_FILE       = ERR (*)(std::string_view, std::string_view);
 using CALL_SCAN_DIR        = ERR (*)(DirInfo*);
-using CALL_TEST_PATH       = ERR (*)(CSTRING, RSF, LOC *);
+using CALL_TEST_PATH       = ERR (*)(std::string &, RSF, LOC *);
 using CALL_WATCH_PATH      = ERR (*)(extFile*);
 
 ERR VirtualVolume(CSTRING Name, ...)
@@ -216,9 +216,8 @@ ERR VirtualVolume(CSTRING Name, ...)
 
    if (glVirtual.contains(id)) return ERR::Exists;
 
-   LONG i = strcopy(Name, glVirtual[id].Name, sizeof(glVirtual[id].Name)-2);
-   glVirtual[id].Name[i++]     = ':';
-   glVirtual[id].Name[i]       = 0;
+   glVirtual[id].Name.assign(Name);
+   glVirtual[id].Name.push_back(':');
    glVirtual[id].VirtualID     = id; // Virtual ID = Hash of the name, not including the colon
    glVirtual[id].CaseSensitive = false;
 
@@ -232,21 +231,21 @@ ERR VirtualVolume(CSTRING Name, ...)
             va_end(list);
             return ERR::Okay; // The volume has been removed, so any further tags are redundant.
 
-         case VAS::DRIVER_SIZE:     glVirtual[id].DriverSize = va_arg(list, LONG); break;
+         case VAS::DRIVER_SIZE:     glVirtual[id].DriverSize    = va_arg(list, LONG); break;
          case VAS::CASE_SENSITIVE:  glVirtual[id].CaseSensitive = va_arg(list, LONG) ? true : false; break;
-         case VAS::CLOSE_DIR:       glVirtual[id].CloseDir = va_arg(list, CALL_CLOSE_DIR); break;
-         case VAS::DELETE:          glVirtual[id].Delete = va_arg(list, CALL_DELETE); break;
-         case VAS::GET_INFO:        glVirtual[id].GetInfo =  va_arg(list, CALL_GET_INFO); break;
+         case VAS::CLOSE_DIR:       glVirtual[id].CloseDir      = va_arg(list, CALL_CLOSE_DIR); break;
+         case VAS::DELETE:          glVirtual[id].Delete        = va_arg(list, CALL_DELETE); break;
+         case VAS::GET_INFO:        glVirtual[id].GetInfo       = va_arg(list, CALL_GET_INFO); break;
          case VAS::GET_DEVICE_INFO: glVirtual[id].GetDeviceInfo = va_arg(list, CALL_GET_DEVICE_INFO); break;
-         case VAS::IDENTIFY_FILE:   glVirtual[id].IdentifyFile = va_arg(list, CALL_IDENTIFY_FILE); break;
-         case VAS::IGNORE_FILE:     glVirtual[id].IgnoreFile = va_arg(list, CALL_IGNORE_FILE); break;
-         case VAS::MAKE_DIR:        glVirtual[id].CreateFolder = va_arg(list, CALL_MAKE_DIR); break;
-         case VAS::OPEN_DIR:        glVirtual[id].OpenDir = va_arg(list, CALL_OPEN_DIR); break;
-         case VAS::RENAME:          glVirtual[id].Rename = va_arg(list, CALL_RENAME); break;
-         case VAS::SAME_FILE:       glVirtual[id].SameFile = va_arg(list, CALL_SAME_FILE); break;
-         case VAS::SCAN_DIR:        glVirtual[id].ScanDir = va_arg(list, CALL_SCAN_DIR); break;
-         case VAS::TEST_PATH:       glVirtual[id].TestPath = va_arg(list, CALL_TEST_PATH); break;
-         case VAS::WATCH_PATH:      glVirtual[id].WatchPath = va_arg(list, CALL_WATCH_PATH); break;
+         case VAS::IDENTIFY_FILE:   glVirtual[id].IdentifyFile  = va_arg(list, CALL_IDENTIFY_FILE); break;
+         case VAS::IGNORE_FILE:     glVirtual[id].IgnoreFile    = va_arg(list, CALL_IGNORE_FILE); break;
+         case VAS::MAKE_DIR:        glVirtual[id].CreateFolder  = va_arg(list, CALL_MAKE_DIR); break;
+         case VAS::OPEN_DIR:        glVirtual[id].OpenDir       = va_arg(list, CALL_OPEN_DIR); break;
+         case VAS::RENAME:          glVirtual[id].Rename        = va_arg(list, CALL_RENAME); break;
+         case VAS::SAME_FILE:       glVirtual[id].SameFile      = va_arg(list, CALL_SAME_FILE); break;
+         case VAS::SCAN_DIR:        glVirtual[id].ScanDir       = va_arg(list, CALL_SCAN_DIR); break;
+         case VAS::TEST_PATH:       glVirtual[id].TestPath      = va_arg(list, CALL_TEST_PATH); break;
+         case VAS::WATCH_PATH:      glVirtual[id].WatchPath     = va_arg(list, CALL_WATCH_PATH); break;
 
          default:
             log.warning("Bad VAS tag $%.8x @ pair index %d, aborting.", tagid, arg);

@@ -77,10 +77,10 @@ static const MethodEntry clMethods[] = {
 
 static ERROR close_dir(DirInfo *);
 static ERROR open_dir(DirInfo *);
-static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize);
+static ERROR get_info(std::string_view, FileInfo *, LONG);
 static ERROR read_dir(CSTRING, DirInfo **, LONG);
 static ERROR scan_dir(DirInfo *);
-static ERROR test_path(CSTRING, LONG *);
+static ERROR test_path(std::string &, LONG *);
 static AAssetManager * get_asset_manager(void);
 
 //********************************************************************************************************************
@@ -375,7 +375,7 @@ static ERROR open_dir(DirInfo *Dir)
    AAssetManager *mgr;
    LONG len;
 
-   log.traceBranch("%s", Dir->prvResolvedPath);
+   log.traceBranch("%s", Dir->prvResolvedPath.c_str());
 
    if (!(mgr = get_asset_manager())) return log.warning(ERR::SystemCall);
 
@@ -462,7 +462,7 @@ static ERROR close_dir(DirInfo *Dir)
 
 //********************************************************************************************************************
 
-static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
+static ERROR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
 {
    pf::Log log(__FUNCTION__);
    BYTE dir;
@@ -528,7 +528,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 //********************************************************************************************************************
 // Test an assets: location.
 
-static ERROR test_path(CSTRING Path, LONG Flags, LOC *Type)
+static ERROR test_path(std::string &Path, LONG Flags, LOC *Type)
 {
    pf::Log log(__FUNCTION__);
    AAssetManager *mgr;
