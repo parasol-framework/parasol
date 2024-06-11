@@ -29,7 +29,7 @@ extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState();
 extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List);
 extern "C" ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-extern "C" ERR ResolvePath(std::string_view Path, RSF Flags, std::string * Result);
+extern "C" ERR ResolvePath(const std::string_view & Path, RSF Flags, std::string * Result);
 extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
 extern "C" ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
 extern "C" ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR * Object);

@@ -26,7 +26,7 @@ template<class... Args> void RMSG(Args...) {
 #define MAX_MODULE_ARGS 16
 
 static int module_call(lua_State *);
-static LONG process_results(prvFluid *, APTR, const FunctionField *, LONG);
+static LONG process_results(prvFluid *, APTR, const FunctionField *);
 
 //********************************************************************************************************************
 // Usage: module = mod.load('core')
@@ -332,7 +332,7 @@ static int module_call(lua_State *Lua)
 
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_pointer;
-         j += sizeof(STRING);
+         j += sizeof(APTR);
       }
       else if (argtype & FD_ARRAY) {
          if (argtype & FD_CPP) {
@@ -644,31 +644,28 @@ static int module_call(lua_State *Lua)
       return 0;
    }
 
-   return process_results(prv, buffer, args, result);
+   return process_results(prv, buffer, args) + result;
 }
 
 //********************************************************************************************************************
 // Convert FD_RESULT parameters to the equivalent Fluid result value.
 // Also takes care of any cleanup code for dynamically allocated values.
 
-static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField *args, LONG result)
+static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField *args)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
-   APTR var;
 
    auto scan = (UBYTE *)resultsidx;
-   for (i=1; args[i].Name; i++) {
-      LONG argtype = args[i].Type;
-      CSTRING argname = args[i].Name;
-
-      if (argtype & FD_RESULT) var = ((APTR *)scan)[0];
-      else var = NULL;
+   LONG results = 0;
+   for (LONG i=1; args[i].Name; i++) {
+      const auto argtype = args[i].Type;
 
       if ((argtype & FD_ARRAY) and (!(argtype & FD_BUFFER))) {
-         scan += sizeof(APTR);
          if (argtype & FD_RESULT) {
+            auto var = ((APTR *)scan)[0];
+            scan += sizeof(APTR);
             if (var) {
+               const auto argname = args[i].Name;
                APTR values = ((APTR *)var)[0];
                LONG total_elements = -1; // If -1, make_any_table() assumes the array is null terminated.
 
@@ -686,12 +683,13 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                else lua_pushnil(prv->Lua);
             }
             else lua_pushnil(prv->Lua);
-            result++;
+            results++;
          }
+         else scan += sizeof(APTR);
       }
       else if (argtype & FD_STR) {
          if (argtype & FD_RESULT) {
-            if (var) {
+            if (auto var = ((APTR *)scan)[0]) {
                if (argtype & FD_CPP) { // std::string variant
                   auto str_result = (std::string *)var;
                   lua_pushlstring(prv->Lua, str_result->data(), str_result->size());
@@ -703,7 +701,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                }
             }
             else lua_pushnil(prv->Lua);
-            result++;
+            results++;
          }
          else if (argtype & FD_CPP) { // Delete dynamically created std::string_view
             delete ((std::string_view **)scan)[0];
@@ -711,8 +709,9 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
          scan += sizeof(APTR);
       }
       else if (argtype & (FD_PTR|FD_BUFFER|FD_STRUCT)) {
-         scan += sizeof(APTR);
          if (argtype & FD_RESULT) {
+            auto var = ((APTR *)scan)[0];
+            scan += sizeof(APTR);
             if (var) {
                if (argtype & FD_OBJECT) {
                   if (((APTR *)var)[0]) {
@@ -762,53 +761,47 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                   if (size > 0) lua_pushlstring(prv->Lua, ((CSTRING *)var)[0], size);
                   else lua_pushnil(prv->Lua);
                }
-               else {
-                  RMSG("Result-Arg: %s, Value: %p (Pointer)", argname, ((CSTRING *)var)[0]);
-                  lua_pushlightuserdata(prv->Lua, ((APTR *)var)[0]);
-               }
+               else lua_pushlightuserdata(prv->Lua, ((APTR *)var)[0]);
             }
             else lua_pushnil(prv->Lua);
-            result++;
+            results++;
          }
+         else scan += sizeof(APTR);
       }
       else if (argtype & FD_LONG) {
          if (argtype & FD_RESULT) {
-            scan += sizeof(APTR);
-            if (var) lua_pushinteger(prv->Lua, ((LONG *)var)[0]);
+            if (auto var = ((APTR *)scan)[0]) lua_pushinteger(prv->Lua, ((LONG *)var)[0]);
             else lua_pushnil(prv->Lua);
-            result++;
+            scan += sizeof(APTR);
+            results++;
          }
          else scan += sizeof(LONG);
       }
       else if (argtype & FD_DOUBLE) {
          if (argtype & FD_RESULT) {
-            scan += sizeof(APTR);
-            if (var) lua_pushnumber(prv->Lua, ((DOUBLE *)var)[0]);
+            if (auto var = ((APTR *)scan)[0]) lua_pushnumber(prv->Lua, ((DOUBLE *)var)[0]);
             else lua_pushnil(prv->Lua);
-            result++;
+            scan += sizeof(APTR);
+            results++;
          }
          else scan += sizeof(DOUBLE);
       }
       else if (argtype & FD_LARGE) {
          if (argtype & FD_RESULT) {
-            scan += sizeof(APTR);
-            if (var) {
-               lua_pushnumber(prv->Lua, ((LARGE *)var)[0]);
-            }
+            if (auto var = ((APTR *)scan)[0]) lua_pushnumber(prv->Lua, ((LARGE *)var)[0]);
             else lua_pushnil(prv->Lua);
-            result++;
+            scan += sizeof(APTR);
+            results++;
          }
          else scan += sizeof(LARGE);
       }
       else {
-         log.warning("Unsupported arg '%s', flags $%x, aborting now.", argname, argtype);
-         break;
+         log.warning("Unsupported arg '%s', flags $%x, aborting now.", args[i].Name, argtype);
+         return results;
       }
    }
 
-   RMSG("module_call: Wrote %d results.", result);
-
-   return result;
+   return results;
 }
 
 //********************************************************************************************************************

@@ -44,22 +44,20 @@ resolve the path to `c:\documents\readme.txt`.
 The resulting path is guaranteed to be absolute, meaning the use of sequences such as `..`, `//` and `./` will be
 eliminated.
 
-If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by
+If the path can be resolved to more than one file, ResolvePath() will attempt to discover the correct path by
 checking the validity of each possible location.  For instance, if resolving a path of `user:document.txt`
 and the `user:` volume refers to both `system:users/joebloggs/` and `system:users/default/`, the routine will check
-both directories for the existence of the `document.txt` file to determine the correct location.  While helpful, this
-can cause problems if the intent is to create a new file.  To circumvent this feature, use the `RSF::NO_FILE_CHECK`
-setting in the `Flags` parameter.
+both directories for the existence of the `document.txt` file to determine the correct location.  This approach
+can be problematic if the intent is to create a new file, in which case `RSF::NO_FILE_CHECK` will circumvent it.
 
-When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be
-treated as an approximation (i.e. file extensions can be ignored) then use the `RSF::APPROXIMATE` flag to tell the
-function to ignore extensions for the purpose of file name matching.
+When checking the file location, ResolvePath() requires an exact match to the provided file name.  If the file
+name can be approximated (i.e. the file extension can be ignored) then use the `RSF::APPROXIMATE` flag.
 
-To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the `PATH` environment
-variable to resolve the file name specified in the `Path` parameter.
+To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the `PATH` 
+environment variable to resolve the file name specified in the `Path` parameter.
 
-The resolved path will be returned in the `Result` parameter as an allocated memory block.  It must be removed once it is
-no longer required with ~FreeResource().
+The resolved path will be copied to the `std::string` provided in the `Result` parameter.  This will overwrite any
+existing content in the string.
 
 <types lookup="RSF"/>
 
@@ -69,7 +67,7 @@ virtual driver does not support this check.  This is common when working with ne
 -INPUT-
 cpp(strview) Path: The path to be resolved.
 int(RSF) Flags: Optional flags.
-&cpp(str) Result: Must point to an empty `STRING` variable so that the resolved path can be stored.  If `NULL`, ResolvePath() will work as normal and return a valid error code without the result string.
+&cpp(str) Result: Must point to a `std::string` variable so that the resolved path can be stored.  If `NULL`, ResolvePath() will work as normal and return a valid error code without the result string.
 
 -ERRORS-
 Okay:        The `Path` was resolved.
@@ -88,13 +86,15 @@ static ERR resolve(std::string &, std::string &, RSF);
 static ERR resolve_path_env(std::string_view, std::string *);
 static THREADVAR bool tlClassLoaded;
 
-ERR ResolvePath(std::string_view Path, RSF Flags, std::string *Result)
+ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("%s, Flags: $%.8x", Path.data(), LONG(Flags));
+   log.traceBranch("%s, Flags: $%.8x", pPath.data(), LONG(Flags));
 
    tlClassLoaded = false;
+
+   std::string_view Path = pPath; // Copy
 
    if (Path.starts_with('~')) {
       Flags |= RSF::APPROXIMATE;

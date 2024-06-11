@@ -679,7 +679,8 @@ static ERR TASK_Activate(extTask *Self)
       if (param[0] IS '>') {
          // Redirection argument detected
 
-         if (ResolvePath(std::string_view(param.begin()+1, param.end()), RSF::NO_FILE_CHECK, &redirect_stdout) IS ERR::Okay) {
+         auto sv = std::string_view(param.begin()+1, param.end());
+         if (ResolvePath(sv, RSF::NO_FILE_CHECK, &redirect_stdout) IS ERR::Okay) {
             redirect_stderr.assign(redirect_stdout);
          }
 
@@ -690,13 +691,15 @@ static ERR TASK_Activate(extTask *Self)
       }
       else if ((param[0] IS '2') and (param[1] IS '>')) {
          log.msg("StdErr redirected to %s", param.c_str() + 2);
-         ResolvePath(std::string_view(param.begin()+2, param.end()), RSF::NO_FILE_CHECK, &redirect_stderr);
+         auto sv = std::string_view(param.begin()+2, param.end());
+         ResolvePath(sv, RSF::NO_FILE_CHECK, &redirect_stderr);
          hide_output = true;
          continue;
       }
       else if ((param[0] IS '1') and (param[1] IS '>')) {
          log.msg("StdOut redirected to %s", param.c_str() + 2);
-         ResolvePath(std::string_view(param.begin()+2, param.end()), RSF::NO_FILE_CHECK, &redirect_stdout);
+         auto sv = std::string_view(param.begin()+2, param.end());
+         ResolvePath(sv, RSF::NO_FILE_CHECK, &redirect_stdout);
          hide_output = true;
          continue;
       }
