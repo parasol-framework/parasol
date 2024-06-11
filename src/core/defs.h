@@ -160,16 +160,6 @@ struct rkWatchPath {
 #include <parasol/main.h>
 #include <parasol/strings.hpp>
 
-inline ERR ResolvePath(CSTRING Path, RSF Flags, std::string *Result) { 
-   auto sv = std::string_view(Path);
-   return ResolvePath(sv, Flags, Result);
-}
-
-inline ERR ResolvePath(std::string Path, RSF Flags, std::string *Result) { 
-   auto sv = std::string_view(Path);
-   return ResolvePath(sv, Flags, Result);
-}
-
 using namespace pf;
 
 struct ThreadMessage {

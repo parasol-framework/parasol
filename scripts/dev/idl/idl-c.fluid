@@ -12,7 +12,7 @@
 
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
-   glIDLTimestamp = 20240610
+   glIDLTimestamp = 20240611
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -2154,8 +2154,8 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    if nz(Def.input) then
       func.input = { }
       for line, content in ipairs(Def.input:split("\n")) do
-         local comment = content:match("^.+:%s-(.+)$")
-         if nz(comment) then content = content:match("^(.+):%s-.+$") end
+         local comment = content:match("^.-:%s-(.+)$")
+         if nz(comment) then content = content:match("^(.-):%s-.+$") end
          local type, name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
          if (type != nil) then
             local param = cType({

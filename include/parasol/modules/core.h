@@ -2029,7 +2029,7 @@ struct CoreBase {
    const struct SystemState * (*_GetSystemState)(void);
    ERR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> *List);
    ERR (*_RegisterFD)(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-   ERR (*_ResolvePath)(const std::string_view &Path, RSF Flags, std::string *Result);
+   ERR (*_ResolvePath)(const std::string_view & Path, RSF Flags, std::string *Result);
    ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo *MemInfo, LONG Size);
    ERR (*_MemoryPtrInfo)(APTR Address, struct MemInfo *MemInfo, LONG Size);
    ERR (*_NewObject)(CLASSID ClassID, NF Flags, OBJECTPTR *Object);
@@ -2128,7 +2128,7 @@ inline ERR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_Co
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List) { return CoreBase->_ListChildren(Object,List); }
 inline ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
-inline ERR ResolvePath(const std::string_view Path, RSF Flags, std::string *Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
+inline ERR ResolvePath(const std::string_view & Path, RSF Flags, std::string *Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
 inline ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
 inline ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
@@ -2221,7 +2221,7 @@ extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState(void);
 extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List);
 extern "C" ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-extern "C" ERR ResolvePath(const std::string_view &Path, RSF Flags, std::string *Result);
+extern "C" ERR ResolvePath(const std::string_view & Path, RSF Flags, std::string *Result);
 extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, LONG Size);
 extern "C" ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, LONG Size);
 extern "C" ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object);

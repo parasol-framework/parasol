@@ -128,7 +128,7 @@ const struct Function glFunctions[] = {
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)ListChildren, "ListChildren", argsListChildren },
    { (APTR)RegisterFD, "RegisterFD", argsRegisterFD },
-   { (APTR)(ERR (*)(const std::string_view &, RSF, std::string *))ResolvePath, "ResolvePath", argsResolvePath },
+   { (APTR)ResolvePath, "ResolvePath", argsResolvePath },
    { (APTR)MemoryIDInfo, "MemoryIDInfo", argsMemoryIDInfo },
    { (APTR)MemoryPtrInfo, "MemoryPtrInfo", argsMemoryPtrInfo },
    { (APTR)NewObject, "NewObject", argsNewObject },
