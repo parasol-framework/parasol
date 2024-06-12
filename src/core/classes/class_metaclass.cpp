@@ -686,7 +686,7 @@ static ERR GET_Module(extMetaClass *Self, CSTRING *Value)
    if (!Self->initialised()) return ERR::NotInitialised;
 
    if (Self->Root) {
-      *Value = Self->Root->LibraryName;
+      *Value = Self->Root->LibraryName.c_str();
       return ERR::Okay;
    }
    else {

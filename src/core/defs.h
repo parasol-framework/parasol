@@ -480,7 +480,7 @@ struct TaskRecord {
 class extModule : public objModule {
    public:
    using create = pf::Create<extModule>;
-   char   Name[60];      // Name of the module
+   std::string Name;     // Name of the module
    APTR   prvMBMemory;   // Module base memory
 };
 
@@ -922,32 +922,34 @@ extern std::vector<FDRecord> glRegisterFD;
 #define LRT_Exclusive 1
 
 //********************************************************************************************************************
+// The RootModule class is used to represent the first instantation of a loaded module library.  It is managed 
+// internally.  Clients interface with modules via the Module class.
 
 class RootModule : public Object {
    public:
    class RootModule *Next;     // Next module in list
    class RootModule *Prev;     // Previous module in list
-   struct ModHeader  *Header;  // Pointer to module header - for memory resident modules only.
+   struct ModHeader *Header;   // Pointer to module header - for memory resident modules only.
    struct CoreBase *CoreBase;  // Module's personal Core reference
    #ifdef __unix__
       APTR LibraryBase;        // Module code
    #else
       MODHANDLE LibraryBase;
    #endif
-   CSTRING Name;               // Name of the module (as declared by the header)
+   std::string Name;           // Name of the module (as declared by the header)
    struct ModHeader *Table;
    WORD   Version;
    WORD   OpenCount;           // Amount of programs with this module open
    FLOAT  ModVersion;          // Version of this module
    MHF    Flags;
-   UBYTE  NoUnload;
-   UBYTE  DLL;                 // TRUE if the module is a Windows DLL
+   bool   NoUnload;
+   bool   DLL;                 // TRUE if the module is a Windows DLL
    ERR    (*Init)(OBJECTPTR, struct CoreBase *);
    void   (*Close)(OBJECTPTR);
    ERR    (*Open)(OBJECTPTR);
    ERR    (*Expunge)(void);
    struct ActionEntry prvActions[LONG(AC::END)]; // Action routines to be intercepted by the program
-   char   LibraryName[40]; // Name of the library loaded from disk
+   std::string LibraryName; // Name of the library loaded from disk
 };
 
 #ifdef  __cplusplus

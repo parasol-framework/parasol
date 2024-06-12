@@ -74,13 +74,8 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
       <access read="R" write="W">Read/Write</access>
       <type>const struct Function *</type>
       <description>
-<p>After initialisation, the FunctionList will refer to an array of public functions that are exported by the module.  The FunctionList array consists of <st>Function</st> structs, which are in the following format:</p>
-<pre>struct Function {
-   APTR Address;  // Address of the function routine.
-   CSTRING Name;  // Name of the function.
-   const struct FunctionField *Args; // Descriptor array for the function arguments.
-};
-</pre>
+<p>After initialisation, the FunctionList will refer to an array of public functions that are exported by the module.  The FunctionList array consists of <st>Function</st> structs in the following format:</p>
+<struct lookup="Function"/>
       </description>
     </field>
 
