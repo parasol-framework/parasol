@@ -295,7 +295,7 @@ __export void Expunge(WORD Force)
 
                auto mc = (extMetaClass *)mem->second.Address;
                if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
-                  log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name, mc->ClassName, mc->OpenCount);
+                  log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name.c_str(), mc->ClassName, mc->OpenCount);
                   class_in_use = true;
                }
             }
@@ -303,7 +303,7 @@ __export void Expunge(WORD Force)
             if (!class_in_use) {
                if (mod_master->Expunge) {
                   pf::Log log(__FUNCTION__);
-                  log.branch("Sending expunge request to the %s module #%d.", mod_master->Name, mod_master->UID);
+                  log.branch("Sending expunge request to the %s module #%d.", mod_master->Name.c_str(), mod_master->UID);
                   if (mod_master->Expunge() IS ERR::Okay) {
                      ccount++;
                      if (FreeResource(mod_master) != ERR::Okay) {
@@ -312,7 +312,7 @@ __export void Expunge(WORD Force)
                         break;
                      }
                   }
-                  else log.msg("Module \"%s\" does not want to be flushed.",mod_master->Name);
+                  else log.msg("Module \"%s\" does not want to be flushed.",mod_master->Name.c_str());
                }
                else {
                   ccount++;
@@ -324,7 +324,7 @@ __export void Expunge(WORD Force)
                }
             }
          }
-         else log.msg("Module \"%s\" has an open count of %d.", mod_master->Name, mod_master->OpenCount);
+         else log.msg("Module \"%s\" has an open count of %d.", mod_master->Name.c_str(), mod_master->OpenCount);
          mod_master = next;
       }
    }
@@ -356,11 +356,11 @@ __export void Expunge(WORD Force)
 
                   auto mc = (extMetaClass *)mem->second.Address;
                   if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
-                     log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name, mc->ClassName, mc->OpenCount);
+                     log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name.c_str(), mc->ClassName, mc->OpenCount);
                   }
                }
             }
-            else log.msg("Module \"%s\" has an open count of %d.", mod_master->Name, mod_master->OpenCount);
+            else log.msg("Module \"%s\" has an open count of %d.", mod_master->Name.c_str(), mod_master->OpenCount);
             mod_master = next;
          }
       }
@@ -372,7 +372,7 @@ __export void Expunge(WORD Force)
          auto next = mod_master->Next;
          if (mod_master->Expunge) {
             pf::Log log(__FUNCTION__);
-            log.branch("Forcing the expunge of stubborn module %s.", mod_master->Name);
+            log.branch("Forcing the expunge of stubborn module %s.", mod_master->Name.c_str());
             mod_master->Expunge();
             mod_master->NoUnload = true; // Do not actively destroy the module code as a precaution
             FreeResource(mod_master);

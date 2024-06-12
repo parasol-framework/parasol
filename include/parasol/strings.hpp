@@ -60,7 +60,7 @@ inline void camelcase(std::string &s) noexcept {
 
 // Case-insensitive string comparison, both of which must be the same length.
 
-[[nodiscard]] inline bool iequals(std::string_view lhs, std::string_view rhs) noexcept
+[[nodiscard]] inline bool iequals(const std::string_view lhs, const std::string_view rhs) noexcept
 {
    auto ichar_equals = [](char a, char b) {
        return std::tolower((unsigned char)(a)) == std::tolower((unsigned char)(b));
@@ -70,7 +70,7 @@ inline void camelcase(std::string &s) noexcept {
    return std::ranges::equal(lhs, rhs, ichar_equals);
 }
 
-[[nodiscard]] inline bool wildcmp(std::string_view Wildcard, std::string_view String, bool Case = false) noexcept
+[[nodiscard]] inline bool wildcmp(const std::string_view Wildcard, std::string_view String, bool Case = false) noexcept
 {
    auto Original = String;
 
@@ -160,7 +160,7 @@ inline void camelcase(std::string &s) noexcept {
 
 // A case insensitive alternative to std::string_view.starts_with()
 
-[[nodiscard]] inline bool startswith(std::string_view StringA, std::string_view StringB) noexcept
+[[nodiscard]] inline bool startswith(const std::string_view StringA, const std::string_view StringB) noexcept
 {
    if (StringA.size() > StringB.size()) return false;
    std::size_t i;
@@ -170,7 +170,7 @@ inline void camelcase(std::string &s) noexcept {
    return true;
 }
 
-[[nodiscard]] inline bool startswith(std::string_view StringA, CSTRING StringB) noexcept
+[[nodiscard]] inline bool startswith(const std::string_view StringA, CSTRING StringB) noexcept
 {
    for (std::size_t i = 0; i < StringA.size(); i++) {
       if (std::tolower(StringA[i]) != std::tolower(StringB[i])) return false;
@@ -180,7 +180,7 @@ inline void camelcase(std::string &s) noexcept {
 
 // Inline C++ implementations of the StrHash() function
 
-[[nodiscard]] inline ULONG strhash(std::string_view String) noexcept
+[[nodiscard]] inline ULONG strhash(const std::string_view String) noexcept
 {
    ULONG hash = 5381;
    std::for_each(String.begin(), String.end(), [&hash](char a) {
@@ -189,7 +189,7 @@ inline void camelcase(std::string &s) noexcept {
    return hash;
 }
 
-[[nodiscard]] inline ULONG strihash(std::string_view String) noexcept
+[[nodiscard]] inline ULONG strihash(const std::string_view String) noexcept
 {
    ULONG hash = 5381;
    std::for_each(String.begin(), String.end(), [&hash](char c) {
@@ -219,7 +219,7 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 // Case-sensitive keyword search
 
-[[nodiscard]] inline LONG strsearch(std::string_view Keyword, CSTRING String) noexcept
+[[nodiscard]] inline LONG strsearch(const std::string_view Keyword, CSTRING String) noexcept
 {
    LONG i;
    LONG pos = 0;
@@ -234,7 +234,7 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 // Case-insensitive keyword search
 
-[[nodiscard]] inline LONG strisearch(std::string_view Keyword, CSTRING String) noexcept
+[[nodiscard]] inline LONG strisearch(const std::string_view Keyword, CSTRING String) noexcept
 {
    LONG i;
    LONG pos = 0;
@@ -247,7 +247,7 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
    return -1;
 }
 
-[[nodiscard]] inline STRING strclone(std::string_view String) noexcept
+[[nodiscard]] inline STRING strclone(const std::string_view String) noexcept
 {
    STRING newstr;
    if (AllocMemory(String.size()+1, MEM::STRING, (APTR *)&newstr, NULL) IS ERR::Okay) {
@@ -260,7 +260,7 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 // std::string_view conversion to numeric type.  Returns zero on error.
 // Leading whitespace is not ignored, unlike strtol() and strtod()
 
-template <class T> [[nodiscard]] T svtonum(std::string_view String) noexcept {
+template <class T> [[nodiscard]] T svtonum(const std::string_view String) noexcept {
    T val;
    auto [ v, error ] = std::from_chars(String.data(), String.data() + String.size(), val);
    if (error IS std::errc()) return val;
@@ -269,7 +269,7 @@ template <class T> [[nodiscard]] T svtonum(std::string_view String) noexcept {
 
 // Speed efficient way of setting a string field that is managed with AllocMemory().
 
-inline ERR set_string_field(std::string_view Source, STRING &Dest) 
+inline ERR set_string_field(const std::string_view Source, STRING &Dest) 
 {
    MemInfo info;
    if (auto error = MemoryIDInfo(GetMemoryID(Dest), &info, sizeof(info)); error IS ERR::Okay) {
