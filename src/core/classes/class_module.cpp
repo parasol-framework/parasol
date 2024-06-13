@@ -133,11 +133,8 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
 {
    pf::Log log(__FUNCTION__);
    std::string path;
-   LONG i;
 
-   for (i=0; (Self->Name[i]) and (Self->Name[i] != ':'); i++);
-
-   if ((Self->Name[0] IS '/') or (Self->Name[i] IS ':')) {
+   if ((Self->Name.starts_with('/')) or (Self->Name.find(':') != std::string::npos)) {
       log.trace("Module location is absolute.");
       path.assign(Self->Name);
 
@@ -146,7 +143,7 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
          path.assign(volume);
       }
       else {
-         log.warning("Failed to resolve the path of module '%s'", Self->Name);
+         log.warning("Failed to resolve the path of module '%s'", Self->Name.c_str());
          return ERR::ResolvePath;
       }
    }
@@ -162,7 +159,7 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
          if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib/";
 
          #ifdef __ANDROID__
-            if ((Self->Name[0] IS 'l') and (Self->Name[1] IS 'i') and (Self->Name[2] IS 'b'));
+            if ((Self->Name.starts_with("lib"));
             else path += "lib"; // Packaged Android modules have to begin with 'lib'
          #endif
 
@@ -228,7 +225,7 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
          }
       }
       else {
-         log.warning("%s: %s", Self->Name, (CSTRING)dlerror());
+         log.warning("%s: %s", Self->Name.c_str(), (CSTRING)dlerror());
          return ERR::NoSupport;
       }
 
@@ -270,7 +267,7 @@ ERR ROOTMODULE_Free(RootModule *Self)
 
    // Free the module's segment/code area
 
-   if ((Self->NoUnload IS FALSE) and ((Self->Flags & MHF::STATIC) IS MHF::NIL)) {
+   if ((!Self->NoUnload) and ((Self->Flags & MHF::STATIC) IS MHF::NIL)) {
       free_module(Self->LibraryBase);
       Self->LibraryBase = NULL;
    }
@@ -666,7 +663,6 @@ APTR build_jump_table(const Function *FList)
 
 static RootModule * check_resident(extModule *Self, const std::string_view ModuleName)
 {
-   RootModule *master;
    static bool kminit = false;
 
    if (iequals("core", ModuleName)) {
@@ -682,9 +678,9 @@ static RootModule * check_resident(extModule *Self, const std::string_view Modul
       Self->FunctionList = glFunctions;
       return &glCoreRoot;
    }
-   else if ((master = glModuleList)) {
+   else if (auto master = glModuleList) {
       while (master) {
-         auto  record_name = std::string_view(master->Name);
+         auto record_name = std::string_view(master->Name);
 
          auto sep = record_name.find_last_of(":/");
          if (sep != std::string::npos) record_name.remove_prefix(sep+1);
