@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -28,23 +27,23 @@ static OBJECTPTR glAssetClass = NULL;
 
 extern CoreBase *CoreBase;
 static AAssetManager *glAssetManager = NULL;
-static BYTE glAssetManagerFree = FALSE;
+static bool glAssetManagerFree = false;
 
-#define LEN_ASSETS 7 // "assets:" length
+connst LONG LEN_ASSETS = 7; // "assets:" length
 
-static ERROR ASSET_Delete(objFile *, APTR);
-static ERROR ASSET_Free(objFile *, APTR);
-static ERROR ASSET_Init(objFile *, APTR);
-static ERROR ASSET_Move(objFile *, struct mtFileMove *);
-static ERROR ASSET_Read(objFile *, struct acRead *);
-static ERROR ASSET_Rename(objFile *, struct acRename *);
-static ERROR ASSET_Seek(objFile *, struct acSeek *);
-static ERROR ASSET_Write(objFile *, struct acWrite *);
+static ERR ASSET_Delete(objFile *, APTR);
+static ERR ASSET_Free(objFile *, APTR);
+static ERR ASSET_Init(objFile *, APTR);
+static ERR ASSET_Move(objFile *, struct mtFileMove *);
+static ERR ASSET_Read(objFile *, struct acRead *);
+static ERR ASSET_Rename(objFile *, struct acRename *);
+static ERR ASSET_Seek(objFile *, struct acSeek *);
+static ERR ASSET_Write(objFile *, struct acWrite *);
 
-static ERROR GET_Permissions(objFile *, APTR *);
-static ERROR GET_Size(objFile *, LARGE *);
+static ERR GET_Permissions(objFile *, APTR *);
+static ERR GET_Size(objFile *, LARGE *);
 
-static ERROR SET_Permissions(objFile *, APTR);
+static ERR SET_Permissions(objFile *, APTR);
 
 static const FieldArray clFields[] = {
    { "Permissions", FDF_LONG|FDF_RW, GET_Permissions, SET_Permissions },
@@ -75,17 +74,17 @@ static const MethodEntry clMethods[] = {
    { 0, NULL, NULL, NULL, 0 }
 };
 
-static ERROR close_dir(DirInfo *);
-static ERROR open_dir(DirInfo *);
-static ERROR get_info(std::string_view, FileInfo *, LONG);
-static ERROR read_dir(CSTRING, DirInfo **, LONG);
-static ERROR scan_dir(DirInfo *);
-static ERROR test_path(std::string &, LONG *);
+static ERR close_dir(DirInfo *);
+static ERR open_dir(DirInfo *);
+static ERR get_info(std::string_view, FileInfo *, LONG);
+static ERR read_dir(CSTRING, DirInfo **, LONG);
+static ERR scan_dir(DirInfo *);
+static ERR test_path(std::string &, LONG *);
 static AAssetManager * get_asset_manager(void);
 
 //********************************************************************************************************************
 
-ERROR add_asset_class(void)
+ERR add_asset_class(void)
 {
    pf::Log log(__FUNCTION__);
    OpenInfo *openinfo;
@@ -184,21 +183,21 @@ void free_asset_class(void)
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Delete(objFile *Self)
+static ERR ASSET_Delete(objFile *Self)
 {
    return ERR::NoSupport; // Asset files cannot be deleted.
 }
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Free(objFile *Self)
+static ERR ASSET_Free(objFile *Self)
 {
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Init(objFile *Self)
+static ERR ASSET_Init(objFile *Self)
 {
    pf::Log log(__FUNCTION__);
    prvFileAsset *prv;
@@ -264,14 +263,14 @@ static ERROR ASSET_Init(objFile *Self)
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Move(objFile *Self, struct mtFileMove *Args)
+static ERR ASSET_Move(objFile *Self, struct mtFileMove *Args)
 {
    return ERR::NoSupport; // Assets cannot be moved
 }
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
+static ERR ASSET_Read(objFile *Self, struct acRead *Args)
 {
    pf::Log log(__FUNCTION__);
    prvFileAsset *prv;
@@ -302,14 +301,14 @@ static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Rename(objFile *Self, struct acRename *Args)
+static ERR ASSET_Rename(objFile *Self, struct acRename *Args)
 {
    return ERR::NoSupport; // Assets cannot be renamed.
 }
 
 //********************************************************************************************************************
 
-static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
+static ERR ASSET_Seek(objFile *Self, struct acSeek *Args)
 {
    prvFileAsset *prv;
    LONG method;
@@ -332,27 +331,27 @@ static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
 // Assets are read-only.  If writing to an asset is required, the developer should copy the file to the cache or other
 // storage area and modify it there.
 
-static ERROR ASSET_Write(objFile *Self, struct acWrite *Args)
+static ERR ASSET_Write(objFile *Self, struct acWrite *Args)
 {
    return ERR::NoSupport; // Writing to assets is disallowed
 }
 
 //********************************************************************************************************************
 
-static ERROR GET_Permissions(objFile *Self, APTR *Value)
+static ERR GET_Permissions(objFile *Self, APTR *Value)
 {
    *Value = NULL;
    return ERR::Okay;
 }
 
-static ERROR SET_Permissions(objFile *Self, APTR Value)
+static ERR SET_Permissions(objFile *Self, APTR Value)
 {
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-static ERROR GET_Size(objFile *Self, LARGE *Value)
+static ERR GET_Size(objFile *Self, LARGE *Value)
 {
    prvFileAsset *prv;
 
@@ -369,7 +368,7 @@ static ERROR GET_Size(objFile *Self, LARGE *Value)
 //********************************************************************************************************************
 // Open the assets: volume for scanning.
 
-static ERROR open_dir(DirInfo *Dir)
+static ERR open_dir(DirInfo *Dir)
 {
    pf::Log log(__FUNCTION__);
    AAssetManager *mgr;
@@ -400,7 +399,7 @@ static ERROR open_dir(DirInfo *Dir)
 //********************************************************************************************************************
 // Scan the next entry in the folder.
 
-static ERROR scan_dir(DirInfo *Dir)
+static ERR scan_dir(DirInfo *Dir)
 {
    CSTRING filename;
    AAssetManager *mgr;
@@ -447,7 +446,7 @@ static ERROR scan_dir(DirInfo *Dir)
 //********************************************************************************************************************
 // Close the assets: volume.
 
-static ERROR close_dir(DirInfo *Dir)
+static ERR close_dir(DirInfo *Dir)
 {
    // Note: FreeResource() will take care of memory dealloactions, we only need to be concerned with deallocation of any
    // open handles.
@@ -462,7 +461,7 @@ static ERROR close_dir(DirInfo *Dir)
 
 //********************************************************************************************************************
 
-static ERROR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
+static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
 {
    pf::Log log(__FUNCTION__);
    BYTE dir;
@@ -528,7 +527,7 @@ static ERROR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
 //********************************************************************************************************************
 // Test an assets: location.
 
-static ERROR test_path(std::string &Path, LONG Flags, LOC *Type)
+static ERR test_path(std::string &Path, LONG Flags, LOC *Type)
 {
    pf::Log log(__FUNCTION__);
    AAssetManager *mgr;
@@ -582,7 +581,7 @@ static ERROR test_path(std::string &Path, LONG Flags, LOC *Type)
 // Read the entire folder in one function call.
 
 #if 0
-static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
+static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 {
    DirInfo *dirinfo;
    AAssetDir *dir;
@@ -625,7 +624,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 
    current = NULL;
    dirinfo->Total = 0;
-   ERROR error = ERR::Okay;
+   ERR error = ERR::Okay;
    LONG insert = StrCopy(Path+LEN_ASSETS, assetpath, sizeof(assetpath)-2);
    if (assetpath[insert-1] != '/') assetpath[insert++] = '/';
    while ((filename = AAssetDir_getNextFileName(dir)) and (!error)) {

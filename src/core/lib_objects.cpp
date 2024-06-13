@@ -1121,7 +1121,8 @@ ERR InitObject(OBJECTPTR Object)
          // Attempt to initialise with the next known sub-class.
 
          while (subindex != glClassMap.end()) {
-            if ((Object->Class->BaseClassID IS subindex->second->BaseClassID) and (subindex->second->ClassID != subindex->second->BaseClassID)) {
+            if (Object->Class IS subindex->second);
+            else if ((Object->Class->BaseClassID IS subindex->second->BaseClassID) and (subindex->second->ClassID != subindex->second->BaseClassID)) {
                Object->Class = subindex->second;
                log.trace("Attempting initialisation with sub-class '%s'", Object->className());
                break;
