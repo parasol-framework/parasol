@@ -546,7 +546,7 @@ static ERR MODULE_ResolveSymbol(extModule *Self, struct mod::ResolveSymbol *Args
       return ERR::Okay;
    }
    else {
-      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Root->Name);
+      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Root->Name.c_str());
       return ERR::NotFound;
    }
 #else
