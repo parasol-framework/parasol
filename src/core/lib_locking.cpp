@@ -403,9 +403,9 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
    // Solution: Prior to wait_until(), increment the object queue to attempt a lock.  This is *slightly* less efficient than doing it after the cond_wait(), but
    //           it will prevent us from sleeping on a signal that we would never receive.
 
-   LARGE end_time, current_time;
+   LARGE end_time;
    if (Timeout < 0) end_time = 0x0fffffffffffffffLL; // Do not alter this value.
-   else end_time = (PreciseTime() / 1000LL) + Timeout;
+   else end_time = PreciseTime() + (LARGE(Timeout) * 1000LL);
 
    Object->SleepQueue++; // Increment the sleep queue first so that ReleaseObject() will know that another thread is expecting a wake-up.
 
@@ -414,17 +414,14 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
 
       ERR error = ERR::TimeOut;
       if (init_sleep(Object->ThreadID, Object->UID, RT_OBJECT) IS ERR::Okay) { // Indicate that our thread is sleeping.
-         while ((current_time = (PreciseTime() / 1000LL)) < end_time) {
-            auto tmout = end_time - current_time;
-            if (tmout < 0) tmout = 0;
-
+         LARGE current_time;
+         while ((current_time = PreciseTime()) < end_time) {
             if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
                glWaitLocks[glWLIndex].notWaiting();
                Object->SleepQueue--;
                return ERR::DoesNotExist;
             }
-
-            if (++Object->Queue IS 1) { // Increment the lock count - also doubles as a prv_access() call if the lock value is 1.
+            else if (++Object->Queue IS 1) { // Increment the lock count - also doubles as a lock() method call if the Queue value is 1.
                glWaitLocks[glWLIndex].notWaiting();
                Object->Locked = false;
                Object->ThreadID = our_thread;
@@ -432,14 +429,15 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
                return ERR::Okay;
             }
             else --Object->Queue;
-
-            if (cvObjects.wait_for(glmObjectLocking, std::chrono::milliseconds{tmout}) IS std::cv_status::timeout) break;
+            
+            auto tmout = end_time - current_time;
+            if (tmout < 0) tmout = 0;
+            if (cvObjects.wait_for(glmObjectLocking, std::chrono::microseconds{tmout}) IS std::cv_status::timeout) break;
          } // end while()
 
          // Failure: Either a timeout occurred or the object no longer exists.
 
          if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
-            pf::Log log(__FUNCTION__);
             log.warning("TID %d: The resource no longer exists.", get_thread_id());
             error = ERR::DoesNotExist;
          }
@@ -542,7 +540,7 @@ void ReleaseObject(OBJECTPTR Object)
 
    if (--Object->Queue > 0) return;
 
-   Object->Locked = false;
+   Object->Locked = false; // Permits object termination when false.
 
    if (Object->SleepQueue > 0) { // Other threads are waiting on this object
       pf::Log log(__FUNCTION__);
