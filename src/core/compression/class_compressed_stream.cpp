@@ -400,7 +400,7 @@ static const ActionArray clStreamActions[] = {
    { AC::NIL, NULL }
 };
 
-extern "C" ERR add_compressed_stream_class(void)
+extern ERR add_compressed_stream_class(void)
 {
    glCompressedStreamClass = extMetaClass::create::global(
       fl::BaseClassID(CLASSID::COMPRESSEDSTREAM),

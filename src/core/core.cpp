@@ -97,20 +97,20 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info) 
 static void BreakHandler(void)  __attribute__((unused));
 #endif
 
-extern "C" ERR add_archive_class(void);
-extern "C" ERR add_compressed_stream_class(void);
-extern "C" ERR add_compression_class(void);
-extern "C" ERR add_script_class(void);
-extern "C" ERR add_task_class(void);
-extern "C" ERR add_thread_class(void);
-extern "C" ERR add_module_class(void);
-extern "C" ERR add_config_class(void);
-extern "C" ERR add_time_class(void);
+extern ERR add_archive_class(void);
+extern ERR add_compressed_stream_class(void);
+extern ERR add_compression_class(void);
+extern ERR add_script_class(void);
+extern ERR add_task_class(void);
+extern ERR add_thread_class(void);
+extern ERR add_module_class(void);
+extern ERR add_config_class(void);
+extern ERR add_time_class(void);
 #ifdef __ANDROID__
-extern "C" ERR add_asset_class(void);
+extern ERR add_asset_class(void);
 #endif
-extern "C" ERR add_file_class(void);
-extern "C" ERR add_storage_class(void);
+extern ERR add_file_class(void);
+extern ERR add_storage_class(void);
 
 LONG InitCore(void);
 __export void CloseCore(void);

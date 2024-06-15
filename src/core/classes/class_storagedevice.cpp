@@ -179,7 +179,7 @@ static const ActionArray clActions[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_storage_class(void)
+extern ERR add_storage_class(void)
 {
    glStorageClass = extMetaClass::create::global(
       fl::BaseClassID(CLASSID::STORAGEDEVICE),

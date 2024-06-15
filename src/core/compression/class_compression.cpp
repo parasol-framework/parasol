@@ -970,11 +970,9 @@ NullArgs
 
 static ERR COMPRESSION_DecompressStreamEnd(extCompression *Self, struct cmp::DecompressStreamEnd *Args)
 {
-   pf::Log log;
-
    if (!Self->Inflating) return ERR::Okay; // If not inflating, not a problem
 
-   if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
+   if ((!Args) or (!Args->Callback)) return ERR::NullArgs;
 
    Self->TotalOutput = Self->InflateStream.total_out;
    inflateEnd(&Self->InflateStream);
@@ -2090,7 +2088,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_compression_class(void)
+extern ERR add_compression_class(void)
 {
    glCompressionClass = extMetaClass::create::global(
       fl::ClassVersion(VER_COMPRESSION),

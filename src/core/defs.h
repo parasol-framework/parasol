@@ -922,7 +922,7 @@ extern std::vector<FDRecord> glRegisterFD;
 #define LRT_Exclusive 1
 
 //********************************************************************************************************************
-// The RootModule class is used to represent the first instantation of a loaded module library.  It is managed 
+// The RootModule class is used to represent the first instantation of a loaded module library.  It is managed
 // internally.  Clients interface with modules via the Module class.
 
 class RootModule : public Object {
@@ -952,9 +952,6 @@ class RootModule : public Object {
    std::string LibraryName; // Name of the library loaded from disk
 };
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
 
 //********************************************************************************************************************
 
@@ -1143,10 +1140,6 @@ extern "C" LONG winResetDate(STRING);
 extern "C" void winSetDllDirectory(CSTRING);
 extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, BYTE));
 
-#endif
-
-#ifdef  __cplusplus
-}
 #endif
 
 //********************************************************************************************************************

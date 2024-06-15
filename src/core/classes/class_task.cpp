@@ -2210,7 +2210,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_task_class(void)
+extern ERR add_task_class(void)
 {
    glTaskClass = objMetaClass::create::global(
       fl::ClassVersion(VER_TASK),

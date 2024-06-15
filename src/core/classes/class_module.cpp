@@ -338,7 +338,7 @@ static ERR MODULE_Init(extModule *Self)
    if (auto i = name.find_last_of(":/\\"); i != std::string::npos) {
       name.remove_prefix(i+1);
    }
-   
+
    if (auto sep = name.find_last_of("."); sep != std::string::npos) {
       name.remove_suffix(name.size() - sep);
    }
@@ -684,7 +684,7 @@ static RootModule * check_resident(extModule *Self, const std::string_view Modul
 
          auto sep = record_name.find_last_of(":/");
          if (sep != std::string::npos) record_name.remove_prefix(sep+1);
-   
+
          sep = record_name.find_last_of(".");
          if (sep != std::string::npos) record_name.remove_suffix(record_name.size() - sep);
 
@@ -744,7 +744,7 @@ static const ActionArray glRootModuleActions[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_module_class(void)
+extern ERR add_module_class(void)
 {
    if (!(glModuleClass = extMetaClass::create::global(
       fl::BaseClassID(CLASSID::MODULE),

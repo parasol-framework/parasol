@@ -674,7 +674,7 @@ static const struct FieldArray clArchiveFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_archive_class(void)
+extern ERR add_archive_class(void)
 {
    glArchiveClass = extMetaClass::create::global(
       fl::BaseClassID(CLASSID::FILE),
@@ -690,7 +690,7 @@ extern "C" ERR add_archive_class(void)
 
 //********************************************************************************************************************
 
-extern "C" ERR create_archive_volume(void)
+extern ERR create_archive_volume(void)
 {
    return VirtualVolume("archive",
       VAS::DRIVER_SIZE, sizeof(ArchiveDriver),

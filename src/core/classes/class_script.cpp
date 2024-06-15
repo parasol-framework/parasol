@@ -886,7 +886,7 @@ static const FieldArray clScriptFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_script_class(void)
+extern ERR add_script_class(void)
 {
    glScriptClass = extMetaClass::create::global(
       fl::ClassVersion(VER_SCRIPT),
