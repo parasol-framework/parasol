@@ -2579,7 +2579,7 @@ struct Object { // Must be 64-bit aligned
    BYTE ActionDepth;             // Incremented each time an action or method is called on the object
    OBJECTID UID;                 // Unique object identifier
    NF       Flags;               // Object flags
-   volatile LONG  ThreadID;      // Managed by locking functions
+   std::atomic_int ThreadID;     // Managed by locking functions.  Atomic due to volatility.
    char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
    std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
 

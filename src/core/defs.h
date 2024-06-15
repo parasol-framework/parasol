@@ -142,6 +142,12 @@ enum class AC     : LONG;
 
 #define STAT_FOLDER 0x0001
 
+struct THREADID : strong_typedef<THREADID, LONG> { // Internal thread ID, unrelated to the host platform.
+   // Make constructors available
+   using strong_typedef::strong_typedef;
+   bool operator==(const THREADID & other) const { return LONG(*this) == LONG(other); }
+};
+
 struct rkWatchPath {
    LARGE      Custom;    // User's custom data pointer or value
    HOSTHANDLE Handle;    // The handle for the file being monitored, can be a special reference for virtual paths
@@ -215,7 +221,7 @@ public:
    MEMORYID MemoryID;   // Unique identifier
    OBJECTID OwnerID;    // The object that allocated this block.
    ULONG    Size;       // 4GB max
-   volatile LONG ThreadLockID = 0;
+   THREADID ThreadLockID = THREADID(0);
    MEM      Flags;
    WORD     AccessCount = 0; // Total number of locks
 
@@ -227,7 +233,7 @@ public:
       MemoryID = 0;
       OwnerID  = 0;
       Flags    = MEM::NIL;
-      ThreadLockID = 0;
+      ThreadLockID = THREADID(0);
    }
 };
 
@@ -952,6 +958,7 @@ class RootModule : public Object {
    std::string LibraryName; // Name of the library loaded from disk
 };
 
+THREADID get_thread_id(void);
 
 //********************************************************************************************************************
 
@@ -1008,9 +1015,8 @@ ERR    find_private_object_entry(OBJECTID, LONG *);
 void   free_events(void);
 void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
-LONG   get_thread_id(void);
 void   init_metaclass(void);
-ERR    init_sleep(LONG, LONG, LONG);
+ERR    init_sleep(THREADID, LONG, LONG);
 void   local_free_args(APTR, const FunctionField *);
 Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERR    msg_event(APTR, LONG, LONG, APTR, LONG);

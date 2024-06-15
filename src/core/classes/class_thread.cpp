@@ -76,13 +76,13 @@ static std::vector<struct AsyncAction> glAsyncActions;
 //********************************************************************************************************************
 // Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
 
-static THREADVAR LONG tlUniqueThreadID = 0;
+static THREADVAR THREADID tlUniqueThreadID(0);
 static std::atomic_int glThreadIDCount = 1;
 
-LONG get_thread_id(void)
+THREADID get_thread_id(void)
 {
-   if (tlUniqueThreadID) return tlUniqueThreadID;
-   tlUniqueThreadID = glThreadIDCount++;
+   if (tlUniqueThreadID.defined()) return tlUniqueThreadID;
+   tlUniqueThreadID = THREADID(glThreadIDCount++);
    return tlUniqueThreadID;
 }
 
