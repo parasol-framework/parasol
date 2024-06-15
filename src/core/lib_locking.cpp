@@ -423,13 +423,13 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
             }
             else if (++Object->Queue IS 1) { // Increment the lock count - also doubles as a lock() method call if the Queue value is 1.
                glWaitLocks[glWLIndex].notWaiting();
-               Object->Locked = false;
+               Object->Locked = true;
                Object->ThreadID = LONG(our_thread);
                Object->SleepQueue--;
                return ERR::Okay;
             }
             else --Object->Queue;
-            
+
             auto tmout = end_time - current_time;
             if (tmout < 0) tmout = 0;
             if (cvObjects.wait_for(glmObjectLocking, std::chrono::microseconds{tmout}) IS std::cv_status::timeout) break;
