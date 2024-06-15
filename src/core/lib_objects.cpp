@@ -289,7 +289,7 @@ static void free_children(OBJECTPTR Object)
             if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
             auto &mem = it->second;
 
-            if (((mem.Flags & MEM::DELETE) != MEM::NIL) or (!mem.Object)) continue;
+            if (((mem.Flags & MEM::COLLECT) != MEM::NIL) or (!mem.Object)) continue;
 
             if ((mem.Object->Owner) and (mem.Object->Owner != Object)) {
                log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->ownerID(), Object->UID);
@@ -313,7 +313,7 @@ static void free_children(OBJECTPTR Object)
             if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
             auto &mem = it->second;
 
-            if (((mem.Flags & MEM::DELETE) != MEM::NIL) or (!mem.Address)) continue;
+            if (((mem.Flags & MEM::COLLECT) != MEM::NIL) or (!mem.Address)) continue;
 
             if (glLogLevel >= 3) {
                if ((mem.Flags & MEM::STRING) != MEM::NIL) {

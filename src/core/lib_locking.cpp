@@ -506,8 +506,8 @@ ERR ReleaseMemory(MEMORYID MemoryID)
    if (!access) {
       mem->second.ThreadLockID = 0;
 
-      if ((mem->second.Flags & MEM::DELETE) != MEM::NIL) {
-         log.trace("Deleting marked memory block #%d (MEM::DELETE)", MemoryID);
+      if ((mem->second.Flags & MEM::COLLECT) != MEM::NIL) {
+         log.trace("Collecting memory block #%d", MemoryID);
          FreeResource(mem->second.Address);
       }
       else if ((mem->second.Flags & MEM::EXCLUSIVE) != MEM::NIL) {

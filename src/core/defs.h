@@ -985,7 +985,6 @@ ERR  RenameVolume(CSTRING, CSTRING);
 ERR  findfile(std::string &);
 PERMIT convert_fs_permissions(LONG);
 LONG convert_permissions(PERMIT);
-void set_memory_manager(APTR, ResourceManager *);
 ERR  get_file_info(std::string_view, FileInfo *, LONG);
 extern "C" ERR convert_errno(LONG Error, ERR Default);
 void free_file_cache(void);
@@ -1141,6 +1140,15 @@ extern "C" void winSetDllDirectory(CSTRING);
 extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, BYTE));
 
 #endif
+
+//********************************************************************************************************************
+// Internal function to set the manager for an allocated resource.
+
+inline void set_memory_manager(APTR Address, ResourceManager *Manager)
+{
+   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
+   address_mgr[0] = Manager;
+}
 
 //********************************************************************************************************************
 
