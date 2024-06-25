@@ -231,8 +231,8 @@ ERR FreeResource(MEMORYID MemoryID)
          if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, LONG(mem.Flags), mem.OwnerID);
          ERR error = ERR::Okay;
          if (mem.AccessCount > 0) {
-            log.msg("Private memory ID #%d marked for deletion (open count %d).", MemoryID, mem.AccessCount);
-            mem.Flags |= MEM::DELETE;
+            log.msg("Block #%d marked for collection (open count %d).", MemoryID, mem.AccessCount);
+            mem.Flags |= MEM::COLLECT;
          }
          else {
             // If the block has a resource manager then call its Free() implementation.
@@ -478,14 +478,4 @@ ERR ReallocMemory(APTR Address, ULONG NewSize, APTR *Memory, MEMORYID *MemoryID)
       return ERR::Okay;
    }
    else return log.error(ERR::AllocMemory);
-}
-
-//********************************************************************************************************************
-// Internal function to set the manager for an allocated resource.  Note: At this stage managed resources are not to
-// be exposed in the published API.
-
-void set_memory_manager(APTR Address, ResourceManager *Manager)
-{
-   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
-   address_mgr[0] = Manager;
 }

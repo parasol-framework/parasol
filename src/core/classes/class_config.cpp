@@ -1086,7 +1086,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_config_class(void)
+extern ERR add_config_class(void)
 {
    glConfigClass = extMetaClass::create::global(
       fl::BaseClassID(CLASSID::CONFIG),

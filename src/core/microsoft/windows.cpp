@@ -1794,7 +1794,7 @@ extern "C" LONG winTestLocation(STRING Location, BYTE CaseSensitive)
 //********************************************************************************************************************
 // The Path must not include a trailing slash.
 
-extern "C" ERR delete_tree(std::string &Path, FUNCTION *Callback, struct FileFeedback *Feedback)
+extern ERR delete_tree(std::string &Path, FUNCTION *Callback, struct FileFeedback *Feedback)
 {
    if ((Callback) and (Feedback)) {
       Feedback->Path = Path.data();

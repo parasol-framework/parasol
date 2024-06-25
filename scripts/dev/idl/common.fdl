@@ -136,7 +136,7 @@ flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits a
     "OBJECT: Internal - The memory block represents an object structure.",
     "NO_LOCK: For AllocMemory() only, indicates that the (private) memory block should not be locked on return.",
     "EXCLUSIVE: Internal - Used for lock management.",
-    "DELETE: Internal - The memory block is marked for deletion.",
+    "COLLECT: Internal - The memory block is marked for collection.",
     "NO_BLOCK|NO_BLOCKING: Permanently turn off all accesses to this memory block.  This means that multiple threads can have full read/write access to the memory block at once regardless of other acces flags.",
     { DATA          = "0: The default type, `DATA`, is used to indicate a standard memory allocation from system RAM." },
     { READ          = "0x00010000: The memory is explicitly marked as readable." },

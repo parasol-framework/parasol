@@ -273,7 +273,7 @@ enum class MEM : ULONG {
    OBJECT = 0x00000200,
    NO_LOCK = 0x00000400,
    EXCLUSIVE = 0x00000800,
-   DELETE = 0x00001000,
+   COLLECT = 0x00001000,
    NO_BLOCKING = 0x00002000,
    NO_BLOCK = 0x00002000,
    READ = 0x00010000,
@@ -2082,7 +2082,7 @@ struct CoreBase {
    ERR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
    ERR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
-   ERR (*_ActionThread)(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key);
+   ERR (*_AsyncAction)(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback);
    ERR (*_AddInfoTag)(struct FileInfo *Info, CSTRING Name, CSTRING Value);
    void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
    void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
@@ -2181,7 +2181,7 @@ inline ERR FuncError(CSTRING Header, ERR Error) { return CoreBase->_FuncError(He
 inline ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
 inline ERR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
-inline ERR ActionThread(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
+inline ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback) { return CoreBase->_AsyncAction(Action,Object,Args,Callback); }
 inline ERR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
@@ -2274,7 +2274,7 @@ extern "C" ERR FuncError(CSTRING Header, ERR Error);
 extern "C" ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
 extern "C" ERR LockObject(OBJECTPTR Object, LONG MilliSeconds);
 extern "C" void ReleaseObject(OBJECTPTR Object);
-extern "C" ERR ActionThread(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback, LONG Key);
+extern "C" ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback);
 extern "C" ERR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value);
 extern "C" void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
 extern "C" void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args);
@@ -2573,15 +2573,15 @@ struct Object { // Must be 64-bit aligned
    APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
    struct Object *Owner;      // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
-   std::atomic_uchar ThreadPending; // ActionThread() increments this.
+   std::atomic_uchar ThreadPending; // AsyncAction() increments this.
    std::atomic_char Queue;       // Counter of locks gained by incQueue()
    std::atomic_char SleepQueue;  // For the use of LockObject() only
    BYTE ActionDepth;             // Incremented each time an action or method is called on the object
    OBJECTID UID;                 // Unique object identifier
    NF       Flags;               // Object flags
-   volatile LONG  ThreadID;      // Managed by locking functions
+   std::atomic_int ThreadID;     // Managed by locking functions.  Atomic due to volatility.
    char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
-   std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
+   std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject(), protects against termination
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }

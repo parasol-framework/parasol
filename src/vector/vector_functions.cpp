@@ -29,7 +29,7 @@ inline char read_nibble(CSTRING Str)
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
 
-ERR simplevector_free(APTR Address) {
+static ERR simplevector_free(APTR Address) {
    return ERR::Okay;
 }
 
@@ -38,7 +38,7 @@ static ResourceManager glResourceSimpleVector = {
    &simplevector_free
 };
 
-void set_memory_manager(APTR Address, ResourceManager *Manager)
+static void set_memory_manager(APTR Address, ResourceManager *Manager)
 {
    ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
    address_mgr[0] = Manager;
@@ -254,8 +254,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle,
-   OBJECTPTR FillStyle)
+ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)
 {
    pf::Log log(__FUNCTION__);
 

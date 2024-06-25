@@ -2695,7 +2695,7 @@ static const FieldArray FileFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_file_class(void)
+extern ERR add_file_class(void)
 {
    glFileClass = extMetaClass::create::global(
       fl::ClassVersion(VER_FILE),

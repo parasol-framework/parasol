@@ -258,7 +258,7 @@ static const MethodEntry clMethods[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_time_class(void)
+extern ERR add_time_class(void)
 {
    glTimeClass = objMetaClass::create::global(
       fl::BaseClassID(CLASSID::TIME),

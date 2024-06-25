@@ -22,7 +22,7 @@ objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE
 if (thread.ok()) thread->activate(thread);
 </pre>
 
-To initialise the thread with data, call #SetData() prior to execution and read the #Data field from within the 
+To initialise the thread with data, call #SetData() prior to execution and read the #Data field from within the
 thread routine.
 
 -END-
@@ -44,26 +44,26 @@ static const LONG THREADPOOL_MAX = 6;
 
 static void thread_entry_cleanup(void *);
 
-struct ActionThread {
+struct AsyncAction {
    extThread *Thread;
    bool InUse;
 
    // Move constructor
-   ActionThread(ActionThread &&Other) noexcept : Thread(NULL), InUse(false) {
+   AsyncAction(AsyncAction &&Other) noexcept : Thread(NULL), InUse(false) {
       Thread = Other.Thread;
       InUse  = Other.InUse;
       Other.Thread = NULL;
       Other.InUse  = false;
    }
 
-   ActionThread() : Thread(0), InUse(0) { }
+   AsyncAction() : Thread(0), InUse(0) { }
 
-   ActionThread(extThread *pThread) {
+   AsyncAction(extThread *pThread) {
       Thread = pThread;
       InUse  = pThread ? true : false;
    }
 
-   ~ActionThread() {
+   ~AsyncAction() {
       if (InUse) {
          pf::Log log(__FUNCTION__);
          log.warning("Pooled thread #%d is still in use on closure.", Thread->UID);
@@ -71,18 +71,18 @@ struct ActionThread {
    }
 };
 
-static std::vector<struct ActionThread> glActionThreads;
+static std::vector<struct AsyncAction> glAsyncActions;
 
 //********************************************************************************************************************
 // Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
 
-static THREADVAR LONG tlUniqueThreadID = 0;
+static THREADVAR THREADID tlUniqueThreadID(0);
 static std::atomic_int glThreadIDCount = 1;
 
-LONG get_thread_id(void)
+THREADID get_thread_id(void)
 {
-   if (tlUniqueThreadID) return tlUniqueThreadID;
-   tlUniqueThreadID = glThreadIDCount++;
+   if (tlUniqueThreadID.defined()) return tlUniqueThreadID;
+   tlUniqueThreadID = THREADID(glThreadIDCount++);
    return tlUniqueThreadID;
 }
 
@@ -97,7 +97,7 @@ ERR threadpool_get(extThread **Result)
 
    glmThreadPool.lock();
 
-      for (auto &at : glActionThreads) {
+      for (auto &at : glAsyncActions) {
          if ((at.Thread) and (!at.InUse)) {
             at.InUse = true;
             *Result = at.Thread;
@@ -108,10 +108,10 @@ ERR threadpool_get(extThread **Result)
 
    glmThreadPool.unlock();
 
-   if (auto thread = extThread::create::untracked(fl::Name("ActionThread"))) {
+   if (auto thread = extThread::create::untracked(fl::Name("AsyncAction"))) {
       glmThreadPool.lock();
-      if (glActionThreads.size() < THREADPOOL_MAX) {
-         glActionThreads.emplace_back(thread);
+      if (glAsyncActions.size() < THREADPOOL_MAX) {
+         glAsyncActions.emplace_back(thread);
          thread->Pooled = true;
       }
       *Result = thread;
@@ -128,10 +128,10 @@ void threadpool_release(extThread *Thread)
 {
    pf::Log log;
 
-   log.traceBranch("Thread: #%d, Total: %d", Thread->UID, (LONG)glActionThreads.size());
+   log.traceBranch("Thread: #%d, Total: %d", Thread->UID, (LONG)glAsyncActions.size());
 
    glmThreadPool.lock();
-   for (auto &at : glActionThreads) {
+   for (auto &at : glAsyncActions) {
       if (at.Thread IS Thread) {
          at.InUse = false;
          Thread->Active = false; // For pooled threads we mark them as inactive manually.
@@ -151,17 +151,16 @@ void threadpool_release(extThread *Thread)
 
 void remove_threadpool(void)
 {
-   if (!glActionThreads.empty()) {
+   if (!glAsyncActions.empty()) {
       pf::Log log("Core");
-      log.branch("Removing the action thread pool of %d threads.", (LONG)glActionThreads.size());
+      log.branch("Removing the action thread pool of %d threads.", (LONG)glAsyncActions.size());
       std::lock_guard lock(glmThreadPool);
-      glActionThreads.clear();
+      glAsyncActions.clear();
    }
 }
 
 //********************************************************************************************************************
-// Called whenever a MSGID_THREAD_ACTION message is caught by ProcessMessages().  See thread_action() in lib_actions.c
-// for usage.
+// Called whenever a MSGID_THREAD_ACTION message is caught by ProcessMessages().  See thread_action() for usage.
 
 ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -610,7 +609,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_thread_class(void)
+extern ERR add_thread_class(void)
 {
    glThreadClass = objMetaClass::create::global(
       fl::ClassVersion(VER_THREAD),

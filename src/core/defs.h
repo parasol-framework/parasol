@@ -142,6 +142,12 @@ enum class AC     : LONG;
 
 #define STAT_FOLDER 0x0001
 
+struct THREADID : strong_typedef<THREADID, LONG> { // Internal thread ID, unrelated to the host platform.
+   // Make constructors available
+   using strong_typedef::strong_typedef;
+   bool operator==(const THREADID & other) const { return LONG(*this) == LONG(other); }
+};
+
 struct rkWatchPath {
    LARGE      Custom;    // User's custom data pointer or value
    HOSTHANDLE Handle;    // The handle for the file being monitored, can be a special reference for virtual paths
@@ -215,7 +221,7 @@ public:
    MEMORYID MemoryID;   // Unique identifier
    OBJECTID OwnerID;    // The object that allocated this block.
    ULONG    Size;       // 4GB max
-   volatile LONG ThreadLockID = 0;
+   THREADID ThreadLockID = THREADID(0);
    MEM      Flags;
    WORD     AccessCount = 0; // Total number of locks
 
@@ -227,7 +233,7 @@ public:
       MemoryID = 0;
       OwnerID  = 0;
       Flags    = MEM::NIL;
-      ThreadLockID = 0;
+      ThreadLockID = THREADID(0);
    }
 };
 
@@ -922,7 +928,7 @@ extern std::vector<FDRecord> glRegisterFD;
 #define LRT_Exclusive 1
 
 //********************************************************************************************************************
-// The RootModule class is used to represent the first instantation of a loaded module library.  It is managed 
+// The RootModule class is used to represent the first instantation of a loaded module library.  It is managed
 // internally.  Clients interface with modules via the Module class.
 
 class RootModule : public Object {
@@ -952,9 +958,7 @@ class RootModule : public Object {
    std::string LibraryName; // Name of the library loaded from disk
 };
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+THREADID get_thread_id(void);
 
 //********************************************************************************************************************
 
@@ -988,7 +992,6 @@ ERR  RenameVolume(CSTRING, CSTRING);
 ERR  findfile(std::string &);
 PERMIT convert_fs_permissions(LONG);
 LONG convert_permissions(PERMIT);
-void set_memory_manager(APTR, ResourceManager *);
 ERR  get_file_info(std::string_view, FileInfo *, LONG);
 extern "C" ERR convert_errno(LONG Error, ERR Default);
 void free_file_cache(void);
@@ -1012,9 +1015,8 @@ ERR    find_private_object_entry(OBJECTID, LONG *);
 void   free_events(void);
 void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
-LONG   get_thread_id(void);
 void   init_metaclass(void);
-ERR    init_sleep(LONG, LONG, LONG);
+ERR    init_sleep(THREADID, LONG, LONG);
 void   local_free_args(APTR, const FunctionField *);
 Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERR    msg_event(APTR, LONG, LONG, APTR, LONG);
@@ -1145,9 +1147,14 @@ extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING
 
 #endif
 
-#ifdef  __cplusplus
+//********************************************************************************************************************
+// Internal function to set the manager for an allocated resource.
+
+inline void set_memory_manager(APTR Address, ResourceManager *Manager)
+{
+   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
+   address_mgr[0] = Manager;
 }
-#endif
 
 //********************************************************************************************************************
 

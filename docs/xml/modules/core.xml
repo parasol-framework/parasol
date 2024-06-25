@@ -163,35 +163,6 @@ struct FunctionField argsResize[] = {
   </function>
 
   <function>
-    <name>ActionThread</name>
-    <category>Objects</category>
-    <comment>Execute an action in parallel, via a separate thread.</comment>
-    <prototype>ERR ActionThread(AC Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key)</prototype>
-    <input>
-      <param type="AC" name="Action" lookup="AC">An action or method ID must be specified here.</param>
-      <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
-      <param type="APTR" name="Args">If the action or method is documented as taking parameters, provide the correct parameter structure here.</param>
-      <param type="FUNCTION *" name="Callback">This function will be called after the thread has finished executing the action.</param>
-      <param type="LONG" name="Key">An optional key value to be passed to the <code>Callback</code> routine.</param>
-    </input>
-    <description>
-<p>This function follows the same principles of execution as the Action() function, with the difference of executing the action in parallel via a dynamically allocated thread.  Please refer to the <function>Action</function> function for general information on action execution.</p>
-<p>To receive feedback of the action's completion, use the <code>Callback</code> parameter and supply a function.  The prototype for the callback routine is <code>callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, LONG Key)</code></p>
-<p>It is crucial that the target object is not destroyed while the thread is executing.  Use the <code>Callback</code> routine to receive notification of the thread's completion and then free the object if desired.  The callback will be processed in the next call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.</p>
-<p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if ActionThread() fails, the callback will never be executed because the thread attempt will have been aborted.</p>
-<p>Please note that there is some overhead involved when safely initialising and executing a new thread.  This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Init">Error in Init()ialising an object.</error>
-      <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
-      <error code="MissingClass">The class could not be found in the system.</error>
-      <error code="NewObject">A call to NewObject() failed to produce a new object.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>AddInfoTag</name>
     <category>Files</category>
     <comment>Adds new tags to <st>FileInfo</st> structures.</comment>
@@ -321,6 +292,34 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <result type="ERR">
       <error code="Okay">The path was analysed and the result is stored in the <code>Type</code> variable.</error>
       <error code="DoesNotExist">Resource does not exist.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>AsyncAction</name>
+    <category>Objects</category>
+    <comment>Execute an action in parallel, via a separate thread.</comment>
+    <prototype>ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback)</prototype>
+    <input>
+      <param type="AC" name="Action" lookup="AC">An action or method ID must be specified here.</param>
+      <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
+      <param type="APTR" name="Args">If the action or method is documented as taking parameters, provide the correct parameter structure here.</param>
+      <param type="FUNCTION *" name="Callback">This function will be called after the thread has finished executing the action.</param>
+    </input>
+    <description>
+<p>This function follows the same principles of execution as the Action() function, with the difference of executing the action in parallel via a dynamically allocated thread.  Please refer to the <function>Action</function> function for general information on action execution.</p>
+<p>To receive feedback of the action's completion, use the <code>Callback</code> parameter and supply a function.  The prototype for the callback routine is <code>callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, APTR Meta)</code></p>
+<p>It is crucial that the target object is not destroyed while the thread is executing.  Use the <code>Callback</code> routine to receive notification of the thread's completion and then free the object if desired.  The callback will be processed when the main thread makes a call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.</p>
+<p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if AsyncAction() fails, the callback will never be executed because the thread attempt will have been aborted.</p>
+<p>Please note that there is some overhead involved when safely initialising and executing a new thread.  This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Init">Error in Init()ialising an object.</error>
+      <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
+      <error code="MissingClass">The class could not be found in the system.</error>
+      <error code="NewObject">A call to NewObject() failed to produce a new object.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>

@@ -414,7 +414,7 @@ LARGE GetResource(RES Resource)
       case RES::LOG_DEPTH:       return tlDepth;
       case RES::OPEN_INFO:       return (MAXINT)glOpenInfo;
       case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
-      case RES::THREAD_ID:       return (MAXINT)get_thread_id();
+      case RES::THREAD_ID:       return LONG(get_thread_id());
       case RES::CORE_IDL:        return (MAXINT)glIDL;
       case RES::DISPLAY_DRIVER:  if (!glDisplayDriver.empty()) return (MAXINT)glDisplayDriver.c_str(); else return 0;
 
