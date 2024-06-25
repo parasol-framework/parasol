@@ -228,13 +228,12 @@ CSTRING action_name(OBJECTPTR Object, ACTIONID ActionID)
 }
 
 //********************************************************************************************************************
-// Refer to ActionThread() to see how this is used.  It calls an action on a target object and then sends a callback
+// Refer to AsyncAction() to see how this is used.  It calls an action on a target object and then sends a callback
 // notification via the internal message queue.
 
 struct thread_data {
    OBJECTPTR Object;
    ACTIONID  ActionID;
-   LONG      Key;
    FUNCTION  Callback;
    BYTE      Parameters;
 };
@@ -259,13 +258,12 @@ static ERR thread_action(extThread *Thread)
    }
    else --obj->ThreadPending;
 
-   // Send a callback notification via messaging if required.  The receiver is in msg_threadaction() in class_thread.c
+   // Send a callback notification via messaging if required.  The MSGID_THREAD_ACTION receiver is msg_threadaction()
 
    if (data->Callback.defined()) {
       ThreadActionMessage msg = {
          .Object   = obj,
          .ActionID = data->ActionID,
-         .Key      = data->Key,
          .Error    = error,
          .Callback = data->Callback
       };
@@ -506,21 +504,22 @@ void ActionList(struct ActionTable **List, LONG *Size)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ActionThread: Execute an action in parallel, via a separate thread.
+AsyncAction: Execute an action in parallel, via a separate thread.
 
 This function follows the same principles of execution as the Action() function, with the difference of executing the
 action in parallel via a dynamically allocated thread.  Please refer to the ~Action() function for general
 information on action execution.
 
 To receive feedback of the action's completion, use the `Callback` parameter and supply a function.  The
-prototype for the callback routine is `callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, LONG Key)`
+prototype for the callback routine is `callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, APTR Meta)`
 
 It is crucial that the target object is not destroyed while the thread is executing.  Use the `Callback` routine to
 receive notification of the thread's completion and then free the object if desired.  The callback will be processed
-in the next call to ~ProcessMessages(), so as to maintain an orderly execution process within the application.
+when the main thread makes a call to ~ProcessMessages(), so as to maintain an orderly execution process within the 
+application.
 
 The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note
-that if ActionThread() fails, the callback will never be executed because the thread attempt will have been aborted.
+that if AsyncAction() fails, the callback will never be executed because the thread attempt will have been aborted.
 
 Please note that there is some overhead involved when safely initialising and executing a new thread.  This function is
 at its most effective when used to perform lengthy processes such as the loading and parsing of data.
@@ -530,7 +529,6 @@ int(AC) Action: An action or method ID must be specified here.
 obj Object: A pointer to the object that is going to perform the action.
 ptr Args: If the action or method is documented as taking parameters, provide the correct parameter structure here.
 ptr(func) Callback: This function will be called after the thread has finished executing the action.
-int Key: An optional key value to be passed to the `Callback` routine.
 
 -ERRORS-
 Okay
@@ -543,13 +541,13 @@ Init
 
 *********************************************************************************************************************/
 
-ERR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *Callback, LONG Key)
+ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *Callback)
 {
    pf::Log log(__FUNCTION__);
 
    if ((ActionID IS AC::NIL) or (!Object)) return ERR::NullArgs;
 
-   log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p, Key: %d", LONG(ActionID), Object->UID, Parameters, Callback, Key);
+   log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p", LONG(ActionID), Object->UID, Parameters, Callback);
 
    ++Object->ThreadPending;
 
@@ -598,7 +596,6 @@ ERR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION 
          auto call = (thread_data *)call_data;
          call->Object   = Object;
          call->ActionID = ActionID;
-         call->Key      = Key;
          call->Parameters = Parameters ? true : false;
          if (Callback) call->Callback = *Callback;
          else call->Callback.Type = CALL::NIL;

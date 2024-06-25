@@ -1176,7 +1176,7 @@ struct ScriptArg { // For use with sc::Exec
     "SetArray",
     "LockObject",
     "ReleaseObject",
-    "ActionThread",
+    "AsyncAction",
     "AddInfoTag",
     "SetDefaultPermissions",
     "VLogF",
@@ -1474,7 +1474,7 @@ struct Object { // Must be 64-bit aligned
    APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
    struct Object *Owner;      // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
-   std::atomic_uchar ThreadPending; // ActionThread() increments this.
+   std::atomic_uchar ThreadPending; // AsyncAction() increments this.
    std::atomic_char Queue;       // Counter of locks gained by incQueue()
    std::atomic_char SleepQueue;  // For the use of LockObject() only
    BYTE ActionDepth;             // Incremented each time an action or method is called on the object

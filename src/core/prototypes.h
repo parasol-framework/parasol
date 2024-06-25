@@ -82,7 +82,7 @@ extern "C" ERR FuncError(CSTRING Header, ERR Error);
 extern "C" ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
 extern "C" ERR LockObject(OBJECTPTR Object, LONG MilliSeconds);
 extern "C" void ReleaseObject(OBJECTPTR Object);
-extern "C" ERR ActionThread(AC Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
+extern "C" ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback);
 extern "C" ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 extern "C" void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
 extern "C" void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args);
