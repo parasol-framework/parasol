@@ -295,7 +295,7 @@ ERR convert_zip_error(struct z_stream_s *Stream, LONG Result)
 
 static void notify_free_feedback(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   auto Self = (extCompression *)CurrentContext();
+   auto Self = (extCompression *)tlContext->object();
    Self->Feedback.clear();
 }
 

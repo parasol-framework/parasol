@@ -1,22 +1,4 @@
 
-inline CSTRING get_extension(CSTRING Path)
-{
-   ULONG i;
-   for (i=0; Path[i]; i++);
-   while ((i > 0) and (Path[i] != '.') and (Path[i] != ':') and (Path[i] != '/') and (Path[i] != '\\')) i--;
-   if (Path[i] IS '.') return Path+i+1;
-   else return NULL;
-}
-
-inline CSTRING get_filename(CSTRING Path)
-{
-   ULONG i;
-   for (i=0; Path[i]; i++);
-   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
-   if (Path[i]) return Path+i;
-   else return NULL;
-}
-
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -123,11 +105,10 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
       log.trace("Checking extension against class database.");
 
       if (*ClassID IS CLASSID::NIL) {
-         if (auto filename = get_filename(res_path.c_str())) {
+         if (auto sep = res_path.find_last_of("/\\:"); sep != std::string::npos) {
             for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
-               auto &rec = it->second;
-               if (!rec.Match.empty()) {
-                  if (wildcmp(rec.Match, filename)) {
+               if (auto &rec = it->second; !rec.Match.empty()) {
+                  if (wildcmp(rec.Match, res_path.substr(sep + 1, std::string::npos))) {
                      if (rec.ParentID != CLASSID::NIL) {
                         *ClassID = rec.ParentID;
                         if (SubClassID) *SubClassID = rec.ClassID;
@@ -152,64 +133,63 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
                auto &rec = it->second;
                if (rec.Header.empty()) continue;
 
-               CSTRING header = rec.Header.c_str(); // Compare the header to the Path buffer
+               auto header = std::string_view(rec.Header); // Compare the header to the Path buffer
                bool match = true;  // Headers use an offset based hex format, for example: [8:$958a9b9f9301][24:$939a9fff]
-               while (*header) {
-                  if (*header != '[') {
-                     if ((*header IS '|') and (match)) break;
-                     header++;
+               while (!header.empty()) {
+                  if (!header.starts_with('[')) {
+                     if ((header.starts_with('|')) and (match)) break;
+                     header.remove_prefix(1);
                      continue;
                   }
 
-                  header++;
-                  LONG offset = strtol(header, NULL, 0);
-                  while ((*header) and (*header != ':')) header++;
-                  if (!header[0]) break;
+                  header.remove_prefix(1);
+                  LONG offset = svtonum<LONG>(header);
+                  if (auto i = header.find(':'); i != std::string::npos) header.remove_prefix(i + 1);
+                  else break;
 
-                  header++; // Skip ':'
-                  if (*header IS '$') { // Find and compare the data, one byte at a time
-                     header++; // Skip '$'
-                     while (*header) {
-                        if (((*header >= '0') and (*header <= '9')) or
-                            ((*header >= 'A') and (*header <= 'F')) or
-                            ((*header >= 'a') and (*header <= 'f'))) break;
-                        header++;
+                  if (header.starts_with('$')) { // Find and compare the data, one byte at a time
+                     header.remove_prefix(1);
+                     while (!header.empty()) {
+                        if (((header[0] >= '0') and (header[0] <= '9')) or
+                            ((header[0] >= 'A') and (header[0] <= 'F')) or
+                            ((header[0] >= 'a') and (header[0] <= 'f'))) break;
+                        header.remove_prefix(1);
                      }
 
                      UBYTE byte;
-                     while (*header) {
+                     while (!header.empty()) {
                         // Nibble 1
-                        if ((*header >= '0') and (*header <= '9')) byte = (*header - '0')<<4;
-                        else if ((*header >= 'A') and (*header <= 'F')) byte = (*header - 'A' + 0x0a)<<4;
-                        else if ((*header >= 'a') and (*header <= 'f')) byte = (*header - 'a' + 0x0a)<<4;
+                        if ((header[0] >= '0') and (header[0] <= '9')) byte = (header[0] - '0')<<4;
+                        else if ((header[0] >= 'A') and (header[0] <= 'F')) byte = (header[0] - 'A' + 0x0a)<<4;
+                        else if ((header[0] >= 'a') and (header[0] <= 'f')) byte = (header[0] - 'a' + 0x0a)<<4;
                         else break;
-                        header++;
+                        header.remove_prefix(1);
 
                         // Nibble 2
-                        if ((*header >= '0') and (*header <= '9')) byte |= *header - '0';
-                        else if ((*header >= 'A') and (*header <= 'F')) byte |= *header - 'A' + 0x0a;
-                        else if ((*header >= 'a') and (*header <= 'f')) byte |= *header - 'a' + 0x0a;
+                        if ((header[0] >= '0') and (header[0] <= '9')) byte |= header[0] - '0';
+                        else if ((header[0] >= 'A') and (header[0] <= 'F')) byte |= header[0] - 'A' + 0x0a;
+                        else if ((header[0] >= 'a') and (header[0] <= 'f')) byte |= header[0] - 'a' + 0x0a;
                         else break;
-                        header++;
+                        header.remove_prefix(1);
 
                         if (offset >= bytes_read) { match = false; break; }
                         if (byte != buffer[offset++]) { match = false; break; }
                      }
                   }
                   else {
-                     while ((*header) and (*header != ']')) {
+                     while ((!header.empty()) and (header[0] != ']')) {
                         if (offset >= bytes_read) { match = false; break; }
-                        if (*header != buffer[offset++]) { match = false; break; }
-                        header++;
+                        if (header[0] != buffer[offset++]) { match = false; break; }
+                        header.remove_prefix(1);
                      }
                   }
 
                   if (!match) {
-                     while ((*header) and (*header != '|')) header++; // Look for an or operation
-                     if (*header IS '|') {
+                     if (auto sep = header.find('|'); sep != std::string::npos) { // Look for an or operation
                         match = true; // Continue comparisons
-                        header++;
+                        header.remove_prefix(sep + 1);
                      }
+                     else break;
                   }
                }
 

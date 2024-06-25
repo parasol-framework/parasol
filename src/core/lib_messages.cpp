@@ -691,7 +691,7 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 
    if (ObjectSignals) {
       for (LONG i=0; ((error IS ERR::Okay) and (ObjectSignals[i].Object)); i++) {
-         pf::ScopedObjectLock<OBJECTPTR> lock(ObjectSignals[i].Object); // For thread safety
+         pf::ScopedObjectLock lock(ObjectSignals[i].Object); // For thread safety
 
          if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
             // Objects that have already been signalled do not require monitoring
@@ -734,7 +734,7 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 
    if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions
       for (auto &ref : glWFOList) {
-         pf::ScopedObjectLock<OBJECTPTR> lock(ref.second.Object); // For thread safety
+         pf::ScopedObjectLock lock(ref.second.Object); // For thread safety
          UnsubscribeAction(ref.second.Object, AC::Free);
          UnsubscribeAction(ref.second.Object, AC::Signal);
       }

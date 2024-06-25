@@ -130,7 +130,7 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
 {
    pf::Log log("CopyArguments");
    BYTE *src, *data;
-   LONG memsize, j, len;
+   LONG j, len;
    ERR error;
    STRING str;
 
@@ -202,7 +202,7 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
                ((APTR *)(Buffer + pos))[0] = NULL;
             }
             else {
-               memsize = ((LONG *)(ArgsBuffer + pos + sizeof(APTR)))[0];
+               LONG memsize = ((LONG *)(ArgsBuffer + pos + sizeof(APTR)))[0];
                if (memsize > 0) {
                   if (Args[i].Type & FD_RESULT) { // "Receive" pointer type: Prepare a buffer so that we can accept a result
                      APTR mem;
@@ -279,18 +279,16 @@ void local_free_args(APTR Parameters, const struct FunctionField *Args)
    }
 }
 
-/*********************************************************************************************************************
-** Resolves pointers and strings within an ActionMessage structure.
-*/
+//********************************************************************************************************************
+// Resolves pointers and strings within an ActionMessage structure.
 
 ERR resolve_args(APTR Parameters, const struct FunctionField *Args)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
-   ERR error;
-   BYTE *Buffer = (BYTE *)Parameters;
+
+   auto Buffer = (BYTE *)Parameters;
    LONG pos = 0;
-   for (i=0; Args[i].Name; i++) {
+   for (LONG i=0; Args[i].Name; i++) {
       if (Args[i].Type & FD_STR) {
          // Replace the offset with a pointer
          if (((LONG *)(Buffer + pos))[0]) {
@@ -304,28 +302,20 @@ ERR resolve_args(APTR Parameters, const struct FunctionField *Args)
             // Gain exclusive access to the public memory block that was allocated for this argument, and store the pointer to it.
             // The memory block will need to be released by the routine that called our function.
 
-            MEMORYID mid = ((MEMORYID *)(Buffer + pos))[0];
-            if (mid) {
+            if (auto mid = ((MEMORYID *)(Buffer + pos))[0]) {
                log.warning("Bad memory ID #%d for arg \"%s\", not a public allocation.", mid, Args[i].Name);
-               error = ERR::AccessMemory;
-               goto looperror;
+               return ERR::AccessMemory;
             }
          }
-         else {
-            if (((LONG *)(Buffer + pos))[0] > 0) {
-               ((APTR *)(Buffer + pos))[0] = Buffer + ((LONG *)(Buffer + pos))[0];
-            }
-            else ((APTR *)(Buffer + pos))[0] = NULL;
+         else if (((LONG *)(Buffer + pos))[0] > 0) {
+            ((APTR *)(Buffer + pos))[0] = Buffer + ((LONG *)(Buffer + pos))[0];
          }
+         else ((APTR *)(Buffer + pos))[0] = NULL;
+
          pos += sizeof(APTR);
       }
       else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
       else pos += sizeof(LONG);
    }
    return ERR::Okay;
-
-looperror:
-   // On failure we must back-track through the array looking for pointers that we have already gained access to, and release them before returning.
-
-   return error;
 }

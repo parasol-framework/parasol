@@ -2601,9 +2601,9 @@ struct Object { // Must be 64-bit aligned
       return (Flags & NF::FREE) != NF::NIL;
    }
 
-   // Use lock() to quickly obtain an object lock without a call to LockObject()
+   // Use lock() to quickly obtain an object lock without a call to LockObject().  Can fail if the object is being collected.
 
-   inline ERR lock() {
+   inline ERR lock(LONG Timeout = -1) {
       if (++Queue IS 1) {
          ThreadID = pf::_get_thread_id();
          return ERR::Okay;
@@ -2611,7 +2611,7 @@ struct Object { // Must be 64-bit aligned
       else {
          if (ThreadID IS pf::_get_thread_id()) return ERR::Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
          --Queue; // Restore the lock count
-         return LockObject(this, -1); // Can fail if object is marked for deletion.
+         return LockObject(this, Timeout); // Can fail if object is marked for collection.
       }
    }
 

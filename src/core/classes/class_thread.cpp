@@ -205,7 +205,7 @@ ERR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
       callback(uid, msg->Callback.Meta);
    }
    else if (msg->Callback.isScript()) {
-      ScopedObjectLock<objScript> script(msg->Callback.Context, 5000);
+      ScopedObjectLock script(msg->Callback.Context, 5000);
       if (script.granted()) sc::Call(msg->Callback, std::to_array<ScriptArg>({ { "Thread", uid, FD_OBJECTID } }));
    }
 
@@ -263,7 +263,7 @@ static void * thread_entry(extThread *Self)
          Self->Error = routine(Self, Self->Routine.Meta);
       }
       else if (Self->Routine.isScript()) {
-         ScopedObjectLock<objScript> script(Self->Routine.Context, 5000);
+         ScopedObjectLock script(Self->Routine.Context, 5000);
          if (script.granted()) {
             sc::Call(Self->Routine, std::to_array<ScriptArg>({ { "Thread", Self, FD_OBJECTPTR } }));
          }

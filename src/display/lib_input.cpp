@@ -195,7 +195,7 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
 
          auto &cb = sub.Callback;
          if (sub.Callback.isC()) {
-            pf::ScopedObjectLock lock(cb.Context, 2000); // Ensure that the object can't be removed until after input processing
+            pf::ScopedObjectLock lock(OBJECTPTR(cb.Context), 2000); // Ensure that the object can't be removed until after input processing
             if (lock.granted()) {
                pf::SwitchContext ctx(cb.Context);
                auto func = (ERR (*)(InputEvent *, LONG, APTR))cb.Routine;

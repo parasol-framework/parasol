@@ -1259,13 +1259,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
    if ((class_id IS CLASSID::NIL) or (!Object)) return log.warning(ERR::NullArgs);
 
    auto mc = (extMetaClass *)FindClass(class_id);
-   if (!mc) {
-      if (glClassMap.contains(class_id)) {
-         log.function("Class %s was not found in the system.", glClassMap[class_id]->ClassName);
-      }
-      else log.function("Class $%.8x was not found in the system.", ULONG(class_id));
-      return ERR::MissingClass;
-   }
+   if (!mc) return log.warning(ERR::MissingClass);
 
    if (Object) *Object = NULL;
 
@@ -1308,8 +1302,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
          }
       }
       else if (tlContext != &glTopContext) { // Track the object to the current context
-         auto obj = tlContext->resource();
-         if (obj IS &glDummyObject) {
+         if (auto obj = tlContext->resource(); obj IS &glDummyObject) {
             if (glCurrentTask) {
                ScopedObjectAccess lock(glCurrentTask);
                SetOwner(head, glCurrentTask);
@@ -1486,9 +1479,8 @@ ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
          if (ActionTable[LONG(ActionID)].Size) {
             auto fields   = ActionTable[LONG(ActionID)].Args;
             auto argssize = ActionTable[LONG(ActionID)].Size;
-            if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[LONG(ActionID)].Name) != ERR::Okay) {
-               log.warning("Failed to buffer arguments for action \"%s\".", ActionTable[LONG(ActionID)].Name);
-               return ERR::Failed;
+            if (auto error = copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[LONG(ActionID)].Name); error != ERR::Okay) {
+               return error;
             }
 
             msg.Action.SendArgs = true;
@@ -1497,27 +1489,24 @@ ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
       else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
          auto fields   = cl->Methods[-LONG(ActionID)].Args;
          auto argssize = cl->Methods[-LONG(ActionID)].Size;
-         if (copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-LONG(ActionID)].Name) != ERR::Okay) {
-            log.warning("Failed to buffer arguments for method \"%s\".", cl->Methods[-LONG(ActionID)].Name);
-            return ERR::Failed;
+         if (auto error = copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-LONG(ActionID)].Name); error != ERR::Okay) {
+            return error;
          }
          msg.Action.SendArgs = true;
       }
       else return log.warning(ERR::MissingClass);
    }
 
-   ERR error = SendMessage(MSGID_ACTION, MSF::NIL, &msg.Action, msgsize + sizeof(ActionMessage));
-
-   if (error != ERR::Okay) {
+   if (auto error = SendMessage(MSGID_ACTION, MSF::NIL, &msg.Action, msgsize + sizeof(ActionMessage)); error != ERR::Okay) {
       if (ActionID > AC::NIL) {
-         log.warning("Action %s on object #%d failed, SendMsg error: %s", ActionTable[LONG(ActionID)].Name, ObjectID, glMessages[LONG(error)]);
+         log.warning("#%d.%s() failed, SendMsg error: %s", ObjectID, ActionTable[LONG(ActionID)].Name, glMessages[LONG(error)]);
       }
-      else log.warning("Method %d on object #%d failed, SendMsg error: %s", LONG(ActionID), ObjectID, glMessages[LONG(error)]);
+      else log.warning("#%d method %d failed, SendMsg error: %s", ObjectID, LONG(ActionID), glMessages[LONG(error)]);
 
-      if (error IS ERR::MemoryDoesNotExist) error = ERR::NoMatchingObject;
+      if (error IS ERR::MemoryDoesNotExist) return ERR::NoMatchingObject;
+      return error;
    }
-
-   return error;
+   else return error;
 }
 
 /*********************************************************************************************************************

@@ -137,12 +137,12 @@ template <class T = Object> std::shared_ptr<T> make_shared_object(T *Object) {
 // Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
 template <class T = Object>
-class ScopedObjectLock { // C++ wrapper for automatically releasing an object
+class ScopedObjectLock {
    public:
       ERR error;
       T *obj;
 
-      ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
+      inline ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
          error = AccessObject(ObjectID, Milliseconds, (OBJECTPTR *)&obj);
       }
 
@@ -151,12 +151,12 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
          obj = (T *)Object;
       }
 
-      ScopedObjectLock() { obj = NULL; error = ERR::NotLocked; }
       ~ScopedObjectLock() { if (error IS ERR::Okay) ReleaseObject((OBJECTPTR)obj); }
-      bool granted() { return error == ERR::Okay; }
+      inline ScopedObjectLock() { obj = NULL; error = ERR::NotLocked; }
+      inline bool granted() { return error == ERR::Okay; }
 
-      T * operator->() { return obj; }; // Promotes underlying methods and fields
-      T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
+      inline T * operator->() { return obj; }; // Promotes underlying methods and fields
+      inline T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
 };
 
 //********************************************************************************************************************
