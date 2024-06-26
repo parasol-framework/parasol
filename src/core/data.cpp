@@ -197,7 +197,7 @@ THREADVAR WORD tlPrivateLockCount = 0; // Count of private *memory* locks held p
 struct Object glDummyObject = {
    .Class = NULL, .ChildPrivate = NULL, .CreatorMeta = NULL, .Owner = NULL, .NotifyFlags = 0,
    .ThreadPending = 0, .Queue = 0, .SleepQueue = 0, .ActionDepth = 0,
-   .UID = 0, .Flags = NF::NIL, .ThreadID = 0, .Name = "", .Locked = false
+   .UID = 0, .Flags = NF::NIL, .ThreadID = 0, .Name = "", .PermitTerminate = false
 };
 class ObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
 THREADVAR ObjectContext *tlContext = &glTopContext;

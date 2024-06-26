@@ -53,13 +53,15 @@ static LONG glSubReadOnly = 0; // To prevent modification of glSubscriptions
 static void free_children(OBJECTPTR Object);
 
 //********************************************************************************************************************
+// Hook for MSGID_FREE, used for delaying collection until the next message processing cycle.
 
 ERR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    // Lock the object via conventional means to guarantee thread safety.
    OBJECTPTR obj;
    if (AccessObject(((OBJECTID *)Message)[0], 10000, &obj) IS ERR::Okay) {
-      obj->Locked = false; // Required to allow the object to be freed while maintaining a lock via the Queue mechanism.
+      // Use PermitTerminate to inform object_free() that the object can be terminated safely while the lock is held.
+      obj->PermitTerminate = true;
       FreeResource(obj);
    }
    return ERR::Okay;
@@ -86,7 +88,7 @@ static ERR object_free(Object *Object)
    // If the object is locked then we mark it for collection and return.
    // Collection is achieved via the message queue for maximum safety.
 
-   if (Object->Locked) {
+   if ((Object->Queue > 1) and (!Object->PermitTerminate)) {
       log.detail("Object #%d locked; marking for deletion.", Object->UID);
       if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL; // The Owner pointer is no longer safe to use
       Object->Flags |= NF::FREE_ON_UNLOCK;
@@ -515,7 +517,7 @@ prototype for the callback routine is `callback(ACTIONID ActionID, OBJECTPTR Obj
 
 It is crucial that the target object is not destroyed while the thread is executing.  Use the `Callback` routine to
 receive notification of the thread's completion and then free the object if desired.  The callback will be processed
-when the main thread makes a call to ~ProcessMessages(), so as to maintain an orderly execution process within the 
+when the main thread makes a call to ~ProcessMessages(), so as to maintain an orderly execution process within the
 application.
 
 The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note

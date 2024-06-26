@@ -2574,14 +2574,14 @@ struct Object { // Must be 64-bit aligned
    struct Object *Owner;      // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    std::atomic_uchar ThreadPending; // AsyncAction() increments this.
-   std::atomic_char Queue;       // Counter of locks gained by incQueue()
+   std::atomic_char Queue;       // Counter of locks attained by LockObject(); decremented by ReleaseObject()
    std::atomic_char SleepQueue;  // For the use of LockObject() only
    BYTE ActionDepth;             // Incremented each time an action or method is called on the object
    OBJECTID UID;                 // Unique object identifier
    NF       Flags;               // Object flags
    std::atomic_int ThreadID;     // Managed by locking functions.  Atomic due to volatility.
    char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
-   std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject(), protects against termination
+   bool PermitTerminate;
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }

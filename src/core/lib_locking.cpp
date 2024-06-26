@@ -380,7 +380,6 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
       // destroying the object when other threads could potentially be using it).
 
       if (++Object->Queue IS 1) {
-         Object->Locked = true;
          Object->ThreadID = LONG(our_thread);
          return ERR::Okay;
       }
@@ -423,7 +422,6 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
             }
             else if (++Object->Queue IS 1) { // Increment the lock count - also doubles as a lock() method call if the Queue value is 1.
                glWaitLocks[glWLIndex].notWaiting();
-               Object->Locked = true;
                Object->ThreadID = LONG(our_thread);
                Object->SleepQueue--;
                return ERR::Okay;
@@ -539,8 +537,6 @@ void ReleaseObject(OBJECTPTR Object)
    if (!Object) return;
 
    if (--Object->Queue > 0) return;
-
-   Object->Locked = false; // Permits object termination when false.
 
    if (Object->SleepQueue > 0) { // Other threads are waiting on this object
       pf::Log log(__FUNCTION__);
