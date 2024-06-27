@@ -2617,7 +2617,7 @@ struct Object { // Must be 64-bit aligned
 
    inline void unlock() {
       // Prefer to use ReleaseObject() if there are threads that need to be woken
-      if (SleepQueue.load() > 0) ReleaseObject(this);
+      if ((SleepQueue > 0) or defined(NF::FREE_ON_UNLOCK)) ReleaseObject(this);
       else --Queue;
    }
 
