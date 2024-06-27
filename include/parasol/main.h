@@ -138,20 +138,32 @@ template <class T = Object> std::shared_ptr<T> make_shared_object(T *Object) {
 
 template <class T = Object>
 class ScopedObjectLock {
+   private:
+      bool quicklock;
+
    public:
       ERR error;
       T *obj;
 
       inline ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
          error = AccessObject(ObjectID, Milliseconds, (OBJECTPTR *)&obj);
+         quicklock = false;
       }
 
-      ScopedObjectLock(OBJECTPTR Object, LONG Milliseconds = 3000) {
-         error = LockObject(Object, Milliseconds);
-         obj = (T *)Object;
+      inline ScopedObjectLock(T *Object, LONG Milliseconds = 3000) {
+         if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
+            obj = (T *)Object;
+            quicklock = true;
+         }
       }
 
-      ~ScopedObjectLock() { if (error IS ERR::Okay) ReleaseObject((OBJECTPTR)obj); }
+      inline ~ScopedObjectLock() {
+         if (error IS ERR::Okay) {
+            if (quicklock) obj->unlock();
+            else ReleaseObject((OBJECTPTR)obj);
+         }
+      }
+
       inline ScopedObjectLock() { obj = NULL; error = ERR::NotLocked; }
       inline bool granted() { return error == ERR::Okay; }
 
