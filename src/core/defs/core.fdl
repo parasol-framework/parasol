@@ -1472,7 +1472,7 @@ struct Object { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
-   struct Object *Owner;      // The owner of this object
+   struct Object *Owner;         // The owner of this object
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    std::atomic_uchar ThreadPending; // AsyncAction() increments this.
    std::atomic_char Queue;       // Counter of locks attained by LockObject(); decremented by ReleaseObject()
@@ -1518,7 +1518,7 @@ struct Object { // Must be 64-bit aligned
 
    inline void unlock() {
       // Prefer to use ReleaseObject() if there are threads that need to be woken
-      if (SleepQueue.load() > 0) ReleaseObject(this);
+      if ((SleepQueue > 0) or defined(NF::FREE_ON_UNLOCK)) ReleaseObject(this);
       else --Queue;
    }
 
@@ -1527,42 +1527,46 @@ struct Object { // Must be 64-bit aligned
       while ((obj) and (obj->UID != ID)) obj = obj->Owner;
       return obj ? true : false;
    }
-
-   inline ERR setArray(ULONG FieldID, FLOAT *Value, LONG Size)  { return SetArray(this, (FIELD)FieldID|TFLOAT, Value, Size); }
-   inline ERR setArray(ULONG FieldID, DOUBLE *Value, LONG Size) { return SetArray(this, (FIELD)FieldID|TDOUBLE, Value, Size); }
-   inline ERR setArray(ULONG FieldID, LONG *Value, LONG Size)   { return SetArray(this, (FIELD)FieldID|TLONG, Value, Size); }
-   inline ERR setArray(ULONG FieldID, LARGE *Value, LONG Size)  { return SetArray(this, (FIELD)FieldID|TLARGE, Value, Size); }
-
-   inline ERR set(ULONG FieldID, int Value)             { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERR set(ULONG FieldID, long Value)            { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERR set(ULONG FieldID, unsigned int Value)    { return SetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERR set(ULONG FieldID, LARGE Value)           { return SetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERR set(ULONG FieldID, DOUBLE Value)          { return SetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
-   inline ERR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERR set(ULONG FieldID, const std::string &Value)   { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
-   inline ERR set(ULONG FieldID, const Unit *Value)          { return SetField(this, (FIELD)FieldID|TUNIT, Value); }
+   
+   template <class T, std::size_t SIZE> ERR set(FIELD FieldID, const std::array<T, SIZE> &Value) { 
+      return SetArray(this, FieldID|FIELD_TAG<T>(), const_cast<T *>(Value.data()), SIZE); 
+   }
+   
+   template <class T> ERR set(FIELD FieldID, const std::vector<T> &Value) { 
+      return SetArray(this, FieldID|FIELD_TAG<T>(), const_cast<T *>(Value.data()), std::ssize(Value)); 
+   }
+   
+   inline ERR set(FIELD FieldID, const FRGB &Value)     { return SetArray(this, FieldID|TFLOAT, (FLOAT *)&Value, 4); }
+   inline ERR set(FIELD FieldID, int Value)             { return SetField(this, FieldID|TLONG, Value); }
+   inline ERR set(FIELD FieldID, long Value)            { return SetField(this, FieldID|TLONG, Value); }
+   inline ERR set(FIELD FieldID, unsigned int Value)    { return SetField(this, FieldID|TLONG, Value); }
+   inline ERR set(FIELD FieldID, LARGE Value)           { return SetField(this, FieldID|TLARGE, Value); }
+   inline ERR set(FIELD FieldID, DOUBLE Value)          { return SetField(this, FieldID|TDOUBLE, Value); }
+   inline ERR set(FIELD FieldID, const FUNCTION *Value) { return SetField(this, FieldID|TFUNCTION, Value); }
+   inline ERR set(FIELD FieldID, const char *Value)     { return SetField(this, FieldID|TSTRING, Value); }
+   inline ERR set(FIELD FieldID, const unsigned char *Value) { return SetField(this, FieldID|TSTRING, Value); }
+   inline ERR set(FIELD FieldID, const std::string &Value)   { return SetField(this, FieldID|TSTRING, Value.c_str()); }
+   inline ERR set(FIELD FieldID, const Unit *Value)          { return SetField(this, FieldID|TUNIT, Value); }
    // Works both for regular data pointers and function pointers if field is defined correctly.
-   inline ERR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
+   inline ERR set(FIELD FieldID, const void *Value) { return SetField(this, FieldID|TPTR, Value); }
 
-   inline ERR setScale(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TSCALE, Value); }
+   inline ERR setScale(FIELD FieldID, DOUBLE Value) { return SetField(this, FieldID|TDOUBLE|TSCALE, Value); }
 
    // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
    // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
 
-   inline ERR get(ULONG FieldID, LONG *Value)     { return GetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERR get(ULONG FieldID, LARGE *Value)    { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERR get(ULONG FieldID, DOUBLE *Value)   { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERR get(ULONG FieldID, STRING *Value)   { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERR get(ULONG FieldID, CSTRING *Value)  { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERR get(ULONG FieldID, Unit *Value)     { return GetField(this, (FIELD)FieldID|TUNIT, Value); }
-   inline ERR getPtr(ULONG FieldID, APTR Value)   { return GetField(this, (FIELD)FieldID|TPTR, Value); }
-   inline ERR getScale(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TSCALE, Value); }
+   inline ERR get(FIELD FieldID, LONG *Value)     { return GetField(this, FieldID|TLONG, Value); }
+   inline ERR get(FIELD FieldID, LARGE *Value)    { return GetField(this, FieldID|TLARGE, Value); }
+   inline ERR get(FIELD FieldID, DOUBLE *Value)   { return GetField(this, FieldID|TDOUBLE, Value); }
+   inline ERR get(FIELD FieldID, STRING *Value)   { return GetField(this, FieldID|TSTRING, Value); }
+   inline ERR get(FIELD FieldID, CSTRING *Value)  { return GetField(this, FieldID|TSTRING, Value); }
+   inline ERR get(FIELD FieldID, Unit *Value)     { return GetField(this, FieldID|TUNIT, Value); }
+   inline ERR getPtr(FIELD FieldID, APTR Value)   { return GetField(this, FieldID|TPTR, Value); }
+   inline ERR getScale(FIELD FieldID, DOUBLE *Value) { return GetField(this, FieldID|TDOUBLE|TSCALE, Value); }
 
-   template <class T> inline T get(ULONG FieldID) { // Validity of the result is not guaranteed
+   template <class T> inline T get(FIELD FieldID) { // Validity of the result is not guaranteed
       T val;
-      GetField(this, (FIELD)FieldID|FIELD_TAG<T>(), &val);
+      GetField(this, FieldID|FIELD_TAG<T>(), &val);
       return val;
    };
 

@@ -88,14 +88,14 @@ void anim_value::set_value(objVector &Vector)
          //
          // TODO: Correct implementation requires inspection of the XML tags.  If the parent Vector is a group, its
          // children will need to be checked for currentColor references.
-         auto val = get_colour_value(Vector, FID_FillColour);
-         Vector.setArray(FID_FillColour, (float *)&val, 4);
+         FRGB val = get_colour_value(Vector, FID_FillColour);
+         Vector.set(FID_FillColour, val);
          return;
       }
 
       case SVF_FILL: {
          auto val = get_colour_value(Vector, FID_FillColour);
-         Vector.setArray(FID_FillColour, (float *)&val, 4);
+         Vector.set(FID_FillColour, val);
          return;
       }
 
@@ -122,7 +122,7 @@ void anim_value::set_value(objVector &Vector)
 
       case SVF_STROKE: {
          auto val = get_colour_value(Vector, FID_StrokeColour);
-         Vector.setArray(FID_StrokeColour, (float *)&val, 4);
+         Vector.set(FID_StrokeColour, val);
          return;
       }
 

@@ -693,19 +693,21 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
       for (LONG i=0; ((error IS ERR::Okay) and (ObjectSignals[i].Object)); i++) {
          pf::ScopedObjectLock lock(ObjectSignals[i].Object); // For thread safety
 
-         if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
-            // Objects that have already been signalled do not require monitoring
-            ObjectSignals[i].Object->Flags = ObjectSignals[i].Object->Flags & (~NF::SIGNALLED);
-         }
-         else {
-            // NB: An object being freed is treated as equivalent to it receiving a signal.
-            // Refer to notify_signal_wfo() for notification handling and clearing of signals.
-            log.detail("Monitoring object #%d", ObjectSignals[i].Object->UID);
-            if ((SubscribeAction(ObjectSignals[i].Object, AC::Free, C_FUNCTION(notify_signal_wfo)) IS ERR::Okay) and
-                (SubscribeAction(ObjectSignals[i].Object, AC::Signal, C_FUNCTION(notify_signal_wfo)) IS ERR::Okay)) {
-               glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
+         if (lock.granted()) {
+            if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
+               // Objects that have already been signalled do not require monitoring
+               ObjectSignals[i].Object->Flags = ObjectSignals[i].Object->Flags & (~NF::SIGNALLED);
             }
-            else error = ERR::Failed;
+            else {
+               // NB: An object being freed is treated as equivalent to it receiving a signal.
+               // Refer to notify_signal_wfo() for notification handling and clearing of signals.
+               log.detail("Monitoring object #%d", ObjectSignals[i].Object->UID);
+               if ((SubscribeAction(ObjectSignals[i].Object, AC::Free, C_FUNCTION(notify_signal_wfo)) IS ERR::Okay) and
+                   (SubscribeAction(ObjectSignals[i].Object, AC::Signal, C_FUNCTION(notify_signal_wfo)) IS ERR::Okay)) {
+                  glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
+               }
+               else error = ERR::Failed;
+            }
          }
       }
    }
