@@ -2664,7 +2664,7 @@ struct Object { // Must be 64-bit aligned
    inline ERR getScale(FIELD FieldID, DOUBLE *Value) { return GetField(this, FieldID|TDOUBLE|TSCALE, Value); }
 
    template <class T> inline T get(FIELD FieldID) { // Validity of the result is not guaranteed
-      T val;
+      T val(T(0));
       GetField(this, FieldID|FIELD_TAG<T>(), &val);
       return val;
    };
