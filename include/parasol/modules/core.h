@@ -2626,15 +2626,15 @@ struct Object { // Must be 64-bit aligned
       while ((obj) and (obj->UID != ID)) obj = obj->Owner;
       return obj ? true : false;
    }
-   
-   template <class T, std::size_t SIZE> ERR set(FIELD FieldID, const std::array<T, SIZE> &Value) { 
-      return SetArray(this, FieldID|FIELD_TAG<T>(), const_cast<T *>(Value.data()), SIZE); 
+
+   template <class T, std::size_t SIZE> ERR set(FIELD FieldID, const std::array<T, SIZE> &Value) {
+      return SetArray(this, FieldID|FIELD_TAG<T>(), const_cast<T *>(Value.data()), SIZE);
    }
-   
-   template <class T> ERR set(FIELD FieldID, const std::vector<T> &Value) { 
-      return SetArray(this, FieldID|FIELD_TAG<T>(), const_cast<T *>(Value.data()), std::ssize(Value)); 
+
+   template <class T> ERR set(FIELD FieldID, const std::vector<T> &Value) {
+      return SetArray(this, FieldID|FIELD_TAG<T>(), const_cast<T *>(Value.data()), std::ssize(Value));
    }
-   
+
    inline ERR set(FIELD FieldID, const FRGB &Value)     { return SetArray(this, FieldID|TFLOAT, (FLOAT *)&Value, 4); }
    inline ERR set(FIELD FieldID, int Value)             { return SetField(this, FieldID|TLONG, Value); }
    inline ERR set(FIELD FieldID, long Value)            { return SetField(this, FieldID|TLONG, Value); }
@@ -2672,8 +2672,6 @@ struct Object { // Must be 64-bit aligned
    template <typename... Args> ERR setFields(Args&&... pFields) {
       pf::Log log("setFields");
 
-      lock();
-
       std::initializer_list<pf::FieldValue> Fields = { std::forward<Args>(pFields)... };
 
       auto ctx = CurrentContext();
@@ -2707,18 +2705,13 @@ struct Object { // Must be 64-bit aligned
 
                if ((error != ERR::Okay) and (error != ERR::NoSupport)) {
                   log.warning("%s.%s: %s", target->className(), field->Name, GetErrorMsg(error));
-                  unlock();
                   return error;
                }
             }
          }
-         else {
-            unlock();
-            return log.warning(ERR::UnsupportedField);
-         }
+         else return log.warning(ERR::UnsupportedField);
       }
 
-      unlock();
       return ERR::Okay;
    }
 

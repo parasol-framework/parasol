@@ -94,10 +94,7 @@ ERR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
          return ERR::NoFieldAccess;
       }
 
-
-      Object->lock();
       ERR error = field->WriteValue(Object, field, type, Array, Elements);
-      Object->unlock();
       return error;
    }
    else {
@@ -181,8 +178,6 @@ ERR SetField(OBJECTPTR Object, FIELD FieldID, ...)
          return ERR::NoFieldAccess;
       }
 
-      Object->lock();
-
       ERR error;
       va_list list;
       va_start(list, FieldID);
@@ -204,8 +199,6 @@ ERR SetField(OBJECTPTR Object, FIELD FieldID, ...)
          }
 
       va_end(list);
-
-      Object->unlock();
       return error;
    }
    else {
