@@ -94,6 +94,14 @@ class extXML : public objXML {
       }
       else return NULL;
    }
+   
+   // For a given tag, return its vector array
+
+   TAGS * getTags(XMLTag *Tag) {
+      if (!Tag->ParentID) return &Tags;
+      else if (auto parent = getTag(Tag->ParentID)) return &parent->Children;
+      else return NULL;
+   }
 
    // For a given tag, return its vector array and cursor position.
 
@@ -841,7 +849,9 @@ static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
 
    if (Args->Where IS XMI::NEXT) {
       CURSOR it;
-      if (auto tags = Self->getInsert(src, it)) tags->insert(it, insert.begin(), insert.end());
+      if (auto tags = Self->getInsert(src, it)) {
+         tags->insert(it, insert.begin(), insert.end());
+      }
       else return log.warning(ERR::NotFound);
    }
    else if (Args->Where IS XMI::PREV) {
@@ -857,6 +867,12 @@ static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
    }
    else if (Args->Where IS XMI::CHILD_END) {
       src->Children.insert(src->Children.end(), insert.begin(), insert.end());
+   }
+   else if (Args->Where IS XMI::END) {
+      if (auto tags = Self->getTags(src)) {
+         tags->insert(tags->end() - 1, insert.begin(), insert.end());
+      }
+      else return log.warning(ERR::NotFound);
    }
    else return log.warning(ERR::Args);
 
