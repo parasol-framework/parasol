@@ -143,7 +143,7 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
 /*********************************************************************************************************************
 
 -ACTION-
-Activate: Opens the current document selection.
+Activate: Activates all child objects of the document.
 
 Calling the Activate() action on a document object will forward Activate() calls to its child objects.
 

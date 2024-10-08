@@ -1072,10 +1072,11 @@ class extDocument : public objDocument {
    objXML *Templates;          // All templates for the current document are stored here
    objXML *PretextXML;         // Execute this XML prior to loading a new page.
    objSVG *SVG;                // Allocated by the <svg> tag
-   XMLTag *PageTag;            // Refers to a specific page that is being processed for the layout
+   objVectorRectangle *Bkgd;   // Background fill object
+   XMLTag    *PageTag;         // Refers to a specific page that is being processed for the layout
    objScript *ClientScript;    // Allows the developer to define a custom default script.
    objScript *DefaultScript;
-   doc_edit *ActiveEditDef;  // As for ActiveEditCell, but refers to the active editing definition
+   doc_edit  *ActiveEditDef; // As for ActiveEditCell, but refers to the active editing definition
    objVectorScene *Scene;    // A document specific scene is required to keep our resources away from the host
    DOUBLE VPWidth, VPHeight; // Dimensions of the host Viewport
    DOUBLE FontSize;          // The default font-size, measured in 72 DPI pixels

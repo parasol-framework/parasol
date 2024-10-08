@@ -114,8 +114,8 @@ ERR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVectorV
 // sensible for keeping them out of the layout loop.
 //
 // It is intended that the layout process generates the document's entire scene graph every time.  Optimisations
-// relating to things like obscuration of graphics elements are considered to be the job of the VectorScene's drawing
-// functionality.
+// relating to things like the obscuration of graphics elements are considered to be the job of the VectorScene's 
+// drawing functionality.
 
 ERR layout::gen_scene_init(objVectorViewport *Viewport)
 {
@@ -152,6 +152,27 @@ ERR layout::gen_scene_init(objVectorViewport *Viewport)
                fl::Fill("rgb(255,200,200,64)") });
       }
    #endif
+
+   // Body background fill is initialised now, if specified.
+
+   if ((!Self->Background.empty()) and (!iequals("none", Self->Background))) {
+      if (Self->Bkgd = objVectorRectangle::create::global({
+            fl::Name("doc_body_fill"),
+            fl::Owner(Self->Page->UID),
+            fl::X(0), fl::Y(0),
+            fl::Width(Self->CalcWidth), 
+            fl::Height(Self->PageHeight < Self->VPHeight ? Self->VPHeight : Self->PageHeight),
+            fl::Fill(Self->Background)
+         })) {
+
+         Self->UIObjects.push_back(Self->Bkgd->UID);
+         
+         // Move-to-back required because vector objects are created within the page during the layout process.
+
+         acMoveToBack(Self->Bkgd);
+      }
+   }
+   else Self->Bkgd = NULL;
 
    return ERR::Okay;
 }
