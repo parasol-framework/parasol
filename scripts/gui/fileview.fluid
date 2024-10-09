@@ -136,137 +136,6 @@ local function defineViewColumns(Path)
    end
 end
 
-local function incrementalRefresh(Elapsed, CurrentTime, Current)
-   msg('Incremental refresh')
-
-   if self.inRefresh or self.watch then return end
-
-   if not lDir then
-      local flags = bit.bor(RDF_FOLDERS, RDF_QUALIFY, RDF_PERMISSIONS, RDF_DATE, RDF_SIZE, RDF_TAGS)
-      if not lNoFiles then flags = bit.bor(flags, RDF_FILE) end
-
-      local err
-      err, lDir = mSys.OpenDir(nz(self.path,':'), flags)
-      if err != ERR_Okay then return end
-   end
-
-   local refresh = false
-   local sort = false
-
-   local dirinfo = lDir
-   for filecount=0,5 do
-      if mSys.ScanDir(dirinfo) != ERR_Okay then
-         -- Reached end of the folder - reset the scan
-         lDir = nil
-         if self.resetTimer then
-            if (self.timer != nil) then
-               mSys.UpdateTimer(self.timer, 0)
-               self.timer = nil
-            end
-
-            if not self.watch and self.path then
-               local err
-               err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
-            end
-         end
-         break
-      end
-
-      local info = dirinfo.info
-
-      if bit.band(info.Flags, RDF_VOLUME) != 0 and bit.band(info.Flags, RDF_HIDDEN) != 0 then
-         -- Ignore hidden volumes
-      elseif (xml) and (xml.tagCount == 0) then -- Empty view, this is the first file.
-         addFileItem(self, info)
-         break
-      else
-         local item = findItem(info.name)
-         if (item != nil) then -- File found, extract the timestamp and test it against the file.
-            local timestamp = 0
-            local size = 0
-            local scan = tag.child
-            while (scan != nil) do
-               if ('date' == scan.attrib.name) then
-                  local err, sort = xml.mtGetAttrib(scan.index, 'sort')
-                  timestamp = tonumber(sort)
-               elseif ('size' == scan.attrib.name) then
-                  local err, sort = xml.mtGetAttrib(scan.index, 'sort')
-                  size = tonumber(sort)
-               end
-               scan = scan.next
-            end
-
-            if (timestamp != 0 and info.timestamp != timestamp) or (size != info.size) then
-               updateFileAttributes(item, info)
-               refresh = true
-            end
-         else
-            -- The file does not exist in XML, so add it and re-sort the view
-            addFileItem(self, info)
-            sort = true
-            refresh = true
-         end
-      end
-   end
-
-   if (#self.view.items > 0) then -- Check for deleted files
-      local buffer = nz(self.path,'')
-
-      if not self.path then
-         -- Do not resolve the path when at the root view
-      else
-         local err, path = mSys.ResolvePath(self.path, RSF_NO_FILE_CHECK)
-         if (err == ERR_Okay) then -- Use ResolvePath() to prevent problems with multi-folder volumes
-            buffer = buffer .. path
-         end
-      end
-
-      if buffer:sub(1,2) == '\\\\' then
-         -- Windows doesn't cope well when constantly refreshing UNC paths (folders sometimes fail analysis).
-
-      else
-         local delete_count = 0
-         local restart = true
-         while restart do
-            restart = false
-
-            -- Start from the correct tag position
-
-            local tags = xml.tags
-            if not tags then break end
-            local tag = tags[1]
-
-            for i=0,self.deleteIndex do
-               if tag then tag = tag.next end
-            end
-
-            if not tag then
-               self.deleteIndex = 0
-               tag = tags[1]
-            end
-
-            while (delete_count < 10) and (tag != nil) do
-               delete_count = delete_count + 1
-
-               if (tag.child != nil) and ('...' != tag.child.attrib.value) then -- Extract the full name of the file for analysis
-                  buffer = buffer .. tag.name
-                  if mSys.ResolvePath(buffer, RSF_CASE_SENSITIVE, NULL) != ERR_Okay then
-                     self.view.remoteItem(tag)
-                     refresh = true
-                     restart = true
-                     break
-                  end
-               end
-               self.deleteIndex = self.deleteIndex + 1
-               tag = tag.next
-            end
-         end
-      end
-   end
-
-   if sort then self.view.sort() end
-end
-
 ----------------------------------------------------------------------------------------------------------------------
 
 local lBkgdTasks = { }
@@ -519,6 +388,138 @@ gui.fileview = function(View, Options)
       end
 
       return false
+   end
+
+   local function incrementalRefresh(Elapsed, CurrentTime, Current)
+      if self.inRefresh or self.watch then return end
+
+      if not lDir then
+         local flags = bit.bor(RDF_FOLDERS, RDF_QUALIFY, RDF_PERMISSIONS, RDF_DATE, RDF_SIZE, RDF_TAGS)
+         if not lNoFiles then flags = bit.bor(flags, RDF_FILE) end
+
+         local err
+         err, lDir = mSys.OpenDir(nz(self.path, ':'), flags)
+         if err != ERR_Okay then
+            error('Failed to resolve path ' .. nz(self.path, ':'))
+            return
+         end
+      end
+
+      local refresh = false
+      local sort = false
+
+      local dirinfo = lDir
+      for filecount=0,5 do
+         if mSys.ScanDir(dirinfo) != ERR_Okay then
+            -- Reached end of the folder - reset the scan
+            lDir = nil
+            if self.resetTimer then
+               if (self.timer != nil) then
+                  mSys.UpdateTimer(self.timer, 0)
+                  self.timer = nil
+               end
+
+               if not self.watch and self.path then
+                  local err
+                  err, self.timer = mSys.SubscribeTimer(self.refreshRate, incrementalRefresh)
+               end
+            end
+            break
+         end
+
+         local info = dirinfo.info
+
+         if bit.band(info.Flags, RDF_VOLUME) != 0 and bit.band(info.Flags, RDF_HIDDEN) != 0 then
+            -- Ignore hidden volumes
+         elseif (xml) and (xml.tagCount == 0) then -- Empty view, this is the first file.
+            addFileItem(self, info)
+            break
+         else
+            local item = findItem(info.name)
+            if (item != nil) then -- File found, extract the timestamp and test it against the file.
+               local timestamp = 0
+               local size = 0
+               local scan = tag.child
+               while (scan != nil) do
+                  if ('date' == scan.attrib.name) then
+                     local err, sort = xml.mtGetAttrib(scan.index, 'sort')
+                     timestamp = tonumber(sort)
+                  elseif ('size' == scan.attrib.name) then
+                     local err, sort = xml.mtGetAttrib(scan.index, 'sort')
+                     size = tonumber(sort)
+                  end
+                  scan = scan.next
+               end
+
+               if (timestamp != 0 and info.timestamp != timestamp) or (size != info.size) then
+                  updateFileAttributes(item, info)
+                  refresh = true
+               end
+            else
+               -- The file does not exist in XML, so add it and re-sort the view
+               addFileItem(self, info)
+               sort = true
+               refresh = true
+            end
+         end
+      end
+
+      if (#self.view.items > 0) then -- Check for deleted files
+         local buffer = nz(self.path,'')
+
+         if not self.path then
+            -- Do not resolve the path when at the root view
+         else
+            local err, path = mSys.ResolvePath(self.path, RSF_NO_FILE_CHECK)
+            if (err == ERR_Okay) then -- Use ResolvePath() to prevent problems with multi-folder volumes
+               buffer = buffer .. path
+            end
+         end
+
+         if buffer:sub(1,2) == '\\\\' then
+            -- Windows doesn't cope well when constantly refreshing UNC paths (folders sometimes fail analysis).
+
+         else
+            local delete_count = 0
+            local restart = true
+            while restart do
+               restart = false
+
+               -- Start from the correct tag position
+
+               local tags = xml.tags
+               if not tags then break end
+               local tag = tags[1]
+
+               for i=0,self.deleteIndex do
+                  if tag then tag = tag.next end
+               end
+
+               if not tag then
+                  self.deleteIndex = 0
+                  tag = tags[1]
+               end
+
+               while (delete_count < 10) and (tag != nil) do
+                  delete_count = delete_count + 1
+
+                  if (tag.child != nil) and ('...' != tag.child.attrib.value) then -- Extract the full name of the file for analysis
+                     buffer = buffer .. tag.name
+                     if mSys.ResolvePath(buffer, RSF_CASE_SENSITIVE, NULL) != ERR_Okay then
+                        self.view.remoteItem(tag)
+                        refresh = true
+                        restart = true
+                        break
+                     end
+                  end
+                  self.deleteIndex = self.deleteIndex + 1
+                  tag = tag.next
+               end
+            end
+         end
+      end
+
+      if sort then self.view.sort() end
    end
 
    local function pathWatch(MonitoredFile, Path, Custom, Flags)
