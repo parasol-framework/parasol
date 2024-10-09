@@ -81,10 +81,29 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
 }
 
 //********************************************************************************************************************
+// Clear references to definition objects when they are freed.  Note that this function can sometimes be called after 
+// the Defs table has been cleared.
+
+static void notify_def_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extVectorScene *)CurrentContext();
+
+restart:
+   if (!Self->Defs.size()) return; // Necessary when dealing with poor quality mapping libs
+
+   for (auto it = Self->Defs.begin(); it != Self->Defs.end(); it++) {
+      if (it->second IS Object) {
+         Self->Defs.erase(it);
+         goto restart;
+      }
+   }
+}
+
+//********************************************************************************************************************
 
 static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   auto Self = (objVectorScene *)CurrentContext();
+   auto Self = (extVectorScene *)CurrentContext();
    if (Self->SurfaceID IS Object->UID) Self->SurfaceID = 0;
 }
 
@@ -92,7 +111,7 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Ar
 
 static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct acRedimension *Args)
 {
-   auto Self = (objVectorScene *)CurrentContext();
+   auto Self = (extVectorScene *)CurrentContext();
 
    if ((Self->Flags & VPF::RESIZE) != VPF::NIL) {
       Self->PageWidth  = Args->Width;
@@ -190,14 +209,14 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
       return ERR::UnsupportedOwner;
    }
 
-   // TODO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
-
-   log.detail("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
-
    if (Self->Defs.contains(Args->Name)) { // Check that the definition name is unique.
       log.detail("The vector definition name '%s' is already in use.", Args->Name);
       return ERR::ResourceExists;
    }
+
+   log.detail("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
+   
+   SubscribeAction(def, AC::Free, C_FUNCTION(notify_def_free));
 
    Self->Defs[Args->Name] = def;
    return ERR::Okay;
@@ -368,6 +387,7 @@ static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct sc::FindDef *Args)
 
 static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 {
+   Self->Defs.clear(); // Required because the standard destructor is lazy and doesn't clear the table size
    Self->~extVectorScene();
 
    if (Self->Viewport) Self->Viewport->Parent = NULL;
