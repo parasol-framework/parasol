@@ -376,7 +376,7 @@ local function createFileItem(self, Info)
          sort        = '\x02' .. Info.name,
          filename    = Info.name,
          insensitive = true,
-         name        = display_name,
+         name        = { value = display_name },
          totalsize   = total_size,
          freespace   = free_space
       }
@@ -1028,13 +1028,6 @@ gui.fileview = function(View, Options)
       self.dlgRename.var = { src=self.selectedItemPath(), name=sel, path=self.path }
    end
 
-   -- Return the complete, fully-qualified path of the most recently selected item
-
-   self.selectionPath = function()
-      local ti = self.view.sItem
-      if ti then return nz(self.path,'') .. ti.name.value end
-   end
-
    -- Run the view command for all currently selected files.
 
    self.viewFiles = function()
@@ -1167,27 +1160,26 @@ gui.fileview = function(View, Options)
       self.view.viewport.acDraw()
    end
 
-   -- Returns the name of the currently selected item, as it appears to the user.
+   -- Returns the name of the currently selected item, as it appears to the user (e.g.
+   -- the file extension might be stripped).
 
    self.selection = function()
-      local ti = self.view.sItem
-      local tags = self.view.tags
-      if ti != -1 then
-         if tags[ti].child then
-            selection = tags[ti].child.attrib.value
-         else
-            selection = ti.name.value
-         end
-
-         return selection:gsub('^(.-)[:/\\]+$', '%1') -- Strip trailing folder symbols
+      if self.view.sItem then
+         local name = self.view.sItem.name.value
+         return name:gsub('^(.-)[:/\\]+$', '%1') -- Strip trailing folder symbols
       end
    end
 
    -- Returns the currently selected file or folder (fully-qualified).
 
    self.selectionFile = function()
-      local ti = self.view.sItem
-      if ti != -1 then return ti.name.value end
+      if self.view.sItem then return self.view.sItem.filename end
+   end
+
+   -- Return the complete, fully-qualified path of the most recently selected item
+
+   self.selectionPath = function()
+      if self.view.sItem then return nz(self.path,'') .. self.view.sItem.filename end
    end
 
    self.view.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
