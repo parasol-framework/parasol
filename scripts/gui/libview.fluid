@@ -194,8 +194,12 @@ gui.initView = function(Options, BuildUI, NewItems)
 
       vw.hoveredItem = {
          click = function(Input)
-            if (Input.value == 0) and (bit.band(Input.flags, JTYPE_DBL_CLICK) != 0) then
-               reportItemActivated(vw, 'user', Zone.item)
+            if (Input.value == 0) then
+               if (vw.sensitive) and (not Zone.item.insensitive) then
+                  reportItemActivated(vw, 'user', Zone.item)
+               elseif (bit.band(Input.flags, JTYPE_DBL_CLICK) != 0) then
+                  reportItemActivated(vw, 'user', Zone.item)
+               end
             end
          end
       }
