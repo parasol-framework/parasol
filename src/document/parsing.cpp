@@ -3833,6 +3833,8 @@ void parser::tag_cell(XMLTag &Tag)
 
       parser parse(Self, cell.stream);
 
+      parse.m_in_template = m_in_template;
+      parse.m_inject_tag  = m_inject_tag;
       parse.m_paragraph_depth++;
       parse.parse_tags_with_style(Tag.Children, new_style);
       parse.m_paragraph_depth--;
