@@ -1,7 +1,7 @@
 /*
 
 The parsing code converts XML data to a serial byte stream, after which the XML data can be discarded.  A DOM
-of the original XML content is not maintained.  After parsing, the stream will be ready for presentation via the
+of the original XML content is *not* maintained.  After parsing, the stream will be ready for presentation via the
 layout code elsewhere in this code base.
 
 The stream consists of byte codes represented by the entity class.  Each type of code is represented by a C++
@@ -2621,27 +2621,27 @@ void parser::tag_template(XMLTag &Tag)
 
    // Validate the template (must have a name)
 
-   LONG i;
-   for (i=1; i < std::ssize(Tag.Attribs); i++) {
-      if ((iequals("name", Tag.Attribs[i].Name)) and (!Tag.Attribs[i].Value.empty())) break;
-      if ((iequals("class", Tag.Attribs[i].Name)) and (!Tag.Attribs[i].Value.empty())) break;
+   LONG n;
+   for (n=1; n < std::ssize(Tag.Attribs); n++) {
+      if ((iequals("name", Tag.Attribs[n].Name)) and (!Tag.Attribs[n].Value.empty())) break;
    }
 
-   if (i >= std::ssize(Tag.Attribs)) {
-      log.warning("A <template> is missing a name or class attribute.");
+   if (n >= std::ssize(Tag.Attribs)) {
+      log.warning("A <template> is missing a name attribute.");
       return;
    }
 
-   Self->RefreshTemplates = true;
-
-   // TODO: It would be nice if we scanned the existing templates and
-   // replaced them correctly, however we're going to be lazy and override
-   // styles by placing updated definitions at the end of the style list.
-
    STRING strxml;
    if (m_xml->serialise(Tag.ID, XMF::NIL, &strxml) IS ERR::Okay) {
-      Self->Templates->insertXML(0, XMI::PREV, strxml, 0);
+      // Remove any existing tag that uses the same name.
+      if (Self->TemplateIndex.contains(strihash(Tag.Attribs[n].Value))) {
+         Self->Templates->removeTag(Tag.ID, 1);
+      }
+
+      Self->Templates->insertXML(Self->Templates->Tags[0].ID, XMI::END, strxml, 0);
       FreeResource(strxml);
+
+      Self->RefreshTemplates = true; // Force a refresh of the TemplateIndex because the pointers will be changed
    }
    else log.warning("Failed to convert template %d to an XML string.", Tag.ID);
 }
@@ -3658,7 +3658,14 @@ void parser::tag_table(XMLTag &Tag)
       unsigned i;
       for (i=0; (i < table.columns.size()) and (i < list.size()); i++) {
          table.columns[i].preset_width = strtod(list[i].c_str(), NULL);
-         if (list[i].find_first_of('%') != std::string::npos) table.columns[i].preset_width_rel = true;
+         if (list[i].find_first_of('%') != std::string::npos) {
+            table.columns[i].preset_width *= 0.01;
+            table.columns[i].preset_width_rel = true;
+            if ((table.columns[i].preset_width < 0.0000001) or (table.columns[i].preset_width > 1.0)) {
+               log.warning("A <table> column value is invalid.");
+               Self->Error = ERR::InvalidDimension;
+            }
+         }
       }
 
       if (i < table.columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), LONG(table.columns.size()));
@@ -3826,6 +3833,8 @@ void parser::tag_cell(XMLTag &Tag)
 
       parser parse(Self, cell.stream);
 
+      parse.m_in_template = m_in_template;
+      parse.m_inject_tag  = m_inject_tag;
       parse.m_paragraph_depth++;
       parse.parse_tags_with_style(Tag.Children, new_style);
       parse.m_paragraph_depth--;
