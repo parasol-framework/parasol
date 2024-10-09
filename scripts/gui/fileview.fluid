@@ -1031,7 +1031,7 @@ gui.fileview = function(View, Options)
    -- Return the complete, fully-qualified path of the most recently selected item
 
    self.selectionPath = function()
-      local ti = self.view.selectedItem
+      local ti = self.view.sItem
       if ti then return nz(self.path,'') .. ti.name.value end
    end
 
@@ -1170,7 +1170,7 @@ gui.fileview = function(View, Options)
    -- Returns the name of the currently selected item, as it appears to the user.
 
    self.selection = function()
-      local ti = self.view.selectedTag
+      local ti = self.view.sItem
       local tags = self.view.tags
       if ti != -1 then
          if tags[ti].child then
@@ -1186,7 +1186,7 @@ gui.fileview = function(View, Options)
    -- Returns the currently selected file or folder (fully-qualified).
 
    self.selectionFile = function()
-      local ti = self.view.selectedTag
+      local ti = self.view.sItem
       if ti != -1 then return ti.name.value end
    end
 
@@ -1260,7 +1260,7 @@ gui.fileview = function(View, Options)
       self.view.subscribe('dragdrop', function(ScriptID, Args, Reference)
          -- This notification is received when something is dropped onto the viewport.
 
-         local dest_tag = self.view.highlightTag
+         local dest_tag = self.view.hItem
 
          input.requestItem(Args.source, Args.item, 'file', function(Items)
             drag_clipboard.mtRemove(CLIPTYPE_FILE)

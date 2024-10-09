@@ -130,7 +130,6 @@ gui.initView = function(Options, BuildUI, NewItems)
       activeZone = nil,
       zones      = { },
       items      = { },
-      activeTag  = nil,
       disabled   = false,
       sensitive  = nz(Options.sensitive, false),
       hItem      = nil, -- Highlighted item
@@ -378,7 +377,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.scene.surface.mtScheduleRedraw()
    end
 
-   -- Changes the underlying attributes of any item in the view.
+   -- TODO: Changes the underlying attributes of any item in the view.
 
    vw.setItem = function(XPath, TagIndex, Key, Value)
 
