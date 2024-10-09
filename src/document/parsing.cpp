@@ -3658,7 +3658,14 @@ void parser::tag_table(XMLTag &Tag)
       unsigned i;
       for (i=0; (i < table.columns.size()) and (i < list.size()); i++) {
          table.columns[i].preset_width = strtod(list[i].c_str(), NULL);
-         if (list[i].find_first_of('%') != std::string::npos) table.columns[i].preset_width_rel = true;
+         if (list[i].find_first_of('%') != std::string::npos) {
+            table.columns[i].preset_width *= 0.01;
+            table.columns[i].preset_width_rel = true;
+            if ((table.columns[i].preset_width < 0.0000001) or (table.columns[i].preset_width > 1.0)) {
+               log.warning("A <table> column value is invalid.");
+               Self->Error = ERR::InvalidDimension;
+            }
+         }
       }
 
       if (i < table.columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), LONG(table.columns.size()));
