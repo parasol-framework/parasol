@@ -477,10 +477,7 @@ gui.columnView = function(Options)
    local function newItems(View, Items)
       if not View.columns then return end
 
-      if #Items == 0 then
-         msg('Warning - received an empty Items table')
-         return
-      end
+      if #Items == 0 then return end
 
       local width = View.window.width - EDGE - EDGE
       local y = EDGE
@@ -602,7 +599,7 @@ gui.columnView = function(Options)
    local function constructColumnView(View, Scene, Window, Page)
       setColumns(View, nz(Options.columns, { }))
 
-      newItems(View, View.items)
+      if #View.items > 0 then newItems(View, View.items) end
 
       collectgarbage('collect')
    end

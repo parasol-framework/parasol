@@ -1108,7 +1108,7 @@ gui.fileview = function(View, Options)
    self.refresh = function()
       if self.inRefresh then return end -- Recursion detected, aborting request.
 
-      msg('Performing a full refresh of the file view.')
+      msg('Performing a full refresh of the file view: ' .. nz(self.path, 'NIL'))
 
       local success, err = pcall(function()
          if lDir then lDir = nil end

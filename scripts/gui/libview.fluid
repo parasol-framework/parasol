@@ -138,7 +138,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       scene      = nil,
       viewport   = nil,
       page       = nil,
-      window     = nil,
+      window     = nil, -- Host of the page
       noIcons    = Options.noIcons,
       itemSelected   = Options.itemSelected,
       itemDeselected = Options.itemDeselected,
@@ -184,7 +184,7 @@ gui.initView = function(Options, BuildUI, NewItems)
          lItemCounter = lItemCounter + 1
       end
 
-      if NewItems then NewItems(vw, new_items) end -- Report new items to view manager
+      if NewItems and (#new_items > 0) then NewItems(vw, new_items) end -- Report new items to view manager
    end
 
    -- Generic callback for the user hovering and interacting with listed items
