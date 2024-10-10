@@ -479,11 +479,11 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    }
 
    if ((Self->View) and (Self->Page)) {
-      // Client generated objects can appear in the view if <svg placement="background"/> was used.
+      // Client generated objects can appear in the View if <svg placement="background"/> was used.
       pf::vector<ChildEntry> list;
       if (ListChildren(Self->View->UID, &list) IS ERR::Okay) {
-         for (auto it=list.rbegin(); it != list.rend(); it++) {
-            if (it->ObjectID != Self->Page->UID) FreeResource(it->ObjectID);
+         for (auto child=list.rbegin(); child != list.rend(); child++) {
+            if (child->ObjectID != Self->Page->UID) FreeResource(child->ObjectID);
          }
       }
    }

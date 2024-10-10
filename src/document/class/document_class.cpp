@@ -46,6 +46,8 @@ static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result
    auto Self = (extDocument *)CurrentContext();
    Self->Scene = NULL;
    Self->Viewport = NULL;
+   Self->Page = NULL;
+   Self->View = NULL;
 
    // If the viewport is being forcibly terminated (e.g. by window closure) then the cleanest way to deal with
    // lingering page resources is to remove them now.
@@ -621,9 +623,6 @@ static ERR DOCUMENT_Free(extDocument *Self)
 {
    if (Self->FlashTimer)  { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
-   Self->Page = NULL; // Page and View are freed by their parent Viewport.
-   Self->View = NULL;
-
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, AC::NIL);
 
    if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
@@ -638,6 +637,9 @@ static ERR DOCUMENT_Free(extDocument *Self)
    unload_doc(Self, ULD::TERMINATE);
 
    if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = NULL; }
+   
+   if (Self->Page) { FreeResource(Self->Page); Self->Page = NULL; }
+   if (Self->View) { FreeResource(Self->View); Self->View = NULL; }
 
    Self->~extDocument();
    return ERR::Okay;
@@ -664,105 +666,6 @@ static ERR DOCUMENT_GetKey(extDocument *Self, struct acGetKey *Args)
 
    Args->Value[0] = 0;
    return ERR::UnsupportedField;
-}
-
-//********************************************************************************************************************
-
-static ERR DOCUMENT_Init(extDocument *Self)
-{
-   pf::Log log;
-
-   if (!Self->Viewport) {
-      if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::VECTORVIEWPORT)) {
-         Self->Viewport = (objVectorViewport *)Self->Owner;
-      }
-      else return log.warning(ERR::UnsupportedOwner);
-   }
-
-   if (!Self->Focus) Self->Focus = Self->Viewport;
-
-   if (Self->Focus->classID() != CLASSID::VECTORVIEWPORT) {
-      return log.warning(ERR::WrongObjectType);
-   }
-
-   if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
-
-   if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
-      Self->Viewport->subscribeKeyboard(C_FUNCTION(key_event));
-      SubscribeAction(Self->Focus, AC::Focus, C_FUNCTION(notify_focus_viewport));
-      SubscribeAction(Self->Focus, AC::LostFocus, C_FUNCTION(notify_lostfocus_viewport));
-      SubscribeAction(Self->Viewport, AC::Disable, C_FUNCTION(notify_disable_viewport));
-      SubscribeAction(Self->Viewport, AC::Enable, C_FUNCTION(notify_enable_viewport));
-   }
-
-   SubscribeAction(Self->Viewport, AC::Free, C_FUNCTION(notify_free_viewport));
-
-   Self->VPWidth  = Self->Viewport->get<DOUBLE>(FID_Width);
-   Self->VPHeight = Self->Viewport->get<DOUBLE>(FID_Height);
-
-   FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
-   Self->Viewport->setFillColour(bkgd, 4);
-
-   // Allocate the view and page areas
-
-   //if ((Self->Scene = objVectorScene::create::local(
-   //      fl::Name("docScene"),
-   //      fl::Owner(Self->Viewport->UID)))) {
-   //}
-   //else return ERR::CreateObject;
-
-   Self->Scene = Self->Viewport->Scene;
-
-   if ((Self->View = objVectorViewport::create::global(
-         fl::Name("docView"),
-         fl::Owner(Self->Viewport->UID),
-         fl::Overflow(VOF::HIDDEN),
-         fl::X(0), fl::Y(0),
-         fl::XOffset(0), fl::YOffset(0)))) {
-   }
-   else return ERR::CreateObject;
-
-   if ((Self->Page = objVectorViewport::create::global(
-         fl::Name("docPage"),
-         fl::Owner(Self->View->UID),
-         fl::X(0), fl::Y(0),
-         fl::Width(MAX_PAGE_WIDTH), fl::Height(MAX_PAGE_HEIGHT)))) {
-
-      // Recent changes mean that page input handling could be merged with inputevent_cell()
-      // if necessary (VectorScene already manages existing use-cases).
-      //if (Self->Page->Scene->SurfaceID) {
-      //   vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(consume_input_events));
-      //}
-   }
-   else return ERR::CreateObject;
-
-   Self->View->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_view));
-
-   // Flash the cursor via the timer
-
-   if ((Self->Flags & DCF::EDIT) != DCF::NIL) {
-      SubscribeTimer(0.5, C_FUNCTION(flash_cursor), &Self->FlashTimer);
-   }
-
-   // Load a document file into the line array if required
-
-   Self->UpdatingLayout = true;
-   if (!Self->Path.empty()) {
-      if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
-         if (auto error = load_doc(Self, Self->Path, false); error != ERR::Okay) {
-            return error;
-         }
-      }
-      else {
-         // XML data is probably forthcoming and the location just contains the page name and/or parameters to use.
-
-         process_parameters(Self, Self->Path);
-      }
-   }
-
-   redraw(Self, true);
-
-   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -850,6 +753,106 @@ static ERR DOCUMENT_HideIndex(extDocument *Self, struct doc::HideIndex *Args)
          }
       }
    }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR DOCUMENT_Init(extDocument *Self)
+{
+   pf::Log log;
+
+   if (!Self->Viewport) {
+      if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::VECTORVIEWPORT)) {
+         Self->Viewport = (objVectorViewport *)Self->Owner;
+      }
+      else return log.warning(ERR::UnsupportedOwner);
+   }
+
+   if (!Self->Focus) Self->Focus = Self->Viewport;
+
+   if (Self->Focus->classID() != CLASSID::VECTORVIEWPORT) {
+      return log.warning(ERR::WrongObjectType);
+   }
+
+   if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
+
+   if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
+      Self->Viewport->subscribeKeyboard(C_FUNCTION(key_event));
+      SubscribeAction(Self->Focus, AC::Focus, C_FUNCTION(notify_focus_viewport));
+      SubscribeAction(Self->Focus, AC::LostFocus, C_FUNCTION(notify_lostfocus_viewport));
+      SubscribeAction(Self->Viewport, AC::Disable, C_FUNCTION(notify_disable_viewport));
+      SubscribeAction(Self->Viewport, AC::Enable, C_FUNCTION(notify_enable_viewport));
+   }
+
+   SubscribeAction(Self->Viewport, AC::Free, C_FUNCTION(notify_free_viewport));
+
+   Self->VPWidth  = Self->Viewport->get<DOUBLE>(FID_Width);
+   Self->VPHeight = Self->Viewport->get<DOUBLE>(FID_Height);
+
+   FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
+   Self->Viewport->setFillColour(bkgd, 4);
+
+   // Allocate the view and page areas.  NB: If the parent Viewport is terminated then the
+   // Page and View references will be nullified automatically.
+
+   //if ((Self->Scene = objVectorScene::create::local(
+   //      fl::Name("docScene"),
+   //      fl::Owner(Self->Viewport->UID)))) {
+   //}
+   //else return ERR::CreateObject;
+
+   Self->Scene = Self->Viewport->Scene;
+
+   if ((Self->View = objVectorViewport::create::global(
+         fl::Name("docView"),
+         fl::Owner(Self->Viewport->UID),
+         fl::Overflow(VOF::HIDDEN),
+         fl::X(0), fl::Y(0),
+         fl::XOffset(0), fl::YOffset(0)))) {
+   }
+   else return ERR::CreateObject;
+
+   if ((Self->Page = objVectorViewport::create::global(
+         fl::Name("docPage"),
+         fl::Owner(Self->View->UID),
+         fl::X(0), fl::Y(0),
+         fl::Width(MAX_PAGE_WIDTH), fl::Height(MAX_PAGE_HEIGHT)))) {
+
+      // Recent changes mean that page input handling could be merged with inputevent_cell()
+      // if necessary (VectorScene already manages existing use-cases).
+      //if (Self->Page->Scene->SurfaceID) {
+      //   vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(consume_input_events));
+      //}
+   }
+   else return ERR::CreateObject;
+
+   Self->View->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_view));
+
+   // Flash the cursor via the timer
+
+   if ((Self->Flags & DCF::EDIT) != DCF::NIL) {
+      SubscribeTimer(0.5, C_FUNCTION(flash_cursor), &Self->FlashTimer);
+   }
+
+   // Load a document file into the line array if required
+
+   Self->UpdatingLayout = true;
+   if (!Self->Path.empty()) {
+      if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
+         if (auto error = load_doc(Self, Self->Path, false); error != ERR::Okay) {
+            return error;
+         }
+      }
+      else {
+         // XML data is probably forthcoming and the location just contains the page name and/or parameters to use.
+
+         process_parameters(Self, Self->Path);
+      }
+   }
+
+   redraw(Self, true);
 
    return ERR::Okay;
 }

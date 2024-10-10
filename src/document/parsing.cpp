@@ -2033,8 +2033,8 @@ void parser::tag_debug(XMLTag &Tag)
 
 //********************************************************************************************************************
 // Declaring <svg> anywhere can execute an SVG statement of any kind, with the caveat that it will target the
-// Page viewport.  This feature should only be used for the creation of resources that can then be referred to in the
-// document as named patterns, or via the 'use' option for symbols.
+// Page viewport (or View if 'background' is used).  The SVG feature should only be used for the creation of resources 
+// that can then be referred to in the document as named patterns, or via the 'use' option for symbols.
 //
 // This tag can only be used ONCE per document.  Potentially we could improve this by appending to the existing
 // SVG object via data feeds.
@@ -2067,6 +2067,8 @@ void parser::tag_svg(XMLTag &Tag)
          }
       }
       else Self->Error = ERR::CreateObject;
+
+      FreeResource(xml_svg);
    }
 }
 
