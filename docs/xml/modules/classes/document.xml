@@ -29,7 +29,7 @@
   <actions>
     <action>
       <name>Activate</name>
-      <comment>Opens the current document selection.</comment>
+      <comment>Activates all child objects of the document.</comment>
       <prototype>ERR acActivate(*Object)</prototype>
       <description>
 <p>Calling the Activate() action on a document object will forward Activate() calls to its child objects.</p>
@@ -658,10 +658,10 @@
     <constants lookup="DRT" comment="Internal trigger codes">
       <const name="AFTER_LAYOUT"/>
       <const name="BEFORE_LAYOUT"/>
+      <const name="END"/>
       <const name="GOT_FOCUS"/>
       <const name="LEAVING_PAGE"/>
       <const name="LOST_FOCUS"/>
-      <const name="MAX"/>
       <const name="PAGE_PROCESSED"/>
       <const name="REFRESH"/>
       <const name="USER_CLICK"/>

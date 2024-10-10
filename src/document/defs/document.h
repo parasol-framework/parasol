@@ -1055,7 +1055,7 @@ class extDocument : public objDocument {
    std::vector<tab>            Tabs;
    std::vector<edit_cell>      EditCells;
    std::unordered_map<std::string_view, doc_edit> EditDefs;
-   std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
+   std::array<std::vector<FUNCTION>, size_t(DRT::END)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
    RSTREAM Stream;             // Internal stream buffer

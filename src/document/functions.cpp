@@ -488,6 +488,9 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
       }
    }
 
+   for (auto it=Self->UIObjects.rbegin(); it != Self->UIObjects.rend(); it++) {
+      FreeResource(*it);
+   }
    Self->UIObjects.clear();
 
    if (Self->Page) acMoveToPoint(Self->Page, 0, 0, 0, MTF::X|MTF::Y);

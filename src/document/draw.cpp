@@ -156,14 +156,14 @@ ERR layout::gen_scene_init(objVectorViewport *Viewport)
    // Body background fill is initialised now, if specified.
 
    if ((!Self->Background.empty()) and (!iequals("none", Self->Background))) {
-      if (Self->Bkgd = objVectorRectangle::create::global({
+      if ((Self->Bkgd = objVectorRectangle::create::global({
             fl::Name("doc_body_fill"),
             fl::Owner(Self->Page->UID),
             fl::X(0), fl::Y(0),
             fl::Width(Self->CalcWidth), 
             fl::Height(Self->PageHeight < Self->VPHeight ? Self->VPHeight : Self->PageHeight),
             fl::Fill(Self->Background)
-         })) {
+         }))) {
 
          Self->UIObjects.push_back(Self->Bkgd->UID);
          
