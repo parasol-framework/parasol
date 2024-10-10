@@ -95,6 +95,22 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR R
    }
 }
 
+static void notify_listener_free(OBJECTPTR Listener, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   for (LONG t=0; t < LONG(DRT::END); t++) {
+restart:
+      auto &triggers = Self->Triggers[t];
+      for (auto cb=triggers.begin(); cb != triggers.end(); cb++) {
+         if (cb->Context IS Listener) {
+            Self->Triggers[t].erase(cb);
+            goto restart;
+         }
+      }
+   }
+}
+
 //********************************************************************************************************************
 // Receiver for events from Self->View.  Bear in mind that the XOffset and YOffset of the document's View must
 // be zero initially, and will be controlled by the scrollbar.  For that reason we don't need to do much here other
@@ -211,6 +227,13 @@ static ERR DOCUMENT_AddListener(extDocument *Self, struct doc::AddListener *Args
    if ((!Args) or (Args->Trigger IS DRT::NIL) or (!Args->Function)) return ERR::NullArgs;
 
    Self->Triggers[LONG(Args->Trigger)].push_back(*Args->Function);
+
+   // Scripts can't auto-remove listeners, so a Free subscription is necessary.  Functional
+   // subscribers are expected to self-manage however.
+
+   if (Args->Function->isScript()) {
+      SubscribeAction(Args->Function->Context, AC::Free, C_FUNCTION(notify_listener_free));
+   }
    return ERR::Okay;
 }
 
