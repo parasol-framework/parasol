@@ -23,6 +23,22 @@ local lColours = {
    fillBkgdSelectHighlight = 'rgb(0,0,90,140)'
 }
 
+local function rearrangeItems(View)
+   View.zones = { }
+   local y = 0
+   for _, item in pairs(View.items) do
+      item._y = y
+      if item._vectors.viewport then
+         item._vectors.viewport.y = y + EDGE
+      end
+
+      View.addZone(0, item._y, nil, LINE_HEIGHT, item)
+      y = y + LINE_HEIGHT + VSPACING
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 gui.listView = function(Options)
    local lTextAttrib = nz(Options.textAttrib, 'name')
    local lCompact    = nz(Options.compact, 0)
@@ -206,7 +222,7 @@ gui.listView = function(Options)
 
    vw.sort = function(Attrib, Ascending)
       vw.sortItems(Attrib, Ascending)
-      --rearrangeItems(vw)
+      rearrangeItems(vw)
    end
 
    return vw
