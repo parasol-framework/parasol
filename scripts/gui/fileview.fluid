@@ -351,11 +351,15 @@ gui.fileview = function(View, Options)
       end)
    end
 
-   -- Returns the XML tag for a given file or folder name.
+   -- Returns the item for a given file or folder name.
 
    local function findItem(Name)
-      for _, i in pairs(self.view.items) do
-         if (i.name == Name) then return i end
+      for _, item in pairs(self.view.items) do
+         if (type(item.name) == 'table') then
+            if (item.name.value == Name) then return item end
+         else
+            if (item.name == Name) then return item end
+         end
       end
    end
 
@@ -374,9 +378,9 @@ gui.fileview = function(View, Options)
    local function eventVolumeDeleted(Info)
       if self.path then return end
 
-      if delete_item(self.view.xml.tags[1], self.view, Info.name .. ':') then
-         self.view.acRefresh()
-      end
+      --if delete_item(self.view.items[1], self.view, Info.name .. ':') then
+      --   self.view.acRefresh()
+      --end
    end
 
    local function deleteItem(File)
@@ -431,7 +435,7 @@ gui.fileview = function(View, Options)
 
          if bit.band(info.Flags, RDF_VOLUME) != 0 and bit.band(info.Flags, RDF_HIDDEN) != 0 then
             -- Ignore hidden volumes
-         elseif (xml) and (xml.tagCount == 0) then -- Empty view, this is the first file.
+         elseif (#self.view.items == 0) then -- Empty view, this is the first file.
             addFileItem(self, info)
             break
          else
@@ -439,24 +443,15 @@ gui.fileview = function(View, Options)
             if (item != nil) then -- File found, extract the timestamp and test it against the file.
                local timestamp = 0
                local size = 0
-               local scan = tag.child
-               while (scan != nil) do
-                  if ('date' == scan.attrib.name) then
-                     local err, sort = xml.mtGetAttrib(scan.index, 'sort')
-                     timestamp = tonumber(sort)
-                  elseif ('size' == scan.attrib.name) then
-                     local err, sort = xml.mtGetAttrib(scan.index, 'sort')
-                     size = tonumber(sort)
-                  end
-                  scan = scan.next
-               end
+               if item.date then timestamp = tonumber(item.date.sort) end
+               if item.size then size = tonumber(item.size.sort) end
 
                if (timestamp != 0 and info.timestamp != timestamp) or (size != info.size) then
                   updateFileAttributes(item, info)
                   refresh = true
                end
             else
-               -- The file does not exist in XML, so add it and re-sort the view
+               -- File does not exist as an item; add it and re-sort the view
                addFileItem(self, info)
                sort = true
                refresh = true
@@ -482,38 +477,38 @@ gui.fileview = function(View, Options)
          else
             local delete_count = 0
             local restart = true
-            while restart do
+            while restart == true do
                restart = false
 
                -- Start from the correct tag position
 
-               local tags = xml.tags
-               if not tags then break end
-               local tag = tags[1]
+               local items = self.view.items
+               if #items == 0 then break end
+               local items = items[1]
 
                for i=0,self.deleteIndex do
-                  if tag then tag = tag.next end
+                  if item then item = item.next end
                end
 
-               if not tag then
+               if not item then
                   self.deleteIndex = 0
-                  tag = tags[1]
+                  item = items[1]
                end
 
-               while (delete_count < 10) and (tag != nil) do
+               while (delete_count < 10) and (item != nil) do
                   delete_count = delete_count + 1
 
-                  if (tag.child != nil) and ('...' != tag.child.attrib.value) then -- Extract the full name of the file for analysis
-                     buffer = buffer .. tag.name
+                  if (item.child != nil) and ('...' != item.child.attrib.value) then -- Extract the full name of the file for analysis
+                     buffer = buffer .. item.name
                      if mSys.ResolvePath(buffer, RSF_CASE_SENSITIVE, NULL) != ERR_Okay then
-                        self.view.remoteItem(tag)
+                        self.view.remoteItem(item)
                         refresh = true
                         restart = true
                         break
                      end
                   end
                   self.deleteIndex = self.deleteIndex + 1
-                  tag = tag.next
+                  item = item.next
                end
             end
          end
@@ -578,9 +573,9 @@ gui.fileview = function(View, Options)
          end
       elseif bit.band(Flags, bit.bor(MFF_ATTRIB, MFF_CLOSED)) != 0 and File then
          if (info_err == ERR_Okay) then
-            local tag = findItem(Path)
-            if tag then
-               updateFileAttributes(tag, info)
+            local item = findItem(Path)
+            if item then
+               updateFileAttributes(item, info)
             else
                addFileItem(self, info)
             end
@@ -783,8 +778,8 @@ gui.fileview = function(View, Options)
 
       local clipboard = obj.new('clipboard')
       clipboard.mtRemove(CLIPTYPE_FILE)
-      for _,tag in pairs(self.view.selectedTags) do
-         clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. tag.name, CEF_DELETE)
+      for _,item in pairs(self.view.selectedItems()) do
+         clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. item.name, CEF_DELETE)
       end
    end
 
@@ -793,8 +788,8 @@ gui.fileview = function(View, Options)
 
       local clipboard = obj.new('clipboard')
       clipboard.mtRemove(CLIPTYPE_FILE)
-      for _,tag in pairs(self.view.selectedTags) do
-         clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. tag.name, CEF_EXTEND)
+      for _,item in pairs(self.view.selectedItems()) do
+         clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. item.name, CEF_EXTEND)
       end
    end
 
@@ -803,10 +798,10 @@ gui.fileview = function(View, Options)
 
    self.copyFilesTo = function(Dest)
       if self.path and nz(Dest) then
-         for _, item in pairs(self.view.selectedItems) do
+         for _, item in pairs(self.view.selectedItems()) do
             local file_list = { }
-            for _,tag in pairs(tags) do
-               table.insert(file_list, self.path .. tag.name)
+            for _,item in pairs(items) do
+               table.insert(file_list, self.path .. item.name)
             end
             copyFromList(Dest, file_list)
          end
@@ -910,7 +905,7 @@ gui.fileview = function(View, Options)
    -- Delete all currently selected files, following user confirmation.
 
    self.deleteFiles = function()
-      local items = self.view.selectedItems
+      local items = self.view.selectedItems()
 
       local msg
       if #items > 1 then
@@ -963,7 +958,7 @@ gui.fileview = function(View, Options)
    -- Run the edit command for all currently selected files.
 
    self.editFiles = function()
-      openFiles(self.view.selectedItems, 'Edit')
+      openFiles(self.view.selectedItems(), 'Edit')
    end
 
    -- Apply a file filter using wildcards.  E.g. '.*%.fluid$'
@@ -979,7 +974,7 @@ gui.fileview = function(View, Options)
 
    self.moveFilesTo = function(Dest)
       if self.path and nz(Dest) then
-         local items = self.view.selectedItems
+         local items = self.view.selectedItems()
          if #items > 0 then
             local file_list = { }
             for _, item in pairs(items) do
@@ -995,7 +990,7 @@ gui.fileview = function(View, Options)
    -- Run the open command for all currently selected files.
 
    self.openFiles = function()
-      openFiles(self.view.selectedItems, 'Open')
+      openFiles(self.view.selectedItems(), 'Open')
    end
 
    -- Pastes files from the clipboard to the current path of the file view.
@@ -1032,7 +1027,7 @@ gui.fileview = function(View, Options)
    -- Run the view command for all currently selected files.
 
    self.viewFiles = function()
-      openFiles(self.view.selectedItems, 'View')
+      openFiles(self.view.selectedItems(), 'View')
    end
 
    -- Read an entire folder and add the items to the target view
@@ -1309,7 +1304,9 @@ gui.fileview = function(View, Options)
       -- Browse the currently selected file or folder.
 
       if (string.find(Item.filename, '^.+[:/\\]$') != nil) then -- Inspect folder
-         self.browse(nz(self.path,'') .. Item.filename)
+         local prefix = nz(self.path,'')
+         if (prefix == ':') then prefix = '' end
+         self.browse(prefix .. Item.filename)
       elseif (Item.type == 'parent') then -- Parent
          self.parentFolder()
       else -- Activate file
