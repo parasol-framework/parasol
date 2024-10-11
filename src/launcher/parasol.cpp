@@ -131,7 +131,7 @@ extern "C" int main(int argc, char **argv)
       else printf(glHelp);
    }
 
-   if (glScript)     { FreeResource(glScript); glScript = NULL; }
+   if (glScript) { FreeResource(glScript); glScript = NULL; }
 
    close_parasol();
 

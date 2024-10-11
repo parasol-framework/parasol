@@ -277,6 +277,32 @@ local function bannerZoneClick(View, Col, X, Y, Value)
    View.viewport.acDraw()
 end
 
+local function rearrangeItems(View)
+   -- Rearrange items vertically
+
+   View.zones = { }
+   local y = EDGE
+   for _, item in pairs(View.items) do
+      item._y = y
+      if item._vectors.viewport then
+         item._vectors.viewport.y = y
+      end
+
+      if item._vectors.iconImage then
+         item._vectors.iconImage.y = y + ICON_OFFSET
+      end
+
+      for _, col in pairs(View.columns) do
+         if item._col and item._col[col.attrib].text then
+            item._col[col.attrib].text.y = y + LINE_OFFSET
+         end
+      end
+
+      View.addZone(0, item._y, nil, LINE_HEIGHT, item)
+      y = y + LINE_HEIGHT + VSPACING
+   end
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 
 gui.columnView = function(Options)
@@ -602,32 +628,6 @@ gui.columnView = function(Options)
       if #View.items > 0 then newItems(View, View.items) end
 
       collectgarbage('collect')
-   end
-
-   local function rearrangeItems(View)
-      -- Rearrange items vertically
-
-      View.zones = { }
-      local y = EDGE
-      for _, item in pairs(View.items) do
-         item._y = y
-         if item._vectors.viewport then
-            item._vectors.viewport.y = y
-         end
-
-         if item._vectors.iconImage then
-            item._vectors.iconImage.y = y + ICON_OFFSET
-         end
-
-         for _, col in pairs(View.columns) do
-            if item._col and item._col[col.attrib].text then
-               item._col[col.attrib].text.y = y + LINE_OFFSET
-            end
-         end
-
-         View.addZone(0, item._y, nil, LINE_HEIGHT, item)
-         y = y + LINE_HEIGHT + VSPACING
-      end
    end
 
    local vw = gui.initView(Options, constructColumnView, newItems)
