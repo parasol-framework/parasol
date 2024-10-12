@@ -1,0 +1,205 @@
+--[[
+A file viewer for recognised documents like SVG and RIPL
+
+Example: parasol vue.fluid file=[Path]
+
+Optional parameters are:
+
+  width:  Width of the application window
+  height: Height of the application window
+  path:   Path to use in the file selector.
+  file:   A source file to load and display in the application.
+--]]
+
+   require 'gui'
+   require 'gui/window'
+   require 'gui/divider'
+   require 'gui/fileview'
+   require 'gui/listview'
+   require 'gui/toolbar'
+   require 'gui/scrollbar'
+
+   glIntroduction = [[
+<body fill="rgb(255,255,255)" font-fill="rgb(0,0,0)" font-size="12pt"/>
+
+<template name="th">
+  <cell stroke="rgb(0,0,0)" stroke-width="1" border="top,bottom"><p><b><inject/></b></p></cell>
+</template>
+
+<page name="Index">
+
+<h1><i>Vue</i></h1>
+
+<p>Vue is a simple file browser that supports the following file types:</p>
+
+<p indent="1em">SVG, RIPL, JPEG, PNG</p>
+
+<h2>Command Line</h2>
+
+<p>The following command-line parameters are supported:</p>
+
+<p indent="1em" font-face="courier"><table collapsed="true" thin="true" cell-padding="0.2em" h-spacing="2em" columns="10%,90%" width="90%">
+<row><th>Parameter</th><th>Description</th></row>
+<row><cell><p>width</p></cell><cell>Width of the application window</cell></row>
+<row><cell><p>height</p></cell><cell>Height of the application window.</cell></row>
+<row><cell><p>path</p></cell><cell>Path to use in the file selector.</cell></row>
+<row><cell><p>file</p></cell><cell>A source file to load and display in the application.</cell></row>
+</table></p>
+
+</page>
+]]
+
+   glUnsupported = [[
+<body fill="rgb(255,255,255)" font-fill="rgb(0,0,0)" font-size="12pt"/>
+
+<page name="Index">
+<p>Unrecognised file type selected.</p>
+</page>
+]]
+
+   local glTerminateView, glViewObject, glScrollbar, glViewArea
+
+   glScript = obj.find('self')
+
+----------------------------------------------------------------------------------------------------------------------
+
+function configureScrollbar(View, Page)
+   if glScrollbar then
+      glScrollbar.changeViewport(View, Page)
+   else
+      glScrollbar = gui.scrollbar({
+         target = glViewArea,
+         view   = View,
+         page   = Page,
+         direction = 'all'
+      })
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function displaySVG(Path)
+   -- Use a temporary viewport to host the generated SVG content
+   glViewObject = glViewArea.new('VectorViewport', { x=0, y=0, xOffset=0, yOffset=0 })
+   local svg = glViewObject.new('svg', { target=glViewObject, path=Path })
+
+   if (svg.frameRate < 60) then svg.frameRate = 60 end
+   svg.acActivate() -- Animation support
+
+   glViewArea.acDraw()
+end
+
+function displayDoc(Path)
+   glViewObject = glViewArea.new('document', { path = Path .. '#Index' })
+
+   configureScrollbar(glViewObject.view, glViewObject.page)
+end
+
+function displayImage(Path)
+   glPic = glWindow.scene.new('picture', { src=Path, flags=PCF_FORCE_ALPHA_32 })
+
+   glViewImage = glWindow.scene.new('VectorImage', {
+      picture = glPic, units = VUNIT_BOUNDING_BOX, aspectRatio = bit.bor(ARF_X_MID,ARF_Y_MID,ARF_MEET)
+   })
+   glViewObject = glViewArea.new('VectorRectangle', { x=0, y=0, xOffset=0, yOffset=0, fill='url(#Image)' })
+   glViewArea.acDraw()
+end
+
+function displayText(Path)
+
+end
+
+function displayFile(Path)
+   msg('Load file ' .. nz(Path,'NIL'))
+
+   if not Path then return end
+
+   if glTerminateView != nil then
+      glTerminateView()
+      glTerminateView = nil
+   end
+
+   if glViewObject != nil then
+      glViewObject.free()
+      glViewObject = nil
+   end
+
+   if (Path:find('^.+%.png$')) then
+      displayImage(Path)
+   elseif (Path:find('^.+%.jpeg$')) or (Path:find('^.+%.jpg$')) then
+      displayImage(Path)
+   elseif (Path:find('^.+%.svg$')) then
+      displaySVG(Path)
+   elseif (Path:find('^.+%.ripl$')) or (Path:find('^.+%.rpl$')) then
+      displayDoc(Path)
+   else
+      glViewObject = glViewArea.new('document', { })
+      glViewObject.acDataFeed(0, DATA_XML, glUnsupported)
+      configureScrollbar(glViewObject.view, glViewObject.page)
+   end
+
+   collectgarbage()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+   glWindow = gui.window({
+      center = true,
+      width  = arg('width', 1024),
+      height = arg('height', 800),
+      title  = 'Vue',
+      icon   = 'icons:programs/pictureviewer',
+      minHeight = 400,
+      minWidth  = 600
+   })
+
+   glViewport = glWindow:clientViewport({ aspectRatio = ARF_MEET })
+
+   -- File view on the left
+
+   glView = gui.listView({
+      target       = glViewport,
+      x            = glWindow.margins.left,
+      y            = glWindow.margins.top,
+      width        = 200,
+      yOffset      = glWindow.margins.top,
+      dragDrop     = true,
+      sensitive    = true,
+      multiSelect  = false
+   })
+
+   glFileview = gui.fileview(glView, {
+      path     = arg('path', ':'),
+      filter   = '*.svg|*.rpl|*.ripl|*.jpg|*.jpeg|*.png',
+      fileSelected = function(FileView)
+         glWindow:setTitle(FileView.selectionFile())
+         displayFile(FileView.selectionPath())
+      end
+   })
+
+   -- Document viewer on the right
+
+   glViewArea = glViewport.new('VectorViewport', {
+     x=glView.viewport.x + glView.viewport.width + 6, y=glWindow.margins.top,
+     xOffset=glWindow.margins.right, yOffset=glWindow.margins.top
+   })
+
+   gui.divider({ left = glView.viewport, right = glViewArea, minA = 100, maxA = glWindow.surface.insideWidth * 0.4, minB = 100 })
+
+   -- Display a file from the commandline, or show the application documentation.
+
+   if nz(arg('file')) then
+      displayFile(arg('file'))
+   else
+      glViewObject = glViewArea.new('document', { })
+      glViewObject.acDataFeed(0, DATA_XML, glIntroduction)
+      configureScrollbar(glViewObject.view, glViewObject.page)
+   end
+
+   collectgarbage()
+
+   glWindow:show()
+
+----------------------------------------------------------------------------------------------------------------------
+
+   processing.sleep()
