@@ -14,7 +14,6 @@ Documentation is available in the Parasol Wiki.
 
 gui.scrollbar = function(Options)
    local self = { } -- Public variables
-   local lVBar, lHBar
    local lTarget   = Options.target
    local lPage     = Options.page
    local lView     = Options.view
@@ -61,49 +60,49 @@ gui.scrollbar = function(Options)
    -- Reading the position of the page & view, recompute the position of the slider.
 
    local function recalcSlidersFromView()
-      if lVBar then
-         lVBar.viewport.acMoveToFront()
+      if self.vbar then
+         self.vbar.viewport.acMoveToFront()
 
-         local offset, slider_size = calcSlider(lView.height, lPage.height, lVBar.sliderHostVP.height, -lPage.y)
-         if (offset != lVBar.slider.offset) or (slider_size != lVBar.slider.size) then
-            lVBar.slider.offset   = offset
-            lVBar.slider.size     = slider_size
-            lVBar.sliderVP.y      = offset
-            lVBar.sliderVP.height = slider_size
+         local offset, slider_size = calcSlider(lView.height, lPage.height, self.vbar.sliderHostVP.height, -lPage.y)
+         if (offset != self.vbar.slider.offset) or (slider_size != self.vbar.slider.size) then
+            self.vbar.slider.offset   = offset
+            self.vbar.slider.size     = slider_size
+            self.vbar.sliderVP.y      = offset
+            self.vbar.sliderVP.height = slider_size
 
             if (slider_size <= 12) then
-               lVBar.viewport.visibility = VIS_HIDDEN
+               self.vbar.viewport.visibility = VIS_HIDDEN
                lView.xOffset = 0
-               if lHBar then lHBar.viewport.xOffset = 0 end
+               if self.hbar then self.hbar.viewport.xOffset = 0 end
             else
-               lVBar.viewport.visibility = VIS_VISIBLE
-               lView.xOffset = lVBar.sliderVP.width
-               if lHBar then lHBar.viewport.xOffset = lBreadth end
+               self.vbar.viewport.visibility = VIS_VISIBLE
+               lView.xOffset = self.vbar.sliderVP.width
+               if self.hbar then self.hbar.viewport.xOffset = lBreadth end
             end
 
-            lStyle.arrange(lVBar)
+            lStyle.arrange(self.vbar)
          end
       end
 
-      if lHBar then
-         lHBar.viewport.acMoveToFront()
+      if self.hbar then
+         self.hbar.viewport.acMoveToFront()
 
-         local offset, slider_size = calcSlider(lView.width, lPage.width, lHBar.sliderHostVP.width, -lPage.x)
-         if (offset != lHBar.slider.offset) or (slider_size != lHBar.slider.size) then
-            lHBar.slider.offset   = offset
-            lHBar.slider.size     = slider_size
-            lHBar.sliderVP.x      = offset
-            lHBar.sliderVP.width  = slider_size
+         local offset, slider_size = calcSlider(lView.width, lPage.width, self.hbar.sliderHostVP.width, -lPage.x)
+         if (offset != self.hbar.slider.offset) or (slider_size != self.hbar.slider.size) then
+            self.hbar.slider.offset   = offset
+            self.hbar.slider.size     = slider_size
+            self.hbar.sliderVP.x      = offset
+            self.hbar.sliderVP.width  = slider_size
 
             if (slider_size <= 12) then
-               lHBar.viewport.visibility = VIS_HIDDEN
+               self.hbar.viewport.visibility = VIS_HIDDEN
                lView.yOffset = 0
             else
-               lHBar.viewport.visibility = VIS_VISIBLE
-               lView.yOffset = lHBar.sliderVP.height
+               self.hbar.viewport.visibility = VIS_VISIBLE
+               lView.yOffset = self.hbar.sliderVP.height
             end
 
-            lStyle.arrange(lHBar)
+            lStyle.arrange(self.hbar)
          end
       end
 
@@ -132,12 +131,12 @@ gui.scrollbar = function(Options)
 
          bar.sliderVP.dragCallback = function(Viewport, X, Y)
             local slider_height = Viewport.height
-            local host_height   = lVBar.sliderHostVP.height
+            local host_height   = self.vbar.sliderHostVP.height
             if (Y < 0) then Y = 0 end
             if (Y + slider_height > host_height) then Y = host_height - slider_height end
             if (Viewport.y == Y) then return end
 
-            if (Y != lVBar.slider.offset) or (slider_height != lVBar.slider.size) then
+            if (Y != self.vbar.slider.offset) or (slider_height != self.vbar.slider.size) then
                local pct_pos = Y / (host_height - slider_height)
                lPage.y = -math.floor((lPage.height - lView.height) * pct_pos)
                lTarget.acDraw()
@@ -145,7 +144,7 @@ gui.scrollbar = function(Options)
          end
       else
          local vp = lTarget.new('VectorViewport', { x = 0, xOffset = 0, yOffset = 0, height = lBreadth })
-         if lVBar and (lVBar.viewport.visibility == VIS_VISIBLE) then vp.xOffset = lBreadth end
+         if self.vbar and (self.vbar.viewport.visibility == VIS_VISIBLE) then vp.xOffset = lBreadth end
 
          bar = vp.state()
          bar.viewport  = vp
@@ -160,12 +159,12 @@ gui.scrollbar = function(Options)
 
          bar.sliderVP.dragCallback = function(Viewport, X, Y)
             local slider_width = Viewport.width
-            local host_width   = lHBar.sliderHostVP.width
+            local host_width   = self.hbar.sliderHostVP.width
             if (X < 0) then X = 0 end
             if (X + slider_width > host_width) then X = host_width - slider_width end
             if (Viewport.x == X) then return end
 
-            if (X != lHBar.slider.offset) or (slider_width != lHBar.slider.size) then
+            if (X != self.hbar.slider.offset) or (slider_width != self.hbar.slider.size) then
                local pct_pos = X / (host_width - slider_width)
                lPage.x = -math.floor((lPage.width - lView.width) * pct_pos)
                lTarget.acDraw()
@@ -310,11 +309,11 @@ gui.scrollbar = function(Options)
    if (Options.direction == 'all') then Options.direction = nil end
 
    if (Options.direction == 'vertical') or (Options.direction == nil) then
-      lVBar = createScrollbar('V')
+      self.vbar = createScrollbar('V')
    end
 
    if (Options.direction == 'horizontal') or (Options.direction == nil) then
-      lHBar = createScrollbar('H')
+      self.hbar = createScrollbar('H')
    end
 
    -- The slider and possibly the page need to be repositioned whenever the view is resized.
