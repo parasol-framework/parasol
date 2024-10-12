@@ -80,7 +80,7 @@ end
 
 function displaySVG(Path)
    -- Use a temporary viewport to host the generated SVG content
-   glViewObject = glViewArea.new('VectorViewport', { x=0, y=0, xOffset=0, yOffset=0 })
+   glViewObject = glViewArea.new('VectorViewport', { x=0, y=0, xOffset=0, yOffset=0, overflow='hidden' })
    local svg = glViewObject.new('svg', { target=glViewObject, path=Path })
 
    if (svg.frameRate < 60) then svg.frameRate = 60 end
