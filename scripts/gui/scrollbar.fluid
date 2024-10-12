@@ -290,6 +290,12 @@ gui.scrollbar = function(Options)
       end
    end
 
+   self.changeViewport = function(View, Page)
+      lView = View
+      lPage = Page
+      recalcSlidersFromView()
+   end
+
    -- Main entry point
 
    if (not lTarget) then error('A target viewport is required.') end

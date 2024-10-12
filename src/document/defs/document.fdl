@@ -36,7 +36,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2024", version=1.0, tim
     "LOST_FOCUS",
     "LEAVING_PAGE",
     "PAGE_PROCESSED",
-    "MAX")
+    "END")
 
   flags("DCF", { comment="Document flags" },
     "EDIT: Allow direct keyboard input and document editing.",

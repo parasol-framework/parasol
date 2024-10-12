@@ -55,7 +55,7 @@ enum class DRT : LONG {
    LOST_FOCUS = 7,
    LEAVING_PAGE = 8,
    PAGE_PROCESSED = 9,
-   MAX = 10,
+   END = 10,
 };
 
 // Document flags

@@ -6,13 +6,13 @@ Documentation is available in the Parasol Wiki.
 
    require 'gui/libview'
 
-local lIconSize = 16
-local lVSpacing = 2
+local ICON_SIZE = 16
+local VSPACING  = 2
 local EDGE      = 4
 
-local lLineHeight, lFontHeight = gui.getFontHeight(gui.fonts.widget)
-
-   lLineHeight = math.round(lLineHeight * 1.3)
+local LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+LINE_HEIGHT = math.round(LINE_HEIGHT * 1.3)
+local LINE_OFFSET = (LINE_HEIGHT + FONT_HEIGHT) * 0.5
 
 local lColours = {
    fillItem           = 'rgb(0,0,0)',
@@ -23,8 +23,24 @@ local lColours = {
    fillBkgdSelectHighlight = 'rgb(0,0,90,140)'
 }
 
+local function rearrangeItems(View)
+   View.zones = { }
+   local y = 0
+   for _, item in pairs(View.items) do
+      item._y = y
+      if item._vectors.viewport then
+         item._vectors.viewport.y = y + EDGE
+      end
+
+      View.addZone(0, item._y, nil, LINE_HEIGHT, item)
+      y = y + LINE_HEIGHT + VSPACING
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 gui.listView = function(Options)
-   local lTextAttrib = nz(Options.textAttrib, 'text')
+   local lTextAttrib = nz(Options.textAttrib, 'name')
    local lCompact    = nz(Options.compact, 0)
 
    local function setListTextFill(Item, Fill)
@@ -65,23 +81,24 @@ gui.listView = function(Options)
       end
    end
 
-   local function constructListView(View, Scene, Viewport, Page)
-      local width  = Viewport.width - EDGE - EDGE
-      local height = Viewport.height
+   local function newItems(View, Items)
+      if #Items == 0 then return end
+
+      local width  = View.window.width - EDGE - EDGE
+      local height = View.window.height
       local x      = EDGE
       local y      = 0
-      local index  = 0
       local widest_item = 0
-      local lLineOffset = (lLineHeight + lFontHeight) * 0.5
-      for _, item in pairs(View.items) do
-         index = index + 1
 
+      y = y + ((#View.items - #Items) * (LINE_HEIGHT + VSPACING))
+
+      for _, item in pairs(Items) do
          if (not item._vectors) then item._vectors = { } end
 
          item._x = x
          item._y = y
          item._width  = width
-         item._height = lLineHeight
+         item._height = LINE_HEIGHT
 
          -- If the item is hovered, create a highlight for it.  ColBkgdHighlight defines the background colour to use
          -- when an item is highlighted.  If an item is also marked as selected, then the final colour is interpolated
@@ -102,19 +119,19 @@ gui.listView = function(Options)
          -- Each item gets its own viewport in the page
 
          if not item._vectors.viewport then
-            item._vectors.viewport = Page.new('VectorViewport', {
+            item._vectors.viewport = View.page.new('VectorViewport', {
                x       = EDGE,
                y       = y + EDGE,
                xOffset = EDGE,
-               height  = lLineHeight
+               height  = LINE_HEIGHT
             })
          end
 
-         local internalMargin = (lLineHeight * 0.2)
-         local iconMargin = 0
+         local MARGIN = LINE_HEIGHT * 0.2
+         local ICON_MARGIN = 0
 
          if not Options.noIcons then
-            iconMargin = lIconSize + internalMargin
+            ICON_MARGIN = ICON_SIZE + MARGIN
          end
 
          local vp = item._vectors.viewport
@@ -124,40 +141,45 @@ gui.listView = function(Options)
                if not View.icons then View.icons = { } end
 
                if not View.icons[item.icon] then
-                  gui.createIcon(Scene, item.icon, lIconSize)
+                  gui.createIcon(View.scene, item.icon, ICON_SIZE)
                   View.icons[item.icon] = true
                end
 
                if not item._vectors.iconImage then
                   item._vectors.iconImage = vp.new('VectorRectangle', {
                      fill   = 'url(#' .. item.icon .. ')',
-                     x      = lLineHeight * 0.2,
-                     y      = ((lLineHeight - lIconSize) * 0.5),
-                     width  = lIconSize,
-                     height = lIconSize
+                     x      = LINE_HEIGHT * 0.2,
+                     y      = (LINE_HEIGHT - ICON_SIZE) * 0.5,
+                     width  = ICON_SIZE,
+                     height = ICON_SIZE
                   })
                end
             end)
          end
 
-         if nz(item[lTextAttrib]) then
+         local item_name = item[lTextAttrib]
+         if item_name then
             if not item._vectors.text then
                item._vectors.text = vp.new('VectorText', {
                   face     = gui.fonts.widget.face,
                   fontSize = string.format('%.2fpt', gui.fonts.widget.size),
                   align    = 'left',
-                  y        = lLineOffset
+                  y        = LINE_OFFSET
                })
             end
 
-            item._vectors.text.x = internalMargin + iconMargin
-            item._vectors.text.y = lLineOffset
-            item._vectors.text.string = item[lTextAttrib]
+            item._vectors.text.x = MARGIN + ICON_MARGIN
+            item._vectors.text.y = LINE_OFFSET
+            if (type(item_name) == 'table') then
+               item._vectors.text.string = item_name.value
+            else
+               item._vectors.text.string = item_name
+            end
             --font.wrapEdge = x + item.Width
 
             local err, bx, by, bw, bh = item._vectors.text.mtGetBoundary(0)
 
-            width = internalMargin + iconMargin + bw + internalMargin
+            width = MARGIN + ICON_MARGIN + bw + MARGIN
 
             if item._selected then
                item._vectors.text.fill = lColours.fillSelectFont
@@ -168,7 +190,7 @@ gui.listView = function(Options)
             end
          end
 
-         y = y + lLineHeight + lVSpacing
+         y = y + LINE_HEIGHT + VSPACING
          if (width > widest_item) then widest_item = width end
       end
 
@@ -186,9 +208,22 @@ gui.listView = function(Options)
 
       if View.scrollbar then
          widest_item = widest_item + EDGE + EDGE
-         View.scrollbar.setDynamicPageSize(widest_item, widest_item, y + EDGE + lVSpacing)
+         View.scrollbar.setDynamicPageSize(widest_item, widest_item, y + EDGE + VSPACING)
       end
    end
 
-   return gui.initView(Options, constructListView)
+   local function constructListView(View, Scene, Window, Page)
+      if #View.items > 0 then newItems(View, View.items) end
+
+      collectgarbage()
+   end
+
+   local vw = gui.initView(Options, constructListView, newItems)
+
+   vw.sort = function(Attrib, Ascending)
+      vw.sortItems(Attrib, Ascending)
+      rearrangeItems(vw)
+   end
+
+   return vw
 end
