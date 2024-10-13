@@ -192,7 +192,7 @@ static ERR SVG_ParseSymbol(extSVG *Self, struct svg::ParseSymbol *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-Render: Render the scene to a target Bitamp.
+Render: Render the scene to a target Bitmap.
 
 This method will render the vector scene directly to a target bitmap at coordinates `(X,Y)` and scaled to the desired
 `(Width,Height)`.

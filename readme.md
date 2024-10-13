@@ -92,7 +92,8 @@ Please refer to the following Wiki pages for information on how to build Parasol
 
 A successful build and installation will create a `parasol` command tool, which is [documented here](https://github.com/parasol-framework/parasol/wiki/Parasol-Cmd-Tool).
 
-Please refer to our [customisation wiki page](https://github.com/parasol-framework/parasol/wiki/Customising-Your-Build) for information on customising your build.
+> [!TIP]
+> Please refer to our [customisation wiki page](https://github.com/parasol-framework/parasol/wiki/Customising-Your-Build) for information on customising your build.
 
 ## 4. Next Steps
 
