@@ -69,6 +69,10 @@ local function deselectItem(View, Item)
    end
 end
 
+local function lastItem(View)
+   return View.items[#View.items-1]
+end
+
 local function selectItem(View, Item)
    if (Item == View.sItem) then return end
 
@@ -80,14 +84,6 @@ local function selectItem(View, Item)
          Item._selectEvent(View, Item)
       end
    end
-end
-
-local function lastItem(View)
-   local last
-   for _, i in ipairs(View.items) do
-      last = i
-   end
-   return last
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -119,6 +115,64 @@ end
 local function reportActiveChange(View, Reason, Item)
    if View.activeChange then
       View.activeChange(View, Reason, Item)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function simpleSelect(View, Item)
+   if View.sItem then
+      deselectItem(View, View.sItem)
+      reportItemDeselected(View, 'user', View.sItem)
+   end
+
+   selectItem(View, Item)
+   reportItemSelected(View, 'user', Item)
+   reportItemActivated(View, 'user', Item)
+   View.scene.surface.mtScheduleRedraw()
+end
+
+local function selectNext(View, Filter)
+   if not View.sItem then
+      for _, item in ipairs(View.items) do
+         if Filter(item) then
+            simpleSelect(View, item)
+            return item
+         end
+      end
+   else
+      local found = false
+      for _, item in ipairs(View.items) do
+         if item == View.sItem then
+            found = true
+         elseif found and Filter(item) then
+            simpleSelect(View, item)
+            return item
+         end
+      end
+   end
+end
+
+local function selectPrev(View, Filter)
+   if not View.sItem then
+      for i=1, #View.items do
+         local item = View.items[#View.items + 1 - i]
+         if Filter(item) then
+            simpleSelect(View, item)
+            return item
+         end
+      end
+   else
+      local found = false
+      for i=1, #View.items do
+         local item = View.items[#View.items + 1 - i]
+         if item == View.sItem then
+            found = true
+         elseif found and Filter(item) then
+            simpleSelect(View, item)
+            return item
+         end
+      end
    end
 end
 
@@ -261,6 +315,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       highlightItem(vw, nil)
       deselectAll(vw, nil)
       vw.activeItem = nil
+      vw.sItem = nil
 
       clearItems(vw)
       vw.rebuild()
@@ -369,11 +424,26 @@ gui.initView = function(Options, BuildUI, NewItems)
       return list
    end
 
+   vw.selectNext = function(Filter)
+      if not Filter then
+         Filter = function() return true end
+      end
+      selectNext(vw, Filter)
+   end
+
+   vw.selectPrev = function(Filter)
+      if not Filter then
+         Filter = function() return true end
+      end
+      selectPrev(vw, Filter)
+   end
+
    -- Deselects all currently selected items.
 
    vw.deselectAll = function()
       deselectAll(vw)
 
+      vw.sItem = nil
       vw.activeItem = nil
       reportItemDeselected(vw, 'deselected', vw.items[1])
       reportActiveChange(vw, 'deselected', vw.items[1])
