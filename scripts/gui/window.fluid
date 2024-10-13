@@ -385,7 +385,9 @@ gui.window = function(Options)
    -- The margins are the recommended gap in addition to the client area.  The client
    -- area denotes the space afforded by the window frame.
 
-   if hosted(self) then -- When in hosted mode (Windows, X11), force default window margins
+   if Options.noMargins or Options.borderless then
+      self.margins = { left = 0, top = 0, right = 0, bottom = 0 }
+   elseif hosted(self) then -- Windows, X11 etc
       self.margins = { left = 6, top = 6, right = 6, bottom = 6 }
       self.client = { -- Retrieve the available client area from the host
          left   = self.surface.display.leftMargin,
@@ -393,8 +395,6 @@ gui.window = function(Options)
          right  = self.surface.display.rightMargin,
          bottom = self.surface.display.bottomMargin
       }
-   elseif Options.noMargins or Options.borderless then
-      self.margins = { left = 0, top = 0, right = 0, bottom = 0 }
    else
       self.margins = { left = 6, top = 6, right = 6, bottom = 6 }
    end
