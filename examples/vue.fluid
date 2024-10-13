@@ -150,7 +150,8 @@ end
       title  = 'Vue',
       icon   = 'icons:programs/pictureviewer',
       minHeight = 400,
-      minWidth  = 600
+      minWidth  = 600,
+      borderless = true
    })
 
    glViewport = glWindow:clientViewport({ aspectRatio = ARF_MEET })
@@ -165,7 +166,8 @@ end
       yOffset      = glWindow.margins.top,
       dragDrop     = true,
       sensitive    = true,
-      multiSelect  = false
+      multiSelect  = false,
+      borderless   = true
    })
 
    glFileview = gui.fileview(glView, {
