@@ -94,6 +94,7 @@ class extSVG : public objSVG {
    std::map<OBJECTID, svgAnimState> Animatrix; // For animated transforms, a vector may have one matrix only.
    std::vector<std::unique_ptr<svgLink>> Links;
    std::vector<svgInherit> Inherit;
+   std::vector<OBJECTID> Resources; // Resources to terminate if ENFORCE_TRACKING was enabled.
    std::map<ULONG, std::vector<anim_base *>> StartOnBegin; // When the animation indicated by ULONG begins, it must activate() the referenced anim_base
    std::map<ULONG, std::vector<anim_base *>> StartOnEnd; // When the animation indicated by ULONG ends, it must activate() the referenced anim_base
    TIMER AnimationTimer;
@@ -158,6 +159,13 @@ static void xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static ERR  xtag_style(extSVG *, XMLTag &);
 static void xtag_symbol(extSVG *, XMLTag &);
+
+inline void track_object(extSVG *SVG, OBJECTPTR Object)
+{
+   if ((SVG->Flags & SVF::ENFORCE_TRACKING) != SVF::NIL) {
+      SVG->Resources.emplace_back(Object->UID);
+   }
+}
 
 //********************************************************************************************************************
 
