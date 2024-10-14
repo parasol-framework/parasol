@@ -86,8 +86,6 @@ static ERR SVG_DataFeed(extSVG *Self, struct acDataFeed *Args)
 
 static ERR SVG_Free(extSVG *Self)
 {
-   Self->~extSVG();
-
    if (Self->AnimationTimer) {
       UpdateTimer(Self->AnimationTimer, 0);
       Self->AnimationTimer = 0;
@@ -107,6 +105,12 @@ static ERR SVG_Free(extSVG *Self)
    if (Self->Title)     { FreeResource(Self->Title);     Self->Title = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
    if (Self->XML)       { FreeResource(Self->XML);       Self->XML = NULL; }
+
+   if (!Self->Resources.empty()) {
+      for (auto id : Self->Resources) FreeResource(id);
+   }
+
+   Self->~extSVG();
 
    return ERR::Okay;
 }
@@ -552,7 +556,9 @@ The provided Target can be any object class, as long as it forms part of a scene
 object.  It is recommended that the chosen target is a @VectorViewport.
 
 The use of a Target will make the generated scene graph independent of the SVG object.  Consequently, it is possible
-to terminate the SVG object without impacting the resources it created.
+to terminate the SVG object without impacting the resources it created.  If tracking back to the SVG object is
+still required, use the `ENFORCE_TRACKING` option in #Flags to ensure that SVG definitions are still terminated on
+object destruction.
 
 *********************************************************************************************************************/
 

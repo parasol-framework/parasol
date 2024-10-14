@@ -199,6 +199,7 @@ static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
 
             if (InitObject(trans) IS ERR::Okay) {
                if (!Self->Cloning) Self->Scene->addDef(id.c_str(), trans);
+               track_object(Self, trans);
                return;
             }
          }
@@ -266,6 +267,7 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
             process_children(Self, state, Tag, vp);
 
             Self->Scene->addDef(id.c_str(), clip);
+            track_object(Self, clip);
          }
          else FreeResource(clip);
       }
@@ -339,6 +341,7 @@ static void xtag_mask(extSVG *Self, XMLTag &Tag)
             process_children(Self, state, Tag, vp);
 
             Self->Scene->addDef(id.c_str(), clip);
+            track_object(Self, clip);
          }
          else FreeResource(clip);
       }
@@ -1466,6 +1469,8 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
          Self->Effects.clear();
 
          if (!Self->Cloning) Self->Scene->addDef(id.c_str(), filter);
+
+         track_object(Self, filter);
       }
       else FreeResource(filter);
    }
@@ -1560,6 +1565,7 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
          if (!Self->Cloning) {
             add_id(Self, Tag, id);
             Self->Scene->addDef(id.c_str(), pattern);
+            track_object(Self, pattern);
          }
       }
       else {
@@ -1812,6 +1818,7 @@ static void def_image(extSVG *Self, XMLTag &Tag)
                if (!Self->Cloning) {
                   add_id(Self, Tag, id);
                   Self->Scene->addDef(id.c_str(), image);
+                  track_object(Self, image);
                }
             }
             else {
@@ -1896,6 +1903,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
             SetOwner(pic, image); // It's best if the pic belongs to the image.
 
             Self->Scene->addDef(id.c_str(), image);
+            track_object(Self, image);
          }
          else return ERR::CreateObject;
       }

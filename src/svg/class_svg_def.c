@@ -3,6 +3,7 @@
 static const struct FieldDef clSVGFlags[] = {
    { "Autoscale", 0x00000001 },
    { "Alpha", 0x00000002 },
+   { "EnforceTracking", 0x00000004 },
    { NULL, 0 }
 };
 
