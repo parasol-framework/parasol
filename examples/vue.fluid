@@ -19,7 +19,7 @@ Optional parameters are:
    require 'gui/toolbar'
    require 'gui/scrollbar'
 
-   glIntroduction = [[
+   local glIntroduction = [[
 <body fill="rgb(255,255,255)" font-fill="rgb(0,0,0)" font-size="12pt"/>
 
 <template name="th">
@@ -49,7 +49,7 @@ Optional parameters are:
 </page>
 ]]
 
-   glUnsupported = [[
+   local glUnsupported = [[
 <body fill="rgb(255,255,255)" font-fill="rgb(0,0,0)" font-size="12pt"/>
 
 <page name="Index">
@@ -57,9 +57,9 @@ Optional parameters are:
 </page>
 ]]
 
-   local glTerminateView, glViewObject, glScrollbar, glViewArea
+   local glWindow, glViewport, glTerminateView, glViewObject, glScrollbar, glViewArea, glStats
 
-   glScript = obj.find('self')
+   local glScript = obj.find('self')
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -96,13 +96,24 @@ function displayDoc(Path)
 end
 
 function displayImage(Path)
-   glPic = glWindow.scene.new('picture', { src=Path, flags=PCF_FORCE_ALPHA_32 })
+   local pic = glWindow.scene.new('picture', { src=Path, flags=PCF_FORCE_ALPHA_32 })
 
-   glViewImage = glWindow.scene.new('VectorImage', {
-      picture = glPic, units = VUNIT_BOUNDING_BOX, aspectRatio = bit.bor(ARF_X_MID,ARF_Y_MID,ARF_MEET)
+   local img = glWindow.scene.new('VectorImage', {
+      picture = pic, units = VUNIT_BOUNDING_BOX, spreadMethod=VSPREAD_CLIP, aspectRatio = bit.bor(ARF_NONE)
    })
-   glViewObject = glViewArea.new('VectorRectangle', { x=0, y=0, xOffset=0, yOffset=0, fill='url(#Image)' })
+   glWindow.scene.mtAddDef('Image', img)
+
+   glViewObject = glViewArea.new('VectorRectangle', {
+      x=0, y=0, width=pic.bitmap.width, height=pic.bitmap.height, fill='url(#Image)'
+   })
    glViewArea.acDraw()
+
+   glTerminateView = function()
+      pic.free()
+      img.free()
+   end
+
+   glStats = { width = pic.bitmap.width, height = pic.bitmap.height }
 end
 
 function displayText(Path)
@@ -124,13 +135,16 @@ function displayFile(Path)
       glViewObject = nil
    end
 
-   if (Path:find('^.+%.png$')) then
+   glStats = { }
+
+   local lpath = Path:lower()
+   if (lpath:find('^.+%.png$')) then
       displayImage(Path)
-   elseif (Path:find('^.+%.jpeg$')) or (Path:find('^.+%.jpg$')) then
+   elseif (lpath:find('^.+%.jpeg$')) or (lpath:find('^.+%.jpg$')) then
       displayImage(Path)
-   elseif (Path:find('^.+%.svg$')) then
+   elseif (lpath:find('^.+%.svg$')) then
       displaySVG(Path)
-   elseif (Path:find('^.+%.ripl$')) or (Path:find('^.+%.rpl$')) then
+   elseif (lpath:find('^.+%.ripl$')) or (lpath:find('^.+%.rpl$')) then
       displayDoc(Path)
    else
       glViewObject = glViewArea.new('document', { })
@@ -174,8 +188,12 @@ end
       path     = arg('path', ':'),
       filter   = '*.svg|*.rpl|*.ripl|*.jpg|*.jpeg|*.png',
       fileSelected = function(FileView)
-         glWindow:setTitle(FileView.selectionFile())
          displayFile(FileView.selectionPath())
+         title = FileView.selectionFile()
+         if glStats.width and glStats.height then
+            title = title .. ' [ ' .. glStats.width .. 'x' .. glStats.height .. ' ]'
+         end
+         glWindow:setTitle(title)
       end
    })
 
@@ -186,7 +204,10 @@ end
      xOffset=glWindow.margins.right, yOffset=glWindow.margins.top
    })
 
-   gui.divider({ left = glView.viewport, right = glViewArea, minA = 100, maxA = glWindow.surface.insideWidth * 0.4, minB = 100 })
+   gui.divider({
+      left = glView.viewport, right = glViewArea,
+      minA = 100, maxA = glWindow.surface.insideWidth * 0.4, minB = 100
+   })
 
    -- Display a file from the commandline, or show the application documentation.
 
