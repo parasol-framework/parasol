@@ -1397,7 +1397,7 @@ void NotifySubscribers(OBJECTPTR Object, AC ActionID, APTR Parameters, ERR Error
       glSubReadOnly--;
 
       if (!glSubReadOnly) {
-         if (!glDelayedSubscribe.empty()) {
+         if (!glDelayedSubscribe.empty()) { // Check if SubscribeAction() was called during the notification process
             for (auto &entry : glDelayedSubscribe) {
                glSubscriptions[entry.ObjectID][LONG(entry.ActionID)].emplace_back(entry.Callback.Context, entry.Callback.Routine, entry.Callback.Meta);
             }

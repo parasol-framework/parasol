@@ -152,6 +152,7 @@ static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
          if (!id.empty()) {
             SetName(gradient, id.c_str());
             add_id(Self, Tag, id);
+            track_object(Self, gradient);
             return Self->Scene->addDef(id.c_str(), gradient);
          }
          else return ERR::Okay;
@@ -222,6 +223,7 @@ static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
          if (!id.empty()) {
             SetName(gradient, id.c_str());
             add_id(Self, Tag, id);
+            track_object(Self, gradient);
             return Self->Scene->addDef(id.c_str(), gradient);
          }
          else return ERR::Okay;
@@ -291,6 +293,7 @@ static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
          if (!id.empty()) {
             SetName(gradient, id.c_str());
             add_id(Self, Tag, id);
+            track_object(Self, gradient);
             return Self->Scene->addDef(id.c_str(), gradient);
          }
          else return ERR::Okay;
@@ -358,6 +361,7 @@ static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
          if (!id.empty()) {
             SetName(gradient, id.c_str());
             add_id(Self, Tag, id);
+            track_object(Self, gradient);
             return Self->Scene->addDef(id.c_str(), gradient);
          }
          else return ERR::Okay;
@@ -431,6 +435,7 @@ static ERR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
          if (!id.empty()) {
             SetName(gradient, id.c_str());
             add_id(Self, Tag, id);
+            track_object(Self, gradient);
             return Self->Scene->addDef(id.c_str(), gradient);
          }
          else return ERR::Okay;

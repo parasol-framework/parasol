@@ -326,10 +326,10 @@ exit:
 
 static ERR PICTURE_Free(extPicture *Self)
 {
-   Self->~extPicture();
    if (Self->prvFile) { FreeResource(Self->prvFile); Self->prvFile = NULL; }
    if (Self->Bitmap)  { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
    if (Self->Mask)    { FreeResource(Self->Mask); Self->Mask = NULL; }
+   Self->~extPicture();
    return ERR::Okay;
 }
 
