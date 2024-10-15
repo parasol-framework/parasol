@@ -32,7 +32,7 @@ static const struct ActionArray clTaskActions[] = {
    { AC::Free, TASK_Free },
    { AC::GetKey, TASK_GetKey },
    { AC::Init, TASK_Init },
-   { AC::NewObject, TASK_NewObject },
+   { AC::NewPlacement, TASK_NewPlacement },
    { AC::SetKey, TASK_SetKey },
    { AC::Write, TASK_Write },
    { AC::NIL, NULL }

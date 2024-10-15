@@ -25,7 +25,7 @@ static const struct ActionArray clScriptActions[] = {
    { AC::Free, SCRIPT_Free },
    { AC::GetKey, SCRIPT_GetKey },
    { AC::Init, SCRIPT_Init },
-   { AC::NewObject, SCRIPT_NewObject },
+   { AC::NewPlacement, SCRIPT_NewPlacement },
    { AC::Reset, SCRIPT_Reset },
    { AC::SetKey, SCRIPT_SetKey },
    { AC::NIL, NULL }

@@ -4,7 +4,7 @@ static const struct ActionArray clConvolveFXActions[] = {
    { AC::Draw, CONVOLVEFX_Draw },
    { AC::Free, CONVOLVEFX_Free },
    { AC::Init, CONVOLVEFX_Init },
-   { AC::NewObject, CONVOLVEFX_NewObject },
+   { AC::NewPlacement, CONVOLVEFX_NewPlacement },
    { AC::NIL, NULL }
 };
 

@@ -76,6 +76,7 @@ static const struct ActionArray clDisplayActions[] = {
    { AC::MoveToFront, DISPLAY_MoveToFront },
    { AC::MoveToPoint, DISPLAY_MoveToPoint },
    { AC::NewObject, DISPLAY_NewObject },
+   { AC::NewPlacement, DISPLAY_NewPlacement },
    { AC::Redimension, DISPLAY_Redimension },
    { AC::Resize, DISPLAY_Resize },
    { AC::SaveImage, DISPLAY_SaveImage },

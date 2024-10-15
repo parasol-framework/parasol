@@ -62,8 +62,8 @@ static const struct ActionArray clVectorFilterActions[] = {
    { AC::Free, VECTORFILTER_Free },
    { AC::Init, VECTORFILTER_Init },
    { AC::NewChild, VECTORFILTER_NewChild },
-   { AC::NewObject, VECTORFILTER_NewObject },
    { AC::NewOwner, VECTORFILTER_NewOwner },
+   { AC::NewPlacement, VECTORFILTER_NewPlacement },
    { AC::NIL, NULL }
 };
 

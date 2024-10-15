@@ -36,7 +36,7 @@ static const struct ActionArray clFontActions[] = {
    { AC::Draw, FONT_Draw },
    { AC::Free, FONT_Free },
    { AC::Init, FONT_Init },
-   { AC::NewObject, FONT_NewObject },
+   { AC::NewPlacement, FONT_NewPlacement },
    { AC::NIL, NULL }
 };
 

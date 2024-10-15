@@ -443,10 +443,9 @@ static ERR PROXY_Init(extProxy *Self)
 
 //********************************************************************************************************************
 
-static ERR PROXY_NewObject(extProxy *Self)
+static ERR PROXY_NewPlacement(extProxy *Self)
 {
    new (Self) extProxy;
-
    Self->Enabled = true;
    Self->Port = 80;
    return ERR::Okay;

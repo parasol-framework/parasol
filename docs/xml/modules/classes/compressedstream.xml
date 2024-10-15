@@ -104,6 +104,7 @@
       <const name="NewChild"/>
       <const name="NewObject"/>
       <const name="NewOwner"/>
+      <const name="NewPlacement"/>
       <const name="Next"/>
       <const name="Prev"/>
       <const name="Query"/>

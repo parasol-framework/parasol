@@ -172,7 +172,8 @@ enum class AC : LONG {
    Clipboard = 45,
    Refresh = 46,
    Disable = 47,
-   END = 48,
+   NewPlacement = 48,
+   END = 49,
 };
 
 // Permission flags
@@ -1447,6 +1448,7 @@ struct Edges {
 #define AHASH_SORT 0x7c9e066d
 #define AHASH_SAVESETTINGS 0x475f7165
 #define AHASH_SIGNAL 0x1bc6ade3
+#define AHASH_NEWPLACEMENT 0x9b0a0468
 #define AHASH_UNDO 0x7c9f191b
 
 

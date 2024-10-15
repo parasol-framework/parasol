@@ -145,7 +145,7 @@ struct SurfaceRecord {
    }
 
    inline ClipRectangle area() const {
-      return std::move(ClipRectangle(Left, Top, Right, Bottom));
+      return ClipRectangle(Left, Top, Right, Bottom);
    }
 
    inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }

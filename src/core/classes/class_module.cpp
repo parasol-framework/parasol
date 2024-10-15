@@ -117,12 +117,12 @@ static const FieldArray glModuleFields[] = {
 
 static ERR MODULE_Init(extModule *);
 static ERR MODULE_Free(extModule *);
-static ERR MODULE_NewObject(extModule *);
+static ERR MODULE_NewPlacement(extModule *);
 
 static const ActionArray glModuleActions[] = {
    { AC::Free, MODULE_Free },
    { AC::Init, MODULE_Init },
-   { AC::NewObject, MODULE_NewObject },
+   { AC::NewPlacement, MODULE_NewPlacement },
    { AC::NIL, NULL }
 };
 
@@ -286,7 +286,7 @@ ERR ROOTMODULE_Free(RootModule *Self)
 
 //********************************************************************************************************************
 
-static ERR ROOTMODULE_NewObject(RootModule *Self)
+static ERR ROOTMODULE_NewPlacement(RootModule *Self)
 {
    new (Self) RootModule;
    return ERR::Okay;
@@ -489,7 +489,7 @@ exit:
 
 //********************************************************************************************************************
 
-static ERR MODULE_NewObject(extModule *Self)
+static ERR MODULE_NewPlacement(extModule *Self)
 {
    new (Self) extModule;
    return ERR::Okay;
@@ -738,7 +738,7 @@ static const FieldArray glRootModuleFields[] = {
 
 static const ActionArray glRootModuleActions[] = {
    { AC::Free, ROOTMODULE_Free },
-   { AC::NewObject, ROOTMODULE_NewObject },
+   { AC::NewPlacement, ROOTMODULE_NewPlacement },
    { AC::NIL, NULL }
 };
 

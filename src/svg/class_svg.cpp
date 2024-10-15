@@ -143,14 +143,14 @@ static ERR SVG_Init(extSVG *Self)
 
 //********************************************************************************************************************
 
-static ERR SVG_NewObject(extSVG *Self)
+static ERR SVG_NewPlacement(extSVG *Self)
 {
+   new (Self) extSVG;
    #ifdef __ANDROID__
       Self->FrameRate = 30; // Choose a lower frame rate for Android devices, so as to minimise power consumption.
    #else
       Self->FrameRate = 60;
    #endif
-   new (Self) extSVG;
    return ERR::Okay;
 }
 

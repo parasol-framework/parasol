@@ -1069,8 +1069,6 @@ static ERR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 
 static ERR DISPLAY_NewObject(extDisplay *Self)
 {
-   new (Self) extDisplay;
-
    if (NewLocalObject(CLASSID::BITMAP, &Self->Bitmap) != ERR::Okay) return ERR::NewObject;
 
    OBJECTID id;
@@ -1132,6 +1130,12 @@ static ERR DISPLAY_NewObject(extDisplay *Self)
       Self->DisplayType = DT::NATIVE;
    #endif
 
+   return ERR::Okay;
+}
+
+static ERR DISPLAY_NewPlacement(extDisplay *Self)
+{
+   new (Self) extDisplay;
    return ERR::Okay;
 }
 

@@ -51,7 +51,7 @@ enum("AC", { type="int", start=1, comment="Action identifiers.", module="Core" }
     "MoveToBack",   "MoveToFront",    "NewChild",     "NewOwner", "NewObject",    "Redo",         "Query",
     "Read",         "Rename",         "Reset",        "Resize",   "SaveImage",    "SaveToObject", "MoveToPoint",
     "Seek",         "SetKey",         "Show",         "Undo",     "Unlock",       "Next",         "Prev",
-    "Write",        "SetField",       "Clipboard",    "Refresh",  "Disable",
+    "Write",        "SetField",       "Clipboard",    "Refresh",  "Disable",      "NewPlacement",
     "END")
 
 flags("PERMIT", { comment="Permission flags", module="Core" },

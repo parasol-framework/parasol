@@ -94,7 +94,7 @@ class extXML : public objXML {
       }
       else return NULL;
    }
-   
+
    // For a given tag, return its vector array
 
    TAGS * getTags(XMLTag *Tag) {
@@ -1024,7 +1024,7 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
 
 //********************************************************************************************************************
 
-static ERR XML_NewObject(extXML *Self)
+static ERR XML_NewPlacement(extXML *Self)
 {
    new (Self) extXML;
    Self->LineNo = 1;

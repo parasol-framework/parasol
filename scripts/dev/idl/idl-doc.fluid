@@ -17,6 +17,7 @@ glIgnoreList[AC_Init] = true
 glIgnoreList[AC_NewChild] = true
 glIgnoreList[AC_NewObject] = true
 glIgnoreList[AC_NewOwner] = true
+glIgnoreList[nz(AC_NewPlacement,0)] = true
 
 function setAction(Action, Options)
    for k, v in pairs(Options) do

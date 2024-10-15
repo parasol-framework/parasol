@@ -20,7 +20,7 @@ static const struct FieldDef clBitmapDataFlags[] = {
    { "Object", 0x00000200 },
    { "NoLock", 0x00000400 },
    { "Exclusive", 0x00000800 },
-   { "Delete", 0x00001000 },
+   { "Collect", 0x00001000 },
    { "NoBlock", 0x00002000 },
    { "NoBlocking", 0x00002000 },
    { "Read", 0x00010000 },

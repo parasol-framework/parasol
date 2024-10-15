@@ -499,8 +499,6 @@ static ERR AUDIO_NewObject(extAudio *Self)
 {
    pf::Log log;
 
-   new (Self) extAudio;
-
    Self->OutputRate  = 44100;        // Rate for output to speakers
    Self->InputRate   = 44100;        // Input rate for recording
    Self->Quality     = 80;
@@ -534,6 +532,12 @@ static ERR AUDIO_NewObject(extAudio *Self)
 
    load_config(Self);
 
+   return ERR::Okay;
+}
+
+static ERR AUDIO_NewPlacement(extAudio *Self)
+{
+   new (Self) extAudio;
    return ERR::Okay;
 }
 
