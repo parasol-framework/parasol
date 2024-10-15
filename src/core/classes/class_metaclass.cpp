@@ -143,7 +143,7 @@ static const FieldArray glMetaFields[] = {
 extern "C" ERR CLASS_FindField(extMetaClass *, struct mc::FindField *);
 extern "C" ERR CLASS_Free(extMetaClass *);
 extern "C" ERR CLASS_Init(extMetaClass *);
-extern "C" ERR CLASS_NewObject(extMetaClass *);
+extern "C" ERR CLASS_NewPlacement(extMetaClass *);
 
 FDEF argsFindField[] = { { "ID", FD_LONG }, { "Field:Field", FD_RESULT|FD_PTR|FD_STRUCT }, { "Source", FD_RESULT|FD_OBJECTPTR }, { 0, 0 } };
 
@@ -182,7 +182,7 @@ void init_metaclass(void)
 
    glMetaClass.ActionTable[LONG(AC::Free)].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Free;
    glMetaClass.ActionTable[LONG(AC::Init)].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Init;
-   glMetaClass.ActionTable[LONG(AC::NewObject)].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_NewObject;
+   glMetaClass.ActionTable[LONG(AC::NewPlacement)].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_NewPlacement;
    glMetaClass.ActionTable[LONG(AC::Signal)].PerformAction = &DEFAULT_Signal;
 
    sort_class_fields(&glMetaClass, glMetaClass.FieldLookup);
@@ -380,7 +380,7 @@ ERR CLASS_Init(extMetaClass *Self)
 
 //********************************************************************************************************************
 
-ERR CLASS_NewObject(extMetaClass *Self)
+ERR CLASS_NewPlacement(extMetaClass *Self)
 {
    new (Self) extMetaClass;
    Self->Local[0] = 0xff;

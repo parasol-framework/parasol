@@ -14,7 +14,7 @@ static const struct ActionArray clProxyActions[] = {
    { AC::Enable, PROXY_Enable },
    { AC::Free, PROXY_Free },
    { AC::Init, PROXY_Init },
-   { AC::NewObject, PROXY_NewObject },
+   { AC::NewPlacement, PROXY_NewPlacement },
    { AC::SaveSettings, PROXY_SaveSettings },
    { AC::NIL, NULL }
 };

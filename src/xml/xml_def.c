@@ -60,7 +60,7 @@ static const struct ActionArray clXMLActions[] = {
    { AC::Free, XML_Free },
    { AC::GetKey, XML_GetKey },
    { AC::Init, XML_Init },
-   { AC::NewObject, XML_NewObject },
+   { AC::NewPlacement, XML_NewPlacement },
    { AC::Reset, XML_Reset },
    { AC::SaveToObject, XML_SaveToObject },
    { AC::SetKey, XML_SetKey },

@@ -129,7 +129,7 @@ static const struct ActionArray clHTTPActions[] = {
    { AC::Free, HTTP_Free },
    { AC::GetKey, HTTP_GetKey },
    { AC::Init, HTTP_Init },
-   { AC::NewObject, HTTP_NewObject },
+   { AC::NewPlacement, HTTP_NewPlacement },
    { AC::SetKey, HTTP_SetKey },
    { AC::Write, HTTP_Write },
    { AC::NIL, NULL }

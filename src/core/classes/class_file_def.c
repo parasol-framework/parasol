@@ -47,7 +47,7 @@ static const struct ActionArray clFileActions[] = {
    { AC::DataFeed, FILE_DataFeed },
    { AC::Free, FILE_Free },
    { AC::Init, FILE_Init },
-   { AC::NewObject, FILE_NewObject },
+   { AC::NewPlacement, FILE_NewPlacement },
    { AC::Query, FILE_Query },
    { AC::Read, FILE_Read },
    { AC::Rename, FILE_Rename },

@@ -12,7 +12,7 @@
 
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
-   glIDLTimestamp = 20240625
+   glIDLTimestamp = 20241015
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -23,6 +23,7 @@ glActionStubs = {
    NewChild      = "",
    NewObject     = "",
    NewOwner      = "",
+   NewPlacement  = "",
 
    -- Actions without parameters
    Activate     = "   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }",

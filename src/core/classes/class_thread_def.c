@@ -18,7 +18,7 @@ static const struct ActionArray clThreadActions[] = {
    { AC::Free, THREAD_Free },
    { AC::FreeWarning, THREAD_FreeWarning },
    { AC::Init, THREAD_Init },
-   { AC::NewObject, THREAD_NewObject },
+   { AC::NewPlacement, THREAD_NewPlacement },
    { AC::NIL, NULL }
 };
 
