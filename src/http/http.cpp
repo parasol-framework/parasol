@@ -186,7 +186,7 @@ static ERR HTTP_Deactivate(extHTTP *);
 static ERR HTTP_Free(extHTTP *);
 static ERR HTTP_GetKey(extHTTP *, struct acGetKey *);
 static ERR HTTP_Init(extHTTP *);
-static ERR HTTP_NewObject(extHTTP *);
+static ERR HTTP_NewPlacement(extHTTP *);
 static ERR HTTP_SetKey(extHTTP *, struct acSetKey *);
 static ERR HTTP_Write(extHTTP *, struct acWrite *);
 
@@ -812,7 +812,7 @@ static ERR HTTP_Init(extHTTP *Self)
 
 //********************************************************************************************************************
 
-static ERR HTTP_NewObject(extHTTP *Self)
+static ERR HTTP_NewPlacement(extHTTP *Self)
 {
    new (Self) extHTTP;
    Self->Error          = ERR::Okay;

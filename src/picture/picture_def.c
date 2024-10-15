@@ -16,6 +16,7 @@ static const struct ActionArray clPictureActions[] = {
    { AC::Free, PICTURE_Free },
    { AC::Init, PICTURE_Init },
    { AC::NewObject, PICTURE_NewObject },
+   { AC::NewPlacement, PICTURE_NewPlacement },
    { AC::Query, PICTURE_Query },
    { AC::Read, PICTURE_Read },
    { AC::Refresh, PICTURE_Refresh },

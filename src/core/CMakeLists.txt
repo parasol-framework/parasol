@@ -47,7 +47,7 @@ if (BUILD_DEFS)
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/registry.fdl" "output=${INCLUDE_OUTPUT}/system/registry.h" "sdk=${PROJECT_SOURCE_DIR}"
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/fields.fdl" "output=${INCLUDE_OUTPUT}/system/fields.h" "sdk=${PROJECT_SOURCE_DIR}"
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/core.fdl" "sdk=${PROJECT_SOURCE_DIR}" "output-proto=prototypes.h" "output-defs=data_functions.c" "files={" ${FUNCTIONS} "}"
-      COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "src=defs/core.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h" "sdk=${PROJECT_SOURCE_DIR}" "format=c"
+      COMMAND ${PARASOL_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=defs/core.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h" "sdk=${PROJECT_SOURCE_DIR}" "format=c"
       DEPENDS
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/core.fdl"
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/errors.fdl"

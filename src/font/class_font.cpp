@@ -280,10 +280,9 @@ static ERR FONT_Init(extFont *Self)
 
 //********************************************************************************************************************
 
-static ERR FONT_NewObject(extFont *Self)
+static ERR FONT_NewPlacement(extFont *Self)
 {
    new (Self) extFont;
-
    Self->TabSize         = 8;
    Self->prvDefaultChar  = '.';
    Self->prvLineCountCR  = 1;

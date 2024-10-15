@@ -22,7 +22,7 @@ static const struct MethodEntry clRemapFXMethods[] = {
 static const struct ActionArray clRemapFXActions[] = {
    { AC::Draw, REMAPFX_Draw },
    { AC::Free, REMAPFX_Free },
-   { AC::NewObject, REMAPFX_NewObject },
+   { AC::NewPlacement, REMAPFX_NewPlacement },
    { AC::NIL, NULL }
 };
 

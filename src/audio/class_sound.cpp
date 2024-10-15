@@ -898,10 +898,9 @@ static ERR SOUND_Init(extSound *Self)
 
 //********************************************************************************************************************
 
-static ERR SOUND_NewObject(extSound *Self)
+static ERR SOUND_NewPlacement(extSound *Self)
 {
    new (Self) extSound;
-
    Self->Compression = 50;     // 50% compression by default
    Self->Volume      = 1.0;    // Playback at 100% volume level
    Self->Pan         = 0;
@@ -1748,7 +1747,7 @@ static const ActionArray clActions[] = {
    { AC::Free,          SOUND_Free },
    { AC::GetKey,        SOUND_GetKey },
    { AC::Init,          SOUND_Init },
-   { AC::NewObject,     SOUND_NewObject },
+   { AC::NewPlacement,  SOUND_NewPlacement },
    { AC::Read,          SOUND_Read },
    { AC::SaveToObject,  SOUND_SaveToObject },
    { AC::Seek,          SOUND_Seek },

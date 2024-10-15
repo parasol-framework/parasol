@@ -99,7 +99,7 @@ static ERR TASK_Free(extTask *);
 static ERR TASK_GetEnv(extTask *, struct task::GetEnv *);
 static ERR TASK_GetKey(extTask *, struct acGetKey *);
 static ERR TASK_Init(extTask *);
-static ERR TASK_NewObject(extTask *);
+static ERR TASK_NewPlacement(extTask *);
 static ERR TASK_SetEnv(extTask *, struct task::SetEnv *);
 static ERR TASK_SetKey(extTask *, struct acSetKey *);
 static ERR TASK_Write(extTask *, struct acWrite *);
@@ -126,7 +126,7 @@ static const ActionArray clActions[] = {
    { AC::Activate,      TASK_Activate },
    { AC::Free,          TASK_Free },
    { AC::GetKey,        TASK_GetKey },
-   { AC::NewObject,     TASK_NewObject },
+   { AC::NewPlacement,  TASK_NewPlacement },
    { AC::SetKey,        TASK_SetKey },
    { AC::Init,          TASK_Init },
    { AC::Write,         TASK_Write },
@@ -1414,7 +1414,7 @@ static ERR TASK_Init(extTask *Self)
 
 //********************************************************************************************************************
 
-static ERR TASK_NewObject(extTask *Self)
+static ERR TASK_NewPlacement(extTask *Self)
 {
    new (Self) extTask;
 #ifdef __unix__

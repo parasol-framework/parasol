@@ -7,7 +7,7 @@ VectorFilter: Constructs filter pipelines that alter rendered vector graphics.
 
 The VectorFilter class allows post-effect filters to be applied to vectors as they are being rendered.  Filter
 support is closely modelled around the SVG standard, and effect results are intended to match that of the standard.
-Once created, a filter can be utilised by vector objects through their @Vector.Filter field.  By way of example in 
+Once created, a filter can be utilised by vector objects through their @Vector.Filter field.  By way of example in
 SVG:
 
 <pre>
@@ -560,7 +560,7 @@ static ERR VECTORFILTER_NewChild(extVectorFilter *Self, struct acNewChild *Args)
 
 //********************************************************************************************************************
 
-static ERR VECTORFILTER_NewObject(extVectorFilter *Self)
+static ERR VECTORFILTER_NewPlacement(extVectorFilter *Self)
 {
    new (Self) extVectorFilter;
    Self->Units          = VUNIT::BOUNDING_BOX;
@@ -774,7 +774,7 @@ The meaning of the (X, #Y) field values depend on the value for #Units.  In user
 relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the
 vector's position.  It is important to note that coordinates are measured before any transforms are applied.
 
-The default values for X and #Y is `10%`, as per the SVG standard.  This provides a buffer space for the filter 
+The default values for X and #Y is `10%`, as per the SVG standard.  This provides a buffer space for the filter
 algorithms to work with, and is usually a sufficient default.
 
 *********************************************************************************************************************/
@@ -802,7 +802,7 @@ The meaning of the (#X, Y) field values depend on the value for #Units.  In user
 relative to the client vector's parent viewport.  In bounding-box mode, the filter position is relative to the
 vector's position.  It is important to note that coordinates are measured before any transforms are applied.
 
-The default values for #X and Y is `10%`, as per the SVG standard.  This provides a buffer space for the filter 
+The default values for #X and Y is `10%`, as per the SVG standard.  This provides a buffer space for the filter
 algorithms to work with, and is usually a sufficient default.
 
 -END-

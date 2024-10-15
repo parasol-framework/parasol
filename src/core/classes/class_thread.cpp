@@ -437,7 +437,7 @@ static ERR THREAD_Init(extThread *Self)
 
 //********************************************************************************************************************
 
-static ERR THREAD_NewObject(extThread *Self)
+static ERR THREAD_NewPlacement(extThread *Self)
 {
    new (Self) extThread;
    Self->StackSize = 16384;

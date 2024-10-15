@@ -564,7 +564,7 @@ static ERR VECTOR_MoveToFront(extVector *Self)
 
 //********************************************************************************************************************
 
-static ERR VECTOR_NewObject(extVector *Self)
+static ERR VECTOR_NewPlacement(extVector *Self)
 {
    new (Self) extVector;
    Self->StrokeOpacity = 1.0;

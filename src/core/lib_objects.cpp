@@ -1281,6 +1281,19 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
    if (AllocMemory(mc->Size, MEM::MANAGED|MEM::OBJECT|MEM::NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM::UNTRACKED : MEM::NIL), (APTR *)&head, &head_id) IS ERR::Okay) {
       set_memory_manager(head, &glResourceObject);
 
+      ERR error = ERR::Okay;
+      if ((mc->Base) and (mc->Base->ActionTable[LONG(AC::NewPlacement)].PerformAction)) {
+         error = mc->Base->ActionTable[LONG(AC::NewPlacement)].PerformAction(head, NULL);
+      }
+      else if (mc->ActionTable[LONG(AC::NewPlacement)].PerformAction) {
+         error = mc->ActionTable[LONG(AC::NewPlacement)].PerformAction(head, NULL);
+      }
+
+      if (error != ERR::Okay) {
+         FreeResource(head);
+         return error;
+      }
+
       head->UID     = head_id;
       head->Class   = (extMetaClass *)mc;
       head->Flags   = Flags;
@@ -1301,7 +1314,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
          }
       }
       else if (tlContext != &glTopContext) { // Track the object to the current context
-         if (auto obj = tlContext->resource(); obj IS &glDummyObject) {
+         if (auto obj = tlContext->resource(); obj IS &glDummyObject) { // If dummy object, track to the task
             if (glCurrentTask) {
                ScopedObjectAccess lock(glCurrentTask);
                SetOwner(head, glCurrentTask);
@@ -1319,14 +1332,12 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
 
       pf::SwitchContext context(head);
 
-      ERR error = ERR::Okay;
       if (mc->Base) {
          if (mc->Base->ActionTable[LONG(AC::NewObject)].PerformAction) {
             if ((error = mc->Base->ActionTable[LONG(AC::NewObject)].PerformAction(head, NULL)) != ERR::Okay) {
                log.warning(error);
             }
          }
-         else error = log.warning(ERR::NoAction);
       }
 
       if ((error IS ERR::Okay) and (mc->ActionTable[LONG(AC::NewObject)].PerformAction)) {

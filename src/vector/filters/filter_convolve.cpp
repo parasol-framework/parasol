@@ -302,7 +302,7 @@ static ERR CONVOLVEFX_Free(extConvolveFX *Self)
 
 //********************************************************************************************************************
 
-static ERR CONVOLVEFX_NewObject(extConvolveFX *Self)
+static ERR CONVOLVEFX_NewPlacement(extConvolveFX *Self)
 {
    new (Self) extConvolveFX;
    return ERR::Okay;

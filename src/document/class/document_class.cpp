@@ -637,7 +637,7 @@ static ERR DOCUMENT_Free(extDocument *Self)
    unload_doc(Self, ULD::TERMINATE);
 
    if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = NULL; }
-   
+
    if (Self->Page) { FreeResource(Self->Page); Self->Page = NULL; }
    if (Self->View) { FreeResource(Self->View); Self->View = NULL; }
 
@@ -967,8 +967,13 @@ static ERR DOCUMENT_InsertText(extDocument *Self, struct doc::InsertText *Args)
 
 static ERR DOCUMENT_NewObject(extDocument *Self)
 {
-   new (Self) extDocument;
    unload_doc(Self);
+   return ERR::Okay;
+}
+
+static ERR DOCUMENT_NewPlacement(extDocument *Self)
+{
+   new (Self) extDocument;
    return ERR::Okay;
 }
 

@@ -330,7 +330,7 @@ static ERR SCRIPT_Init(objScript *Self)
 
 //********************************************************************************************************************
 
-static ERR SCRIPT_NewObject(objScript *Self)
+static ERR SCRIPT_NewPlacement(objScript *Self)
 {
    new (Self) objScript;
 

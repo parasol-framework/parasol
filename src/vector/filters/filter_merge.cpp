@@ -66,7 +66,7 @@ static ERR MERGEFX_Free(extMergeFX *Self)
 
 //********************************************************************************************************************
 
-static ERR MERGEFX_NewObject(extMergeFX *Self)
+static ERR MERGEFX_NewPlacement(extMergeFX *Self)
 {
    new (Self) extMergeFX;
    Self->SourceType = VSF::IGNORE;

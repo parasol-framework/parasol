@@ -74,5 +74,6 @@ extern "C" const struct ActionTable ActionTable[] = { // Sorted by action ID.
    { AHASH_CLIPBOARD,      sizeof(struct acClipboard), "Clipboard", argsClipboard },
    { AHASH_REFRESH,        0, "Refresh", 0 },
    { AHASH_DISABLE,        0, "Disable", 0 },
+   { AHASH_NEWPLACEMENT,   0, "NewPlacement", 0 },
    { 0, 0, 0, 0 }
 };

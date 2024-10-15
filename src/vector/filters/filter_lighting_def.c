@@ -14,7 +14,7 @@ static const struct MethodEntry clLightingFXMethods[] = {
 static const struct ActionArray clLightingFXActions[] = {
    { AC::Draw, LIGHTINGFX_Draw },
    { AC::Free, LIGHTINGFX_Free },
-   { AC::NewObject, LIGHTINGFX_NewObject },
+   { AC::NewPlacement, LIGHTINGFX_NewPlacement },
    { AC::NIL, NULL }
 };
 

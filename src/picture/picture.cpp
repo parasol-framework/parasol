@@ -429,9 +429,14 @@ static ERR PICTURE_Init(extPicture *Self)
 
 static ERR PICTURE_NewObject(extPicture *Self)
 {
-   new (Self) extPicture;
    Self->Quality = 80; // 80% quality rating when saving
    return NewLocalObject(CLASSID::BITMAP, &Self->Bitmap);
+}
+
+static ERR PICTURE_NewPlacement(extPicture *Self)
+{
+   new (Self) extPicture;
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

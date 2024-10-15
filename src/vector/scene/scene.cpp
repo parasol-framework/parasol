@@ -81,7 +81,7 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
 }
 
 //********************************************************************************************************************
-// Clear references to definition objects when they are freed.  Note that this function can sometimes be called after 
+// Clear references to definition objects when they are freed.  Note that this function can sometimes be called after
 // the Defs table has been cleared.
 
 static void notify_def_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
@@ -215,7 +215,7 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
    }
 
    log.detail("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
-   
+
    SubscribeAction(def, AC::Free, C_FUNCTION(notify_def_free));
 
    Self->Defs[Args->Name] = def;
@@ -452,10 +452,14 @@ static ERR VECTORSCENE_NewObject(extVectorScene *Self)
 {
    Self->SampleMethod = VSM::BILINEAR;
 
-   new (Self) extVectorScene;
-
    // Please refer to the Reset action for setting variable defaults
    return VECTORSCENE_Reset(Self);
+}
+
+static ERR VECTORSCENE_NewPlacement(extVectorScene *Self)
+{
+   new (Self) extVectorScene;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

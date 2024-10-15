@@ -1864,8 +1864,6 @@ static ERR COMPRESSION_NewObject(extCompression *Self)
 {
    pf::Log log;
 
-   new (Self) extCompression;
-
    if (AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Output, NULL) IS ERR::Okay) {
       if (AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Input, NULL) IS ERR::Okay) {
          Self->CompressionLevel = 60; // 60% compression by default
@@ -1877,6 +1875,12 @@ static ERR COMPRESSION_NewObject(extCompression *Self)
       else return log.warning(ERR::AllocMemory);
    }
    else return log.warning(ERR::AllocMemory);
+}
+
+static ERR COMPRESSION_NewPlacement(extCompression *Self)
+{
+   new (Self) extCompression;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
