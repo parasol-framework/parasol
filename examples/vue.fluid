@@ -186,7 +186,10 @@ end
       borderless   = true
    })
 
+   -- TODO: File Filter: All Files; Supported Files; SVG; RIPL; PNG
+
    glFileview = gui.fileview(glView, {
+      navigationBar = true,
       path     = arg('path', ':'),
       filter   = '*.svg|*.rpl|*.ripl|*.jpg|*.jpeg|*.png',
       fileSelected = function(FileView)
