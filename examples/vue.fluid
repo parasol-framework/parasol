@@ -53,7 +53,7 @@ Optional parameters are:
 <body fill="rgb(255,255,255)" font-fill="rgb(0,0,0)" font-size="12pt"/>
 
 <page name="Index">
-<p>Unrecognised file type selected.</p>
+<p>Unrecognised file "<print value="[@filename]"/>" selected.</p>
 </page>
 ]]
 
@@ -150,6 +150,7 @@ function displayFile(Path)
       displayDoc(Path)
    else
       glViewObject = glViewArea.new('document', { })
+      glViewObject.acSetKey('filename', Path)
       glViewObject.acDataFeed(0, DATA_XML, glUnsupported)
       configureScrollbar(glViewObject.view, glViewObject.page)
    end
