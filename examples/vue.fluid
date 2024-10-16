@@ -20,10 +20,10 @@ Optional parameters are:
    require 'gui/scrollbar'
 
    local glIntroduction = [[
-<body fill="rgb(255,255,255)" font-fill="rgb(0,0,0)" font-size="12pt"/>
+<body fill="rgb(20,20,40)" font-fill="rgb(255,255,255)" font-size="12pt" margins="2em"/>
 
 <template name="th">
-  <cell stroke="rgb(0,0,0)" stroke-width="1" border="top,bottom"><p><b><inject/></b></p></cell>
+  <cell stroke="rgb(255,255,255)" stroke-width="1" border="bottom"><p><b><inject/></b></p></cell>
 </template>
 
 <page name="Index">
@@ -38,7 +38,8 @@ Optional parameters are:
 
 <p>The following command-line parameters are supported:</p>
 
-<p indent="1em" font-face="courier"><table collapsed="true" thin="true" cell-padding="0.2em" h-spacing="2em" columns="10%,90%" width="90%">
+<p indent="1em" font-face="courier">
+<table collapsed="true" thin="true" cell-padding="0.2em" h-spacing="2em" columns="10%,90%" width="90%">
 <row><th>Parameter</th><th>Description</th></row>
 <row><cell><p>width</p></cell><cell>Width of the application window</cell></row>
 <row><cell><p>height</p></cell><cell>Height of the application window.</cell></row>
