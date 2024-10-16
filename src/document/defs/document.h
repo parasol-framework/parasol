@@ -187,7 +187,7 @@ struct padding {
    void parse(const std::string &Value);
 
    void scale_all() { left_scl = right_scl = top_scl = bottom_scl = true; }
-}; 
+};
 
 //********************************************************************************************************************
 
@@ -357,8 +357,8 @@ struct font_entry {
    DOUBLE font_size; // 72 DPI pixel size
    ALIGN align;
 
-   font_entry(APTR pHandle, const std::string_view pFace, const std::string_view pStyle, DOUBLE pSize) : 
-      handle(pHandle), face(pFace), style(pStyle), font_size(pSize), align(ALIGN::NIL) { 
+   font_entry(APTR pHandle, const std::string_view pFace, const std::string_view pStyle, DOUBLE pSize) :
+      handle(pHandle), face(pFace), style(pStyle), font_size(pSize), align(ALIGN::NIL) {
       vec::GetFontMetrics(pHandle, &metrics);
    }
 
@@ -775,7 +775,8 @@ struct bc_row_end : public entity {
 
 struct bc_cell : public entity {
    GuardedObject<objVectorViewport> viewport;
-   GuardedObject<objVectorRectangle> rect_fill;
+   GuardedObject<objVectorRectangle> rect_fill; // Custom cell filling
+   GuardedObject<objVectorPath> border_path; // Only used when the border stroke is customised
    KEYVALUE args;                 // Cell attributes, intended for event hooks
    std::vector<doc_segment> segments;
    RSTREAM *stream;               // Internally managed byte code content for the cell
@@ -890,7 +891,7 @@ struct doc_menu {
 
    LARGE m_show_time = 0; // Time of last acShow()
    LARGE m_hide_time = 0; // Time of last acHide()
-   
+
    objSurface * create(DOUBLE);
    objSurface * get();
    void define_font(font_entry *);
@@ -937,7 +938,7 @@ struct bc_combobox : public entity, widget_mgr {
    std::string style;
    std::string value;
    std::string last_good_input;
-  
+
    static void callback(struct doc_menu &, struct dropdown_item &);
 
    bc_combobox() : menu(&callback) { code = SCODE::COMBOBOX; align_to_text = true; }
@@ -1109,8 +1110,8 @@ class extDocument : public objDocument {
    std::vector<sorted_segment> & get_sorted_segments();
 };
 
-bc_button::bc_button() { 
-   code = SCODE::BUTTON; 
+bc_button::bc_button() {
+   code = SCODE::BUTTON;
    stream = new RSTREAM();
    align_to_text = true;
 }
@@ -1124,7 +1125,7 @@ bc_cell::~bc_cell() {
 }
 
 bc_cell::bc_cell(LONG pCellID, LONG pColumn)
-{ 
+{
    code    = SCODE::CELL;
    cell_id = pCellID;
    column  = pColumn;

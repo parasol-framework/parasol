@@ -68,6 +68,44 @@ static std::string stream_to_string(RSTREAM &Stream, stream_char Start, stream_c
    return str.str();
 }
 
+//********************************************************************************************************************
+
+static void apply_border_to_path(CB Border, std::vector<PathCommand> &Seq, FloatRect Area)
+{
+   if (Border IS CB::ALL) {
+      Seq.push_back({ .Type = PE::Move, .X = Area.X, .Y = Area.Y });
+      Seq.push_back({ .Type = PE::HLineRel, .X = Area.Width });
+      Seq.push_back({ .Type = PE::VLineRel, .Y = Area.Height });
+      Seq.push_back({ .Type = PE::HLineRel, .X = -Area.Width });
+      Seq.push_back({ .Type = PE::ClosePath });
+   }
+   else {
+      if ((Border & CB::LEFT) != CB::NIL) {
+         Seq.push_back({ .Type = PE::Move, .X = Area.X, .Y = Area.Y });
+         Seq.push_back({ .Type = PE::VLineRel, .Y = Area.Height });
+         Seq.push_back({ .Type = PE::ClosePath });
+      }
+
+      if ((Border & CB::TOP) != CB::NIL) {
+         Seq.push_back({ .Type = PE::Move, .X = Area.X, .Y = Area.Y });
+         Seq.push_back({ .Type = PE::HLineRel, .X = Area.Width });
+         Seq.push_back({ .Type = PE::ClosePath });
+      }
+
+      if ((Border & CB::RIGHT) != CB::NIL) {
+         Seq.push_back({ .Type = PE::Move, .X = Area.X + Area.Width, .Y = Area.Y });
+         Seq.push_back({ .Type = PE::VLineRel, .Y = Area.Height });
+         Seq.push_back({ .Type = PE::ClosePath });
+      }
+
+      if ((Border & CB::BOTTOM) != CB::NIL) {
+         Seq.push_back({ .Type = PE::Move, .X = Area.X, .Y = Area.Y + Area.Height });
+         Seq.push_back({ .Type = PE::HLineRel, .X = Area.Width });
+         Seq.push_back({ .Type = PE::ClosePath });
+      }
+   }
+}
+
 /*********************************************************************************************************************
 
 This function can be used for performing simple calculations on numeric values and strings.  It can return a result in

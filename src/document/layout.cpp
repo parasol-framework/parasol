@@ -286,12 +286,22 @@ CELL layout::lay_cell(bc_table *Table)
       }
    }
 
-   if ((!cell.fill.empty()) or (!cell.stroke.empty())) {
+   if (!cell.fill.empty()) {
       if (cell.rect_fill.empty()) {
          cell.rect_fill.set(objVectorRectangle::create::global({
             fl::Name("cell_rect"),
             fl::Owner(cell.viewport->UID),
             fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))
+         }));
+      }
+   }
+   
+   if ((!cell.stroke.empty()) or 
+       ((cell.stroke_width.value > 0) and (cell.stroke_width != Table->stroke_width))) {
+      if (cell.border_path.empty()) {
+         cell.border_path.set(objVectorPath::create::global({
+            fl::Name("cell_border"),
+            fl::Owner(cell.viewport->UID)
          }));
       }
    }
