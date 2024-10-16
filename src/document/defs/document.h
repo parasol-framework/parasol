@@ -662,7 +662,7 @@ struct bc_list_end : public entity {
 struct bc_table : public entity {
    GuardedObject<objVectorPath> path;
    GuardedObject<objVectorViewport> viewport;
-   std::vector<PathCommand> seq;
+   std::vector<PathCommand> seq;         // Commands to be assigned to 'path'
    std::vector<tablecol> columns;        // Table column management
    std::string fill, stroke;             // SVG stroke and fill instructions
    padding cell_padding;                 // Spacing inside each cell (margins)
