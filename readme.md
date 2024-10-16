@@ -97,7 +97,9 @@ A successful build and installation will create a `parasol` command tool, which 
 
 ## 4. Next Steps
 
-Full documentation for developers is available online from our [main website](https://www.parasol.ws).
+The [Wiki](https://github.com/parasol-framework/parasol/wiki) provides up-to-date documentation on most facets of the framework.
+
+Detailed technical documentation for the Parasol APIs is available online at the [main website](https://www.parasol.ws).
 
 ## 5. Source Code Licensing
 

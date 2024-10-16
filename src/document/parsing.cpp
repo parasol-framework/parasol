@@ -3657,7 +3657,7 @@ void parser::tag_table(XMLTag &Tag)
          i = end + 1;
       }
 
-      unsigned i;
+      size_t i;
       for (i=0; (i < table.columns.size()) and (i < list.size()); i++) {
          table.columns[i].preset_width = strtod(list[i].c_str(), NULL);
          if (list[i].find_first_of('%') != std::string::npos) {

@@ -524,7 +524,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <prototype>objTask * CurrentTask()</prototype>
     <description>
 <p>This function returns the <class name="Task">Task</class> object of the active process.</p>
-<p>If there is a legitimate circumstance where there is no current task (e.g. if the function is called during Core initialisation) then the "system task" may be returned, which has ownership of Core resources.</p>
+<p>If there is a legitimate circumstance where there is no current task (e.g. if this function is called during Core initialisation) then the "system task" may be returned, which has ownership of Core resources.</p>
     </description>
     <result type="objTask *">Returns a pointer to the current Task object or NULL if failure.</result>
   </function>
