@@ -239,6 +239,62 @@ gui.scrollbar = function(Options)
       return bar
    end
 
+   local function doSubscriptions()
+      -- The slider and possibly the page need to be repositioned whenever the view is resized.
+
+      lView.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+         local px = lPage.x
+         local py = lPage.y
+         local pw = lPage.width
+
+         if (lPageMode == 'dynamic') then
+            local nw = lMinWidth
+            if (nw < lView.width) then -- Maximise page width in dynamic mode
+               if (px != 0) then
+                  px = 0
+                  lPage.x = 0
+               end
+               nw = lView.width
+            end
+            if (pw != nw) then
+               lPage.width = nw
+               pw = nw
+            end
+         end
+
+         if (px + pw < lView.width) then
+            local x = lView.width - pw
+            if (x > 0) then x = 0 end
+            if (px != x) then lPage.x = math.floor(x) end
+         end
+
+         if (py + lPage.height < lView.height) then
+            local y = lView.height - lPage.height
+            if (y > 0) then y = 0 end
+            if (py != y) then lPage.y = math.floor(y) end
+         end
+
+         recalcSlidersFromView()
+      end)
+
+      lPage.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+         recalcSlidersFromView()
+      end)
+
+      lPage.mtSubscribeInput(JTYPE_EXT_MOVEMENT, function(Viewport, Events)
+         local ev = Events
+         while (ev) do
+            if (ev.type == JET_WHEEL) then
+               local length = lPage.height - lView.height
+               if (length > 0) then
+                  if (length > lView.height) then length = lView.height end
+                  self.scrollPage(0, -ev.value * length * 0.06)
+               end
+            end
+            ev = ev.next
+         end
+      end)
+   end
    self.scrollPage = function(DeltaX, DeltaY)
       local current_x = lPage.x
       local current_y = lPage.y
@@ -293,6 +349,7 @@ gui.scrollbar = function(Options)
       lView = View
       lPage = Page
       recalcSlidersFromView()
+      doSubscriptions()
    end
 
    -- Main entry point
@@ -316,60 +373,7 @@ gui.scrollbar = function(Options)
       self.hbar = createScrollbar('H')
    end
 
-   -- The slider and possibly the page need to be repositioned whenever the view is resized.
-
-   lView.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
-      local px = lPage.x
-      local py = lPage.y
-      local pw = lPage.width
-
-      if (lPageMode == 'dynamic') then
-         local nw = lMinWidth
-         if (nw < lView.width) then -- Maximise page width in dynamic mode
-            if (px != 0) then
-               px = 0
-               lPage.x = 0
-            end
-            nw = lView.width
-         end
-         if (pw != nw) then
-            lPage.width = nw
-            pw = nw
-         end
-      end
-
-      if (px + pw < lView.width) then
-         local x = lView.width - pw
-         if (x > 0) then x = 0 end
-         if (px != x) then lPage.x = math.floor(x) end
-      end
-
-      if (py + lPage.height < lView.height) then
-         local y = lView.height - lPage.height
-         if (y > 0) then y = 0 end
-         if (py != y) then lPage.y = math.floor(y) end
-      end
-
-      recalcSlidersFromView()
-   end)
-
-   lPage.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
-      recalcSlidersFromView()
-   end)
-
-   lPage.mtSubscribeInput(JTYPE_EXT_MOVEMENT, function(Viewport, Events)
-      local ev = Events
-      while (ev) do
-         if (ev.type == JET_WHEEL) then
-            local length = lPage.height - lView.height
-            if (length > 0) then
-               if (length > lView.height) then length = lView.height end
-               self.scrollPage(0, -ev.value * length * 0.06)
-            end
-         end
-         ev = ev.next
-      end
-   end)
+   doSubscriptions()
 
    return self
 end
