@@ -77,7 +77,7 @@ function testLinks2()      crcTest('Links2', 'links.rpl?font=Noto Sans&font-size
 function testLists()       crcTest('Lists', 'lists.rpl', 0xa466f7e9) end
 function testLogic()       crcTest('Logic', 'logic.rpl', 0x766bfadb) end
 function testParagraphs()  crcTest('Paragraphs', 'paragraphs.rpl', 0xa3b93738) end
-function testTables()      crcTest('Tables', 'tables.rpl', 0x4969f18c) end
+function testTables()      crcTest('Tables', 'tables.rpl', 0x6dad4c39) end
 function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0xa18b67ea) end
 
 -----------------------------------------------------------------------------------------------------------------------
