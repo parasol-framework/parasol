@@ -88,7 +88,7 @@ CurrentTask: Returns the active Task object.
 
 This function returns the @Task object of the active process.
 
-If there is a legitimate circumstance where there is no current task (e.g. if the function is called during
+If there is a legitimate circumstance where there is no current task (e.g. if this function is called during
 Core initialisation) then the "system task" may be returned, which has ownership of Core resources.
 
 -RESULT-
@@ -147,8 +147,6 @@ uint: Returns the computed 32 bit CRC value for the given data.
 
 *********************************************************************************************************************/
 
-#if 1
-
 static const ULONG crc_table[256] = {
   0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
   0x706af48fL, 0xe963a535L, 0x9e6495a3L, 0x0edb8832L, 0x79dcb8a4L,
@@ -204,181 +202,32 @@ static const ULONG crc_table[256] = {
   0x2d02ef8dL
 };
 
-#define DO1(buf) crc = crc_table[((int)crc ^ (*buf++)) & 0xff] ^ (crc >> 8);
-#define DO2(buf)  DO1(buf); DO1(buf);
-#define DO4(buf)  DO2(buf); DO2(buf);
-#define DO8(buf)  DO4(buf); DO4(buf);
-
 ULONG GenCRC32(ULONG crc, APTR Data, ULONG len)
 {
    if (!Data) return 0;
 
-   BYTE *buf = (BYTE *)Data;
+   auto buf = (BYTE *)Data;
    crc = crc ^ 0xffffffff;
    while (len >= 8) {
-      DO8(buf);
+      crc = crc_table[((LONG)crc ^ (buf[0])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((LONG)crc ^ (buf[1])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((LONG)crc ^ (buf[2])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((LONG)crc ^ (buf[3])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((LONG)crc ^ (buf[4])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((LONG)crc ^ (buf[5])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((LONG)crc ^ (buf[6])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((LONG)crc ^ (buf[7])) & 0xff] ^ (crc >> 8);
+      buf += 8;
       len -= 8;
    }
 
-   if (len) do {
-      DO1(buf);
-   } while (--len);
-
-   return crc ^ 0xffffffff;
-}
-
-#else
-
-// CRC calculation routine from Zlib, written by Rodney Brown <rbrown64@csc.com.au>
-
-typedef ULONG u4;
-typedef int ptrdiff_t;
-
-#define REV(w) (((w)>>24)+(((w)>>8)&0xff00)+(((w)&0xff00)<<8)+(((w)&0xff)<<24))
-static ULONG crc32_little(ULONG, const UBYTE *, unsigned);
-static ULONG crc32_big(ULONG, const UBYTE *, unsigned);
-static volatile int crc_table_empty = 1;
-static ULONG crc_table[8][256];
-
-#define DO1 crc = crc_table[0][((int)crc ^ (*buf++)) & 0xff] ^ (crc >> 8)
-#define DO8 DO1; DO1; DO1; DO1; DO1; DO1; DO1; DO1
-#define DOLIT4 c ^= *buf4++; \
-        c = crc_table[3][c & 0xff] ^ crc_table[2][(c >> 8) & 0xff] ^ \
-            crc_table[1][(c >> 16) & 0xff] ^ crc_table[0][c >> 24]
-#define DOLIT32 DOLIT4; DOLIT4; DOLIT4; DOLIT4; DOLIT4; DOLIT4; DOLIT4; DOLIT4
-#define DOBIG4 c ^= *++buf4; \
-        c = crc_table[4][c & 0xff] ^ crc_table[5][(c >> 8) & 0xff] ^ \
-            crc_table[6][(c >> 16) & 0xff] ^ crc_table[7][c >> 24]
-#define DOBIG32 DOBIG4; DOBIG4; DOBIG4; DOBIG4; DOBIG4; DOBIG4; DOBIG4; DOBIG4
-
-ULONG GenCRC32(ULONG crc, APTR Data, ULONG len)
-{
-   if (!Data) return 0;
-
-   UBYTE *buf = Data;
-   if (crc_table_empty) {
-      ULONG c;
-      LONG n, k;
-      ULONG poly;
-      // terms of polynomial defining this crc (except x^32):
-      static const UBYTE p[] = {0,1,2,4,5,7,8,10,11,12,16,22,23,26};
-
-      // make exclusive-or pattern from polynomial (0xedb88320UL)
-
-      poly = 0;
-      for (n = 0; (size_t)n < sizeof(p)/sizeof(UBYTE); n++) {
-         poly |= 1 << (31 - p[n]);
-      }
-
-      // generate a crc for every 8-bit value
-
-      for (n = 0; n < 256; n++) {
-         c = (ULONG)n;
-         for (k = 0; k < 8; k++) {
-            c = c & 1 ? poly ^ (c >> 1) : c >> 1;
-         }
-         crc_table[0][n] = c;
-      }
-
-      // Generate CRC for each value followed by one, two, and three zeros, and then the byte reversal of those as well
-      // as the first table
-
-      for (n = 0; n < 256; n++) {
-         c = crc_table[0][n];
-         crc_table[4][n] = REV(c);
-         for (k = 1; k < 4; k++) {
-            c = crc_table[0][c & 0xff] ^ (c >> 8);
-            crc_table[k][n] = c;
-            crc_table[k + 4][n] = REV(c);
-         }
-      }
-
-      crc_table_empty = 0;
-   }
-
-   if (sizeof(void *) == sizeof(ptrdiff_t)) {
-      if constexpr (std::endian::native == std::endian::little) {
-         return crc32_little(crc, buf, len);
-      }
-      else return crc32_big(crc, buf, len);
-   }
-
-   crc = crc ^ 0xffffffff;
-   while (len >= 8) {
-      DO8;
-      len -= 8;
-   }
-
-   if (len) do {
-      DO1;
-   } while (--len);
-
-   return crc ^ 0xffffffff;
-}
-
-static ULONG crc32_little(ULONG crc, const UBYTE *buf, unsigned len)
-{
-   register u4 c;
-   register const u4 *buf4;
-
-   c = (u4)crc;
-   c = ~c;
-   while (len && ((ptrdiff_t)buf & 3)) {
-      c = crc_table[0][(c ^ *buf++) & 0xff] ^ (c >> 8);
+   while (len > 0) {
+      crc = crc_table[((LONG)crc ^ *buf++) & 0xff] ^ (crc >> 8);
       len--;
    }
 
-   buf4 = (const u4 *)(const void *)buf;
-   while (len >= 32) {
-      DOLIT32;
-      len -= 32;
-   }
-   while (len >= 4) {
-      DOLIT4;
-      len -= 4;
-   }
-   buf = (const UBYTE *)buf4;
-
-   if (len) do {
-      c = crc_table[0][(c ^ *buf++) & 0xff] ^ (c >> 8);
-   } while (--len);
-   c = ~c;
-   return (ULONG)c;
+   return crc ^ 0xffffffff;
 }
-
-static ULONG crc32_big(ULONG crc, const UBYTE *buf, unsigned len)
-{
-   register u4 c;
-   register const u4 *buf4;
-
-   c = REV((u4)crc);
-   c = ~c;
-   while (len && ((ptrdiff_t)buf & 3)) {
-       c = crc_table[4][(c >> 24) ^ *buf++] ^ (c << 8);
-       len--;
-   }
-
-   buf4 = (const u4 *)(const void *)buf;
-   buf4--;
-   while (len >= 32) {
-       DOBIG32;
-       len -= 32;
-   }
-   while (len >= 4) {
-       DOBIG4;
-       len -= 4;
-   }
-   buf4++;
-   buf = (const UBYTE *)buf4;
-
-   if (len) do {
-       c = crc_table[4][(c >> 24) ^ *buf++] ^ (c << 8);
-   } while (--len);
-   c = ~c;
-   return (ULONG)(REV(c));
-}
-
-#endif
 
 /*********************************************************************************************************************
 
