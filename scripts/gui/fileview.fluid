@@ -6,6 +6,7 @@ Documentation is available in the Parasol Wiki.
    require 'gui'
    require 'gui/menu'
    require 'gui/dialog'
+   require 'gui/toolbar'
    require 'json'
    include 'vector'
 
@@ -1328,6 +1329,47 @@ gui.fileview = function(View, Options)
             lOptions.fileSelected(self)
          end
       end
+   end
+
+   if Options.navigationBar then
+      local bkgd = self.view.viewport.new('VectorRectangle', { x=0, y=0, xOffset=0, height=1, fill='rgb(0,0,0,20)' })
+
+      self.toolbar = gui.toolbar({
+         target  = self.view.viewport,
+         x       = 0,
+         y       = 0,
+         xOffset = 0,
+         flush = true,
+         createItems = function(Bar)
+            Bar.addItem(1, 'Root', 'Root Folder', 'devices/harddisk', function()
+               self.browse(nil)
+            end)
+
+            Bar.addItem(2, 'Parent', 'Parent Folder', 'arrows/arrow_nw', function()
+               self.parentFolder()
+            end)
+
+            Bar.addItem(3, 'Bookmark', 'Bookmarks', 'items/bookmark', function()
+               -- TODO
+            end)
+
+            Bar.addItem(4, 'Prev', 'Previous File', 'arrows/fat_left', function()
+               self.view.selectPrev(function (Item) if Item.type == 'file' then return true end end)
+            end)
+
+            Bar.addItem(5, 'Next', 'Next File', 'arrows/fat_right', function()
+               self.view.selectNext(function (Item) if Item.type == 'file' then return true end end)
+            end)
+
+            Bar.addItem(6, 'Filter', 'Filter', 'tools/filter', function()
+               -- TODO
+            end)
+         end
+      })
+
+      bkgd.height = self.toolbar.viewport.height
+      self.view.window.y = self.toolbar.viewport.height
+      self.view.scrollbar.vbar.viewport.y = self.toolbar.viewport.height
    end
 
    local err
