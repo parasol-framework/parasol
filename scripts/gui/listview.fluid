@@ -213,10 +213,12 @@ gui.listView = function(Options)
       -- Item click and hover management
 
       for _, item in pairs(View.items) do
-         if (Options.compact == 1) then
-            View.addZone(item._x, item._y, widest_item, item._height, item, itemHoverCallback)
-         else
-            View.addZone(item._x, item._y, nil, item._height, item, itemHoverCallback)
+         if not item.hidden then
+            if (Options.compact == 1) then
+               View.addZone(item._x, item._y, widest_item, item._height, item, itemHoverCallback)
+            else
+               View.addZone(item._x, item._y, nil, item._height, item, itemHoverCallback)
+            end
          end
       end
 
