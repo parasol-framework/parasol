@@ -135,7 +135,7 @@ end
 local function selectNext(View, Filter)
    if not View.sItem then
       for _, item in ipairs(View.items) do
-         if Filter(item) then
+         if (not item.hidden) and Filter(item) then
             simpleSelect(View, item)
             return item
          end
@@ -145,7 +145,7 @@ local function selectNext(View, Filter)
       for _, item in ipairs(View.items) do
          if item == View.sItem then
             found = true
-         elseif found and Filter(item) then
+         elseif found and (not item.hidden) and Filter(item) then
             simpleSelect(View, item)
             return item
          end
@@ -157,7 +157,7 @@ local function selectPrev(View, Filter)
    if not View.sItem then
       for i=1, #View.items do
          local item = View.items[#View.items + 1 - i]
-         if Filter(item) then
+         if (not item.hidden) and Filter(item) then
             simpleSelect(View, item)
             return item
          end
@@ -168,7 +168,7 @@ local function selectPrev(View, Filter)
          local item = View.items[#View.items + 1 - i]
          if item == View.sItem then
             found = true
-         elseif found and Filter(item) then
+         elseif found and (not item.hidden) and Filter(item) then
             simpleSelect(View, item)
             return item
          end

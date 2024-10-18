@@ -57,7 +57,7 @@ Optional parameters are:
 </page>
 ]]
 
-   local glWindow, glViewport, glTerminateView, glViewObject, glScrollbar, glViewArea, glStats
+   local glWindow, glViewport, glTerminateView, glScrollbar, glViewArea, glStats
 
    local glScript = obj.find('self')
 
@@ -79,20 +79,25 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function displaySVG(Path)
-   -- Use a temporary viewport to host the generated SVG content
-   glViewObject = glViewArea.new('VectorViewport', { x=0, y=0, xOffset=0, yOffset=0, overflow='hidden' })
-   local svg = glViewObject.new('svg', { target=glViewObject, path=Path, flags=SVF_ENFORCE_TRACKING })
+   local vp = glViewArea.new('VectorViewport', { x=0, y=0, xOffset=0, yOffset=0, overflow='hidden' })
+   local svg = vp.new('svg', { target=vp, path=Path, flags=SVF_ENFORCE_TRACKING })
 
    if (svg.frameRate < 60) then svg.frameRate = 60 end
    svg.acActivate() -- Animation support
 
-   glViewArea.acDraw()
+   glTerminateView = function()
+      vp.free()
+   end
 end
 
 function displayDoc(Path)
-   glViewObject = glViewArea.new('document', { path = Path .. '#Index' })
+   local doc = glViewArea.new('document', { path = Path .. '#Index' })
 
-   configureScrollbar(glViewObject.view, glViewObject.page)
+   configureScrollbar(doc.view, doc.page)
+
+   glTerminateView = function()
+      doc.free()
+   end
 end
 
 function displayImage(Path)
@@ -105,14 +110,13 @@ function displayImage(Path)
    local rect = page.new('VectorRectangle', {
       x=0, y=0, width=pic.bitmap.width, height=pic.bitmap.height, fill='url(#Image)'
    })
-   glViewArea.acDraw()
 
    glTerminateView = function()
+      window.free()
       pic.free()
       img.free()
    end
 
-   glViewObject = window
    configureScrollbar(window, page)
 
    glStats = { width = pic.bitmap.width, height = pic.bitmap.height }
@@ -132,11 +136,6 @@ function displayFile(Path)
       glTerminateView = nil
    end
 
-   if glViewObject != nil then
-      glViewObject.free()
-      glViewObject = nil
-   end
-
    glStats = { }
 
    local lpath = Path:lower()
@@ -148,12 +147,17 @@ function displayFile(Path)
       displaySVG(Path)
    elseif (lpath:find('^.+%.ripl$')) or (lpath:find('^.+%.rpl$')) then
       displayDoc(Path)
-   else
-      glViewObject = glViewArea.new('document', { })
-      glViewObject.acSetKey('filename', Path)
-      glViewObject.acDataFeed(0, DATA_XML, glUnsupported)
-      configureScrollbar(glViewObject.view, glViewObject.page)
+   else -- File is unsupported
+      local doc = glViewArea.new('document', { })
+      doc.acSetKey('filename', Path)
+      doc.acDataFeed(0, DATA_XML, glUnsupported)
+      configureScrollbar(doc.view, doc.page)
+      glTerminateView = function()
+         doc.free()
+      end
    end
+
+   glViewArea.scene.surface.mtScheduleRedraw()
 
    collectgarbage()
 end
@@ -223,9 +227,12 @@ end
    if nz(arg('file')) then
       displayFile(arg('file'))
    else
-      glViewObject = glViewArea.new('document', { })
-      glViewObject.acDataFeed(0, DATA_XML, glIntroduction)
-      configureScrollbar(glViewObject.view, glViewObject.page)
+      local doc = glViewArea.new('document', { })
+      doc.acDataFeed(0, DATA_XML, glIntroduction)
+      configureScrollbar(doc.view, doc.page)
+      glTerminateView = function()
+         doc.free()
+      end
    end
 
    collectgarbage()

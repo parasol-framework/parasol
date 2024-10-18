@@ -1488,7 +1488,7 @@ gui.fileview = function(View, Options)
             end)
 
             Bar.addItem(3, 'Bookmark', 'Bookmarks', 'items/bookmark', function()
-               -- TODO
+               -- TODO: Add the current folder as a new volume.
             end)
 
             Bar.addItem(4, 'Prev', 'Previous File', 'arrows/fat_left', function()

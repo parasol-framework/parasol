@@ -37,9 +37,8 @@ local function rearrangeItems(View)
          item._vectors.viewport.y = y + EDGE
       end
 
-      View.addZone(0, item._y, nil, LINE_HEIGHT, item)
-
       if not item.hidden then
+         View.addZone(0, item._y, nil, LINE_HEIGHT, item)
          y = y + LINE_HEIGHT + VSPACING
       end
    end
