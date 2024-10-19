@@ -8,10 +8,10 @@ RULES
 -----
 * Appended paths must be derived from regular vector shapes.  Setting visibility to hidden is advised.
 * Appended paths can declare transforms, but any parent transforms will be ignored.
-* The vertices of the appended path will be directly injected into the base path of the applicant.
+* The vertices of the appended path will be directly injected into the base path of the client.
   Technically this can be construed as a 'userspace' operation and 'boundingBox' is not an applicable option.
 * By virtue of being a direct addition to the base path, the appended path will inherit the transforms and
-  placement information belonging to the applicant.
+  placement information belonging to the client.
 -->
 
 <svg viewBox="0 0 1800 1200" preserveAspectRatio="xMidYMid meet" version = "1.1" xmlns="http://www.w3.org/2000/svg"  xmlns:xlink="http://www.w3.org/1999/xlink">

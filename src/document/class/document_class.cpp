@@ -12,18 +12,13 @@ conjunction with the @Vector module.  This means that the output is compatible w
 detail with our existing vector API.  Consequently, document formatting is closely integrated with SVG concepts
 and seamlessly inherits SVG functionality such as filling and stroking commands.
 
-<header>Safety</>
+The native document format in Parasol is RIPL.  Documentation for RIPL is available in the Parasol Wiki.  Other 
+document formats may be supported as sub-classes, but bear in mind that document parsing is a one-way trip and
+stateful information such as the HTML DOM is not supported.
 
-The Document class is intended to be safe to use when loading content from an unknown source.  Processing will be
-aborted if a problem is found or the document appears to be unrenderable.  It is however, not guaranteed that
-exploits are impossible.  Consideration should also be given to the possibility of exploits that target third party
-libraries such as libpng and libjpeg for instance.
-
-By default, script execution is not enabled when parsing a document source.  If support for scripts is enabled,
-there is no meaningful level of safety on offer when the document is processed.  This feature should not be
-used unless the source document has been written by the client, or has otherwise been received from a trusted source.
-
-To mitigate security problems, we recommend that the application is built with some form of sandbox that will stop
+The Document class does not include a security barrier in its current form.  Documents that include scripted code
+should not be processed unless they originate from a trusted source and are confirmed as such.
+To mitigate security problems, we recommend that the application is built with some form of sandbox that can prevent
 the system being compromised by bad actors.  Utilising a project such as Win32 App Isolation
 https://github.com/microsoft/win32-app-isolation is one potential way of doing this.
 

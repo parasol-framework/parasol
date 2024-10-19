@@ -156,11 +156,11 @@ end
                      print('User selected option ' .. Response.id)
                   end
                   if State then
-                     if State.input then
-                        print('User entered string: ' .. State.input)
-                     end
+                     print('User entered string: ' .. nz(State.input,'NIL'))
                      if State.checkbox then
-                        print('User activated the checkbox')
+                        print('The user selected the checkbox.')
+                     else
+                        print('The checkbox is unselected.')
                      end
                   end
                end
