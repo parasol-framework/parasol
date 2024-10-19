@@ -2,7 +2,7 @@
 static const LONG MAXLOOP = 1000;
 
 static const char glDefaultStyles[] =
-"<template name=\"h1\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"18pt\" font-style=\"bold\"><inject/></p></template>\n\
+"<template name=\"h1\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"22pt\" font-style=\"bold\"><inject/></p></template>\n\
 <template name=\"h2\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"16pt\" font-style=\"bold\"><inject/></p></template>\n\
 <template name=\"h3\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14pt\" font-style=\"bold\"><inject/></p></template>\n\
 <template name=\"h4\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14pt\"><inject/></p></template>\n\
@@ -25,7 +25,7 @@ static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Sourc
 
 //********************************************************************************************************************
 
-constexpr DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
+constexpr static DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
 {
    if (Width > Height) std::swap(Width, Height);
    if ((Height / Width) <= 1.5) return 5.0 * (Width + Height) / 7.0; // Fast hypot calculation accurate to within 1% for specific use cases.
