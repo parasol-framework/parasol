@@ -29,11 +29,18 @@ local function rearrangeItems(View)
    for _, item in pairs(View.items) do
       item._y = y
       if item._vectors.viewport then
+         if item.hidden then
+            item._vectors.viewport.visibility = VIS_HIDDEN
+         else
+            item._vectors.viewport.visibility = VIS_VISIBLE
+         end
          item._vectors.viewport.y = y + EDGE
       end
 
-      View.addZone(0, item._y, nil, LINE_HEIGHT, item)
-      y = y + LINE_HEIGHT + VSPACING
+      if not item.hidden then
+         View.addZone(0, item._y, nil, LINE_HEIGHT, item)
+         y = y + LINE_HEIGHT + VSPACING
+      end
    end
 end
 
@@ -125,6 +132,8 @@ gui.listView = function(Options)
                xOffset = EDGE,
                height  = LINE_HEIGHT
             })
+         else
+            item._vectors.viewport.y = y + EDGE
          end
 
          local MARGIN = LINE_HEIGHT * 0.2
@@ -190,17 +199,25 @@ gui.listView = function(Options)
             end
          end
 
-         y = y + LINE_HEIGHT + VSPACING
+         if item.hidden then
+            vp.visibility = VIS_HIDDEN
+         else
+            vp.visibility = VIS_VISIBLE
+            y = y + LINE_HEIGHT + VSPACING
+         end
+
          if (width > widest_item) then widest_item = width end
       end
 
       -- Item click and hover management
 
       for _, item in pairs(View.items) do
-         if (Options.compact == 1) then
-            View.addZone(item._x, item._y, widest_item, item._height, item, itemHoverCallback)
-         else
-            View.addZone(item._x, item._y, nil, item._height, item, itemHoverCallback)
+         if not item.hidden then
+            if (Options.compact == 1) then
+               View.addZone(item._x, item._y, widest_item, item._height, item, itemHoverCallback)
+            else
+               View.addZone(item._x, item._y, nil, item._height, item, itemHoverCallback)
+            end
          end
       end
 

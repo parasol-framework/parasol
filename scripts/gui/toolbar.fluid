@@ -33,6 +33,7 @@ gui.toolbar = function(Options)
       viewport   = nil,  -- The main viewport for the toolbar
       _groupMargin = 4,
       _groupCount = 0,
+      _round = 4,
       _cellMargin = nz(Options.cellMargin, 6),
       _disabled = false,
       _lookup = { },
@@ -128,7 +129,7 @@ gui.toolbar = function(Options)
             })
          else
             self._vHover = self.viewport.new('VectorRectangle', { -- Hover highlight
-               fill='rgb(255,255,255)', x=0, y=0, width=1, height=1, visibility='hidden', roundX=4, roundY=4
+               fill='rgb(255,255,255)', x=0, y=0, width=1, height=1, visibility='hidden', roundX=self._round, roundY=self._round
             })
          end
       end
@@ -202,12 +203,12 @@ gui.toolbar = function(Options)
 
             item.border = self.vg.new('VectorRectangle', {
                name = 'grouprect', stroke = lColours.groupBorder, fill = 'rgb(0,0,0,20)', strokeWidth = 2,
-               x = x, y = y, roundX = 4, roundY = 4, width = 1, height = 1
+               x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
             })
 
             if self._groupClip then
                item.clip = self._groupClip.viewport.new('VectorRectangle', {
-                  name = 'groupclip', x = x, y = y, roundX = 4, roundY = 4, width = 1, height = 1
+                  name = 'groupclip', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
                })
             end
          elseif (item.type == TI_ICON) then
@@ -510,6 +511,7 @@ gui.toolbar = function(Options)
    self.viewport = Options.target.new('VectorViewport')
    self.viewport.x = nz(Options.x, 0)
    self.viewport.y = nz(Options.y, 0)
+   self.viewport.overflow = 'hidden'
 
    if Options.yOffset then
       self.viewport.yOffset = Options.yOffset
@@ -527,6 +529,11 @@ gui.toolbar = function(Options)
    if Options.width then
       self.viewport.width = Options.width
       self._arrangedWidth = false
+   end
+
+   if Options.flush then
+      self._round = 0
+      self._groupMargin = 0
    end
 
    if (self.viewport.init() != ERR_Okay) then error('Failed to initialise viewport.') end
