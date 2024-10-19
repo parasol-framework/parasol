@@ -2399,18 +2399,12 @@ static THREADVAR LONG _tlUniqueThreadID = 0;
 
 class Log { // C++ wrapper for Parasol's log functionality
    private:
-      LONG branches = 0;
-
-   public:
+      LONG branches;
       CSTRING header;
 
-      Log() {
-         header = NULL;
-      }
-
-      Log(CSTRING Header) {
-         header = Header;
-      }
+   public:
+      Log() : branches(0), header(NULL) { }
+      Log(CSTRING Header) : branches(0), header(Header) { }
 
       ~Log() {
          while (branches > 0) { branches--; LogReturn(); }
@@ -2436,7 +2430,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) { }
       #endif
 
-      void debranch() {
+      inline void debranch() {
          branches--;
          LogReturn();
       }
@@ -2498,12 +2492,12 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_end(arg);
       }
 
-      ERR error(ERR Code) { // Technically a warning
+      inline ERR error(ERR Code) { // Technically a warning
          FuncError(header, Code);
          return Code;
       }
 
-      ERR warning(ERR Code) {
+      inline ERR warning(ERR Code) {
          FuncError(header, Code);
          return Code;
       }
@@ -2526,7 +2520,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          #endif
       }
 
-      ERR traceWarning(ERR Code) {
+      inline ERR traceWarning(ERR Code) {
          #ifdef _DEBUG
             FuncError(header, Code);
          #endif
