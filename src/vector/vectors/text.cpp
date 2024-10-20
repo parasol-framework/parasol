@@ -175,6 +175,7 @@ class extVectorText : public extVector {
 
    std::vector<TextLine> txLines;
    FUNCTION txValidateInput;
+   FUNCTION txOnChange;
    DOUBLE txInlineSize; // Enables word-wrapping
    DOUBLE txX, txY;
    DOUBLE txTextLength;
@@ -250,6 +251,20 @@ inline DOUBLE get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
    FT_Vector delta;
    FT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
    return int26p6_to_dbl(delta.x);
+}
+
+inline void report_change(extVectorText *Self)
+{
+   if (Self->txOnChange.isC()) {
+      auto routine = (void (*)(extVectorText *))Self->txOnChange.Routine;
+      pf::SwitchContext context(Self->txOnChange.Context);
+      routine(Self);
+   }
+   else if (Self->txOnChange.isScript()) {
+      sc::Call(Self->txOnChange, std::to_array<ScriptArg>({
+         { "VectorText", Self, FD_OBJECTPTR }
+      }));
+   }
 }
 
 //********************************************************************************************************************
@@ -649,6 +664,36 @@ static ERR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
       else return ERR::AllocMemory;
    }
    else return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+OnChange: Receive notifications for changes to the text string.
+
+Set this field with a function reference to receive notifications whenever the text string changes.
+
+The callback function prototype is `void Function(*VectorText)`.
+
+*********************************************************************************************************************/
+
+static ERR TEXT_GET_OnChange(extVectorText *Self, FUNCTION **Value)
+{
+   if (Self->txOnChange.defined()) {
+      *Value = &Self->txOnChange;
+      return ERR::Okay;
+   }
+   else return ERR::FieldNotSet;
+}
+
+static ERR TEXT_SET_OnChange(extVectorText *Self, FUNCTION *Value)
+{
+   if (Value) {
+      if (Self->txOnChange.isScript()) UnsubscribeAction(Self->txOnChange.Context, AC::Free);
+      Self->txOnChange = *Value;
+   }
+   else Self->txOnChange.clear();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1686,6 +1731,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
       mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
+      report_change(Self);
       break;
 
    case KEY::CLEAR:
@@ -1694,6 +1740,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
          Self->txCursor.move(Self, Self->txCursor.row(), 0);
          ((objVectorText *)Self)->deleteLine(Self->txCursor.row());
       }
+      report_change(Self);
       break;
 
    case KEY::DELETE:
@@ -1708,6 +1755,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       }
       mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
+      report_change(Self);
       break;
 
    case KEY::END:
@@ -1733,6 +1781,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       else Self->txLines[row].replace(offset, Self->txLines[row].length() - offset, "");
       mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
+      report_change(Self);
       break;
    }
 
@@ -1979,6 +2028,8 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 
       Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column() + 1, true);
    }
+
+   report_change(Self);
 }
 
 //********************************************************************************************************************
@@ -2027,6 +2078,7 @@ static const FieldArray clTextFields[] = {
    { "Spacing",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_Spacing, TEXT_SET_Spacing },
    { "Font",          FDF_VIRTUAL|FDF_OBJECT|FDF_I, NULL, TEXT_SET_Font },
    // Non-SVG fields related to real-time text editing
+   { "OnChange",      FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, TEXT_GET_OnChange, TEXT_SET_OnChange },
    { "Focus",         FDF_VIRTUAL|FDF_OBJECTID|FDF_RI, TEXT_GET_Focus, TEXT_SET_Focus },
    { "CursorColumn",  FDF_VIRTUAL|FDF_LONG|FDF_RW, TEXT_GET_CursorColumn, TEXT_SET_CursorColumn },
    { "CursorRow",     FDF_VIRTUAL|FDF_LONG|FDF_RW, TEXT_GET_CursorRow, TEXT_SET_CursorRow },

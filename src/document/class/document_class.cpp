@@ -642,7 +642,14 @@ static ERR DOCUMENT_Free(extDocument *Self)
 
 /*********************************************************************************************************************
 -ACTION-
-GetKey: Retrieves script parameters.
+GetKey: Retrieves global variables and URI parameters.
+
+Use GetKey() to access the global variables and URI parameters of a document.  Priority is given to global
+variables if there is a name clash.
+
+The current value of each document widget is also available as a global variable accessible from GetKey().  The 
+key-value will be given the same name as that specified in the widget's element.
+
 -END-
 *********************************************************************************************************************/
 
@@ -1246,13 +1253,13 @@ static ERR DOCUMENT_SelectLink(extDocument *Self, struct doc::SelectLink *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-SetKey: Passes variable parameters to loaded documents.
+SetKey: Set a global key-value in the document.
 -END-
 *********************************************************************************************************************/
 
 static ERR DOCUMENT_SetKey(extDocument *Self, struct acSetKey *Args)
 {
-   // Please note that it is okay to set zero-length parameters
+   // Note: Zero-length parameter values are permitted.
 
    if ((!Args) or (!Args->Key)) return ERR::NullArgs;
    if (!Args->Key[0]) return ERR::Args;

@@ -298,6 +298,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
       acResize(Self->SourceScene, Self->ClientViewport->Scene->PageWidth, Self->ClientViewport->Scene->PageHeight, 0);
    }
 
+   auto const save_child = Self->SourceScene->Viewport->Child;
    Self->SourceScene->Viewport->Child = Self->ClientVector;
    Self->SourceGraphic->Clip = { Self->VectorClip.left, Self->VectorClip.top, Self->VectorClip.right, Self->VectorClip.bottom };
 
@@ -320,6 +321,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
 
    Self->Disabled = false;
    Self->ClientVector->Next = save_vector;
+   Self->SourceScene->Viewport->Child = save_child;
 
    Self->Rendered = true;
    return Self->SourceGraphic;

@@ -1,5 +1,40 @@
 
 //********************************************************************************************************************
+// Widget notification for user entry in inputbox, combobox etc
+
+static void notify_input_onchange(objVectorText *Vector)
+{
+   auto Self = (extDocument *)CurrentContext();
+   auto str = Vector->get<CSTRING>(FID_String);
+
+   Self->Vars[Vector->Name].assign(str);
+
+   if ((Self->EventMask & DEF::WIDGET_STATE) != DEF::NIL) {
+      if (auto vp = (Object *)Vector->CreatorMeta) {
+         KEYVALUE keys = { { "name", Vector->Name }, { "value", str } };
+         auto ent = std::get<bc_input *>(Self->VPToEntity[vp->UID].widget);
+         report_event(Self, DEF::WIDGET_STATE, ent, &keys);
+      }
+   }
+}
+
+static void notify_combo_onchange(objVectorText *Vector)
+{
+   auto Self = (extDocument *)CurrentContext();
+   auto str = Vector->get<CSTRING>(FID_String);
+
+   Self->Vars[Vector->Name].assign(str);
+
+   if ((Self->EventMask & DEF::WIDGET_STATE) != DEF::NIL) {
+      if (auto vp = (Object *)Vector->CreatorMeta) {
+         KEYVALUE keys = { { "name", Vector->Name }, { "value", str } };
+         auto ent = std::get<bc_combobox *>(Self->VPToEntity[vp->UID].widget);
+         report_event(Self, DEF::WIDGET_STATE, ent, &keys);
+      }
+   }
+}
+
+//********************************************************************************************************************
 // Feedback events for the combobox viewport.  Note that the viewport retains focus when the drop-down list is
 // presented.
 
@@ -19,6 +54,13 @@ static ERR combo_feedback(objVectorViewport *Viewport, FM Event, OBJECTPTR Event
    }
    else if ((Event IS FM::HAS_FOCUS) or (Event IS FM::CHILD_HAS_FOCUS)) {
       combo->last_good_input = combo->input->get<CSTRING>(FID_String);
+      if (!combo->name.empty()) {
+         Self->Vars[combo->name] = combo->last_good_input;
+         if ((Self->EventMask & DEF::WIDGET_STATE) != DEF::NIL) {
+            KEYVALUE keys = { { "name", combo->name }, { "value", combo->last_good_input } };
+            report_event(Self, DEF::WIDGET_STATE, combo, &keys);
+         }
+      }
    }
 
    Viewport->draw();
@@ -30,11 +72,23 @@ static ERR combo_feedback(objVectorViewport *Viewport, FM Event, OBJECTPTR Event
 
 void bc_combobox::callback(struct doc_menu &Menu, struct dropdown_item &Item)
 {
+   auto Self = (extDocument *)CurrentContext();
    auto combo = std::get<bc_combobox *>(Menu.m_ref);
    if (combo) {
-      if (!Item.value.empty()) combo->input->setFields(fl::String(Item.value));
-      else combo->input->setFields(fl::String(Item.content));
+      CSTRING value;
+      if (!Item.value.empty()) {
+         value = Item.value.c_str();
+      }
+      else value = Item.content.c_str();
+
+      combo->input->setFields(fl::String(value));
+      if (!combo->name.empty()) Self->Vars[combo->name] = value;
       combo->viewport->draw();
+
+      if ((Self->EventMask & DEF::WIDGET_STATE) != DEF::NIL) {
+         KEYVALUE keys = { { "name", combo->name }, { "value", combo->last_good_input } };
+         report_event(Self, DEF::WIDGET_STATE, combo, &keys);
+      }
    }
 }
 
@@ -1279,7 +1333,17 @@ static ERR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *Ev
    for (; Event; Event = Event->Next) {
       if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
          if (Event->Type IS JET::LMB) {
-            if (Event->Value IS 1) checkbox->alt_state ^= 1;
+            if (Event->Value IS 1) {
+               checkbox->alt_state ^= 1;
+               if (!checkbox->name.empty()) {
+                  Self->Vars[checkbox->name] = checkbox->alt_state ? "1" : "0";
+
+                  if ((Self->EventMask & DEF::WIDGET_STATE) != DEF::NIL) {
+                     KEYVALUE keys = { { "name", checkbox->name }, { "value", checkbox->alt_state ? "1" : "0" } };
+                     report_event(Self, DEF::WIDGET_STATE, checkbox, &keys);
+                  }
+               }
+            }
          }
 
          if (checkbox->alt_state) checkbox->viewport->setFill(checkbox->alt_fill);

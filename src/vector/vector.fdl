@@ -1206,6 +1206,9 @@ constexpr FieldValue AppendPath(OBJECTPTR Value) { return FieldValue(FID_AppendP
 constexpr FieldValue DragCallback(const FUNCTION &Value) { return FieldValue(FID_DragCallback, &Value); }
 constexpr FieldValue DragCallback(const FUNCTION *Value) { return FieldValue(FID_DragCallback, Value); }
 
+constexpr FieldValue OnChange(const FUNCTION &Value) { return FieldValue(FID_OnChange, &Value); }
+constexpr FieldValue OnChange(const FUNCTION *Value) { return FieldValue(FID_OnChange, Value); }
+
 constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, LONG(Value)); }
 constexpr FieldValue Overflow(VOF Value) { return FieldValue(FID_Overflow, LONG(Value)); }
 

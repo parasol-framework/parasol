@@ -16,10 +16,8 @@
     <copyright>Paul Manias © 2005-2024</copyright>
     <description>
 <p>The Document class offers a complete page layout engine, providing rich text display features for creating complex documents and text-based interfaces.  Internally, document data is maintained as a serial byte stream and all object model information from the source is discarded.  This simplification of the data makes it possible to edit the document in-place, much the same as any word processor.  Alternatively it can be used for presentation purposes only, similarly to PDF or HTML formats.  Presentation is achieved by building a vector scene graph in conjunction with the <class name="Vector">Vector</class> module.  This means that the output is compatible with SVG and can be manipulated in detail with our existing vector API.  Consequently, document formatting is closely integrated with SVG concepts and seamlessly inherits SVG functionality such as filling and stroking commands.</p>
-<header>Safety</header>
-<p>The Document class is intended to be safe to use when loading content from an unknown source.  Processing will be aborted if a problem is found or the document appears to be unrenderable.  It is however, not guaranteed that exploits are impossible.  Consideration should also be given to the possibility of exploits that target third party libraries such as libpng and libjpeg for instance.</p>
-<p>By default, script execution is not enabled when parsing a document source.  If support for scripts is enabled, there is no meaningful level of safety on offer when the document is processed.  This feature should not be used unless the source document has been written by the client, or has otherwise been received from a trusted source.</p>
-<p>To mitigate security problems, we recommend that the application is built with some form of sandbox that will stop the system being compromised by bad actors.  Utilising a project such as Win32 App Isolation https://github.com/microsoft/win32-app-isolation is one potential way of doing this.</p></description>
+<p>The native document format in Parasol is RIPL.  Documentation for RIPL is available in the Parasol Wiki.  Other document formats may be supported as sub-classes, but bear in mind that document parsing is a one-way trip and stateful information such as the HTML DOM is not supported.</p>
+<p>The Document class does not include a security barrier in its current form.  Documents that include scripted code should not be processed unless they originate from a trusted source and are confirmed as such. To mitigate security problems, we recommend that the application is built with some form of sandbox that can prevent the system being compromised by bad actors.  Utilising a project such as Win32 App Isolation https://github.com/microsoft/win32-app-isolation is one potential way of doing this.</p></description>
     <source>
       <file path="../class/">document_class.cpp</file>
       <file path="../class/">fields.cpp</file>
@@ -107,13 +105,17 @@
 
     <action>
       <name>GetKey</name>
-      <comment>Retrieves script parameters.</comment>
+      <comment>Retrieves global variables and URI parameters.</comment>
       <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
         <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
+      <description>
+<p>Use GetKey() to access the global variables and URI parameters of a document.  Priority is given to global variables if there is a name clash.</p>
+<p>The current value of each document widget is also available as a global variable accessible from GetKey().  The key-value will be given the same name as that specified in the widget's element.</p>
+      </description>
     </action>
 
     <action>
@@ -134,7 +136,7 @@
 
     <action>
       <name>SetKey</name>
-      <comment>Passes variable parameters to loaded documents.</comment>
+      <comment>Set a global key-value in the document.</comment>
       <prototype>ERR acSetKey(*Object, CSTRING Key, CSTRING Value)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of the target key.</param>
@@ -653,6 +655,7 @@
       <const name="ON_CROSSING_OUT">The mouse pointer has crossed out of an element.</const>
       <const name="ON_MOTION">The user has triggered a motion event in an element that supports motion monitoring.</const>
       <const name="PATH">The source file path has changed.  Useful for detecting when the user has left the page.</const>
+      <const name="WIDGET_STATE">The state value of a widget has changed (e.g. input, checkbox, text).  <code>name</code> and <code>value</code> keys will be defined in the event parameters.</const>
     </constants>
 
     <constants lookup="DRT" comment="Internal trigger codes">

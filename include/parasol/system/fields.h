@@ -934,6 +934,7 @@
 #define FID_MatrixRows 0x64419145LL
 #define FID_MatrixColumns 0x54dc215bLL
 #define FID_Matrix 0x0d3e291aLL
+#define FID_OnChange 0xee446f88LL
 #define FID_PathTimestamp 0x2efda9a6LL
 #define FID_PreserveAlpha 0xf9b49d57LL
 #define FID_Pretext 0xc28b4df1LL
