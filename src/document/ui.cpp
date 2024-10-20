@@ -1,4 +1,12 @@
 
+static void notify_input_onchange(objVectorText *Vector)
+{
+   auto Self = (extDocument *)CurrentContext();
+   auto str = Vector->get<CSTRING>(FID_String);
+
+   Self->Vars[Vector->Name].assign(str);
+}
+
 //********************************************************************************************************************
 // Feedback events for the combobox viewport.  Note that the viewport retains focus when the drop-down list is
 // presented.
@@ -19,6 +27,7 @@ static ERR combo_feedback(objVectorViewport *Viewport, FM Event, OBJECTPTR Event
    }
    else if ((Event IS FM::HAS_FOCUS) or (Event IS FM::CHILD_HAS_FOCUS)) {
       combo->last_good_input = combo->input->get<CSTRING>(FID_String);
+      if (!combo->name.empty()) Self->Vars[combo->name] = combo->last_good_input;
    }
 
    Viewport->draw();
@@ -30,10 +39,17 @@ static ERR combo_feedback(objVectorViewport *Viewport, FM Event, OBJECTPTR Event
 
 void bc_combobox::callback(struct doc_menu &Menu, struct dropdown_item &Item)
 {
+   auto Self = (extDocument *)CurrentContext();
    auto combo = std::get<bc_combobox *>(Menu.m_ref);
    if (combo) {
-      if (!Item.value.empty()) combo->input->setFields(fl::String(Item.value));
-      else combo->input->setFields(fl::String(Item.content));
+      if (!Item.value.empty()) {
+         combo->input->setFields(fl::String(Item.value));
+         if (!combo->name.empty()) Self->Vars[combo->name] = Item.value;
+      }
+      else {
+         combo->input->setFields(fl::String(Item.content));
+         if (!combo->name.empty()) Self->Vars[combo->name] = Item.content;
+      }
       combo->viewport->draw();
    }
 }
@@ -1279,7 +1295,12 @@ static ERR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *Ev
    for (; Event; Event = Event->Next) {
       if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
          if (Event->Type IS JET::LMB) {
-            if (Event->Value IS 1) checkbox->alt_state ^= 1;
+            if (Event->Value IS 1) {
+               checkbox->alt_state ^= 1;
+               if (!checkbox->name.empty()) {
+                  Self->Vars[checkbox->name] = checkbox->alt_state ? "1" : "0";
+               }
+            }
          }
 
          if (checkbox->alt_state) checkbox->viewport->setFill(checkbox->alt_fill);

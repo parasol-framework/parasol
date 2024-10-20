@@ -1861,6 +1861,8 @@ void parser::tag_checkbox(XMLTag &Tag)
 
    if (!widget.label.empty()) widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
 
+   if (!widget.name.empty()) Self->Vars[widget.name] = widget.alt_state ? "1" : "0";
+
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
 
@@ -1978,6 +1980,8 @@ void parser::tag_combobox(XMLTag &Tag)
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
    widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
 
+   if (!widget.name.empty()) Self->Vars[widget.name] = widget.value;
+
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
 
@@ -2017,6 +2021,8 @@ void parser::tag_input(XMLTag &Tag)
 
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
    widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
+
+   if (!widget.name.empty()) Self->Vars[widget.name] = widget.value;
 
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
