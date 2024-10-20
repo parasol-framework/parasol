@@ -8,6 +8,7 @@ static const struct FieldDef clDocumentEventMask[] = {
    { "OnCrossingOut", 0x00000010 },
    { "OnCrossing", 0x00000018 },
    { "LinkActivated", 0x00000020 },
+   { "WidgetState", 0x00000040 },
    { NULL, 0 }
 };
 

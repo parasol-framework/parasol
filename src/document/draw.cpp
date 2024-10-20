@@ -649,7 +649,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   DOUBLE y = avail_space - ((avail_space - font->metrics.Height) * 0.5);
 
                   combo.input = objVectorText::create::global({
-                     fl::Name(combo.name.empty() ? "combo_input" : combo.name), // Required for notify_input_onchange()
+                     fl::Name(combo.name.empty() ? "combo_input" : combo.name), // Required for notify_combo_onchange()
                      fl::Owner(combo.clip_vp->UID),
                      fl::X(0), fl::Y(F2T(y)),
                      fl::String(combo.value),
@@ -660,8 +660,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::Fill(combo.font_fill),
                      fl::LineLimit(1),
                      fl::TextFlags(VTXF::EDITABLE),
-                     fl::OnChange(C_FUNCTION(notify_input_onchange))
+                     fl::OnChange(C_FUNCTION(notify_combo_onchange))
                   });
+
+                  combo.input->CreatorMeta = *combo.viewport; // Required for notify_combo_onchange()
                }
 
                if (!combo.clip_vp.empty()) {
@@ -750,7 +752,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                   DOUBLE y = avail_space - ((avail_space - font->metrics.Height) * 0.5);
 
-                  objVectorText::create::global({
+                  auto vt = objVectorText::create::global({
                      fl::Name(input.name.empty() ? "input_text" : input.name), // Required for notify_input_onchange()
                      fl::Owner(input.clip_vp->UID),
                      fl::X(0), fl::Y(F2T(y)),
@@ -764,12 +766,15 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::TextFlags(flags),
                      fl::OnChange(C_FUNCTION(notify_input_onchange))
                   });
+
+                  vt->CreatorMeta = *input.viewport; // Required for notify_input_onchange()
                }
 
                if (!input.clip_vp.empty()) {
                   input.clip_vp->setFields(fl::X(input.label_pad), fl::Y(0), fl::XOffset(input.label_pad), fl::YOffset(0));
                }
 
+               Self->VPToEntity.emplace(input.viewport.id, vp_to_entity { &input });
                break;
             }
 
@@ -802,9 +807,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                      txt.vector_text.push_back(vt);
 
-                     DOUBLE twidth;
-                     vt->get(FID_TextWidth, &twidth);
-                     x_advance += twidth;
+                     x_advance += vt->get<DOUBLE>(FID_TextWidth);
                   }
                }
                break;

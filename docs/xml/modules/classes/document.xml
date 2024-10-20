@@ -655,6 +655,7 @@
       <const name="ON_CROSSING_OUT">The mouse pointer has crossed out of an element.</const>
       <const name="ON_MOTION">The user has triggered a motion event in an element that supports motion monitoring.</const>
       <const name="PATH">The source file path has changed.  Useful for detecting when the user has left the page.</const>
+      <const name="WIDGET_STATE">The state value of a widget has changed (e.g. input, checkbox, text).  <code>name</code> and <code>value</code> keys will be defined in the event parameters.</const>
     </constants>
 
     <constants lookup="DRT" comment="Internal trigger codes">
