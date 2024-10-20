@@ -31,7 +31,7 @@ local function defaultIcon(self)
 end
 
 gui.dialog.message = function(Options)
-   local self = { // Public variables
+   local self = { -- Public variables
       document = nil,
       options  = Options.options,
       type     = Options.type,
@@ -83,20 +83,18 @@ gui.dialog.message = function(Options)
             local response = self.options[responseIndex]
             local state = { }
 
-            if self.checkbox then
-               if self.checkbox.value == 1 then
-                  state.checkboxState = true
-               else
-                  state.checkboxState = false
-               end
+            if Document.getKey('checkbox') == '1' then
+               state.checkbox = true
+            else
+               state.checkbox = false
             end
 
-            if self.input then
-               state.input = nz(self.input.string, nil)
-               if self.inputRequired and not state.input then
-                  // If input is mandatory, the response is cancelled when no input is given
-                  response = nil
-               end
+            local input = Document.getKey('input')
+            if nz(input) then state.input = input end
+
+            if self.inputRequired and not state.input then
+               -- If input is mandatory, the response is cancelled when no input is given
+               response = nil
             end
 
             self.feedback(self, response, state)
@@ -111,7 +109,7 @@ gui.dialog.message = function(Options)
    local function buildDocument()
       local option_icons = ''
 
-      // At minimum, there must be an OK option.
+      -- At minimum, there must be an OK option.
 
       if not ((type(self.options) == 'table') and (#self.options > 0)) then
          self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
@@ -138,13 +136,13 @@ gui.dialog.message = function(Options)
 ]]
 
       if Options.envTemplate then
-         // The EnvTemplate can redefine the default body, GUI templates etc
+         -- The EnvTemplate can redefine the default body, GUI templates etc
          doc = doc .. options.envTemplate .. '\n'
       end
 
       if Options.template then
-         // A dialog-specific template can override the body style and change any class templates,
-         // header and footer etc
+         -- A dialog-specific template can override the body style and change any class templates,
+         -- header and footer etc
          doc = doc .. '<include src="' .. options.template .. '"/>\n'
       end
 
@@ -178,13 +176,13 @@ gui.dialog.message = function(Options)
             msg = ''
          end
 
-         doc = doc .. '<p><input name="inDialog" flags="' .. inputFlags .. '" width="200" value="' .. msg .. '"/></p>\n'
+         doc = doc .. '<p><input name="input" flags="' .. inputFlags .. '" width="200" value="' .. msg .. '"/></p>\n'
       end
 
       if Options.checkboxLabel then
          local checkbox_value = 'false'
          if Options.checkboxState then checkbox_value = 'true' end
-         doc = doc .. '<p><checkbox name="dlgCheckbox" label="' .. Options.checkboxLabel .. '" value="' .. checkbox_value .. '"/></p>\n'
+         doc = doc .. '<p><checkbox name="checkbox" label="' .. Options.checkboxLabel .. '" value="' .. checkbox_value .. '"/></p>\n'
       end
 
       if Options.inject then
@@ -267,14 +265,11 @@ gui.dialog.message = function(Options)
       eventMask     = 'LinkActivated',
       eventCallback = docEvent,
       path          = '#Index',
-      flags         = 'Unrestricted|NoScrollbars',
+      flags         = 'NoScrollbars',
       clientScript  = obj.find('self')
    })
 
    lDoc.acDataFeed(0, DATA_XML, buildDocument())
-
-   self.input = obj.find('inDialog')
-   self.checkbox = obj.find('dlgCheckbox')
 
    if self.input then
       self.input.textinput.mtSelectArea(0, 0, 20000, 20000)
@@ -290,7 +285,7 @@ gui.dialog.message = function(Options)
    return self
 end
 
-   // This sub-routine is provided for languages other than Fluid to utilise the module.
+   -- This sub-routine is provided for languages other than Fluid to utilise the module.
 
    do
       local state = getExecutionState()
