@@ -391,13 +391,20 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
    double seek_to = seek;
 
    if (not values.empty()) {
-      LONG vi = F2T((values.size()-1) * seek);
-      if (vi >= LONG(values.size())-1) vi = values.size() - 2;
-      vec::ReadPainter(NULL, values[vi].c_str(), &from_col, NULL);
-      vec::ReadPainter(NULL, values[vi+1].c_str(), &to_col, NULL);
+      if (values.size() >= 2) {
+         LONG vi = F2T((values.size()-1) * seek);
+         if (vi >= LONG(values.size())-1) vi = values.size() - 2;
+         vec::ReadPainter(NULL, values[vi].c_str(), &from_col, NULL);
+         vec::ReadPainter(NULL, values[vi+1].c_str(), &to_col, NULL);
 
-      const double mod = 1.0 / double(values.size() - 1);
-      seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+         const double mod = 1.0 / double(values.size() - 1);
+         seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
+      }
+      else if (values.size() IS 1) { // Equivalent to a single 'to'
+         vec::ReadPainter(NULL, target_attrib_orig.c_str(), &from_col, NULL);
+         vec::ReadPainter(NULL, values[0].c_str(), &to_col, NULL);
+      }
+      else return { 0, 0, 0, 0 };
    }
    else if (not from.empty()) {
       if (not to.empty()) {
