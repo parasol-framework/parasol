@@ -64,7 +64,7 @@ static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::pat
 static ERR VECTORSCENE_Reset(extVectorScene *);
 
 void apply_focus(extVectorScene *, extVector *);
-static void scene_key_event(extVectorScene *, evKey *, LONG);
+static void scene_key_event(evKey *, LONG, extVectorScene *);
 static void process_resize_msgs(extVectorScene *);
 
 static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
@@ -144,7 +144,7 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR A
 {
    auto Self = (extVectorScene *)CurrentContext();
    if (!Self->KeyHandle) {
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event), Self, &Self->KeyHandle);
+      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event, Self), &Self->KeyHandle);
    }
 }
 
@@ -431,7 +431,7 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
          SubscribeAction(*surface, AC::LostFocus, C_FUNCTION(notify_lostfocus));
 
          if (surface->hasFocus()) {
-            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event), Self, &Self->KeyHandle);
+            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event, Self), &Self->KeyHandle);
          }
       }
 
@@ -865,7 +865,7 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
 //********************************************************************************************************************
 // Distribute input events to any vectors that have subscribed and have the focus
 
-static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
+static void scene_key_event(evKey *Event, LONG Size, extVectorScene *Self)
 {
    const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
 

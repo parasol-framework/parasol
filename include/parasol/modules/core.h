@@ -2052,7 +2052,7 @@ struct CoreBase {
    ERR (*_SetName)(OBJECTPTR Object, CSTRING Name);
    void (*_LogReturn)(void);
    ERR (*_SubscribeAction)(OBJECTPTR Object, AC Action, FUNCTION *Callback);
-   ERR (*_SubscribeEvent)(LARGE Event, FUNCTION *Callback, APTR Custom, APTR *Handle);
+   ERR (*_SubscribeEvent)(LARGE Event, FUNCTION *Callback, APTR *Handle);
    ERR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription);
    ERR (*_UpdateTimer)(APTR Subscription, DOUBLE Interval);
    ERR (*_UnsubscribeAction)(OBJECTPTR Object, AC Action);
@@ -2151,7 +2151,7 @@ inline ERR ScanDir(struct DirInfo *Info) { return CoreBase->_ScanDir(Info); }
 inline ERR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
 inline ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION *Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
-inline ERR SubscribeEvent(LARGE Event, FUNCTION *Callback, APTR Custom, APTR *Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Custom,Handle); }
+inline ERR SubscribeEvent(LARGE Event, FUNCTION *Callback, APTR *Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Handle); }
 inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
 inline ERR UpdateTimer(APTR Subscription, DOUBLE Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
 inline ERR UnsubscribeAction(OBJECTPTR Object, AC Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
@@ -2244,7 +2244,7 @@ extern "C" ERR ScanDir(struct DirInfo *Info);
 extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);
 extern "C" void LogReturn(void);
 extern "C" ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION *Callback);
-extern "C" ERR SubscribeEvent(LARGE Event, FUNCTION *Callback, APTR Custom, APTR *Handle);
+extern "C" ERR SubscribeEvent(LARGE Event, FUNCTION *Callback, APTR *Handle);
 extern "C" ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription);
 extern "C" ERR UpdateTimer(APTR Subscription, DOUBLE Interval);
 extern "C" ERR UnsubscribeAction(OBJECTPTR Object, AC Action);
@@ -2315,8 +2315,8 @@ inline ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION Callback) {
    return SubscribeAction(Object,Action,&Callback);
 }
 
-inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR Custom, APTR *Handle) {
-   return SubscribeEvent(Event,&Callback,Custom,Handle);
+inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR *Handle) {
+   return SubscribeEvent(Event,&Callback,Handle);
 }
 
 inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION Callback, APTR *Subscription) {
@@ -4561,11 +4561,11 @@ template<class T> ERR ReadBE(OBJECTPTR Object, T *Result)
 
 // Function construction (refer types.h)
 
-template <class T> FUNCTION C_FUNCTION(T *pRoutine, APTR pMeta = NULL) {
+template <class T, class X = APTR> FUNCTION C_FUNCTION(T *pRoutine, X pMeta = 0) {
    auto func    = FUNCTION(CALL::STD_C);
    func.Context = CurrentContext();
    func.Routine = (APTR)pRoutine;
-   func.Meta    = pMeta;
+   func.Meta    = reinterpret_cast<void *>(pMeta);
    return func;
 };
 

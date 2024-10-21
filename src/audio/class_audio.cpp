@@ -60,10 +60,6 @@ static ERR AUDIO_Activate(extAudio *Self)
       return error;
    }
 
-   // Save the audio settings to disk post-initialisation
-
-   acSaveSettings(Self);
-
    // Calculate one mixing element size for the hardware driver (not our floating point mixer).
 
    if (Self->BitDepth IS 16) Self->DriverBitSize = sizeof(WORD);

@@ -31,16 +31,14 @@ static const std::array<CSTRING, LONG(EVG::END)> glEventGroups = {
 };
 
 struct eventsub {
-   struct eventsub *Next;
-   struct eventsub *Prev;
+   struct eventsub *Next, *Prev;
    EVENTID  EventID;
    EVENTID  EventMask;
-   void     (*Callback)(APTR Custom, APTR Info, LONG Size, APTR Meta);
+   void     (*Callback)(APTR Info, LONG Size, APTR Meta);
    APTR     CallbackMeta;
    EVG      Group;
    UBYTE    Called;
    OBJECTID ContextID;
-   APTR     Custom;
 
    inline CSTRING groupName() {
       return glEventGroups[UBYTE(Group)];
@@ -176,13 +174,12 @@ must be provided, as well as a reference to a function that will be called each 
 An event handle will be returned in the `Handle` parameter to identify the subscription.  This must be retained to later
 unsubscribe from the event with the ~UnsubscribeEvent() function.
 
-The prototype for the `Callback` function is `Function(APTR Custom, APTR Event, LONG Size)`, where `Event` is the
+The prototype for the `Callback` function is `Function(APTR Event, LONG Size, APTR CallbackMeta)`, where `Event` is the
 event structure that matches to the subscribed EventID.
 
 -INPUT-
 large Event:  An event identifier.
 ptr(func) Callback: The function that will be subscribed to the event.
-ptr Custom:   A custom pointer that will be sent to the callback function, set to `NULL` if not required.
 &ptr Handle:  Pointer to an address that will receive the event handle.
 
 -ERRORS-
@@ -192,7 +189,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handle)
+ERR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR *Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -213,13 +210,12 @@ ERR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handle)
 
       OBJECTPTR context = CurrentContext();
       event->EventID   = EventID;
-      event->Callback  = (void (*)(APTR, APTR, LONG, APTR))Callback->Routine;
+      event->Callback  = (void (*)(APTR, LONG, APTR))Callback->Routine;
       event->CallbackMeta = Callback->Meta;
       event->Group     = gid;
       event->ContextID = context->UID;
       event->Next      = glEventList;
       event->Prev      = NULL;
-      event->Custom    = Custom;
       event->EventMask = mask;
 
       if (glEventList) glEventList->Prev = event;
@@ -321,7 +317,7 @@ restart:
          pf::ScopedObjectLock lock(event->ContextID, 3000);
          if (lock.granted()) {
             pf::SwitchContext ctx(lock.obj);
-            event->Callback(event->Custom, Message, MsgSize, event->CallbackMeta);
+            event->Callback(Message, MsgSize, event->CallbackMeta);
          }
 
          if (glEventListAltered) goto restart;

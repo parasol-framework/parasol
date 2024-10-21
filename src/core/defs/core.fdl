@@ -1213,8 +1213,8 @@ inline ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION Callback) {
    return SubscribeAction(Object,Action,&Callback);
 }
 
-inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR Custom, APTR *Handle) {
-   return SubscribeEvent(Event,&Callback,Custom,Handle);
+inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR *Handle) {
+   return SubscribeEvent(Event,&Callback,Handle);
 }
 
 inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION Callback, APTR *Subscription) {
@@ -2412,11 +2412,11 @@ template<class T> ERR ReadBE(OBJECTPTR Object, T *Result)
 
 // Function construction (refer types.h)
 
-template <class T> FUNCTION C_FUNCTION(T *pRoutine, APTR pMeta = NULL) {
+template <class T, class X = APTR> FUNCTION C_FUNCTION(T *pRoutine, X pMeta = 0) {
    auto func    = FUNCTION(CALL::STD_C);
    func.Context = CurrentContext();
    func.Routine = (APTR)pRoutine;
-   func.Meta    = pMeta;
+   func.Meta    = reinterpret_cast<void *>(pMeta);
    return func;
 };
 
