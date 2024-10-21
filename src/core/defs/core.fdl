@@ -114,8 +114,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("VOLUME", { comment="Options for SetVolume()" },
     "REPLACE: If the volume already exists, all paths that are attached to it will be replaced with the new path setting.",
     "PRIORITY: If the volume already exists, the path will be inserted at the beginning of the path list so that it has priority over the others.",
-    "HIDDEN: Hides the volume so that it will not show up when reading the root folder.",
-    "SYSTEM: Identifies the volume as being created by the system, is immutable and persistent between sessions.")
+    "HIDDEN: Hides the volume so that it will not show up when reading volumes from the root path `:`.",
+    "SYSTEM: Identifies the volume as being created by the system (this flag is not for client use).")
 
   flags("FDL", { comment="Options for the File Delete() method." },
     "FEEDBACK: Automatically manage user feedback for deleting files by presenting dialog boxes.")
@@ -2061,8 +2061,9 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
          if (!group.compare(Group)) {
             if (auto it = keys.find(Key); it != keys.end()) {
                it->second.assign(Value);
-               return ERR::Okay;
             }
+            else keys.emplace(Key, Value);
+            return ERR::Okay;
          }
       }
 

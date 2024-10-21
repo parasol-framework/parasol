@@ -3497,8 +3497,9 @@ class objConfig : public Object {
          if (!group.compare(Group)) {
             if (auto it = keys.find(Key); it != keys.end()) {
                it->second.assign(Value);
-               return ERR::Okay;
             }
+            else keys.emplace(Key, Value);
+            return ERR::Okay;
          }
       }
 
