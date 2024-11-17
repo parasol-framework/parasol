@@ -331,8 +331,7 @@ static ERR THREAD_Activate(extThread *Self)
    }
    else {
       char errstr[80];
-      strerror_r(errno, errstr, sizeof(errstr));
-      log.warning("pthread_create() failed with error: %s.", errstr);
+      log.warning("pthread_create() failed with error: %s.", strerror_r(errno, errstr, sizeof(errstr)));
       pthread_attr_destroy(&attr);
       Self->Active = false;
       return log.warning(ERR::SystemCall);
