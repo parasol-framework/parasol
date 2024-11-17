@@ -1611,7 +1611,7 @@ struct OpenInfo {
 #define FDF_SYNONYM    FD_SYNONYM
 
 #define FDF_UNSIGNED    FD_UNSIGNED
-#define FDF_FUNCTION    FD_FUNCTION           // sizeof(struct rkFunction) - use FDF_FUNCTIONPTR for sizeof(APTR)
+#define FDF_FUNCTION    FD_FUNCTION           // sizeof(FUNCTION) - use FDF_FUNCTIONPTR for sizeof(APTR)
 #define FDF_FUNCTIONPTR (FD_FUNCTION|FD_POINTER)
 #define FDF_STRUCT      FD_STRUCT
 #define FDF_RESOURCE    FD_RESOURCE
@@ -4419,22 +4419,22 @@ class objCompressedStream : public Object {
 #include <pthread.h>
 #endif
 
+namespace pf {
+
 #ifdef __system__
+   struct ActionMessage {
+      OBJECTID ObjectID;  // The object that is to receive the action
+      LONG  Time;
+      AC ActionID;        // ID of the action or method to execute
+      bool SendArgs;
 
-struct ActionMessage {
-   OBJECTID ObjectID;  // The object that is to receive the action
-   LONG  Time;
-   AC ActionID;        // ID of the action or method to execute
-   bool SendArgs;
-
-   // Action arguments follow this structure in a buffer
-};
-
+      // Action arguments follow this structure in a buffer
+   };
 #endif
 
 // Event support
 
-struct rkEvent {
+struct Event {
    EVENTID EventID;
    // Data follows
 };
@@ -4504,6 +4504,8 @@ struct evHotplug {
    };
    char Vendor[40];      // Name of vendor
 };
+
+} // namespace
 
 namespace fl {
 

@@ -261,7 +261,7 @@ int fcmd_catch(lua_State *Lua)
 // Where Args is a named array containing the event parameters.  If the event is not known to Fluid, then no Args will
 // be provided.
 
-static void receive_event(rkEvent *Info, LONG InfoSize, APTR CallbackMeta)
+static void receive_event(pf::Event *Info, LONG InfoSize, APTR CallbackMeta)
 {
    auto Script = (objScript *)CurrentContext();
    auto prv = (prvFluid *)Script->ChildPrivate;

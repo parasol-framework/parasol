@@ -99,14 +99,14 @@ ERR BroadcastEvent(APTR Event, LONG EventSize)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Event) or ((size_t)EventSize < sizeof(rkEvent))) return ERR::NullArgs;
+   if ((!Event) or ((size_t)EventSize < sizeof(pf::Event))) return ERR::NullArgs;
 
-   LONG groupmask = 1<<((((rkEvent *)Event)->EventID>>56) & 0xff);
+   LONG groupmask = 1<<((((pf::Event *)Event)->EventID>>56) & 0xff);
 
    if (glEventMask & groupmask) {
       log.trace("Broadcasting event $%.8x%.8x",
-         (ULONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff),
-         (ULONG)(((rkEvent *)Event)->EventID));
+         (ULONG)(((pf::Event *)Event)->EventID>>32 & 0xffffffff),
+         (ULONG)(((pf::Event *)Event)->EventID));
       SendMessage(MSGID_EVENT, MSF::NIL, Event, EventSize);
    }
 
@@ -294,9 +294,9 @@ ERR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Message) or ((size_t)MsgSize < sizeof(rkEvent))) return ERR::Okay;
+   if ((!Message) or ((size_t)MsgSize < sizeof(pf::Event))) return ERR::Okay;
 
-   rkEvent *eventmsg = (rkEvent *)Message;
+   pf::Event *eventmsg = (pf::Event *)Message;
 
    log.msg(VLF::DETAIL|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
       (LONG)(eventmsg->EventID & 0xffffffff));
