@@ -1483,12 +1483,8 @@ gui.fileview = function(View, Options)
                self.browse(nil)
             end)
 
-            Bar.addItem(2, 'Parent', 'Parent Folder', 'arrows/arrow_nw', function()
+            Bar.addItem(2, 'Parent', 'Parent Folder', 'folders/parent', function()
                self.parentFolder()
-            end)
-
-            Bar.addItem(3, 'Bookmark', 'Bookmarks', 'items/bookmark', function()
-               -- TODO: Add the current folder as a new volume.
             end)
 
             Bar.addItem(4, 'Prev', 'Previous File', 'arrows/fat_left', function()
@@ -1504,6 +1500,30 @@ gui.fileview = function(View, Options)
                   displayFilters(self)
                end)
             end
+
+            Bar.addItem(3, 'Bookmark', 'Bookmarks', 'items/new_bookmark', function()
+               if (string.len(self.path) < 3) then return end
+
+               local current_path = self.path
+
+               gui.dialog.message({
+                  modal         = true,
+                  image         = 'items/bookmark',
+                  title         = 'Create New Volume',
+                  message       = 'Enter a new volume name for the path ' .. self.path,
+                  userInput     = '',
+                  options = {
+                     { id=2, text='Cancel', icon='items/cancel' },
+                     { id=1, text='Create Volume', icon='items/checkmark' }
+                  },
+                  feedback = function(Dialog, Response, State)
+                     if Response and Response.id == 1 and string.len(State.input) > 0 then
+                        mSys.SetVolume(State.input, current_path, 'items/bookmark', nil, nil, VOLUME_REPLACE)
+                     end
+                  end
+               })
+            end)
+
          end
       })
 

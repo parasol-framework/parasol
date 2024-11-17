@@ -211,7 +211,7 @@ static ERR create_scintilla(void);
 static void draw_scintilla(extScintilla *, objSurface *, objBitmap *);
 static ERR load_file(extScintilla *, CSTRING);
 static void calc_longest_line(extScintilla *);
-static void key_event(extScintilla *, evKey *, LONG);
+static void key_event(evKey *, LONG, extScintilla *);
 static void report_event(extScintilla *, SEF Event);
 static ERR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime);
 extern ERR init_search(void);
@@ -307,7 +307,7 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR A
    if (Result != ERR::Okay) return;
 
    if (!Self->prvKeyEvent) {
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), Self, &Self->prvKeyEvent);
+      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, Self), &Self->prvKeyEvent);
    }
 
    if ((Self->Visible) and ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL)) {
@@ -808,7 +808,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
       SubscribeAction(*surface, AC::Show, C_FUNCTION(notify_show));
 
       if (surface->hasFocus()) {
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), Self, &Self->prvKeyEvent);
+         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, Self), &Self->prvKeyEvent);
       }
    }
    else return log.warning(ERR::AccessObject);
@@ -2260,7 +2260,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
 
 //********************************************************************************************************************
 
-static void key_event(extScintilla *Self, evKey *Event, LONG Size)
+static void key_event(evKey *Event, LONG Size, extScintilla *Self)
 {
    pf::Log log;
 

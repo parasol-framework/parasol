@@ -681,7 +681,7 @@ struct OpenInfo {
 #define FDF_SYNONYM    FD_SYNONYM
 
 #define FDF_UNSIGNED    FD_UNSIGNED
-#define FDF_FUNCTION    FD_FUNCTION           // sizeof(struct rkFunction) - use FDF_FUNCTIONPTR for sizeof(APTR)
+#define FDF_FUNCTION    FD_FUNCTION           // sizeof(FUNCTION) - use FDF_FUNCTIONPTR for sizeof(APTR)
 #define FDF_FUNCTIONPTR (FD_FUNCTION|FD_POINTER)
 #define FDF_STRUCT      FD_STRUCT
 #define FDF_RESOURCE    FD_RESOURCE
@@ -1213,8 +1213,8 @@ inline ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION Callback) {
    return SubscribeAction(Object,Action,&Callback);
 }
 
-inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR Custom, APTR *Handle) {
-   return SubscribeEvent(Event,&Callback,Custom,Handle);
+inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR *Handle) {
+   return SubscribeEvent(Event,&Callback,Handle);
 }
 
 inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION Callback, APTR *Subscription) {
@@ -2270,22 +2270,22 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
 #include <pthread.h>
 #endif
 
+namespace pf {
+
 #ifdef __system__
+   struct ActionMessage {
+      OBJECTID ObjectID;  // The object that is to receive the action
+      LONG  Time;
+      AC ActionID;        // ID of the action or method to execute
+      bool SendArgs;
 
-struct ActionMessage {
-   OBJECTID ObjectID;  // The object that is to receive the action
-   LONG  Time;
-   AC ActionID;        // ID of the action or method to execute
-   bool SendArgs;
-
-   // Action arguments follow this structure in a buffer
-};
-
+      // Action arguments follow this structure in a buffer
+   };
 #endif
 
 // Event support
 
-struct rkEvent {
+struct Event {
    EVENTID EventID;
    // Data follows
 };
@@ -2356,6 +2356,8 @@ struct evHotplug {
    char Vendor[40];      // Name of vendor
 };
 
+} // namespace
+
 namespace fl {
 
 // Read endian values from files and objects.
@@ -2412,11 +2414,11 @@ template<class T> ERR ReadBE(OBJECTPTR Object, T *Result)
 
 // Function construction (refer types.h)
 
-template <class T> FUNCTION C_FUNCTION(T *pRoutine, APTR pMeta = NULL) {
+template <class T, class X = APTR> FUNCTION C_FUNCTION(T *pRoutine, X pMeta = 0) {
    auto func    = FUNCTION(CALL::STD_C);
    func.Context = CurrentContext();
    func.Routine = (APTR)pRoutine;
-   func.Meta    = pMeta;
+   func.Meta    = reinterpret_cast<void *>(pMeta);
    return func;
 };
 

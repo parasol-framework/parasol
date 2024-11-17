@@ -50,7 +50,7 @@ extern "C" ERR ScanDir(struct DirInfo * Info);
 extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);
 extern "C" void LogReturn();
 extern "C" ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION * Callback);
-extern "C" ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR * Handle);
+extern "C" ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR * Handle);
 extern "C" ERR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR * Subscription);
 extern "C" ERR UpdateTimer(APTR Subscription, DOUBLE Interval);
 extern "C" ERR UnsubscribeAction(OBJECTPTR Object, AC Action);

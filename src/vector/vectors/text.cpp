@@ -218,7 +218,7 @@ static void delete_selection(extVectorText *);
 static void insert_char(extVectorText *, LONG, LONG);
 static void generate_text(extVectorText *, agg::path_storage &Path);
 static void raster_text_to_bitmap(extVectorText *);
-static void key_event(extVectorText *, evKey *, LONG);
+static void key_event(evKey *, LONG, extVectorText *);
 static ERR reset_font(extVectorText *, bool = false);
 static ERR text_input_events(extVector *, const InputEvent *);
 static ERR text_focus_event(extVector *, FM, OBJECTPTR, APTR);
@@ -246,7 +246,7 @@ inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE &X, 
 
 inline DOUBLE get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 {
-   if ((!Glyph) or (!PrevGlyph)) return 0;
+   if ((not Glyph) or (not PrevGlyph)) return 0;
 
    FT_Vector delta;
    FT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
@@ -325,7 +325,7 @@ static ERR VECTORTEXT_DeleteLine(extVectorText *Self, struct vt::DeleteLine *Arg
 {
    if (Self->txLines.empty()) return ERR::Okay;
 
-   if ((!Args) or (Args->Line < 0)) Self->txLines.pop_back();
+   if ((not Args) or (Args->Line < 0)) Self->txLines.pop_back();
    else if ((size_t)Args->Line < Self->txLines.size()) Self->txLines.erase(Self->txLines.begin() + Args->Line);
    else return ERR::Args;
 
@@ -379,7 +379,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
 static ERR VECTORTEXT_Init(extVectorText *Self)
 {
    if ((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) {
-      if (!Self->txFocusID) {
+      if (not Self->txFocusID) {
          if (Self->ParentView) Self->txFocusID = Self->ParentView->UID;
       }
 
@@ -534,7 +534,7 @@ taken into account.
 
 static ERR TEXT_GET_Descent(extVectorText *Self, LONG *Value)
 {
-   if (!Self->txHandle) {
+   if (not Self->txHandle) {
       if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
@@ -557,7 +557,7 @@ account.  The height includes the top region reserved for accents, but excludes 
 
 static ERR TEXT_GET_DisplayHeight(extVectorText *Self, LONG *Value)
 {
-   if (!Self->txHandle) {
+   if (not Self->txHandle) {
       if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
@@ -581,7 +581,7 @@ calculation `16 * 72 / 96`.
 
 static ERR TEXT_GET_DisplaySize(extVectorText *Self, LONG *Value)
 {
-   if (!Self->txHandle) {
+   if (not Self->txHandle) {
       if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
@@ -913,7 +913,7 @@ static ERR TEXT_GET_FontStyle(extVectorText *Self, CSTRING *Value)
 
 static ERR TEXT_SET_FontStyle(extVectorText *Self, CSTRING Value)
 {
-   if ((!Value) or (!Value[0])) strcopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
+   if ((not Value) or (not Value[0])) strcopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
    else strcopy(Value, Self->txFontStyle, sizeof(Self->txFontStyle));
    return ERR::Okay;
 }
@@ -994,7 +994,7 @@ This field can be queried for the amount of space between each line, measured in
 
 static ERR TEXT_GET_LineSpacing(extVectorText *Self, LONG *Value)
 {
-   if (!Self->txHandle) {
+   if (not Self->txHandle) {
       if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
@@ -1329,9 +1329,9 @@ transforms.
 
 static ERR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
 {
-   if (!Self->initialised()) return ERR::NotInitialised;
+   if (not Self->initialised()) return ERR::NotInitialised;
 
-   if (!Self->txHandle) {
+   if (not Self->txHandle) {
       if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
@@ -1447,7 +1447,7 @@ extern void set_text_final_xy(extVectorText *Vector)
 
 static ERR reset_font(extVectorText *Vector, bool Force)
 {
-   if ((!Vector->initialised()) and (!Force)) return ERR::NotInitialised;
+   if ((not Vector->initialised()) and (not Force)) return ERR::NotInitialised;
 
    pf::Log log;
    if (auto error = get_font(log, Vector->txFamily, Vector->txFontStyle, Vector->txWeight, Vector->txFontSize, &Vector->txHandle); error IS ERR::Okay) {
@@ -1519,8 +1519,8 @@ static ERR text_focus_event(extVector *Vector, FM Event, OBJECTPTR EventObject, 
          else {
             SubscribeTimer(0.8, C_FUNCTION(cursor_timer), &Self->txCursor.timer);
 
-            if (!Self->txKeyEvent) {
-               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), Self, &Self->txKeyEvent);
+            if (not Self->txKeyEvent) {
+               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, Self), &Self->txKeyEvent);
             }
          }
 
@@ -1645,7 +1645,7 @@ static ERR text_input_events(extVector *Vector, const InputEvent *Events)
 
 //********************************************************************************************************************
 
-static void key_event(extVectorText *Self, evKey *Event, LONG Size)
+static void key_event(evKey *Event, LONG Size, extVectorText *Self)
 {
    if ((Event->Qualifiers & KQ::PRESSED) IS KQ::NIL) return;
 
@@ -1717,7 +1717,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
          Self->txLines[Self->txCursor.row()].replace(offset, Self->txLines[Self->txCursor.row()].charLength(offset), "");
       }
       else if (Self->txCursor.row() > 0) { // The current line will be shifted up into the line above it
-         if ((!Self->txLines[Self->txCursor.row()-1].empty()) or (!Self->txLines[Self->txCursor.row()].empty())) {
+         if ((not Self->txLines[Self->txCursor.row()-1].empty()) or (not Self->txLines[Self->txCursor.row()].empty())) {
             Self->txLines[Self->txCursor.row()-1] += Self->txLines[Self->txCursor.row()];
             Self->txLines.erase(Self->txLines.begin() + Self->txCursor.row());
             Self->txCursor.move(Self, Self->txCursor.row()-1, Self->txLines[Self->txCursor.row()].utf8Length());
@@ -1777,7 +1777,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       Self->txCursor.move(Self, row + 1, 0);
       add_line(Self, Self->txLines[row], offset, Self->txLines[row].length() - offset, row+1);
 
-      if (!offset) Self->txLines[row].clear();
+      if (not offset) Self->txLines[row].clear();
       else Self->txLines[row].replace(offset, Self->txLines[row].length() - offset, "");
       mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
@@ -1804,7 +1804,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    case KEY::RIGHT:
       Self->txCursor.resetFlash();
       Self->txCursor.vector->setVisibility(VIS::VISIBLE);
-      if (!Self->txLines.empty()) {
+      if (not Self->txLines.empty()) {
          if (Self->txCursor.column() < Self->txLines[Self->txCursor.row()].utf8Length()) {
             Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()+1);
          }
@@ -1904,12 +1904,12 @@ void TextCursor::move(extVectorText *Vector, LONG Row, LONG Column, bool Validat
 
    if (Row < 0) Row = 0;
    else if ((size_t)Row >= Vector->txLines.size()) {
-      if (!Vector->txLines.empty()) Row = (LONG)Vector->txLines.size() - 1;
+      if (not Vector->txLines.empty()) Row = (LONG)Vector->txLines.size() - 1;
    }
 
    if (Column < 0) Column = 0;
    else if (ValidateWidth) {
-      if (!Vector->txLines.empty()) {
+      if (not Vector->txLines.empty()) {
          LONG max_col = Vector->txLines[mRow].utf8Length();
          if (Column > max_col) Column = max_col;
       }
@@ -1930,7 +1930,7 @@ void TextCursor::reset_vector(extVectorText *Vector) const
    if (Vector->txCursor.vector) {
       auto &line = Vector->txLines[mRow];
 
-      if (!line.chars.empty()) {
+      if (not line.chars.empty()) {
          auto col = mColumn;
          if ((size_t)col >= line.chars.size()) col = line.chars.size() - 1;
          Vector->txCursor.vector->Points[0].X = line.chars[col].x1 + 0.5;
@@ -1942,7 +1942,7 @@ void TextCursor::reset_vector(extVectorText *Vector) const
          // If the cursor X,Y lies outside of the parent viewport, offset the text so that it remains visible to
          // the user.
 
-         if ((!Vector->Morph) and (Vector->ParentView)) {
+         if ((not Vector->Morph) and (Vector->ParentView)) {
             auto p_width = Vector->ParentView->vpFixedWidth;
             DOUBLE xo = 0;
             const DOUBLE CURSOR_MARGIN = Vector->txFontSize * 0.5;
@@ -1995,7 +1995,7 @@ void TextCursor::validate_position(extVectorText *Self) const
 
 static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 {
-   if ((!Self) or (!Unicode)) return;
+   if ((not Self) or (not Unicode)) return;
 
    mark_dirty(Self, RC::BASE_PATH);
 
