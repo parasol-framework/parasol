@@ -163,7 +163,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 {
    pf::Log log("process_stops");
 
-   log.traceBranch("");
+   log.traceBranch();
 
    std::vector<Transition> stops;
    for (auto &scan : Tags) {

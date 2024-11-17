@@ -502,7 +502,7 @@ static ERR VECTORFILTER_Clear(extVectorFilter *Self)
 {
    pf::Log log;
 
-   log.branch("");
+   log.branch();
    while (Self->Effects) FreeResource(Self->Effects);
 
    Self->Bank.clear();

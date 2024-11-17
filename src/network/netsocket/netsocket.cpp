@@ -402,7 +402,7 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
 {
    pf::Log log;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if ((!Args) or (!Args->Address)) return log.warning(ERR::NullArgs);
 

@@ -224,7 +224,7 @@ static ERR txt_to_json(objXML *Self, CSTRING Text)
 
    if ((!Self) or (!Text)) return ERR::NullArgs;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    CSTRING str;
    Self->Tags.clear();

@@ -2485,7 +2485,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          va_end(arg);
       }
 
-      void function(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Equivalent to branch() but without a new branch being created
+      void function(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) { // Equivalent to branch() but without a new branch being created
          va_list arg;
          va_start(arg, Message);
          VLogF(VLF::API|VLF::FUNCTION, header, Message, arg);

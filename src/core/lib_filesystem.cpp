@@ -2727,7 +2727,7 @@ ERR load_datatypes(void)
    static LARGE user_ts = 0;
    bool reload;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (!glDatatypes) {
       reload = true;

@@ -1118,7 +1118,7 @@ static void reset_cursor(extDocument *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.function("");
+   log.function();
 
    Self->CursorState = 1;
    if (Self->FlashTimer) UpdateTimer(Self->FlashTimer, 0.5);

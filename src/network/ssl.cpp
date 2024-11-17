@@ -9,7 +9,7 @@ static ERR sslInit(void)
 
    if (ssl_init) return ERR::Okay;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    SSL_load_error_strings();
    ERR_load_BIO_strings();
@@ -103,7 +103,7 @@ static ERR sslSetup(extNetSocket *Self)
 
    if (Self->CTX) return ERR::Okay;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if ((Self->CTX = SSL_CTX_new(SSLv23_client_method()))) {
       //if (GetResource(RES::LOG_LEVEL) > 3) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
@@ -143,7 +143,7 @@ static ERR sslLinkSocket(extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if ((Self->BIO = BIO_new_socket(Self->SocketHandle, BIO_NOCLOSE))) {
       SSL_set_bio(Self->SSL, Self->BIO, Self->BIO);
@@ -169,7 +169,7 @@ static ERR sslConnect(extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (!Self->SSL) return ERR::FieldNotSet;
 

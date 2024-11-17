@@ -6,7 +6,7 @@ static void redraw(extDocument *Self, bool Focus)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("");
+   log.traceBranch();
 
    {
       #ifndef RETAIN_LOG_LEVEL

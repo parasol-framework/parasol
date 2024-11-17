@@ -255,7 +255,7 @@ bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 void ScintillaParasol::ReconfigureScrollBars()
 {
    pf::Log log(__FUNCTION__);
-   log.traceBranch("");
+   log.traceBranch();
 
 /*
 	 if (horizontalScrollBarVisible) acShowID(scintilla->HScroll);
@@ -273,7 +273,7 @@ void ScintillaParasol::ReconfigureScrollBars()
 void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedText)
 {
    pf::Log log(__FUNCTION__);
-   log.traceBranch("");
+   log.traceBranch();
 
    auto clipboard = objClipboard::create { };
    if (clipboard.ok()) {
@@ -290,7 +290,7 @@ void ScintillaParasol::CopyToClipboard(const Scintilla::SelectionText &selectedT
 void ScintillaParasol::Cut()
 {
    pf::Log log(__FUNCTION__);
-   log.traceBranch("");
+   log.traceBranch();
 
    if (SendScintilla(SCI_GETSELECTIONSTART) != SendScintilla(SCI_GETSELECTIONEND)) {
       Scintilla::SelectionText text;
@@ -307,7 +307,7 @@ void ScintillaParasol::Cut()
 void ScintillaParasol::Copy()
 {
    pf::Log log(__FUNCTION__);
-   log.traceBranch("");
+   log.traceBranch();
 
    if (SendScintilla(SCI_GETSELECTIONSTART) != SendScintilla(SCI_GETSELECTIONEND)) {
       Scintilla::SelectionText text;
@@ -322,7 +322,7 @@ void ScintillaParasol::Paste()
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("");
+   log.traceBranch();
 
    objClipboard::create clipboard = { };
    if (clipboard.ok()) {
@@ -370,7 +370,7 @@ void ScintillaParasol::Paste()
 void ScintillaParasol::ClaimSelection()
 {
    pf::Log log(__FUNCTION__);
-   log.traceBranch("");
+   log.traceBranch();
    if (!SelectionEmpty()) primarySelection = true;
    else primarySelection = false;
 }
@@ -769,7 +769,7 @@ void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
 void ScintillaParasol::panFontChanged(void *Font, void *BoldFont, void *ItalicFont, void *BIFont)
 {
    pf::Log log(__FUNCTION__);
-   log.traceBranch("");
+   log.traceBranch();
 
    glFont       = (OBJECTPTR)Font;
    glBoldFont   = (OBJECTPTR)BoldFont;
@@ -904,7 +904,7 @@ void ScintillaParasol::panMouseRelease(JET Button, double x, double y)
 void ScintillaParasol::panResized()
 {
    pf::Log log(__FUNCTION__);
-   log.traceBranch("");
+   log.traceBranch();
    ChangeSize();
 }
 

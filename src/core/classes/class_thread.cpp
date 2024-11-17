@@ -93,7 +93,7 @@ ERR threadpool_get(extThread **Result)
 {
    pf::Log log;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    glmThreadPool.lock();
 
