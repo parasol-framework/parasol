@@ -320,7 +320,7 @@ static ERR DISPLAY_Focus(extDisplay *Self)
 {
    pf::Log log;
 
-   log.traceBranch("");
+   log.traceBranch();
 #ifdef _WIN32
    winFocus(Self->WindowHandle);
 #elif __xwindows__

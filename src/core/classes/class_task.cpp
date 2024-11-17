@@ -289,7 +289,7 @@ static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
    if (recursive) return;
    if (!Task->Platform) return;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    char buffer[4096];
    LONG size = sizeof(buffer) - 1;
@@ -311,7 +311,7 @@ static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
    if (recursive) return;
    if (!Task->Platform) return;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    char buffer[4096];
    LONG size = sizeof(buffer) - 1;

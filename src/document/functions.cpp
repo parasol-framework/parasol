@@ -885,7 +885,7 @@ void ui_link::exec(extDocument *Self)
 
    pf::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    Self->Processing++;
 

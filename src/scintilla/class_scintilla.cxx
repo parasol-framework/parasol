@@ -1392,7 +1392,7 @@ static ERR SCINTILLA_TrimWhitespace(extScintilla *Self)
 {
    pf::Log log;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    LONG cursorpos = SCICALL(SCI_GETCURRENTPOS);
    LONG cursorline = SCICALL(SCI_LINEFROMPOSITION, cursorpos);

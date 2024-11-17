@@ -498,7 +498,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 
    if (Self->Size < 8192) return ERR::Okay;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (Self->prvCompress) {
       // If the original compression object still exists, all we are going to do is free up the raw bitmap data.

@@ -9,7 +9,6 @@ if (XXD_CMD STREQUAL "XXD_CMD-NOTFOUND")
 	message (STATUS "The xxd command is unavailable on this system")
 else ()
    add_custom_command (OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/auth.c"
-      PRE_BUILD
       COMMAND bash -c "${XXD_CMD} -c20 -i ${CMAKE_CURRENT_SOURCE_DIR}/auth.fluid | sed 's/auth_fluid/glAuthScript/g;s/glAuthScript_len/glAuthScriptLength/g' > auth.c"
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
       COMMENT "Generating C binary from auth.fluid"

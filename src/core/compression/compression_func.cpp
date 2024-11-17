@@ -466,7 +466,7 @@ static ERR fast_scan_zip(extCompression *Self)
    pf::Log log(__FUNCTION__);
    ziptail tail;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (acSeek(Self->FileIO, TAIL_LENGTH, SEEK::END) != ERR::Okay) return ERR::Seek; // Surface error, fail
    if (acRead(Self->FileIO, &tail, TAIL_LENGTH, NULL) != ERR::Okay) return ERR::Read; // Surface error, fail
@@ -568,7 +568,7 @@ static ERR scan_zip(extCompression *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (acSeek(Self->FileIO, 0.0, SEEK::START) != ERR::Okay) return log.warning(ERR::Seek);
 

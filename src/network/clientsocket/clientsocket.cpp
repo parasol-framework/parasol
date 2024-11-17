@@ -94,7 +94,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       return;
    }
 
-   log.traceBranch("");
+   log.traceBranch();
 
 #ifdef ENABLE_SSL
    if (Socket->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)

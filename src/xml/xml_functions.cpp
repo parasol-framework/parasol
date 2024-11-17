@@ -476,7 +476,7 @@ static ERR parse_source(extXML *Self)
    pf::Log log(__FUNCTION__);
    CacheFile *filecache;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    Self->Tags.clear();
    Self->LineNo = 1;

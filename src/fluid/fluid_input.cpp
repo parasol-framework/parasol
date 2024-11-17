@@ -361,7 +361,7 @@ static int input_unsubscribe(lua_State *Lua)
    }
 
    pf::Log log("input.unsubscribe");
-   log.traceBranch("");
+   log.traceBranch();
 
    if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
    if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }

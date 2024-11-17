@@ -24,7 +24,7 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("");
+   log.traceBranch();
 
    std::vector<GradientStop> stops;
    for (auto &scan : Tag.Children) {
