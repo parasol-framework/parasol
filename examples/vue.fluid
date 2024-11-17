@@ -204,7 +204,7 @@ end
          displayFile(FileView.selectionPath())
          title = FileView.selectionFile()
          if glStats.width and glStats.height then
-            title = title .. ' [ ' .. glStats.width .. 'x' .. glStats.height .. ' ]'
+            title = title .. ' [ ' .. glStats.width .. ' x ' .. glStats.height .. ' ]'
          end
          glWindow:setTitle(title)
       end
