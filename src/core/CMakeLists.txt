@@ -29,20 +29,25 @@ SET (CORE_DEFS
    "${CMAKE_CURRENT_SOURCE_DIR}/compression/class_compression_def.c")
 
 if (BUILD_DEFS)
-   add_custom_command (OUTPUT
-      ${CORE_DEFS}
-      "${DOCS}/modules/classes/compressedstream.xml"
-      "${DOCS}/modules/classes/compression.xml"
-      "${DOCS}/modules/classes/config.xml"
-      "${DOCS}/modules/classes/file.xml"
-      "${DOCS}/modules/classes/metaclass.xml"
-      "${DOCS}/modules/classes/module.xml"
-      "${DOCS}/modules/classes/script.xml"
-      "${DOCS}/modules/classes/storagedevice.xml"
-      "${DOCS}/modules/classes/task.xml"
-      "${DOCS}/modules/classes/thread.xml"
-      "${DOCS}/modules/classes/time.xml"
-      PRE_BUILD
+   add_custom_command (
+      OUTPUT
+         ${CORE_DEFS}
+         "${DOCS}/modules/classes/compressedstream.xml"
+         "${DOCS}/modules/classes/compression.xml"
+         "${DOCS}/modules/classes/config.xml"
+         "${DOCS}/modules/classes/file.xml"
+         "${DOCS}/modules/classes/metaclass.xml"
+         "${DOCS}/modules/classes/module.xml"
+         "${DOCS}/modules/classes/script.xml"
+         "${DOCS}/modules/classes/storagedevice.xml"
+         "${DOCS}/modules/classes/task.xml"
+         "${DOCS}/modules/classes/thread.xml"
+         "${DOCS}/modules/classes/time.xml"
+         "${INCLUDE_OUTPUT}/modules/core.h"
+         "${INCLUDE_OUTPUT}/system/errors.h"
+         "${INCLUDE_OUTPUT}/system/registry.h"
+         "${INCLUDE_OUTPUT}/system/fields.h"
+         "${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/errors.fdl" "output=${INCLUDE_OUTPUT}/system/errors.h" "sdk=${PROJECT_SOURCE_DIR}"
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/registry.fdl" "output=${INCLUDE_OUTPUT}/system/registry.h" "sdk=${PROJECT_SOURCE_DIR}"
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/fields.fdl" "output=${INCLUDE_OUTPUT}/system/fields.h" "sdk=${PROJECT_SOURCE_DIR}"
