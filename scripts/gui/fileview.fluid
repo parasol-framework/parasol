@@ -634,6 +634,11 @@ gui.fileview = function(View, Options)
 
                   if item.filename then -- Extract the full name of the file for analysis
                      local item_path = path .. item.filename
+                     if item.type == 'volume' then
+                        item_path = item_path .. ':'
+                     elseif item.type == 'folder' then
+                        item_path = item_path .. '/'
+                     end
                      if mSys.ResolvePath(item_path, RSF_CASE_SENSITIVE, NULL) != ERR_Okay then
                         self.view.removeItem(item)
                         self._file_table[item.filename] = nil
@@ -877,8 +882,8 @@ gui.fileview = function(View, Options)
          end
       end
 
-      if lDir then lDir = nil end
-      if self.watch then self.watch = nil end
+      lDir = nil
+      self.watch = nil
 
       checkDocView()
 
@@ -1163,6 +1168,7 @@ gui.fileview = function(View, Options)
 
    -- For refresh(), reads an entire folder and add the items to the target view.
    -- If the source has slow read access, system messages are processsed at regular intervals.
+   -- See also incrementalRefresh()
 
    local function refreshFiles()
       msg('refreshFiles() ' .. nz(self.path,'ROOT') .. ' [Limited Logging]')
