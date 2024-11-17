@@ -2497,7 +2497,7 @@ class objVectorText : public objVector {
 
    template <class T> inline ERR setFontStyle(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[33];
+      auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
    }
 
@@ -2571,6 +2571,12 @@ class objVectorText : public objVector {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08000409, Value, 1);
+   }
+
+   inline ERR setOnChange(FUNCTION Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[33];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setFocus(OBJECTID Value) noexcept {
