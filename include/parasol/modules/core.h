@@ -2397,6 +2397,9 @@ static THREADVAR LONG _tlUniqueThreadID = 0;
 
 // For extremely verbose debug logs, run cmake with -DPARASOL_VLOG=ON
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-zero-length"
+
 class Log { // C++ wrapper for Parasol's log functionality
    private:
       LONG branches;
@@ -2527,6 +2530,8 @@ class Log { // C++ wrapper for Parasol's log functionality
          return Code;
       }
 };
+
+#pragma GCC diagnostic pop
 
 class LogLevel {
    private:
