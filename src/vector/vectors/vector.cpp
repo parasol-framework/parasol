@@ -235,7 +235,7 @@ FieldNotSet: The vector's scene graph is not associated with a Surface.
 static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
-      if (Self->dirty()) gen_vector_tree(Self);
+      gen_vector_tree(Self);
 
 #if 0
       // Retrieve bounding box, post-transformations.
@@ -446,7 +446,7 @@ static ERR VECTOR_GetBoundary(extVector *Self, struct vec::GetBoundary *Args)
    if (!Self->Scene) return log.warning(ERR::NotInitialised);
 
    if (Self->GeneratePath) { // Path generation must be supported by the vector so that BX/BY etc are defined.
-      if (Self->dirty()) gen_vector_tree(Self);
+      gen_vector_tree(Self);
 
       if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
@@ -472,7 +472,7 @@ static ERR VECTOR_GetBoundary(extVector *Self, struct vec::GetBoundary *Args)
       return ERR::Okay;
    }
    else if (Self->classID() IS CLASSID::VECTORVIEWPORT) {
-      if (Self->dirty()) gen_vector_tree(Self);
+      gen_vector_tree(Self);
 
       auto view = (extVectorViewport *)Self;
       Args->X      = view->vpBounds.left;
@@ -690,7 +690,7 @@ static ERR VECTOR_PointInPath(extVector *Self, struct vec::PointInPath *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
@@ -1012,7 +1012,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (Self->BasePath.empty()) return ERR::NoData;
 
@@ -1327,7 +1327,7 @@ instance if the vector is the child of a viewport scaled down to 50%, the result
 static ERR VECTOR_GET_DisplayScale(extVector *Self, DOUBLE *Value)
 {
    if (!Self->initialised()) return ERR::NotInitialised;
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
    *Value = Self->Transform.scale();
    return ERR::Okay;
 }
@@ -2078,7 +2078,7 @@ static ERR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    if (!Self->GeneratePath) return log.warning(ERR::Mismatch); // Path generation must be supported by the vector.
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (!Self->BasePath.total_vertices()) return ERR::NoData;
 

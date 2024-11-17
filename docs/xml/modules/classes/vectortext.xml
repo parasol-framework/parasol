@@ -238,6 +238,17 @@
     </field>
 
     <field>
+      <name>OnChange</name>
+      <comment>Receive notifications for changes to the text string.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Set this field with a function reference to receive notifications whenever the text string changes.</p>
+<p>The callback function prototype is <code>void Function(*VectorText)</code>.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Point</name>
       <comment>Returns the point-size of the font.</comment>
       <access read="G">Get</access>

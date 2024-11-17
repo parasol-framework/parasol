@@ -21,20 +21,23 @@ extVectorViewport * get_parent_view(extVector *Vector)
 }
 
 //********************************************************************************************************************
-// This 'safe' version of gen_vector_path() checks that all parent vectors have been refreshed if they are marked
-// as dirty.  Generation of the paths is top-down.
+// This 'safe' version of gen_vector_path() forces a refresh of the vector and every parent that is marked as dirty.
+// Nothing is done if the tree is clean.  There is a presumption that dirty markers are always applied to children when 
+// the parent is marked as such.  Generation of the paths is top-down.
 
 void gen_vector_tree(extVector *Vector)
 {
-   if (!Vector->initialised()) return;
+   if ((!Vector->dirty()) or (!Vector->initialised())) return;
 
-   if (Vector->dirty()) {
-      std::vector<objVector *> list;
-      for (auto node=(objVector *)Vector->Parent; node; node=(objVector *)node->Parent) {
-         if (node->Class->BaseClassID != CLASSID::VECTOR) break;
-         list.push_back(node);
-      }
+   std::vector<objVector *> list;
+   list.reserve(12);
+   for (auto node=(extVector *)Vector->Parent; node; node=(extVector *)node->Parent) {
+      if (node->Class->BaseClassID != CLASSID::VECTOR) break;
+      if (!node->dirty()) break;
+      list.push_back(node);
+   }
 
+   if (!list.empty()) {
       std::for_each(list.rbegin(), list.rend(), [](auto v) {
          gen_vector_path((extVector *)v);
       });
