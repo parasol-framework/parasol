@@ -97,18 +97,18 @@ end
 local function updateFileAttributes(Item, Info)
    if Item.date then
       if (Item.type == 'folder') then
-         item.date.sort = 'D' .. sortNum(Info.timestamp)
+         Item.date.sort = 'D' .. sortNum(Info.timestamp)
       else
-         item.date.sort = 'F' .. sortNum(Info.timestamp)
+         Item.date.sort = 'F' .. sortNum(Info.timestamp)
       end
-      item.date.value = printableTime(Info.modified)
+      Item.date.value = printableTime(Info.modified)
    end
 
    if Item.size then
-      item.size.sort = sortNum(Info.size)
-      item.size.value = Info.size
+      Item.size.sort = sortNum(Info.size)
+      Item.size.value = Info.size
    else
-      item.size.sort = sortNum(0)
+      Item.size.sort = sortNum(0)
    end
 end
 
