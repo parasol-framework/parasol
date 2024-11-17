@@ -32,7 +32,7 @@ static ERR drag_callback(extVectorViewport *Viewport, const InputEvent *Events)
    static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
    static DOUBLE glDragOriginX = 0, glDragOriginY = 0;
 
-   if (Viewport->dirty()) gen_vector_tree(Viewport);
+   gen_vector_tree(Viewport);
 
    for (auto event=Events; event; event=event->Next) {
       // Process events that support consolidation first.
@@ -241,7 +241,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 static ERR VIEW_GET_AbsX(extVectorViewport *Self, LONG &Value)
 {
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    Value = Self->vpBounds.left;
    return ERR::Okay;
@@ -259,7 +259,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 static ERR VIEW_GET_AbsY(extVectorViewport *Self, LONG &Value)
 {
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    Value = Self->vpBounds.top;
    return ERR::Okay;
@@ -376,7 +376,7 @@ static ERR VIEW_GET_Height(extVectorViewport *Self, Unit &Value)
 {
    DOUBLE val;
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (dmf::hasHeight(Self->vpDimensions)) { // Working with a fixed dimension
       if (Value.Type & FD_SCALED) {
@@ -605,7 +605,7 @@ static ERR VIEW_GET_Width(extVectorViewport *Self, Unit &Value)
 {
    DOUBLE val;
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (dmf::hasWidth(Self->vpDimensions)) { // Working with a fixed dimension
       if (Value.Type & FD_SCALED) {
@@ -666,7 +666,7 @@ static ERR VIEW_GET_X(extVectorViewport *Self, Unit &Value)
 {
    DOUBLE width, value;
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (dmf::hasX(Self->vpDimensions)) value = Self->vpTargetX;
    else if (dmf::hasScaledX(Self->vpDimensions)) {
@@ -712,7 +712,7 @@ static ERR VIEW_GET_XOffset(extVectorViewport *Self, Unit &Value)
    DOUBLE width;
    DOUBLE value = 0;
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (dmf::hasXOffset(Self->vpDimensions)) value = Self->vpTargetXO;
    else if (dmf::hasScaledYOffset(Self->vpDimensions)) {
@@ -758,7 +758,7 @@ static ERR VIEW_GET_Y(extVectorViewport *Self, Unit &Value)
 {
    DOUBLE value, height;
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (dmf::hasY(Self->vpDimensions)) value = Self->vpTargetY;
    else if (dmf::hasScaledY(Self->vpDimensions)) {
@@ -805,7 +805,7 @@ static ERR VIEW_GET_YOffset(extVectorViewport *Self, Unit &Value)
    DOUBLE height;
    DOUBLE value = 0;
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (dmf::hasYOffset(Self->vpDimensions)) value = Self->vpTargetYO;
    else if (dmf::hasScaledYOffset(Self->vpDimensions)) {
