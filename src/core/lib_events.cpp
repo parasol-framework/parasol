@@ -296,10 +296,10 @@ ERR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 
    if ((!Message) or ((size_t)MsgSize < sizeof(pf::Event))) return ERR::Okay;
 
-   pf::Event *eventmsg = (pf::Event *)Message;
+   pf::Event *event_msg = (pf::Event *)Message;
 
-   log.msg(VLF::DETAIL|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
-      (LONG)(eventmsg->EventID & 0xffffffff));
+   log.msg(VLF::DETAIL|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((event_msg->EventID>>32)& 0xffffffff),
+      (LONG)(event_msg->EventID & 0xffffffff));
 
    struct eventsub *event;
    glCallSignal++;
@@ -307,7 +307,7 @@ restart:
    event = glEventList;
    while (event) {
       if (event->Called IS glCallSignal);
-      else if ((eventmsg->EventID & event->EventMask) IS event->EventID) {
+      else if ((event_msg->EventID & event->EventMask) IS event->EventID) {
          log.trace("Found listener %p for this event.", event->Callback);
 
          event->Called = glCallSignal;
