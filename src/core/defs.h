@@ -68,6 +68,7 @@ using namespace std::chrono_literals;
 #define DRIVETYPE_CDROM     2
 #define DRIVETYPE_FIXED     3
 #define DRIVETYPE_NETWORK   4
+#define DRIVETYPE_USB       5
 
 #define DEFAULT_VIRTUALID 0xffffffff
 
@@ -1122,7 +1123,7 @@ extern "C" BYTE winGetCommand(char *, char *, LONG);
 extern "C" LONG winGetFreeDiskSpace(UBYTE, LARGE *, LARGE *);
 extern "C" LONG winGetLogicalDrives(void);
 extern "C" LONG winGetLogicalDriveStrings(STRING, LONG);
-extern "C" LONG winGetDriveType(STRING);
+extern ERR winGetVolumeInformation(STRING Volume, std::string &Label, std::string &FileSystem, int &Type);
 extern "C" LONG winGetFullPathName(const char *Path, LONG PathLength, char *Output, char **NamePart);
 extern "C" LONG winGetUserFolder(STRING, LONG);
 extern "C" LONG winGetUserName(STRING, LONG);

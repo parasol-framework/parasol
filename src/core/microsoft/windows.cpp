@@ -160,6 +160,7 @@ typedef struct DateTime {
 #define DRIVETYPE_CDROM     2
 #define DRIVETYPE_FIXED     3
 #define DRIVETYPE_NETWORK   4
+#define DRIVETYPE_USB       5
 
 #define MFF_READ 0x00000001
 #define MFF_MODIFY 0x00000002
@@ -267,7 +268,7 @@ static void printerror(void)
 
 BYTE is_console(HANDLE h)
 {
-   if (FILE_TYPE_UNKNOWN == GetFileType(h) && ERROR_INVALID_HANDLE == GetLastError()) {
+   if (FILE_TYPE_UNKNOWN == GetFileType(h) and ERROR_INVALID_HANDLE == GetLastError()) {
        if ((h = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL))) {
            CloseHandle(h);
            return TRUE;
@@ -1670,7 +1671,7 @@ extern "C" LONG winSetEOF(CSTRING Location, __int64 Size)
    if ((handle = CreateFile(Location, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
       li.LowPart = SetFilePointer(handle, li.LowPart, &li.HighPart, FILE_BEGIN);
 
-      if (li.LowPart == INVALID_SET_FILE_POINTER && GetLastError() != NO_ERROR) {
+      if (li.LowPart == INVALID_SET_FILE_POINTER and GetLastError() != NO_ERROR) {
          printerror();
       }
       else if (SetEndOfFile(handle)) {
@@ -1701,15 +1702,40 @@ extern "C" LONG winGetLogicalDriveStrings(STRING Buffer, LONG Length)
 
 //********************************************************************************************************************
 
-extern "C" LONG winGetDriveType(STRING Name)
+extern ERR winGetVolumeInformation(STRING Volume, std::string &Label, std::string &FileSystem, int &Type)
 {
-   LONG flags = GetDriveType(Name);
+   char label_buffer[80] = { 0 };
+   char fs_buffer[32] = { 0 };
 
-   if (flags IS DRIVE_CDROM) return DRIVETYPE_CDROM;
-   else if (flags IS DRIVE_FIXED) return DRIVETYPE_FIXED;
-   else if (flags IS DRIVE_REMOVABLE) return DRIVETYPE_REMOVABLE;
-   else if (flags IS DRIVE_REMOTE) return DRIVETYPE_NETWORK;
-   else return 0;
+   switch (GetDriveType(Volume)) {
+      case DRIVE_CDROM:     Type = DRIVETYPE_CDROM; break;
+      case DRIVE_FIXED:     Type = DRIVETYPE_FIXED; break;
+      case DRIVE_REMOVABLE: Type = DRIVETYPE_REMOVABLE; break;
+      case DRIVE_REMOTE:    Type = DRIVETYPE_NETWORK; break;
+      default: Type = 0;
+   }
+
+   if (GetVolumeInformation(Volume, label_buffer, sizeof(label_buffer), NULL, NULL, NULL, fs_buffer, sizeof(fs_buffer))) {
+      if (label_buffer[0]) Label.assign(label_buffer);
+      if (fs_buffer[0]) FileSystem.assign(fs_buffer);
+   }
+
+   if (Type IS DRIVETYPE_REMOVABLE) {
+      char drive[] = "\\\\?\\X:";
+      drive[4] = Volume[0];
+      if (auto hDevice = CreateFile(drive, 0, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL); hDevice != INVALID_HANDLE_VALUE) {
+         char buffer[1024];
+         DWORD dwOutBytes;
+         STORAGE_PROPERTY_QUERY query = { .PropertyId = StorageDeviceProperty, .QueryType = PropertyStandardQuery };
+         if (DeviceIoControl(hDevice, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), buffer, sizeof(buffer), &dwOutBytes, (LPOVERLAPPED)NULL)) {
+            auto info = (PSTORAGE_DEVICE_DESCRIPTOR)buffer;
+            if (info->BusType == BusTypeUsb) Type = DRIVETYPE_USB;
+         }
+         CloseHandle(hDevice);
+      }
+   }
+
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

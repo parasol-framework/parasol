@@ -116,7 +116,7 @@ function testScanVolumes()
 
       if (not volumes['parasol']) then error("The expected 'parasol' volume is not present.") end
       --if (not volumes['bin']) then error("The expected 'bin' volume is not present.") end
-      if (not volumes['drive1']) then error("The expected 'drive1' volume is not present.") end
+      if (not volumes['user']) then error("The expected 'user' volume is not present.") end
       if (not volumes['system']) then error("The expected 'system' volume is not present.") end
    else
       error("OpenDir() error: " .. mSys.GetErrorMsg(err))
@@ -158,7 +158,7 @@ end
 --=====================================================================================================================
 
 function testAnalyseVolume()
-   local err, type = mSys.AnalysePath('drive1:')
+   local err, type = mSys.AnalysePath('user:')
    assert(err == ERR_Okay, 'AnalysePath() failed with error: ' .. mSys.GetErrorMsg(err))
 
    assert(type == LOC_VOLUME, 'AnalysePath() returned type ' .. type .. ' and not LOC_VOLUME')
