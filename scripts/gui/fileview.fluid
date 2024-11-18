@@ -369,7 +369,7 @@ local function createFileItem(self, Info)
       local total_size = nil
       local free_space = nil
       local device = obj.new('storagedevice', { volume = Info.name .. ':' } )
-      if bit.band(device.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_HARD_DISK, DEVICE_COMPACT_DISC)) != 0 then
+      if bit.band(device.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_FIXED, DEVICE_HARD_DISK, DEVICE_COMPACT_DISC)) != 0 then
          colour = 'green'
          if (device.deviceSize >= 1) then total_size = sortNum(device.deviceSize) end
          if (device.bytesFree >= 1) then free_space = sortNum(device.bytesFree) end
@@ -1224,7 +1224,7 @@ gui.fileview = function(View, Options)
 
       local err
       if self.deviceInfo and not self.watch and self.path then
-         if bit.band(self.deviceInfo.deviceFlags, DEVICE_REMOVEABLE) != 0 then
+         if bit.band(self.deviceInfo.deviceFlags, DEVICE_REMOVABLE) != 0 then
             if bit.band(self.deviceInfo.deviceFlags, DEVICE_WRITE) == 0 then
                -- Read only device, do not refresh
             elseif bit.band(self.deviceInfo.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_USB)) then

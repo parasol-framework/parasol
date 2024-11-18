@@ -58,6 +58,7 @@ if (BUILD_DEFS)
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/errors.fdl"
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/registry.fdl"
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/fields.fdl"
+         "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/dev/idl/common.fdl"
          ${FUNCTIONS}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Producing definition files for the Core library"
@@ -72,7 +73,8 @@ if (BUILD_DEFS)
       "${CMAKE_CURRENT_SOURCE_DIR}/defs/core.fdl"
       "${CMAKE_CURRENT_SOURCE_DIR}/defs/errors.fdl"
       "${CMAKE_CURRENT_SOURCE_DIR}/defs/registry.fdl"
-      "${CMAKE_CURRENT_SOURCE_DIR}/defs/fields.fdl")
+      "${CMAKE_CURRENT_SOURCE_DIR}/defs/fields.fdl"
+      "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/dev/idl/common.fdl")
 
    add_dependencies (build_headers core_defs)
 endif ()

@@ -2495,9 +2495,11 @@ restart:
          if (glVolumes[vol].contains("Device")) {
             auto &device = glVolumes[vol]["Device"];
             if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE::FLOPPY_DISK|DEVICE::REMOVABLE|DEVICE::READ|DEVICE::WRITE;
+            else if (!device.compare("fixed"))  Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
             else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
             else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE::COMPACT_DISC|DEVICE::REMOVABLE|DEVICE::READ;
             else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE::USB|DEVICE::REMOVABLE;
+            else if (!device.compare("portable")) Info->DeviceFlags |= DEVICE::REMOVABLE;
             else log.warning("Device '%s' unrecognised.", device.c_str());
          }
       }

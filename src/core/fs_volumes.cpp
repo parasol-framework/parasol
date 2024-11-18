@@ -111,7 +111,7 @@ cstr Name: Required.  The name of the volume.
 cstr Path: Required.  The path to be associated with the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.
 cstr Icon: An icon can be associated with the volume so that it has graphical representation when viewed in the UI.  The required icon string format is `category/name`.
 cstr Label: An optional label or short comment may be applied to the volume.  This may be useful if the volume name has little meaning to the user (e.g. `drive1`, `drive2` ...).
-cstr Device: If the volume references the root of a device, specify a device name of `disk`, `hd`, `cd`, `network` or `usb`.
+cstr Device: If the volume references the root of a device, specify a device name of `portable`, `fixed`, `cd`, `network` or `usb`.
 int(VOLUME) Flags: Optional flags.
 
 -ERRORS-

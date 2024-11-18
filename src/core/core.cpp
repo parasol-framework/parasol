@@ -1093,7 +1093,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
       }
       #endif
 
-      SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME::REPLACE|VOLUME::SYSTEM);
+      SetVolume("drive1", "/", "devices/storage", "Linux", "fixed", VOLUME::REPLACE|VOLUME::SYSTEM);
       SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
       SetVolume("usr", "/usr", NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
    #endif
@@ -1201,48 +1201,48 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
       SetVolume("clipboard", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
    }
 
-   // Look for the following drive types:
-   //
-   // CD-ROMS:               CD1/CD2/CD3
-   // Removable Media:       Disk1/Disk2 (floppies etc)
-   // Hard Drive Partitions: HD1/HD2
-   //
-   // NOTE: In the native release all media, including volumes, are controlled by the mountdrives program.
-   // Mountdrives also happens to manage the system:hardware/drives.cfg file.
-
 #ifdef _WIN32
    {
       char buffer[256];
       if (auto len = winGetLogicalDriveStrings(buffer, sizeof(buffer)); len > 0) {
-         char disk[] = "disk1";
-         char cd[]   = "cd1";
-         char hd[]   = "drive1";
-         char net[]  = "net1";
+         char portable[] = "port1";
+         char cd[]  = "cd1";
+         char hd[]  = "X";
+         char net[] = "net1";
+         char usb[] = "usb1";
 
          for (LONG i=0; i < len; i++) {
-            auto type = winGetDriveType(buffer+i);
+            std::string label, filesystem;
+            label = buffer[i];
+            LONG type;
+            winGetVolumeInformation(buffer+i, label, filesystem, type);
 
-            buffer[i+2] = '/';
-
-            char label[2] = { buffer[i], 0 };
-
-            if (type IS DRIVETYPE_REMOVABLE) {
-               SetVolume(disk, buffer+i, "devices/storage", label, "disk", VOLUME::NIL);
-               disk[4]++;
+            if (buffer[i+2] IS '\\') buffer[i+2] = '/';
+            
+            switch(type) {
+               case DRIVETYPE_USB:
+                  SetVolume(usb, buffer+i, "devices/usb_drive", label.c_str(), "usb", VOLUME::NIL);
+                  usb[sizeof(usb)-2]++;
+                  break;
+               case DRIVETYPE_REMOVABLE: // Unspecific removable media, possibly USB or some form of disk or tape.
+                  SetVolume(portable, buffer+i, "devices/storage", label.c_str(), "portable", VOLUME::NIL);
+                  portable[sizeof(portable)-2]++;
+                  break;
+               case DRIVETYPE_CDROM:
+                  SetVolume(cd, buffer+i, "devices/compactdisc", label.c_str(), "cd", VOLUME::NIL);
+                  cd[sizeof(cd)-2]++;
+                  break;
+               case DRIVETYPE_FIXED:
+                  hd[0] = buffer[i];
+                  SetVolume(hd, buffer+i, "devices/storage", label.c_str(), "fixed", VOLUME::NIL);
+                  break;
+               case DRIVETYPE_NETWORK:
+                  SetVolume(net, buffer+i, "devices/network", label.c_str(), "network", VOLUME::NIL);
+                  net[sizeof(net)-2]++;
+                  break;
+               default:
+                  log.traceWarning("Drive %s identified as unsupported type %d.", buffer+i, type);
             }
-            else if (type IS DRIVETYPE_CDROM) {
-               SetVolume(cd, buffer+i, "devices/compactdisc", label, "cd", VOLUME::NIL);
-               cd[2]++;
-            }
-            else if (type IS DRIVETYPE_FIXED) {
-               SetVolume(hd, buffer+i, "devices/storage", label, "hd", VOLUME::NIL);
-               hd[5]++;
-            }
-            else if (type IS DRIVETYPE_NETWORK) {
-               SetVolume(net, buffer+i, "devices/network", label, "network", VOLUME::NIL);
-               net[3]++;
-            }
-            else log.warning("Drive %s identified as unsupported type %d.", buffer+i, type);
 
             while (buffer[i]) i++;
          }
@@ -1296,7 +1296,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
                if ((mount[0] IS '/') and (!mount[1]));
                else {
                   strcopy(std::to_string(driveno++), drivename+5, 3);
-                  SetVolume(drivename, mount, "devices/storage", NULL, "hd", VOLUME::NIL);
+                  SetVolume(drivename, mount, "devices/storage", NULL, "fixed", VOLUME::NIL);
                }
             }
 

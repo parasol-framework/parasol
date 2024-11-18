@@ -26,7 +26,8 @@ flags("DEVICE", { bits=64, module="Core" },
     "TEMPORARY: All storage is temporary",
     "MEMORY: Device is RAM, ROM, WORM, NVRAM, flashdisk or other form of memory.  Does not guarantee a fast connection as it could be over a slow USB 1.1 connection for example",
     "MODEM: Device is a modem.",
-    "USB: Removable USB storage device.  May be further qualified by `HARDDISK`, `FLOPPYDISK` etc",
+    "USB: Removable USB storage device.  May be further qualified by `HARD_DISK`, `FLOPPY_DISK` etc",
+    "FIXED: Catch-all for fixed media devices that are not directly identifiable.",
     "PRINTER_3D: Device is a three dimensional printer.",
     "SCANNER_3D: Device is a three dimensional scanner.")
 
