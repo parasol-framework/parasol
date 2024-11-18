@@ -376,7 +376,7 @@ local function createFileItem(self, Info)
       end
 
       local display_name = Info.name ..':'
-      local err, label = mSys.ReadInfoTag(Info, 'label')
+      local err, label = mSys.ReadInfoTag(Info, 'Label')
       if err == ERR_Okay then
          display_name = display_name .. ' (' .. label .. ')'
       end
@@ -1501,7 +1501,7 @@ gui.fileview = function(View, Options)
                end)
             end
 
-            Bar.addItem(3, 'Bookmark', 'Bookmarks', 'items/new_bookmark', function()
+            Bar.addItem(3, 'Bookmark', 'Create Bookmark', 'items/new_bookmark', function()
                if (string.len(self.path) < 3) then return end
 
                local current_path = self.path

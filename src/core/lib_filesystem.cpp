@@ -268,7 +268,7 @@ in an MP3 file.
 
 -INPUT-
 struct(FileInfo) Info: Pointer to a valid !FileInfo structure.
-cstr Name: The name of the tag.
+cstr Name: The name of the tag, which must be declared in camel-case.
 cstr Value: The value to associate with the tag name.  If `NULL`, any existing tag with a matching `Name` will be removed.
 
 -ERRORS-
@@ -1117,7 +1117,7 @@ have been added with ~AddInfoTag() or `ERR::NotFound` will be returned.
 
 -INPUT-
 struct(FileInfo) Info: Pointer to a valid !FileInfo structure.
-cstr Name: The name of the tag.
+cstr Name: The name of the tag, which must be declared in camel-case as tags are case-sensitive.
 &cstr Value: The discovered string value is returned here if found.
 
 -ERRORS-
