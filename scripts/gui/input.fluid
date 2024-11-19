@@ -5,10 +5,6 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui'
 
-local MARGIN       = 6
-local STROKE_WIDTH = 2
-local DEFAULT_WIDTH = 160
-
 local function reportActivate(self, State)
    if not self.events.activate then return end
    local text = self.text.string
@@ -84,7 +80,7 @@ gui.input = function(Options)
 
    if not vps.x and not vps.xOffset then vps.x = 0 end
    if not vps.y and not vps.yOffset then vps.y = 0 end
-   if not vps.width and not vps.xOffset then vps.width = DEFAULT_WIDTH end
+   if not vps.width and not vps.xOffset then vps.width = gui.style.widget.width end
 
    self.viewport = self.parentViewport.new('VectorViewport', vps)
 
@@ -119,7 +115,7 @@ gui.input = function(Options)
          lineLimit = 1
       })
 
-      self.labelWidth = self.labelText.textWidth + MARGIN
+      self.labelWidth = self.labelText.textWidth + gui.style.widget.margin
       self.inputViewport.x = self.labelText.x + self.labelWidth
       self.inputViewport.width = self.viewport.width - self.labelWidth
    else
@@ -136,21 +132,21 @@ gui.input = function(Options)
 
    if not Options.flushEdges then
       self.bkgd.stroke      = gui.style.widget.stroke
-      self.bkgd.strokeWidth = STROKE_WIDTH
-      self.bkgd.roundX      = STROKE_WIDTH * 2
-      self.bkgd.roundY      = STROKE_WIDTH * 2
+      self.bkgd.strokeWidth = gui.style.widget.strokeWidth
+      self.bkgd.roundX      = gui.style.widget.strokeWidth * 2
+      self.bkgd.roundY      = gui.style.widget.strokeWidth * 2
    end
 
    self._textClip = self.inputViewport.new('VectorViewport', {
       name = 'vp_input_clip',
-      x = STROKE_WIDTH, y = STROKE_WIDTH, xOffset = STROKE_WIDTH, yOffset = STROKE_WIDTH,
+      x = gui.style.widget.strokeWidth, y = gui.style.widget.strokeWidth, xOffset = gui.style.widget.strokeWidth, yOffset = gui.style.widget.strokeWidth,
       overflow = VOF_HIDDEN
    })
 
    self.text = self._textClip.new('VectorText', {
       name      = 'vt_input',
       x         = 4,
-      y         = font_height + math.floor((box_height - font_height - STROKE_WIDTH - STROKE_WIDTH) * 0.5),
+      y         = font_height + math.floor((box_height - font_height - (gui.style.widget.strokeWidth * 2)) * 0.5),
       face      = gui.fonts.widget.face,
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
       fill      = gui.style.widget.text,

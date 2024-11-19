@@ -9,8 +9,6 @@ local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 local HEIGHT        = math.floor(FONT_MAX_HEIGHT * 1.75) + 1
 local ICON_SIZE     = HEIGHT * 0.56
 local GAP           = HEIGHT * 0.35
-local STROKE_WIDTH  = 2
-local DEFAULT_WIDTH = 160
 
 local function iconTheme()
    if (gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127) then
@@ -71,7 +69,7 @@ gui.button = function(Options)
    if not vps.x and not vps.xOffset then vps.x = 0 end
    if not vps.y and not vps.yOffset then vps.y = 0 end
    if not vps.width and not (vps.xOffset and vps.x) then
-      vps.width = DEFAULT_WIDTH
+      vps.width = gui.style.widget.width
       calc_width = true
    end
 
@@ -79,21 +77,21 @@ gui.button = function(Options)
 
    self.bkgd = self.viewport.new('VectorRectangle', {
       fill   = gui.style.widget.bkgd,
-      x      = STROKE_WIDTH * 0.5,
-      y      = STROKE_WIDTH * 0.5,
-      width  = self.viewport.width - STROKE_WIDTH,
-      height = HEIGHT - STROKE_WIDTH,
-      roundX = STROKE_WIDTH * 2,
-      roundY = STROKE_WIDTH * 2,
+      x      = gui.style.widget.strokeWidth * 0.5,
+      y      = gui.style.widget.strokeWidth * 0.5,
+      width  = self.viewport.width - gui.style.widget.strokeWidth,
+      height = HEIGHT - gui.style.widget.strokeWidth,
+      roundX = gui.style.widget.strokeWidth * 2,
+      roundY = gui.style.widget.strokeWidth * 2,
       stroke = gui.style.widget.stroke,
-      strokeWidth = STROKE_WIDTH,
+      strokeWidth = gui.style.widget.strokeWidth,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
          if (Vector.width != Width) then
-            Vector.width = Width - STROKE_WIDTH
+            Vector.width = Width - gui.style.widget.strokeWidth
          end
 
          if (Vector.height != Height) then
-            Vector.height = Height - STROKE_WIDTH
+            Vector.height = Height - gui.style.widget.strokeWidth
          end
       end
    })
@@ -115,12 +113,12 @@ gui.button = function(Options)
    end
 
    self._textClip = self.viewport.new('VectorViewport', {
-      x=STROKE_WIDTH, y=STROKE_WIDTH, xOffset=STROKE_WIDTH, yOffset=STROKE_WIDTH, overflow=VOF_HIDDEN
+      x=gui.style.widget.strokeWidth, y=gui.style.widget.strokeWidth, xOffset=gui.style.widget.strokeWidth, yOffset=gui.style.widget.strokeWidth, overflow=VOF_HIDDEN
    })
 
    self.text = self._textClip.new('VectorText', {
       x         = GAP + label_offset,
-      y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - STROKE_WIDTH - STROKE_WIDTH) * 0.5),
+      y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - gui.style.widget.strokeWidth - gui.style.widget.strokeWidth) * 0.5),
       face      = gui.fonts.widget.face,
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
       fill      = gui.style.widget.text,

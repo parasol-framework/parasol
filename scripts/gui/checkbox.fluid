@@ -7,8 +7,6 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui'
 
-local STROKE_WIDTH = 2
-local DEFAULT_WIDTH = 160
 local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 local HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.25) + 1
 local ICON_SIZE = HEIGHT * 0.56
@@ -83,7 +81,7 @@ gui.checkbox = function(Options)
    if not vps.x and not vps.xOffset then vps.x = 0 end
    if not vps.y and not vps.yOffset then vps.y = 0 end
    if not vps.width and not (vps.xOffset and vps.x) then
-      vps.width = DEFAULT_WIDTH
+      vps.width = gui.style.widget.width
       calc_width = true
    end
 
@@ -91,14 +89,14 @@ gui.checkbox = function(Options)
 
    self.bkgd = self.viewport.new('VectorRectangle', {
       fill   = gui.style.widget.bkgd,
-      x      = STROKE_WIDTH * 0.5,
-      y      = STROKE_WIDTH * 0.5,
-      width  = HEIGHT - STROKE_WIDTH,
-      height = HEIGHT - STROKE_WIDTH,
-      roundX = STROKE_WIDTH * 2,
-      roundY = STROKE_WIDTH * 2,
+      x      = gui.style.widget.strokeWidth * 0.5,
+      y      = gui.style.widget.strokeWidth * 0.5,
+      width  = HEIGHT - gui.style.widget.strokeWidth,
+      height = HEIGHT - gui.style.widget.strokeWidth,
+      roundX = gui.style.widget.strokeWidth * 2,
+      roundY = gui.style.widget.strokeWidth * 2,
       stroke = gui.style.widget.stroke,
-      strokeWidth = STROKE_WIDTH,
+      strokeWidth = gui.style.widget.strokeWidth,
    })
 
    gui.createIcon(self.viewport.scene, 'items/checkmark', ICON_SIZE, iconTheme())
@@ -134,7 +132,7 @@ gui.checkbox = function(Options)
 
    if Options.align == 'right' then
       self.text.x = 0
-      self.bkgd.x = self.viewport.width - HEIGHT + (STROKE_WIDTH * 0.5)
+      self.bkgd.x = self.viewport.width - HEIGHT + (gui.style.widget.strokeWidth * 0.5)
       self.iconRender.x = self.viewport.width - HEIGHT + ((HEIGHT - ICON_SIZE) * 0.5)
    else
       self.text.x = GAP + (GAP * 0.5) + ICON_SIZE

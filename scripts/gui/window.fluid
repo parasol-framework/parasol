@@ -378,7 +378,7 @@ gui.window = function(Options)
       self.surface.y = 20
    end
 
-   if self.surface.minWidth == self.surface.maxWidth and self.surface.minHeight == self.surface.maxHeight then
+   if (self.surface.minWidth == self.surface.maxWidth) and (self.surface.minHeight == self.surface.maxHeight) then
       self.maximiseEnabled = false
    end
 

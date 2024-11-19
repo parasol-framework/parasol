@@ -11,8 +11,6 @@ Documentation is available in the Parasol Wiki.
 local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 local BOX_HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
 local MARGIN        = math.floor(FONT_HEIGHT * 0.5) + 1
-local STROKE_WIDTH  = 2
-local DEFAULT_WIDTH = 160
 
 local function iconTheme()
    if (gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127) then
@@ -91,7 +89,7 @@ gui.combobox = function(Options)
    if not vps.x and not vps.xOffset then vps.x = 0 end
    if not vps.y and not vps.yOffset then vps.y = 0 end
    if not vps.width and not vps.xOffset then
-      vps.width = DEFAULT_WIDTH
+      vps.width = gui.style.widget.width
       self.unlockMenuWidth = true
    end
 
@@ -154,16 +152,16 @@ gui.combobox = function(Options)
 
    if not Options.flushEdges then
       self.bkgd.stroke      = gui.style.widget.stroke
-      self.bkgd.strokeWidth = STROKE_WIDTH
-      self.bkgd.roundX      = STROKE_WIDTH * 2
-      self.bkgd.roundY      = STROKE_WIDTH * 2
+      self.bkgd.strokeWidth = gui.style.widget.strokeWidth
+      self.bkgd.roundX      = gui.style.widget.strokeWidth * 2
+      self.bkgd.roundY      = gui.style.widget.strokeWidth * 2
    end
 
    self._textClip = self.inputViewport.new('VectorViewport', {
       cursor = (function()
          if self.allowCustom then return 'text' end
       end)(),
-      x=STROKE_WIDTH, y=STROKE_WIDTH, xOffset=self.iconRender.width + MARGIN + MARGIN, yOffset=STROKE_WIDTH, overflow=VOF_HIDDEN
+      x=gui.style.widget.strokeWidth, y=gui.style.widget.strokeWidth, xOffset=self.iconRender.width + MARGIN + MARGIN, yOffset=gui.style.widget.strokeWidth, overflow=VOF_HIDDEN
    })
 
    local defaultText = Options.text
@@ -173,7 +171,7 @@ gui.combobox = function(Options)
 
    self.text = self._textClip.new('VectorText', {
       x         = 4,
-      y         = FONT_HEIGHT + math.floor((BOX_HEIGHT - FONT_HEIGHT - STROKE_WIDTH - STROKE_WIDTH) * 0.5),
+      y         = FONT_HEIGHT + math.floor((BOX_HEIGHT - FONT_HEIGHT - (gui.style.widget.strokeWidth * 2)) * 0.5),
       face      = gui.fonts.widget.face,
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
       fill      = gui.style.widget.text,
