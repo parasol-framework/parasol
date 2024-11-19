@@ -1386,6 +1386,13 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
    // Note that if an internal routine sets DisableFillColour then the colour will be stored but effectively does nothing.
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
+   Self->FGFill = false;
+
+   if (!Value) {
+      Self->Fill[0].reset();
+      return ERR::Okay;
+   }
+
    CSTRING next;
    if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
       Self->FillString = strclone(Value);
@@ -1402,7 +1409,10 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 
       return ERR::Okay;
    }
-   else return error;
+   else {
+      Self->Fill[0].reset();
+      return error;
+   }
 }
 
 /*********************************************************************************************************************
@@ -2173,8 +2183,13 @@ static ERR VECTOR_GET_Stroke(extVector *Self, CSTRING *Value)
 static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
-   Self->StrokeString = strclone(Value);
-   vec::ReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
+
+   if (Value) {
+      Self->StrokeString = strclone(Value);
+      vec::ReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
+   }
+   else Self->Stroke.reset();
+
    Self->Stroked = Self->is_stroked();
    return ERR::Okay;
 }

@@ -9,10 +9,9 @@
 #include <parasol/strings.hpp>
 #include <sstream>
 
+#include "lua.hpp"
+
 extern "C" {
- #include "lua.h"
- #include "lualib.h"
- #include "lauxlib.h"
  #include "lj_obj.h"
 }
 
@@ -1071,6 +1070,7 @@ static ERR run_script(objScript *Self)
       return Self->Error;
    }
 }
+
 //********************************************************************************************************************
 
 static ERR register_interfaces(objScript *Self)
