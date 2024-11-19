@@ -406,6 +406,8 @@ gui.window = function(Options)
 
    self.scene = self.surface.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
 
+   gui.configureScene(self, self.scene) -- Support GUI customisation
+
    self.viewport = self.scene.new('VectorViewport', {
       x       = 0,
       y       = 0,
