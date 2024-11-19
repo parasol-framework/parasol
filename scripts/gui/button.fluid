@@ -13,7 +13,7 @@ local STROKE_WIDTH  = 2
 local DEFAULT_WIDTH = 160
 
 local function iconTheme()
-   if (gui.rgbValue(gui.strToRGB(gui.colours['widgetText'])) > 127) then
+   if (gui.rgbValue(gui.strToRGB(gui.colours.widget.text)) > 127) then
       return 'pearl'
    else
       return 'default' -- The default theme is dark
@@ -34,7 +34,7 @@ gui.button = function(Options)
       self.disabled = true
       self.viewport.acDisable()
       self.text.opacity = 0.5
-      self.bkgd.fill = gui.colours['widgetBkgd']
+      self.bkgd.fill = gui.colours.widget.bkgd
       if self.events.disable then self.events.disable(self) end
       self.viewport.acDraw()
    end
@@ -43,7 +43,7 @@ gui.button = function(Options)
       self.disabled = false
       self.viewport.acDisable()
       self.text.opacity = 1.0
-      self.bkgd.fill = gui.colours['widgetBkgd']
+      self.bkgd.fill = gui.colours.widget.bkgd
       if self.events.enable then self.events.enable(self) end
       self.viewport.acDraw()
    end
@@ -78,14 +78,14 @@ gui.button = function(Options)
    self.viewport = self.parentViewport.new('VectorViewport', vps)
 
    self.bkgd = self.viewport.new('VectorRectangle', {
-      fill   = gui.colours['widgetBkgd'],
+      fill   = gui.colours.widget.bkgd,
       x      = STROKE_WIDTH * 0.5,
       y      = STROKE_WIDTH * 0.5,
       width  = self.viewport.width - STROKE_WIDTH,
       height = HEIGHT - STROKE_WIDTH,
       roundX = STROKE_WIDTH * 2,
       roundY = STROKE_WIDTH * 2,
-      stroke = gui.colours['widgetStroke'],
+      stroke = gui.colours.widget.stroke,
       strokeWidth = STROKE_WIDTH,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
          if (Vector.width != Width) then
@@ -123,7 +123,7 @@ gui.button = function(Options)
       y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - STROKE_WIDTH - STROKE_WIDTH) * 0.5),
       face      = gui.fonts.widget.face,
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
-      fill      = gui.colours['widgetText'],
+      fill      = gui.colours.widget.text,
       string    = Options.text,
       lineLimit = 1
    })
@@ -134,13 +134,13 @@ gui.button = function(Options)
 
    self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
       if (Event == FM_LOST_FOCUS) then
-         self.bkgd.stroke = gui.colours['widgetStroke']
+         self.bkgd.stroke = gui.colours.widget.stroke
          if self.events.lostFocus then self.events.lostFocus(self) end
       else
          if self.disabled then
-            self.bkgd.stroke = gui.colours['widgetStroke']
+            self.bkgd.stroke = gui.colours.widget.stroke
          else
-            self.bkgd.stroke = gui.colours['widgetStrokeFocus']
+            self.bkgd.stroke = gui.colours.widget.strokeFocus
             if self.events.focus then self.events.focus(self) end
          end
       end
@@ -159,14 +159,14 @@ gui.button = function(Options)
    self.viewport.mtSubscribeInput(bit.bor(JTYPE_CROSSING, JTYPE_BUTTON, JTYPE_REPEATED), function(Viewport, Msg)
       repeat
          if (Msg.type == JET_CROSSED_IN) then
-            local highlight = gui.strToRGB(gui.colours['widgetBkgd'])
+            local highlight = gui.strToRGB(gui.colours.widget.bkgd)
             highlight.a = highlight.a * 0.5
             self.bkgd.fill = gui.rgbToSVG(highlight)
             if self.events.cursorEntry then
                self.events.cursorEntry(self)
             end
          elseif (Msg.type == JET_CROSSED_OUT) then
-            self.bkgd.fill = gui.colours['widgetBkgd']
+            self.bkgd.fill = gui.colours.widget.bkgd
             if self.events.cursorExit then
                self.events.cursorExit(self)
             end

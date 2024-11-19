@@ -1,8 +1,9 @@
 -- Graphical User Interface functions
 
 if (gui == nil) then
-   -- The following values are the default.  They can be overridden by the "style:values.xml" file.
+   -- The following values are the default 'light' theme.  They can be overridden by the "style:values.xml" file.
    gui = {
+     theme = 'light',
      dpi = 160,
      fonts = {
        -- Use percentages for scalable sizes, where 100% is equivalent to the value of gui.interface.fontSize
@@ -19,26 +20,42 @@ if (gui == nil) then
      },
      colours = {
        -- These are all fills, so any SVG compliant fill value can potentially be used to define a 'colour'.
-       widgetText   = 'rgb(255,255,255)',
-       widgetBkgd   = 'rgb(0,0,0,100)',
-       widgetStroke = 'rgb(255,255,255,60)',
-       widgetStrokeFocus    = 'rgb(255,255,255,160)',
-       widgetStrokeDisabled = 'rgb(255,255,255,60)',
-       shadow        = 'rgb(0,0,0,100)', -- Base colour/alpha value for stroked shadows
-       highlight     = 'rgb(255,255,255,150)', -- Base colour/alpha value for stroked highlights
-       button        = 'rgb(230,230,230)', -- Button background (raised)
-       buttonClick   = 'rgb(200,200,200)', -- Button background when clicked (depressed)
-       menubar       = 'rgb(190,190,190)', -- Menubar background fill
-       menu          = 'rgb(240,240,240)', -- Menu background fill
-       border        = 'rgb(144,144,144)', -- Standard border for any area filled with 'background'
-       borderFocus   = 'rgb(160,160,160)', -- Colour to use when 'border' has the user's focus
-       menuborder    = 'rgb(200,200,200)', -- Menu border
-       desktop       = 'rgb(160,160,160)', -- Background colour for the desktop
-       recess        = 'rgb(160,160,160)', -- Background colour for recessed areas with no content.
-       background    = 'rgb(255,255,255)', -- Standard background for hosting text & paper-based layouts
-       textHighlight = 'rgb(224,224,240)', -- Background fill for text that is highlighted
-       window        = 'rgb(220,220,220)', -- Background fill for windows
-       windowText    = 'rgb(0,0,0)'        -- Colour for text that is drawn directly to the window
+       widget = {
+          text   = 'rgb(255,255,255)',
+          bkgd   = 'rgb(0,0,0,100)',
+          stroke = 'rgb(255,255,255,60)',
+          strokeFocus    = 'rgb(255,255,255,160)',
+          strokeDisabled = 'rgb(255,255,255,60)'
+       },
+       button = {
+          bkgd = 'rgb(230,230,230)',      -- Button background when raised / default
+          bkgdActive = 'rgb(200,200,200)' -- Button background when temporarily clicked (depressed)
+       },
+       page = {
+          bkgd        = 'rgb(255,255,255)', -- Standard background for hosting text & paper-based layouts
+          border      = 'rgb(144,144,144)', -- Standard border stroke for any area surrounding 'bkgd'
+          borderFocus = 'rgb(160,160,160)', -- Stroke to use when 'border' has the user's focus
+          text        = 'rgb(0,0,0)',       -- Default colour for text drawn over 'bkgd'
+          textHighlight     = 'rgb(0,0,0)',      -- Colour for 'text' when temporarily highlighted
+          textHighlightBkgd = 'rgb(224,224,240)' -- Background fill for 'text' that is highlighted
+       },
+       window = {
+          bkgd = 'rgb(220,220,220)', -- Background fill for windows
+          text = 'rgb(0,0,0)'        -- Colour for text that is drawn directly to the window
+       },
+       menubar = {
+          bkgd = 'rgb(190,190,190)' -- Menubar background fill
+       },
+       menu = {
+          bkgd   = 'rgb(240,240,240)', -- Menu background fill
+          border = 'rgb(200,200,200)'  -- Stroke for menu border
+       },
+       desktop = {
+          bkgd = 'rgb(160,160,160)' -- Background colour for the desktop
+       },
+       recess = 'rgb(160,160,160)',  -- Fill for recessed areas with no content.
+       strokeShadow    = 'rgb(0,0,0,100)', -- Base colour/alpha value for stroked shadows
+       strokeHighlight = 'rgb(255,255,255,150)' -- Base colour/alpha value for stroked highlights
      },
      interface = {
        inputBorder   = 1,  -- Stroke size for borders that receive keyboard input
@@ -188,6 +205,11 @@ end
 -- Convert an RGB string to an RGB table.
 
 gui.strToRGB = function(Value)
+   if not Value then
+      print(debug.traceback())
+      error('Empty value passed to strToRGB()')
+   end
+
    if (string.byte(Value) == 35) then
       local colour = tonumber(Value)
       if (Value:len() == 7) then

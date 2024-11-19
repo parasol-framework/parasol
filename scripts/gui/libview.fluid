@@ -548,7 +548,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    vw.bkgd = vw.viewport.new('VectorRectangle', {
       name   = 'view_bkgd',
-      fill   = gui.colours.background,
+      fill   = gui.colours.page.bkgd,
       width  = '100%',
       height = '100%'
    })
