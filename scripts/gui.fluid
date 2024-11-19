@@ -18,14 +18,16 @@ if (gui == nil) then
        widget   = { face='Noto Sans,Source Sans 3', size='100%' }, -- Text inside widgets (e.g. combobox)
        label    = { face='Noto Sans,Source Sans 3::bold', size='100%' } -- Text for labels and outside widgets
      },
-     colours = {
+     style = {
        -- These are all fills, so any SVG compliant fill value can potentially be used to define a 'colour'.
        widget = {
           text   = 'rgb(255,255,255)',
           bkgd   = 'rgb(0,0,0,100)',
           stroke = 'rgb(255,255,255,60)',
           strokeFocus    = 'rgb(255,255,255,160)',
-          strokeDisabled = 'rgb(255,255,255,60)'
+          strokeDisabled = 'rgb(255,255,255,60)',
+          gap    = 6, -- Recommended gap between widgets (px)
+          margin = 5  -- Recommended internal margin for widgets (px)
        },
        button = {
           bkgd = 'rgb(230,230,230)',      -- Button background when raised / default
@@ -60,8 +62,6 @@ if (gui == nil) then
      interface = {
        inputBorder   = 1,  -- Stroke size for borders that receive keyboard input
        outputBorder  = 1,  -- Stroke size for borders containing immutable content
-       widgetMargin  = 5,  -- Recommended internal margin for widgets (px)
-       widgetGap     = 6,  -- Recommended gap between widgets (px)
        fontSize      = 11, -- Default font-size for everything (pt)
        sliderSize    = 16, -- Max size for slider widgets (px)
        scrollSize    = 18, -- Max size for scroll widgets (px)
@@ -112,14 +112,15 @@ if (gui == nil) then
    local xml = obj.new('xml', { path=path })
 
    if (xml != nil) then
+--[[
       local err, index = xml.mtFindTag('/colours')
       if (err == ERR_Okay) then
-         for k,v in pairs(gui.colours) do
+         for k,v in pairs(gui.style) do
             err, colour = xml.mtGetAttrib(index, k)
-            if (err == ERR_Okay) then gui.colours[k] = colour end
+            if (err == ERR_Okay) then gui.style[k] = colour end
          end
       end
-
+--]]
       local err, index = xml.mtFindTag('/interface')
       if (err == ERR_Okay) then
          for k,v in pairs(gui.interface) do

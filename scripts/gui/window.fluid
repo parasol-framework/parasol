@@ -31,7 +31,7 @@ local function hosted(self)
 end
 
 local function iconTheme()
-   if (gui.rgbValue(gui.strToRGB(gui.colours.widget.text)) > 127) then
+   if (gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127) then
       return 'pearl'
    else
       return 'default' -- The default theme is dark
@@ -417,7 +417,7 @@ gui.window = function(Options)
 
    if hosted(self) then
       self.bkgd = self.viewport.new('VectorRectangle', {
-         fill   = gui.colours.window.bkgd,
+         fill   = gui.style.window.bkgd,
          x      = 0,
          y      = 0,
          width  = '100%',

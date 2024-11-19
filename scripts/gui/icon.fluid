@@ -146,7 +146,7 @@ gui.icon = function(Options)
             x        = math.floor(lIconSize * 0.5),
             face     = gui.fonts.icon.face,
             fontSize = string.format('%.2fpt', lFontSize),
-            fill     = gui.colours.widget.text,
+            fill     = gui.style.widget.text,
             align    = 'horizontal',
             string   = line
          })
