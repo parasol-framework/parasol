@@ -1,56 +1,70 @@
 -- Graphical User Interface functions
 
 if (gui == nil) then
-   -- The following values are the default.  They can be overridden by the "style:values.xml" file.
+   -- The following values are the default 'light' theme.  They can be overridden by the "style:values.xml" file.
    gui = {
+     theme = 'light',
      dpi = 160,
      fonts = {
        -- Use percentages for scalable sizes, where 100% is equivalent to the value of gui.interface.fontSize
-       default  = { face='Noto Sans,Source Sans 3', size='100%' },
-       window   = { face='Noto Sans,Source Sans 3', size='100%' }, -- For text that is not inside a widget
-       button   = { face='Noto Sans,Source Sans 3', size='100%' }, -- Text inside buttons
-       icon     = { face='Noto Sans,Source Sans 3', size='100%' }, -- Text at the bottom of icons
-       menu     = { face='Noto Sans,Source Sans 3', size='100%' }, -- Menu item text
+       default  = { face='Noto Sans,Source Sans Pro', size='100%' },
+       window   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- For text that is not inside a widget
+       button   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Text inside buttons
+       icon     = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Text at the bottom of icons
+       menu     = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Menu item text
        titlebar = { face='Noto Sans', size='100%' }, -- Window titlebar text
        small    = { face='Tiny', size='60%' }, -- Recommended text for small sizes
-       large    = { face='Noto Sans,Source Sans 3', size='130%' }, -- Recommended text for headers
-       widget   = { face='Noto Sans,Source Sans 3', size='100%' }, -- Text inside widgets (e.g. combobox)
-       label    = { face='Noto Sans,Source Sans 3::bold', size='100%' } -- Text for labels and outside widgets
+       large    = { face='Noto Sans,Source Sans Pro', size='130%' }, -- Recommended text for headers
+       widget   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Text inside widgets (e.g. combobox)
+       label    = { face='Noto Sans,Source Sans Pro::bold', size='100%' } -- Text for labels and outside widgets
      },
-     colours = {
+     style = {
        -- These are all fills, so any SVG compliant fill value can potentially be used to define a 'colour'.
-       widgetText   = 'rgb(255,255,255)',
-       widgetBkgd   = 'rgb(0,0,0,100)',
-       widgetStroke = 'rgb(255,255,255,60)',
-       widgetStrokeFocus    = 'rgb(255,255,255,160)',
-       widgetStrokeDisabled = 'rgb(255,255,255,60)',
-       shadow        = 'rgb(0,0,0,100)', -- Base colour/alpha value for stroked shadows
-       highlight     = 'rgb(255,255,255,150)', -- Base colour/alpha value for stroked highlights
-       button        = 'rgb(230,230,230)', -- Button background (raised)
-       buttonClick   = 'rgb(200,200,200)', -- Button background when clicked (depressed)
-       menubar       = 'rgb(190,190,190)', -- Menubar background fill
-       menu          = 'rgb(240,240,240)', -- Menu background fill
-       border        = 'rgb(144,144,144)', -- Standard border for any area filled with 'background'
-       borderFocus   = 'rgb(160,160,160)', -- Colour to use when 'border' has the user's focus
-       menuborder    = 'rgb(200,200,200)', -- Menu border
-       desktop       = 'rgb(160,160,160)', -- Background colour for the desktop
-       recess        = 'rgb(160,160,160)', -- Background colour for recessed areas with no content.
-       background    = 'rgb(255,255,255)', -- Standard background for hosting text & paper-based layouts
-       textHighlight = 'rgb(224,224,240)', -- Background fill for text that is highlighted
-       window        = 'rgb(220,220,220)', -- Background fill for windows
-       windowText    = 'rgb(0,0,0)'        -- Colour for text that is drawn directly to the window
+       widget = {
+          text   = 'rgb(255,255,255)',
+          bkgd   = 'rgb(0,0,0,100)',
+          stroke = 'rgb(255,255,255,60)',
+          strokeFocus    = 'rgb(255,255,255,160)',
+          strokeDisabled = 'rgb(255,255,255,60)',
+          strokeWidth = 2,
+          width  = 160, -- Default width for common widgets (px)
+          gap    = 6,   -- Recommended gap between widgets (px)
+          margin = 6    -- Recommended internal margin for widgets (px)
+       },
+       button = {
+          bkgd = 'rgb(230,230,230)',      -- Background when raised / default
+          bkgdActive = 'rgb(200,200,200)' -- Background when temporarily clicked (depressed)
+       },
+       page = {
+          bkgd        = 'rgb(255,255,255)', -- Background for hosting text & paper-based layouts
+          border      = 'rgb(144,144,144)', -- Border stroke for any area surrounding 'bkgd'
+          borderFocus = 'rgb(160,160,160)', -- Stroke to use when 'border' has the user's focus
+          text        = 'rgb(0,0,0)',       -- Default colour for text drawn over 'bkgd'
+          textHighlight     = 'rgb(0,0,0)',      -- Colour for 'text' when temporarily highlighted
+          textHighlightBkgd = 'rgb(224,224,240)' -- Background fill for 'text' that is highlighted
+       },
+       window = {
+          bkgd = 'rgb(220,220,220)',
+          text = 'rgb(0,0,0)'        -- Colour for text that is drawn directly to the window
+       },
+       menubar = {
+          bkgd = 'rgb(190,190,190)'
+       },
+       menu = {
+          bkgd   = 'rgb(240,240,240)',
+          border = 'rgb(200,200,200)'  -- Stroke for menu border
+       },
+       desktop = {
+          bkgd = 'rgb(160,160,160)'
+       },
+       recess = 'rgb(160,160,160)',  -- Fill for recessed areas with no content.
+       strokeShadow    = 'rgb(0,0,0,100)', -- Base colour/alpha value for stroked shadows
+       strokeHighlight = 'rgb(255,255,255,150)' -- Base colour/alpha value for stroked highlights
      },
      interface = {
-       inputBorder   = 1,  -- Stroke size for borders that receive keyboard input
-       outputBorder  = 1,  -- Stroke size for borders containing immutable content
-       widgetMargin  = 5,  -- Recommended internal margin for widgets (px)
-       widgetGap     = 6,  -- Recommended gap between widgets (px)
-       fontSize      = 11, -- Default font-size for everything (pt)
-       sliderSize    = 16, -- Max size for slider widgets (px)
-       scrollSize    = 18, -- Max size for scroll widgets (px)
-       scrollOpacity = 100, -- Opacity for scrollbar background fills
-       iconTheme     = 'Default',
-       iconSize      = 20   -- Recommended default size for icons (px) and should be linked to fontSize
+       fontSize  = 11, -- Default font-size for everything (pt)
+       iconTheme = 'Default',
+       iconSize  = 20   -- Recommended default size for icons (px) and should be linked to fontSize
      },
      iconThemes = {
         default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
@@ -67,7 +81,10 @@ if (gui == nil) then
         grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } },
         pearl   = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
      },
-     _counter = 0
+     _counter = 0,
+     configureScene = function(Window, Scene)
+        -- A custom configure function can be defined that adds definitions to the window scene, e.g. images and patterns for fills.
+     end
    }
 
    function convertFontSizes() -- Convert font percentage sizes to their px size
@@ -92,14 +109,15 @@ if (gui == nil) then
    local xml = obj.new('xml', { path=path })
 
    if (xml != nil) then
+--[[
       local err, index = xml.mtFindTag('/colours')
       if (err == ERR_Okay) then
-         for k,v in pairs(gui.colours) do
+         for k,v in pairs(gui.style) do
             err, colour = xml.mtGetAttrib(index, k)
-            if (err == ERR_Okay) then gui.colours[k] = colour end
+            if (err == ERR_Okay) then gui.style[k] = colour end
          end
       end
-
+--]]
       local err, index = xml.mtFindTag('/interface')
       if (err == ERR_Okay) then
          for k,v in pairs(gui.interface) do
@@ -170,11 +188,11 @@ gui.pixel = function(val)
             return num
          elseif (alpha == 'in') then
             return gui.dpi * num
-         elseif (alpha == 'mm') then // 25.4 units per inch
+         elseif (alpha == 'mm') then -- 25.4 units per inch
             return gui.dpi * (num / 25.4)
-         elseif (alpha == 'pt') then // 72 units per inch
+         elseif (alpha == 'pt') then -- 72 units per inch
             return gui.dpi * (num / 72)
-         elseif (alpha == 'dp') then // 160dpi relative value
+         elseif (alpha == 'dp') then -- 160dpi relative value
             return num * (gui.dpi * 0.00625)
          end
       end
@@ -188,6 +206,10 @@ end
 -- Convert an RGB string to an RGB table.
 
 gui.strToRGB = function(Value)
+   if not Value then
+      error('Empty value passed to strToRGB()\n' .. debug.traceback())
+   end
+
    if (string.byte(Value) == 35) then
       local colour = tonumber(Value)
       if (Value:len() == 7) then
@@ -262,6 +284,10 @@ end
 -- Convert HSV table to RGB
 
 gui.hsvToRGB = function(Value)
+   if not Value then
+      error('Empty value passed to hsvToRGB()\n' .. debug.traceback())
+   end
+
    local h = Value.h / 60
    local s = Value.s
    local v = Value.v
@@ -302,6 +328,10 @@ end
 -- Convert RGB table to HSV
 
 gui.rgbToHSV = function(Value)
+   if not Value then
+      error('Empty value passed to rgbToHSV()\n' .. debug.traceback())
+   end
+
    local max = gui.rgbValue(Value)
    local hsv = { v = max }
    if max > 0 then
@@ -361,7 +391,9 @@ end
 -- Generate a simple gradient fill for vectors.
 
 gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, IgnoreClashes)
-   if not Name then error('A name for the gradient is required.') end
+   if not Name then
+      error('A name for the gradient is required.\n' .. debug.traceback())
+   end
 
    local stops = { }
    local i = 0

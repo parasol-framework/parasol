@@ -532,6 +532,12 @@ struct VectorPainter {
    objVectorImage * Image;        // A VectorImage object, suitable for image fills.
    objVectorGradient * Gradient;  // A VectorGradient object, suitable for gradient fills.
    struct FRGB Colour;            // A single RGB colour definition, suitable for block colour fills.
+   void reset() {
+      Colour.Alpha = 0;
+      Gradient = NULL;
+      Image    = NULL;
+      Pattern  = NULL;
+   }
 };
 
 struct PathCommand {

@@ -14,7 +14,7 @@ local lColours = {
    iconGradient  = { first={ r=250,g=249,b=248 }, last={ r=190,g=191,b=192 } }
 }
 
-local VMARGIN   = 6
+local VMARGIN   = gui.style.widget.margin
 local GAP       = 26
 local ICON_SIZE = 12
 local FONT_SIZE = 16
@@ -34,7 +34,7 @@ local function activateItem(self) -- Activate the current menu item.
 
    local menu = self._currentItem.menu
    if not menu then
-      if not (#self._currentItem.menuConfig > 0) then 
+      if not (#self._currentItem.menuConfig > 0) then
          if self._lastMenu then self._lastMenu.hide() end
          return
       end
@@ -139,8 +139,8 @@ local function arrangeItems(self)
       if nz(item.displayName) then
          item.vectorText = self._vg.new('VectorText', {
             x        = x + iconWidth + VMARGIN,
-            face     = 'Source Sans Pro,*',
-            fontSize = FONT_SIZE,
+            face     = gui.fonts.menu.face,
+            fontSize = string.format('%.2fpt', gui.fonts.menu.size),
             fill     = lColours.textFill,
             string   = item.displayName
          })

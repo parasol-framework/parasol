@@ -7,7 +7,7 @@ Documentation is available in the Parasol Wiki.
    require 'gui/libview'
 
 local ICON_SIZE = 16
-local VSPACING  = 2
+local VSPACING  = 1
 local EDGE      = 4
 
 local LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
@@ -15,7 +15,7 @@ LINE_HEIGHT = math.round(LINE_HEIGHT * 1.3)
 local LINE_OFFSET = (LINE_HEIGHT + FONT_HEIGHT) * 0.5
 
 local lColours = {
-   fillItem           = 'rgb(0,0,0)',
+   fillItem           = gui.style.page.text,
    fillItemSelectHigh = 'rgb(255,255,255)',
    fillSelect         = 'rgb(0,0,60,140)',
    fillSelectFont     = 'rgb(255,255,255)',

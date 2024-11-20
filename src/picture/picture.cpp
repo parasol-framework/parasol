@@ -191,24 +191,21 @@ static ERR PICTURE_Activate(extPicture *Self)
       }
    }
 
-   // If the picture supports an alpha channel, initialise an alpha based Mask object for the Picture.
+   if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
+      // Force the image to 32-bit and store the alpha channel in the alpha byte of the pixel data.
 
-   if (color_type & PNG_COLOR_MASK_ALPHA) {
-      if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
-         // Upgrade the image to 32-bit and store the alpha channel in the alpha byte of the pixel data.
-
-         bmp->BitsPerPixel  = 32;
-         bmp->BytesPerPixel = 4;
-         bmp->Flags |= BMF::ALPHA_CHANNEL;
+      bmp->BitsPerPixel  = 32;
+      bmp->BytesPerPixel = 4;
+      bmp->Flags |= BMF::ALPHA_CHANNEL;
+   }
+   else if (color_type & PNG_COLOR_MASK_ALPHA) {
+      // A picture can have an alpha channel that is separate to the RGB image data.
+      if ((Self->Mask = objBitmap::create::local(
+            fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
+            fl::AmtColours(256), fl::Flags(BMF::MASK)))) {
+         Self->Flags |= PCF::MASK|PCF::ALPHA;
       }
-      else {
-         if ((Self->Mask = objBitmap::create::local(
-               fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
-               fl::AmtColours(256), fl::Flags(BMF::MASK)))) {
-            Self->Flags |= PCF::MASK|PCF::ALPHA;
-         }
-         else goto exit;
-      }
+      else goto exit;
    }
 
    // If a background colour has been specified for the image (instead of an alpha channel), read it and create the
@@ -1196,20 +1193,25 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
    if (BitDepth IS 16) png_set_strip_16(ReadPtr); // Reduce bit depth to 24bpp if the image is 48bpp
    if (BitDepth < 8) png_set_packing(ReadPtr);
 
-   log.branch("Size: %dx%dx%d", (LONG)PngWidth, (LONG)PngHeight, BitDepth);
+   auto interlace_type = png_get_interlace_type(ReadPtr, InfoPtr);
 
-   LONG rowsize = png_get_rowbytes(ReadPtr, InfoPtr);
+   log.branch("Size: %dx%dx%d, Interlace: %d", (LONG)PngWidth, (LONG)PngHeight, BitDepth, interlace_type);
+
+   auto row_size = png_get_rowbytes(ReadPtr, InfoPtr);
    if ((error = acQuery(Bitmap)) != ERR::Okay) return error;
    if (!Bitmap->initialised()) {
       if ((error = InitObject(Bitmap)) != ERR::Okay) return error;
    }
-   if ((error = AllocMemory(rowsize, MEM::DATA|MEM::NO_CLEAR, &row)) != ERR::Okay) return error;
+   if ((error = AllocMemory(row_size, MEM::DATA|MEM::NO_CLEAR, &row)) != ERR::Okay) return error;
 
    // Chop the image to the bitmap dimensions
 
    if (PngWidth > (png_uint_32)Bitmap->Width) PngWidth = Bitmap->Width;
    if (PngHeight > (png_uint_32)Bitmap->Height) PngHeight = Bitmap->Height;
-
+   
+   LONG passes = 1;
+   if (interlace_type == PNG_INTERLACE_ADAM7) passes = png_set_interlace_handling(ReadPtr);
+      
    row_pointers = row;
    if (ColourType IS PNG_COLOR_TYPE_GRAY) {
       log.trace("Greyscale image source.");
@@ -1226,52 +1228,64 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
    }
    else if (ColourType IS PNG_COLOR_TYPE_PALETTE) {
       log.trace("Palette-based image source.");
-      if (Bitmap->BitsPerPixel IS 8) {
-         for (png_uint_32 y=0; y < PngHeight; y++) {
-            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-            for (png_uint_32 x=0; x < PngWidth; x++) Bitmap->DrawUCPixel(Bitmap, x, y, row[x]);
-         }
-      }
-      else {
-         rgb.Alpha = 255;
-         for (png_uint_32 y=0; y < PngHeight; y++) {
-            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-            for (png_uint_32 x=0; x < PngWidth; x++) {
-               Bitmap->DrawUCRPixel(Bitmap, x, y, &Bitmap->Palette->Col[row[x]]);
+
+      while (passes > 0) {
+         if (Bitmap->BitsPerPixel IS 8) {
+            for (png_uint_32 y=0; y < PngHeight; y++) {
+               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+               for (png_uint_32 x=0; x < PngWidth; x++) Bitmap->DrawUCPixel(Bitmap, x, y, row[x]);
             }
          }
+         else {
+            rgb.Alpha = 255;
+            for (png_uint_32 y=0; y < PngHeight; y++) {
+               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+               for (png_uint_32 x=0; x < PngWidth; x++) {
+                  Bitmap->DrawUCRPixel(Bitmap, x, y, &Bitmap->Palette->Col[row[x]]);
+               }
+            }
+         }
+         passes--;
       }
    }
    else if (ColourType & PNG_COLOR_MASK_ALPHA) {
       // When decompressing images that support an alpha channel, the fourth byte of each pixel will contain the alpha data.
 
       log.trace("32-bit + alpha image source.");
-      for (png_uint_32 y=0; y < PngHeight; y++) {
-         png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-         i = 0;
-         for (png_uint_32 x=0; x < PngWidth; x++) {
-            Bitmap->DrawUCRPixel(Bitmap, x, y, (RGB8 *)(row+i));
 
-            // Set the alpha byte in the alpha mask (nb: refer to png_set_invert_alpha() if you want to reverse the alpha bytes)
+      while (passes > 0) {
+         for (png_uint_32 y=0; y < PngHeight; y++) {
+            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+            i = 0;
+            for (png_uint_32 x=0; x < PngWidth; x++) {
+               Bitmap->DrawUCRPixel(Bitmap, x, y, (RGB8 *)(row+i));
 
-            if (Self->Mask) Self->Mask->Data[(y * Self->Mask->LineWidth) + x] = row[3];
+               // Set the alpha byte in the alpha mask (nb: refer to png_set_invert_alpha() if you want to reverse the alpha bytes)
 
-            i += 4;
+               if (Self->Mask) Self->Mask->Data[(y * Self->Mask->LineWidth) + x] = row[3];
+
+               i += 4;
+            }
          }
+         passes--;
       }
    }
    else {
       log.trace("24-bit image source.");
-      rgb.Alpha = 255;
-      for (png_uint_32 y=0; y < PngHeight; y++) {
-         png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
-         i = 0;
-         for (png_uint_32 x=0; x < PngWidth; x++) {
-            rgb.Red   = row[i++];
-            rgb.Green = row[i++];
-            rgb.Blue  = row[i++];
-            Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
+
+      while (passes > 0) {
+         rgb.Alpha = 255;
+         for (png_uint_32 y=0; y < PngHeight; y++) {
+            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+            i = 0;
+            for (png_uint_32 x=0; x < PngWidth; x++) {
+               rgb.Red   = row[i++];
+               rgb.Green = row[i++];
+               rgb.Blue  = row[i++];
+               Bitmap->DrawUCRPixel(Bitmap, x, y, &rgb);
+            }
          }
+         passes--;
       }
    }
 

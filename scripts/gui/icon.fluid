@@ -5,7 +5,8 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui'
 
-local MARGIN = 6
+local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.icon)
+local MARGIN = math.floor(FONT_HEIGHT * 0.5) + 1
 
 -- NB: If a custom SVG file is desired then the client must specify a volume in the path.
 
@@ -33,7 +34,7 @@ gui.icon = function(Options)
    local lLines      = { }
    local lIconSize   = nz(Options.size, 66)
    local lIconWidth  = lIconSize
-   local lFontSize   = 10
+   local lFontSize   = FONT_HEIGHT
    local lLineHeight = 0
 
    local function inputFeedback(Viewport, Msg)
@@ -146,7 +147,7 @@ gui.icon = function(Options)
             x        = math.floor(lIconSize * 0.5),
             face     = gui.fonts.icon.face,
             fontSize = string.format('%.2fpt', lFontSize),
-            fill     = gui.colours['widgetText'],
+            fill     = gui.style.widget.text,
             align    = 'horizontal',
             string   = line
          })

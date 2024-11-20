@@ -8,10 +8,7 @@ Documentation is available in the Parasol Wiki.
 
    if (not mGfx)  then mGfx = mod.load('display') end
 
-local FONT_FACE = 'Noto Sans'
 local FONT_SIZE = 11
-local MARGIN    = 6
-local RIGHT_MARGIN = MARGIN
 local ITEM_SPACING = 1.2
 
 local function applyFill(Vector, Fill)
@@ -127,7 +124,7 @@ gui.menu = function(Options)
             local mi = { y=y, config=item }
             local vText = self.vg.new('VectorText', {
                x        = textX,
-               face     = FONT_FACE,
+               face     = gui.fonts.menu.face,
                fontSize = string.format('%.2fpt', FONT_SIZE),
                fill     = 'rgb(0,0,0)',
                align    = 'left',
@@ -162,7 +159,7 @@ gui.menu = function(Options)
 
                local vKey = self.vg.new('VectorText', {
                   x        = self.surface.width,
-                  face     = FONT_FACE,
+                  face     = gui.fonts.menu.face,
                   fontSize = string.format('%.2fpt', FONT_SIZE),
                   fill     = 'rgb(30,80,0,255)',
                   align    = 'right',
@@ -278,7 +275,7 @@ gui.menu = function(Options)
 
                local x
                if self.reverseX then
-                  x = cursor_x - parent.absX - 1 - surface.width + RIGHT_MARGIN
+                  x = cursor_x - parent.absX - 1 - surface.width + gui.style.widget.margin
                   if (x < 0) then
                      x = 0
                      self.reverseX = false
@@ -286,7 +283,7 @@ gui.menu = function(Options)
                else
                   x = cursor_x - parent.absX - 1
                   if (x + surface.width > parent.width - 2) then
-                     x = x - surface.width + RIGHT_MARGIN
+                     x = x - surface.width + gui.style.widget.margin
                      self.reverseX = true
                   end
                end
@@ -313,9 +310,9 @@ gui.menu = function(Options)
          end
          parent.currentMenu = self
 
-         local x = parent.x + parent.width - RIGHT_MARGIN
+         local x = parent.x + parent.width - gui.style.widget.margin
          if (self.reverseX) then
-            x = parent.x - surface.width + RIGHT_MARGIN
+            x = parent.x - surface.width + gui.style.widget.margin
             if x < 2 then
                x = 2
                self.reverseX = false
@@ -326,7 +323,7 @@ gui.menu = function(Options)
                -- A specific target surface is hosting the menu layer adjust the coordinate if necessary to keep
                -- it from being partially hidden.
                if x + surface.width >= target.width then
-                  x = target.x - surface.width + RIGHT_MARGIN
+                  x = target.x - surface.width + gui.style.widget.margin
                   self.reverseX = true
                end
             end

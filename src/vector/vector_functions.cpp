@@ -986,10 +986,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
 
    if ((!IRI) or (!Painter)) return ERR::NullArgs;
 
-   Painter->Colour.Alpha = 0; // Nullify the colour
-   Painter->Gradient = NULL;
-   Painter->Image    = NULL;
-   Painter->Pattern  = NULL;
+   Painter->reset();
 
    log.trace("IRI: %s", IRI);
 
