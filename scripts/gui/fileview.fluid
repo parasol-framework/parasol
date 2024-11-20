@@ -1206,7 +1206,7 @@ gui.fileview = function(View, Options)
 
             end
 
-            if #items > 1 then self.view.addItems(items) end
+            if #items > 0 then self.view.addItems(items) end
 
          mSys.AdjustLogLevel(-1)
       end

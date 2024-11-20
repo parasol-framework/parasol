@@ -215,48 +215,45 @@ gui.window = function(Options)
 --[[
       local margins = { }
       local parent = self.surface.parent
-      if (!AccessObject(self.Surface->ParentID, 5000, &parent)) then
-         if ((margins.Left = parent->LeftMargin) < 0) margins.Left = 0
-         if ((margins.Top = parent->TopMargin) < 0) margins.Top = 0
-         margins.Right  = parent->Width - parent->RightMargin
-         margins.Bottom = parent->Height - parent->BottomMargin
 
-         ReleaseObject(parent)
+      if ((margins.Left = parent.LeftMargin) < 0) margins.Left = 0
+      if ((margins.Top = parent.TopMargin) < 0) margins.Top = 0
+      margins.Right  = parent.Width - parent.RightMargin
+      margins.Bottom = parent.Height - parent.BottomMargin
 
-         local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
+      local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
 
-         local x = vx
-         local y = vy
-         local x2 = vx + vwidth
-         local y2 = vy + vheight
+      local x = vx
+      local y = vy
+      local x2 = vx + vwidth
+      local y2 = vy + vheight
 
-         if (margins.left > x)    then x = margins.left end
-         if (margins.top > y)     then y = margins.top end
-         if (margins.right < x2)  then x2 = margins.right end
-         if (margins.bottom < y2) then y2 = margins.bottom end
+      if (margins.left > x)    then x = margins.left end
+      if (margins.top > y)     then y = margins.top end
+      if (margins.right < x2)  then x2 = margins.right end
+      if (margins.bottom < y2) then y2 = margins.bottom end
 
-         if (Toggle) then
-            if ((self.restore.width) and (self.restore.height)) then
-               if ((self.surface.x == x) and (self.surface.y == y) and
-                   (self.surface.width == (x2-x)) and (self.surface.height == (y2-y))) then
-                  self.surface.acRedimension(self.restore.x, self.restore.y, 0.0, self.restore.width, self.restore.height, 0.0)
-                  return
-               end
+      if (Toggle) then
+         if ((self.restore.width) and (self.restore.height)) then
+            if ((self.surface.x == x) and (self.surface.y == y) and
+                (self.surface.width == (x2-x)) and (self.surface.height == (y2-y))) then
+               self.surface.acRedimension(self.restore.x, self.restore.y, 0.0, self.restore.width, self.restore.height, 0.0)
+               return
             end
          end
+      end
 
-         if (((x2-x) == self.surface.width) and ((y2-y) == self.surface.height)) then
-            self.surface.acMoveToPoint(x, y, 0.0, bit.bor(MTF_X, MTF_Y))
-         else
-            self.restore = {
-               x = self.surface.x
-               y = self.surface.y
-               width  = self.surface.width
-               height = self.surface.height
-            }
+      if (((x2-x) == self.surface.width) and ((y2-y) == self.surface.height)) then
+         self.surface.acMoveToPoint(x, y, 0.0, bit.bor(MTF_X, MTF_Y))
+      else
+         self.restore = {
+            x = self.surface.x
+            y = self.surface.y
+            width  = self.surface.width
+            height = self.surface.height
+         }
 
-            self.surface.acRedimension(x, y, 0.0, x2-x, y2-y, 0.0)
-         end
+         self.surface.acRedimension(x, y, 0.0, x2-x, y2-y, 0.0)
       end
 --]]
    end
@@ -292,35 +289,6 @@ gui.window = function(Options)
    self.hide = function(self)
       self.visible = false
       self.surface.acHide()
-
-      -- Find the top-most window in our container and change the focus to it
---[[
-      local parent_id, window_id
-      if ((parent_id = self.Surface->ParentID)) then
-         SurfaceControl *ctl
-         if ((ctl = mGfx.AccessList(ARF_READ))) then
-            auto list = (SurfaceList *)((BYTE *)ctl + ctl->ArrayIndex + ((ctl->Total-1) * ctl->EntrySize))
-            if (list->ParentID) then
-               for (auto i=ctl->Total-1 i >= 0 i--, list=(SurfaceList *)((BYTE *)list - ctl->EntrySize)) do
-                  if ((list->ParentID IS parent_id) and (list->SurfaceID != self.Surface->Head.UID)) then
-                     if (list->Flags & RNF_VISIBLE) then
-                        if ((window_id = GetOwnerID(list->SurfaceID))) then
-                           if (GetClassID(window_id) IS ID_WINDOW) then
-                              acFocusID(window_id)
-                              break
-                           end
-                        end
-                     end
-                  end
-               end
-            end
-
-            mGfx.ReleaseList(ARF_READ)
-         end
-      end
-      -- If there are no other windows in our container - it's highly likely that we're in a hosted environment.
---]]
-
       if self.events and self.events.hide then self.events.hide(self) end
    end
 
