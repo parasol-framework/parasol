@@ -8,12 +8,6 @@ Documentation is available in the Parasol Wiki.
    require 'translate'
    include 'vector'
 
-local lColours = {
-   textFill      = 'rgb(255,255,255)',
-   textHighlight = 'rgb(160,160,220)',
-   iconGradient  = { first={ r=250,g=249,b=248 }, last={ r=190,g=191,b=192 } }
-}
-
 local VMARGIN   = gui.style.widget.margin
 local GAP       = 26
 local ICON_SIZE = 12
@@ -101,11 +95,12 @@ end
 
 local function highlightItem(self, Item)
    self._currentItem = Item
-   self._hIcon.x          = Item.x + 1
-   self._hIcon.y          = 1
-   self._hIcon.width      = Item.width - 2
-   self._hIcon.height     = self.viewport.height - 2
-   self._hIcon.visibility = 'visible'
+
+   self._highlight.x          = Item.x
+   self._highlight.y          = 0
+   self._highlight.width      = Item.width
+   self._highlight.height     = self.viewport.height - 1
+   self._highlight.visibility = 'visible'
 
    self.viewport.acDraw()
 end
@@ -141,7 +136,7 @@ local function arrangeItems(self)
             x        = x + iconWidth + VMARGIN,
             face     = gui.fonts.menu.face,
             fontSize = string.format('%.2fpt', gui.fonts.menu.size),
-            fill     = lColours.textFill,
+            fill     = gui.style.menubar.text,
             string   = item.displayName
          })
 
@@ -247,15 +242,15 @@ gui.menubar = function(Options)
    local function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.
       if (self._currentItem == Item) and (StateChanged != true) then return end
 
-      self._hIcon.visibility = 'hidden' -- Turn off keyboard highlighting
+      self._highlight.visibility = 'hidden'
       self._currentItem = Item
 
       if self._prevItem and (self._prevItem != self._currentItem) then
-         self._prevItem.vectorText.fill = lColours.textFill
+         -- Reset prevItem presentation if necessary
       end
 
       if self._currentItem and (not self._currentItem.disabled) and (not self._disabled) then
-         self._currentItem.vectorText.fill = lColours.textHighlight
+         highlightItem(self, self._currentItem)
          self._prevItem = self._currentItem
       end
 
@@ -283,7 +278,7 @@ gui.menubar = function(Options)
          if (Event == FM_LOST_FOCUS) then
             self._hasFocus = false
             if self._currentItem then
-               self._hIcon.visibility = 'hidden' -- Turn off keyboard highlighting
+               self._highlight.visibility = 'hidden' -- Turn off highlighting
             end
 
             if self._lastMenu then
@@ -369,38 +364,28 @@ gui.menubar = function(Options)
 
       self._bkgd = self.viewport.new('VectorGroup', { name='ItemBackground' })
 
-      self._hIcon = self.viewport.new('VectorRectangle', { -- Keyboard-based selection
-         stroke    = 'rgb(0,0,0,128)',
-         dashArray = '1, 1',
-         roundX    = 3,
-         roundY    = 3,
-         x         = 0,
-         y         = 0,
-         width     = 16,
-         height    = 16,
-         visibility = 'hidden'
-      })
-
       Options.createItems(self)
 
       self.viewport.height = ICON_SIZE + (VMARGIN * 2)
 
       self._bkgd.new('VectorRectangle', { -- Main background
-         fill   = 'rgb(0,0,0,200)',
+         fill   = gui.style.menubar.bkgd,
          x      = 0,
          y      = 0,
          width  = '100%',
          height = self.viewport.height - 1
       })
 
+      self._highlight = self._bkgd.new('VectorRectangle', { -- Highlight for items
+         fill = gui.style.menubar.highlight,
+         x = 0, y = 0, width = 1, height = self.viewport.height - 1,
+         visibility = 'hidden'
+      })
+
       self._bkgd.new('VectorRectangle', { -- Bottom stroke
-         fill        = 'rgb(0,0,0,64)',
-         stroke      = 'rgb(255,255,255,64)',
-         strokeWidth = 1,
-         x           = 0,
-         y           = self.viewport.height - 1,
-         width       = '100%',
-         height      = 1
+         fill = 'rgb(0,0,0,64)',
+         stroke = 'rgb(255,255,255,64)', strokeWidth = 1,
+         x = 0, y = self.viewport.height - 1, width = '100%', height = 1
       })
 
       arrangeItems(self)

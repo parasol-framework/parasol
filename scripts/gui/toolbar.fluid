@@ -8,13 +8,6 @@ Documentation is available in the Parasol Wiki.
    require 'translate'
    include 'vector'
 
-local lColours = {
-   hover       = 'rgb(0,0,0,32)',
-   selected    = 'rgb(255,255,255,128)',
-   groupBorder = 'rgb(255,255,255,128)',
-   iconGradient = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }
-}
-
 local lCounter = 0
 local lTipDelay = 0.75
 
@@ -38,7 +31,11 @@ gui.toolbar = function(Options)
       _disabled = false,
       _lookup = { },
       _iconSize = nz(Options.iconSize, gui.interface.iconSize),
-      _hasFocus = false
+      _hasFocus = false,
+      _iconTheme = nz(Options.iconTheme, { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } }),
+      _hoverFill = nz(Options.hoverFill, 'rgb(0,0,0,32)'),
+      _selectFill = nz(Options.selectFill, 'rgb(255,255,255,128)'),
+      _groupBorder = nz(Options.groupBorder, 'rgb(255,255,255,128)')
    }
 
    local function sendFeedback()
@@ -122,15 +119,17 @@ gui.toolbar = function(Options)
          groupOffset = self._groupMargin
       end
 
-      if (not self._vHover) then
+      if (not self._vHover) then -- Hover highlight
          if (self._groupCount > 0) then
-            self._vHover = self.viewport.new('VectorRectangle', { -- Hover highlight
-               fill='rgb(255,255,255)', x=0, y=0, width=1, height=1, visibility='hidden'
+            self._vHover = self.viewport.new('VectorRectangle', {
+               fill=self._hoverFill, x=0, y=0, width=1, height=1, visibility='hidden'
             })
+            self._vHover.acMoveToBack()
          else
-            self._vHover = self.viewport.new('VectorRectangle', { -- Hover highlight
-               fill='rgb(255,255,255)', x=0, y=0, width=1, height=1, visibility='hidden', roundX=self._round, roundY=self._round
+            self._vHover = self.viewport.new('VectorRectangle', {
+               fill=self._hoverFill, x=0, y=0, width=1, height=1, visibility='hidden', roundX=self._round, roundY=self._round
             })
+            self._vHover.acMoveToBack()
          end
       end
 
@@ -167,7 +166,7 @@ gui.toolbar = function(Options)
 
             local seq = string.format('M%f,%f l0,%f', x+(item.width-1) * 0.5, y+1, item.height)
             self.vg.new('VectorPath', {
-               name = 'break', stroke = lColours.groupBorder, sequence = seq, dashArray = '1, 1'
+               name = 'break', stroke = self._groupBorder, sequence = seq, dashArray = '1, 1'
             })
 
             if self._horizontal then
@@ -202,7 +201,7 @@ gui.toolbar = function(Options)
             end
 
             item.border = self.vg.new('VectorRectangle', {
-               name = 'grouprect', stroke = lColours.groupBorder, fill = 'rgb(0,0,0,20)', strokeWidth = 2,
+               name = 'grouprect', stroke = self._groupBorder, fill = 'rgb(0,0,0,20)', strokeWidth = 2,
                x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
             })
 
@@ -224,10 +223,16 @@ gui.toolbar = function(Options)
                   item.vectorIcon.opacity = 0.5
                end
             elseif nz(item.displayName) then
+               local gradient
+               if type(self._iconTheme) == 'table' then
+                  gradient = self._iconTheme
+               else
+                  gradient = gui.iconThemes[self._iconTheme]
+               end
+
                local gname = 'tbar_grd' .. counter()
                item.svgGradient = gui.simpleGradient(self.viewport.scene, gname,
-                  { lColours.iconGradient.first, lColours.iconGradient.last },
-                  0, item.y, 0, item.height, 'userspace')
+                  gradient, 0, item.y, 0, item.height, 'userspace')
 
                item.vectorText = self.vg.new('VectorText', {
                   x        = x + self._cellMargin,
@@ -309,7 +314,7 @@ gui.toolbar = function(Options)
 
       if Icon then
          pcall(function()
-            gui.createIcon(self.viewport.scene, 'icons:' .. Icon .. '.svg', self._iconSize, lColours.iconGradient, Icon)
+            gui.createIcon(self.viewport.scene, Icon, self._iconSize, self._iconTheme, Icon)
             item.svgGroup = self.viewport.new('VectorRectangle', {
                fill = 'url(#' .. Icon .. ')',
                x=0, y=0, width=self._iconSize, height=self._iconSize
@@ -358,7 +363,7 @@ gui.toolbar = function(Options)
          item.selected = false
          self.viewport.acDraw()
       else
-         check(ERR_Search)
+         raise(ERR_Search)
       end
    end
 
@@ -388,7 +393,7 @@ gui.toolbar = function(Options)
 
       if redraw then self.viewport.acDraw() end
 
-      if (not found) then check(ERR_Search) end
+      if (not found) then raise(ERR_Search) end
    end
 
    local function tipTimer(Elapsed, CurrentTime)
@@ -396,7 +401,7 @@ gui.toolbar = function(Options)
          gui.tooltip({ text=self._current.tip })
       end
       self._tipTimer = nil
-      check(ERR_Terminate)
+      raise(ERR_Terminate)
    end
 
    local function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.
@@ -407,9 +412,9 @@ gui.toolbar = function(Options)
 
       if self._current and (not self._current.disabled) and (not self._disabled) then
          if self._clicked then
-            self._vHover.fill = lColours.selected
+            self._vHover.fill = self._selectFill
          else
-            self._vHover.fill = lColours.hover
+            self._vHover.fill = self._hoverFill
          end
 
          if self._horizontal then

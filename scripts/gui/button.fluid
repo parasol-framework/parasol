@@ -32,7 +32,7 @@ gui.button = function(Options)
       self.disabled = true
       self.viewport.acDisable()
       self.text.opacity = 0.5
-      self.bkgd.fill = gui.style.widget.bkgd
+      self.bkgd.fill = gui.style.button.bkgd
       if self.events.disable then self.events.disable(self) end
       self.viewport.acDraw()
    end
@@ -41,7 +41,7 @@ gui.button = function(Options)
       self.disabled = false
       self.viewport.acDisable()
       self.text.opacity = 1.0
-      self.bkgd.fill = gui.style.widget.bkgd
+      self.bkgd.fill = gui.style.button.bkgd
       if self.events.enable then self.events.enable(self) end
       self.viewport.acDraw()
    end
@@ -76,7 +76,7 @@ gui.button = function(Options)
    self.viewport = self.parentViewport.new('VectorViewport', vps)
 
    self.bkgd = self.viewport.new('VectorRectangle', {
-      fill   = gui.style.widget.bkgd,
+      fill   = gui.style.button.bkgd,
       x      = gui.style.widget.strokeWidth * 0.5,
       y      = gui.style.widget.strokeWidth * 0.5,
       width  = self.viewport.width - gui.style.widget.strokeWidth,
@@ -113,14 +113,16 @@ gui.button = function(Options)
    end
 
    self._textClip = self.viewport.new('VectorViewport', {
-      x=gui.style.widget.strokeWidth, y=gui.style.widget.strokeWidth, xOffset=gui.style.widget.strokeWidth, yOffset=gui.style.widget.strokeWidth, overflow=VOF_HIDDEN
+      x=gui.style.widget.strokeWidth, y=gui.style.widget.strokeWidth,
+      xOffset=gui.style.widget.strokeWidth, yOffset=gui.style.widget.strokeWidth,
+      overflow=VOF_HIDDEN
    })
 
    self.text = self._textClip.new('VectorText', {
       x         = GAP + label_offset,
-      y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - gui.style.widget.strokeWidth - gui.style.widget.strokeWidth) * 0.5),
-      face      = gui.fonts.widget.face,
-      fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
+      y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (gui.style.widget.strokeWidth * 2)) * 0.5),
+      face      = gui.fonts.button.face,
+      fontSize  = string.format('%.2fpt', gui.fonts.button.size),
       fill      = gui.style.widget.text,
       string    = Options.text,
       lineLimit = 1
@@ -157,14 +159,12 @@ gui.button = function(Options)
    self.viewport.mtSubscribeInput(bit.bor(JTYPE_CROSSING, JTYPE_BUTTON, JTYPE_REPEATED), function(Viewport, Msg)
       repeat
          if (Msg.type == JET_CROSSED_IN) then
-            local highlight = gui.strToRGB(gui.style.widget.bkgd)
-            highlight.a = highlight.a * 0.5
-            self.bkgd.fill = gui.rgbToSVG(highlight)
+            self.bkgd.fill = gui.style.button.bkgdActive
             if self.events.cursorEntry then
                self.events.cursorEntry(self)
             end
          elseif (Msg.type == JET_CROSSED_OUT) then
-            self.bkgd.fill = gui.style.widget.bkgd
+            self.bkgd.fill = gui.style.button.bkgd
             if self.events.cursorExit then
                self.events.cursorExit(self)
             end

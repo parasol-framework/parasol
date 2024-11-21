@@ -1470,9 +1470,14 @@ gui.fileview = function(View, Options)
    end
 
    if Options.navigationBar then
-      local bkgd = self.view.viewport.new('VectorRectangle', { x=0, y=0, xOffset=0, height=1, fill='rgb(0,0,0,20)' })
+      local bkgd = self.view.viewport.new('VectorRectangle', {
+         x=0, y=0, xOffset=0, height=1, fill='#2C3E50'
+      })
 
       self.toolbar = gui.toolbar({
+         iconTheme = 'pearl',
+         hoverFill = '#E74C3C',
+         selectFill = '#2980B9',
          target  = self.view.viewport,
          x       = 0,
          y       = 0,
