@@ -55,21 +55,6 @@ if (gui == nil) then
 
    gui.style = {
      -- All colour values are fills, so gradient and pattern references are also permitted for 'colours'.
-     widget = {
-       text   = gui.palette.altText,
-       bkgd   = gui.palette.prime,
-       stroke = 'rgb(255,255,255,60)',
-       strokeFocus    = 'rgb(255,255,255,160)',
-       strokeDisabled = 'rgb(255,255,255,60)',
-       strokeWidth = 2,
-       width  = 160, -- Default width for common widgets (px)
-       gap    = 6,   -- Recommended gap between widgets (px)
-       margin = 6    -- Recommended internal margin for widgets (px)
-     },
-     button = {
-       bkgd = gui.palette.second,      -- Background when raised / default
-       bkgdActive = gui.palette.contrast -- Background when temporarily clicked (depressed)
-     },
      page = {
        bkgd        = gui.palette.bkgd,     -- Background for hosting text & paper-based layouts
        stroke      = gui.palette.prime,    -- Border stroke for any area surrounding 'bkgd'
@@ -84,9 +69,24 @@ if (gui == nil) then
        textSelectBkgd    = gui.palette.contrast, -- Background fill for 'text' when selected
        iconSelect        = ''                    -- Recommended icon theme when selected
      },
+     widget = {
+       text   = gui.palette.altText,
+       bkgd   = gui.palette.prime,
+       stroke = 'rgb(255,255,255,60)',
+       strokeFocus    = 'rgb(255,255,255,160)',
+       strokeDisabled = 'rgb(255,255,255,60)',
+       strokeWidth = 2,
+       width  = 160, -- Default width for common widgets (px)
+       gap    = 6,   -- Recommended gap between widgets (px)
+       margin = 6    -- Recommended internal margin for widgets (px)
+     },
      window = {
        bkgd = gui.palette.neutral,
        text = 'rgb(0,0,0)'        -- Colour for text that is drawn directly to the window
+     },
+     button = {
+       bkgd = gui.palette.invBkgd,      -- Default background
+       bkgdActive = gui.palette.contrast -- Background when temporarily clicked (depressed)
      },
      menubar = {
        bkgd = gui.palette.invBkgd,
@@ -245,7 +245,7 @@ gui.strToRGB = function(Value)
    end
 
    local result
-   catch(function()
+   xpcall(function()
       if (string.byte(Value) == 35) then
          local colour = tonumber(string.sub(Value,2), 16)
          if (Value:len() == 7) then
@@ -285,8 +285,8 @@ gui.strToRGB = function(Value)
          result = { r=r, g=g, b=b, a=a }
       end
    end,
-   function(Exception)
-      error(Exception.message .. '\nInput value: ' .. Value .. '\n' .. debug.traceback())
+   function(Error)
+      error(Error .. '\nInput value: ' .. Value .. '\n' .. debug.traceback())
    end)
 
    return result
@@ -490,13 +490,8 @@ end
 gui.createIcon = function(Scene, Path, Size, Theme, Name)
    if not Size then Size = 16 end
    if not Path then error('No Path specified.') end
-   if not Name then Name = Path end
    local lGradient = gui.iconThemes.default
    local icon = { size=Size }
-
-   if Scene.mtFindDef(Name) == ERR_Okay then -- Return if the icon pattern is already registered
-      return
-   end
 
    if type(Theme) == 'table' then
       lGradient = Theme
@@ -506,6 +501,14 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
       else
          error('gui.createIcon() theme ' .. Theme .. ' not recognised.')
       end
+
+      if not Name then Name = Theme:lower() .. '/' .. Path:lower() end
+   end
+
+   if not Name then Name = Path end
+
+   if Scene.mtFindDef(Name) == ERR_Okay then -- Return if the icon pattern is already registered
+      return
    end
 
    gui._counter = gui._counter + 1
@@ -551,4 +554,6 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
    end
 
    check(Scene.mtAddDef(Name, icon.pattern))
+
+   return { name = Name, theme = Theme, size = Size, path = Path, fill = 'url(#' .. Name .. ')' }
 end

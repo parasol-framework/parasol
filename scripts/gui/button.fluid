@@ -98,24 +98,26 @@ gui.button = function(Options)
 
    if Options.icon then
       pcall(function()
-         gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, iconTheme())
+         local icon = gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, iconTheme())
 
-         self.iconRender = self.viewport.new('VectorViewport', {
-            x      = GAP,
-            y      = (self.viewport.height - ICON_SIZE) * 0.5,
-            width  = ICON_SIZE,
-            height = ICON_SIZE,
-            fill   = 'url(#' .. Options.icon .. ')'
-         })
+         if icon then
+            self.iconRender = self.viewport.new('VectorViewport', {
+               x      = GAP,
+               y      = (self.viewport.height - icon.size) * 0.5,
+               width  = icon.size,
+               height = icon.size,
+               fill   = icon.fill
+            })
 
-         label_offset = (GAP * 0.5) + ICON_SIZE
+            label_offset = (GAP * 0.5) + ICON_SIZE
+         end
       end)
    end
 
    self._textClip = self.viewport.new('VectorViewport', {
-      x=gui.style.widget.strokeWidth, y=gui.style.widget.strokeWidth,
-      xOffset=gui.style.widget.strokeWidth, yOffset=gui.style.widget.strokeWidth,
-      overflow=VOF_HIDDEN
+      x = gui.style.widget.strokeWidth, y = gui.style.widget.strokeWidth,
+      xOffset = gui.style.widget.strokeWidth, yOffset = gui.style.widget.strokeWidth,
+      overflow = VOF_HIDDEN
    })
 
    self.text = self._textClip.new('VectorText', {

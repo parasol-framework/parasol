@@ -1268,7 +1268,7 @@ extern "C" void winEnumSpecialFolders(void (*enumfolder)(const char *, const cha
       //{ CSIDL_PRINTERS, "printers:",  "Printers",        "devices/printer" },
       //{ CSIDL_DRIVES,   "computer:",  "My Computer",     "programs/filemanager" }
       { CSIDL_NETHOOD,  "network:",   "Network Places", "devices/network", 0 },
-      { CSIDL_PERSONAL, "documents:", "Documents",      "office/documents", 0 },
+      { CSIDL_PERSONAL, "documents:", "Documents",      "page/multiple", 0 },
       { CSIDL_DESKTOPDIRECTORY, "desktop:", "Desktop",  "devices/harddisk", 0 }
    };
    char path[MAX_PATH];

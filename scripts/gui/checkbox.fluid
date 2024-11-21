@@ -99,14 +99,14 @@ gui.checkbox = function(Options)
       strokeWidth = gui.style.page.strokeWidth,
    })
 
-   gui.createIcon(self.viewport.scene, 'items/checkmark', ICON_SIZE, iconTheme())
+   local chk_icon = gui.createIcon(self.viewport.scene, 'items/checkmark', ICON_SIZE, iconTheme())
 
    self.iconRender = self.viewport.new('VectorViewport', {
       x      = (HEIGHT - ICON_SIZE) * 0.5,
       y      = (self.viewport.height - ICON_SIZE) * 0.5,
       width  = ICON_SIZE,
       height = ICON_SIZE,
-      fill   = 'url(#items/checkmark)',
+      fill   = chk_icon.fill,
       opacity = (function()
          if self.state == 1 then
             return 1.0

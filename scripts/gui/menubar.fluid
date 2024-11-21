@@ -122,10 +122,10 @@ local function arrangeItems(self)
       item.gfxWidth = item.width
 
       local iconWidth = 0
-      if item.svg then
+      if item.icon then
          iconWidth = ICON_SIZE + VMARGIN
-         item.svgGroup.x = x + VMARGIN
-         item.svgGroup.y = y + VMARGIN
+         item.icon.x = x + VMARGIN
+         item.icon.y = y + VMARGIN
          if self._disabled or item.disabled then
             item.vectorIcon.opacity = 0.5
          end
@@ -189,31 +189,10 @@ gui.menubar = function(Options)
       item.menuConfig = Menu
 
       if Icon then
-         catch(function()
-            local gname = 'menu_grd' .. counter()
-            item.svgGroup = self.viewport.new('VectorViewport', { x=0, y=0, width=ICON_SIZE, height=ICON_SIZE })
-            item.svgGradient = gui.simpleGradient(self.viewport.scene, gname, { lColours.iconGradient.first, lColours.iconGradient.last }, 0, 0, 0, ICON_SIZE, 'userspace', true)
-            item.svg = obj.new('svg', { target=item.svgGroup, path='icons:' .. Icon .. '.svg' })
-            applyFill(item.svgGroup, 'url(#' .. gname .. ')')
-
-            local viewport = item.svgGroup.child
-            if (viewport != nil) then
-               while (child != nil) do
-                  if (child.class.id == ID_VECTORVIEWPORT) then
-                     viewport = child
-                     break
-                  end
-               end
-
-               if (viewport.viewHeight < viewport.viewWidth) then
-                  item.svgGradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
-                  item.svgGradient.y2 = item.svgGradient.y1 + viewport.viewWidth
-               else
-                  item.svgGradient.y1 = viewport.viewY
-                  item.svgGradient.y2 = viewport.viewY + viewport.viewHeight
-               end
-            end
-         end)
+         local icon = gui.createIcon(self.viewport.scene, Icon, ICON_SIZE, 'pearl')
+         item.icon = self.viewport.new('VectorRectangle', {
+            x=0, y=0, width=ICON_SIZE, height=ICON_SIZE, fill = icon.fill
+         })
       end
 
       self._arranged = false
@@ -259,7 +238,7 @@ gui.menubar = function(Options)
 
    -- Main entry point
 
-   catch(function()
+   xpcall(function()
       if (not Options.target) then error('A target viewport is required.') end
 
       self.viewport = Options.target.new('vectorviewport')
@@ -390,8 +369,8 @@ gui.menubar = function(Options)
 
       arrangeItems(self)
    end,
-   function(Exception)
-      error('Failed to initialise Menubar: ' .. Exception.message)
+   function(Error)
+      print(Error .. '\n' .. debug.traceback())
    end)
 
    return self

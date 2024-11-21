@@ -140,14 +140,14 @@ gui.combobox = function(Options)
    })
 
    local ICON_SIZE = FONT_HEIGHT
-   gui.createIcon(self.viewport.scene, 'arrows/down', ICON_SIZE, iconTheme())
+   local down_icon = gui.createIcon(self.viewport.scene, 'arrows/down', ICON_SIZE, iconTheme())
 
    self.iconRender = self.viewport.new('VectorViewport', {
       xOffset = MARGIN,
       y      = (self.viewport.height - ICON_SIZE) * 0.5,
       width  = ICON_SIZE,
       height = ICON_SIZE,
-      fill   = 'url(#arrows/down)'
+      fill   = down_icon.fill
    })
 
    if not Options.flushEdges then
