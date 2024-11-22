@@ -6,9 +6,6 @@ Documentation is available in the Parasol Wiki.
 
    if (gui == nil) then gui = { } end
 
-local FONT_FACE = 'Noto Sans'
-local FONT_SIZE = 11
-
 gui.tooltip = function(Options)
    local self = { } -- Public variables
 
@@ -33,7 +30,7 @@ gui.tooltip = function(Options)
    self.box = self.viewport.new('VectorRectangle', {
       x = 1, y = 1,
       height = '100%', width = '100%',
-      stroke = '#606040', fill = '#ffffe0',
+      stroke = gui.style.page.stroke, fill = gui.style.page.bkgd,
       strokeWidth = 2,
       roundX = 4, roundY = 4,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
@@ -43,15 +40,15 @@ gui.tooltip = function(Options)
    })
 
    self.text = self.viewport.new('VectorText', {
-      x         = FONT_SIZE,
+      x         = gui.fonts.button.size,
       string    = Options.text,
-      fill      = 'rgb(0,0,0)',
-      face      = FONT_FACE,
-      fontSize  = string.format('%.2fpt', FONT_SIZE),
+      fill      = gui.style.page.text,
+      face      = gui.fonts.button.face,
+      fontSize  = string.format('%.2fpt', gui.fonts.button.size),
       textFlags = VTXF_RASTER
    })
 
-   self.surface.height = (FONT_SIZE*1.5) + self.text.fontSize
+   self.surface.height = (gui.fonts.button.size*1.5) + self.text.fontSize
    self.surface.y = ptr.y - self.surface.height
    self.text.y = math.floor((self.viewport.height * 0.5) + (self.text.displaySize * 0.5))
 
@@ -70,8 +67,8 @@ gui.tooltip = function(Options)
 
    -- Reduce the width of the tooltip if the text is short.
 
-   if (self.surface.width > self.text.textWidth + (FONT_SIZE*2)) then
-      self.surface.width = (FONT_SIZE*2) + self.text.textWidth
+   if (self.surface.width > self.text.textWidth + (gui.fonts.button.size * 2)) then
+      self.surface.width = (gui.fonts.button.size * 2) + self.text.textWidth
    end
 
    -- Adjust the position of the tool tip so that it fits on the screen.
