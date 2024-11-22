@@ -161,7 +161,7 @@ gui.button = function(Options)
    self.viewport.mtSubscribeInput(bit.bor(JTYPE_CROSSING, JTYPE_BUTTON, JTYPE_REPEATED), function(Viewport, Msg)
       repeat
          if (Msg.type == JET_CROSSED_IN) then
-            self.bkgd.fill = gui.style.button.bkgdActive
+            self.bkgd.fill = gui.style.button.highlight
             if self.events.cursorEntry then
                self.events.cursorEntry(self)
             end

@@ -115,7 +115,7 @@ gui.divider = function(Options)
          })
 
          local pt = string.format('%d,%d, %d,%d, %d,%d %d,%d', 0, 0, GAP, GAP*2, GAP, GAP*4, 0, GAP*2)
-         self._pattern.viewport.new('VectorPolygon', { points = pt, fill = gui.palette.invBkgd, opacity = opacity })
+         self._pattern.viewport.new('VectorPolygon', { points = pt, fill = gui.palette.base, opacity = opacity })
       else -- Left to right tiling
          self._pattern = self._vp.scene.new('VectorPattern', {
             name = 'div_pattern', x = 0, y = 0, pageWidth = GAP*4, pageHeight=GAP, width=GAP*4, height=GAP,
@@ -123,7 +123,7 @@ gui.divider = function(Options)
          })
 
          local pt = string.format('%d,%d, %d,%d, %d,%d %d,%d', GAP*2, 0, GAP*4, 0, GAP*2, GAP, 0, GAP)
-         self._pattern.viewport.new('VectorPolygon', { points = pt, fill = gui.palette.invBkgd, opacity = opacity })
+         self._pattern.viewport.new('VectorPolygon', { points = pt, fill = gui.palette.base, opacity = opacity })
       end
 
       check(self._vp.scene.mtAddDef(div_name, self._pattern))
