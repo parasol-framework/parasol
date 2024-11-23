@@ -1,7 +1,7 @@
 -- Graphical User Interface functions
 
-if (gui == nil) then
-   -- The following values are the default 'light' theme.  They can be overridden by the "style:values.xml" file.
+if gui then return end
+
    gui = {
      theme = 'light',
      dpi = 160,
@@ -10,200 +10,6 @@ if (gui == nil) then
         -- A custom configure function can be defined that adds definitions to the window scene, e.g. images and patterns for fills.
      end
    }
-
-   gui.fonts = {
-     -- Use percentages for scalable sizes, where 100% is equivalent to the value of gui.interface.fontSize
-     default  = { face='Noto Sans,Source Sans Pro', size='100%' },
-     window   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- For text that is not inside a widget
-     button   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Text inside buttons
-     icon     = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Text at the bottom of icons
-     menu     = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Menu item text
-     titlebar = { face='Noto Sans', size='100%' }, -- Window titlebar text
-     small    = { face='Tiny', size='60%' }, -- Recommended text for small sizes
-     large    = { face='Noto Sans,Source Sans Pro', size='130%' }, -- Recommended text for headers
-     widget   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Text inside widgets (e.g. combobox)
-     label    = { face='Noto Sans,Source Sans Pro::bold', size='100%' } -- Text for labels and outside widgets
-   }
-
-   gui.iconThemes = {
-     default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
-     carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
-     yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke={ r=60, g=30, b=30, a=90 } },
-     orange  = { first={ r=0xFD,g=0xC8,b=0x30 }, last={ r=0xF3,g=0x73,b=0x35 } },
-     blue    = { first={ r=0x4b,g=0x6c,b=0xb7 }, last={ r=0x18,g=0x28,b=0x48 } },
-     ocean   = { first={ r=0xA8,g=0xC0,b=0xFF }, last={ r=0x3F,g=0x2B,b=0x96 } },
-     green   = { first={ r=0x7e,g=0x9d,b=0x13 }, last={ r=0x00,g=0x65,b=0x32 } },
-     red     = { first={ r=0xf5,g=0xaf,b=0x19 }, last={ r=0xf1,g=0x27,b=0x11 } },
-     indigo  = { first={ r=0xad,g=0x53,b=0x89 }, last={ r=0x3c,g=0x10,b=0x53 } },
-     rose    = { first={ r=0xff,g=0xc3,b=0xa0 }, last={ r=0xFF,g=0xAF,b=0xBD } },
-     pink    = { first={ r=0xff,g=0xdd,b=0xe1 }, last={ r=0xee,g=0x9c,b=0xa7 } },
-     grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } },
-     pearl   = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
-   }
-
-   gui.palettes = {
-     -- bkgd is the standard background colour for text.  In a light theme it should be near-white.
-     -- base is the inverse light value of bkgd and should share the same hue as the prime colour.
-     -- prime (primary) and second (secondary prime) are colour pairs of the same hue.
-     -- contrast is a suitable complement to prime and should be of a strongly contrasting hue
-     -- neutral is a default background colour for unpainted areas, usually a light grey tone
-     ocean = { type = 'light', bkgd = '#ECF0F1', base = '#2C3E50', prime = '#3498DB', second = '#2980B9',
-               contrast = '#E74C3C', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-     orangeApples = { type = 'light', bkgd = '#ffffff', base = '#19302d', prime = '#74a108', second = '#263248',
-                      contrast = '#e89214', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-     greenland = { type = 'light', bkgd = '#f9FFfB', base = '#163a00', prime = '#c55500', second = '#55c500',
-                   contrast = '#567a00', neutral = '#e9e9e0', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-     sunrise  = { type = 'light', bkgd = '#ECF0F1', base = '#687878', prime = '#e2581b', second = '#bd3232',
-                  contrast = '#eb9500', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-     candyfloss = { type = 'light', bkgd = '#fffaf7', base = '#375a5e', prime = '#6ac9a6', second = '#FF8B94',
-                contrast = '#e07780', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-     template = { type = '', bkgd = '', base = '', prime = '', second = '', contrast = '', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' }
-   }
-
-   gui.palette = gui.palettes.ocean
-
-   gui.style = {
-     -- All colour values are fills, so gradient and pattern references are also permitted for 'colours'.
-     page = {
-       bkgd        = gui.palette.bkgd,     -- Background for hosting text & paper-based layouts
-       stroke      = gui.palette.base,     -- Border stroke for any area surrounding 'bkgd'
-       strokeFocus = gui.palette.contrast, -- Stroke to use when 'border' has the user's focus
-       strokeWidth = 2,
-       text        = gui.palette.text,   -- Default colour for text drawn over 'bkgd'
-       icon        = nil,                -- Default icon theme for icons drawn over 'bkgd'
-       textHighlight     = gui.palette.altText,  -- Colour for 'text' during user hover
-       textHighlightBkgd = gui.palette.contrast, -- Background fill for 'text' during user hover
-       iconHighlight     = nil,                  -- Recommended icon theme when highlighted
-       textSelect        = gui.palette.altText,  -- Colour for 'text' when selected
-       textSelectBkgd    = gui.palette.prime,    -- Background fill for 'text' when selected
-       iconSelect        = nil                   -- Recommended icon theme when selected
-     },
-     widget = {
-       text   = gui.palette.altText,
-       bkgd   = gui.palette.prime,
-       stroke = 'rgb(255,255,255,60)',
-       strokeFocus    = 'rgb(255,255,255,160)',
-       strokeDisabled = 'rgb(255,255,255,60)',
-       strokeWidth = 2,
-       width  = 160, -- Default width for common widgets (px)
-       gap    = 6,   -- Recommended gap between widgets (px)
-       margin = 6    -- Recommended internal margin for widgets (px)
-     },
-     window = {
-       bkgd = gui.palette.neutral,
-       text = 'rgb(0,0,0)'
-     },
-     button = {
-       bkgd = gui.palette.base,
-       highlight = gui.palette.contrast
-     },
-     menubar = {
-       bkgd = gui.palette.base,
-       text = gui.palette.altText,
-       highlight = gui.palette.contrast
-     },
-     menu = {
-       bkgd   = gui.palette.bkgd,
-       border = 'rgb(200,200,200)'  -- Stroke for menu border
-     },
-     desktop = {
-       bkgd = 'rgb(160,160,160)'
-     }
-   }
-
-   if gui.palette.type == 'light' then
-      gui.style.page.icon = 'carbon'
-      gui.style.page.iconHighlight = 'pearl'
-      gui.style.page.iconSelect    = 'pearl'
-      gui.style.page.text          = gui.palette.text
-      gui.style.page.textHighlight = gui.palette.altText
-      gui.style.page.textSelect    = gui.palette.altText
-   else
-      gui.style.page.icon = 'pearl'
-      gui.style.page.iconHighlight = 'carbon'
-      gui.style.page.iconSelect = 'carbon'
-   end
-
-   gui.interface = {
-     fontSize  = 11, -- Default font-size for everything (pt)
-     iconTheme = 'Default', -- Named folder to load the icons from
-     iconSize  = 20   -- Recommended default size for icons (px) and should be linked to fontSize
-   }
-
-   function convertFontSizes() -- Convert font percentage sizes to their px size
-      for k,v in pairs(gui.fonts) do
-         if gui.fonts[k].size then
-            if string.match(gui.fonts[k].size, '^%-?%d+%%$') then
-               pct = tonumber(string.match(gui.fonts[k].size, '^(%-?%d+)%%$'))
-               gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
-            end
-         end
-      end
-   end
-
-   local path = 'style:values.xml'
-   if mSys.AnalysePath(path) != ERR_Okay then
-      path = 'environment:config/values.xml'
-      if mSys.AnalysePath(path) != ERR_Okay then
-         path = 'styles:default/values.xml'
-      end
-   end
-
-   local xml = obj.new('xml', { path=path })
-
-   if (xml != nil) then
---[[
-      local err, index = xml.mtFindTag('/colours')
-      if (err == ERR_Okay) then
-         for k,v in pairs(gui.style) do
-            err, colour = xml.mtGetAttrib(index, k)
-            if (err == ERR_Okay) then gui.style[k] = colour end
-         end
-      end
---]]
-      local err, index = xml.mtFindTag('/interface')
-      if (err == ERR_Okay) then
-         for k,v in pairs(gui.interface) do
-            err, val = xml.mtGetAttrib(index, k)
-            if (err == ERR_Okay) then
-               if string.match(val, '^%-?%d+$') then
-                  gui.interface[k] = tonumber(val)
-               else
-                  gui.interface[k] = val
-               end
-            end
-         end
-      end
-
-      convertFontSizes()
-
-      local err, index = xml.mtFindTag('/fonts')
-      if (err == ERR_Okay) then
-         for k,v in pairs(gui.fonts) do
-            local err, index = xml.mtFindTag("/fonts/font(@name='" .. k .. "')")
-            if (err == ERR_Okay) then
-               local err, face = xml.mtGetAttrib(index, 'face')
-               if (err == ERR_Okay) then gui.fonts[k].face = face end
-               local err, size = xml.mtGetAttrib(index, 'size')
-               if (err == ERR_Okay) then
-                  if string.match(size, '^%-?%d+$') then
-                     gui.fonts[k].size = tonumber(size)
-                  elseif string.match(size, '^%-?%d+%%$') then
-                     pct = tonumber(string.match(size, '^(%-?%d+)%%$'))
-                     gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
-                  else
-                     gui.fonts[k].size = size
-                  end
-               end
-            end
-         end
-      end
-
-      xml = nil
-   else
-      convertFontSizes()
-   end
-end
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -569,3 +375,200 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
 
    return { name = Name, theme = Theme, size = Size, path = Path, fill = 'url(#' .. Name .. ')' }
 end
+
+----------------------------------------------------------------------------------------------------------------------
+
+   -- The following values are the default 'light' theme.  They can be overridden by the "style:values.xml" file.
+
+   gui.fonts = {
+     -- Use percentages for scalable sizes, where 100% is equivalent to the value of gui.interface.fontSize
+     default  = { face='Noto Sans,Source Sans Pro', size='100%' },
+     window   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- For text that is not inside a widget
+     button   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Text inside buttons
+     icon     = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Labeling for icons
+     menu     = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Menu item text
+     titlebar = { face='Noto Sans', size='100%' }, -- Window titlebar text
+     small    = { face='Tiny', size='60%' }, -- Recommended text for small sizes
+     large    = { face='Noto Sans,Source Sans Pro', size='130%' }, -- Recommended text for headers
+     widget   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Text inside widgets (e.g. combobox)
+     label    = { face='Noto Sans,Source Sans Pro::bold', size='100%' } -- Text for labels and outside widgets
+   }
+
+   gui.iconThemes = {
+     default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+     carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+     yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke={ r=60, g=30, b=30, a=90 } },
+     orange  = { first={ r=0xFD,g=0xC8,b=0x30 }, last={ r=0xF3,g=0x73,b=0x35 } },
+     blue    = { first={ r=0x4b,g=0x6c,b=0xb7 }, last={ r=0x18,g=0x28,b=0x48 } },
+     ocean   = { first={ r=0xA8,g=0xC0,b=0xFF }, last={ r=0x3F,g=0x2B,b=0x96 } },
+     green   = { first={ r=0x7e,g=0x9d,b=0x13 }, last={ r=0x00,g=0x65,b=0x32 } },
+     red     = { first={ r=0xf5,g=0xaf,b=0x19 }, last={ r=0xf1,g=0x27,b=0x11 } },
+     indigo  = { first={ r=0xad,g=0x53,b=0x89 }, last={ r=0x3c,g=0x10,b=0x53 } },
+     rose    = { first={ r=0xff,g=0xc3,b=0xa0 }, last={ r=0xFF,g=0xAF,b=0xBD } },
+     pink    = { first={ r=0xff,g=0xdd,b=0xe1 }, last={ r=0xee,g=0x9c,b=0xa7 } },
+     grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } },
+     pearl   = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
+   }
+
+   gui.palettes = {
+     -- bkgd is the standard background colour for text.  In a light theme it should be near-white.
+     -- base is the inverse light value of bkgd and should share the same hue as the prime colour.
+     -- prime (primary) and second (secondary prime) are colour pairs of the same hue.
+     -- contrast is a suitable complement to prime and should be of a strongly contrasting hue
+     -- neutral is a default background colour for unpainted areas, usually a light grey tone
+     ocean = { type = 'light', bkgd = '#ECF0F1', base = '#2C3E50', prime = '#3498DB', second = '#2980B9',
+               contrast = '#E74C3C', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
+     orangeApples = { type = 'light', bkgd = '#ffffff', base = '#19302d', prime = '#74a108', second = '#263248',
+                      contrast = '#e89214', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
+     greenland = { type = 'light', bkgd = '#f9FFfB', base = '#163a00', prime = '#c55500', second = '#55c500',
+                   contrast = '#567a00', neutral = '#e9e9e0', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
+     sunrise  = { type = 'light', bkgd = '#ECF0F1', base = '#687878', prime = '#e2581b', second = '#bd3232',
+                  contrast = '#eb9500', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
+     candyfloss = { type = 'light', bkgd = '#fffaf7', base = '#375a5e', prime = '#6ac9a6', second = '#FF8B94',
+                contrast = '#e07780', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
+     template = { type = '', bkgd = '', base = '', prime = '', second = '', contrast = '', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' }
+   }
+
+   gui.palette = gui.palettes.ocean
+
+   gui.style = {
+     -- All colour values are fills, so gradient and pattern references are also permitted for 'colours'.
+     page = {
+       bkgd        = gui.palette.bkgd,     -- Background for hosting text & paper-based layouts
+       stroke      = gui.palette.base,     -- Border stroke for any area surrounding 'bkgd'
+       strokeFocus = gui.palette.contrast, -- Stroke to use when 'border' has the user's focus
+       strokeWidth = 2,
+       text        = gui.palette.text,   -- Default colour for text drawn over 'bkgd'
+       icon        = nil,                -- Default icon theme for icons drawn over 'bkgd'
+       textHighlight     = gui.palette.altText,  -- Colour for 'text' during user hover
+       textHighlightBkgd = gui.palette.contrast, -- Background fill for 'text' during user hover
+       iconHighlight     = nil,                  -- Recommended icon theme when highlighted
+       textSelect        = gui.palette.altText,  -- Colour for 'text' when selected
+       textSelectBkgd    = gui.palette.prime,    -- Background fill for 'text' when selected
+       iconSelect        = nil                   -- Recommended icon theme when selected
+     },
+     widget = {
+       text   = gui.palette.altText,
+       bkgd   = gui.palette.prime,
+       stroke = 'rgb(255,255,255,60)',
+       strokeFocus    = gui.palette.contrast, //'rgb(255,255,255,160)',
+       strokeDisabled = 'rgb(255,255,255,60)',
+       strokeWidth = 2,
+       width  = 160, -- Default width for common widgets (px)
+       gap    = 6,   -- Recommended gap between widgets (px)
+       margin = 6    -- Recommended internal margin for widgets (px)
+     },
+     window = {
+       bkgd = gui.palette.neutral,
+       text = 'rgb(0,0,0)'
+     },
+     button = {
+       bkgd = gui.palette.base,
+       highlight = gui.palette.contrast
+     },
+     menubar = {
+       bkgd = gui.palette.base,
+       text = gui.palette.altText,
+       highlight = gui.palette.contrast
+     },
+     menu = {
+       bkgd   = gui.palette.bkgd,
+       border = 'rgb(200,200,200)'  -- Stroke for menu border
+     },
+     desktop = {
+       bkgd = 'rgb(160,160,160)'
+     }
+   }
+
+   if gui.palette.type == 'light' then
+      gui.style.page.icon = 'carbon'
+      gui.style.page.iconHighlight = 'pearl'
+      gui.style.page.iconSelect    = 'pearl'
+      gui.style.page.text          = gui.palette.text
+      gui.style.page.textHighlight = gui.palette.altText
+      gui.style.page.textSelect    = gui.palette.altText
+   else
+      gui.style.page.icon = 'pearl'
+      gui.style.page.iconHighlight = 'carbon'
+      gui.style.page.iconSelect = 'carbon'
+   end
+
+   gui.interface = {
+     fontSize  = 11, -- Default font-size for everything (pt)
+     iconTheme = 'Default', -- Named folder to load the icons from
+     iconSize  = 20   -- Recommended default size for icons (px) and should be linked to fontSize
+   }
+
+   function convertFontSizes() -- Convert font percentage sizes to their px size
+      for k,v in pairs(gui.fonts) do
+         if gui.fonts[k].size then
+            if string.match(gui.fonts[k].size, '^%-?%d+%%$') then
+               pct = tonumber(string.match(gui.fonts[k].size, '^(%-?%d+)%%$'))
+               gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
+            end
+         end
+      end
+   end
+
+   local path = 'style:values.xml'
+   if mSys.AnalysePath(path) != ERR_Okay then
+      path = 'environment:config/values.xml'
+      if mSys.AnalysePath(path) != ERR_Okay then
+         path = 'styles:default/values.xml'
+      end
+   end
+
+   local xml = obj.new('xml', { path=path })
+
+   if (xml != nil) then
+--[[
+      local err, index = xml.mtFindTag('/colours')
+      if (err == ERR_Okay) then
+         for k,v in pairs(gui.style) do
+            err, colour = xml.mtGetAttrib(index, k)
+            if (err == ERR_Okay) then gui.style[k] = colour end
+         end
+      end
+--]]
+      local err, index = xml.mtFindTag('/interface')
+      if (err == ERR_Okay) then
+         for k,v in pairs(gui.interface) do
+            err, val = xml.mtGetAttrib(index, k)
+            if (err == ERR_Okay) then
+               if string.match(val, '^%-?%d+$') then
+                  gui.interface[k] = tonumber(val)
+               else
+                  gui.interface[k] = val
+               end
+            end
+         end
+      end
+
+      convertFontSizes()
+
+      local err, index = xml.mtFindTag('/fonts')
+      if (err == ERR_Okay) then
+         for k,v in pairs(gui.fonts) do
+            local err, index = xml.mtFindTag("/fonts/font(@name='" .. k .. "')")
+            if (err == ERR_Okay) then
+               local err, face = xml.mtGetAttrib(index, 'face')
+               if (err == ERR_Okay) then gui.fonts[k].face = face end
+               local err, size = xml.mtGetAttrib(index, 'size')
+               if (err == ERR_Okay) then
+                  if string.match(size, '^%-?%d+$') then
+                     gui.fonts[k].size = tonumber(size)
+                  elseif string.match(size, '^%-?%d+%%$') then
+                     pct = tonumber(string.match(size, '^(%-?%d+)%%$'))
+                     gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
+                  else
+                     gui.fonts[k].size = size
+                  end
+               end
+            end
+         end
+      end
+
+      xml = nil
+   else
+      convertFontSizes()
+   end
