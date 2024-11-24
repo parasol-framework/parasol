@@ -6,7 +6,7 @@ Documentation is available in the Parasol Wiki.  To be used in conjunction with 
    require 'gui'
    include 'display'
 
-   if (not mGfx) then mGfx = mod.load('display') end
+   if not mGfx then mGfx = mod.load('display') end
 
 local ITEM_SPACING = 1.2
 
@@ -47,23 +47,13 @@ gui.menu = function(Options)
       -- To use the clip, set the 'mask' field of any drawable vector.
       self.clip = self.scene.new('VectorClip', { units='BoundingBox' })
       local clipRect = self.clip.viewport.new('VectorRectangle', {
-         x      = 1.5,
-         y      = 1.5,
-         roundX = 3,
-         roundY = 3,
-         width  = 1,
-         height = 1
+         x = 1.5, y = 1.5, roundX = 3, roundY = 3, width = 1, height = 1
       })
 
       self.viewport.new('VectorRectangle', {
-         name   = 'bkgd_rect',
-         fill   = gui.style.page.bkgd,
-         x      = 1.5,
-         y      = 1.5,
-         roundX = 3,
-         roundY = 3,
-         width  = 1,
-         height = 1,
+         name = 'bkgd_rect',
+         fill = gui.menu.bkgd,
+         x = 1.5, y = 1.5, roundX = 3, roundY = 3, width = 1, height = 1,
          resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
             Vector.width  = Width - (Vector.x * 2)
             Vector.height = Height - (Vector.y * 2)
@@ -74,26 +64,16 @@ gui.menu = function(Options)
 
       if showIcons then
          self.viewport.new('VectorRectangle', {
-            name   = 'icon_bar',
-            fill   = 'rgb(220,220,255,255)',
-            x      = 0,
-            y      = 0,
-            width  = 30,
-            height = '100%',
-            mask   = self.clip
+            name = 'icon_bar',
+            fill = 'rgb(220,220,255,255)',
+            x = 0, y = 0, width = 30, height = '100%', mask = self.clip
          })
       end
 
       self.viewport.new('VectorRectangle', { -- Border must be the most foregound
          name   = 'menu_border',
-         stroke = gui.style.menu.stroke,
-         strokeWidth = 1.5,
-         x      = 1.5,
-         y      = 1.5,
-         roundX = 3,
-         roundY = 3,
-         width  = 1,
-         height = 1,
+         stroke = gui.style.menu.stroke, strokeWidth = 1.5,
+         x = 1.5, y = 1.5, roundX = 3, roundY = 3, width = 1, height = 1,
          resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
             Vector.width  = Width - (Vector.x * 2)
             Vector.height = Height - (Vector.y * 2)
@@ -121,7 +101,7 @@ gui.menu = function(Options)
             mi.text = vText
             mi.textY = y + ((vText.lineSpacing + vText.displaySize) * 0.5)
 
-            if (bw > widestItem) then widestItem = bw end
+            if bw > widestItem then widestItem = bw end
 
             local icon_size = vText.displayHeight + vText.descent
 
@@ -156,7 +136,7 @@ gui.menu = function(Options)
                vKey.y = y + ((vKey.lineSpacing + vKey.displaySize) * 0.5)
 
                keyWidth = bw
-               if (keyWidth > widestKey) then widestKey = keyWidth end
+               if keyWidth > widestKey then widestKey = keyWidth end
                mi.keyText = vKey
             end
 
@@ -178,10 +158,8 @@ gui.menu = function(Options)
       end
    end
 
-   -- The toggle() method alternates the the visible state of the menu - for example, if the menu is hidden, it
-   -- will show the menu.  A time-lapse feature is supported so that rapid changes to menu visibility can be avoided.
-   -- For example, if the TimeLapse option is set to 10 milliseconds, the menu state will not change unless the
-   -- specified amount of time has elapsed since the last toggle.
+   -- toggle() alternates the visible state of the menu.  A TimeLapse is supported so that rapid changes to
+   -- menu visibility can be avoided.
 
    local lastTime = 0
    self.toggle = function(TimeLapse)
@@ -193,7 +171,7 @@ gui.menu = function(Options)
       end
 
       local currentTime = mSys.PreciseTime()
-      if (self.timeShow > self.timeHide) then -- Hide the menu
+      if self.timeShow > self.timeHide then -- Hide the menu
          if (currentTime - self.timeShow >= timelapse) then self.hide() end
          lastTime = currentTime
          return 0
@@ -225,13 +203,13 @@ gui.menu = function(Options)
 
       if self.popup then
          local err, cursor_x, cursor_y = mGfx.getCursorPos()
-         if (err == ERR_Okay) then
+         if err == ERR_Okay then
             local parent = { }
 
             local sp = surface.parent
             if sp then
                err, parentInfo = mGfx.GetSurfaceInfo(sp)
-               if (err == ERR_Okay) then
+               if err == ERR_Okay then
                   parent.width  = parentInfo.width
                   parent.height = parentInfo.height
                   parent.absX   = parentInfo.absX
@@ -261,7 +239,7 @@ gui.menu = function(Options)
                local x
                if self.reverseX then
                   x = cursor_x - parent.absX - 1 - surface.width + gui.style.widget.margin
-                  if (x < 0) then
+                  if x < 0 then
                      x = 0
                      self.reverseX = false
                   end
@@ -285,7 +263,7 @@ gui.menu = function(Options)
 --[[
          local parent = { x=0, y = 0, width = 0 }
          local parent = self.parentMenu
-         if (parent.menuSurfaceID) then
+         if parent.menuSurfaceID then
             local err, info = mGfx.GetSurfaceInfo(parent.MenuSurfaceID)
             if err == ERR_Okay then
                parent.x = info.x
@@ -296,7 +274,7 @@ gui.menu = function(Options)
          parent.currentMenu = self
 
          local x = parent.x + parent.width - gui.style.widget.margin
-         if (self.reverseX) then
+         if self.reverseX then
             x = parent.x - surface.width + gui.style.widget.margin
             if x < 2 then
                x = 2
@@ -304,7 +282,7 @@ gui.menu = function(Options)
             end
          else
             SURFACEINFO *target
-            if (Options.target) and (!mGfx.GetSurfaceInfo(Options.target, &target)) then
+            if Options.target and (!mGfx.GetSurfaceInfo(Options.target, &target)) then
                -- A specific target surface is hosting the menu layer adjust the coordinate if necessary to keep
                -- it from being partially hidden.
                if x + surface.width >= target.width then
@@ -328,14 +306,14 @@ gui.menu = function(Options)
 
             if Options.target then
                local err, target = mGfx.GetSurfaceInfo(Options.target)
-               if (err == ERR_Okay) then
+               if err == ERR_Okay then
                   target.absX   = target.absX
                   target.absY   = target.absY
                   target.height = target.height
                end
             else
                local err, display = mGfx.GetDisplayInfo(0)
-               if (err == ERR_Okay) then
+               if err == ERR_Okay then
                   target.height = display.height
                end
             end
@@ -388,7 +366,7 @@ gui.menu = function(Options)
    end
 
    local function timer(Elapsed, CurrentTime)
-      if (lCurrentItem) and nz(lCurrentItem.tip) then
+      if lCurrentItem and nz(lCurrentItem.tip) then
          gui.tooltip({ text=lCurrentItem.tip })
       end
       self.tipTimer = nil
@@ -408,7 +386,7 @@ gui.menu = function(Options)
    self.surface.y          = -10000
    self.surface.windowType = 'NONE'
    self.surface.height     = 400
-   if (self.surface.init() != ERR_Okay) then error('Failed to initialise surface.') end
+   if self.surface.init() != ERR_Okay then error('Failed to initialise surface.') end
 
    self.scene = obj.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
    self.viewport = self.scene.new('VectorViewport', { })
@@ -446,10 +424,10 @@ gui.menu = function(Options)
             end
 
             if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
-            if (Value == KEY_UP) then
-            elseif (Value == KEY_DOWN) then
+            if Value == KEY_UP then
+            elseif Value == KEY_DOWN then
 
-            elseif (Value == KEY_RETURN) then
+            elseif Value == KEY_RETURN then
 
             end
          end) == ERR_Okay then
@@ -461,7 +439,7 @@ gui.menu = function(Options)
    self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_CROSSING), function(Viewport, Events)
       local ev = Events
       while ev do
-         if (ev.type == JET_BUTTON_1) then
+         if ev.type == JET_BUTTON_1 then
             if ev.value == 1 then
                if self.hItem then -- Menu item activated
                   if self.hItem.config.feedback then
@@ -473,12 +451,12 @@ gui.menu = function(Options)
                   self.surface.acHide()
                end
             end
-         elseif (ev.type == JET_ABS_XY) then
+         elseif ev.type == JET_ABS_XY then
             local highlightFound = false
             for _, item in pairs(self.items) do
                if not item.lineBreak then
                   if (ev.y >= item.y) and (ev.y < item.y + item.height) then
-                     if (self.hItem != item) then
+                     if self.hItem != item then
                         highlightItem(item)
                      end
                      highlightFound = true

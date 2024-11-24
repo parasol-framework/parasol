@@ -12,7 +12,7 @@ The VectorScene class acts as a container and control point for the management o
 purpose is to draw the scene to a target @Bitmap or @Surface provided by the client.
 
 Vector scenes are created by initialising multiple Vector objects such as @VectorPath and @VectorViewport and
-positioning them within a vector tree.  The VectorScene must lie at the root.
+positioning them within a vector tree.  The VectorScene must lie at the root of the tree.
 
 The default mode of operation is for scenes to be manually drawn, for which the client must set the target #Bitmap
 and call the #Draw() action as required.  Automated drawing can be enabled by setting the target #Surface prior

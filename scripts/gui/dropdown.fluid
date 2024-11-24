@@ -6,7 +6,7 @@ Internal script for combobox drop-down menus.
    require 'gui'
    include 'display'
 
-   if (not mGfx) then mGfx = mod.load('display') end
+   if not mGfx then mGfx = mod.load('display') end
 
 local ITEM_SPACING = 1.2
 
@@ -46,14 +46,8 @@ gui.dropdown = function(Options)
       })
 
       self.viewport.new('VectorRectangle', {
-         name   = 'bkgd_rect',
-         fill   = gui.style.page.bkgd,
-         x      = 1.5,
-         y      = 1.5,
-         roundX = 3,
-         roundY = 3,
-         width  = 1,
-         height = 1,
+         name = 'bkgd_rect', fill = gui.style.dropdown.bkgd,
+         x = 1.5, y = 1.5, roundX = 3, roundY = 3, width = 1, height = 1,
          resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
             Vector.width  = Width - (Vector.x * 2)
             Vector.height = Height - (Vector.y * 2)
@@ -63,15 +57,8 @@ gui.dropdown = function(Options)
       })
 
       self.viewport.new('VectorRectangle', { -- Border must be the most foregound
-         name   = 'menu_border',
-         stroke = gui.style.menu.stroke,
-         strokeWidth = 1.5,
-         x      = 1.5,
-         y      = 1.5,
-         roundX = 3,
-         roundY = 3,
-         width  = 1,
-         height = 1,
+         name = 'menu_border', stroke = gui.style.dropdown.stroke,
+         strokeWidth = 1.5, x = 1.5, y = 1.5, roundX = 3, roundY = 3, width = 1, height = 1,
          resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
             Vector.width  = Width - (Vector.x * 2)
             Vector.height = Height - (Vector.y * 2)
@@ -99,7 +86,7 @@ gui.dropdown = function(Options)
             mi.text = vText
             mi.textY = y + ((vText.lineSpacing + vText.displaySize) * 0.5)
 
-            if (bw > widestItem) then widestItem = bw end
+            if bw > widestItem then widestItem = bw end
 
             local icon_size = vText.displayHeight + vText.descent
 
@@ -126,10 +113,8 @@ gui.dropdown = function(Options)
       self.surface.height = y
    end
 
-   -- The toggle() method alternates the the visible state of the menu - for example, if the menu is hidden, it
-   -- will show the menu.  A time-lapse feature is supported so that rapid changes to menu visibility can be avoided.
-   -- For example, if the TimeLapse option is set to 10 milliseconds, the menu state will not change unless the
-   -- specified amount of time has elapsed since the last toggle.
+   -- toggle() alternates the visible state of the menu.  A TimeLapse is supported so that rapid changes to
+   -- menu visibility can be avoided.
 
    local lastTime = 0
    self.toggle = function(TimeLapse)
@@ -247,7 +232,7 @@ gui.dropdown = function(Options)
    self.surface.y          = -10000
    self.surface.windowType = 'NONE'
    self.surface.height     = 400
-   if (self.surface.init() != ERR_Okay) then error('Failed to initialise surface.') end
+   if self.surface.init() != ERR_Okay then error('Failed to initialise surface.') end
 
    self.scene = obj.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
    self.viewport = self.scene.new('VectorViewport', { })
@@ -275,10 +260,10 @@ gui.dropdown = function(Options)
             end
 
             if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
-            if (Value == KEY_UP) then
-            elseif (Value == KEY_DOWN) then
+            if Value == KEY_UP then
+            elseif Value == KEY_DOWN then
 
-            elseif (Value == KEY_RETURN) then
+            elseif Value == KEY_RETURN then
 
             end
          end) == ERR_Okay then

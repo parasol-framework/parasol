@@ -2,6 +2,8 @@
 
 if gui then return end
 
+   if not mVec then mVec = mod.load('vector') end
+
    gui = {
      theme = 'light',
      dpi = 160,
@@ -28,20 +30,20 @@ end
 -- Read a style value and return it in pixel units.
 
 gui.pixel = function(val)
-   if (val != nil) then
+   if val != nil then
       local num, alpha = val:match('^(%d+)(%a-)$')
       num = tonumber(num)
-      if (num == nil) then error('Invalid graphics unit \'' .. val .. '\'') end
-      if (alpha != nil) then
-         if (alpha == 'px') then
+      if num == nil then error('Invalid graphics unit \'' .. val .. '\'') end
+      if alpha != nil then
+         if alpha == 'px' then
             return num
-         elseif (alpha == 'in') then
+         elseif alpha == 'in' then
             return gui.dpi * num
-         elseif (alpha == 'mm') then -- 25.4 units per inch
+         elseif alpha == 'mm' then -- 25.4 units per inch
             return gui.dpi * (num / 25.4)
-         elseif (alpha == 'pt') then -- 72 units per inch
+         elseif alpha == 'pt' then -- 72 units per inch
             return gui.dpi * (num / 72)
-         elseif (alpha == 'dp') then -- 160dpi relative value
+         elseif alpha == 'dp' then -- 160dpi relative value
             return num * (gui.dpi * 0.00625)
          end
       end
@@ -61,16 +63,16 @@ gui.strToRGB = function(Value)
 
    local result
    xpcall(function()
-      if (string.byte(Value) == 35) then
+      if string.byte(Value) == 35 then
          local colour = tonumber(string.sub(Value,2), 16)
-         if (Value:len() == 7) then
+         if Value:len() == 7 then
             result = {
                r = bit.band(bit.rshift(colour, 16), 0xff),
                g = bit.band(bit.rshift(colour, 8), 0xff),
                b = bit.band(colour, 0xff),
                a = 255
             }
-         elseif (Value:len() == 9) then
+         elseif Value:len() == 9 then
             result = {
                r = bit.band(bit.rshift(colour, 24), 0xff),
                g = bit.band(bit.rshift(colour, 16), 0xff),
@@ -475,6 +477,10 @@ end
        highlight = gui.palette.contrast
      },
      menu = {
+       bkgd   = gui.palette.base,
+       stroke = gui.palette.contrast
+     },
+     dropdown = {
        bkgd   = gui.palette.bkgd,
        stroke = gui.palette.base
      },
