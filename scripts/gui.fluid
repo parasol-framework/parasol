@@ -285,8 +285,8 @@ gui.simpleGradient = function(Scene, Name, Colours, X1, Y1, X2, Y2, Units, Ignor
          Scene.mtAddDef(Name, gradient)
       end)
 
-      if (ex) then
-         if (ex.code == ERR_ResourceExists) then
+      if ex then
+         if ex.code == ERR_ResourceExists then
             gradient.free()
             return nil
          else
@@ -311,9 +311,13 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
    local lGradient = gui.iconThemes.default
    local icon = { size=Size }
 
+   gui._counter = gui._counter + 1
+   local gname = 'icon_grd' .. gui._counter
+
    if type(Theme) == 'table' then
       lGradient = Theme
    elseif type(Theme) == 'string' then
+      gname = 'icon_' .. Theme
       if gui.iconThemes[Theme] then
          lGradient = gui.iconThemes[Theme]
       else
@@ -321,6 +325,8 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
       end
 
       if not Name then Name = Theme:lower() .. '/' .. Path:lower() end
+   else
+      error('Invalid Theme specified.')
    end
 
    if not Name then Name = Path end
@@ -329,10 +335,8 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
       return { name = Name, theme = Theme, size = Size, path = Path, fill = 'url(#' .. Name .. ')' }
    end
 
-   gui._counter = gui._counter + 1
-   local gname   = 'icon_grd' .. gui._counter
    icon.pattern  = Scene.new('VectorPattern', { pageWidth=Size, pageHeight=Size, spreadMethod=VSPREAD_PAD })
-   icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lGradient.first, lGradient.last }, 0, 0, 0, 1)
+   icon.gradient = gui.simpleGradient(icon.pattern.scene, gname, { lGradient.first, lGradient.last }, 0, 0, 0, 1, 'boundingbox', true)
    if string.find(Path, 'icons:') != 1 then
       Path = 'icons:' .. Path .. '.svg'
    end
@@ -451,8 +455,7 @@ end
        text   = gui.palette.altText,
        bkgd   = gui.palette.prime,
        stroke = 'rgb(255,255,255,60)',
-       strokeFocus    = gui.palette.contrast, //'rgb(255,255,255,160)',
-       strokeDisabled = 'rgb(255,255,255,60)',
+       strokeFocus    = gui.palette.contrast,
        strokeWidth = 2,
        width  = 160, -- Default width for common widgets (px)
        gap    = 6,   -- Recommended gap between widgets (px)
@@ -473,7 +476,7 @@ end
      },
      menu = {
        bkgd   = gui.palette.bkgd,
-       border = 'rgb(200,200,200)'  -- Stroke for menu border
+       stroke = gui.palette.base
      },
      desktop = {
        bkgd = 'rgb(160,160,160)'

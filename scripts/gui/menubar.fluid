@@ -11,7 +11,6 @@ Documentation is available in the Parasol Wiki.
 local VMARGIN   = gui.style.widget.margin
 local GAP       = 26
 local ICON_SIZE = 12
-local FONT_SIZE = 16
 local count = 0
 
 local function counter()

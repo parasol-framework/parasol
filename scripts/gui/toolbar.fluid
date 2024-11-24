@@ -229,13 +229,13 @@ gui.toolbar = function(Options)
                end
                item.icon.acMoveToFront()
             elseif nz(item.displayName) then
-               local fill_name = 'tbar_text' .. counter()
-               gui.simpleGradient(self.viewport.scene, fill_name, gui.iconThemes[self._iconTheme], 0, 0, 0, 1)
+               local fill_name = 'tbar_' .. self._iconTheme
+               gui.simpleGradient(self.viewport.scene, fill_name, gui.iconThemes[self._iconTheme], 0, 0, 0, 1, 'boundingbox', true)
                item.textFill = 'url(#' .. fill_name .. ')'
 
                if self._iconHighlight and (self._iconTheme != self._iconHighlight) then
-                  local alt_name = 'tbar_alt' .. counter()
-                  gui.simpleGradient(self.viewport.scene, alt_name, gui.iconThemes[self._iconHighlight], 0, 0, 0, 1)
+                  local alt_name = 'tbar_' .. self._iconHighlight
+                  gui.simpleGradient(self.viewport.scene, alt_name, gui.iconThemes[self._iconHighlight], 0, 0, 0, 1, 'boundingbox', true)
                   item.textAltFill = 'url(#' .. alt_name .. ')'
                end
 
@@ -667,5 +667,6 @@ gui.toolbar = function(Options)
 
    arrangeItems()
 
+   collectgarbage()
    return self
 end
