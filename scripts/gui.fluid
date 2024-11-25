@@ -428,7 +428,7 @@ end
                       contrast = '#e89214', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
      greenland = { type = 'light', bkgd = '#f9FFfB', base = '#163a00', prime = '#c55500', second = '#55c500',
                    contrast = '#567a00', neutral = '#e9e9e0', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-     sunrise  = { type = 'light', bkgd = '#ECF0F1', base = '#687878', prime = '#e2581b', second = '#bd3232',
+     sunrise  = { type = 'light', bkgd = '#f9FfFc', base = '#687878', prime = '#e2581b', second = '#bd3232',
                   contrast = '#eb9500', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
      candyfloss = { type = 'light', bkgd = '#fffaf7', base = '#375a5e', prime = '#6ac9a6', second = '#FF8B94',
                 contrast = '#e07780', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
@@ -478,11 +478,16 @@ end
      },
      menu = {
        bkgd   = gui.palette.base,
-       stroke = gui.palette.contrast
+       stroke = gui.palette.neutral,
+       text   = gui.palette.altText
      },
      dropdown = {
        bkgd   = gui.palette.bkgd,
-       stroke = gui.palette.base
+       stroke = gui.palette.base,
+       icon   = nil,
+       iconHighlight = nil,
+       text = gui.palette.text,
+       textHighlight = gui.palette.altText
      },
      desktop = {
        bkgd = 'rgb(160,160,160)'
@@ -490,16 +495,22 @@ end
    }
 
    if gui.palette.type == 'light' then
-      gui.style.page.icon = 'carbon'
+      gui.style.page.icon          = 'carbon'
       gui.style.page.iconHighlight = 'pearl'
       gui.style.page.iconSelect    = 'pearl'
       gui.style.page.text          = gui.palette.text
       gui.style.page.textHighlight = gui.palette.altText
       gui.style.page.textSelect    = gui.palette.altText
+      gui.style.menu.icon          = 'pearl'
+      gui.style.dropdown.icon      = 'carbon'
+      gui.style.dropdown.iconHighlight = 'pearl'
    else
-      gui.style.page.icon = 'pearl'
+      gui.style.page.icon          = 'pearl'
       gui.style.page.iconHighlight = 'carbon'
-      gui.style.page.iconSelect = 'carbon'
+      gui.style.page.iconSelect    = 'carbon'
+      gui.style.menu.icon          = 'carbon'
+      gui.style.dropdown.icon      = 'pearl'
+      gui.style.dropdown.iconHighlight = 'carbon'
    end
 
    gui.interface = {

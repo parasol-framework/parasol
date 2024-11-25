@@ -1509,7 +1509,7 @@ gui.fileview = function(View, Options)
             end
 
             Bar.addItem(3, 'Bookmark', 'Create Bookmark', 'items/new_bookmark', function()
-               if (string.len(self.path) < 3) then return end
+               if not self.path or (string.len(self.path) < 3) then return end
 
                local current_path = self.path
 

@@ -1,5 +1,6 @@
 --[[
-Documentation is available in the Parasol Wiki.  To be used in conjunction with the gui.menubar or as an independent pop-up.
+Documentation is available in the Parasol Wiki.
+To be used in conjunction with the gui.menubar or as an independent pop-up only.
 --]]
 
    require 'common'
@@ -8,7 +9,13 @@ Documentation is available in the Parasol Wiki.  To be used in conjunction with 
 
    if not mGfx then mGfx = mod.load('display') end
 
-local ITEM_SPACING = 1.2
+local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.menu)
+local ITEM_HEIGHT = math.floor(FONT_MAX_HEIGHT * 1.5)
+local VMARGIN = math.floor(ITEM_HEIGHT * 0.33)
+local HMARGIN = 6
+local ICON_SIZE = math.floor(ITEM_HEIGHT * 0.8)
+local KB_HIGHLIGHT = 'rgb(0,0,0,120)'
+local ICON_STRIP = 'rgb(255,255,255,40)'
 
 gui.menu = function(Options)
    local self = { -- Public variables
@@ -30,50 +37,40 @@ gui.menu = function(Options)
    }
 
    local function initVectorScene()
-      local GAP_X = 6
       local showIcons = nz(Options.showIcons, true)
-      local textX = GAP_X
+      local TEXT_X = HMARGIN
 
       if showIcons then
          local iconsPresent = false
          for _, item in ipairs(Options.config) do
             if item['icon'] then
                iconsPresent = true
-               textX = 34
+               TEXT_X = HMARGIN + ICON_SIZE + HMARGIN + HMARGIN
             end
          end
       end
 
-      -- To use the clip, set the 'mask' field of any drawable vector.
-      self.clip = self.scene.new('VectorClip', { units='BoundingBox' })
-      local clipRect = self.clip.viewport.new('VectorRectangle', {
-         x = 1.5, y = 1.5, roundX = 3, roundY = 3, width = 1, height = 1
-      })
-
       self.viewport.new('VectorRectangle', {
-         name = 'bkgd_rect',
-         fill = gui.menu.bkgd,
-         x = 1.5, y = 1.5, roundX = 3, roundY = 3, width = 1, height = 1,
+         fill = gui.style.menu.bkgd, x = 0, y = 0, xOffset = 0, yOffset = 0,
          resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
             Vector.width  = Width - (Vector.x * 2)
             Vector.height = Height - (Vector.y * 2)
-            clipRect.width  = Width - (Vector.x * 2)
-            clipRect.height = Height - (Vector.y * 2)
          end
       })
 
-      if showIcons then
+      if showIcons then -- Icon strip
          self.viewport.new('VectorRectangle', {
-            name = 'icon_bar',
-            fill = 'rgb(220,220,255,255)',
-            x = 0, y = 0, width = 30, height = '100%', mask = self.clip
+            fill = ICON_STRIP, x = 0, y = 0, width = HMARGIN + ICON_SIZE + HMARGIN, height = '100%'
          })
       end
 
-      self.viewport.new('VectorRectangle', { -- Border must be the most foregound
-         name   = 'menu_border',
-         stroke = gui.style.menu.stroke, strokeWidth = 1.5,
-         x = 1.5, y = 1.5, roundX = 3, roundY = 3, width = 1, height = 1,
+      self.highlight = self.viewport.new('VectorRectangle', {
+         x = 2, y = 0, xOffset = 2, height = ITEM_HEIGHT, fill = gui.palette.contrast, visibility = 'hidden'
+      })
+
+      self.viewport.new('VectorRectangle', { -- Border
+         stroke = gui.style.menu.stroke, strokeWidth = 1.5, opacity=0.5,
+         x = 1, y = 1, xOffset = 1, yOffset = 1,
          resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
             Vector.width  = Width - (Vector.x * 2)
             Vector.height = Height - (Vector.y * 2)
@@ -83,15 +80,15 @@ gui.menu = function(Options)
       self.items = { }
       local widestItem = 0
       local widestKey = 0
-      local y = 9
+      local y = VMARGIN
       for _, item in ipairs(Options.config) do
          if item['item'] then
             local mi = { y=y, config=item }
             local vText = self.viewport.new('VectorText', {
-               x        = textX,
+               x        = TEXT_X,
                face     = gui.fonts.menu.face,
                fontSize = string.format('%.2fpt', gui.fonts.menu.size),
-               fill     = gui.style.page.text,
+               fill     = gui.style.menu.text,
                align    = 'left',
                string   = item['item']
             })
@@ -99,20 +96,16 @@ gui.menu = function(Options)
             local err, bx, by, bw, bh = vText.mtGetBoundary(0)
 
             mi.text = vText
-            mi.textY = y + ((vText.lineSpacing + vText.displaySize) * 0.5)
+            mi.textY = y + math.floor((vText.lineSpacing + vText.displayHeight) * 0.5)
 
             if bw > widestItem then widestItem = bw end
 
-            local icon_size = vText.displayHeight + vText.descent
-
             if showIcons and item['icon'] then
-               catch(function()
-                  local svgGroup = self.viewport.new('VectorViewport', {
-                     x=8, y=y, width=icon_size, height=icon_size
+               pcall(function()
+                  local info = gui.createIcon(self.viewport.scene, item.icon, ICON_SIZE, gui.style.menu.icon)
+                  item.iconView = self.viewport.new('VectorRectangle', {
+                     x = HMARGIN, y = y + math.floor((ITEM_HEIGHT - ICON_SIZE) * 0.5), width = ICON_SIZE, height = ICON_SIZE, fill = info.fill
                   })
-                  local svg = obj.new('svg', { target=svgGroup, path='icons:' .. item['icon'] .. '.svg' })
-                  gui.applyFill(svgGroup, 'rgb(80,80,120,255)')
-                  mi.svgIcon = svgGroup
                end)
             end
 
@@ -122,38 +115,46 @@ gui.menu = function(Options)
                   key = item['qualifier'] .. ' + ' .. key
                end
 
+               local kb_highlight = self.viewport.new('VectorRectangle', {
+                  fill = KB_HIGHLIGHT, xOffset = HMARGIN, y = y + 2, width = 1, height = ITEM_HEIGHT - 4,
+                  roundX = ITEM_HEIGHT * 0.5, roundY = ITEM_HEIGHT * 0.5
+               })
+
                local vKey = self.viewport.new('VectorText', {
                   x        = self.surface.width,
                   face     = gui.fonts.menu.face,
                   fontSize = string.format('%.2fpt', gui.fonts.menu.size),
-                  fill     = 'rgb(30,80,0,255)',
+                  fill     = gui.style.menu.text,
                   align    = 'right',
                   string   = key
                })
 
                local err, bx, by, bw, bh = vKey.mtGetBoundary(0)
 
-               vKey.y = y + ((vKey.lineSpacing + vKey.displaySize) * 0.5)
+               vKey.y = y + math.floor((vKey.lineSpacing + vKey.displayHeight) * 0.5)
 
                keyWidth = bw
                if keyWidth > widestKey then widestKey = keyWidth end
                mi.keyText = vKey
+               kb_highlight.width = keyWidth + HMARGIN + HMARGIN
             end
 
             vText.y = mi.textY
-            mi.height = vText.lineSpacing * ITEM_SPACING
+            mi.height = ITEM_HEIGHT
             y = y + mi.height
 
             table.insert(self.items, mi)
          end
       end
 
-      self.surface.width  = textX + widestItem + (GAP_X * 3) + widestKey + GAP_X
-      self.surface.height = y
+      local width = TEXT_X + widestItem + (HMARGIN * 6) + widestKey + HMARGIN
+
+      self.surface.width  = width
+      self.surface.height = y + VMARGIN
 
       for _, item in pairs(self.items) do
          if item['keyText'] then
-            item.keyText.x = self.surface.width - GAP_X
+            item.keyText.x = self.surface.width - HMARGIN - HMARGIN
          end
       end
    end
@@ -327,9 +328,9 @@ gui.menu = function(Options)
 
             if (y + surface.height > target.height) then
                if self.parentMenu then -- Child menu
-                  y = y - surface.height --+ get_item_height() + self.vWhiteSpace
+                  y = y - surface.height
                else
-                  y = y - surface.height - nz(Options.y, 0) --+ self.vWhiteSpace
+                  y = y - surface.height - nz(Options.y, 0)
                end
             end
 
@@ -352,7 +353,6 @@ gui.menu = function(Options)
       end
 
       if self.hItem then  -- Redraw the previously highlighted item
-         self.hItem.text.fill = gui.style.page.text
          self.surface.mtScheduleRedraw()
          self.hItem = nil
       end
@@ -360,7 +360,12 @@ gui.menu = function(Options)
       self.hItem = Item
 
       if Item then -- Draw the newly highlighted area
-         Item.text.fill = 'rgb(180,0,0)'
+         self.highlight.y = Item.y
+         self.highlight.height = Item.height
+         self.highlight.visibility = 'visible'
+         self.surface.mtScheduleRedraw()
+      else
+         self.highlight.visibility = 'hidden'
          self.surface.mtScheduleRedraw()
       end
    end
@@ -475,10 +480,11 @@ gui.menu = function(Options)
                if self.tipTimer then
                   mSys.UpdateTimer(self.tipTimer, self.tipDelay)
                else
-                  local err
-                  err, self.tipTimer = mSys.SubscribeTimer(self.tipDelay, timer)
+                  _, self.tipTimer = mSys.SubscribeTimer(self.tipDelay, timer)
                end
             end
+         elseif (ev.type == JET_CROSSED_OUT) then
+            if self.hItem then highlightItem(nil) end
          end
 
          ev = ev.next
