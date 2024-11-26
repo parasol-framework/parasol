@@ -91,14 +91,14 @@ gui.strToRGB = function(Value)
          local g = nz(colours[2], 0)
          local b = nz(colours[3], 0)
          local a = nz(colours[4], 255)
-         if (r > 255) then r = 255 end
-         if (g > 255) then g = 255 end
-         if (b > 255) then b = 255 end
-         if (a > 255) then a = 255 end
-         if (r < 0) then r = 0 end
-         if (g < 0) then g = 0 end
-         if (b < 0) then b = 0 end
-         if (a < 0) then a = 0 end
+         if r > 255 then r = 255 end
+         if g > 255 then g = 255 end
+         if b > 255 then b = 255 end
+         if a > 255 then a = 255 end
+         if r < 0 then r = 0 end
+         if g < 0 then g = 0 end
+         if b < 0 then b = 0 end
+         if a < 0 then a = 0 end
          result = { r=r, g=g, b=b, a=a }
       end
    end,
@@ -234,7 +234,7 @@ gui.forVector = function(Vector, Function)
    while (Vector != nil) do
       Function(Vector)
       local child = Vector.child
-      if (child != nil) then gui.forVector(child, Function) end
+      if child != nil then gui.forVector(child, Function) end
       Vector = Vector.next
    end
 end
@@ -243,12 +243,12 @@ end
 
 gui.applyFill = function(Vector, Fill)
    while (Vector != nil) do
-      if (Vector.fill != 'none') then
+      if Vector.fill != 'none' then
          Vector.fill = Fill
       end
-      if (Vector.stroke != nil) then Vector.stroke = Fill end
+      if Vector.stroke != nil then Vector.stroke = Fill end
       local child = Vector.child
-      if (child != nil) then gui.applyFill(child, Fill) end
+      if child != nil then gui.applyFill(child, Fill) end
       Vector = Vector.next
    end
 end
@@ -345,11 +345,11 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
    icon.svg = obj.new('svg', { target=icon.pattern.viewport, path=Path })
 
    gui.forVector(icon.pattern.viewport, function(Vector)
-      if (Vector.fill != 'none') then
+      if Vector.fill != 'none' then
          Vector.fill = 'url(#' .. gname .. ')'
       end
 
-      if (Vector.stroke != nil) then
+      if Vector.stroke != nil then
          Vector.stroke = 'url(#' .. gname .. ')'
       elseif lGradient.stroke then
          Vector.stroke = gui.rgbToSVG(lGradient.stroke)
@@ -360,15 +360,15 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
    -- Adjust gradient size to match the viewport height.
 
    local viewport = icon.pattern.viewport.child
-   if (viewport != nil) then
-      while (child != nil) do
-         if (child.class.id == ID_VECTORVIEWPORT) then
+   if viewport != nil then
+      while child != nil do
+         if child.class.id == ID_VECTORVIEWPORT then
             viewport = child
             break
          end
       end
 
-      if (viewport.viewHeight < viewport.viewWidth) then
+      if viewport.viewHeight < viewport.viewWidth then
          icon.gradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
          icon.gradient.y2 = icon.gradient.y1 + viewport.viewWidth
       else
@@ -540,21 +540,21 @@ end
 
    local xml = obj.new('xml', { path=path })
 
-   if (xml != nil) then
+   if xml != nil then
 --[[
       local err, index = xml.mtFindTag('/colours')
-      if (err == ERR_Okay) then
+      if err == ERR_Okay then
          for k,v in pairs(gui.style) do
             err, colour = xml.mtGetAttrib(index, k)
-            if (err == ERR_Okay) then gui.style[k] = colour end
+            if err == ERR_Okay then gui.style[k] = colour end
          end
       end
 --]]
       local err, index = xml.mtFindTag('/interface')
-      if (err == ERR_Okay) then
+      if err == ERR_Okay then
          for k,v in pairs(gui.interface) do
             err, val = xml.mtGetAttrib(index, k)
-            if (err == ERR_Okay) then
+            if err == ERR_Okay then
                if string.match(val, '^%-?%d+$') then
                   gui.interface[k] = tonumber(val)
                else
@@ -567,14 +567,14 @@ end
       convertFontSizes()
 
       local err, index = xml.mtFindTag('/fonts')
-      if (err == ERR_Okay) then
+      if err == ERR_Okay then
          for k,v in pairs(gui.fonts) do
             local err, index = xml.mtFindTag("/fonts/font(@name='" .. k .. "')")
-            if (err == ERR_Okay) then
+            if err == ERR_Okay then
                local err, face = xml.mtGetAttrib(index, 'face')
-               if (err == ERR_Okay) then gui.fonts[k].face = face end
+               if err == ERR_Okay then gui.fonts[k].face = face end
                local err, size = xml.mtGetAttrib(index, 'size')
-               if (err == ERR_Okay) then
+               if err == ERR_Okay then
                   if string.match(size, '^%-?%d+$') then
                      gui.fonts[k].size = tonumber(size)
                   elseif string.match(size, '^%-?%d+%%$') then

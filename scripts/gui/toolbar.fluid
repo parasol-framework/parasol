@@ -87,7 +87,7 @@ gui.toolbar = function(Options)
    local function getCursorItem(X, Y)
       local item = self._first
       while (item) do
-         if (X >= item.x) and (X <  item.x + item.width) and (Y >= item.y) and (Y <  item.y + item.height) then
+         if (X >= item.x) and (X < item.x + item.width) and (Y >= item.y) and (Y <  item.y + item.height) then
             if item.type == TI_ICON then return item end
          end
          item = item.next
