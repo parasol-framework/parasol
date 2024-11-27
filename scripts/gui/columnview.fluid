@@ -229,7 +229,7 @@ local function bannerZoneClick(View, Col, X, Y, Value)
       View._sort = { col=Col, ascending=false }
       if not View.iconDescending then
          if not View.icons['sort_desc'] then
-            gui.createIcon(View.scene, 'layout/sort_alpha_desc', ICON_SIZE, nil, 'sort_desc')
+            gui.createIcon(View.scene, 'layout/sort_alpha_desc', ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text), 'sort_desc')
             View.icons['sort_desc'] = true
          end
 
@@ -245,7 +245,7 @@ local function bannerZoneClick(View, Col, X, Y, Value)
       if not View.iconAscending then
          if not View.icons['sort_asc'] then
             View.icons['sort_asc'] = true
-            gui.createIcon(View.scene, 'layout/sort_alpha_asc', ICON_SIZE, nil, 'sort_asc')
+            gui.createIcon(View.scene, 'layout/sort_alpha_asc', ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text), 'sort_asc')
          end
 
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {

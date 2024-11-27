@@ -10,14 +10,6 @@ local HEIGHT        = math.floor(FONT_MAX_HEIGHT * 1.75) + 1
 local ICON_SIZE     = HEIGHT * 0.56
 local GAP           = HEIGHT * 0.35
 
-local function iconTheme()
-   if (gui.rgbValue(gui.strToRGB(gui.style.widget.text)) > 127) then
-      return 'pearl'
-   else
-      return 'default' -- The default theme is dark
-   end
-end
-
 gui.button = function(Options)
    local self = { -- Public variables
       events         = nz(Options.events, { }),
@@ -98,7 +90,7 @@ gui.button = function(Options)
 
    if Options.icon then
       pcall(function()
-         local icon = gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, iconTheme())
+         local icon = gui.createIcon(self.viewport.scene, Options.icon, ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text))
 
          if icon then
             self.iconRender = self.viewport.new('VectorViewport', {

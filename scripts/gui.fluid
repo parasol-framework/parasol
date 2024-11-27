@@ -191,6 +191,20 @@ gui.rgbValue = function(Value)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+
+gui.rgbToIconTheme = function(Value)
+   if type(Value) == 'string' then
+      Value = gui.strToRGB(Value)
+   end
+
+   if gui.rgbValue(Value) > 127 then
+      return 'pearl'
+   else
+      return 'carbon'
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Convert RGB table to HSV
 
 gui.rgbToHSV = function(Value)
@@ -422,17 +436,17 @@ end
      -- prime (primary) and second (secondary prime) are colour pairs of the same hue.
      -- contrast is a suitable complement to prime and should be of a strongly contrasting hue
      -- neutral is a default background colour for unpainted areas, usually a light grey tone
-     ocean = { type = 'light', bkgd = '#ECF0F1', base = '#2C3E50', prime = '#3498DB', second = '#2980B9',
-               contrast = '#E74C3C', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
+     ocean        = { type = 'light', bkgd = '#ECF0F1', base = '#2C3E50', prime = '#3498DB', second = '#2980B9',
+                      contrast = '#E74C3C', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
      orangeApples = { type = 'light', bkgd = '#ffffff', base = '#19302d', prime = '#74a108', second = '#263248',
                       contrast = '#e89214', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-     greenland = { type = 'light', bkgd = '#f9FFfB', base = '#163a00', prime = '#c55500', second = '#55c500',
-                   contrast = '#567a00', neutral = '#e9e9e0', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-     sunrise  = { type = 'light', bkgd = '#f9FfFc', base = '#687878', prime = '#e2581b', second = '#bd3232',
-                  contrast = '#eb9500', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-     candyfloss = { type = 'light', bkgd = '#fffaf7', base = '#375a5e', prime = '#6ac9a6', second = '#FF8B94',
-                contrast = '#e07780', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
-     template = { type = '', bkgd = '', base = '', prime = '', second = '', contrast = '', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' }
+     greenland    = { type = 'light', bkgd = '#f9FFfB', base = '#163a00', prime = '#c55500', second = '#55c500',
+                      contrast = '#567a00', neutral = '#e9e9e0', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
+     sunrise      = { type = 'light', bkgd = '#f9FfFc', base = '#687878', prime = '#e2581b', second = '#bd3232',
+                      contrast = '#eb9500', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
+     candyfloss   = { type = 'light', bkgd = '#fffaf7', base = '#375a5e', prime = '#6ac9a6', second = '#FF8B94',
+                      contrast = '#e07780', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' },
+     template     = { type = '', bkgd = '', base = '', prime = '', second = '', contrast = '', neutral = 'rgb(220,220,220)', text='rgb(0,0,0)', altText='rgb(255,255,255)' }
    }
 
    gui.palette = gui.palettes.ocean
@@ -457,7 +471,7 @@ end
        text   = gui.palette.altText,
        bkgd   = gui.palette.prime,
        stroke = 'rgb(255,255,255,60)',
-       strokeFocus    = gui.palette.contrast,
+       strokeFocus = gui.palette.contrast,
        strokeWidth = 2,
        width  = 160, -- Default width for common widgets (px)
        gap    = 6,   -- Recommended gap between widgets (px)
