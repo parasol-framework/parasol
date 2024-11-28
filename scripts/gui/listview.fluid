@@ -63,8 +63,8 @@ gui.listView = function(Options)
          setListTextFill(Item, gui.style.page.textSelect)
          Item._vectors.highlight.fill = gui.style.page.textSelectBkgd
          Item._vectors.highlight.visibility = VIS_VISIBLE
-         if gui.style.page.iconSelect and View.sIcons[Item.icon] then
-            Item._vectors.iconImage.fill = 'url(#' .. View.sIcons[Item.icon] .. ')'
+         if gui.style.page.iconHighlight and View.hIcons[Item.icon] then
+            Item._vectors.iconImage.fill = 'url(#' .. View.hIcons[Item.icon] .. ')'
          end
       elseif Highlighted then
          Item._vectors.highlight.fill = gui.style.page.textHighlightBkgd
@@ -146,21 +146,9 @@ gui.listView = function(Options)
                   View.icons[item.icon] = true
                end
 
-               if gui.style.page.iconSelect then
-                  if gui.style.page.iconSelect == gui.style.page.icon then
-                     View.sIcons[item.icon] = item.icon
-                  else
-                     gui.createIcon(View.scene, item.icon, ICON_SIZE, gui.style.page.iconSelect, '_s_' .. item.icon)
-                     View.sIcons[item.icon] = '_s_' .. item.icon
-                  end
-               end
-
                if gui.style.page.iconHighlight then
                   if gui.style.page.iconHighlight == gui.style.page.icon then
                      View.hIcons[item.icon] = item.icon
-                  elseif gui.style.page.iconHighlight != gui.style.page.iconSelect then
-                     gui.createIcon(View.scene, item.icon, ICON_SIZE, gui.style.page.iconHighlight, '_s_' .. item.icon)
-                     View.hIcons[item.icon] = '_s_' .. item.icon
                   else
                      gui.createIcon(View.scene, item.icon, ICON_SIZE, gui.style.page.iconHighlight, '_h_' .. item.icon)
                      View.hIcons[item.icon] = '_h_' .. item.icon
@@ -244,7 +232,6 @@ gui.listView = function(Options)
 
    local function constructListView(View, Scene, Window, Page)
       if not View.icons then View.icons = { } end
-      if not View.sIcons then View.sIcons = { } end
       if not View.hIcons then View.hIcons = { } end
 
       if #View.items > 0 then newItems(View, View.items) end

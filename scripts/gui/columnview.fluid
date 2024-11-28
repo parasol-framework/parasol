@@ -241,13 +241,13 @@ local function bannerZoneClick(View, Col, X, Y, Value)
    if View._sort and (View._sort.col == Col) and (View._sort.ascending == true) then
       View._sort = { col=Col, ascending=false }
       if not View.iconDescending then
-         if not View.icons['sort_desc'] then
-            gui.createIcon(View.scene, 'layout/sort_alpha_desc', ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text), 'sort_desc')
-            View.icons['sort_desc'] = true
+         if not View._sort_desc then
+            local info = gui.createIcon(View.scene, 'layout/sort_alpha_desc', ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text), 'sort_desc')
+            View._sort_desc = info.fill
          end
 
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
-            fill   = 'url(#sort_desc)',
+            fill   = View._sort_desc,
             y      = math.round( ((BANNER_HEIGHT - ICON_SIZE) * 0.5)),
             width  = ICON_SIZE,
             height = ICON_SIZE
@@ -256,13 +256,13 @@ local function bannerZoneClick(View, Col, X, Y, Value)
    else
       View._sort = { col=Col, ascending=true }
       if not View.iconAscending then
-         if not View.icons['sort_asc'] then
-            View.icons['sort_asc'] = true
-            gui.createIcon(View.scene, 'layout/sort_alpha_asc', ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text), 'sort_asc')
+         if not View._sort_asc then
+            local info = gui.createIcon(View.scene, 'layout/sort_alpha_asc', ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text), 'sort_asc')
+            View._sort_asc = info.fill
          end
 
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
-            fill   = 'url(#sort_asc)',
+            fill   = View._sort_asc,
             y      = math.round((BANNER_HEIGHT - ICON_SIZE) * 0.5),
             width  = ICON_SIZE,
             height = ICON_SIZE
@@ -592,7 +592,7 @@ gui.columnView = function(Options)
                   item._col[attrib].text.x = col.width - MARGIN
                else
                   if col.showIcons then
-                     item._col[attrib].text.x = (MARGIN * 2) + ICON_SIZE + MARGIN
+                     item._col[attrib].text.x = (MARGIN * 2) + ICON_SIZE + (MARGIN * 2)
                   else
                      item._col[attrib].text.x = MARGIN
                   end

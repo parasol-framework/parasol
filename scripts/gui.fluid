@@ -462,10 +462,9 @@ end
        icon        = nil,                -- Default icon theme for icons drawn over 'bkgd'
        textHighlight     = gui.palette.altText,  -- Colour for 'text' during user hover
        textHighlightBkgd = gui.palette.contrast, -- Background fill for 'text' during user hover
-       iconHighlight     = nil,                  -- Recommended icon theme when highlighted
+       iconHighlight     = nil,                  -- Recommended icon theme when highlighted or selected
        textSelect        = gui.palette.altText,  -- Colour for 'text' when selected
-       textSelectBkgd    = gui.palette.prime,    -- Background fill for 'text' when selected
-       iconSelect        = nil                   -- Recommended icon theme when selected
+       textSelectBkgd    = gui.palette.prime     -- Background fill for 'text' when selected
      },
      widget = {
        text   = gui.palette.altText,
@@ -511,7 +510,6 @@ end
    if gui.palette.type == 'light' then
       gui.style.page.icon          = 'carbon'
       gui.style.page.iconHighlight = 'pearl'
-      gui.style.page.iconSelect    = 'pearl'
       gui.style.page.text          = gui.palette.text
       gui.style.page.textHighlight = gui.palette.altText
       gui.style.page.textSelect    = gui.palette.altText
@@ -521,7 +519,6 @@ end
    else
       gui.style.page.icon          = 'pearl'
       gui.style.page.iconHighlight = 'carbon'
-      gui.style.page.iconSelect    = 'carbon'
       gui.style.menu.icon          = 'carbon'
       gui.style.dropdown.icon      = 'pearl'
       gui.style.dropdown.iconHighlight = 'carbon'
