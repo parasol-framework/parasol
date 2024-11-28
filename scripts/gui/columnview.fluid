@@ -143,19 +143,28 @@ local function highlightItem(View, Item, Highlighted)
          for k, col in pairs(Item._col) do
             if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
          end
-         Item._vectors.highlight.fill = gui.style.page.textHighlightBkgd
-      else
+         local col = gui.interpolateRGB(gui.strToRGB(gui.style.page.textHighlightBkgd), gui.strToRGB(gui.style.page.textSelectBkgd))
+         Item._vectors.highlight.fill = gui.rgbToSVG(col) --gui.style.page.textHighlightBkgd
+         if Item._vectors.iconImage and Item._iconHighlight then
+            Item._vectors.iconImage.fill = Item._iconHighlight
+         end
+      else -- Highlighted
          for k, col in pairs(Item._col) do
-            if col.text then col.text.fill = View.namedCol[k].fillItem end
+            if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
          end
          Item._vectors.highlight.fill = gui.style.page.textHighlightBkgd
+         if Item._vectors.iconImage and Item._iconHighlight then
+            Item._vectors.iconImage.fill = Item._iconHighlight
+         end
       end
    elseif Item._selected then
       for k, col in pairs(Item._col) do
          if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
       end
-
       Item._vectors.highlight.fill = gui.style.page.textSelectBkgd
+      if Item._vectors.iconImage and Item._iconHighlight then
+         Item._vectors.iconImage.fill = Item._iconHighlight
+      end
    else
       if Item.fill then
          for k, col in pairs(Item._col) do
@@ -171,6 +180,10 @@ local function highlightItem(View, Item, Highlighted)
                end
             end
          end
+      end
+
+      if Item._vectors.iconImage then
+         Item._vectors.iconImage.fill = Item._iconFill
       end
 
       if Item._vectors.highlight then
@@ -312,9 +325,6 @@ gui.columnView = function(Options)
       View.bannerHeight = BANNER_HEIGHT
       View.y = View.bannerHeight
       View.banner = { }
-      if not View.icons then
-         View.icons = { }
-      end
 
       -- Background graphics
 
@@ -528,20 +538,22 @@ gui.columnView = function(Options)
 
             if col.showIcons and item.icon then
                pcall(function()
-                  local uid = item.icon
-                  if item.iconColour then
-                     uid = uid .. '+' .. item.iconColour
-                  end
+                  local theme = nz(item.iconTheme, gui.style.page.icon)
+                  local uid = theme .. '+' .. item.icon
+                  local info = gui.createIcon(View.scene, item.icon, ICON_SIZE, theme, uid)
+                  item._iconFill = info.fill
 
-                  if not View.icons[uid] then
-                     gui.createIcon(View.scene, item.icon, ICON_SIZE, item.iconColour, uid)
-                     View.icons[uid] = true
+                  if gui.style.page.iconHighlight and gui.style.page.iconHighlight != theme then
+                     local theme = gui.style.page.iconHighlight
+                     local uid = theme .. '+' .. item.icon
+                     local info = gui.createIcon(View.scene, item.icon, ICON_SIZE, theme, uid)
+                     item._iconHighlight = info.fill
                   end
 
                   if not item._vectors.iconImage then
                      item._vectors.iconImage = col.vecViewport.new('VectorRectangle', {
-                        fill   = 'url(#' .. uid .. ')',
-                        x      = MARGIN,
+                        fill   = item._iconFill,
+                        x      = MARGIN * 2,
                         y      = y + ICON_OFFSET,
                         width  = ICON_SIZE,
                         height = ICON_SIZE
@@ -580,7 +592,7 @@ gui.columnView = function(Options)
                   item._col[attrib].text.x = col.width - MARGIN
                else
                   if col.showIcons then
-                     item._col[attrib].text.x = MARGIN + ICON_SIZE + MARGIN
+                     item._col[attrib].text.x = (MARGIN * 2) + ICON_SIZE + MARGIN
                   else
                      item._col[attrib].text.x = MARGIN
                   end

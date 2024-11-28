@@ -386,7 +386,7 @@ local function createFileItem(self, Info)
       new_item = {
          type        = 'volume',
          icon        = icon,
-         iconColour  = colour,
+         iconTheme  = colour,
          sort        = '\x02' .. Info.name:lower(),
          filename    = Info.name, -- Unique
          insensitive = true,
@@ -409,7 +409,7 @@ local function createFileItem(self, Info)
       new_item = {
          type        = 'folder',
          icon        = getFileIcon(self.path .. Info.name),
-         iconColour  = 'yellow',
+         iconTheme   = 'yellow',
          sort        = '\x03' .. Info.name:lower(),
          filename    = Info.name,
          name        = { sort = 'D' .. display_name:lower(), value = display_name },
