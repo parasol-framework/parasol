@@ -157,6 +157,7 @@ gui.toolbar = function(Options)
       local currentGroup = nil
       local spanCount = 0
       while item do
+         -- Note that groups are converted to breaks when in flush mode.
          if item.type == TI_BREAK then
             item.x      = x
             item.y      = y
@@ -174,46 +175,48 @@ gui.toolbar = function(Options)
                y = y + item.height
             end
          elseif item.type == TI_GROUP then
-            if self._horizontal then
-               if not item.prev then
-                  x = x + groupOffset
+            if not Options.flush then
+               if self._horizontal then
+                  if not item.prev then
+                     x = x + groupOffset
+                  else
+                     x = x + (self._iconSize * 0.25)
+                  end
                else
-                  x = x + (self._iconSize * 0.25)
+                  if not item.prev then
+                     y = y + groupOffset
+                  else
+                     y = y + (self._iconSize * 0.25)
+                  end
                end
-            else
-               if not item.prev then
-                  y = y + groupOffset
+
+               currentGroup = item
+               spanCount = 0
+
+               item.x = x
+               item.y = y
+               if self._horizontal then
+                  item.height = self._iconSize + (self._cellMargin * 2)
                else
-                  y = y + (self._iconSize * 0.25)
+                  item.width = self._iconSize + (self._cellMargin * 2)
                end
-            end
 
-            currentGroup = item
-            spanCount = 0
-
-            item.x = x
-            item.y = y
-            if self._horizontal then
-               item.height = self._iconSize + (self._cellMargin * 2)
-            else
-               item.width = self._iconSize + (self._cellMargin * 2)
-            end
-
-            item.bkgd = self.vg.new('VectorRectangle', { fill = gui.style.page.bkgd,
-               name = 'groupbkgd', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
-            })
-
-            item.bkgd.acMoveToBack()
-
-            item.border = self.vg.new('VectorRectangle', {
-               name = 'grouprect', stroke = gui.style.button.bkgd, strokeWidth = gui.style.widget.strokeWidth,
-               x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
-            })
-
-            if self._groupClip then
-               item.clip = self._groupClip.viewport.new('VectorRectangle', {
-                  name = 'groupclip', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
+               item.bkgd = self.vg.new('VectorRectangle', { fill = gui.style.page.bkgd,
+                  name = 'groupbkgd', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
                })
+
+               item.bkgd.acMoveToBack()
+
+               item.border = self.vg.new('VectorRectangle', {
+                  name = 'grouprect', stroke = gui.style.button.bkgd, strokeWidth = gui.style.widget.strokeWidth,
+                  x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
+               })
+
+               if self._groupClip then
+                  item.clip = self._groupClip.viewport.new('VectorRectangle', {
+                     name = 'groupclip', x = x, y = y, roundX = self._round, roundY = self._round, width = 1, height = 1
+                  })
+               end
             end
          elseif item.type == TI_ICON then
             item.x      = x
@@ -313,8 +316,10 @@ gui.toolbar = function(Options)
    -- Insert a visual break between items.
 
    self.addBreak = function()
-      newItem(TI_BREAK, 'break', nil)
+      if not self._first then return end -- At least one item must precede a break
+      local item = newItem(TI_BREAK, 'break', nil)
       self._arranged = false
+      return item
    end
 
    -- Add a clickable item to the toolbar.  The Name acts as the item text that is displayed in the toolbar if no
@@ -352,10 +357,14 @@ gui.toolbar = function(Options)
    -- known ahead of time, then added with calls to addItem().
 
    self.addGroup = function(ID, Name, Span)
-      local item = newItem(TI_GROUP, Name, ID)
-      item.group = { span=Span }
-      self._groupCount = self._groupCount + 1
-      return item
+      if Options.flush then
+         return self.addBreak()
+      else
+         local item = newItem(TI_GROUP, Name, ID)
+         item.group = { span=Span }
+         self._groupCount = self._groupCount + 1
+         return item
+      end
    end
 
    -- Individual toolbar items can be disabled with this method.  Reverse this action with enableItem().
