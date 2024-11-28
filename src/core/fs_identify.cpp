@@ -4,18 +4,17 @@
 -FUNCTION-
 IdentifyFile: Analyse a file and identify a class that can process it.
 
-This function examines the relationship between file data and installed classes.  It allows for instance, a JPEG file
-to be identified as a datatype of the @Picture class, or an MP3 file to be identified as a datatype of the @Sound
+This function examines the relationship between file data and Parasol classes.  For instance, a JPEG file would be
+identified as a datatype of the @Picture class.  An MP3 file would be identified as a datatype of the @Sound
 class.
 
 The method involves analysing the `Path`'s file extension and comparing it to the supported extensions of all available
-classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is
+classes.  If a class supports the file extension, the ID of that class will be returned. If the file extension is
 not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be
 loaded and checked against classes that can match against file header information.  If a match is found, the ID of the
 matching class will be returned.
 
-This function returns an error code of `ERR::Search` in the event that a suitable class is not available to match
-against the given file.
+The `ERR::Search` code is returned if a suitable class does not match the targeted file.
 
 -INPUT-
 cstr Path:     The location of the object data.

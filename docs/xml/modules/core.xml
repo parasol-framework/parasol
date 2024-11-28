@@ -928,9 +928,9 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="CLASSID *" name="SubClass">Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).</param>
     </input>
     <description>
-<p>This function examines the relationship between file data and installed classes.  It allows for instance, a JPEG file to be identified as a datatype of the <class name="Picture">Picture</class> class, or an MP3 file to be identified as a datatype of the <class name="Sound">Sound</class> class.</p>
-<p>The method involves analysing the <code>Path</code>'s file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
-<p>This function returns an error code of <code>ERR::Search</code> in the event that a suitable class is not available to match against the given file.</p>
+<p>This function examines the relationship between file data and Parasol classes.  For instance, a JPEG file would be identified as a datatype of the <class name="Picture">Picture</class> class.  An MP3 file would be identified as a datatype of the <class name="Sound">Sound</class> class.</p>
+<p>The method involves analysing the <code>Path</code>'s file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension, the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
+<p>The <code>ERR::Search</code> code is returned if a suitable class does not match the targeted file.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1291,7 +1291,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="CSTRING *" name="Value">The discovered string value is returned here if found.</param>
     </input>
     <description>
-<p>Call ReadInfoTag() to retrieve the string value associated with a named tag in a <st>FileInfo</st> structure.  The tag must have been added with <function>AddInfoTag</function> or <code>ERR::NotFound</code> will be returned.</p>
+<p>ReadInfoTag() will read the value of a named tag in a <st>FileInfo</st> structure.  The tag must have been added with <function>AddInfoTag</function> or <code>ERR::NotFound</code> will be returned.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -2121,6 +2121,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="DEVICE">
+      <const name="BOOKMARK">This marker indicates that the presented volume is a bookmark and not a device name.</const>
       <const name="COMPACT_DISC">Compact disc style device</const>
       <const name="FIXED">Catch-all for fixed media devices that are not directly identifiable.</const>
       <const name="FLOPPY_DISK">Floppy disk style device</const>

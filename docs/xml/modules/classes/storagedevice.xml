@@ -83,6 +83,7 @@
   </fields>
   <types>
     <constants lookup="DEVICE">
+      <const name="BOOKMARK">This marker indicates that the presented volume is a bookmark and not a device name.</const>
       <const name="COMPACT_DISC">Compact disc style device</const>
       <const name="FIXED">Catch-all for fixed media devices that are not directly identifiable.</const>
       <const name="FLOPPY_DISK">Floppy disk style device</const>

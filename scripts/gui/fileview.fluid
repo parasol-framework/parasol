@@ -371,7 +371,9 @@ local function createFileItem(self, Info)
       local total_size = nil
       local free_space = nil
       local device = obj.new('storagedevice', { volume = Info.name .. ':' } )
-      if bit.band(device.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_FIXED, DEVICE_HARD_DISK, DEVICE_COMPACT_DISC)) != 0 then
+      if bit.band(device.deviceFlags, DEVICE_BOOKMARK) != 0 then -- User shortcut
+         colour = 'carbon'
+      elseif bit.band(device.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_FIXED, DEVICE_HARD_DISK, DEVICE_COMPACT_DISC)) != 0 then
          colour = 'green'
          if device.deviceSize >= 1 then total_size = sortNum(device.deviceSize) end
          if device.bytesFree >= 1 then free_space = sortNum(device.bytesFree) end
