@@ -29,7 +29,8 @@ flags("DEVICE", { bits=64, module="Core" },
     "USB: Removable USB storage device.  May be further qualified by `HARD_DISK`, `FLOPPY_DISK` etc",
     "FIXED: Catch-all for fixed media devices that are not directly identifiable.",
     "PRINTER_3D: Device is a three dimensional printer.",
-    "SCANNER_3D: Device is a three dimensional scanner.")
+    "SCANNER_3D: Device is a three dimensional scanner.",
+    "BOOKMARK: This marker indicates that the presented volume is a bookmark and not a device name.")
 
 flags("CCF", { comment="Class categories", module="Core" },
     "COMMAND: Command classes perform specific procedures, like copying or moving a file, managing volumes or executing a program.",

@@ -1112,8 +1112,8 @@ ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead
 -FUNCTION-
 ReadInfoTag: Read a named tag from a !FileInfo structure.
 
-Call ReadInfoTag() to retrieve the string value associated with a named tag in a !FileInfo structure.  The tag must
-have been added with ~AddInfoTag() or `ERR::NotFound` will be returned.
+ReadInfoTag() will read the value of a named tag in a !FileInfo structure.  The tag must have been added with
+~AddInfoTag() or `ERR::NotFound` will be returned.
 
 -INPUT-
 struct(FileInfo) Info: Pointer to a valid !FileInfo structure.
@@ -2495,7 +2495,7 @@ restart:
          if (glVolumes[vol].contains("Device")) {
             auto &device = glVolumes[vol]["Device"];
             if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE::FLOPPY_DISK|DEVICE::REMOVABLE|DEVICE::READ|DEVICE::WRITE;
-            else if (!device.compare("fixed"))  Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
+            else if (!device.compare("fixed")) Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
             else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
             else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE::COMPACT_DISC|DEVICE::REMOVABLE|DEVICE::READ;
             else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE::USB|DEVICE::REMOVABLE;
@@ -2509,12 +2509,12 @@ restart:
    if (Info->DeviceFlags IS DEVICE::NIL) {
       // Unable to find a device reference for the volume, so try to resolve the path and try again.
 
+      Info->DeviceFlags |= DEVICE::BOOKMARK;
       if (!resolve.empty()) { // We've done what we can - drop through
          #ifdef _WIN32
             // On win32 we can get the drive information from the drive letter
             // TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
          #endif
-
          location.assign(resolve);
       }
       else {
@@ -2539,7 +2539,7 @@ restart:
 
    if (error IS ERR::Okay) {
       if (!(winGetFreeDiskSpace(location[0], &bytes_avail, &total_size))) {
-         log.msg("Failed to read location \"%s\" (from \"%s\")", location.c_str(), Path.data());
+         log.msg("Failed to read disk space for \"%s\" (%s)", location.c_str(), Path.data());
          Info->BytesFree  = -1;
          Info->BytesUsed  = 0;
          Info->DeviceSize = -1;

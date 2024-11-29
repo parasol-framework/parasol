@@ -14,15 +14,6 @@ local LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
 LINE_HEIGHT = math.round(LINE_HEIGHT * 1.3)
 local LINE_OFFSET = (LINE_HEIGHT + FONT_HEIGHT) * 0.5
 
-local lColours = {
-   fillItem           = gui.style.page.text,
-   fillItemSelectHigh = 'rgb(255,255,255)',
-   fillSelect         = 'rgb(0,0,60,140)',
-   fillSelectFont     = 'rgb(255,255,255)',
-   fillBkgdHighlight  = 'rgb(0,0,0,10)',
-   fillBkgdSelectHighlight = 'rgb(0,0,90,140)'
-}
-
 local function rearrangeItems(View)
    View.zones = { }
    local y = 0
@@ -59,32 +50,35 @@ gui.listView = function(Options)
    -- When an item is hovered, create a highlight for it.
 
    local function highlightItem(View, Item, Highlighted)
-      if (Item._vectors.viewport == nil) then return end
+      if Item._vectors.viewport == nil then return end
 
-      if (not Item._vectors.highlight) then
+      if not Item._vectors.highlight then
          Item._vectors.highlight = Item._vectors.viewport.new('VectorRectangle', {
             roundX = 4, roundY = 4, width = '100%', height = '100%', visibility = VIS_HIDDEN
          })
          Item._vectors.highlight.acMoveToBack()
       end
 
-      if Highlighted then
-         if Item._selected then -- Both selected AND highlighted
-            Item._vectors.highlight.fill = lColours.fillBkgdSelectHighlight
-            setListTextFill(Item, lColours.fillItemSelectHigh)
-         else
-            Item._vectors.highlight.fill = lColours.fillBkgdHighlight
-            setListTextFill(Item, lColours.fillItem)
+      if Item._selected then
+         setListTextFill(Item, gui.style.page.textSelect)
+         Item._vectors.highlight.fill = gui.style.page.textSelectBkgd
+         Item._vectors.highlight.visibility = VIS_VISIBLE
+         if gui.style.page.iconHighlight and View.hIcons[Item.icon] then
+            Item._vectors.iconImage.fill = 'url(#' .. View.hIcons[Item.icon] .. ')'
          end
-
+      elseif Highlighted then
+         Item._vectors.highlight.fill = gui.style.page.textHighlightBkgd
+         setListTextFill(Item, gui.style.page.textHighlight)
          Item._vectors.highlight.visibility = VIS_VISIBLE
-      elseif (Item._selected) then
-         setListTextFill(Item, lColours.fillItemSelectHigh)
-         Item._vectors.highlight.fill = lColours.fillSelect
-         Item._vectors.highlight.visibility = VIS_VISIBLE
+         if gui.style.page.iconHighlight and View.hIcons[Item.icon] then
+            Item._vectors.iconImage.fill = 'url(#' .. View.hIcons[Item.icon] .. ')'
+         end
       else
-         setListTextFill(Item, lColours.fillItem)
+         setListTextFill(Item, gui.style.page.text)
          Item._vectors.highlight.visibility = VIS_HIDDEN
+         if View.icons[Item.icon] then
+            Item._vectors.iconImage.fill = 'url(#' .. Item.icon .. ')'
+         end
       end
    end
 
@@ -100,7 +94,7 @@ gui.listView = function(Options)
       y = y + ((#View.items - #Items) * (LINE_HEIGHT + VSPACING))
 
       for _, item in pairs(Items) do
-         if (not item._vectors) then item._vectors = { } end
+         if not item._vectors then item._vectors = { } end
 
          item._x = x
          item._y = y
@@ -116,7 +110,7 @@ gui.listView = function(Options)
          -- Respond to positive item selection by the user (e.g. button click)
 
          item._selectEvent = function(View, Item)
-            if (Item == View.hItem) then
+            if Item == View.hItem then
                Item._highlightEvent(View, Item, true)
             else
                Item._highlightEvent(View, Item, false)
@@ -147,11 +141,18 @@ gui.listView = function(Options)
 
          if item.icon then
             pcall(function()
-               if not View.icons then View.icons = { } end
-
                if not View.icons[item.icon] then
-                  gui.createIcon(View.scene, item.icon, ICON_SIZE)
+                  gui.createIcon(View.scene, item.icon, ICON_SIZE, gui.style.page.icon, item.icon)
                   View.icons[item.icon] = true
+               end
+
+               if gui.style.page.iconHighlight then
+                  if gui.style.page.iconHighlight == gui.style.page.icon then
+                     View.hIcons[item.icon] = item.icon
+                  else
+                     gui.createIcon(View.scene, item.icon, ICON_SIZE, gui.style.page.iconHighlight, '_h_' .. item.icon)
+                     View.hIcons[item.icon] = '_h_' .. item.icon
+                  end
                end
 
                if not item._vectors.iconImage then
@@ -179,7 +180,7 @@ gui.listView = function(Options)
 
             item._vectors.text.x = MARGIN + ICON_MARGIN
             item._vectors.text.y = LINE_OFFSET
-            if (type(item_name) == 'table') then
+            if type(item_name) == 'table' then
                item._vectors.text.string = item_name.value
             else
                item._vectors.text.string = item_name
@@ -191,11 +192,11 @@ gui.listView = function(Options)
             width = MARGIN + ICON_MARGIN + bw + MARGIN
 
             if item._selected then
-               item._vectors.text.fill = lColours.fillSelectFont
-            elseif (item.index == lHighlightedItem) and (lColours.highlight) then
-               item._vectors.text.fill = lColours.highlight
+               item._vectors.text.fill = gui.style.page.textSelect
+            elseif item.index and (item.index == lHighlightedItem) then
+               item._vectors.text.fill = gui.style.page.textHighlight
             else
-               item._vectors.text.fill = nz(item.colour, lColours.fillItem)
+               item._vectors.text.fill = nz(item.colour, gui.style.page.text)
             end
          end
 
@@ -206,14 +207,14 @@ gui.listView = function(Options)
             y = y + LINE_HEIGHT + VSPACING
          end
 
-         if (width > widest_item) then widest_item = width end
+         if width > widest_item then widest_item = width end
       end
 
       -- Item click and hover management
 
       for _, item in pairs(View.items) do
          if not item.hidden then
-            if (Options.compact == 1) then
+            if Options.compact == 1 then
                View.addZone(item._x, item._y, widest_item, item._height, item, itemHoverCallback)
             else
                View.addZone(item._x, item._y, nil, item._height, item, itemHoverCallback)
@@ -230,6 +231,9 @@ gui.listView = function(Options)
    end
 
    local function constructListView(View, Scene, Window, Page)
+      if not View.icons then View.icons = { } end
+      if not View.hIcons then View.hIcons = { } end
+
       if #View.items > 0 then newItems(View, View.items) end
 
       collectgarbage()

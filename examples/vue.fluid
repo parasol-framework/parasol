@@ -138,7 +138,7 @@ function displayImage(Path)
       glStats = { width = pic.bitmap.width, height = pic.bitmap.height }
    end,
    function(Exception)
-      displayError("<p>Failed to process selected file.</p>")
+      displayError([[<p>Failed to process selected file.</p>]])
    end)
 end
 

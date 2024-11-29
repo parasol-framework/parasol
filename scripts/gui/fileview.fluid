@@ -57,7 +57,7 @@ end
 local function parentWindow(Surface)
    local scan = obj.find(Surface.parent)
    while scan do
-      if (mSys.GetClassID(mSys.GetOwnerID(scan.id)) == ID_WINDOW) then
+      if mSys.GetClassID(mSys.GetOwnerID(scan.id)) == ID_WINDOW then
          return scan
       end
       scan = obj.find(scan.parent)
@@ -96,7 +96,7 @@ end
 
 local function updateFileAttributes(Item, Info)
    if Item.date then
-      if (Item.type == 'folder') then
+      if Item.type == 'folder' then
          Item.date.sort = 'D' .. sortNum(Info.timestamp)
       else
          Item.date.sort = 'F' .. sortNum(Info.timestamp)
@@ -202,19 +202,21 @@ local function applyFilters(self)
 end
 
 local function displayFilters(self)
-   if (#self.filterList < 1) then return end
+   if #self.filterList < 1 then return end
 
    if not self.filterViewport then -- Construct the filter list
+      local bkgd = gui.interpolateRGB(gui.strToRGB(gui.palette.base), gui.strToRGB(gui.palette.bkgd), 0.1)
+
       self.filterViewport = self.view.viewport.new('VectorViewport', {
          visibility = VIS_HIDDEN, x = 0, y = self.toolbar.viewport.height, xOffset = 0, height = 1
       })
-      self.filterViewport.new('VectorRectangle', { width='100%', height='100%', fill='rgb(80,80,90)' })
+      self.filterViewport.new('VectorRectangle', { width='100%', height='100%', fill=gui.rgbToSVG(bkgd) })
 
       local height = 2, text_x, text_y, item_height, descent
       for _, item in ipairs(self.filterList) do
          item.vp = self.filterViewport.new('VectorViewport', { x = 0, y = height, width = '100%', height = 1 })
-         item.highlight = item.vp.new('VectorRectangle', { x = 0, y = 0, width='100%', height='100%', fill='#ff5b00', visibility = VIS_HIDDEN })
-         item.txt = item.vp.new('VectorText', { x=0, y=0, string=item.name, fill='rgb(255,255,255)', face='Noto Sans', fontSize=12 })
+         item.highlight = item.vp.new('VectorRectangle', { x = 0, y = 0, width='100%', height='100%', fill=gui.palette.prime, visibility = VIS_HIDDEN })
+         item.txt = item.vp.new('VectorText', { x=0, y=0, string=item.name, fill=gui.palette.altText, face='Noto Sans', fontSize=12 })
          if not descent then
             descent = math.round(item.txt.descent)
             height = descent
@@ -261,7 +263,7 @@ local function displayFilters(self)
 
    -- Toggle the filter list
 
-   if (self.filterViewport.visibility != VIS_HIDDEN) then
+   if self.filterViewport.visibility != VIS_HIDDEN then
       self.filterViewport.visibility = VIS_HIDDEN
       local list_y = self._reserved_height
       self.view.window.y = list_y
@@ -369,10 +371,12 @@ local function createFileItem(self, Info)
       local total_size = nil
       local free_space = nil
       local device = obj.new('storagedevice', { volume = Info.name .. ':' } )
-      if bit.band(device.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_FIXED, DEVICE_HARD_DISK, DEVICE_COMPACT_DISC)) != 0 then
+      if bit.band(device.deviceFlags, DEVICE_BOOKMARK) != 0 then -- User shortcut
+         colour = 'carbon'
+      elseif bit.band(device.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_FIXED, DEVICE_HARD_DISK, DEVICE_COMPACT_DISC)) != 0 then
          colour = 'green'
-         if (device.deviceSize >= 1) then total_size = sortNum(device.deviceSize) end
-         if (device.bytesFree >= 1) then free_space = sortNum(device.bytesFree) end
+         if device.deviceSize >= 1 then total_size = sortNum(device.deviceSize) end
+         if device.bytesFree >= 1 then free_space = sortNum(device.bytesFree) end
       end
 
       local display_name = Info.name ..':'
@@ -384,7 +388,7 @@ local function createFileItem(self, Info)
       new_item = {
          type        = 'volume',
          icon        = icon,
-         iconColour  = colour,
+         iconTheme  = colour,
          sort        = '\x02' .. Info.name:lower(),
          filename    = Info.name, -- Unique
          insensitive = true,
@@ -407,7 +411,7 @@ local function createFileItem(self, Info)
       new_item = {
          type        = 'folder',
          icon        = getFileIcon(self.path .. Info.name),
-         iconColour  = 'yellow',
+         iconTheme   = 'yellow',
          sort        = '\x03' .. Info.name:lower(),
          filename    = Info.name,
          name        = { sort = 'D' .. display_name:lower(), value = display_name },
@@ -418,7 +422,7 @@ local function createFileItem(self, Info)
          size        = { sort = sortNum(0), value = nil } -- Dummy required for sorting
       }
 
-      if (Info.modified.year != 0) then
+      if Info.modified.year != 0 then
          new_item.date = { sort = 'D' .. sortNum(Info.timestamp), value = printableTime(Info.modified) }
       end
    elseif bit.band(Info.Flags, RDF_FILE) != 0 then
@@ -577,7 +581,7 @@ gui.fileview = function(View, Options)
 
          if bit.band(info.Flags, RDF_VOLUME) != 0 and bit.band(info.Flags, RDF_HIDDEN) != 0 then
             -- Ignore hidden volumes
-         elseif (#self.view.items == 0) then -- Empty view, this is the first file.
+         elseif #self.view.items == 0 then -- Empty view, this is the first file.
             addFileItem(self, info)
             break
          else
@@ -601,13 +605,13 @@ gui.fileview = function(View, Options)
          end
       end
 
-      if (#self.view.items > 0) then -- Check for deleted files
+      if #self.view.items > 0 then -- Check for deleted files
          local path = nz(self.path,'')
 
          if not self.path then -- Do not resolve the path when at the root view
          else -- Use ResolvePath() to prevent problems with multi-folder volumes
             local err, resolved_path = mSys.ResolvePath(path, RSF_NO_FILE_CHECK)
-            if (err == ERR_Okay) then
+            if err == ERR_Okay then
                path = resolved_path
             end
          end
@@ -662,7 +666,7 @@ gui.fileview = function(View, Options)
    local function pathWatch(MonitoredFile, Path, Custom, Flags)
       if self.inRefresh then return end
 
-      if (Flags == 0) then -- No flags means a change has occurred but the host is unable to tell us what happened.
+      if Flags == 0 then -- No flags means a change has occurred but the host is unable to tell us what happened.
          self.refresh()
          return
       end
@@ -671,10 +675,10 @@ gui.fileview = function(View, Options)
          if (bit.band(Flags, MFF_DELETE) != 0 and bit.band(Flags, MFF_SELF) != 0)
              or bit.band(Flags, MFF_UNMOUNT) != 0 then
 
-            if (self.path:sub(1,2) == 'cd') then
-            elseif (self.path:sub(1,4) == 'disk') then
+            if self.path:sub(1,2) == 'cd' then
+            elseif self.path:sub(1,4) == 'disk' then
             else -- Check that the folder is definitely gone and that this is not a mis-report.
-               if (mSys.AnalysePath(self.path, 0) != ERR_Okay) then
+               if mSys.AnalysePath(self.path, 0) != ERR_Okay then
                   self.browse(nil)
                end
             end
@@ -685,7 +689,7 @@ gui.fileview = function(View, Options)
       local info, info_err
       if bit.band(Flags, MFF_DELETE) == 0 then
          info_err, info = mSys.GetFileInfo(self.path .. nz(Path,''))
-         if (info_err == ERR_Okay) then
+         if info_err == ERR_Okay then
             if lNoFiles and bit.band(info.Flags, RDF_FILE) != 0 then return end
             -- Use the true file name with the trailing slash if it is a folder (important
             -- for symbolically linked directories).
@@ -696,14 +700,14 @@ gui.fileview = function(View, Options)
       end
 
       if bit.band(Flags, MFF_CREATE) != 0 then
-         if (info_err == ERR_Okay) then
+         if info_err == ERR_Okay then
             addFileItem(self, info)
             self.view.sort()
          end
       elseif bit.band(Flags, MFF_DELETE) != 0 then
          deleteItem(Path)
       elseif bit.band(Flags, MFF_MOVED) != 0 then -- Determine if the file has been moved in or moved out
-         if (info_err == ERR_Okay) then
+         if info_err == ERR_Okay then
             -- It is possible that the moved file is replacing an already existing file in
             -- the view (i.e. rename operation), so do a tag-check first.
 
@@ -714,7 +718,7 @@ gui.fileview = function(View, Options)
             deleteItem(Path)
          end
       elseif bit.band(Flags, bit.bor(MFF_ATTRIB, MFF_CLOSED)) != 0 and File then
-         if (info_err == ERR_Okay) then
+         if info_err == ERR_Okay then
             local item = findItem(Path)
             if item then
                updateFileAttributes(item, info)
@@ -754,7 +758,7 @@ gui.fileview = function(View, Options)
 
       for _,item in pairs(Items) do
          local err, class_id, command = mSys.IdentifyFile(self.path .. item.name.value, Mode, 0)
-         if (err == ERR_Okay) then
+         if err == ERR_Okay then
             obj.new('task', { path = command }).acActivate()
          end
       end
@@ -786,7 +790,7 @@ gui.fileview = function(View, Options)
    end
 
    local function responseRename(Dialog, Response, State)
-      if (Response.id > 0) then
+      if Response.id > 0 then
          local dir = false
          if string.find(Dialog.var.src, '^.+[:/\\]$') then
             dir = true
@@ -797,11 +801,11 @@ gui.fileview = function(View, Options)
          if Dialog.var.src == dest then return end
 
          local err, path = mSys.ResolvePath(dest, bit.bor(RSF_NO_FILE_CHECK, RSF_CASE_SENSITIVE))
-         if (err == ERR_Okay) then -- Use ResolvePath() to prevent problems with multi-folder volumes
+         if err == ERR_Okay then -- Use ResolvePath() to prevent problems with multi-folder volumes
             err = mSys.AnalysePath(path, 0)
          end
 
-         if (err == ERR_Okay) then -- The destination exists
+         if err == ERR_Okay then -- The destination exists
             self.dlgRenameReplace = gui.dialog.message({
                title    = 'Confirmation Required',
                message  = 'A file already exists that uses this name.  Are you sure that you want to overwrite it?',
@@ -826,10 +830,10 @@ gui.fileview = function(View, Options)
                   local item = findItem(Dialog.var.name)
                   if item then
                      local new_name = State.input
-                     if (item.type == 'folder') then
+                     if item.type == 'folder' then
                         item.name = new_name .. '/'
                         item.filename = new_name .. '/'
-                     elseif (item.type == 'volume') then
+                     elseif item.type == 'volume' then
                         item.name = new_name .. ':'
                         item.filename = new_name .. ':'
                      else
@@ -865,7 +869,7 @@ gui.fileview = function(View, Options)
    self.browse = function(Path)
       if not nz(Path) or (Path == ':') then Path = nil end
 
-      if (Path == self.path) then return self.path end
+      if Path == self.path then return self.path end
 
       msg('fileview.browse("' .. nz(Path, 'NIL') .. '")')
 
@@ -1071,7 +1075,7 @@ gui.fileview = function(View, Options)
          popover  = self.window,
          modal    = true,
          feedback = function(Dialog, Response, State)
-            if (Response.id > 0) then
+            if Response.id > 0 then
                self.view.deselectAll()
 
                local statement = ''
@@ -1195,7 +1199,7 @@ gui.fileview = function(View, Options)
                if item then table.insert(items, item) end
 
                local current_time = mSys.PreciseTime()
-               if (current_time - msg_time > 20000) then
+               if current_time - msg_time > 20000 then
                   if #items > 1 then
                      self.view.addItems(items)
                      items = { }
@@ -1324,24 +1328,24 @@ gui.fileview = function(View, Options)
          -- NB: Sys-keys should only be enabled if cut/copy/paste support is not implemented in the core
          -- application.
 
-         if (Value == KEY_C) then
+         if Value == KEY_C then
             copy_files()
-         elseif (Value == KEY_X) then
+         elseif Value == KEY_X then
             cut_files()
-         elseif (Value == KEY_V) then
+         elseif Value == KEY_V then
             paste_files()
-         elseif (Value == KEY_A) then
+         elseif Value == KEY_A then
             self.view.selectAll()
          end
-      elseif (Value == KEY_DELETE) then
+      elseif Value == KEY_DELETE then
          self.deleteFiles()
       end
    end)
 
    self.view.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
-      if (Event == FM_HAS_FOCUS) then
+      if Event == FM_HAS_FOCUS then
          self.hasFocus = true
-      elseif (Event == FM_LOST_FOCUS) then
+      elseif Event == FM_LOST_FOCUS then
          self.hasFocus = false
       end
    end)
@@ -1358,7 +1362,7 @@ gui.fileview = function(View, Options)
             return
          end
 
-         if (Datatypes[1] == DATA_FILE) then
+         if Datatypes[1] == DATA_FILE then
             local items = self.view.dragItems
             if #items > 0 then
                local files = { }
@@ -1452,12 +1456,12 @@ gui.fileview = function(View, Options)
          if lOptions.autoMode then
             local tags = { Item, -1 }
 
-            if (tags[1] != -1) then
-               if (lOptions.autoMode == 'open') then
+            if tags[1] != -1 then
+               if lOptions.autoMode == 'open' then
                   openFiles(tags, 'Open')
-               elseif (lOptions.autoMode == 'edit') then
+               elseif lOptions.autoMode == 'edit' then
                   openFiles(tags, 'Edit')
-               elseif (lOptions.autoMode == 'view') then
+               elseif lOptions.autoMode == 'view' then
                   openFiles(tags, 'View')
                end
             end
@@ -1470,9 +1474,12 @@ gui.fileview = function(View, Options)
    end
 
    if Options.navigationBar then
-      local bkgd = self.view.viewport.new('VectorRectangle', { x=0, y=0, xOffset=0, height=1, fill='rgb(0,0,0,20)' })
+      local bkgd = self.view.viewport.new('VectorRectangle', {
+         x=0, y=0, xOffset=0, height=1, fill=gui.palette.base
+      })
 
       self.toolbar = gui.toolbar({
+         iconTheme = 'pearl',
          target  = self.view.viewport,
          x       = 0,
          y       = 0,
@@ -1502,7 +1509,7 @@ gui.fileview = function(View, Options)
             end
 
             Bar.addItem(3, 'Bookmark', 'Create Bookmark', 'items/new_bookmark', function()
-               if (string.len(self.path) < 3) then return end
+               if not self.path or (string.len(self.path) < 3) then return end
 
                local current_path = self.path
 

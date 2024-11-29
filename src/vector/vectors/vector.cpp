@@ -901,6 +901,8 @@ static ERR VECTOR_SubscribeInput(extVector *Self, struct vec::SubscribeInput *Ar
 {
    pf::Log log;
 
+   // Refer to scene_input_events() for the origin of incoming input messages
+
    if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
    if (Args->Mask != JTYPE::NIL) {

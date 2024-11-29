@@ -126,7 +126,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
       lFontsSorted = { }
       local font   = list
       local index  = 0
-      while (font) do
+      while font do
          lFonts[font.name] = { }
          lFonts[font.name].order  = index
          lFonts[font.name].name   = font.name
@@ -265,13 +265,8 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    })
 
    self.exampleBkgd = self.exampleVP.new('VectorRectangle', {
-      fill   = 'rgb(253,255,246)',
-      stroke = 'rgb(0,0,0,64)',
-      strokeWidth = 2,
-      x      = 0,
-      y      = 0,
-      width  = '100%',
-      height = '100%'
+      fill = 'rgb(253,255,246)', stroke = 'rgb(0,0,0,64)', strokeWidth = 2,
+      x = 0, y = 0, width = '100%', height = '100%'
    })
 
    self.exampleView = self.exampleVP.new('VectorViewport', {

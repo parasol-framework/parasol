@@ -1268,7 +1268,7 @@ extern "C" void winEnumSpecialFolders(void (*enumfolder)(const char *, const cha
       //{ CSIDL_PRINTERS, "printers:",  "Printers",        "devices/printer" },
       //{ CSIDL_DRIVES,   "computer:",  "My Computer",     "programs/filemanager" }
       { CSIDL_NETHOOD,  "network:",   "Network Places", "devices/network", 0 },
-      { CSIDL_PERSONAL, "documents:", "Documents",      "office/documents", 0 },
+      { CSIDL_PERSONAL, "documents:", "Documents",      "page/multiple", 0 },
       { CSIDL_DESKTOPDIRECTORY, "desktop:", "Desktop",  "devices/harddisk", 0 }
    };
    char path[MAX_PATH];
@@ -1400,16 +1400,16 @@ extern "C" ERR winCreateDir(const char *Path)
 //********************************************************************************************************************
 // Returns TRUE on success.
 
-extern "C" LONG winGetFreeDiskSpace(unsigned char Drive, long long *TotalSpace, long long *BytesUsed)
+extern "C" LONG winGetFreeDiskSpace(char Drive, long long *TotalSpace, long long *BytesUsed)
 {
    DWORD sectors, bytes_per_sector, free_clusters, total_clusters;
 
    *TotalSpace = 0;
    *BytesUsed = 0;
 
-   std::string location = std::to_string(Drive) + ":\\";
+   char location[4] = { Drive, ':', '\\', 0 };
 
-   if (GetDiskFreeSpace(location.c_str(), &sectors, &bytes_per_sector, &free_clusters, &total_clusters)) {
+   if (GetDiskFreeSpace(location, &sectors, &bytes_per_sector, &free_clusters, &total_clusters)) {
       *TotalSpace = (double)sectors * (double)bytes_per_sector * (double)free_clusters;
       *BytesUsed  = ((double)sectors * (double)bytes_per_sector * (double)total_clusters);
       return 1;

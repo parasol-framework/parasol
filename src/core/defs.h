@@ -1120,7 +1120,7 @@ extern "C" void winFindClose(WINHANDLE);
 extern "C" void winFindNextChangeNotification(WINHANDLE);
 extern "C" void winGetAttrib(CSTRING, LONG *);
 extern "C" BYTE winGetCommand(char *, char *, LONG);
-extern "C" LONG winGetFreeDiskSpace(UBYTE, LARGE *, LARGE *);
+extern "C" LONG winGetFreeDiskSpace(char, LARGE *, LARGE *);
 extern "C" LONG winGetLogicalDrives(void);
 extern "C" LONG winGetLogicalDriveStrings(STRING, LONG);
 extern ERR winGetVolumeInformation(STRING Volume, std::string &Label, std::string &FileSystem, int &Type);
