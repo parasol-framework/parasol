@@ -32,6 +32,14 @@ local paste_clipboard = [[
    file.ui.paste(arg('dest'), arg('cluster'))
 ]]
 
+local lFolderFill = gui.strToRGB(gui.style.page.bkgd)
+
+   if gui.rgbValue(lFolderFill) > 127 then
+      lFolderFill = 'rgb(20,20,110)'
+   else
+      lFolderFill = 'rgb(245,245,255)'
+   end
+
 ----------------------------------------------------------------------------------------------------------------------
 
 local function sortNum(Value)
@@ -414,6 +422,7 @@ local function createFileItem(self, Info)
          iconTheme   = 'yellow',
          sort        = '\x03' .. Info.name:lower(),
          filename    = Info.name,
+         fill        = lFolderFill,
          name        = { sort = 'D' .. display_name:lower(), value = display_name },
          insensitive = true,
          owner       = mSys.ResolveUserID(Info.UserID),

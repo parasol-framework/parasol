@@ -20,6 +20,7 @@ LINE_HEIGHT = math.round(LINE_HEIGHT * 1.33)
 local ICON_OFFSET = (LINE_HEIGHT - ICON_SIZE) * 0.5
 local LINE_OFFSET = (LINE_HEIGHT + FONT_HEIGHT) * 0.5
 local BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
+local lEnableTextGradients
 
 local lColours = {
    strokeButton = 'rgb(160,160,160)'
@@ -84,7 +85,10 @@ local function columnText(Value, Type)
 end
 
 local function setColumnGradient(View, Column)
-   if not Column.vecGradient then
+   if not lEnableTextGradients then
+      Column.fillItem = gui.style.page.text
+      Column.fillItemSelect = gui.style.page.textHighlight
+   elseif not Column.vecGradient then
       local defName = 'colGradient' .. lCounter
       lCounter = lCounter + 1
       local selName = 'colSelect' .. lCounter
