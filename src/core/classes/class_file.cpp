@@ -1891,7 +1891,7 @@ Icon: Returns an icon reference that is suitable for this file in the UI.
 This field returns the name of the best icon to use when representing the file to the user, for instance in a file
 list.  The icon style is determined by analysing the File's #Path.
 
-The resulting string is returned in the format `icons:category/name` and can be opened with the @Picture class.
+The resulting string is returned in the format `icons:category/name` and will refer to an SVG file.
 
 *********************************************************************************************************************/
 
