@@ -93,22 +93,23 @@ static const std::vector<Field> glMetaFieldsPreset = {
    { 0, NULL, NULL,                writeval_default, "FileDescription", FID_FileDescription, sizeof(Object)+8+(sizeof(APTR)*4),  5,  FDF_STRING|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "FileHeader",      FID_FileHeader,      sizeof(Object)+8+(sizeof(APTR)*5),  6,  FDF_STRING|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "Path",            FID_Path,            sizeof(Object)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "Size",            FID_Size,            sizeof(Object)+8+(sizeof(APTR)*7),  8,  FDF_LONG|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "Flags",           FID_Flags,           sizeof(Object)+12+(sizeof(APTR)*7), 9, FDF_LONG|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "ClassID",         FID_ClassID,         sizeof(Object)+16+(sizeof(APTR)*7), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Object)+20+(sizeof(APTR)*7), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Object)+24+(sizeof(APTR)*7), 12, FDF_LONG|FDF_R },
-   { MAXINT(&CategoryTable), NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(Object)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_LOOKUP|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Icon",            FID_Icon,            sizeof(Object)+8+(sizeof(APTR)*7),  8,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Size",            FID_Size,            sizeof(Object)+8+(sizeof(APTR)*8),  9,  FDF_LONG|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Flags",           FID_Flags,           sizeof(Object)+12+(sizeof(APTR)*8), 10, FDF_LONG|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "ClassID",         FID_ClassID,         sizeof(Object)+16+(sizeof(APTR)*8), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Object)+20+(sizeof(APTR)*8), 12, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Object)+24+(sizeof(APTR)*8), 13, FDF_LONG|FDF_R },
+   { MAXINT(&CategoryTable), NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(Object)+28+(sizeof(APTR)*8), 14, FDF_LONG|FDF_LOOKUP|FDF_RI },
    // Virtual fields
-   { MAXINT("MethodEntry"), (ERR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods, sizeof(Object), 14, FDF_ARRAY|FD_STRUCT|FDF_RI },
-   { 0, NULL, (APTR)SET_Actions,                  writeval_default,   "Actions",           FID_Actions,         sizeof(Object), 15, FDF_POINTER|FDF_I },
-   { 0, (ERR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(Object), 16, FDF_ARRAY|FDF_POINTER|FDF_R },
-   { 0, (ERR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(Object), 17, FDF_STRING|FDF_R },
-   { 0, (ERR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(Object), 18, FDF_STRING|FDF_SYSTEM|FDF_RI },
-   { 0, (ERR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(Object), 19, FDF_STRING|FDF_R },
-   { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(Object), 20, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
-   { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 21, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
-   { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(Object), 22, FDF_OBJECT|FDF_R },
+   { MAXINT("MethodEntry"), (ERR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods, sizeof(Object), 15, FDF_ARRAY|FD_STRUCT|FDF_RI },
+   { 0, NULL, (APTR)SET_Actions,                  writeval_default,   "Actions",           FID_Actions,         sizeof(Object), 16, FDF_POINTER|FDF_I },
+   { 0, (ERR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(Object), 17, FDF_ARRAY|FDF_POINTER|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(Object), 18, FDF_STRING|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(Object), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
+   { 0, (ERR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(Object), 20, FDF_STRING|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(Object), 21, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(Object), 23, FDF_OBJECT|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
 };
 
@@ -593,6 +594,12 @@ separated with an OR symbol | as demonstrated in this example for the JPEG heade
 
 -FIELD-
 Flags: Optional flag settings.
+
+-FIELD-
+Icon: Associates an icon with the file data for this class.
+
+Files that belong to a class can be associated with an icon that is declared in this field.  The icon string format is 
+`folder/icon`.  Valid icons are available in the icon database.
 
 -FIELD-
 Location: Returns the path from which the class binary is loaded.

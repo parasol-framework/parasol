@@ -349,7 +349,7 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The ProcessPath is set to the path of the executable file that is associated with the task.  It is managed internally and cannot be altered.</p>
+<p>The ProcessPath is set to the path of the executable file that is associated with the task (not including the executable file name).  This value is managed internally and cannot be altered.</p>
 <p>In Microsoft Windows it is not always possible to determine the origins of an executable, in which case the ProcessPath is set to the working folder in use at the time the process was launched.</p>
       </description>
     </field>

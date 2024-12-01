@@ -50,10 +50,6 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
    if (SubClassID) *SubClassID = CLASSID::NIL;
    UBYTE buffer[400] = { 0 };
 
-   if ((error = load_datatypes()) != ERR::Okay) { // Load the associations configuration file
-      return log.warning(error);
-   }
-
    ERR reserror;
    if ((reserror = ResolvePath(Path, RSF::APPROXIMATE|RSF::PATH|RSF::CHECK_VIRTUAL, &res_path)) != ERR::Okay) {
       if (reserror IS ERR::VirtualVolume) {

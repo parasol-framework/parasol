@@ -2100,6 +2100,7 @@ extern ERR add_compression_class(void)
       fl::FileExtension("*.zip"),
       fl::FileDescription("ZIP File"),
       fl::FileHeader("[0:$504b0304]"),
+      fl::Icon("filetypes/archive"),
       fl::Category(CCF::DATA),
       fl::Actions(clCompressionActions),
       fl::Methods(clCompressionMethods),

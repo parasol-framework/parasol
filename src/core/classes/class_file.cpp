@@ -1954,74 +1954,42 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       return ERR::Okay;
    }
 
-   // Load the file association data files.  Information is merged between the global association file and the user's
-   // personal association file.
-
-   if (!glDatatypes) {
-      if (load_datatypes() != ERR::Okay) {
-         if (link) Self->prvIcon = "icons:filetypes/empty_shortcut";
-         else Self->prvIcon = "icons:filetypes/empty";
-         *Value = Self->prvIcon.c_str();
-         return ERR::Okay;
-      }
-   }
-
-   ConfigGroups *groups;
    std::string icon;
-   if (glDatatypes->getPtr(FID_Data, &groups) IS ERR::Okay) {
-      // Scan file extensions first, because this saves us from having to open and read the file content.
 
-      auto k = Self->Path.find_last_of(":/\\");
-      if (k != std::string::npos) {
-         for (auto& [group, keys] : groups[0]) {
-            if (keys.contains("Match")) {
-               auto pv = std::string_view(Self->Path.data()+k+1, Self->Path.size()-k-1);
-               if (wildcmp(keys["Match"], pv)) {
-                  if (keys.contains("Icon")) {
-                     icon = keys["Icon"];
-                     break;
-                  }
+   // Scan file extensions first, because this saves us from having to open and read the file content.
+
+   if (auto k = Self->Path.find_last_of(":/\\"); k != std::string::npos) {
+      for (auto & [ cid, record ] : glClassDB) {
+         if (!record.Match.empty()) {
+            auto pv = std::string_view(Self->Path.data()+k+1, Self->Path.size()-k-1);
+            if (wildcmp(record.Match, pv)) {
+               if (!record.Icon.empty()) {
+                  icon = record.Icon;
+                  break;
                }
             }
          }
       }
+   }
 
+   if (icon.empty()) {
       // Use IdentifyFile() to see if this file can be associated with a class
 
-      if (icon.empty()) {
-         std::string subclass, baseclass;
-
-         CLASSID class_id, subclass_id;
-         if (IdentifyFile(Self->Path.c_str(), &class_id, &subclass_id) IS ERR::Okay) {
-            if (glClassDB.contains(subclass_id)) {
-               subclass = glClassDB[subclass_id].Name;
-            }
-
-            if (glClassDB.contains(class_id)) {
-               baseclass = glClassDB[class_id].Name;
-            }
+      CLASSID class_id, subclass_id;
+      if (IdentifyFile(Self->Path.c_str(), &class_id, &subclass_id) IS ERR::Okay) {
+         if (glClassDB.contains(subclass_id)) {
+            auto &record = glClassDB[subclass_id];
+            if (!record.Icon.empty()) icon = record.Icon;
          }
 
-         // Scan class names
-
-         if ((!subclass.empty()) or (!baseclass.empty())) {
-            for (auto& [group, keys] : groups[0]) {
-               if (keys.contains("Class")) {
-                  if (iequals(keys["Class"], subclass)) {
-                     if (keys.contains("Icon")) icon = keys["Icon"];
-                     break;
-                  }
-                  else if (iequals(keys["Class"], baseclass)) {
-                     if (keys.contains("Icon")) icon = keys["Icon"];
-                     // Don't break as sub-class would have priority
-                  }
-               }
-            }
+         if (icon.empty()) {
+            auto &record = glClassDB[class_id];
+            if (!record.Icon.empty()) icon = record.Icon;
          }
       }
    }
 
-   if (!icon[0]) {
+   if (icon.empty()) {
       if (link) Self->prvIcon = "icons:filetypes/empty_shortcut";
       else Self->prvIcon = "icons:filetypes/empty";
       *Value = Self->prvIcon.c_str();

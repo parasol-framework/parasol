@@ -105,7 +105,6 @@ struct MsgHandler *glMsgHandlers = NULL, *glLastMsgHandler = 0;
 
 objFile *glClassFile   = NULL;
 extTask *glCurrentTask = NULL;
-objConfig *glDatatypes = NULL;
 
 APTR glJNIEnv = 0;
 std::atomic_ushort glFunctionID = 3333; // IDTYPE_FUNCTION

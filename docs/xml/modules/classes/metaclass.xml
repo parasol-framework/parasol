@@ -198,6 +198,16 @@
     </field>
 
     <field>
+      <name>Icon</name>
+      <comment>Associates an icon with the file data for this class.</comment>
+      <access>-/-</access>
+      <type>CSTRING</type>
+      <description>
+<p>Files that belong to a class can be associated with an icon that is declared in this field.  The icon string format is <code>folder/icon</code>.  Valid icons are available in the icon database.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Location</name>
       <comment>Returns the path from which the class binary is loaded.</comment>
       <access read="R">Read</access>

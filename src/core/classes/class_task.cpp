@@ -2061,8 +2061,8 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
 -FIELD-
 ProcessPath: The path of the executable that is associated with the task.
 
-The ProcessPath is set to the path of the executable file that is associated with the task.  It is managed internally
-and cannot be altered.
+The ProcessPath is set to the path of the executable file that is associated with the task (not including the 
+executable file name).  This value is managed internally and cannot be altered.
 
 In Microsoft Windows it is not always possible to determine the origins of an executable, in which case the
 ProcessPath is set to the working folder in use at the time the process was launched.
@@ -2219,6 +2219,7 @@ extern ERR add_task_class(void)
       fl::FileExtension("*.exe|*.bat|*.com"),
       fl::FileDescription("Executable File"),
       fl::FileHeader("[0:$4d5a]|[0:$7f454c46]"),
+      fl::Icon("items/launch"),
       fl::Actions(clActions),
       fl::Methods(clTaskMethods),
       fl::Fields(clFields),

@@ -753,6 +753,7 @@ extern ERR add_module_class(void)
       fl::Category(CCF::SYSTEM),
       fl::FileExtension("*.mod|*.so|*.dll"),
       fl::FileDescription("System Module"),
+      fl::Icon("tools/cog"),
       fl::Actions(glModuleActions),
       fl::Methods(glModuleMethods),
       fl::Fields(glModuleFields),

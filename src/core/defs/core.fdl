@@ -1953,6 +1953,7 @@ inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
     cstr FileDescription   # File description
     cstr FileHeader        # Internal file header for identifying the file
     cstr Path              # Module path to the class
+    cstr Icon              # An icon that can be used to represent class data.
     int Size               # Byte-size of the class when produced as an object
     int(CLF) Flags         # Special flags
     cid ClassID            # ID of this class

@@ -3069,6 +3069,7 @@ class objMetaClass : public Object {
    CSTRING FileDescription;             // Describes the file type represented by the class.
    CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
    CSTRING Path;                        // The path to the module binary that represents the class.
+   CSTRING Icon;                        // Associates an icon with the file data for this class.
    LONG    Size;                        // The total size of the object structure represented by the MetaClass.
    CLF     Flags;                       // Optional flag settings.
    CLASSID ClassID;                     // Specifies the ID of a class object.
@@ -3093,7 +3094,7 @@ class objMetaClass : public Object {
 
    inline ERR setFields(const struct FieldArray * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
@@ -3159,7 +3160,7 @@ class objMetaClass : public Object {
 
    inline ERR setMethods(const APTR Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
@@ -3172,7 +3173,7 @@ class objMetaClass : public Object {
 
    template <class T> inline ERR setName(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08810500, to_cstring(Value), 1);
    }
 

@@ -2706,62 +2706,6 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
 }
 
 //********************************************************************************************************************
-
-#ifdef __ANDROID__
-// The Android release does not keep an associations.cfg file.
-ERR load_datatypes(void)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!glDatatypes) {
-      if (!(glDatatypes = objConfig::create::untracked(fl::Path("user:config/locale.cfg")))) {
-         return log.warning(ERR::CreateObject);
-      }
-   }
-
-   return ERR::Okay;
-}
-#else
-ERR load_datatypes(void)
-{
-   pf::Log log(__FUNCTION__);
-   FileInfo info;
-   static LARGE user_ts = 0;
-   bool reload;
-
-   log.traceBranch();
-
-   if (!glDatatypes) {
-      reload = true;
-      if (get_file_info("config:users/associations.cfg", &info, sizeof(info)) IS ERR::Okay) {
-         user_ts = info.TimeStamp;
-      }
-      else return log.warning(ERR::FileDoesNotExist);
-   }
-   else {
-      reload = false;
-      if (get_file_info("config:users/associations.cfg", &info, sizeof(info)) IS ERR::Okay) {
-         if (user_ts != info.TimeStamp) {
-            user_ts = info.TimeStamp;
-            reload = true;
-         }
-      }
-   }
-
-   if (reload) {
-      if (auto cfg = objConfig::create::untracked(fl::Path("config:users/associations.cfg"),
-            fl::Flags(CNF::OPTIONAL_FILES))) {
-         if (glDatatypes) FreeResource(glDatatypes);
-         glDatatypes = cfg;
-      }
-      else return log.warning(ERR::CreateObject);
-   }
-
-   return ERR::Okay;
-}
-#endif
-
-//********************************************************************************************************************
 // Private function for deleting files and folders recursively.
 
 #ifdef __unix__

@@ -1765,6 +1765,7 @@ ERR add_sound_class(void)
       fl::FileExtension("*.wav|*.wave|*.snd"),
       fl::FileDescription("Sound Sample"),
       fl::FileHeader("[0:$52494646][8:$57415645]"),
+      fl::Icon("filetypes/audio"),
       fl::Name("Sound"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clActions),
