@@ -432,10 +432,35 @@ static ERR ARCHIVE_Write(extFile *Self, struct acWrite *Args)
 
 static ERR ARCHIVE_GET_Size(extFile *Self, LARGE *Value)
 {
-   auto prv = (prvFileArchive *)Self->ChildPrivate;
-   if (prv) {
+   if (auto prv = (prvFileArchive *)Self->ChildPrivate) {
       *Value = prv->Info.OriginalSize;
       return ERR::Okay;
+   }
+   else return ERR::NotInitialised;
+}
+
+//********************************************************************************************************************
+
+static ERR ARCHIVE_GET_Timestamp(extFile *Self, LARGE *Value)
+{
+   if (auto prv = (prvFileArchive *)Self->ChildPrivate) {
+      if (prv->Info.TimeStamp) {
+         *Value = prv->Info.TimeStamp;
+         return ERR::Okay;
+      }
+      else {
+         DateTime datetime = {
+            .Year   = WORD(prv->Info.Year),
+            .Month  = BYTE(prv->Info.Month),
+            .Day    = BYTE(prv->Info.Day),
+            .Hour   = BYTE(prv->Info.Hour),
+            .Minute = BYTE(prv->Info.Minute),
+            .Second = 0
+         };
+
+         *Value = calc_timestamp(&datetime);
+         return ERR::Okay;
+      }
    }
    else return ERR::NotInitialised;
 }
@@ -669,6 +694,7 @@ static const MethodEntry clArchiveMethods[] = {
 
 static const struct FieldArray clArchiveFields[] = {
    { "Size", FDF_LARGE|FDF_R, ARCHIVE_GET_Size },
+   { "Timestamp", FDF_LARGE|FDF_R, ARCHIVE_GET_Timestamp },
    END_FIELD
 };
 
