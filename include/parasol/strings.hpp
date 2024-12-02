@@ -11,13 +11,13 @@ namespace pf {
 // USAGE: std::vector<std::string> list; pf::split(value, std::back_inserter(list));
 
 template <class InType, class OutIt>
-void split(InType Input, OutIt Output) noexcept
+void split(InType Input, OutIt Output, char Sep = ',') noexcept
 {
    auto begin = Input.begin();
    auto end = Input.end();
    auto current = begin;
    while (begin != end) {
-      if (*begin == ',') {
+      if (*begin == Sep) {
          *Output++ = std::string(current, begin);
          current = ++begin;
       }

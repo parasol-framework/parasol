@@ -35,7 +35,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 {
    pf::Log log(__FUNCTION__);
    LONG i, bytes_read;
-   #define HEADER_SIZE 80
+   constexpr LONG HEADER_SIZE = 80;
 
    if ((!Path) or (!ClassID)) return log.warning(ERR::NullArgs);
 
@@ -50,9 +50,8 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
    if (SubClassID) *SubClassID = CLASSID::NIL;
    UBYTE buffer[400] = { 0 };
 
-   ERR reserror;
-   if ((reserror = ResolvePath(Path, RSF::APPROXIMATE|RSF::PATH|RSF::CHECK_VIRTUAL, &res_path)) != ERR::Okay) {
-      if (reserror IS ERR::VirtualVolume) {
+   if (auto res_error = ResolvePath(Path, RSF::APPROXIMATE|RSF::PATH|RSF::CHECK_VIRTUAL, &res_path); res_error != ERR::Okay) {
+      if (res_error IS ERR::VirtualVolume) {
          // Virtual volumes may support the IdentifyFile() request as a means of speeding up file identification.  This
          // is often useful when probing remote file systems.  If the FS doesn't support this option, we can still
          // fall-back to the standard file reading option.
@@ -74,7 +73,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
       else {
          // Before we assume failure - check for the use of semicolons that split the string into multiple file names.
 
-         log.warning("ResolvePath() failed on '%s', error '%s'", Path, GetErrorMsg(reserror));
+         log.warning("ResolvePath() failed on '%s', error '%s'", Path, GetErrorMsg(res_error));
 
          if (startswith("string:", Path)) { // Do not check for '|' when string: is in use
             return ERR::FileNotFound;
@@ -97,22 +96,16 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
    if (!glClassDB.empty()) {
       // Check extension
 
-      log.trace("Checking extension against class database.");
-
       if (*ClassID IS CLASSID::NIL) {
-         if (auto sep = res_path.find_last_of("/\\:"); sep != std::string::npos) {
-            for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
-               if (auto &rec = it->second; !rec.Match.empty()) {
-                  if (wildcmp(rec.Match, res_path.substr(sep + 1, std::string::npos))) {
-                     if (rec.ParentID != CLASSID::NIL) {
-                        *ClassID = rec.ParentID;
-                        if (SubClassID) *SubClassID = rec.ClassID;
-                     }
-                     else *ClassID = rec.ClassID;
-                     log.trace("File identified as class $%.8x", *ClassID);
-                     break;
-                  }
+         if (auto sep = res_path.find_last_of("."); sep != std::string::npos) {
+            auto ext = res_path.substr(sep + 1, std::string::npos);
+            if (auto ext_class_id = lookup_class_by_ext(ext); ext_class_id != CLASSID::NIL) {
+               auto &rec = glClassDB[ext_class_id];
+               if (rec.ParentID != CLASSID::NIL) {
+                  *ClassID = rec.ParentID;
+                  if (SubClassID) *SubClassID = rec.ClassID;
                }
+               else *ClassID = rec.ClassID;
             }
          }
       }
@@ -208,7 +201,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
 class_identified:
    if (error IS ERR::Okay) {
-      if (*ClassID != CLASSID::NIL) log.detail("File belongs to class $%.8x:$%.8x", (unsigned int)(*ClassID), (SubClassID != NULL) ? (unsigned int)(*SubClassID) : 0);
+      if (*ClassID != CLASSID::NIL) log.detail("File belongs to class $%.8x:$%.8x", (unsigned int)(*ClassID), SubClassID ? (unsigned int)(*SubClassID) : 0);
       else {
          log.detail("Failed to identify file \"%s\"", Path);
          error = ERR::Search;

@@ -47,6 +47,35 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
 #endif
 
 //********************************************************************************************************************
+// Fast lookup for matching file extensions with a valid class handler.
+
+CLASSID lookup_class_by_ext(std::string_view Ext)
+{
+   if (glWildClassMapTotal != std::ssize(glClassDB)) {
+      for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
+         if (auto &rec = it->second; !rec.Match.empty()) {
+            std::vector<std::string> list;
+            pf::split(rec.Match, std::back_inserter(list), '|');
+            for (auto & wild : list) {
+               if (wild.starts_with("*.")) {
+                  glWildClassMap.emplace(pf::strihash(wild.c_str() + 2), it->first);
+               }
+            }
+         }
+      }
+
+      glWildClassMapTotal = glClassDB.size();
+   }
+
+   auto hash = pf::strihash(Ext);
+   if (glWildClassMap.contains(hash)) {
+      return glWildClassMap[hash];
+   }
+
+   return CLASSID::NIL;
+}
+
+//********************************************************************************************************************
 
 ERR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {

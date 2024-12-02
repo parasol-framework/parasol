@@ -1956,19 +1956,12 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
 
    std::string icon;
 
-   // Scan file extensions first, because this saves us from having to open and read the file content.
+   // Match file extensions first, because this saves us from having to open and read the file content.
 
-   if (auto k = Self->Path.find_last_of(":/\\"); k != std::string::npos) {
-      for (auto & [ cid, record ] : glClassDB) {
-         if (!record.Match.empty()) {
-            auto pv = std::string_view(Self->Path.data()+k+1, Self->Path.size()-k-1);
-            if (wildcmp(record.Match, pv)) {
-               if (!record.Icon.empty()) {
-                  icon = record.Icon;
-                  break;
-               }
-            }
-         }
+   if (auto sep = Self->Path.find_last_of("."); sep != std::string::npos) {
+      auto ext = Self->Path.substr(sep + 1, std::string::npos);
+      if (auto ext_class_id = lookup_class_by_ext(ext); ext_class_id != CLASSID::NIL) {
+         icon = glClassDB[ext_class_id].Icon;
       }
    }
 
