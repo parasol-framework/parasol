@@ -441,7 +441,7 @@
       <type>STRING</type>
       <description>
 <p>This field returns the name of the best icon to use when representing the file to the user, for instance in a file list.  The icon style is determined by analysing the File's <fl>Path</fl>.</p>
-<p>The resulting string is returned in the format <code>icons:category/name</code> and can be opened with the <class name="Picture">Picture</class> class.</p>
+<p>The resulting string is returned in the format <code>icons:category/name</code> and will refer to an SVG file.</p>
       </description>
     </field>
 
