@@ -105,7 +105,6 @@ static void android_term_window(LONG);
 
 const InputType glInputType[LONG(JET::END)] = {
    { JTYPE::NIL, JTYPE::NIL },                                         // UNUSED
-   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET::DIGITAL_XY
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_1
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_2
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_3
@@ -116,33 +115,20 @@ const InputType glInputType[LONG(JET::END)] = {
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_8
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_9
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_10
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::TRIGGER_LEFT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::TRIGGER_RIGHT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_START
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_SELECT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_1
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_2
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_1
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_2
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_XY
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_Z
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_XY
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_Z
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL_TILT
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_XY
-   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET::ABS_XY
-   { JTYPE::CROSSING,               JTYPE::CROSSING },    // JET::CROSSING_IN
-   { JTYPE::CROSSING,               JTYPE::CROSSING },    // JET::CROSSING_OUT
+   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },     // JET::ABS_XY
+   { JTYPE::CROSSING,               JTYPE::CROSSING },     // JET::CROSSING_IN
+   { JTYPE::CROSSING,               JTYPE::CROSSING },     // JET::CROSSING_OUT
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PRESSURE
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_XY
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_Z
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }     // JET::DISPLAY_EDGE
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }  // JET::DISPLAY_EDGE
 };
 
 const CSTRING glInputNames[LONG(JET::END)] = {
    "",
-   "DIGITAL_XY",
    "BUTTON_1",
    "BUTTON_2",
    "BUTTON_3",
@@ -153,18 +139,6 @@ const CSTRING glInputNames[LONG(JET::END)] = {
    "BUTTON_8",
    "BUTTON_9",
    "BUTTON_10",
-   "TRIGGER_LEFT",
-   "TRIGGER_RIGHT",
-   "BUTTON_START",
-   "BUTTON_SELECT",
-   "LEFT_BUMPER_1",
-   "LEFT_BUMPER_2",
-   "RIGHT_BUMPER_1",
-   "RIGHT_BUMPER_2",
-   "ANALOG_XY",
-   "ANALOG_Z",
-   "ANALOG2_XY",
-   "ANALOG2_Z",
    "WHEEL",
    "WHEEL_TILT",
    "PEN_TILT_XY",
