@@ -1095,6 +1095,7 @@ extern ERR add_config_class(void)
       fl::Category(CCF::DATA),
       fl::FileExtension("*.cfg|*.cnf|*.config"),
       fl::FileDescription("Config File"),
+      fl::Icon("filetypes/text"),
       fl::Actions(clConfigActions),
       fl::Methods(clConfigMethods),
       fl::Fields(clFields),

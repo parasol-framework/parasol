@@ -128,7 +128,36 @@ extern "C" int main(int argc, char **argv)
          }
          else result = LONG(exec_source(glTargetFile.c_str(), glTime, glProcedure));
       }
-      else printf(glHelp);
+      else {
+         // Check for the presence of package.zip or main.fluid files in the working directory
+
+         auto path = glTask->get<CSTRING>(FID_ProcessPath);
+         if ((!path) or (!path[0])) path = ".";
+         std::string exe_path(path);
+         if (!((exe_path.ends_with("/")) or (exe_path.ends_with("\\")))) {
+            exe_path.append("/");
+         }
+
+         auto pkg_path = exe_path + "package.zip";
+
+         LOC type;
+         static objCompression *glPackageArchive;
+         if ((AnalysePath(pkg_path.c_str(), &type) IS ERR::Okay) and (type IS LOC::FILE)) {
+            // Create a "package:" volume and attempt to run "package:main.fluid"
+            if ((glPackageArchive = objCompression::create::local(fl::Path(pkg_path), fl::ArchiveName("package"), fl::Flags(CMF::READ_ONLY)))) {
+               if (SetVolume("package", "archive:package/", "filetypes/archive", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return -1;
+
+               result = (LONG)exec_source("package:main.fluid", glTime, glProcedure);
+            }
+            else return -1;
+         }
+         else { // Check for main.fluid
+            if ((AnalysePath("main.fluid", &type) IS ERR::Okay) and (type IS LOC::FILE)) {
+               result = (LONG)exec_source("main.fluid", glTime, glProcedure);
+            }
+            else printf(glHelp);
+         }
+      }
    }
 
    if (glScript) { FreeResource(glScript); glScript = NULL; }

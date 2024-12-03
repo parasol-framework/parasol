@@ -1155,13 +1155,10 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 
    auto src = icon_path + "Default.zip";
-   if (!(glIconArchive = objCompression::create::local(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
-      return ERR::CreateObject;
+   if ((glIconArchive = objCompression::create::local(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
+      // The icons: special volume is a simple reference to the archive path.
+      if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return ERR::SetVolume;
    }
-
-   // The icons: special volume is a simple reference to the archive path.
-
-   if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return ERR::SetVolume;
 
 #ifdef _WIN32 // Get any existing Windows clipboard content
 

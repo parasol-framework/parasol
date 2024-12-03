@@ -1891,7 +1891,7 @@ Icon: Returns an icon reference that is suitable for this file in the UI.
 This field returns the name of the best icon to use when representing the file to the user, for instance in a file
 list.  The icon style is determined by analysing the File's #Path.
 
-The resulting string is returned in the format `icons:category/name` and can be opened with the @Picture class.
+The resulting string is returned in the format `icons:category/name` and will refer to an SVG file.
 
 *********************************************************************************************************************/
 
@@ -1954,74 +1954,35 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       return ERR::Okay;
    }
 
-   // Load the file association data files.  Information is merged between the global association file and the user's
-   // personal association file.
+   std::string icon;
 
-   if (!glDatatypes) {
-      if (load_datatypes() != ERR::Okay) {
-         if (link) Self->prvIcon = "icons:filetypes/empty_shortcut";
-         else Self->prvIcon = "icons:filetypes/empty";
-         *Value = Self->prvIcon.c_str();
-         return ERR::Okay;
+   // Match file extensions first, because this saves us from having to open and read the file content.
+
+   if (auto sep = Self->Path.find_last_of("."); sep != std::string::npos) {
+      auto ext = Self->Path.substr(sep + 1, std::string::npos);
+      if (auto ext_class_id = lookup_class_by_ext(ext); ext_class_id != CLASSID::NIL) {
+         icon = glClassDB[ext_class_id].Icon;
       }
    }
 
-   ConfigGroups *groups;
-   std::string icon;
-   if (glDatatypes->getPtr(FID_Data, &groups) IS ERR::Okay) {
-      // Scan file extensions first, because this saves us from having to open and read the file content.
-
-      auto k = Self->Path.find_last_of(":/\\");
-      if (k != std::string::npos) {
-         for (auto& [group, keys] : groups[0]) {
-            if (keys.contains("Match")) {
-               auto pv = std::string_view(Self->Path.data()+k+1, Self->Path.size()-k-1);
-               if (wildcmp(keys["Match"], pv)) {
-                  if (keys.contains("Icon")) {
-                     icon = keys["Icon"];
-                     break;
-                  }
-               }
-            }
-         }
-      }
-
+   if (icon.empty()) {
       // Use IdentifyFile() to see if this file can be associated with a class
 
-      if (icon.empty()) {
-         std::string subclass, baseclass;
-
-         CLASSID class_id, subclass_id;
-         if (IdentifyFile(Self->Path.c_str(), &class_id, &subclass_id) IS ERR::Okay) {
-            if (glClassDB.contains(subclass_id)) {
-               subclass = glClassDB[subclass_id].Name;
-            }
-
-            if (glClassDB.contains(class_id)) {
-               baseclass = glClassDB[class_id].Name;
-            }
+      CLASSID class_id, subclass_id;
+      if (IdentifyFile(Self->Path.c_str(), &class_id, &subclass_id) IS ERR::Okay) {
+         if (glClassDB.contains(subclass_id)) {
+            auto &record = glClassDB[subclass_id];
+            if (!record.Icon.empty()) icon = record.Icon;
          }
 
-         // Scan class names
-
-         if ((!subclass.empty()) or (!baseclass.empty())) {
-            for (auto& [group, keys] : groups[0]) {
-               if (keys.contains("Class")) {
-                  if (iequals(keys["Class"], subclass)) {
-                     if (keys.contains("Icon")) icon = keys["Icon"];
-                     break;
-                  }
-                  else if (iequals(keys["Class"], baseclass)) {
-                     if (keys.contains("Icon")) icon = keys["Icon"];
-                     // Don't break as sub-class would have priority
-                  }
-               }
-            }
+         if (icon.empty()) {
+            auto &record = glClassDB[class_id];
+            if (!record.Icon.empty()) icon = record.Icon;
          }
       }
    }
 
-   if (!icon[0]) {
+   if (icon.empty()) {
       if (link) Self->prvIcon = "icons:filetypes/empty_shortcut";
       else Self->prvIcon = "icons:filetypes/empty";
       *Value = Self->prvIcon.c_str();

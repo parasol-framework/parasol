@@ -530,76 +530,13 @@ end
      iconSize  = 20   -- Recommended default size for icons (px) and should be linked to fontSize
    }
 
-   function convertFontSizes() -- Convert font percentage sizes to their px size
-      for k,v in pairs(gui.fonts) do
-         if gui.fonts[k].size then
-            if string.match(gui.fonts[k].size, '^%-?%d+%%$') then
-               pct = tonumber(string.match(gui.fonts[k].size, '^(%-?%d+)%%$'))
-               gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
-            end
+   -- Convert font percentage sizes to their px size
+
+   for k,v in pairs(gui.fonts) do
+      if gui.fonts[k].size then
+         if string.match(gui.fonts[k].size, '^%-?%d+%%$') then
+            pct = tonumber(string.match(gui.fonts[k].size, '^(%-?%d+)%%$'))
+            gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
          end
       end
-   end
-
-   local path = 'style:values.xml'
-   if mSys.AnalysePath(path) != ERR_Okay then
-      path = 'environment:config/values.xml'
-      if mSys.AnalysePath(path) != ERR_Okay then
-         path = 'styles:default/values.xml'
-      end
-   end
-
-   local xml = obj.new('xml', { path=path })
-
-   if xml != nil then
---[[
-      local err, index = xml.mtFindTag('/colours')
-      if err == ERR_Okay then
-         for k,v in pairs(gui.style) do
-            err, colour = xml.mtGetAttrib(index, k)
-            if err == ERR_Okay then gui.style[k] = colour end
-         end
-      end
---]]
-      local err, index = xml.mtFindTag('/interface')
-      if err == ERR_Okay then
-         for k,v in pairs(gui.interface) do
-            err, val = xml.mtGetAttrib(index, k)
-            if err == ERR_Okay then
-               if string.match(val, '^%-?%d+$') then
-                  gui.interface[k] = tonumber(val)
-               else
-                  gui.interface[k] = val
-               end
-            end
-         end
-      end
-
-      convertFontSizes()
-
-      local err, index = xml.mtFindTag('/fonts')
-      if err == ERR_Okay then
-         for k,v in pairs(gui.fonts) do
-            local err, index = xml.mtFindTag("/fonts/font(@name='" .. k .. "')")
-            if err == ERR_Okay then
-               local err, face = xml.mtGetAttrib(index, 'face')
-               if err == ERR_Okay then gui.fonts[k].face = face end
-               local err, size = xml.mtGetAttrib(index, 'size')
-               if err == ERR_Okay then
-                  if string.match(size, '^%-?%d+$') then
-                     gui.fonts[k].size = tonumber(size)
-                  elseif string.match(size, '^%-?%d+%%$') then
-                     pct = tonumber(string.match(size, '^(%-?%d+)%%$'))
-                     gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
-                  else
-                     gui.fonts[k].size = size
-                  end
-               end
-            end
-         end
-      end
-
-      xml = nil
-   else
-      convertFontSizes()
    end

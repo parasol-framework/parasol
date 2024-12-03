@@ -42,6 +42,57 @@ local lFolderFill = gui.strToRGB(gui.style.page.bkgd)
 
 ----------------------------------------------------------------------------------------------------------------------
 
+local glExtensions = {
+  txt  = { icon = 'filetypes/text' },
+  text = { icon = 'filetypes/text' },
+  psd  = { icon = 'filetypes/image' },
+  avi  = { icon = 'filetypes/video' },
+  mpeg = { icon = 'filetypes/video' },
+  mkv  = { icon = 'filetypes/video' },
+  mpg  = { icon = 'filetypes/video' },
+  mp4  = { icon = 'filetypes/video' },
+  qt   = { icon = 'filetypes/video' },
+  quicktime = { icon = 'filetypes/video' },
+  webp  = { icon = 'filetypes/video' },
+  ascii = { icon = 'filetypes/ascii' },
+  bin   = { icon = 'filetypes/binary' },
+  raw   = { icon = 'filetypes/binary' },
+  c     = { icon = 'filetypes/source_c' },
+  h     = { icon = 'filetypes/source_h' },
+  hpp   = { icon = 'filetypes/source_h' },
+  cpp   = { icon = 'filetypes/source_cpp' },
+  cxx   = { icon = 'filetypes/source_cpp' },
+  java  = { icon = 'filetypes/source_java' },
+  html  = { icon = 'filetypes/html' },
+  htm   = { icon = 'filetypes/html' },
+  log   = { icon = 'filetypes/log' },
+  man   = { icon = 'filetypes/man' },
+  o     = { icon = 'filetypes/source_o' },
+  pdf   = { icon = 'filetypes/pdf' },
+  php   = { icon = 'filetypes/php' },
+  bash  = { icon = 'filetypes/shellscript' },
+  sh    = { icon = 'filetypes/shellscript' },
+  rpm   = { icon = 'filetypes/archive' },
+  temp  = { icon = 'filetypes/temp' },
+  tmp   = { icon = 'filetypes/temp' },
+  tex   = { icon = 'filetypes/text' },
+  tar   = { icon = 'filetypes/archive' },
+  tgz   = { icon = 'filetypes/archive' },
+  bz2   = { icon = 'filetypes/archive' },
+  rar   = { icon = 'filetypes/archive' },
+  torrent = { icon = 'filetypes/download' }
+}
+
+local function extToIcon(Ext)
+   if glExtensions[Ext] then
+      return 'icons:' .. glExtensions[Ext].icon
+   else
+      return 'icons:filetypes/empty'
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 local function sortNum(Value)
    return string.format('%014.0f', Value)
 end
@@ -50,7 +101,12 @@ local function getFileIcon(Path)
    local icon
    catch(function()
       icon = obj.new('file', { path=Path }).icon
-      if not icon then icon = 'folders/folder' end
+      if icon == 'icons:filetypes/empty' then
+         local ext = Path:gsub('^(.+)%.([^:/\\]+)$', '%2')
+         icon = extToIcon(ext)
+      elseif not icon then
+         icon = 'folders/folder'
+      end
    end)
    return icon
 end
@@ -1037,7 +1093,7 @@ gui.fileview = function(View, Options)
 
       self.dlgShortcut = gui.dialog.message({
          title   = 'Create Shortcut',
-         image   = 'icons:folders/folder(48)+overlays/link',
+         image   = 'folders/folder',
          icon    = 'folders/folder',
          message = Message,
          popover = self.window,

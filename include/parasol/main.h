@@ -465,6 +465,9 @@ inline FieldValue Volume(const std::string &Value) { return FieldValue(FID_Volum
 constexpr FieldValue DPMS(CSTRING Value) { return FieldValue(FID_DPMS, Value); }
 inline FieldValue DPMS(const std::string &Value) { return FieldValue(FID_DPMS, Value.c_str()); }
 
+constexpr FieldValue Icon(CSTRING Value) { return FieldValue(FID_Icon, Value); }
+inline FieldValue Icon(const std::string &Value) { return FieldValue(FID_Icon, Value.c_str()); }
+
 constexpr FieldValue Procedure(CSTRING Value) { return FieldValue(FID_Procedure, Value); }
 inline FieldValue Procedure(const std::string &Value) { return FieldValue(FID_Procedure, Value.c_str()); }
 

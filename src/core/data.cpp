@@ -95,6 +95,8 @@ std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjec
 std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
 std::unordered_map<ULONG, std::string> glFields;
 
+std::unordered_map<ULONG, CLASSID> glWildClassMap;
+
 std::vector<FDRecord> glRegisterFD;
 std::vector<TaskMessage> glQueue;
 std::vector<TaskRecord> glTasks;
@@ -105,7 +107,6 @@ struct MsgHandler *glMsgHandlers = NULL, *glLastMsgHandler = 0;
 
 objFile *glClassFile   = NULL;
 extTask *glCurrentTask = NULL;
-objConfig *glDatatypes = NULL;
 
 APTR glJNIEnv = 0;
 std::atomic_ushort glFunctionID = 3333; // IDTYPE_FUNCTION
@@ -115,6 +116,7 @@ LONG glMemoryFD = -1;
 LONG glValidateProcessID = 0;
 LONG glProcessID = 0;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
+LONG glWildClassMapTotal = 0;
 std::atomic_int glPrivateIDCounter = 500;
 std::atomic_int glMessageIDCount = 10000;
 std::atomic_int glGlobalIDCount = 1;

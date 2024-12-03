@@ -46,7 +46,7 @@ using namespace std::chrono_literals;
 #define MAX_NB_LOCKS      20  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
 #define MAX_WAITLOCKS     60  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
 
-#define CLASSDB_HEADER 0x7f887f88
+#define CLASSDB_HEADER 0x7f887f89
 
 #ifndef O_LARGEFILE
 #define O_LARGEFILE 0
@@ -502,6 +502,7 @@ struct ClassRecord {
    std::string Path;
    std::string Match;
    std::string Header;
+   std::string Icon;
 
    static const LONG MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(LONG) + (sizeof(LONG) * 4);
 
@@ -519,16 +520,18 @@ struct ClassRecord {
 
       if (pClass->FileExtension) Match.assign(pClass->FileExtension);
       if (pClass->FileHeader) Header.assign(pClass->FileHeader);
+      if (pClass->Icon) Icon.assign(pClass->Icon);
    }
 
-   inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL) {
+   inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL, CSTRING pIcon = NULL) {
       ClassID  = pClassID;
       ParentID = CLASSID::NIL;
       Category = CCF::SYSTEM;
       Name     = pName;
       Path     = "modules:core";
-      if (pMatch) Match   = pMatch;
+      if (pMatch)  Match  = pMatch;
       if (pHeader) Header = pHeader;
+      if (pIcon)   Icon   = pIcon;
    }
 
    inline ERR write(objFile *File) {
@@ -552,6 +555,10 @@ struct ClassRecord {
       File->write(&size, sizeof(size));
       if (size) File->write(Header.c_str(), size);
 
+      size = Icon.size();
+      File->write(&size, sizeof(size));
+      if (size) File->write(Icon.c_str(), size);
+
       return ERR::Okay;
    }
 
@@ -564,29 +571,46 @@ struct ClassRecord {
       LONG size = 0;
       File->read(&size, sizeof(size));
       if (size < std::ssize(buffer)) {
-         File->read(buffer, size);
-         Name.assign(buffer, size);
+         if (size > 0) {
+            File->read(buffer, size);
+            Name.assign(buffer, size);
+         }
       }
       else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < std::ssize(buffer)) {
-         File->read(buffer, size);
-         Path.assign(buffer, size);
+         if (size > 0) {
+            File->read(buffer, size);
+            Path.assign(buffer, size);
+         }
       }
       else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < std::ssize(buffer)) {
-         File->read(buffer, size);
-         Match.assign(buffer, size);
+         if (size > 0) {
+            File->read(buffer, size);
+            Match.assign(buffer, size);
+         }
       }
       else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
       if (size < std::ssize(buffer)) {
-         File->read(buffer, size);
-         Header.assign(buffer, size);
+         if (size > 0) {
+            File->read(buffer, size);
+            Header.assign(buffer, size);
+         }
+      }
+      else return ERR::BufferOverflow;
+
+      File->read(&size, sizeof(size));
+      if (size < std::ssize(buffer)) {
+         if (size > 0) {
+            File->read(buffer, size);
+            Icon.assign(buffer, size);
+         }
       }
       else return ERR::BufferOverflow;
 
@@ -663,6 +687,8 @@ extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 extern std::unordered_map<ULONG, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
+extern std::unordered_map<ULONG, CLASSID> glWildClassMap; // Fast lookup for identifying classes by file extension
+extern LONG glWildClassMapTotal;
 extern std::vector<TaskRecord> glTasks;
 extern const CSTRING glMessages[LONG(ERR::END)+1];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
@@ -681,7 +707,6 @@ extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
 extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern objTime *glTime;
-extern objConfig *glDatatypes;
 extern objFile *glClassFile;
 extern Object glDummyObject;
 extern TIMER glProcessJanitor;
@@ -983,17 +1008,16 @@ ERR fs_watch_path(class extFile *);
 const virtual_drive * get_fs(std::string_view Path);
 void  free_storage_class(void);
 
-ERR  convert_zip_error(struct z_stream_s *, LONG);
-ERR  check_cache(OBJECTPTR, LARGE, LARGE);
-ERR  fs_copy(std::string_view, std::string_view, FUNCTION *, bool);
-ERR  fs_copydir(std::string &, std::string &, FileFeedback *, FUNCTION *, BYTE);
+ERR    convert_zip_error(struct z_stream_s *, LONG);
+ERR    check_cache(OBJECTPTR, LARGE, LARGE);
+ERR    fs_copy(std::string_view, std::string_view, FUNCTION *, bool);
+ERR    fs_copydir(std::string &, std::string &, FileFeedback *, FUNCTION *, BYTE);
 PERMIT get_parent_permissions(std::string_view, LONG *, LONG *);
-ERR  load_datatypes(void);
-ERR  RenameVolume(CSTRING, CSTRING);
-ERR  findfile(std::string &);
+ERR    RenameVolume(CSTRING, CSTRING);
+ERR    findfile(std::string &);
 PERMIT convert_fs_permissions(LONG);
-LONG convert_permissions(PERMIT);
-ERR  get_file_info(std::string_view, FileInfo *, LONG);
+LONG   convert_permissions(PERMIT);
+ERR    get_file_info(std::string_view, FileInfo *, LONG);
 extern "C" ERR convert_errno(LONG Error, ERR Default);
 void free_file_cache(void);
 
@@ -1029,6 +1053,7 @@ void   PrepareSleep(void);
 ERR    process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
 ERR    resolve_args(APTR, const FunctionField *);
+CLASSID lookup_class_by_ext(std::string_view);
 
 #ifndef PARASOL_STATIC
 void   scan_classes(void);

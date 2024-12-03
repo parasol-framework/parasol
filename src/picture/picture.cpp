@@ -1330,6 +1330,7 @@ static ERR create_picture_class(void)
       fl::FileExtension("*.png"),
       fl::FileDescription("PNG Picture"),
       fl::FileHeader("[0:$89504e470d0a1a0a]"),
+      fl::Icon("filetypes/image"),
       fl::Actions(clPictureActions),
       fl::Fields(clFields),
       fl::Size(sizeof(extPicture)),
