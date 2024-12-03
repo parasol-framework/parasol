@@ -152,9 +152,9 @@ int main() {
 
 find_program (XXD_CMD "xxd")
 find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${PARASOL_CMD_PATH}")
-find_file (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
-find_file (IDL_COMPILE_SCRIPT "idl-compile.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev/idl")
-find_file (FLUTE_SCRIPT "flute.fluid" PATHS "${PROJECT_SOURCE_DIR}/scripts/dev")
+find_file (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
+find_file (IDL_COMPILE_SCRIPT "idl-compile.fluid" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
+find_file (FLUTE_SCRIPT "flute.fluid" PATHS "${PROJECT_SOURCE_DIR}/tools")
 
 if (PARASOL_CMD STREQUAL "PARASOL_CMD-NOTFOUND")
    message (STATUS "Definitions will not be built and tests are disabled.")
@@ -171,15 +171,15 @@ if (BUILD_TESTS)
 endif ()
 
 if (IDL_C_SCRIPT STREQUAL "IDL_C_SCRIPT-NOTFOUND")
-   message (FATAL_ERROR "The idl-c.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev/idl")
+   message (FATAL_ERROR "The idl-c.fluid script was not found in ${PROJECT_SOURCE_DIR}/tools/idl")
 endif ()
 
 if (IDL_COMPILE_SCRIPT STREQUAL "IDL_COMPILE_SCRIPT-NOTFOUND")
-   message (FATAL_ERROR "The idl-compile.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev/idl")
+   message (FATAL_ERROR "The idl-compile.fluid script was not found in ${PROJECT_SOURCE_DIR}/tools/idl")
 endif ()
 
 if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
-   message (FATAL_ERROR "The flute.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev")
+   message (FATAL_ERROR "The flute.fluid script was not found in ${PROJECT_SOURCE_DIR}/tools")
 endif ()
 
 if (NOT MSVC)
