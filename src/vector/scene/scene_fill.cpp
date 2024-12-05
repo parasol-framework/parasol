@@ -175,48 +175,48 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
 
       if ((Gradient.Flags & VGF::SCALED_FX) != VGF::NIL) f.x = x_offset + (c_width * Gradient.FX);
       else if ((Gradient.Flags & VGF::FIXED_FX) != VGF::NIL) f.x = x_offset + Gradient.FX;
-      else f.x = x_offset + c.x;
+      else f.x = c.x;
 
       if ((Gradient.Flags & VGF::SCALED_FY) != VGF::NIL) f.y = y_offset + (c_height * Gradient.FY);
       else if ((Gradient.Flags & VGF::FIXED_FY) != VGF::NIL) f.y = y_offset + Gradient.FY;
-      else f.y = y_offset + c.y;
+      else f.y = c.y;
 
       if ((c.x IS f.x) and (c.y IS f.y)) {
          // Standard radial gradient, where the focal point is the same as the gradient center
 
-         DOUBLE length = Gradient.Radius;
+         DOUBLE radial_col_span = Gradient.Radius;
          if (Gradient.Units IS VUNIT::USERSPACE) { // Coordinates are relative to the viewport
             if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) { // Gradient is a ratio of the viewport's dimensions
-               length = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
+               radial_col_span = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
             }
          }
          else { // Coordinates are scaled to the bounding box
             if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-               // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
-               // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
-
-               DOUBLE scale_x = Gradient.Radius * (1.0 / 0.707106781); //(width * Gradient.Radius) / (sqrt((width * width) + (width * width)) * 0.5);
-               DOUBLE scale_y = Gradient.Radius * (1.0 / 0.707106781); //(height * Gradient.Radius) / (sqrt((height * height) + (height * height)) * 0.5);
-               if (c_height > c_width) scale_y *= c_height / c_width;
-               else if (c_width > c_height) scale_x *= c_width / c_height;
-               scale_x *= 100.0 / length; // Adjust the scale according to the gradient length.
-               scale_y *= 100.0 / length;
-               transform.scale(scale_x, scale_y);
+               // Set radial_col_span to the wider of the width/height
+               if (c_height > c_width) {
+                  radial_col_span = c_height * Gradient.Radius;
+                  transform.scale(c_width / c_height, 1.0);
+               }
+               else {
+                  radial_col_span = c_width * Gradient.Radius;
+                  transform.scale(1.0, c_height / c_width);
+               }
             }
             else {
-               //transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01 / length);
+               //transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01 / radial_col_span);
             }
          }
 
-         if (length < 255) { // Blending works best if the gradient span is at least 255 colours wide, so adjust it here.
-            transform.scale(length * (1.0 / 255.0));
-            length = 255;
+         constexpr double MIN_SPAN = 32;
+         if (radial_col_span < MIN_SPAN) { // Blending looks best if it meets a minimum span (radius) value.
+            transform.scale(radial_col_span * (1.0 / MIN_SPAN));
+            radial_col_span = MIN_SPAN;
          }
 
          agg::gradient_radial  gradient_func;
          typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_radial, color_array_type> span_gradient_type;
          typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-         span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
+         span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, radial_col_span);
          renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
          transform.translate(c.x, c.y);
@@ -244,26 +244,26 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
             fix_radius *= (c_width + c_height) * 0.5; // Use the average radius of the ellipse.
          }
-         DOUBLE length = fix_radius;
+         DOUBLE radial_col_span = fix_radius;
 
          if (Gradient.Units IS VUNIT::USERSPACE) {
             if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-               const DOUBLE scale = length * Gradient.Radius;
+               const DOUBLE scale = radial_col_span * Gradient.Radius;
                transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
             }
             else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
          }
          else { // Bounding box
             if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-               // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
-               // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
-
-               auto  scale = agg::point_d(Gradient.Radius * (1.0 / 0.707106781), Gradient.Radius * (1.0 / 0.707106781));
-               if (c_height > c_width) scale.y *= c_height / c_width;
-               else if (c_width > c_height) scale.x *= c_width / c_height;
-               scale.x *= 100.0 / length; // Adjust the scale according to the gradient length.
-               scale.y *= 100.0 / length;
-               transform.scale(scale);
+               // Set radial_col_span to the wider of the width/height
+               if (c_height > c_width) {
+                  radial_col_span = c_height * Gradient.Radius;
+                  transform.scale(c_width / c_height, 1.0);
+               }
+               else {
+                  radial_col_span = c_width * Gradient.Radius;
+                  transform.scale(1.0, c_height / c_width);
+               }
             }
             else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
          }
@@ -303,25 +303,25 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
 
       // Standard diamond gradient, where the focal point is the same as the gradient center
 
-      const DOUBLE length = 255;
+      DOUBLE radial_col_span = 255;
       if (Gradient.Units IS VUNIT::USERSPACE) {
          if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-            const DOUBLE scale = length * Gradient.Radius;
+            const DOUBLE scale = radial_col_span * Gradient.Radius;
             transform *= agg::trans_affine_scaling(sqrt((c_width * c_width) + (c_height * c_height)) / scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Align to vector's bounding box
          if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-            // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
-            // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
-
-            auto scale = agg::point_d(Gradient.Radius * (1.0 / 0.707106781), Gradient.Radius * (1.0 / 0.707106781));
-            if (c_height > c_width) scale.y *= c_height / c_width;
-            else if (c_width > c_height) scale.x *= c_width / c_height;
-            scale.x *= 100.0 / length; // Adjust the scale according to the gradient length.
-            scale.y *= 100.0 / length;
-            transform.scale(scale.x, scale.y);
+            // Set radial_col_span to the wider of the width/height
+            if (c_height > c_width) {
+               radial_col_span = c_height * Gradient.Radius;
+               transform.scale(c_width / c_height, 1.0);
+            }
+            else {
+               radial_col_span = c_width * Gradient.Radius;
+               transform.scale(1.0, c_height / c_width);
+            }
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
@@ -329,7 +329,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       agg::gradient_diamond gradient_func;
       typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_diamond, color_array_type> span_gradient_type;
       typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-      span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
+      span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, radial_col_span);
       renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
       transform.translate(c);
@@ -359,25 +359,25 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
 
       // Standard conic gradient, where the focal point is the same as the gradient center
 
-      const DOUBLE length = 255;
+      DOUBLE radial_col_span = 255;
       if (Gradient.Units IS VUNIT::USERSPACE) {
          if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-            const DOUBLE scale = length * Gradient.Radius;
+            const DOUBLE scale = radial_col_span * Gradient.Radius;
             transform *= agg::trans_affine_scaling(sqrt((c_width * c_width) + (c_height * c_height)) / scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Bounding box
          if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-            // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
-            // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
-
-            agg::point_d scale(Gradient.Radius * (1.0 / 0.707106781), Gradient.Radius * (1.0 / 0.707106781));
-            if (c_height > c_width) scale.y *= c_height / c_width;
-            else if (c_width > c_height) scale.x *= c_width / c_height;
-            scale.x *= 100.0 / length; // Adjust the scale according to the gradient length.
-            scale.y *= 100.0 / length;
-            transform.scale(scale);
+            // Set radial_col_span to the wider of the width/height
+            if (c_height > c_width) {
+               radial_col_span = c_height * Gradient.Radius;
+               transform.scale(c_width / c_height, 1.0);
+            }
+            else {
+               radial_col_span = c_width * Gradient.Radius;
+               transform.scale(1.0, c_height / c_width);
+            }
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
@@ -385,7 +385,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       agg::gradient_conic gradient_func;
       typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_conic, color_array_type> span_gradient_type;
       typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-      span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, length);
+      span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, radial_col_span);
       renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
       transform.translate(c);
