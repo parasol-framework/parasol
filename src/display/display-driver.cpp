@@ -196,6 +196,7 @@ LONG glpMaximise = FALSE, glpFullScreen = FALSE;
 SWIN glpWindowType = SWIN::HOST;
 char glpDPMS[20] = "Standby";
 UBYTE *glDemultiply = NULL;
+int glLastPort = -1;
 
 std::vector<OBJECTID> glFocusList;
 std::recursive_mutex glFocusLock;

@@ -1969,24 +1969,6 @@ static ERR GET_Chipset(extDisplay *Self, STRING *Value)
 
 /*********************************************************************************************************************
 -FIELD-
-ControllerPorts: Indicates the total number of connected controllers.
-
-Read the ControllerPorts value to get the total number of controllers connected to the system.  This value can be used
-in conjunction with the @Controller class to read state from multiple controllers.
-
-It is required that the `GRAB_CONTROLLERS` flag is set in the #Flags field in order for a program to access any 
-connected controllers.
-
-*********************************************************************************************************************/
-
-static ERR GET_ControllerPorts(extDisplay *Self, LONG *Value)
-{
-   *Value = Self->ControllerPorts;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
--FIELD-
 HDensity: Returns the horizontal pixel density for the display.
 
 Reading the HDensity field will return the horizontal pixel density for the display (pixels per inch).  If the physical
@@ -2839,7 +2821,6 @@ static const FieldArray DisplayFields[] = {
    { "BottomMargin",   FDF_LONG|FDF_R },
    // Virtual fields
    { "Chipset",             FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Chipset },
-   { "ControllerPorts",     FDF_VIRTUAL|FDF_LONG|FDF_R,      GET_ControllerPorts },
    { "Gamma",               FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RI, GET_Gamma, SET_Gamma },
    { "HDensity",            FDF_VIRTUAL|FDF_LONG|FDF_RW,     GET_HDensity, SET_HDensity },
    { "VDensity",            FDF_VIRTUAL|FDF_LONG|FDF_RW,     GET_VDensity, SET_VDensity },

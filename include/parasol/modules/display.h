@@ -1011,7 +1011,7 @@ class objDisplay : public Object {
 
    inline ERR setRefreshRate(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[40];
+      auto field = &this->Class->Dictionary[39];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -1062,7 +1062,7 @@ class objDisplay : public Object {
 
    inline ERR setPopOver(OBJECTID Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1074,31 +1074,31 @@ class objDisplay : public Object {
 
    inline ERR setHDensity(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setVDensity(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setResizeFeedback(const FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[30];
+      auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setWindowHandle(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08000308, Value, 1);
    }
 

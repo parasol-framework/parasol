@@ -407,17 +407,6 @@
     </field>
 
     <field>
-      <name>ControllerPorts</name>
-      <comment>Indicates the total number of connected controllers.</comment>
-      <access read="G">Get</access>
-      <type>INT</type>
-      <description>
-<p>Read the ControllerPorts value to get the total number of controllers connected to the system.  This value can be used in conjunction with the <class name="Controller">Controller</class> class to read state from multiple controllers.</p>
-<p>It is required that the <code>GRAB_CONTROLLERS</code> flag is set in the <fl>Flags</fl> field in order for a program to access any connected controllers.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Display</name>
       <comment>String describing the display (e.g. model name of the monitor).</comment>
       <access read="G">Get</access>

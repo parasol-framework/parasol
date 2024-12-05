@@ -206,7 +206,10 @@ flags("CON", { comment="Gamepad controller buttons.", module="core" },
     "LEFT_BUMPER_1:  Gamepad left-hand bumper 1 (top, primary).",
     "LEFT_BUMPER_2:  Gamepad left-hand bumper 2 (lower).",
     "RIGHT_BUMPER_1: Gamepad right-hand bumper 1 (top, primary).",
-    "RIGHT_BUMPER_2: Gamepad right-hand bumper 2 (lower).")
+    "RIGHT_BUMPER_2: Gamepad right-hand bumper 2 (lower).",
+    "LEFT_THUMB:  Left thumb stick depressed.",
+    "RIGHT_THUMB: Right thumb stick depressed."
+    )
 
 enum("JET", { type="int", start=1, comment="JET constants are documented in GetInputEvent()", module="Core" },
     "BUTTON_1|LMB: Left mouse button; XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).",

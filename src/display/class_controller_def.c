@@ -15,6 +15,8 @@ static const struct FieldDef clControllerButtons[] = {
    { "LeftBumper2", 0x00000800 },
    { "RightBumper1", 0x00001000 },
    { "RightBumper2", 0x00002000 },
+   { "LeftThumb", 0x00004000 },
+   { "RightThumb", 0x00008000 },
    { NULL, 0 }
 };
 

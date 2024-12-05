@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <algorithm>
 
 #include "windows.h"
 
@@ -73,6 +74,7 @@ typedef long long LARGE;
 #endif
 
 extern HINSTANCE glInstance;
+extern int glLastPort;
 void KillMessageHook(void);
 
 static HWND glMainScreen = 0;
@@ -571,7 +573,7 @@ static void HandleWheel(HWND window, WPARAM wparam, LPARAM lparam)
    // the main window.
 
    if (auto surface_id = winLookupSurfaceID(window)) {
-      double delta = -((DOUBLE)GET_WHEEL_DELTA_WPARAM(wparam) / (DOUBLE)WHEEL_DELTA) * 3.0;
+      double delta = -((double)GET_WHEEL_DELTA_WPARAM(wparam) / (double)WHEEL_DELTA) * 3.0;
       MsgWheelMovement(surface_id, delta);
    }
 }
@@ -810,16 +812,14 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
                //XInputEnable(FALSE);
             #endif
 
-            int last_port = -1;
+            glLastPort = 0;
             for (DWORD i = 0; i < XUSER_MAX_COUNT; i++) {
                XINPUT_CAPABILITIES cap;
                if (XInputGetCapabilities(i, XINPUT_FLAG_GAMEPAD, &cap) == ERROR_SUCCESS) {
-                  last_port = i;
+                  glLastPort = i;
                }
                else break;
             }
-
-            MsgTotalControllerPorts(surface, last_port);
          }
          else {
             // We have lost the focus
@@ -1060,10 +1060,47 @@ void winDisableBatching(void)
 
 //********************************************************************************************************************
 
-ERR winReadController(int Port, double *Values)
+ERR winReadController(int Port, double *Values, CON &Buttons)
 {
+   constexpr double tolerance = 0.08; // At-rest dead zone tolerance for thumb sticks
    XINPUT_STATE state;
    if (XInputGetState(Port, &state) == ERROR_SUCCESS) {
+      Values[0] = double(state.Gamepad.bLeftTrigger) * (1.0 / 255.0);
+      Values[1] = double(state.Gamepad.bRightTrigger) * (1.0 / 255.0);
+      Values[2] = std::clamp(double(state.Gamepad.sThumbLX) * (1.0 / 32767.0), -1.0, 1.0);
+      Values[3] = std::clamp(double(state.Gamepad.sThumbLY) * (1.0 / 32767.0), -1.0, 1.0);
+      Values[4] = std::clamp(double(state.Gamepad.sThumbRX) * (1.0 / 32767.0), -1.0, 1.0);
+      Values[5] = std::clamp(double(state.Gamepad.sThumbRY) * (1.0 / 32767.0), -1.0, 1.0);
+
+      if ((Values[2] < tolerance) and (Values[2] > -tolerance) and
+          (Values[3] < tolerance) and (Values[3] > -tolerance)) { 
+         Values[2] = 0; 
+         Values[3] = 0;
+      }
+
+      if ((Values[4] < tolerance) and (Values[4] > -tolerance) and
+          (Values[5] < tolerance) and (Values[5] > -tolerance)) {
+         Values[4] = 0;
+         Values[5] = 0;
+      }
+
+      if (state.Gamepad.wButtons) {
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP) Buttons |= CON::DPAD_UP;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN) Buttons |= CON::DPAD_DOWN;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT) Buttons |= CON::DPAD_LEFT;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) Buttons |= CON::DPAD_RIGHT;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_START) Buttons |= CON::START;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_BACK) Buttons |= CON::SELECT;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB) Buttons |= CON::LEFT_THUMB;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB) Buttons |= CON::RIGHT_THUMB;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) Buttons |= CON::LEFT_BUMPER_1;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) Buttons |= CON::RIGHT_BUMPER_1;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) Buttons |= CON::GAMEPAD_S;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_B) Buttons |= CON::GAMEPAD_E;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_X) Buttons |= CON::GAMEPAD_W;
+         if (state.Gamepad.wButtons & XINPUT_GAMEPAD_Y) Buttons |= CON::GAMEPAD_N;
+      }
+      else Buttons = CON::NIL; //state.Gamepad.wButtons;
       return ERR::Okay;
    }
    else return ERR::Failed;

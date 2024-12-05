@@ -474,6 +474,7 @@ extern char glpDPMS[20];
 extern UBYTE *glDemultiply;
 extern std::array<UBYTE, 256 * 256> glAlphaLookup;
 extern std::list<ClipRecord> glClips;
+extern int glLastPort;
 
 extern std::unordered_map<WinHook, FUNCTION> glWindowHooks;
 extern std::vector<OBJECTID> glFocusList;
