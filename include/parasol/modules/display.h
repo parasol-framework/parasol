@@ -18,6 +18,7 @@
 class objBitmap;
 class objDisplay;
 class objClipboard;
+class objController;
 class objPointer;
 class objSurface;
 
@@ -282,6 +283,7 @@ enum class SCR : ULONG {
    BORDERLESS = 0x00000020,
    COMPOSITE = 0x00000040,
    ALPHA_BLEND = 0x00000040,
+   GRAB_CONTROLLERS = 0x00000080,
    MAXSIZE = 0x00100000,
    REFRESH = 0x00200000,
    HOSTED = 0x02000000,
@@ -1009,7 +1011,7 @@ class objDisplay : public Object {
 
    inline ERR setRefreshRate(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[43];
+      auto field = &this->Class->Dictionary[40];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -1060,7 +1062,7 @@ class objDisplay : public Object {
 
    inline ERR setPopOver(OBJECTID Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[27];
+      auto field = &this->Class->Dictionary[26];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1090,13 +1092,13 @@ class objDisplay : public Object {
 
    inline ERR setResizeFeedback(const FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[32];
+      auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setWindowHandle(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08000308, Value, 1);
    }
 
@@ -1181,6 +1183,41 @@ class objClipboard : public Object {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+};
+
+// Controller class definition
+
+#define VER_CONTROLLER (1.000000)
+
+class objController : public Object {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::CONTROLLER;
+   static constexpr CSTRING CLASS_NAME = "Controller";
+
+   using create = pf::Create<objController>;
+
+   DOUBLE LeftTrigger;    // Left trigger value between 0.0 and 1.0.
+   DOUBLE RightTrigger;   // Right trigger value between 0.0 and 1.0.
+   DOUBLE LeftStickX;     // Left analog stick value for X axis, between -1.0 and 1.0.
+   DOUBLE LeftStickY;     // Left analog stick value for Y axis, between -1.0 and 1.0.
+   DOUBLE RightStickX;    // Right analog stick value for X axis, between -1.0 and 1.0.
+   DOUBLE RightStickY;    // Right analog stick value for Y axis, between -1.0 and 1.0.
+   CON    Buttons;        // JET button values expressed as bit-fields.
+   LONG   Port;           // The port number assigned to the controller.
+
+   // Action stubs
+
+   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setPort(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
+      this->Port = Value;
+      return ERR::Okay;
    }
 
 };

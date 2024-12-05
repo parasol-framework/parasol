@@ -12,6 +12,7 @@
     <classes>
       <class>Bitmap</class>
       <class>Clipboard</class>
+      <class>Controller</class>
       <class>Display</class>
       <class>Pointer</class>
       <class>Surface</class>
@@ -1218,6 +1219,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
       <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
       <const name="FLIPPABLE">If <code>SCR::BUFFER</code> is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
+      <const name="GRAB_CONTROLLERS">Grab controllers for receiving input when the display has the focus.</const>
       <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
       <const name="HOSTED">The display is a desktop hosted window.</const>
       <const name="MAXIMISE">Special win32 flag.</const>

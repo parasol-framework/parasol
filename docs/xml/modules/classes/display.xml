@@ -397,22 +397,23 @@
     </field>
 
     <field>
-      <name>CertificationDate</name>
-      <comment>String describing the date of the graphics driver's certification.</comment>
-      <access read="G">Get</access>
-      <type>STRING</type>
-      <description>
-<p>The string in this field describes the date on which the graphics card driver was certified.  If this information is not available from the driver, a <code>NULL</code> pointer is returned.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Chipset</name>
       <comment>String describing the graphics chipset.</comment>
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The string in this field describes the graphic card's chipset.  If this information is not retrievable, a <code>NULL</code> pointer is returned.</p>
+<p>This string describes the graphic card's chipset, if known.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ControllerPorts</name>
+      <comment>Indicates the total number of connected controllers.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>Read the ControllerPorts value to get the total number of controllers connected to the system.  This value can be used in conjunction with the <class name="Controller">Controller</class> class to read state from multiple controllers.</p>
+<p>It is required that the <code>GRAB_CONTROLLERS</code> flag is set in the <fl>Flags</fl> field in order for a program to access any connected controllers.</p>
       </description>
     </field>
 
@@ -422,7 +423,7 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The string in this field describes the display device that is connected to the user's graphics card.  If this information is not detectable, a <code>NULL</code> pointer is returned.</p>
+<p>This string describes the display device that is connected to the user's graphics card.</p>
       </description>
     </field>
 
@@ -432,7 +433,7 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The string in this field returns the name of the manufacturer that created the user's display device.  If this information is not detectable, a <code>NULL</code> pointer is returned.</p>
+<p>This string names the manufacturer of the user's display device.</p>
       </description>
     </field>
 
@@ -444,36 +445,6 @@
       <description>
 <p>If the display is hosted in a client window, the <fl>BottomMargin</fl> indicates the number of pixels between the client area and the bottom window edge.</p>
 <types lookup="DT"/>
-      </description>
-    </field>
-
-    <field>
-      <name>DriverCopyright</name>
-      <comment>String containing copyright information on the graphics driver software.</comment>
-      <access read="G">Get</access>
-      <type>STRING</type>
-      <description>
-<p>The string in this field returns copyright information related to the graphics driver.  If this information is not available, a <code>NULL</code> pointer is returned.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>DriverVendor</name>
-      <comment>String describing the vendor of the graphics driver.</comment>
-      <access read="G">Get</access>
-      <type>STRING</type>
-      <description>
-<p>The string in this field returns the name of the vendor that supplied the graphics card driver.  If this information is not available, a <code>NULL</code> pointer is returned.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>DriverVersion</name>
-      <comment>String describing the version of the graphics hardware driver.</comment>
-      <access read="G">Get</access>
-      <type>STRING</type>
-      <description>
-<p>The string in this field describes the graphic driver's version number. If this information is not detectable, a <code>NULL</code> pointer is returned.</p>
       </description>
     </field>
 
@@ -783,6 +754,7 @@
       <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
       <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
       <const name="FLIPPABLE">If <code>SCR::BUFFER</code> is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
+      <const name="GRAB_CONTROLLERS">Grab controllers for receiving input when the display has the focus.</const>
       <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
       <const name="HOSTED">The display is a desktop hosted window.</const>
       <const name="MAXIMISE">Special win32 flag.</const>

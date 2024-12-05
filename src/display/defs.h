@@ -9,6 +9,7 @@
 #define PRV_POINTER
 #define PRV_CLIPBOARD
 #define PRV_SURFACE
+#define PRV_CONTROLLER
 //#define DBG_DRAW_ROUTINES // Use this if you want to debug any external code that is subscribed to surface drawing routines
 //#define FASTACCESS
 //#define DBG_LAYERS
@@ -385,8 +386,9 @@ class extDisplay : public objDisplay {
    DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
    std::vector<struct resolution> Resolutions;
    FUNCTION  ResizeFeedback;
-   LONG      BmpXOffset;     // X offset for scrolling
-   LONG      BmpYOffset;     // Y offset for scrolling
+   LONG  ControllerPorts;
+   LONG  VDensity;          // Cached DPI value, if calculable.
+   LONG  HDensity;
    #ifdef __xwindows__
    union {
       APTR   WindowHandle;
@@ -399,26 +401,16 @@ class extDisplay : public objDisplay {
       APTR   WindowHandle;
    #endif
    WORD  Opacity;
-   LONG  VDensity;          // Cached DPI value, if calculable.
-   LONG  HDensity;
-   char  DriverVendor[60];
-   char  DriverCopyright[80];
    char  Manufacturer[60];
    char  Chipset[40];
-   char  DAC[32];
-   char  Clock[32];
-   char  DriverVersion[16];
-   char  CertificationDate[20];
    char  Display[32];
    char  DisplayManufacturer[60];
-   #ifdef _WIN32
-      APTR OldProcedure;
-   #endif
 };
 
 extern void clean_clipboard(void);
 extern ERR  create_bitmap_class(void);
 extern ERR  create_clipboard_class(void);
+extern ERR  create_controller_class(void);
 extern ERR  create_display_class(void);
 extern ERR  create_pointer_class(void);
 extern ERR  create_surface_class(void);
@@ -462,7 +454,7 @@ extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
 
 extern bool glSixBitDisplay;
 extern OBJECTPTR glModule;
-extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface;
+extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface, clController;
 extern OBJECTID glPointerID;
 extern DISPLAYINFO glDisplayInfo;
 extern APTR glDither;

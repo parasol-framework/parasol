@@ -146,6 +146,20 @@ void MsgButtonPress(LONG button, LONG State)
 
 //********************************************************************************************************************
 
+void MsgTotalControllerPorts(OBJECTID SurfaceID, int Ports)
+{
+   if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
+      if (ScopedObjectLock<extDisplay> display(surface->DisplayID, 3000); display.granted()) {
+         if ((display->Flags & SCR::GRAB_CONTROLLERS) != SCR::NIL) {
+            display->ControllerPorts = Ports + 1;
+         }
+         else display->ControllerPorts = 0;
+      }
+   }
+}
+
+//********************************************************************************************************************
+
 void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, LONG WinHeight,
    LONG ClientX, LONG ClientY, LONG ClientWidth, LONG ClientHeight)
 {
@@ -159,6 +173,7 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
       display_id = surface->DisplayID;
       if (ScopedObjectLock<extDisplay> display(display_id, 3000); display.granted()) {
+         if (!display->ResizeFeedback.defined()) return;
          feedback = display->ResizeFeedback;
          display->X = WinX;
          display->Y = WinY;

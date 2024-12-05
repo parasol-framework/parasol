@@ -10,6 +10,7 @@ static const struct FieldDef clDisplayFlags[] = {
    { "Borderless", 0x00000020 },
    { "AlphaBlend", 0x00000040 },
    { "Composite", 0x00000040 },
+   { "GrabControllers", 0x00000080 },
    { "Maxsize", 0x00100000 },
    { "Refresh", 0x00200000 },
    { "Hosted", 0x02000000 },

@@ -168,6 +168,7 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "BIT_6: Display is limited to 6-bit output per colour gun.",
     "BORDERLESS: If display is hosted, create it as a popup / borderless window.",
     "ALPHA_BLEND|COMPOSITE: Enables alpha channel blending (if display is hosted and 32-bit).",
+    "GRAB_CONTROLLERS: Grab controllers for receiving input when the display has the focus.",
     { MAXIMISE        = "0x80000000: Special win32 flag." },
     { CUSTOM_WINDOW   = "0x40000000: The display has been created with a custom window reference." },
     { FLIPPABLE       = "0x20000000: If `SCR::BUFFER` is used, this flag may be set by the display manager if it is possible to flip the buffer." },
@@ -486,6 +487,17 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
   ]],
   [[
    FUNCTION RequestHandler;
+  ]])
+
+  class('Controller', { src='class_controller.cpp', output='class_controller_def.c' }, [[
+    double LeftTrigger  # Left trigger value between 0.0 and 1.0
+    double RightTrigger # Right trigger value between 0.0 and 1.0
+    double LeftStickX   # Left analog stick value for X axis, between -1.0 and 1.0
+    double LeftStickY   # Left analog stick value for Y axis, between -1.0 and 1.0
+    double RightStickX  # Right analog stick value for X axis, between -1.0 and 1.0
+    double RightStickY  # Right analog stick value for Y axis, between -1.0 and 1.0
+    int(CON) Buttons    # The state of available controller buttons.
+    int    Port         # The port number assigned to the controller.
   ]])
 
   class("Pointer", { version=1.0, src="class_pointer.cpp", output="class_pointer_def.c", references={ 'PTC', 'PF' } }, [[

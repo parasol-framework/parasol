@@ -19,6 +19,7 @@
 #include <winuser.h>
 #include <shlobj.h>
 #include <objidl.h>
+#include <xinput.h>
 #include <map>
 
 #include <parasol/system/errors.h>
@@ -797,17 +798,35 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 
          return MA_NOACTIVATE;
 
-      case WM_ACTIVATEAPP:
+      case WM_ACTIVATEAPP: {
          MSG("WM_ACTIVATEAPP: Focus: %d\n", (int)wParam);
+         auto surface = winLookupSurfaceID(window);
          if (wParam) {
             // We have the focus
-            MsgFocusState(winLookupSurfaceID(window), TRUE);
+            MsgFocusState(surface, TRUE);
+
+            #if (_WIN32_WINNT < _WIN32_WINNT_WIN10)
+               // Deprecated from Windows 10 onwards
+               //XInputEnable(FALSE);
+            #endif
+
+            int last_port = -1;
+            for (DWORD i = 0; i < XUSER_MAX_COUNT; i++) {
+               XINPUT_CAPABILITIES cap;
+               if (XInputGetCapabilities(i, XINPUT_FLAG_GAMEPAD, &cap) == ERROR_SUCCESS) {
+                  last_port = i;
+               }
+               else break;
+            }
+
+            MsgTotalControllerPorts(surface, last_port);
          }
          else {
             // We have lost the focus
-            MsgFocusState(winLookupSurfaceID(window), FALSE);
+            MsgFocusState(surface, FALSE);
          }
          return 0;
+      }
 
       case WM_MOVE: {
          int wx, wy, wwidth, wheight, cx, cy, cwidth, cheight;
@@ -1037,6 +1056,17 @@ void winSetSurfaceID(HWND Window, int SurfaceID)
 void winDisableBatching(void)
 {
    GdiSetBatchLimit(1);
+}
+
+//********************************************************************************************************************
+
+ERR winReadController(int Port, double *Values)
+{
+   XINPUT_STATE state;
+   if (XInputGetState(Port, &state) == ERROR_SUCCESS) {
+      return ERR::Okay;
+   }
+   else return ERR::Failed;
 }
 
 //********************************************************************************************************************

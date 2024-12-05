@@ -181,7 +181,7 @@ struct CoreBase *CoreBase;
 ColourFormat glColourFormat;
 bool glHeadless = false;
 OBJECTPTR glModule = NULL;
-OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL;
+OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL, clController = NULL;
 OBJECTID glPointerID = 0;
 DISPLAYINFO glDisplayInfo;
 APTR glDither = NULL;
@@ -821,6 +821,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       create_bitmap_class();
       create_clipboard_class();
       create_surface_class();
+      create_controller_class();
       return ERR::Okay;
    }
 #endif
@@ -1059,6 +1060,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (create_bitmap_class() != ERR::Okay) return log.warning(ERR::AddClass);
    if (create_clipboard_class() != ERR::Okay) return log.warning(ERR::AddClass);
    if (create_surface_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_controller_class() != ERR::Okay) return log.warning(ERR::AddClass);
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.
 
@@ -1230,6 +1232,7 @@ static ERR MODExpunge(void)
    if (clBitmap)      { FreeResource(clBitmap);      clBitmap      = NULL; }
    if (clClipboard)   { FreeResource(clClipboard);   clClipboard   = NULL; }
    if (clSurface)     { FreeResource(clSurface);     clSurface     = NULL; }
+   if (clController)  { FreeResource(clController);  clController  = NULL; }
 
    #ifdef _GLES_
       free_egl();
