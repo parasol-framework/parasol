@@ -120,6 +120,24 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
    const DOUBLE y_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds.top;
 
    Path->approximation_scale(Transform.scale());
+   
+   auto lambda = [&]<typename S>(S SpreadMethod, DOUBLE Span) {
+      typedef agg::span_gradient<agg::rgba8, interpolator_type, S, color_array_type> span_gradient_type;
+      typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
+
+      span_gradient_type  span_gradient(span_interpolator, SpreadMethod, *Table, 0, Span);
+      renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
+
+      if (State.mClipStack->empty()) {
+         agg::scanline_u8 scanline;
+         agg::render_scanlines(Raster, scanline, solidrender_gradient);
+      }
+      else { // Masked gradient
+         agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+         agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+         agg::render_scanlines(Raster, masked_scanline, solidrender_gradient);
+      }
+   };
 
    if (Gradient.Type IS VGT::LINEAR) {
       TClipRectangle<DOUBLE> area;
@@ -173,12 +191,12 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) c.y = y_offset + (c_height * Gradient.CenterY);
       else c.y = y_offset + Gradient.CenterY;
 
-      if ((Gradient.Flags & VGF::SCALED_FX) != VGF::NIL) f.x = x_offset + (c_width * Gradient.FX);
-      else if ((Gradient.Flags & VGF::FIXED_FX) != VGF::NIL) f.x = x_offset + Gradient.FX;
+      if ((Gradient.Flags & VGF::SCALED_FX) != VGF::NIL) f.x = x_offset + (c_width * Gradient.FocalX);
+      else if ((Gradient.Flags & VGF::FIXED_FX) != VGF::NIL) f.x = x_offset + Gradient.FocalX;
       else f.x = c.x;
 
-      if ((Gradient.Flags & VGF::SCALED_FY) != VGF::NIL) f.y = y_offset + (c_height * Gradient.FY);
-      else if ((Gradient.Flags & VGF::FIXED_FY) != VGF::NIL) f.y = y_offset + Gradient.FY;
+      if ((Gradient.Flags & VGF::SCALED_FY) != VGF::NIL) f.y = y_offset + (c_height * Gradient.FocalY);
+      else if ((Gradient.Flags & VGF::FIXED_FY) != VGF::NIL) f.y = y_offset + Gradient.FocalY;
       else f.y = c.y;
 
       if ((c.x IS f.x) and (c.y IS f.y)) {
@@ -212,84 +230,78 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
             transform.scale(radial_col_span * (1.0 / MIN_SPAN));
             radial_col_span = MIN_SPAN;
          }
-
-         agg::gradient_radial  gradient_func;
-         typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_radial, color_array_type> span_gradient_type;
-         typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-         span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, radial_col_span);
-         renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
-
+         
          transform.translate(c.x, c.y);
          apply_transforms(Gradient, transform);
          transform *= Transform;
          transform.invert();
+         
+         agg::gradient_radial gradient_func;
 
-         if (State.mClipStack->empty()) {
-            agg::scanline_u8 scanline;
-            agg::render_scanlines(Raster, scanline, solidrender_gradient);
+         if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
+            agg::gradient_reflect_adaptor<agg::gradient_radial> spread_method(gradient_func);
+            lambda(spread_method, radial_col_span);
          }
-         else { // Masked gradient
-            agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
-            agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
-
-            agg::render_scanlines(Raster, masked_scanline, solidrender_gradient);
+         else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
+            agg::gradient_repeat_adaptor<agg::gradient_radial> spread_method(gradient_func);
+            lambda(spread_method, radial_col_span);
          }
+         else lambda(gradient_func, radial_col_span);
       }
       else {
          // Radial gradient with a displaced focal point (uses agg::gradient_radial_focus).  NB: In early versions of
-         // the SVG standard, the focal point had to be within the radius.  Later specifications allowed it to
-         // be placed outside of the radius.
+         // the SVG standard, the focal point had to be within the base radius.  Later specifications allowed it to
+         // be placed outside of that radius.
 
-         DOUBLE fix_radius = Gradient.Radius;
-         if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-            fix_radius *= (c_width + c_height) * 0.5; // Use the average radius of the ellipse.
-         }
-         DOUBLE radial_col_span = fix_radius;
+         DOUBLE radial_col_span = Gradient.Radius;
+         DOUBLE focal_radius = Gradient.FocalRadius;
+         if (focal_radius <= 0) focal_radius = Gradient.Radius;
 
-         if (Gradient.Units IS VUNIT::USERSPACE) {
-            if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-               const DOUBLE scale = radial_col_span * Gradient.Radius;
-               transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
+         if (Gradient.Units IS VUNIT::USERSPACE) { // Coordinates are relative to the viewport
+            if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) { // Gradient is a ratio of the viewport's dimensions
+               radial_col_span = (ViewWidth + ViewHeight) * radial_col_span * 0.5;
+               focal_radius = (ViewWidth + ViewHeight) * focal_radius * 0.5;
             }
-            else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
          }
-         else { // Bounding box
+         else { // Coordinates are scaled to the bounding box
             if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
                // Set radial_col_span to the wider of the width/height
                if (c_height > c_width) {
-                  radial_col_span = c_height * Gradient.Radius;
-                  transform.scale(c_width / c_height, 1.0);
+                  radial_col_span = c_height * radial_col_span;
+                  focal_radius = c_height * focal_radius;
+                  transform.scaleX(c_width / c_height);
                }
                else {
-                  radial_col_span = c_width * Gradient.Radius;
-                  transform.scale(1.0, c_height / c_width);
+                  radial_col_span = c_width * radial_col_span;
+                  focal_radius = c_width * focal_radius;
+                  transform.scaleY(c_height / c_width);
                }
             }
-            else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
+            else {
+               //transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01 / radial_col_span);
+            }
          }
 
-         agg::gradient_radial_focus gradient_func(fix_radius, f.x - c.x, f.y - c.y);
+         // Changing the focal radius allows the client to increase or decrease the border to which the focal 
+         // calculations are being made.  If not supported by the underlying implementation (e.g. SVG) then
+         // it must match the base radius.
 
-         typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_radial_focus, color_array_type> span_gradient_type;
-         typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-         span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, fix_radius);
-         renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
-
-         transform.translate(c);
+         agg::gradient_radial_focus gradient_func(focal_radius, f.x - c.x, f.y - c.y);
+         
+         transform.translate(c.x, c.y);
          apply_transforms(Gradient, transform);
          transform *= Transform;
          transform.invert();
-
-         if (State.mClipStack->empty()) {
-            agg::scanline_u8 scanline;
-            agg::render_scanlines(Raster, scanline, solidrender_gradient);
+         
+         if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
+            agg::gradient_reflect_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
+            lambda(spread_method, radial_col_span);
          }
-         else { // Masked gradient
-            agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
-            agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
-
-            agg::render_scanlines(Raster, masked_scanline, solidrender_gradient);
+         else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
+            agg::gradient_repeat_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
+            lambda(spread_method, radial_col_span);
          }
+         else lambda(gradient_func, radial_col_span);
       }
    }
    else if (Gradient.Type IS VGT::DIAMOND) {

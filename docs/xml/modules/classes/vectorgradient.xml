@@ -58,26 +58,6 @@
     </field>
 
     <field>
-      <name>FX</name>
-      <comment>The horizontal focal point for radial gradients.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>DOUBLE</type>
-      <description>
-<p>The <code>(FX, FY)</code> coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>FY</name>
-      <comment>The vertical focal point for radial gradients.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>DOUBLE</type>
-      <description>
-<p>The <code>(FX, FY)</code> coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Flags</name>
       <comment>Dimension flags are stored here.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -89,12 +69,43 @@
     </field>
 
     <field>
+      <name>FocalRadius</name>
+      <comment>The size of the focal radius for radial gradients.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>If a radial gradient has a defined focal point (by setting <fl>FocalX</fl> and <fl>FocalY</fl>) then the FocalRadius can be used to adjust the size of the focal area.  The default of zero ensures that the focal area matches that defined by <fl>Radius</fl>, which is the standard maintained by SVG.</p>
+<p>The FocalRadius value has no effect if the gradient is linear.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FocalX</name>
+      <comment>The horizontal focal point for radial gradients.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The <code>(FX, FY)</code> coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FocalY</name>
+      <comment>The vertical focal point for radial gradients.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The <code>(FX, FY)</code> coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
+      </description>
+    </field>
+
+    <field>
       <name>ID</name>
       <comment>String identifier for a vector.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the existing object name and automatically assigned ID's for identifiers.</p>
+<p>The ID field is provided for the purpose of SVG support.  Where possible, we recommend that you use the existing object name and automatically assigned ID's for identifiers.</p>
       </description>
     </field>
 
@@ -136,7 +147,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The radius of the gradient can be defined in fixed units or scaled terms to its container.  A default radius of 50% (0.5) applies if this field is not set.</p>
+<p>The radius of the gradient can be defined as a fixed unit or scaled relative to its container.  A default radius of 50% (0.5) applies if this field is not set.</p>
 <p>The Radius value has no effect if the gradient is linear.</p>
       </description>
     </field>
@@ -147,7 +158,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSPREAD">VSPREAD</type>
       <description>
-<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD::PAD</code>.</p>
+<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD::PAD</code>.  Other valid options for gradients are <code>REFLECT</code> and <code>REPEAT</code>.</p>
 <types lookup="VSPREAD"/>
       </description>
     </field>
@@ -259,15 +270,17 @@
     <constants lookup="VGF" comment="Gradient flags">
       <const name="FIXED_CX">CX is fixed</const>
       <const name="FIXED_CY">CY is fixed</const>
+      <const name="FIXED_FOCAL_RADIUS">Focal radius is fixed</const>
       <const name="FIXED_FX">FX is fixed</const>
       <const name="FIXED_FY">FY is fixed</const>
-      <const name="FIXED_RADIUS">is fixed</const>
+      <const name="FIXED_RADIUS">Radius is fixed</const>
       <const name="FIXED_X1">X1 is fixed</const>
       <const name="FIXED_X2">X2 is fixed</const>
       <const name="FIXED_Y1">Y1 is fixed</const>
       <const name="FIXED_Y2">Y2 is fixed</const>
       <const name="SCALED_CX">CX is scaled</const>
       <const name="SCALED_CY">CY is scaled</const>
+      <const name="SCALED_FOCAL_RADIUS">Focal radius is scaled</const>
       <const name="SCALED_FX">FX is scaled</const>
       <const name="SCALED_FY">FY is scaled</const>
       <const name="SCALED_RADIUS">Radius is scaled</const>

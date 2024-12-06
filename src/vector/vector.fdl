@@ -226,6 +226,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, times
     "SCALED_FX: FX is scaled",
     "SCALED_FY: FY is scaled",
     "SCALED_RADIUS: Radius is scaled",
+    "SCALED_FOCAL_RADIUS: Focal radius is scaled",
     "FIXED_X1: X1 is fixed",
     "FIXED_Y1: Y1 is fixed",
     "FIXED_X2: X2 is fixed",
@@ -234,7 +235,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, times
     "FIXED_CY: CY is fixed",
     "FIXED_FX: FX is fixed",
     "FIXED_FY: FY is fixed",
-    "FIXED_RADIUS: is fixed")
+    "FIXED_RADIUS: Radius is fixed",
+    "FIXED_FOCAL_RADIUS: Focal radius is fixed")
 
   flags("VPF", { comment="Optional flags for the VectorScene object." },
     "BITMAP_SIZED: Automatically adjust the @VectorScene.PageWidth and @VectorScene.PageHeight to match the target @Bitmap.Width and @Bitmap.Height.",
@@ -444,9 +446,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, times
     double Y2                    # Ending Y of the gradient 'line'
     double CenterX               # Center X coordinate of radial gradient shapes.
     double CenterY               # Center Y coordinate of radial gradient shapes.
-    double FX                    # Focal X coordinate for radial gradient shapes.
-    double FY                    # Focal Y coordinate for radial gradient shapes.
-    double Radius                # The size of a radial gradient radius.
+    double FocalX                # Focal X coordinate for radial gradient shapes.
+    double FocalY                # Focal Y coordinate for radial gradient shapes.
+    double Radius                # The radius size for radial gradients.
+    double FocalRadius           # The size of the focal radius for radial gradients.
     obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes.
     int(VSPREAD) SpreadMethod    # Defines the spread method to use for gradient fills.
     int(VUNIT) Units             # Defines the coordinate system for `(X1, Y1), (X2, Y2)`

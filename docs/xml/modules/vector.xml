@@ -810,15 +810,17 @@ Z: Close Path
     <constants lookup="VGF" comment="Gradient flags">
       <const name="FIXED_CX">CX is fixed</const>
       <const name="FIXED_CY">CY is fixed</const>
+      <const name="FIXED_FOCAL_RADIUS">Focal radius is fixed</const>
       <const name="FIXED_FX">FX is fixed</const>
       <const name="FIXED_FY">FY is fixed</const>
-      <const name="FIXED_RADIUS">is fixed</const>
+      <const name="FIXED_RADIUS">Radius is fixed</const>
       <const name="FIXED_X1">X1 is fixed</const>
       <const name="FIXED_X2">X2 is fixed</const>
       <const name="FIXED_Y1">Y1 is fixed</const>
       <const name="FIXED_Y2">Y2 is fixed</const>
       <const name="SCALED_CX">CX is scaled</const>
       <const name="SCALED_CY">CY is scaled</const>
+      <const name="SCALED_FOCAL_RADIUS">Focal radius is scaled</const>
       <const name="SCALED_FX">FX is scaled</const>
       <const name="SCALED_FY">FY is scaled</const>
       <const name="SCALED_RADIUS">Radius is scaled</const>
