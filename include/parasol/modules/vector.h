@@ -401,15 +401,17 @@ enum class VGF : ULONG {
    SCALED_FX = 0x00000040,
    SCALED_FY = 0x00000080,
    SCALED_RADIUS = 0x00000100,
-   FIXED_X1 = 0x00000200,
-   FIXED_Y1 = 0x00000400,
-   FIXED_X2 = 0x00000800,
-   FIXED_Y2 = 0x00001000,
-   FIXED_CX = 0x00002000,
-   FIXED_CY = 0x00004000,
-   FIXED_FX = 0x00008000,
-   FIXED_FY = 0x00010000,
-   FIXED_RADIUS = 0x00020000,
+   SCALED_FOCAL_RADIUS = 0x00000200,
+   FIXED_X1 = 0x00000400,
+   FIXED_Y1 = 0x00000800,
+   FIXED_X2 = 0x00001000,
+   FIXED_Y2 = 0x00002000,
+   FIXED_CX = 0x00004000,
+   FIXED_CY = 0x00008000,
+   FIXED_FX = 0x00010000,
+   FIXED_FY = 0x00020000,
+   FIXED_RADIUS = 0x00040000,
+   FIXED_FOCAL_RADIUS = 0x00080000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(VGF)
@@ -941,9 +943,10 @@ class objVectorGradient : public Object {
    DOUBLE  Y2;                     // Final Y coordinate for the gradient.
    DOUBLE  CenterX;                // The horizontal center point of the gradient.
    DOUBLE  CenterY;                // The vertical center point of the gradient.
-   DOUBLE  FX;                     // The horizontal focal point for radial gradients.
-   DOUBLE  FY;                     // The vertical focal point for radial gradients.
+   DOUBLE  FocalX;                 // The horizontal focal point for radial gradients.
+   DOUBLE  FocalY;                 // The vertical focal point for radial gradients.
    DOUBLE  Radius;                 // The radius of the gradient.
+   DOUBLE  FocalRadius;            // The size of the focal radius for radial gradients.
    objVectorGradient * Inherit;    // Inherit attributes from the VectorGradient referenced here.
    VSPREAD SpreadMethod;           // The behaviour to use when the gradient bounds do not match the vector path.
    VUNIT   Units;                  // Defines the coordinate system for X1, Y1, X2 and Y2.
@@ -960,70 +963,77 @@ class objVectorGradient : public Object {
 
    inline ERR setX1(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[3];
+      auto field = &this->Class->Dictionary[5];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY1(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[7];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setX2(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[6];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY2(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[8];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[23];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[24];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setFX(const DOUBLE Value) noexcept {
+   inline ERR setFocalX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[0];
+      auto field = &this->Class->Dictionary[28];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setFY(const DOUBLE Value) noexcept {
+   inline ERR setFocalY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[1];
+      auto field = &this->Class->Dictionary[29];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setRadius(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[16];
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
+   }
+
+   inline ERR setFocalRadius(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setInherit(objVectorGradient * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -1057,31 +1067,31 @@ class objVectorGradient : public Object {
 
    inline ERR setMatrices(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, 0x08000318, Value, 1);
    }
 
    inline ERR setNumeric(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    template <class T> inline ERR setID(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[2];
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setStops(const APTR Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
    }
 
    template <class T> inline ERR setTransform(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
    }
 

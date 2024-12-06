@@ -351,14 +351,6 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
    if (!userinput.Timestamp) userinput.Timestamp = PreciseTime();
 
-   // All X/Y movement passed through the pointer object must be expressed in absolute coordinates.
-
-   if ((userinput.Type IS JET::DIGITAL_XY) or (userinput.Type IS JET::ANALOG_XY)) {
-      userinput.Type = JET::ABS_XY;
-      userinput.X += Self->X;
-      userinput.Y += Self->Y;
-   }
-
    bool moved = false, underlying_change = false;
    DOUBLE current_x = Self->X;
    DOUBLE current_y = Self->Y;

@@ -520,14 +520,12 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
 
 ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements)
 {
-   pf::Log log("GetField");
-
    //log.msg("[%s:%d] Name: %s, Flags: $%x", ((extMetaClass *)Object->Class)->Name, Object->UID, Field->Name, DestFlags);
 
    BYTE value[16]; // 128 bits of space
    APTR data;
    LONG array_size = -1;
-   LONG srcflags = Field->Flags;
+   auto srcflags = Field->Flags;
 
    if (!(DestFlags & (FD_UNIT|FD_LARGE|FD_LONG|FD_DOUBLE|FD_POINTER|FD_STRING|FD_ARRAY))) goto mismatch;
 
@@ -622,6 +620,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
       }
       else {
          if (array_size IS -1) {
+            pf::Log log("GetField");
             log.warning("Array sizing not supported for field %s", Field->Name);
             return ERR::Failed;
          }
@@ -732,13 +731,14 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
       else goto mismatch;
    }
    else {
-      log.warning("I dont recognise field flags of $%.8x.", srcflags);
-      return ERR::UnrecognisedFieldType;
+      pf::Log log("GetField");
+      return log.warning(ERR::UnrecognisedFieldType);
    }
 
    return ERR::Okay;
 
 mismatch:
+   pf::Log log("GetField");
    log.warning("Mismatch while reading %s.%s (field $%.8x, requested $%.8x).", Object->className(), Field->Name, Field->Flags, DestFlags);
    return ERR::FieldTypeMismatch;
 }

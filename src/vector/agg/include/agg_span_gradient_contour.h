@@ -83,14 +83,14 @@ namespace agg
 	static AGG_INLINE int square(int x) { return x * x; }
 
 	// DT algorithm by: Pedro Felzenszwalb
-	void dt(float *spanf, float *spang, float *spanr, int *spann, int length)
+	void dt(double *spanf, double *spang, double *spanr, int *spann, int length)
 	{
 		int k = 0;
-		float s;
+		double s;
 
 		spann[0] = 0;
-		spang[0] = float(-infinity);
-		spang[1] = float(+infinity);
+		spang[0] = double(-infinity);
+		spang[1] = double(+infinity);
 
 		for (int q = 1; q <= length - 1; q++) {
 			s = ((spanf[q ] + square(q)) - (spanf[spann[k]] + square(spann[k]))) / (2 * q - 2 * spann[k]);
@@ -103,7 +103,7 @@ namespace agg
 			k++;
 			spann[k ] = q;
 			spang[k ] = s;
-			spang[k + 1 ] = float(+infinity);
+			spang[k + 1 ] = double(+infinity);
 		}
 
 		k = 0;
@@ -155,25 +155,25 @@ namespace agg
 
 				   // II. Distance Transform
 				   // Create Float Buffer + 0 vs infinity (1e20) assignment
-					float *image = new float[width * height];
+					double *image = new double[width * height];
 
 					if (image) {
 						for (int y=0, l=0; y < height; y++) {
 							for (int x=0; x < width; x++, l++) {
 								if (buffer[l] == 0) image[l] = 0.0;
-								else image[l] = float(infinity);
+								else image[l] = double(infinity);
 							}
 						}
 
 					   // DT of 2d
-					   // SubBuff<float> max width,height
+					   // SubBuff<double> max width,height
 						int length = width;
 
 						if (height > length) length = height;
 
-						float *spanf = new float[length];
-						float *spang = new float[length + 1];
-						float *spanr = new float[length];
+						double *spanf = new double[length];
+						double *spang = new double[length + 1];
+						double *spanr = new double[length];
 						int   *spann = new int[length];
 
 						if ((spanf) and (spang) and (spanr) and (spann)) {

@@ -199,7 +199,7 @@ gui.window = function(Options)
 
    self.maximise = function(self, Toggle)
       if not self.maximiseEnabled then
-         msg("Maximisation for this window is turned off.")
+         msg('Maximisation for this window is turned off.')
          return
       end
 
@@ -301,10 +301,10 @@ gui.window = function(Options)
 
    -- Main entry point --
 
-   self._desktop = obj.find("desktop")
+   self._desktop = obj.find('desktop')
 
    self.surface = obj.new('surface', {
-      name      = "winsurface",
+      name      = 'winsurface',
       parent    = self._desktop,
       width     = nz(Options.width, DEFAULT_WIDTH),
       height    = nz(Options.height, DEFAULT_HEIGHT),
@@ -333,6 +333,10 @@ gui.window = function(Options)
          return flags
       end)()
    })
+
+   if Options.enableControllers then
+      self.surface.display.flags = bit.bor(self.surface.display.flags, SCR_GRAB_CONTROLLERS)
+   end
 
    if Options.x then
       self.surface.x = Options.x

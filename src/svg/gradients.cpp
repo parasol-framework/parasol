@@ -37,7 +37,7 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
          stop.RGB.Blue  = 0;
          stop.RGB.Alpha = 0;
 
-         for (LONG a=1; a < LONG(scan.Attribs.size()); a++) {
+         for (LONG a=1; a < std::ssize(scan.Attribs); a++) {
             auto &name  = scan.Attribs[a].Name;
             auto &value = scan.Attribs[a].Value;
             if (value.empty()) continue;

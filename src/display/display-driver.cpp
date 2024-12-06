@@ -105,7 +105,6 @@ static void android_term_window(LONG);
 
 const InputType glInputType[LONG(JET::END)] = {
    { JTYPE::NIL, JTYPE::NIL },                                         // UNUSED
-   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET::DIGITAL_XY
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_1
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_2
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_3
@@ -116,33 +115,20 @@ const InputType glInputType[LONG(JET::END)] = {
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_8
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_9
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_10
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::TRIGGER_LEFT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::TRIGGER_RIGHT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_START
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_SELECT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_1
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_2
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_1
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_2
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_XY
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_Z
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_XY
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_Z
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL_TILT
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_XY
-   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET::ABS_XY
-   { JTYPE::CROSSING,               JTYPE::CROSSING },    // JET::CROSSING_IN
-   { JTYPE::CROSSING,               JTYPE::CROSSING },    // JET::CROSSING_OUT
+   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },     // JET::ABS_XY
+   { JTYPE::CROSSING,               JTYPE::CROSSING },     // JET::CROSSING_IN
+   { JTYPE::CROSSING,               JTYPE::CROSSING },     // JET::CROSSING_OUT
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PRESSURE
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_XY
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_Z
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }     // JET::DISPLAY_EDGE
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }  // JET::DISPLAY_EDGE
 };
 
 const CSTRING glInputNames[LONG(JET::END)] = {
    "",
-   "DIGITAL_XY",
    "BUTTON_1",
    "BUTTON_2",
    "BUTTON_3",
@@ -153,18 +139,6 @@ const CSTRING glInputNames[LONG(JET::END)] = {
    "BUTTON_8",
    "BUTTON_9",
    "BUTTON_10",
-   "TRIGGER_LEFT",
-   "TRIGGER_RIGHT",
-   "BUTTON_START",
-   "BUTTON_SELECT",
-   "LEFT_BUMPER_1",
-   "LEFT_BUMPER_2",
-   "RIGHT_BUMPER_1",
-   "RIGHT_BUMPER_2",
-   "ANALOG_XY",
-   "ANALOG_Z",
-   "ANALOG2_XY",
-   "ANALOG2_Z",
    "WHEEL",
    "WHEEL_TILT",
    "PEN_TILT_XY",
@@ -207,7 +181,7 @@ struct CoreBase *CoreBase;
 ColourFormat glColourFormat;
 bool glHeadless = false;
 OBJECTPTR glModule = NULL;
-OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL;
+OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL, clController = NULL;
 OBJECTID glPointerID = 0;
 DISPLAYINFO glDisplayInfo;
 APTR glDither = NULL;
@@ -222,6 +196,7 @@ LONG glpMaximise = FALSE, glpFullScreen = FALSE;
 SWIN glpWindowType = SWIN::HOST;
 char glpDPMS[20] = "Standby";
 UBYTE *glDemultiply = NULL;
+int glLastPort = -1;
 
 std::vector<OBJECTID> glFocusList;
 std::recursive_mutex glFocusLock;
@@ -847,6 +822,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       create_bitmap_class();
       create_clipboard_class();
       create_surface_class();
+      create_controller_class();
       return ERR::Okay;
    }
 #endif
@@ -1085,6 +1061,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (create_bitmap_class() != ERR::Okay) return log.warning(ERR::AddClass);
    if (create_clipboard_class() != ERR::Okay) return log.warning(ERR::AddClass);
    if (create_surface_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_controller_class() != ERR::Okay) return log.warning(ERR::AddClass);
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.
 
@@ -1256,6 +1233,7 @@ static ERR MODExpunge(void)
    if (clBitmap)      { FreeResource(clBitmap);      clBitmap      = NULL; }
    if (clClipboard)   { FreeResource(clClipboard);   clClipboard   = NULL; }
    if (clSurface)     { FreeResource(clSurface);     clSurface     = NULL; }
+   if (clController)  { FreeResource(clController);  clController  = NULL; }
 
    #ifdef _GLES_
       free_egl();

@@ -8,7 +8,7 @@
     <module>XML</module>
     <comment>Provides XML data management services.</comment>
     <fileExtension>*.xml</fileExtension>
-    <fileDescription>XML File</fileDescription>
+    <fileDescription>Extendable Markup Language (XML)</fileDescription>
     <version>1</version>
     <id>0b88bfd6</id>
     <idstring>ID_XML</idstring>

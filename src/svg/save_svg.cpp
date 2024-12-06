@@ -96,10 +96,10 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
                   set_dimension(tag, "cy", gradient->CenterY, (gradient->Flags & VGF::SCALED_CY) != VGF::NIL);
 
                if ((error IS ERR::Okay) and ((gradient->Flags & (VGF::FIXED_FX|VGF::SCALED_FX)) != VGF::NIL))
-                  set_dimension(tag, "fx", gradient->FX, (gradient->Flags & VGF::SCALED_FX) != VGF::NIL);
+                  set_dimension(tag, "fx", gradient->FocalX, (gradient->Flags & VGF::SCALED_FX) != VGF::NIL);
 
                if ((error IS ERR::Okay) and ((gradient->Flags & (VGF::FIXED_FY|VGF::SCALED_FY)) != VGF::NIL))
-                  set_dimension(tag, "fy", gradient->FY, (gradient->Flags & VGF::SCALED_FY) != VGF::NIL);
+                  set_dimension(tag, "fy", gradient->FocalY, (gradient->Flags & VGF::SCALED_FY) != VGF::NIL);
 
                if ((error IS ERR::Okay) and ((gradient->Flags & (VGF::FIXED_RADIUS|VGF::SCALED_RADIUS)) != VGF::NIL))
                   set_dimension(tag, "r", gradient->Radius, (gradient->Flags & VGF::SCALED_RADIUS) != VGF::NIL);

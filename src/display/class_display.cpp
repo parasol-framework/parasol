@@ -1955,25 +1955,9 @@ If the display is hosted in a client window, the BottomMargin indicates the numb
 and the bottom window edge.
 
 -FIELD-
-CertificationDate: String describing the date of the graphics driver's certification.
-
-The string in this field describes the date on which the graphics card driver was certified.  If this information is
-not available from the driver, a `NULL` pointer is returned.
-
-*********************************************************************************************************************/
-
-static ERR GET_CertificationDate(extDisplay *Self, STRING *Value)
-{
-   *Value = Self->CertificationDate;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
--FIELD-
 Chipset: String describing the graphics chipset.
 
-The string in this field describes the graphic card's chipset.  If this information is not retrievable, a `NULL`
-pointer is returned.
+This string describes the graphic card's chipset, if known.
 
 *********************************************************************************************************************/
 
@@ -2127,8 +2111,7 @@ static ERR SET_VDensity(extDisplay *Self, LONG Value)
 -FIELD-
 Display: String describing the display (e.g. model name of the monitor).
 
-The string in this field describes the display device that is connected to the user's graphics card.  If this
-information is not detectable, a `NULL` pointer is returned.
+This string describes the display device that is connected to the user's graphics card.
 
 *********************************************************************************************************************/
 
@@ -2144,8 +2127,7 @@ static ERR GET_Display(extDisplay *Self, CSTRING *Value)
 -FIELD-
 DisplayManufacturer: String describing the display manufacturer.
 
-The string in this field returns the name of the manufacturer that created the user's display device.  If this
-information is not detectable, a `NULL` pointer is returned.
+This string names the manufacturer of the user's display device.
 
 *********************************************************************************************************************/
 
@@ -2165,56 +2147,6 @@ If the display is hosted in a client window, the #BottomMargin indicates the num
 and the bottom window edge.
 
 -FIELD-
-DriverCopyright: String containing copyright information on the graphics driver software.
-
-The string in this field returns copyright information related to the graphics driver.  If this information is not
-available, a `NULL` pointer is returned.
-
-*********************************************************************************************************************/
-
-static ERR GET_DriverCopyright(extDisplay *Self, CSTRING *Value)
-{
-   if (Self->DriverCopyright[0]) *Value = Self->DriverCopyright;
-   else *Value = NULL;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-DriverVersion: String describing the version of the graphics hardware driver.
-
-The string in this field describes the graphic driver's version number. If this information is not detectable, a `NULL`
-pointer is returned.
-
-*********************************************************************************************************************/
-
-static ERR GET_DriverVersion(extDisplay *Self, CSTRING *Value)
-{
-   if (Self->DriverVersion[0]) *Value = Self->DriverVersion;
-   else *Value = NULL;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-DriverVendor: String describing the vendor of the graphics driver.
-
-The string in this field returns the name of the vendor that supplied the graphics card driver.  If this information is
-not available, a `NULL` pointer is returned.
-
-*********************************************************************************************************************/
-
-static ERR GET_DriverVendor(extDisplay *Self, CSTRING *Value)
-{
-   *Value = Self->DriverVendor;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Flags: Optional flag settings.
 
 Optional display flags can be defined here.  Post-initialisation, the only flags that can be set are `AUTO_SAVE` and
@@ -2229,7 +2161,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
    if (Self->initialised()) {
       // Only flags that are explicitly supported here may be set post-initialisation.
 
-      #define ACCEPT_FLAGS (SCR::AUTO_SAVE)
+      static const SCR ACCEPT_FLAGS = SCR::AUTO_SAVE|SCR::GRAB_CONTROLLERS;
       auto accept = Value & ACCEPT_FLAGS;
       Self->Flags = (Self->Flags & (~ACCEPT_FLAGS)) | accept;
 
@@ -2864,6 +2796,7 @@ void alloc_display_buffer(extDisplay *Self)
 #include "class_display_def.c"
 
 static const FieldArray DisplayFields[] = {
+   // Re-compile the FDL if making changes
    { "RefreshRate",    FDF_DOUBLE|FDF_RW, NULL, SET_RefreshRate },
    { "Bitmap",         FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::BITMAP },
    { "Flags",          FDF_LONGFLAGS|FDF_RW, NULL, SET_Flags, &clDisplayFlags },
@@ -2887,16 +2820,12 @@ static const FieldArray DisplayFields[] = {
    { "TopMargin",      FDF_LONG|FDF_R },
    { "BottomMargin",   FDF_LONG|FDF_R },
    // Virtual fields
-   { "CertificationDate",   FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_CertificationDate },
    { "Chipset",             FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Chipset },
    { "Gamma",               FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RI, GET_Gamma, SET_Gamma },
    { "HDensity",            FDF_VIRTUAL|FDF_LONG|FDF_RW,     GET_HDensity, SET_HDensity },
    { "VDensity",            FDF_VIRTUAL|FDF_LONG|FDF_RW,     GET_VDensity, SET_VDensity },
    { "Display",             FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Display },
    { "DisplayManufacturer", FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DisplayManufacturer },
-   { "DriverCopyright",     FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DriverCopyright },
-   { "DriverVendor",        FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DriverVendor },
-   { "DriverVersion",       FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DriverVersion },
    { "InsideWidth",         FDF_VIRTUAL|FDF_LONG|FDF_R,      GET_InsideWidth },
    { "InsideHeight",        FDF_VIRTUAL|FDF_LONG|FDF_R,      GET_InsideHeight },
    { "Manufacturer",        FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Manufacturer },

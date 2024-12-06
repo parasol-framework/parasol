@@ -984,36 +984,23 @@ the surface area first).</li>
 
     <constants lookup="JET" comment="JET constants are documented in GetInputEvent()">
       <const name="ABS_XY">The X, Y values are defined as absolute coordinates, relative to the top-left of the display.</const>
-      <const name="ANALOG2_XY">As for <code>ANALOG_XY</code>, this type covers a second analog stick if present.</const>
-      <const name="ANALOG2_Z">As for <code>ANALOG_Z</code>, this type covers a second analog stick if present.</const>
-      <const name="ANALOG_XY">Position for the default analog control (on gamepads this is the left analog control).  Analog values range between -1.0 and 1.0.  A value of zero indicates that the control is at rest.</const>
-      <const name="ANALOG_Z">3D or yoke position for the default analog control.  A negative value indicates that the control has been pulled out and a positive value indicates that it has been pushed in.</const>
-      <const name="BUTTON_1">Left mouse button, XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
+      <const name="BUTTON_1">Left mouse button; XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
       <const name="BUTTON_10">Non-specific button assignment.</const>
-      <const name="BUTTON_2">Right mouse button, XBox X button, PS cross button.</const>
-      <const name="BUTTON_3">Middle mouse button, XBox Y button, PS triangle.</const>
-      <const name="BUTTON_4">XBox B button, PS circle.</const>
-      <const name="BUTTON_5">Left analog stick depressed.</const>
-      <const name="BUTTON_6">Right analog stick depressed.</const>
+      <const name="BUTTON_2">Right mouse button; XBox X button, PS cross button.</const>
+      <const name="BUTTON_3">Middle mouse button; XBox Y button, PS triangle.</const>
+      <const name="BUTTON_4">Alt. mouse button 1; XBox B button, PS circle.</const>
+      <const name="BUTTON_5">Alt. mouse button 2.</const>
+      <const name="BUTTON_6">Non-specific button assignment.</const>
       <const name="BUTTON_7">Non-specific button assignment.</const>
       <const name="BUTTON_8">Non-specific button assignment.</const>
       <const name="BUTTON_9">Non-specific button assignment.</const>
-      <const name="BUTTON_SELECT">Gamepad select button - value is 0 or 1.</const>
-      <const name="BUTTON_START">Gamepad start button - value is 0 or 1.</const>
       <const name="CROSSED_IN">This message is sent by the input system when the mouse pointer enters an area for the first time.  The message value refers to the object ID of the container being monitored for movement.</const>
       <const name="CROSSED_OUT">This message is sent by the input system when the mouse pointer leaves an area.  The message value refers to the object ID of the container being monitored for movement.</const>
       <const name="DEVICE_TILT_XY">Controller tilted on the X/Y axis.  Value indicates angle, -ve = left, +ve = right</const>
       <const name="DEVICE_TILT_Z">Controller is rising or falling.  Value expressed as 'speed',</const>
-      <const name="DIGITAL_XY">Digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.</const>
       <const name="DISPLAY_EDGE">Recently supplied input occurred at the edge of the display.</const>
-      <const name="LEFT_BUMPER_1">Gamepad left-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
-      <const name="LEFT_BUMPER_2">Gamepad left-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
       <const name="PEN_TILT_XY">For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</const>
       <const name="PRESSURE">Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough</const>
-      <const name="RIGHT_BUMPER_1">Gamepad right-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
-      <const name="RIGHT_BUMPER_2">Gamepad right-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
-      <const name="TRIGGER_LEFT">Gamepad left-hand trigger - value is between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
-      <const name="TRIGGER_RIGHT">Gamepad right-hand trigger.</const>
       <const name="WHEEL">Mouse wheel rotation - the value generally reflects the number of 'clicks' rotated on the wheel.</const>
       <const name="WHEEL_TILT">Some mouse wheels can be tilted to the left or right.  Ranges from -1.0 to +1.0</const>
     </constants>
