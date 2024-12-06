@@ -293,8 +293,8 @@ static ERR VECTORGRADIENT_SET_FocalRadius(extVectorGradient *Self, Unit &Value)
 -FIELD-
 FocalX: The horizontal focal point for radial gradients.
 
-The `(FX, FY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the
-center of the gradient.
+The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point 
+will match the center of the gradient.
 
 *********************************************************************************************************************/
 
@@ -318,8 +318,8 @@ static ERR VECTORGRADIENT_SET_FocalX(extVectorGradient *Self, Unit &Value)
 -FIELD-
 FocalY: The vertical focal point for radial gradients.
 
-The `(FX, FY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the
-center of the gradient.
+The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point 
+will match the center of the gradient.
 
 *********************************************************************************************************************/
 
@@ -714,7 +714,7 @@ static const FieldArray clGradientFields[] = {
    { "Inherit",      FDF_OBJECT|FDF_RW, NULL, VECTORGRADIENT_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientSpreadMethod },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &clVectorGradientUnits },
-   { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &clVectorGradientType },
+   { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientType },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clVectorGradientFlags },
    { "ColourSpace",  FDF_LONG|FDF_RI, NULL, NULL, &clVectorGradientColourSpace },
    { "TotalStops",   FDF_LONG|FDF_R },
