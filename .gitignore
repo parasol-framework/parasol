@@ -72,3 +72,5 @@ debug-mod/
 local-mod/
 local-gdb/
 out/
+3rdparty/blend2d/
+3rdparty/blend2d-apps/
