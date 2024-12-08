@@ -618,6 +618,7 @@ static ERR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Unit &Value)
    if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_X1) & (~VGF::FIXED_X1);
    else Self->Flags = (Self->Flags | VGF::FIXED_X1) & (~VGF::SCALED_X1);
    Self->X1 = Value;
+   Self->CalcAngle = true;
    return ERR::Okay;
 }
 
@@ -643,6 +644,7 @@ static ERR VECTORGRADIENT_SET_X2(extVectorGradient *Self, Unit &Value)
    if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_X2) & (~VGF::FIXED_X2);
    else Self->Flags = (Self->Flags | VGF::FIXED_X2) & (~VGF::SCALED_X2);
    Self->X2 = Value;
+   Self->CalcAngle = true;
    return ERR::Okay;
 }
 
@@ -668,6 +670,7 @@ static ERR VECTORGRADIENT_SET_Y1(extVectorGradient *Self, Unit &Value)
    if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_Y1) & (~VGF::FIXED_Y1);
    else Self->Flags = (Self->Flags | VGF::FIXED_Y1) & (~VGF::SCALED_Y1);
    Self->Y1 = Value;
+   Self->CalcAngle = true;
    return ERR::Okay;
 }
 
@@ -693,6 +696,7 @@ static ERR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Unit &Value)
    if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_Y2) & (~VGF::FIXED_Y2);
    else Self->Flags = (Self->Flags | VGF::FIXED_Y2) & (~VGF::SCALED_Y2);
    Self->Y2 = Value;
+   Self->CalcAngle = true;
    return ERR::Okay;
 }
 
