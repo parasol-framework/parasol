@@ -61,19 +61,19 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
 // Path: The original vector path without transforms.
 // Transform: Transforms to be applied to the path and to align the image.
 
-static void fill_image(VectorState &State, const TClipRectangle<DOUBLE> &Bounds, agg::path_storage &Path, VSM SampleMethod,
-   const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
+static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds, agg::path_storage &Path, VSM SampleMethod,
+   const agg::trans_affine &Transform, double ViewWidth, double ViewHeight,
    objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster, DOUBLE Alpha)
+   agg::rasterizer_scanline_aa<> &Raster, double Alpha)
 {
-   const DOUBLE c_width  = (Image.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
-   const DOUBLE c_height = (Image.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
-   const DOUBLE dx = Bounds.left + (dmf::hasScaledX(Image.Dimensions) ? (c_width * Image.X) : Image.X);
-   const DOUBLE dy = Bounds.top + (dmf::hasScaledY(Image.Dimensions) ? (c_height * Image.Y) : Image.Y);
+   const double c_width  = (Image.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
+   const double c_height = (Image.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
+   const double dx = Bounds.left + (dmf::hasScaledX(Image.Dimensions) ? (c_width * Image.X) : Image.X);
+   const double dy = Bounds.top + (dmf::hasScaledY(Image.Dimensions) ? (c_height * Image.Y) : Image.Y);
 
    Path.approximation_scale(Transform.scale());
 
-   DOUBLE x_scale, y_scale, x_offset, y_offset;
+   double x_scale, y_scale, x_offset, y_offset;
    calc_aspectratio("fill_image", Image.AspectRatio, c_width, c_height,
       Image.Bitmap->Width, Image.Bitmap->Height, &x_offset, &y_offset, &x_scale, &y_scale);
 
@@ -100,28 +100,29 @@ static void fill_image(VectorState &State, const TClipRectangle<DOUBLE> &Bounds,
 // The Raster must contain the shape's path.
 // TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
 
-static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Bounds, agg::path_storage *Path,
-   const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight, const extVectorGradient &Gradient,
+static void fill_gradient(VectorState &State, const TClipRectangle<double> &Bounds, agg::path_storage *Path,
+   const agg::trans_affine &Transform, double ViewWidth, double ViewHeight, extVectorGradient &Gradient,
    GRADIENT_TABLE *Table, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
+   constexpr LONG MAX_SPAN = 256;
    typedef agg::span_interpolator_linear<> interpolator_type;
    typedef agg::span_allocator<agg::rgba8> span_allocator_type;
-   typedef agg::pod_auto_array<agg::rgba8, 256> color_array_type;
+   typedef agg::pod_auto_array<agg::rgba8, MAX_SPAN> color_array_type;
    typedef agg::renderer_base<agg::pixfmt_psl>  RENDERER_BASE_TYPE;
 
    agg::trans_affine   transform;
    interpolator_type   span_interpolator(transform);
    span_allocator_type span_allocator;
 
-   const DOUBLE c_width = Gradient.Units IS VUNIT::USERSPACE ? ViewWidth : Bounds.width();
-   const DOUBLE c_height = Gradient.Units IS VUNIT::USERSPACE ? ViewHeight : Bounds.height();
-   const DOUBLE x_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds.left;
-   const DOUBLE y_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds.top;
+   const double c_width = Gradient.Units IS VUNIT::USERSPACE ? ViewWidth : Bounds.width();
+   const double c_height = Gradient.Units IS VUNIT::USERSPACE ? ViewHeight : Bounds.height();
+   const double x_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds.left;
+   const double y_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds.top;
 
    Path->approximation_scale(Transform.scale());
 
-   auto render_gradient = [&]<typename S>(S SpreadMethod, DOUBLE Span) {
+   auto render_gradient = [&]<typename S>(S SpreadMethod, double Span) {
       typedef agg::span_gradient<agg::rgba8, interpolator_type, S, color_array_type> span_gradient_type;
       typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
 
@@ -140,47 +141,70 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
    };
 
    if (Gradient.Type IS VGT::LINEAR) {
-      TClipRectangle<DOUBLE> area;
+      auto span = MAX_SPAN;
+      if (Gradient.Units IS VUNIT::BOUNDING_BOX) {
+         // NOTE: In this mode we are mapping a 1x1 gradient square into the target path, which means
+         // the gradient is stretched into position as a square.  We don't map the (X,Y) points to the
+         // bounding box and draw point-to-point.
 
-      if ((Gradient.Flags & VGF::SCALED_X1) != VGF::NIL) area.left = x_offset + (c_width * Gradient.X1);
-      else area.left = x_offset + Gradient.X1;
+         const double x = x_offset + (c_width * Gradient.X1);
+         const double y = y_offset + (c_height * Gradient.Y1);
 
-      if ((Gradient.Flags & VGF::SCALED_X2) != VGF::NIL) area.right = x_offset + (c_width * Gradient.X2);
-      else area.right = x_offset + Gradient.X2;
+         if (Gradient.CalcAngle) {
+            const double dx = Gradient.X2 - Gradient.X1;
+            const double dy = Gradient.Y2 - Gradient.Y1;
+            Gradient.Angle     = atan2(dy, dx);
+            Gradient.Length    = sqrt((dx * dx) + (dy * dy));
+            Gradient.CalcAngle = false;        
+         }
 
-      if ((Gradient.Flags & VGF::SCALED_Y1) != VGF::NIL) area.top = y_offset + (c_height * Gradient.Y1);
-      else area.top = y_offset + Gradient.Y1;
+         transform.scale(Gradient.Length);
+         transform.rotate(Gradient.Angle);
+         transform.scale(c_width / span, c_height / span);
+         transform.translate(x, y);
+      }
+      else {
+         TClipRectangle<double> area;
+         if ((Gradient.Flags & VGF::SCALED_X1) != VGF::NIL) area.left = x_offset + (c_width * Gradient.X1);
+         else area.left = x_offset + Gradient.X1;
 
-      if ((Gradient.Flags & VGF::SCALED_Y2) != VGF::NIL) area.bottom = y_offset + (c_height * Gradient.Y2);
-      else area.bottom = y_offset + Gradient.Y2;
+         if ((Gradient.Flags & VGF::SCALED_X2) != VGF::NIL) area.right = x_offset + (c_width * Gradient.X2);
+         else area.right = x_offset + Gradient.X2;
 
-      // Calculate the gradient's transition from the point at (x1,y1) to (x2,y2)
+         if ((Gradient.Flags & VGF::SCALED_Y1) != VGF::NIL) area.top = y_offset + (c_height * Gradient.Y1);
+         else area.top = y_offset + Gradient.Y1;
 
-      const DOUBLE dx = area.width();
-      const DOUBLE dy = area.height();
-      transform.scale(sqrt((dx * dx) + (dy * dy)) / 256.0);
-      transform.rotate(atan2(dy, dx));
-      transform.translate(area.left, area.top);
+         if ((Gradient.Flags & VGF::SCALED_Y2) != VGF::NIL) area.bottom = y_offset + (c_height * Gradient.Y2);
+         else area.bottom = y_offset + Gradient.Y2;
+         
+         if (Gradient.CalcAngle) {
+            const double dx = area.width();
+            const double dy = area.height();
+            Gradient.Angle     = atan2(dy, dx);
+            Gradient.Length    = sqrt((dx * dx) + (dy * dy));
+            Gradient.CalcAngle = false;        
+         }
+
+         transform.scale(Gradient.Length / span);
+         transform.rotate(Gradient.Angle);
+         transform.translate(area.left, area.top);
+      }
+
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();
 
-      agg::gradient_x gradient_func; // gradient_x is a horizontal gradient with infinite height
-      typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_x, color_array_type> span_gradient_type;
-      typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-      span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, 0, 256);
-      renderer_gradient_type solidgrad(RenderBase, span_allocator, span_gradient);
+      agg::gradient_x gradient_func;
 
-      if (State.mClipStack->empty()) {
-         agg::scanline_u8 scanline;
-         agg::render_scanlines(Raster, scanline, solidgrad);
+      if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
+         agg::gradient_reflect_adaptor<agg::gradient_x> spread_method(gradient_func);
+         render_gradient(spread_method, span);
       }
-      else { // Masked gradient
-         agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
-         agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
-
-         agg::render_scanlines(Raster, masked_scanline, solidgrad);
+      else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
+         agg::gradient_repeat_adaptor<agg::gradient_x> spread_method(gradient_func);
+         render_gradient(spread_method, span);
       }
+      else render_gradient(gradient_func, span);
    }
    else if (Gradient.Type IS VGT::RADIAL) {
       agg::point_d c, f;
@@ -202,26 +226,21 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
       if ((c.x IS f.x) and (c.y IS f.y)) {
          // Standard radial gradient, where the focal point is the same as the gradient center
 
-         DOUBLE radial_col_span = Gradient.Radius;
+         double radial_col_span = Gradient.Radius;
          if (Gradient.Units IS VUNIT::USERSPACE) { // Coordinates are relative to the viewport
             if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) { // Gradient is a ratio of the viewport's dimensions
                radial_col_span = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
             }
          }
          else { // Coordinates are scaled to the bounding box
-            if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-               // Set radial_col_span to the wider of the width/height
-               if (c_height > c_width) {
-                  radial_col_span = c_height * Gradient.Radius;
-                  transform.scaleX(c_width / c_height);
-               }
-               else {
-                  radial_col_span = c_width * Gradient.Radius;
-                  transform.scaleY(c_height / c_width);
-               }
+            // Set radial_col_span to the wider of the width/height
+            if (c_height > c_width) {
+               radial_col_span = c_height * Gradient.Radius;
+               transform.scaleX(c_width / c_height);
             }
             else {
-               //transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01 / radial_col_span);
+               radial_col_span = c_width * Gradient.Radius;
+               transform.scaleY(c_height / c_width);
             }
          }
 
@@ -229,6 +248,10 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          if (radial_col_span < MIN_SPAN) { // Blending looks best if it meets a minimum span (radius) value.
             transform.scale(radial_col_span * (1.0 / MIN_SPAN));
             radial_col_span = MIN_SPAN;
+         }
+         else if (radial_col_span > MAX_SPAN) {
+            transform.scale(radial_col_span * (1.0 / MAX_SPAN));
+            radial_col_span = MAX_SPAN;
          }
 
          transform.translate(c);
@@ -253,8 +276,8 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          // the SVG standard, the focal point had to be within the base radius.  Later specifications allowed it to
          // be placed outside of that radius.
 
-         DOUBLE radial_col_span = Gradient.Radius;
-         DOUBLE focal_radius = Gradient.FocalRadius;
+         double radial_col_span = Gradient.Radius;
+         double focal_radius = Gradient.FocalRadius;
          if (focal_radius <= 0) focal_radius = Gradient.Radius;
 
          if (Gradient.Units IS VUNIT::USERSPACE) { // Coordinates are relative to the viewport
@@ -264,21 +287,16 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
             }
          }
          else { // Coordinates are scaled to the bounding box
-            if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-               // Set radial_col_span to the wider of the width/height
-               if (c_height > c_width) {
-                  radial_col_span = c_height * radial_col_span;
-                  focal_radius = c_height * focal_radius;
-                  transform.scaleX(c_width / c_height);
-               }
-               else {
-                  radial_col_span = c_width * radial_col_span;
-                  focal_radius = c_width * focal_radius;
-                  transform.scaleY(c_height / c_width);
-               }
+            // Set radial_col_span to the wider of the width/height
+            if (c_height > c_width) {
+               radial_col_span = c_height * radial_col_span;
+               focal_radius = c_height * focal_radius;
+               transform.scaleX(c_width / c_height);
             }
             else {
-               //transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01 / radial_col_span);
+               radial_col_span = c_width * radial_col_span;
+               focal_radius = c_width * focal_radius;
+               transform.scaleY(c_height / c_width);
             }
          }
 
@@ -315,7 +333,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
 
       // Standard diamond gradient, where the focal point is the same as the gradient center
 
-      DOUBLE radial_col_span = Gradient.Radius;
+      double radial_col_span = Gradient.Radius;
       if (Gradient.Units IS VUNIT::USERSPACE) {
          if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
             radial_col_span = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
@@ -323,18 +341,15 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Align to vector's bounding box
-         if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-            // Set radial_col_span to the wider of the width/height
-            if (c_height > c_width) {
-               radial_col_span = c_height * Gradient.Radius;
-               transform.scaleX(c_width / c_height);
-            }
-            else {
-               radial_col_span = c_width * Gradient.Radius;
-               transform.scaleY(c_height / c_width);
-            }
+         // Set radial_col_span to the wider of the width/height
+         if (c_height > c_width) {
+            radial_col_span = c_height * Gradient.Radius;
+            transform.scaleX(c_width / c_height);
          }
-         else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
+         else {
+            radial_col_span = c_width * Gradient.Radius;
+            transform.scaleY(c_height / c_width);
+         }
       }
 
       agg::gradient_diamond gradient_func;
@@ -365,7 +380,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
 
       // Standard conic gradient, where the focal point is the same as the gradient center
 
-      DOUBLE radial_col_span = Gradient.Radius;
+      double radial_col_span = Gradient.Radius;
       if (Gradient.Units IS VUNIT::USERSPACE) {
          if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
             radial_col_span = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
@@ -373,18 +388,15 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Bounding box
-         if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
-            // Set radial_col_span to the wider of the width/height
-            if (c_height > c_width) {
-               radial_col_span = c_height * Gradient.Radius;
-               transform.scaleX(c_width / c_height);
-            }
-            else {
-               radial_col_span = c_width * Gradient.Radius;
-               transform.scaleY(c_height / c_width);
-            }
+         // Set radial_col_span to the wider of the width/height
+         if (c_height > c_width) {
+            radial_col_span = c_height * Gradient.Radius;
+            transform.scaleX(c_width / c_height);
          }
-         else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
+         else {
+            radial_col_span = c_width * Gradient.Radius;
+            transform.scaleY(c_height / c_width);
+         }
       }
 
       agg::gradient_conic gradient_func;
@@ -438,20 +450,20 @@ static void fill_gradient(VectorState &State, const TClipRectangle<DOUBLE> &Boun
 // Patterns rendered with BOUNDING_BOX require real-time calculation as they have a dependency on the target
 // vector's dimensions.
 
-static void fill_pattern(VectorState &State, const TClipRectangle<DOUBLE> &Bounds, agg::path_storage *Path,
-   VSM SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
+static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bounds, agg::path_storage *Path,
+   VSM SampleMethod, const agg::trans_affine &Transform, double ViewWidth, double ViewHeight,
    extVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
-   const DOUBLE c_width  = (Pattern.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
-   const DOUBLE c_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
-   const DOUBLE x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
-   const DOUBLE y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
+   const double c_width  = (Pattern.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
+   const double c_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
+   const double x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
+   const double y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
 
    Path->approximation_scale(Transform.scale());
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coordinates specified in the pattern.
-      DOUBLE dwidth, dheight;
+      double dwidth, dheight;
       if (dmf::hasScaledWidth(Pattern.Dimensions)) dwidth = c_width * Pattern.Width;
       else if (dmf::hasWidth(Pattern.Dimensions)) dwidth = Pattern.Width;
       else dwidth = 1;
@@ -470,7 +482,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<DOUBLE> &Bound
       // BOUNDING_BOX.  The pattern (x,y) is an optional offset applied to the base position of the vector's
       // path.  The area is relative to the vector's bounds.
 
-      DOUBLE dwidth, dheight;
+      double dwidth, dheight;
 
       if (dmf::hasScaledWidth(Pattern.Dimensions)) dwidth = Pattern.Width * c_width;
       else if (dmf::hasWidth(Pattern.Dimensions)) {
@@ -508,7 +520,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<DOUBLE> &Bound
 
    agg::trans_affine transform;
 
-   DOUBLE dx, dy;
+   double dx, dy;
    if (dmf::hasScaledX(Pattern.Dimensions)) dx = x_offset + (c_width * Pattern.X);
    else if (dmf::hasX(Pattern.Dimensions)) dx = x_offset + Pattern.X;
    else dx = x_offset;

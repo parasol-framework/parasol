@@ -323,6 +323,9 @@ class extVectorGradient : public objVectorGradient {
    STRING ID;
    LONG NumericID;
    WORD ChangeCounter;
+   DOUBLE Angle;
+   DOUBLE Length;
+   bool CalcAngle; // True if the Angle/Length values require recalculation.
 };
 
 class extVectorPattern : public objVectorPattern {
