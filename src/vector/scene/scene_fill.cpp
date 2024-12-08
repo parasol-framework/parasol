@@ -140,8 +140,8 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       }
    };
 
-   auto span = MAX_SPAN;
    if (Gradient.Type IS VGT::LINEAR) {
+      auto span = MAX_SPAN;
       if (Gradient.Units IS VUNIT::BOUNDING_BOX) {
          // NOTE: In this mode we are mapping a 1x1 gradient square into the target path, which means
          // the gradient is stretched into position as a square.  We don't map the (X,Y) points to the

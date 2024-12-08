@@ -371,25 +371,6 @@ gui.createIcon = function(Scene, Path, Size, Theme, Name)
       end
    end)
 
-   -- Adjust gradient size to match the viewport height.
-
-   local viewport = icon.pattern.viewport.child
-   if viewport != nil then
-      while child != nil do
-         if child.class.id == ID_VECTORVIEWPORT then
-            viewport = child
-            break
-         end
-      end
-
-      if viewport.viewHeight < viewport.viewWidth then
-         icon.gradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
-         icon.gradient.y2 = icon.gradient.y1 + viewport.viewWidth
-      else
-         icon.gradient.y1 = viewport.viewY
-         icon.gradient.y2 = viewport.viewY + viewport.viewHeight
-      end
-   end
 
    check(Scene.mtAddDef(Name, icon.pattern))
 
