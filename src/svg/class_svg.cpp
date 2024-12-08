@@ -88,6 +88,7 @@ static ERR SVG_Free(extSVG *Self)
 {
    if (Self->AnimationTimer) {
       UpdateTimer(Self->AnimationTimer, 0);
+      if (Self->Scene) UnsubscribeAction(Self->Scene, AC::Free);
       Self->AnimationTimer = 0;
    }
 
