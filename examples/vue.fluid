@@ -1,14 +1,5 @@
 --[[
 A file viewer for recognised documents like SVG and RIPL
-
-Example: parasol vue.fluid file=[Path]
-
-Optional parameters are:
-
-  width:  Width of the application window
-  height: Height of the application window
-  path:   Path to use in the file selector.
-  file:   A source file to load and display in the application.
 --]]
 
    require 'gui'
@@ -44,6 +35,7 @@ Optional parameters are:
 <row><cell><p>height</p></cell><cell>Height of the application window.</cell></row>
 <row><cell><p>path</p></cell><cell>Path to use in the file selector.</cell></row>
 <row><cell><p>file</p></cell><cell>A source file to load and display in the application.</cell></row>
+<row><cell><p>no-browser</p></cell><cell>Hide the file browser.</cell></row>
 </table></p>
 
 </page>
@@ -191,50 +183,58 @@ end
 
    glViewport = glWindow:clientViewport({ aspectRatio = ARF_MEET })
 
-   -- File view on the left
+   if arg('no-browser') then
+      glViewArea = glViewport.new('VectorViewport', {
+        x=glWindow.margins.left, y=glWindow.margins.top,
+        xOffset=glWindow.margins.right, yOffset=glWindow.margins.top
+      })
+   else
+      -- File view on the left
 
-   glView = gui.listView({
-      target       = glViewport,
-      x            = glWindow.margins.left,
-      y            = glWindow.margins.top,
-      width        = 200,
-      yOffset      = glWindow.margins.top,
-      dragDrop     = true,
-      sensitive    = true,
-      multiSelect  = false,
-      borderless   = true
-   })
+      glView = gui.listView({
+         target       = glViewport,
+         x            = glWindow.margins.left,
+         y            = glWindow.margins.top,
+         width        = 200,
+         yOffset      = glWindow.margins.top,
+         dragDrop     = true,
+         sensitive    = true,
+         multiSelect  = false,
+         borderless   = true
+      })
 
-   glFileview = gui.fileview(glView, {
-      navigationBar = true,
-      path     = arg('path', ':'),
-      filterList = {
-         { name='SVG Images', pattern='.svg' },
-         { name='RIPL Documents', pattern={ '.ripl', '.rpl' } },
-         { name='JPEG Images', pattern={ '.jpeg', '.jpg' } },
-         { name='PNG Images', pattern='.png' }
-      },
-      fileSelected = function(FileView)
-         displayFile(FileView.selectionPath())
-         title = FileView.selectionFile()
-         if glStats.width and glStats.height then
-            title = title .. ' [ ' .. glStats.width .. ' x ' .. glStats.height .. ' ]'
+      glFileview = gui.fileview(glView, {
+         navigationBar = true,
+         displayPath   = true,
+         path     = arg('path', ':'),
+         filterList = {
+            { name='SVG Images', pattern='.svg' },
+            { name='RIPL Documents', pattern={ '.ripl', '.rpl' } },
+            { name='JPEG Images', pattern={ '.jpeg', '.jpg' } },
+            { name='PNG Images', pattern='.png' }
+         },
+         fileSelected = function(FileView)
+            displayFile(FileView.selectionPath())
+            title = FileView.selectionFile()
+            if glStats.width and glStats.height then
+               title = title .. ' [ ' .. glStats.width .. ' x ' .. glStats.height .. ' ]'
+            end
+            glWindow:setTitle(title)
          end
-         glWindow:setTitle(title)
-      end
-   })
+      })
 
-   -- Document viewer on the right
+      -- Document viewer on the right
 
-   glViewArea = glViewport.new('VectorViewport', {
-     x=glView.viewport.x + glView.viewport.width + 6, y=glWindow.margins.top,
-     xOffset=glWindow.margins.right, yOffset=glWindow.margins.top
-   })
+      glViewArea = glViewport.new('VectorViewport', {
+        x=glView.viewport.x + glView.viewport.width + 6, y=glWindow.margins.top,
+        xOffset=glWindow.margins.right, yOffset=glWindow.margins.top
+      })
 
-   gui.divider({
-      left = glView.viewport, right = glViewArea,
-      minA = 100, maxA = glWindow.surface.insideWidth * 0.4, minB = 100
-   })
+      gui.divider({
+         left = glView.viewport, right = glViewArea,
+         minA = 100, maxA = glWindow.surface.insideWidth * 0.4, minB = 100
+      })
+   end
 
    -- Display a file from the commandline, or show the application documentation.
 
