@@ -73,7 +73,7 @@ This is an example of a simple client application written in Fluid.  It loads an
 
 ## 2. Checkout
 
-Release builds can be [downloaded directly](https://github.com/parasol-framework/parasol/releases/latest) from GitHub so that you don't need to compile the framework yourself.  If you're happy with downloading an archive then you can skip the rest of this readme and head to the [main website](https://www.parasol.ws) for further information on usage.
+Release builds can be [downloaded directly](https://github.com/parasol-framework/parasol/releases/latest) from GitHub so that you don't need to compile the framework yourself.  If you're happy with using a release build then you can skip the rest of this readme and head to the [main website](https://www.parasol.ws) for further information on usage.
 
 To build your own framework, checkout the source code from the `release` branch of our GitHub repository:
 
