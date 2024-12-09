@@ -165,7 +165,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
    OBJECTID target;
    LONG buttonflag, bi;
 
-   ClearMemory(&userinput, sizeof(userinput));
+   clearmem(&userinput, sizeof(userinput));
    userinput.Value     = Input->Values[0];
    userinput.Timestamp = Input->Timestamp;
    userinput.Type      = Input->Type;
@@ -247,8 +247,8 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
       //if ((modal_id) and (modal_id != Self->OverObjectID)) {
       //   log.branch("Surface %d is modal, button click on %d cancelled.", modal_id, Self->OverObjectID);
-      //   QueueAction(AC_MoveToFront, modal_id);
-      //   QueueAction(AC_Focus, modal_id);
+      //   QueueAction(AC::MoveToFront, modal_id);
+      //   QueueAction(AC::Focus, modal_id);
       //}
 
       //if (!modal_id) {
@@ -279,7 +279,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
          target = modal_id ? modal_id : Self->OverObjectID;
 
-         QueueAction(AC_Focus, target);
+         QueueAction(AC::Focus, target);
 
          add_input("ButtonPress", userinput, uiflags, target, Self->OverObjectID,
             Self->X, Self->Y, Self->OverX, Self->OverY);
@@ -341,7 +341,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    pf::Log log(__FUNCTION__);
    InputEvent userinput;
 
-   ClearMemory(&userinput, sizeof(userinput));
+   clearmem(&userinput, sizeof(userinput));
    userinput.X         = Input->Values[0];
    userinput.Y         = Input->Values[1];
    userinput.Timestamp = Input->Timestamp;
@@ -350,14 +350,6 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    userinput.DeviceID  = Input->DeviceID;
 
    if (!userinput.Timestamp) userinput.Timestamp = PreciseTime();
-
-   // All X/Y movement passed through the pointer object must be expressed in absolute coordinates.
-
-   if ((userinput.Type IS JET::DIGITAL_XY) or (userinput.Type IS JET::ANALOG_XY)) {
-      userinput.Type = JET::ABS_XY;
-      userinput.X += Self->X;
-      userinput.Y += Self->Y;
-   }
 
    bool moved = false, underlying_change = false;
    DOUBLE current_x = Self->X;
@@ -410,7 +402,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
       }
       else {
          struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF::X|MTF::Y };
-         NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR::Okay);
+         NotifySubscribers(Self, AC::MoveToPoint, &moveto, ERR::Okay);
 
          // Recalculate the OverObject due to cursor movement
 
@@ -665,7 +657,7 @@ static ERR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
    // Customised notification (ensures that both X and Y coordinates are reported).
 
    struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF::X|MTF::Y };
-   NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR::Okay);
+   NotifySubscribers(Self, AC::MoveToPoint, &moveto, ERR::Okay);
 
    return ERR::Okay|ERR(ERR::Notified);
 }
@@ -725,11 +717,11 @@ static ERR PTR_SaveToObject(extPointer *Self, struct acSaveToObject *Args)
 
    auto config = objConfig::create { };
    if (config.ok()) {
-      config->write("POINTER", "Speed", Self->Speed);
-      config->write("POINTER", "Acceleration", Self->Acceleration);
-      config->write("POINTER", "DoubleClick", Self->DoubleClick);
-      config->write("POINTER", "MaxSpeed", Self->MaxSpeed);
-      config->write("POINTER", "WheelSpeed", Self->WheelSpeed);
+      config->write("POINTER", "Speed", std::to_string(Self->Speed));
+      config->write("POINTER", "Acceleration", std::to_string(Self->Acceleration));
+      config->write("POINTER", "DoubleClick", std::to_string(Self->DoubleClick));
+      config->write("POINTER", "MaxSpeed", std::to_string(Self->MaxSpeed));
+      config->write("POINTER", "WheelSpeed", std::to_string(Self->WheelSpeed));
       config->write("POINTER", "ButtonOrder", Self->ButtonOrder);
       config->saveToObject(Args->Dest);
    }
@@ -1040,19 +1032,15 @@ static void set_pointer_defaults(extPointer *Self)
    LONG maxspeed       = 100;
    DOUBLE wheelspeed   = DEFAULT_WHEELSPEED;
    DOUBLE doubleclick  = 0.36;
-   CSTRING buttonorder = "123456789ABCDEF";
+   std::string buttonorder = "123456789ABCDEF";
 
-   auto config = objConfig::create { fl::Path("user:config/pointer.cfg") };
-
-   if (config.ok()) {
-      DOUBLE dbl;
-      CSTRING str;
-      if (config->read("POINTER", "Speed", &dbl) IS ERR::Okay) speed = dbl;
-      if (config->read("POINTER", "Acceleration", &dbl) IS ERR::Okay) acceleration = dbl;
-      if (config->read("POINTER", "MaxSpeed", &dbl) IS ERR::Okay) maxspeed = dbl;
-      if (config->read("POINTER", "WheelSpeed", &dbl) IS ERR::Okay) wheelspeed = dbl;
-      if (config->read("POINTER", "DoubleClick", &dbl) IS ERR::Okay) doubleclick = dbl;
-      if (config->readValue("POINTER", "ButtonOrder", &str) IS ERR::Okay) buttonorder = str;
+   if (auto config = objConfig::create { fl::Path("user:config/pointer.cfg") }; config.ok()) {
+      config->read("POINTER", "Speed", speed);
+      config->read("POINTER", "Acceleration", acceleration);
+      config->read("POINTER", "MaxSpeed", maxspeed);
+      config->read("POINTER", "WheelSpeed", wheelspeed);
+      config->read("POINTER", "DoubleClick", doubleclick);
+      config->read("POINTER", "ButtonOrder", buttonorder);
    }
 
    if (doubleclick < 0.2) doubleclick = 0.2;
@@ -1181,7 +1169,7 @@ static ERR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
          LARGE time = PreciseTime();
          if (Self->Buttons[i].LastClickTime + 300000LL <= time) {
             InputEvent input;
-            ClearMemory(&input, sizeof(input));
+            clearmem(&input, sizeof(input));
 
             LONG surface_x, surface_y;
             if (Self->Buttons[i].LastClicked IS Self->OverObjectID) {
@@ -1252,18 +1240,18 @@ FieldDef CursorLookup[] = {
 };
 
 static const ActionArray clPointerActions[] = {
-   { AC_DataFeed,     PTR_DataFeed },
-   { AC_Free,         PTR_Free },
-   { AC_Hide,         PTR_Hide },
-   { AC_Init,         PTR_Init },
-   { AC_Move,         PTR_Move },
-   { AC_MoveToPoint,  PTR_MoveToPoint },
-   { AC_NewObject,    PTR_NewObject },
-   { AC_Refresh,      PTR_Refresh },
-   { AC_Reset,        PTR_Reset },
-   { AC_SaveToObject, PTR_SaveToObject },
-   { AC_Show,         PTR_Show },
-   { 0, NULL }
+   { AC::DataFeed,     PTR_DataFeed },
+   { AC::Free,         PTR_Free },
+   { AC::Hide,         PTR_Hide },
+   { AC::Init,         PTR_Init },
+   { AC::Move,         PTR_Move },
+   { AC::MoveToPoint,  PTR_MoveToPoint },
+   { AC::NewObject,    PTR_NewObject },
+   { AC::Refresh,      PTR_Refresh },
+   { AC::Reset,        PTR_Reset },
+   { AC::SaveToObject, PTR_SaveToObject },
+   { AC::Show,         PTR_Show },
+   { AC::NIL, NULL }
 };
 
 static const FieldDef clPointerFlags[] = {
@@ -1283,7 +1271,7 @@ static const MethodEntry clPointerMethods[] = {
    { MT_PtrGrabX11Pointer,   (APTR)PTR_GrabX11Pointer,   "GrabX11Pointer",   mthGrabX11Pointer, sizeof(struct ptrGrabX11Pointer) },
    { MT_PtrUngrabX11Pointer, (APTR)PTR_UngrabX11Pointer, "UngrabX11Pointer", NULL, 0 },
 #endif
-   { 0, NULL, NULL, NULL, 0 }
+   { AC::NIL, NULL, NULL, NULL, 0 }
 };
 
 static const FieldArray clPointerFields[] = {

@@ -310,7 +310,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 
          // Copy all characters up to the point at which the last invalid character was encountered.
 
-         if (in > 0) CopyMemory(str, glIconvBuffer, in);
+         if (in > 0) copymem(str, glIconvBuffer, in);
 
          while (str[in]) {
             // Check/Expand the buffer size

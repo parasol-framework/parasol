@@ -29,30 +29,36 @@ SET (CORE_DEFS
    "${CMAKE_CURRENT_SOURCE_DIR}/compression/class_compression_def.c")
 
 if (BUILD_DEFS)
-   add_custom_command (OUTPUT
-      ${CORE_DEFS}
-      "${DOCS}/modules/classes/compressedstream.xml"
-      "${DOCS}/modules/classes/compression.xml"
-      "${DOCS}/modules/classes/config.xml"
-      "${DOCS}/modules/classes/file.xml"
-      "${DOCS}/modules/classes/metaclass.xml"
-      "${DOCS}/modules/classes/module.xml"
-      "${DOCS}/modules/classes/script.xml"
-      "${DOCS}/modules/classes/storagedevice.xml"
-      "${DOCS}/modules/classes/task.xml"
-      "${DOCS}/modules/classes/thread.xml"
-      "${DOCS}/modules/classes/time.xml"
-      PRE_BUILD
+   add_custom_command (
+      OUTPUT
+         ${CORE_DEFS}
+         "${DOCS}/modules/classes/compressedstream.xml"
+         "${DOCS}/modules/classes/compression.xml"
+         "${DOCS}/modules/classes/config.xml"
+         "${DOCS}/modules/classes/file.xml"
+         "${DOCS}/modules/classes/metaclass.xml"
+         "${DOCS}/modules/classes/module.xml"
+         "${DOCS}/modules/classes/script.xml"
+         "${DOCS}/modules/classes/storagedevice.xml"
+         "${DOCS}/modules/classes/task.xml"
+         "${DOCS}/modules/classes/thread.xml"
+         "${DOCS}/modules/classes/time.xml"
+         "${INCLUDE_OUTPUT}/modules/core.h"
+         "${INCLUDE_OUTPUT}/system/errors.h"
+         "${INCLUDE_OUTPUT}/system/registry.h"
+         "${INCLUDE_OUTPUT}/system/fields.h"
+         "${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/errors.fdl" "output=${INCLUDE_OUTPUT}/system/errors.h" "sdk=${PROJECT_SOURCE_DIR}"
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/registry.fdl" "output=${INCLUDE_OUTPUT}/system/registry.h" "sdk=${PROJECT_SOURCE_DIR}"
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/fields.fdl" "output=${INCLUDE_OUTPUT}/system/fields.h" "sdk=${PROJECT_SOURCE_DIR}"
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/core.fdl" "sdk=${PROJECT_SOURCE_DIR}" "output-proto=prototypes.h" "output-defs=data_functions.c" "files={" ${FUNCTIONS} "}"
-      COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "src=defs/core.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h" "sdk=${PROJECT_SOURCE_DIR}" "format=c"
+      COMMAND ${PARASOL_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=defs/core.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h" "sdk=${PROJECT_SOURCE_DIR}" "format=c"
       DEPENDS
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/core.fdl"
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/errors.fdl"
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/registry.fdl"
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/fields.fdl"
+         "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/idl/common.fdl"
          ${FUNCTIONS}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Producing definition files for the Core library"
@@ -67,7 +73,8 @@ if (BUILD_DEFS)
       "${CMAKE_CURRENT_SOURCE_DIR}/defs/core.fdl"
       "${CMAKE_CURRENT_SOURCE_DIR}/defs/errors.fdl"
       "${CMAKE_CURRENT_SOURCE_DIR}/defs/registry.fdl"
-      "${CMAKE_CURRENT_SOURCE_DIR}/defs/fields.fdl")
+      "${CMAKE_CURRENT_SOURCE_DIR}/defs/fields.fdl"
+      "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/idl/common.fdl")
 
    add_dependencies (build_headers core_defs)
 endif ()

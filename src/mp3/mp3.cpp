@@ -158,28 +158,28 @@ static bool parse_id3v1(objSound *Self)
 
          std::string title(id3.title);
          pf::ltrim(title, " ");
-         SetKey(Self, "Title", title.c_str());
+         acSetKey(Self, "Title", title.c_str());
 
          std::string artist(id3.artist);
          pf::ltrim(artist, " ");
-         SetKey(Self, "Author", artist.c_str());
+         acSetKey(Self, "Author", artist.c_str());
 
          std::string album(id3.album);
          pf::ltrim(album, " ");
-         SetKey(Self, "Album", album.c_str());
+         acSetKey(Self, "Album", album.c_str());
 
          std::string comment(id3.comment);
          pf::ltrim(comment, " ");
-         SetKey(Self, "Description", comment.c_str());
+         acSetKey(Self, "Description", comment.c_str());
 
          if (id3.genre <= genre_table.size()) {
-            SetKey(Self, "Genre", genre_table[id3.genre]);
+            acSetKey(Self, "Genre", genre_table[id3.genre]);
          }
-         else SetKey(Self, "Genre", "Unknown");
+         else acSetKey(Self, "Genre", "Unknown");
 
          if (id3.comment[COMMENT_TRACK] > 0) {
-            IntToStr(id3.comment[COMMENT_TRACK], buffer, sizeof(buffer));
-            SetKey(Self, "Track", buffer);
+            strcopy(std::to_string(id3.comment[COMMENT_TRACK]), buffer, sizeof(buffer));
+            acSetKey(Self, "Track", buffer);
          }
 
          processed = true;
@@ -246,7 +246,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
    }
 
    if (flags & XING_TOC) {
-      CopyMemory(tag, prv->TOC.data(), 100);
+      copymem(tag, prv->TOC.data(), 100);
       tag += 100;
       prv->TOCLoaded = true;
    }
@@ -428,7 +428,7 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
       if ((prv->OverflowSize) and (prv->OverflowPos < prv->OverflowSize)) {
          LONG to_copy = prv->OverflowSize - prv->OverflowPos;
          if (pos + to_copy > Args->Length) to_copy = Args->Length - pos;
-         CopyMemory(prv->Overflow.data() + prv->OverflowPos, (UBYTE *)Args->Buffer + pos, to_copy);
+         copymem(prv->Overflow.data() + prv->OverflowPos, (UBYTE *)Args->Buffer + pos, to_copy);
          prv->OverflowPos += to_copy;
          prv->WriteOffset += to_copy;
          pos += to_copy;
@@ -473,10 +473,10 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
                   prv->OverflowPos  = 0;
                   prv->OverflowSize = pos + decoded_bytes - Args->Length;
                   decoded_bytes = Args->Length - pos;
-                  CopyMemory((UBYTE *)pcm + decoded_bytes, prv->Overflow.data(), prv->OverflowSize);
+                  copymem((UBYTE *)pcm + decoded_bytes, prv->Overflow.data(), prv->OverflowSize);
                }
 
-               CopyMemory(pcm, (UBYTE *)Args->Buffer + pos, decoded_bytes);
+               copymem(pcm, (UBYTE *)Args->Buffer + pos, decoded_bytes);
 
                prv->FramesProcessed++;
                prv->WriteOffset += decoded_bytes;
@@ -523,7 +523,7 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
 
       if (!in) break;
       else if (in < prv->CompressedOffset) {
-         CopyMemory((UBYTE *)prv->Input.data() + in, prv->Input.data(), prv->CompressedOffset - in);
+         copymem((UBYTE *)prv->Input.data() + in, prv->Input.data(), prv->CompressedOffset - in);
       }
 
       prv->CompressedOffset -= in;
@@ -822,7 +822,7 @@ static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
 
             LONG layer = 4 - ((frame & ((1<<17)|(1<<18)))>>17);
             LONG index = (frame & 0x0c00)>>10;
-            if (index >= ARRAYSIZE(samplerate_table)) continue;
+            if (index >= std::ssize(samplerate_table)) continue;
             LONG samplerate = samplerate_table[index];
             if ((layer < 0) or (layer > 3) or (!samplerate)) continue;
 
@@ -863,11 +863,11 @@ static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
 //********************************************************************************************************************
 
 static const struct ActionArray clActions[] = {
-   { AC_Free, MP3_Free },
-   { AC_Init, MP3_Init },
-   { AC_Read, MP3_Read },
-   { AC_Seek, MP3_Seek },
-   { 0, NULL }
+   { AC::Free, MP3_Free },
+   { AC::Init, MP3_Init },
+   { AC::Read, MP3_Read },
+   { AC::Seek, MP3_Seek },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************
@@ -884,6 +884,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       fl::ClassVersion(VER_MP3),
       fl::FileExtension("*.mp3"),
       fl::FileDescription("MP3 Audio Stream"),
+      fl::Icon("filetypes/audio"),
       fl::Name("MP3"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clActions),

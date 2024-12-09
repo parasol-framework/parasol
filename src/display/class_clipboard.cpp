@@ -135,10 +135,9 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
 
    std::stringstream list;
    for (auto &item : Items) {
-      STRING path;
-      if (ResolvePath(item.Path.c_str(), RSF::NIL, &path) IS ERR::Okay) {
+      std::string path;
+      if (ResolvePath(item.Path, RSF::NIL, &path) IS ERR::Okay) {
          list << path << '\0';
-         FreeResource(path);
       }
    }
    list << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
@@ -352,11 +351,10 @@ Clear: Destroys all cached data that is stored in the clipboard.
 
 static ERR CLIPBOARD_Clear(objClipboard *Self)
 {
-   STRING path;
+   std::string path;
    if (ResolvePath("clipboard:", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-      DeleteFile(path, NULL);
-      CreateFolder(path, PERMIT::READ|PERMIT::WRITE);
-      FreeResource(path);
+      DeleteFile(path.c_str(), NULL);
+      CreateFolder(path.c_str(), PERMIT::READ|PERMIT::WRITE);
    }
 
    glClips.clear();
@@ -411,7 +409,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
             { "Requester", Args->Object, FD_OBJECTPTR },
             { "Item",      request->Item },
             { "Datatypes", request->Preference, FD_ARRAY|FD_BYTE },
-            { "Size",      LONG(ARRAYSIZE(request->Preference)), FD_LONG|FD_ARRAYSIZE }
+            { "Size",      LONG(std::ssize(request->Preference)), FD_LONG|FD_ARRAYSIZE }
          }), error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = log.warning(ERR::FieldNotSet);
@@ -430,7 +428,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 static ERR CLIPBOARD_Free(objClipboard *Self)
 {
    if (Self->RequestHandler.isScript()) {
-      UnsubscribeAction(Self->RequestHandler.Context, AC_Free);
+      UnsubscribeAction(Self->RequestHandler.Context, AC::Free);
       Self->RequestHandler.clear();
    }
 
@@ -533,7 +531,7 @@ static ERR CLIPBOARD_GetFiles(objClipboard *Self, struct clip::GetFiles *Args)
       auto dest = (char *)list + ((clip->Items.size() + 1) * sizeof(STRING));
       for (auto &item : clip->Items) {
          *list++ = dest;
-         CopyMemory(item.Path.c_str(), dest, item.Path.size() + 1);
+         copymem(item.Path.c_str(), dest, item.Path.size() + 1);
          dest += item.Path.size() + 1;
       }
       *list = NULL;
@@ -638,10 +636,10 @@ static ERR GET_RequestHandler(objClipboard *Self, FUNCTION **Value)
 static ERR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->RequestHandler.isScript()) UnsubscribeAction(Self->RequestHandler.Context, AC_Free);
+      if (Self->RequestHandler.isScript()) UnsubscribeAction(Self->RequestHandler.Context, AC::Free);
       Self->RequestHandler = *Value;
       if (Self->RequestHandler.isScript()) {
-         SubscribeAction(Self->RequestHandler.Context, AC_Free, C_FUNCTION(notify_script_free));
+         SubscribeAction(Self->RequestHandler.Context, AC::Free, C_FUNCTION(notify_script_free));
       }
    }
    else Self->RequestHandler.clear();
@@ -700,7 +698,7 @@ static ERR add_clip(CSTRING String)
    if (auto error = add_clip(CLIPTYPE::TEXT, items); error IS ERR::Okay) {
       pf::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT::READ|PERMIT::WRITE) };
       if (file.ok()) {
-         file->write(String, StrLength(String), 0);
+         file->write(String, strlen(String), 0);
          return ERR::Okay;
       }
       else return log.warning(ERR::CreateFile);

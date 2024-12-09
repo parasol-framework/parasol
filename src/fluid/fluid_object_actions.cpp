@@ -21,12 +21,12 @@ static int action_activate(lua_State *Lua)
    bool release = false;
 
    if (object->DelayCall) {
-      error = QueueAction(AC_Activate, object->UID, NULL);
+      error = QueueAction(AC::Activate, object->UID, NULL);
       object->DelayCall = false;
    }
-   else if (object->ObjectPtr) error = Action(AC_Activate, object->ObjectPtr, NULL);
+   else if (object->ObjectPtr) error = Action(AC::Activate, object->ObjectPtr, NULL);
    else if (auto obj = access_object(object)) {
-      error = Action(AC_Activate, obj, NULL);
+      error = Action(AC::Activate, obj, NULL);
       release = true;
    }
 
@@ -43,19 +43,19 @@ static int action_draw(lua_State *Lua)
    ERR error = ERR::Okay;
    BYTE argbuffer[sizeof(struct acDraw)+8]; // +8 for overflow protection in build_args()
 
-   if ((error = build_args(Lua, glActions[AC_Draw].Args, glActions[AC_Draw].Size, argbuffer, NULL)) != ERR::Okay) {
+   if ((error = build_args(Lua, glActions[LONG(AC::Draw)].Args, glActions[LONG(AC::Draw)].Size, argbuffer, NULL)) != ERR::Okay) {
       luaL_error(Lua, "Argument build failed for Draw().");
       return 0;
    }
 
    bool release = false;
    if (object->DelayCall) {
-      error = QueueAction(AC_Draw, object->UID, argbuffer);
+      error = QueueAction(AC::Draw, object->UID, argbuffer);
       object->DelayCall = false;
    }
-   else if (object->ObjectPtr) error = Action(AC_Draw, object->ObjectPtr, argbuffer);
+   else if (object->ObjectPtr) error = Action(AC::Draw, object->ObjectPtr, argbuffer);
    else if (auto obj = access_object(object)) {
-      error = Action(AC_Draw, obj, argbuffer);
+      error = Action(AC::Draw, obj, argbuffer);
       release = true;
    }
 
@@ -68,49 +68,49 @@ static int action_draw(lua_State *Lua)
 //********************************************************************************************************************
 
 static int obj_jump_empty(lua_State *Lua, const obj_read &Handle, object *def) { return 0; }
-static int obj_jump_signal(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Signal); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_signal(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Signal)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
 static int obj_jump_activate(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushcclosure(Lua, action_activate, 1); return 1; }
-static int obj_jump_clear(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Clear); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_copydata(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_CopyData); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_datafeed(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_DataFeed); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_deactivate(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Deactivate); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_clear(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Clear)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_copydata(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::CopyData)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_datafeed(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::DataFeed)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_deactivate(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Deactivate)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
 static int obj_jump_draw(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushcclosure(Lua, action_draw, 1); return 1; }
-static int obj_jump_flush(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Flush); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_focus(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Focus); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_savesettings(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_SaveSettings); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_getkey(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_GetKey); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_dragdrop(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_DragDrop); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_hide(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Hide); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_lock(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Lock); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_lostfocus(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_LostFocus); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_move(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Move); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_movetoback(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_MoveToBack); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_movetofront(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_MoveToFront); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_redo(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Redo); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_query(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Query); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_read(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Read); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_rename(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Rename); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_reset(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Reset); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_resize(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Resize); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_saveimage(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_SaveImage); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_savetoobject(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_SaveToObject); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_seek(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Seek); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_setkey(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_SetKey); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_show(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Show); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_undo(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Undo); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_unlock(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Unlock); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_next(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Next); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_prev(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Prev); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_write(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Write); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_setfield(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_SetField); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_clipboard(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Clipboard); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_refresh(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Refresh); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_disable(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Disable); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_enable(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Enable); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
-static int obj_jump_redimension(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_Redimension); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
-static int obj_jump_movetopoint(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, AC_MoveToPoint); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_flush(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Flush)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_focus(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Focus)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_savesettings(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::SaveSettings)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_getkey(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::GetKey)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_dragdrop(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::DragDrop)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_hide(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Hide)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_lock(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Lock)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_lostfocus(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::LostFocus)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_move(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Move)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_movetoback(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::MoveToBack)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_movetofront(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::MoveToFront)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_redo(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Redo)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_query(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Query)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_read(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Read)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_rename(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Rename)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_reset(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Reset)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_resize(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Resize)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_saveimage(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::SaveImage)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_savetoobject(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::SaveToObject)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_seek(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Seek)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_setkey(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::SetKey)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_show(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Show)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_undo(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Undo)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_unlock(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Unlock)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_next(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Next)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_prev(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Prev)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_write(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Write)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_setfield(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::SetField)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_clipboard(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Clipboard)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_refresh(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Refresh)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_disable(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Disable)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_enable(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Enable)); lua_pushcclosure(Lua, object_action_call, 2); return 1; }
+static int obj_jump_redimension(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::Redimension)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
+static int obj_jump_movetopoint(lua_State *Lua, const obj_read &Handle, object *def) { lua_pushvalue(Lua, 1); lua_pushinteger(Lua, LONG(AC::MoveToPoint)); lua_pushcclosure(Lua, object_action_call_args, 2); return 1; }
 
-static std::array<obj_read::JUMP *, AC_END> glJumpActions = {
+static std::array<obj_read::JUMP *, LONG(AC::END)> glJumpActions = {
    obj_jump_empty,
    obj_jump_signal,
    obj_jump_activate,

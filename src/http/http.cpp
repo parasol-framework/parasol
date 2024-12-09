@@ -186,7 +186,7 @@ static ERR HTTP_Deactivate(extHTTP *);
 static ERR HTTP_Free(extHTTP *);
 static ERR HTTP_GetKey(extHTTP *, struct acGetKey *);
 static ERR HTTP_Init(extHTTP *);
-static ERR HTTP_NewObject(extHTTP *);
+static ERR HTTP_NewPlacement(extHTTP *);
 static ERR HTTP_SetKey(extHTTP *, struct acSetKey *);
 static ERR HTTP_Write(extHTTP *, struct acWrite *);
 
@@ -759,7 +759,7 @@ static ERR HTTP_Free(extHTTP *Self)
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
 
    for (LONG i=0; i < std::ssize(Self->Password); i++) Self->Password[i] = char(0xff);
-   
+
    Self->~extHTTP();
    return ERR::Okay;
 }
@@ -775,12 +775,12 @@ static ERR HTTP_GetKey(extHTTP *Self, struct acGetKey *Args)
    if (!Args) return ERR::NullArgs;
 
    if (Self->Args.contains(Args->Key)) {
-      StrCopy(Self->Args[Args->Key].c_str(), Args->Value, Args->Size);
+      pf::strcopy(Self->Args[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
    if (Self->Headers.contains(Args->Key)) {
-      StrCopy(Self->Headers[Args->Key].c_str(), Args->Value, Args->Size);
+      pf::strcopy(Self->Headers[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
@@ -797,7 +797,7 @@ static ERR HTTP_Init(extHTTP *Self)
       if (glProxy) {
          if (glProxy->find(Self->Port, true) IS ERR::Okay) {
             if (Self->ProxyServer) FreeResource(Self->ProxyServer);
-            Self->ProxyServer = StrClone(glProxy->Server);
+            Self->ProxyServer = pf::strclone(glProxy->Server);
             Self->ProxyPort   = glProxy->ServerPort; // NB: Default is usually 8080
 
             log.msg("Using preset proxy server '%s:%d'", Self->ProxyServer, Self->ProxyPort);
@@ -812,11 +812,11 @@ static ERR HTTP_Init(extHTTP *Self)
 
 //********************************************************************************************************************
 
-static ERR HTTP_NewObject(extHTTP *Self)
+static ERR HTTP_NewPlacement(extHTTP *Self)
 {
    new (Self) extHTTP;
    Self->Error          = ERR::Okay;
-   Self->UserAgent      = StrClone("Parasol Client");
+   Self->UserAgent      = pf::strclone("Parasol Client");
    Self->DataTimeout    = 5.0;
    Self->ConnectTimeout = 10.0;
    Self->Datatype       = DATA::RAW;
@@ -854,7 +854,7 @@ static ERR HTTP_Write(extHTTP *Self, struct acWrite *Args)
       }
 
       if (len > 0) {
-         CopyMemory(Args->Buffer, Self->WriteBuffer + Self->WriteOffset, len);
+         pf::copymem(Args->Buffer, Self->WriteBuffer + Self->WriteOffset, len);
          Self->WriteOffset += len;
          Args->Result = len;
          if (Args->Result != Args->Length) return ERR::LimitedSuccess;
@@ -886,10 +886,10 @@ static ERR GET_AuthCallback(extHTTP *Self, FUNCTION **Value)
 static ERR SET_AuthCallback(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->AuthCallback.isScript()) UnsubscribeAction(Self->AuthCallback.Context, AC_Free);
+      if (Self->AuthCallback.isScript()) UnsubscribeAction(Self->AuthCallback.Context, AC::Free);
       Self->AuthCallback = *Value;
       if (Self->AuthCallback.isScript()) {
-         SubscribeAction(Self->AuthCallback.Context, AC_Free, C_FUNCTION(notify_free_auth_callback));
+         SubscribeAction(Self->AuthCallback.Context, AC::Free, C_FUNCTION(notify_free_auth_callback));
       }
    }
    else Self->AuthCallback.clear();
@@ -980,7 +980,7 @@ static ERR SET_CurrentState(extHTTP *Self, HGS Value)
 
    if ((Value >= HGS::COMPLETED) and (Self->CurrentState < HGS::COMPLETED)) {
       Self->CurrentState = Value;
-      if (Self->Socket) QueueAction(AC_Deactivate, Self->UID);
+      if (Self->Socket) QueueAction(AC::Deactivate, Self->UID);
    }
    else Self->CurrentState = Value;
 
@@ -1061,7 +1061,7 @@ The HTTP server to target for HTTP requests is defined here.  To change the host
 static ERR SET_Host(extHTTP *Self, CSTRING Value)
 {
    if (Self->Host) { FreeResource(Self->Host); Self->Host = NULL; }
-   Self->Host = StrClone(Value);
+   Self->Host = pf::strclone(Value);
    return ERR::Okay;
 }
 
@@ -1090,10 +1090,10 @@ static ERR GET_Incoming(extHTTP *Self, FUNCTION **Value)
 static ERR SET_Incoming(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC_Free);
+      if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC::Free);
       Self->Incoming = *Value;
       if (Self->Incoming.isScript()) {
-         SubscribeAction(Self->Incoming.Context, AC_Free, C_FUNCTION(notify_free_incoming));
+         SubscribeAction(Self->Incoming.Context, AC::Free, C_FUNCTION(notify_free_incoming));
       }
    }
    else Self->Incoming.clear();
@@ -1134,7 +1134,7 @@ static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
    Self->MultipleInput = FALSE;
    Self->InputPos = 0;
    if ((Value) and (*Value)) {
-      Self->InputFile = StrClone(Value);
+      Self->InputFile = pf::strclone(Value);
 
       // Check if the path contains multiple inputs, separated by the pipe symbol.
 
@@ -1236,7 +1236,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
       return ERR::AllocMemory;
    }
 
-   CopyMemory(str, Self->Host, len);
+   pf::copymem(str, Self->Host, len);
    Self->Host[len] = 0;
 
    str += len;
@@ -1245,7 +1245,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 
    if (*str IS ':') {
       str++;
-      if (auto i = StrToInt(str)) {
+      if (auto i = strtol(str, NULL, 0)) {
          Self->Port = i;
          if (Self->Port IS 443) Self->Flags |= HTF::SSL;
       }
@@ -1316,10 +1316,10 @@ static ERR GET_Outgoing(extHTTP *Self, FUNCTION **Value)
 static ERR SET_Outgoing(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC_Free);
+      if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC::Free);
       Self->Outgoing = *Value;
       if (Self->Outgoing.isScript()) {
-         SubscribeAction(Self->Outgoing.Context, AC_Free, C_FUNCTION(notify_free_outgoing));
+         SubscribeAction(Self->Outgoing.Context, AC::Free, C_FUNCTION(notify_free_outgoing));
       }
    }
    else Self->Outgoing.clear();
@@ -1340,7 +1340,7 @@ been set in the #Flags field.
 static ERR SET_OutputFile(extHTTP *Self, CSTRING Value)
 {
    if (Self->OutputFile) { FreeResource(Self->OutputFile); Self->OutputFile = NULL; }
-   Self->OutputFile = StrClone(Value);
+   Self->OutputFile = pf::strclone(Value);
    return ERR::Okay;
 }
 
@@ -1462,7 +1462,7 @@ that the proxy server uses to receive requests, see the #ProxyPort field.
 static ERR SET_ProxyServer(extHTTP *Self, CSTRING Value)
 {
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
-   if ((Value) and (Value[0])) Self->ProxyServer = StrClone(Value);
+   if ((Value) and (Value[0])) Self->ProxyServer = pf::strclone(Value);
    Self->ProxyDefined = TRUE;
    return ERR::Okay;
 }
@@ -1543,10 +1543,10 @@ static ERR GET_StateChanged(extHTTP *Self, FUNCTION **Value)
 static ERR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Context, AC_Free);
+      if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Context, AC::Free);
       Self->StateChanged = *Value;
       if (Self->StateChanged.isScript()) {
-         SubscribeAction(Self->StateChanged.Context, AC_Free, C_FUNCTION(notify_free_state_changed));
+         SubscribeAction(Self->StateChanged.Context, AC::Free, C_FUNCTION(notify_free_state_changed));
       }
    }
    else Self->StateChanged.clear();
@@ -1568,7 +1568,7 @@ This field describe the `user-agent` value that will be sent in HTTP requests.  
 static ERR SET_UserAgent(extHTTP *Self, CSTRING Value)
 {
    if (Self->UserAgent) { FreeResource(Self->UserAgent); Self->UserAgent = NULL; }
-   Self->UserAgent = StrClone(Value);
+   Self->UserAgent = pf::strclone(Value);
    return ERR::Okay;
 }
 

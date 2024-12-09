@@ -1,39 +1,20 @@
 
-inline CSTRING get_extension(CSTRING Path)
-{
-   ULONG i;
-   for (i=0; Path[i]; i++);
-   while ((i > 0) and (Path[i] != '.') and (Path[i] != ':') and (Path[i] != '/') and (Path[i] != '\\')) i--;
-   if (Path[i] IS '.') return Path+i+1;
-   else return NULL;
-}
-
-inline CSTRING get_filename(CSTRING Path)
-{
-   ULONG i;
-   for (i=0; Path[i]; i++);
-   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
-   if (Path[i]) return Path+i;
-   else return NULL;
-}
-
 /*********************************************************************************************************************
 
 -FUNCTION-
 IdentifyFile: Analyse a file and identify a class that can process it.
 
-This function examines the relationship between file data and installed classes.  It allows for instance, a JPEG file
-to be identified as a datatype of the @Picture class, or an MP3 file to be identified as a datatype of the @Sound
+This function examines the relationship between file data and Parasol classes.  For instance, a JPEG file would be
+identified as a datatype of the @Picture class.  An MP3 file would be identified as a datatype of the @Sound
 class.
 
 The method involves analysing the `Path`'s file extension and comparing it to the supported extensions of all available
-classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is
+classes.  If a class supports the file extension, the ID of that class will be returned. If the file extension is
 not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be
 loaded and checked against classes that can match against file header information.  If a match is found, the ID of the
 matching class will be returned.
 
-This function returns an error code of `ERR::Search` in the event that a suitable class is not available to match
-against the given file.
+The `ERR::Search` code is returned if a suitable class does not match the targeted file.
 
 -INPUT-
 cstr Path:     The location of the object data.
@@ -54,7 +35,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 {
    pf::Log log(__FUNCTION__);
    LONG i, bytes_read;
-   #define HEADER_SIZE 80
+   constexpr LONG HEADER_SIZE = 80;
 
    if ((!Path) or (!ClassID)) return log.warning(ERR::NullArgs);
 
@@ -64,18 +45,13 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
    // that supports the data, we then load the first 256 bytes from the file and then compare file headers.
 
    ERR error = ERR::Okay;
-   STRING res_path = NULL;
+   std::string res_path;
    if (ClassID) *ClassID = CLASSID::NIL;
    if (SubClassID) *SubClassID = CLASSID::NIL;
    UBYTE buffer[400] = { 0 };
 
-   if ((error = load_datatypes()) != ERR::Okay) { // Load the associations configuration file
-      return log.warning(error);
-   }
-
-   ERR reserror;
-   if ((reserror = ResolvePath(Path, RSF::APPROXIMATE|RSF::PATH|RSF::CHECK_VIRTUAL, &res_path)) != ERR::Okay) {
-      if (reserror IS ERR::VirtualVolume) {
+   if (auto res_error = ResolvePath(Path, RSF::APPROXIMATE|RSF::PATH|RSF::CHECK_VIRTUAL, &res_path); res_error != ERR::Okay) {
+      if (res_error IS ERR::VirtualVolume) {
          // Virtual volumes may support the IdentifyFile() request as a means of speeding up file identification.  This
          // is often useful when probing remote file systems.  If the FS doesn't support this option, we can still
          // fall-back to the standard file reading option.
@@ -97,7 +73,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
       else {
          // Before we assume failure - check for the use of semicolons that split the string into multiple file names.
 
-         log.warning("ResolvePath() failed on '%s', error '%s'", Path, GetErrorMsg(reserror));
+         log.warning("ResolvePath() failed on '%s', error '%s'", Path, GetErrorMsg(res_error));
 
          if (startswith("string:", Path)) { // Do not check for '|' when string: is in use
             return ERR::FileNotFound;
@@ -107,7 +83,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
          if (Path[i] IS '|') {
             auto tmp = std::string(Path, i);
-            if (ResolvePath(tmp.c_str(), RSF::APPROXIMATE, &res_path) != ERR::Okay) {
+            if (ResolvePath(tmp, RSF::APPROXIMATE, &res_path) != ERR::Okay) {
                return ERR::FileNotFound;
             }
          }
@@ -120,23 +96,16 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
    if (!glClassDB.empty()) {
       // Check extension
 
-      log.trace("Checking extension against class database.");
-
       if (*ClassID IS CLASSID::NIL) {
-         if (auto filename = get_filename(res_path)) {
-            for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
-               auto &rec = it->second;
-               if (!rec.Match.empty()) {
-                  if (wildcmp(rec.Match, filename)) {
-                     if (rec.ParentID != CLASSID::NIL) {
-                        *ClassID = rec.ParentID;
-                        if (SubClassID) *SubClassID = rec.ClassID;
-                     }
-                     else *ClassID = rec.ClassID;
-                     log.trace("File identified as class $%.8x", *ClassID);
-                     break;
-                  }
+         if (auto sep = res_path.find_last_of("."); sep != std::string::npos) {
+            auto ext = res_path.substr(sep + 1, std::string::npos);
+            if (auto ext_class_id = lookup_class_by_ext(ext); ext_class_id != CLASSID::NIL) {
+               auto &rec = glClassDB[ext_class_id];
+               if (rec.ParentID != CLASSID::NIL) {
+                  *ClassID = rec.ParentID;
+                  if (SubClassID) *SubClassID = rec.ClassID;
                }
+               else *ClassID = rec.ClassID;
             }
          }
       }
@@ -146,70 +115,69 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
       if (*ClassID IS CLASSID::NIL) {
          log.trace("Loading file header to identify '%s' against class registry", res_path);
 
-         if ((ReadFileToBuffer(res_path, buffer, HEADER_SIZE, &bytes_read) IS ERR::Okay) and (bytes_read >= 4)) {
+         if ((ReadFileToBuffer(res_path.c_str(), buffer, HEADER_SIZE, &bytes_read) IS ERR::Okay) and (bytes_read >= 4)) {
             log.trace("Checking file header data (%d bytes) against %d classes....", bytes_read, glClassDB.size());
             for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
                auto &rec = it->second;
                if (rec.Header.empty()) continue;
 
-               CSTRING header = rec.Header.c_str(); // Compare the header to the Path buffer
+               auto header = std::string_view(rec.Header); // Compare the header to the Path buffer
                bool match = true;  // Headers use an offset based hex format, for example: [8:$958a9b9f9301][24:$939a9fff]
-               while (*header) {
-                  if (*header != '[') {
-                     if ((*header IS '|') and (match)) break;
-                     header++;
+               while (!header.empty()) {
+                  if (!header.starts_with('[')) {
+                     if ((header.starts_with('|')) and (match)) break;
+                     header.remove_prefix(1);
                      continue;
                   }
 
-                  header++;
-                  LONG offset = StrToInt(header);
-                  while ((*header) and (*header != ':')) header++;
-                  if (!header[0]) break;
+                  header.remove_prefix(1);
+                  LONG offset = svtonum<LONG>(header);
+                  if (auto i = header.find(':'); i != std::string::npos) header.remove_prefix(i + 1);
+                  else break;
 
-                  header++; // Skip ':'
-                  if (*header IS '$') { // Find and compare the data, one byte at a time
-                     header++; // Skip '$'
-                     while (*header) {
-                        if (((*header >= '0') and (*header <= '9')) or
-                            ((*header >= 'A') and (*header <= 'F')) or
-                            ((*header >= 'a') and (*header <= 'f'))) break;
-                        header++;
+                  if (header.starts_with('$')) { // Find and compare the data, one byte at a time
+                     header.remove_prefix(1);
+                     while (!header.empty()) {
+                        if (((header[0] >= '0') and (header[0] <= '9')) or
+                            ((header[0] >= 'A') and (header[0] <= 'F')) or
+                            ((header[0] >= 'a') and (header[0] <= 'f'))) break;
+                        header.remove_prefix(1);
                      }
 
                      UBYTE byte;
-                     while (*header) {
+                     while (!header.empty()) {
                         // Nibble 1
-                        if ((*header >= '0') and (*header <= '9')) byte = (*header - '0')<<4;
-                        else if ((*header >= 'A') and (*header <= 'F')) byte = (*header - 'A' + 0x0a)<<4;
-                        else if ((*header >= 'a') and (*header <= 'f')) byte = (*header - 'a' + 0x0a)<<4;
+                        if ((header[0] >= '0') and (header[0] <= '9')) byte = (header[0] - '0')<<4;
+                        else if ((header[0] >= 'A') and (header[0] <= 'F')) byte = (header[0] - 'A' + 0x0a)<<4;
+                        else if ((header[0] >= 'a') and (header[0] <= 'f')) byte = (header[0] - 'a' + 0x0a)<<4;
                         else break;
-                        header++;
+                        header.remove_prefix(1);
 
                         // Nibble 2
-                        if ((*header >= '0') and (*header <= '9')) byte |= *header - '0';
-                        else if ((*header >= 'A') and (*header <= 'F')) byte |= *header - 'A' + 0x0a;
-                        else if ((*header >= 'a') and (*header <= 'f')) byte |= *header - 'a' + 0x0a;
+                        if ((header[0] >= '0') and (header[0] <= '9')) byte |= header[0] - '0';
+                        else if ((header[0] >= 'A') and (header[0] <= 'F')) byte |= header[0] - 'A' + 0x0a;
+                        else if ((header[0] >= 'a') and (header[0] <= 'f')) byte |= header[0] - 'a' + 0x0a;
                         else break;
-                        header++;
+                        header.remove_prefix(1);
 
                         if (offset >= bytes_read) { match = false; break; }
                         if (byte != buffer[offset++]) { match = false; break; }
                      }
                   }
                   else {
-                     while ((*header) and (*header != ']')) {
+                     while ((!header.empty()) and (header[0] != ']')) {
                         if (offset >= bytes_read) { match = false; break; }
-                        if (*header != buffer[offset++]) { match = false; break; }
-                        header++;
+                        if (header[0] != buffer[offset++]) { match = false; break; }
+                        header.remove_prefix(1);
                      }
                   }
 
                   if (!match) {
-                     while ((*header) and (*header != '|')) header++; // Look for an or operation
-                     if (*header IS '|') {
+                     if (auto sep = header.find('|'); sep != std::string::npos) { // Look for an or operation
                         match = true; // Continue comparisons
-                        header++;
+                        header.remove_prefix(sep + 1);
                      }
+                     else break;
                   }
                }
 
@@ -232,10 +200,8 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
    }
 
 class_identified:
-   if (res_path) FreeResource(res_path);
-
    if (error IS ERR::Okay) {
-      if (*ClassID != CLASSID::NIL) log.detail("File belongs to class $%.8x:$%.8x", (unsigned int)(*ClassID), (SubClassID != NULL) ? (unsigned int)(*SubClassID) : 0);
+      if (*ClassID != CLASSID::NIL) log.detail("File belongs to class $%.8x:$%.8x", (unsigned int)(*ClassID), SubClassID ? (unsigned int)(*SubClassID) : 0);
       else {
          log.detail("Failed to identify file \"%s\"", Path);
          error = ERR::Search;

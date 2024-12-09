@@ -172,7 +172,7 @@ static int processing_sleep(lua_State *Lua)
 
 static int processing_signal(lua_State *Lua)
 {
-   Action(AC_Signal, Lua->Script, NULL);
+   Action(AC::Signal, Lua->Script, NULL);
    return 0;
 }
 

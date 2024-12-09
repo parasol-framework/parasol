@@ -16,12 +16,12 @@ THREADVAR bool tlMessageBreak = false; // This variable is set by ProcessMessage
 //********************************************************************************************************************
 
 struct WaitLock {
-   LONG ThreadID; // The thread represented by this wait-lock
+   THREADID ThreadID; // The thread represented by this wait-lock
    #ifdef _WIN32
    WINHANDLE Lock;
    #endif
    LARGE WaitingTime;
-   LONG  WaitingForThreadID;
+   THREADID WaitingForThreadID;
    LONG  WaitingForResourceID;
    LONG  WaitingForResourceType;
    UBYTE Flags; // WLF flags
@@ -29,15 +29,15 @@ struct WaitLock {
    #define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
 
    WaitLock() : ThreadID(0) { }
-   WaitLock(LONG pThread) : ThreadID(pThread) { }
+   WaitLock(THREADID pThread) : ThreadID(pThread) { }
 
-   void setThread(LONG pThread) { ThreadID = pThread; }
+   void setThread(const THREADID pThread) { ThreadID = pThread; }
 
    void notWaiting() {
       Flags = 0;
       WaitingForResourceID = 0;
       WaitingForResourceType = 0;
-      WaitingForThreadID = 0;  // NB: Important that you clear this last if you are to avoid threading conflicts.
+      WaitingForThreadID = THREADID(0);  // NB: Important that you clear this last if you are to avoid threading conflicts.
    }
 };
 
@@ -51,7 +51,7 @@ static std::mutex glWaitLockMutex;
 //
 // Used by AccessMemory() and LockObject()
 
-ERR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType)
+ERR init_sleep(THREADID OtherThreadID, LONG ResourceID, LONG ResourceType)
 {
    //log.trace("Sleeping on thread %d for resource #%d, Total Threads: %d", OtherThreadID, ResourceID, LONG(glWaitLocks.size()));
 
@@ -63,7 +63,7 @@ ERR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType)
    if (glWLIndex IS -1) { // New thread that isn't registered yet
       unsigned i = 0;
       for (; i < glWaitLocks.size(); i++) {
-         if (!glWaitLocks[i].ThreadID) break;
+         if (!glWaitLocks[i].ThreadID.defined()) break;
       }
 
       glWLIndex = i;
@@ -75,7 +75,7 @@ ERR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType)
          if (glWaitLocks[i].ThreadID IS OtherThreadID) {
             if (glWaitLocks[i].WaitingForThreadID IS our_thread) {
                pf::Log log(__FUNCTION__);
-               log.warning("Deadlock: Thread %d holds resource #%d and is waiting for us (%d) to release #%d.", glWaitLocks[i].ThreadID, ResourceID, our_thread, glWaitLocks[i].WaitingForResourceID);
+               log.warning("Deadlock: Thread %d holds resource #%d and is waiting for us (%d) to release #%d.", LONG(glWaitLocks[i].ThreadID), ResourceID, LONG(our_thread), glWaitLocks[i].WaitingForResourceID);
                return ERR::DeadLock;
             }
          }
@@ -111,7 +111,7 @@ void remove_process_waitlocks(void)
       }
       else if (glWaitLocks[i].WaitingForThreadID IS our_thread) { // A thread is waiting on us, wake it up.
          #ifdef _WIN32
-            log.warning("Waking thread %d", glWaitLocks[i].ThreadID);
+            log.warning("Waking thread %d", LONG(glWaitLocks[i].ThreadID));
             glWaitLocks[i].notWaiting();
             wake_waitlock(glWaitLocks[i].Lock, 1);
          #endif
@@ -140,13 +140,13 @@ WINHANDLE get_threadlock(void)
 
    if (!glTLInit) {
       glTLInit = true;
-      ClearMemory(glThreadLocks, sizeof(glThreadLocks));
+      clearmem(glThreadLocks, sizeof(glThreadLocks));
    }
 
    auto index = glThreadLockIndex++;
    LONG end = index - 1;
    while (index != end) {
-      if (index >= ARRAYSIZE(glThreadLocks)) index = glThreadLockIndex = 1; // Has the array reached exhaustion?  If so, we need to wrap it.
+      if (index >= std::ssize(glThreadLocks)) index = glThreadLockIndex = 1; // Has the array reached exhaustion?  If so, we need to wrap it.
       if (!glThreadLocks[index]) {
          WINHANDLE lock;
          if (alloc_public_waitlock(&lock, NULL) IS ERR::Okay) {
@@ -367,11 +367,9 @@ TimeOut:
 
 ERR LockObject(OBJECTPTR Object, LONG Timeout)
 {
-   pf::Log log(__FUNCTION__);
-
    if (!Object) {
       DEBUG_BREAK
-      return log.warning(ERR::NullArgs);
+      return ERR::NullArgs;
    }
 
    auto our_thread = get_thread_id();
@@ -382,12 +380,11 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
       // destroying the object when other threads could potentially be using it).
 
       if (++Object->Queue IS 1) {
-         Object->Locked = true;
-         Object->ThreadID = our_thread;
+         Object->ThreadID = LONG(our_thread);
          return ERR::Okay;
       }
 
-      if (our_thread IS Object->ThreadID) { // Support nested locks.
+      if (LONG(our_thread) IS Object->ThreadID) { // Support nested locks.
          return ERR::Okay;
       }
 
@@ -403,44 +400,43 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
    // Solution: Prior to wait_until(), increment the object queue to attempt a lock.  This is *slightly* less efficient than doing it after the cond_wait(), but
    //           it will prevent us from sleeping on a signal that we would never receive.
 
-   LARGE end_time, current_time;
+   LARGE end_time;
    if (Timeout < 0) end_time = 0x0fffffffffffffffLL; // Do not alter this value.
-   else end_time = (PreciseTime() / 1000LL) + Timeout;
+   else end_time = PreciseTime() + (LARGE(Timeout) * 1000LL);
 
    Object->SleepQueue++; // Increment the sleep queue first so that ReleaseObject() will know that another thread is expecting a wake-up.
 
    if (auto lock = std::unique_lock{glmObjectLocking, std::chrono::milliseconds(Timeout)}) {
+      pf::Log log(__FUNCTION__);
+
       //log.function("TID: %d, Sleeping on #%d, Timeout: %d, Queue: %d, Locked By: %d", our_thread, Object->UID, Timeout, Object->Queue, Object->ThreadID);
 
       ERR error = ERR::TimeOut;
-      if (init_sleep(Object->ThreadID, Object->UID, RT_OBJECT) IS ERR::Okay) { // Indicate that our thread is sleeping.
-         while ((current_time = (PreciseTime() / 1000LL)) < end_time) {
-            auto tmout = end_time - current_time;
-            if (tmout < 0) tmout = 0;
-
+      if (init_sleep(THREADID(Object->ThreadID), Object->UID, RT_OBJECT) IS ERR::Okay) { // Indicate that our thread is sleeping.
+         LARGE current_time;
+         while ((current_time = PreciseTime()) < end_time) {
             if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
                glWaitLocks[glWLIndex].notWaiting();
                Object->SleepQueue--;
                return ERR::DoesNotExist;
             }
-
-            if (++Object->Queue IS 1) { // Increment the lock count - also doubles as a prv_access() call if the lock value is 1.
+            else if (++Object->Queue IS 1) { // Increment the lock count - also doubles as a lock() method call if the Queue value is 1.
                glWaitLocks[glWLIndex].notWaiting();
-               Object->Locked = false;
-               Object->ThreadID = our_thread;
+               Object->ThreadID = LONG(our_thread);
                Object->SleepQueue--;
                return ERR::Okay;
             }
             else --Object->Queue;
 
-            if (cvObjects.wait_for(glmObjectLocking, std::chrono::milliseconds{tmout}) IS std::cv_status::timeout) break;
+            auto tmout = end_time - current_time;
+            if (tmout < 0) tmout = 0;
+            if (cvObjects.wait_for(glmObjectLocking, std::chrono::microseconds{tmout}) IS std::cv_status::timeout) break;
          } // end while()
 
          // Failure: Either a timeout occurred or the object no longer exists.
 
          if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
-            pf::Log log(__FUNCTION__);
-            log.warning("TID %d: The resource no longer exists.", get_thread_id());
+            log.warning("TID %d: The resource no longer exists.", LONG(get_thread_id()));
             error = ERR::DoesNotExist;
          }
          else {
@@ -506,10 +502,10 @@ ERR ReleaseMemory(MEMORYID MemoryID)
    else access = -1;
 
    if (!access) {
-      mem->second.ThreadLockID = 0;
+      mem->second.ThreadLockID = THREADID(0);
 
-      if ((mem->second.Flags & MEM::DELETE) != MEM::NIL) {
-         log.trace("Deleting marked memory block #%d (MEM::DELETE)", MemoryID);
+      if ((mem->second.Flags & MEM::COLLECT) != MEM::NIL) {
+         log.trace("Collecting memory block #%d", MemoryID);
          FreeResource(mem->second.Address);
       }
       else if ((mem->second.Flags & MEM::EXCLUSIVE) != MEM::NIL) {
@@ -541,8 +537,6 @@ void ReleaseObject(OBJECTPTR Object)
    if (!Object) return;
 
    if (--Object->Queue > 0) return;
-
-   Object->Locked = false;
 
    if (Object->SleepQueue > 0) { // Other threads are waiting on this object
       pf::Log log(__FUNCTION__);

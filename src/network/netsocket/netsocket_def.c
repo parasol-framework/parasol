@@ -25,24 +25,24 @@ FDEF maReadMsg[] = { { "Message", FD_PTR|FD_RESULT }, { "Length", FD_LONG|FD_RES
 FDEF maWriteMsg[] = { { "Message", FD_BUFFER|FD_PTR }, { "Length", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 
 static const struct MethodEntry clNetSocketMethods[] = {
-   { -1, (APTR)NETSOCKET_Connect, "Connect", maConnect, sizeof(struct ns::Connect) },
-   { -2, (APTR)NETSOCKET_GetLocalIPAddress, "GetLocalIPAddress", maGetLocalIPAddress, sizeof(struct ns::GetLocalIPAddress) },
-   { -3, (APTR)NETSOCKET_DisconnectClient, "DisconnectClient", maDisconnectClient, sizeof(struct ns::DisconnectClient) },
-   { -4, (APTR)NETSOCKET_DisconnectSocket, "DisconnectSocket", maDisconnectSocket, sizeof(struct ns::DisconnectSocket) },
-   { -5, (APTR)NETSOCKET_ReadMsg, "ReadMsg", maReadMsg, sizeof(struct ns::ReadMsg) },
-   { -6, (APTR)NETSOCKET_WriteMsg, "WriteMsg", maWriteMsg, sizeof(struct ns::WriteMsg) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)NETSOCKET_Connect, "Connect", maConnect, sizeof(struct ns::Connect) },
+   { AC(-2), (APTR)NETSOCKET_GetLocalIPAddress, "GetLocalIPAddress", maGetLocalIPAddress, sizeof(struct ns::GetLocalIPAddress) },
+   { AC(-3), (APTR)NETSOCKET_DisconnectClient, "DisconnectClient", maDisconnectClient, sizeof(struct ns::DisconnectClient) },
+   { AC(-4), (APTR)NETSOCKET_DisconnectSocket, "DisconnectSocket", maDisconnectSocket, sizeof(struct ns::DisconnectSocket) },
+   { AC(-5), (APTR)NETSOCKET_ReadMsg, "ReadMsg", maReadMsg, sizeof(struct ns::ReadMsg) },
+   { AC(-6), (APTR)NETSOCKET_WriteMsg, "WriteMsg", maWriteMsg, sizeof(struct ns::WriteMsg) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clNetSocketActions[] = {
-   { AC_DataFeed, NETSOCKET_DataFeed },
-   { AC_Disable, NETSOCKET_Disable },
-   { AC_Free, NETSOCKET_Free },
-   { AC_FreeWarning, NETSOCKET_FreeWarning },
-   { AC_Init, NETSOCKET_Init },
-   { AC_NewObject, NETSOCKET_NewObject },
-   { AC_Read, NETSOCKET_Read },
-   { AC_Write, NETSOCKET_Write },
-   { 0, NULL }
+   { AC::DataFeed, NETSOCKET_DataFeed },
+   { AC::Disable, NETSOCKET_Disable },
+   { AC::Free, NETSOCKET_Free },
+   { AC::FreeWarning, NETSOCKET_FreeWarning },
+   { AC::Init, NETSOCKET_Init },
+   { AC::NewObject, NETSOCKET_NewObject },
+   { AC::Read, NETSOCKET_Read },
+   { AC::Write, NETSOCKET_Write },
+   { AC::NIL, NULL }
 };
 

@@ -175,6 +175,7 @@ class extVectorText : public extVector {
 
    std::vector<TextLine> txLines;
    FUNCTION txValidateInput;
+   FUNCTION txOnChange;
    DOUBLE txInlineSize; // Enables word-wrapping
    DOUBLE txX, txY;
    DOUBLE txTextLength;
@@ -217,7 +218,7 @@ static void delete_selection(extVectorText *);
 static void insert_char(extVectorText *, LONG, LONG);
 static void generate_text(extVectorText *, agg::path_storage &Path);
 static void raster_text_to_bitmap(extVectorText *);
-static void key_event(extVectorText *, evKey *, LONG);
+static void key_event(evKey *, LONG, extVectorText *);
 static ERR reset_font(extVectorText *, bool = false);
 static ERR text_input_events(extVector *, const InputEvent *);
 static ERR text_focus_event(extVector *, FM, OBJECTPTR, APTR);
@@ -245,11 +246,25 @@ inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE &X, 
 
 inline DOUBLE get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 {
-   if ((!Glyph) or (!PrevGlyph)) return 0;
+   if ((not Glyph) or (not PrevGlyph)) return 0;
 
    FT_Vector delta;
    FT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
    return int26p6_to_dbl(delta.x);
+}
+
+inline void report_change(extVectorText *Self)
+{
+   if (Self->txOnChange.isC()) {
+      auto routine = (void (*)(extVectorText *))Self->txOnChange.Routine;
+      pf::SwitchContext context(Self->txOnChange.Context);
+      routine(Self);
+   }
+   else if (Self->txOnChange.isScript()) {
+      sc::Call(Self->txOnChange, std::to_array<ScriptArg>({
+         { "VectorText", Self, FD_OBJECTPTR }
+      }));
+   }
 }
 
 //********************************************************************************************************************
@@ -310,7 +325,7 @@ static ERR VECTORTEXT_DeleteLine(extVectorText *Self, struct vt::DeleteLine *Arg
 {
    if (Self->txLines.empty()) return ERR::Okay;
 
-   if ((!Args) or (Args->Line < 0)) Self->txLines.pop_back();
+   if ((not Args) or (Args->Line < 0)) Self->txLines.pop_back();
    else if ((size_t)Args->Line < Self->txLines.size()) Self->txLines.erase(Self->txLines.begin() + Args->Line);
    else return ERR::Args;
 
@@ -364,7 +379,7 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
 static ERR VECTORTEXT_Init(extVectorText *Self)
 {
    if ((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) {
-      if (!Self->txFocusID) {
+      if (not Self->txFocusID) {
          if (Self->ParentView) Self->txFocusID = Self->ParentView->UID;
       }
 
@@ -401,13 +416,13 @@ static ERR VECTORTEXT_NewObject(extVectorText *Self)
    new (&Self->txLines) std::vector<TextLine>;
    new (&Self->txCursor) TextCursor;
 
-   StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
+   strcopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_text;
    Self->StrokeWidth  = 0.0;
    Self->txWeight     = DEFAULT_WEIGHT;
    Self->txFontSize   = 16; // Pixel units @ 72 DPI
    Self->txCharLimit  = 0x7fffffff;
-   Self->txFamily     = StrClone("Noto Sans");
+   Self->txFamily     = strclone("Noto Sans");
    Self->Fill[0].Colour  = FRGB(1, 1, 1, 1);
    Self->txLetterSpacing = 1.0;
    Self->DisableHitTesting = true;
@@ -519,7 +534,7 @@ taken into account.
 
 static ERR TEXT_GET_Descent(extVectorText *Self, LONG *Value)
 {
-   if (!Self->txHandle) {
+   if (not Self->txHandle) {
       if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
@@ -542,7 +557,7 @@ account.  The height includes the top region reserved for accents, but excludes 
 
 static ERR TEXT_GET_DisplayHeight(extVectorText *Self, LONG *Value)
 {
-   if (!Self->txHandle) {
+   if (not Self->txHandle) {
       if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
@@ -566,7 +581,7 @@ calculation `16 * 72 / 96`.
 
 static ERR TEXT_GET_DisplaySize(extVectorText *Self, LONG *Value)
 {
-   if (!Self->txHandle) {
+   if (not Self->txHandle) {
       if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
@@ -610,7 +625,7 @@ static ERR TEXT_SET_DX(extVectorText *Self, DOUBLE *Values, LONG Elements)
 
    if ((Values) and (Elements > 0)) {
       if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDX) IS ERR::Okay) {
-         CopyMemory(Values, Self->txDX, Elements * sizeof(DOUBLE));
+         copymem(Values, Self->txDX, Elements * sizeof(DOUBLE));
          Self->txTotalDX = Elements;
          reset_path(Self);
          return ERR::Okay;
@@ -641,7 +656,7 @@ static ERR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
 
    if ((Values) and (Elements > 0)) {
       if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDY) IS ERR::Okay) {
-         CopyMemory(Values, Self->txDY, Elements * sizeof(DOUBLE));
+         copymem(Values, Self->txDY, Elements * sizeof(DOUBLE));
          Self->txTotalDY = Elements;
          reset_path(Self);
          return ERR::Okay;
@@ -649,6 +664,36 @@ static ERR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
       else return ERR::AllocMemory;
    }
    else return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+OnChange: Receive notifications for changes to the text string.
+
+Set this field with a function reference to receive notifications whenever the text string changes.
+
+The callback function prototype is `void Function(*VectorText)`.
+
+*********************************************************************************************************************/
+
+static ERR TEXT_GET_OnChange(extVectorText *Self, FUNCTION **Value)
+{
+   if (Self->txOnChange.defined()) {
+      *Value = &Self->txOnChange;
+      return ERR::Okay;
+   }
+   else return ERR::FieldNotSet;
+}
+
+static ERR TEXT_SET_OnChange(extVectorText *Self, FUNCTION *Value)
+{
+   if (Value) {
+      if (Self->txOnChange.isScript()) UnsubscribeAction(Self->txOnChange.Context, AC::Free);
+      Self->txOnChange = *Value;
+   }
+   else Self->txOnChange.clear();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -676,9 +721,9 @@ static ERR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
 
       CSTRING name;
       if (fnt::ResolveFamilyName(Value, &name) IS ERR::Okay) {
-         Self->txFamily = StrClone(name);
+         Self->txFamily = strclone(name);
       }
-      else Self->txFamily = StrClone("Noto Sans"); // Better to resort to a default than fail completely
+      else Self->txFamily = strclone("Noto Sans"); // Better to resort to a default than fail completely
 
       if (Self->initialised()) return reset_font(Self);
 
@@ -730,10 +775,10 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
 
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
 
-      Self->txFamily = StrClone(other->Face);
+      Self->txFamily = strclone(other->Face);
       Self->txFontSize = std::trunc(other->Point * (96.0 / 72.0));
       Self->txScaledFontSize = false;
-      StrCopy(other->Style, Self->txFontStyle);
+      strcopy(other->Style, Self->txFontStyle);
 
       if (Self->initialised()) return reset_font(Self);
       else return ERR::Okay;
@@ -743,10 +788,10 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
 
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
 
-      Self->txFamily = StrClone(other->txFamily);
+      Self->txFamily = strclone(other->txFamily);
       Self->txFontSize = other->txFontSize;
       Self->txScaledFontSize = false;
-      StrCopy(other->txFontStyle, Self->txFontStyle);
+      strcopy(other->txFontStyle, Self->txFontStyle);
 
       if (Self->initialised()) return reset_font(Self);
       else return ERR::Okay;
@@ -784,7 +829,7 @@ static ERR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
 
    CSTRING next;
    if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
-      Self->FillString = StrClone(Value);
+      Self->FillString = strclone(Value);
 
       if (next) {
          vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
@@ -823,9 +868,7 @@ When retrieving the font size, the resulting string must be freed by the client 
 
 static ERR TEXT_GET_FontSize(extVectorText *Self, CSTRING *Value)
 {
-   char buffer[32];
-   IntToStr(Self->txFontSize, buffer, sizeof(buffer));
-   *Value = StrClone(buffer);
+   *Value = strclone(std::to_string(Self->txFontSize));
    return ERR::Okay;
 }
 
@@ -870,8 +913,8 @@ static ERR TEXT_GET_FontStyle(extVectorText *Self, CSTRING *Value)
 
 static ERR TEXT_SET_FontStyle(extVectorText *Self, CSTRING Value)
 {
-   if ((!Value) or (!Value[0])) StrCopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
-   else StrCopy(Value, Self->txFontStyle, sizeof(Self->txFontStyle));
+   if ((not Value) or (not Value[0])) strcopy("Regular", Self->txFontStyle, sizeof(Self->txFontStyle));
+   else strcopy(Value, Self->txFontStyle, sizeof(Self->txFontStyle));
    return ERR::Okay;
 }
 
@@ -951,7 +994,7 @@ This field can be queried for the amount of space between each line, measured in
 
 static ERR TEXT_GET_LineSpacing(extVectorText *Self, LONG *Value)
 {
-   if (!Self->txHandle) {
+   if (not Self->txHandle) {
       if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
@@ -1157,7 +1200,7 @@ static ERR TEXT_SET_Rotate(extVectorText *Self, DOUBLE *Values, LONG Elements)
    if (Self->txRotate) { FreeResource(Self->txRotate); Self->txRotate = NULL; Self->txTotalRotate = 0; }
 
    if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txRotate) IS ERR::Okay) {
-      CopyMemory(Values, Self->txRotate, Elements * sizeof(DOUBLE));
+      copymem(Values, Self->txRotate, Elements * sizeof(DOUBLE));
       Self->txTotalRotate = Elements;
       reset_path(Self);
       return ERR::Okay;
@@ -1286,9 +1329,9 @@ transforms.
 
 static ERR TEXT_GET_TextWidth(extVectorText *Self, LONG *Value)
 {
-   if (!Self->initialised()) return ERR::NotInitialised;
+   if (not Self->initialised()) return ERR::NotInitialised;
 
-   if (!Self->txHandle) {
+   if (not Self->txHandle) {
       if (auto error = reset_font(Self); error != ERR::Okay) return error;
    }
 
@@ -1404,7 +1447,7 @@ extern void set_text_final_xy(extVectorText *Vector)
 
 static ERR reset_font(extVectorText *Vector, bool Force)
 {
-   if ((!Vector->initialised()) and (!Force)) return ERR::NotInitialised;
+   if ((not Vector->initialised()) and (not Force)) return ERR::NotInitialised;
 
    pf::Log log;
    if (auto error = get_font(log, Vector->txFamily, Vector->txFontStyle, Vector->txWeight, Vector->txFontSize, &Vector->txHandle); error IS ERR::Okay) {
@@ -1476,8 +1519,8 @@ static ERR text_focus_event(extVector *Vector, FM Event, OBJECTPTR EventObject, 
          else {
             SubscribeTimer(0.8, C_FUNCTION(cursor_timer), &Self->txCursor.timer);
 
-            if (!Self->txKeyEvent) {
-               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), Self, &Self->txKeyEvent);
+            if (not Self->txKeyEvent) {
+               SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, Self), &Self->txKeyEvent);
             }
          }
 
@@ -1602,7 +1645,7 @@ static ERR text_input_events(extVector *Vector, const InputEvent *Events)
 
 //********************************************************************************************************************
 
-static void key_event(extVectorText *Self, evKey *Event, LONG Size)
+static void key_event(evKey *Event, LONG Size, extVectorText *Self)
 {
    if ((Event->Qualifiers & KQ::PRESSED) IS KQ::NIL) return;
 
@@ -1674,7 +1717,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
          Self->txLines[Self->txCursor.row()].replace(offset, Self->txLines[Self->txCursor.row()].charLength(offset), "");
       }
       else if (Self->txCursor.row() > 0) { // The current line will be shifted up into the line above it
-         if ((!Self->txLines[Self->txCursor.row()-1].empty()) or (!Self->txLines[Self->txCursor.row()].empty())) {
+         if ((not Self->txLines[Self->txCursor.row()-1].empty()) or (not Self->txLines[Self->txCursor.row()].empty())) {
             Self->txLines[Self->txCursor.row()-1] += Self->txLines[Self->txCursor.row()];
             Self->txLines.erase(Self->txLines.begin() + Self->txCursor.row());
             Self->txCursor.move(Self, Self->txCursor.row()-1, Self->txLines[Self->txCursor.row()].utf8Length());
@@ -1688,6 +1731,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
       mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
+      report_change(Self);
       break;
 
    case KEY::CLEAR:
@@ -1696,6 +1740,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
          Self->txCursor.move(Self, Self->txCursor.row(), 0);
          ((objVectorText *)Self)->deleteLine(Self->txCursor.row());
       }
+      report_change(Self);
       break;
 
    case KEY::DELETE:
@@ -1710,6 +1755,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       }
       mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
+      report_change(Self);
       break;
 
    case KEY::END:
@@ -1731,10 +1777,11 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       Self->txCursor.move(Self, row + 1, 0);
       add_line(Self, Self->txLines[row], offset, Self->txLines[row].length() - offset, row+1);
 
-      if (!offset) Self->txLines[row].clear();
+      if (not offset) Self->txLines[row].clear();
       else Self->txLines[row].replace(offset, Self->txLines[row].length() - offset, "");
       mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
+      report_change(Self);
       break;
    }
 
@@ -1757,7 +1804,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    case KEY::RIGHT:
       Self->txCursor.resetFlash();
       Self->txCursor.vector->setVisibility(VIS::VISIBLE);
-      if (!Self->txLines.empty()) {
+      if (not Self->txLines.empty()) {
          if (Self->txCursor.column() < Self->txLines[Self->txCursor.row()].utf8Length()) {
             Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()+1);
          }
@@ -1857,12 +1904,12 @@ void TextCursor::move(extVectorText *Vector, LONG Row, LONG Column, bool Validat
 
    if (Row < 0) Row = 0;
    else if ((size_t)Row >= Vector->txLines.size()) {
-      if (!Vector->txLines.empty()) Row = (LONG)Vector->txLines.size() - 1;
+      if (not Vector->txLines.empty()) Row = (LONG)Vector->txLines.size() - 1;
    }
 
    if (Column < 0) Column = 0;
    else if (ValidateWidth) {
-      if (!Vector->txLines.empty()) {
+      if (not Vector->txLines.empty()) {
          LONG max_col = Vector->txLines[mRow].utf8Length();
          if (Column > max_col) Column = max_col;
       }
@@ -1883,7 +1930,7 @@ void TextCursor::reset_vector(extVectorText *Vector) const
    if (Vector->txCursor.vector) {
       auto &line = Vector->txLines[mRow];
 
-      if (!line.chars.empty()) {
+      if (not line.chars.empty()) {
          auto col = mColumn;
          if ((size_t)col >= line.chars.size()) col = line.chars.size() - 1;
          Vector->txCursor.vector->Points[0].X = line.chars[col].x1 + 0.5;
@@ -1895,7 +1942,7 @@ void TextCursor::reset_vector(extVectorText *Vector) const
          // If the cursor X,Y lies outside of the parent viewport, offset the text so that it remains visible to
          // the user.
 
-         if ((!Vector->Morph) and (Vector->ParentView)) {
+         if ((not Vector->Morph) and (Vector->ParentView)) {
             auto p_width = Vector->ParentView->vpFixedWidth;
             DOUBLE xo = 0;
             const DOUBLE CURSOR_MARGIN = Vector->txFontSize * 0.5;
@@ -1948,7 +1995,7 @@ void TextCursor::validate_position(extVectorText *Self) const
 
 static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 {
-   if ((!Self) or (!Unicode)) return;
+   if ((not Self) or (not Unicode)) return;
 
    mark_dirty(Self, RC::BASE_PATH);
 
@@ -1981,6 +2028,8 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 
       Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column() + 1, true);
    }
+
+   report_change(Self);
 }
 
 //********************************************************************************************************************
@@ -2029,6 +2078,7 @@ static const FieldArray clTextFields[] = {
    { "Spacing",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_Spacing, TEXT_SET_Spacing },
    { "Font",          FDF_VIRTUAL|FDF_OBJECT|FDF_I, NULL, TEXT_SET_Font },
    // Non-SVG fields related to real-time text editing
+   { "OnChange",      FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, TEXT_GET_OnChange, TEXT_SET_OnChange },
    { "Focus",         FDF_VIRTUAL|FDF_OBJECTID|FDF_RI, TEXT_GET_Focus, TEXT_SET_Focus },
    { "CursorColumn",  FDF_VIRTUAL|FDF_LONG|FDF_RW, TEXT_GET_CursorColumn, TEXT_SET_CursorColumn },
    { "CursorRow",     FDF_VIRTUAL|FDF_LONG|FDF_RW, TEXT_GET_CursorRow, TEXT_SET_CursorRow },

@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, function()
+module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, timestamp=20240611 }, function()
   c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")
 
   restrict(function()
@@ -226,6 +226,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "SCALED_FX: FX is scaled",
     "SCALED_FY: FY is scaled",
     "SCALED_RADIUS: Radius is scaled",
+    "SCALED_FOCAL_RADIUS: Focal radius is scaled",
     "FIXED_X1: X1 is fixed",
     "FIXED_Y1: Y1 is fixed",
     "FIXED_X2: X2 is fixed",
@@ -234,7 +235,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     "FIXED_CY: CY is fixed",
     "FIXED_FX: FX is fixed",
     "FIXED_FY: FY is fixed",
-    "FIXED_RADIUS: is fixed")
+    "FIXED_RADIUS: Radius is fixed",
+    "FIXED_FOCAL_RADIUS: Focal radius is fixed")
 
   flags("VPF", { comment="Optional flags for the VectorScene object." },
     "BITMAP_SIZED: Automatically adjust the @VectorScene.PageWidth and @VectorScene.PageHeight to match the target @Bitmap.Width and @Bitmap.Height.",
@@ -320,6 +322,14 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     obj(VectorImage)    Image     # A @VectorImage object, suitable for image fills.
     obj(VectorGradient) Gradient  # A @VectorGradient object, suitable for gradient fills.
     struct(FRGB) Colour           # A single RGB colour definition, suitable for block colour fills.
+  ]],
+  [[
+   void reset() {
+      Colour.Alpha = 0;
+      Gradient = NULL;
+      Image    = NULL;
+      Pattern  = NULL;
+   }
   ]])
 
   struct("PathCommand", { comment="Base structure for path commands." }, [[
@@ -436,9 +446,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, fun
     double Y2                    # Ending Y of the gradient 'line'
     double CenterX               # Center X coordinate of radial gradient shapes.
     double CenterY               # Center Y coordinate of radial gradient shapes.
-    double FX                    # Focal X coordinate for radial gradient shapes.
-    double FY                    # Focal Y coordinate for radial gradient shapes.
-    double Radius                # The size of a radial gradient radius.
+    double FocalX                # Focal X coordinate for radial gradient shapes.
+    double FocalY                # Focal Y coordinate for radial gradient shapes.
+    double Radius                # The radius size for radial gradients.
+    double FocalRadius           # The size of the focal radius for radial gradients.
     obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes.
     int(VSPREAD) SpreadMethod    # Defines the spread method to use for gradient fills.
     int(VUNIT) Units             # Defines the coordinate system for `(X1, Y1), (X2, Y2)`
@@ -1205,6 +1216,9 @@ constexpr FieldValue AppendPath(OBJECTPTR Value) { return FieldValue(FID_AppendP
 
 constexpr FieldValue DragCallback(const FUNCTION &Value) { return FieldValue(FID_DragCallback, &Value); }
 constexpr FieldValue DragCallback(const FUNCTION *Value) { return FieldValue(FID_DragCallback, Value); }
+
+constexpr FieldValue OnChange(const FUNCTION &Value) { return FieldValue(FID_OnChange, &Value); }
+constexpr FieldValue OnChange(const FUNCTION *Value) { return FieldValue(FID_OnChange, Value); }
 
 constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, LONG(Value)); }
 constexpr FieldValue Overflow(VOF Value) { return FieldValue(FID_Overflow, LONG(Value)); }

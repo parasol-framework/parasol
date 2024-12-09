@@ -93,22 +93,23 @@ static const std::vector<Field> glMetaFieldsPreset = {
    { 0, NULL, NULL,                writeval_default, "FileDescription", FID_FileDescription, sizeof(Object)+8+(sizeof(APTR)*4),  5,  FDF_STRING|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "FileHeader",      FID_FileHeader,      sizeof(Object)+8+(sizeof(APTR)*5),  6,  FDF_STRING|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "Path",            FID_Path,            sizeof(Object)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "Size",            FID_Size,            sizeof(Object)+8+(sizeof(APTR)*7),  8,  FDF_LONG|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "Flags",           FID_Flags,           sizeof(Object)+12+(sizeof(APTR)*7), 9, FDF_LONG|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "ClassID",         FID_ClassID,         sizeof(Object)+16+(sizeof(APTR)*7), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Object)+20+(sizeof(APTR)*7), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Object)+24+(sizeof(APTR)*7), 12, FDF_LONG|FDF_R },
-   { MAXINT(&CategoryTable), NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(Object)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_LOOKUP|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Icon",            FID_Icon,            sizeof(Object)+8+(sizeof(APTR)*7),  8,  FDF_STRING|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Size",            FID_Size,            sizeof(Object)+8+(sizeof(APTR)*8),  9,  FDF_LONG|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Flags",           FID_Flags,           sizeof(Object)+12+(sizeof(APTR)*8), 10, FDF_LONG|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "ClassID",         FID_ClassID,         sizeof(Object)+16+(sizeof(APTR)*8), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Object)+20+(sizeof(APTR)*8), 12, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Object)+24+(sizeof(APTR)*8), 13, FDF_LONG|FDF_R },
+   { MAXINT(&CategoryTable), NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(Object)+28+(sizeof(APTR)*8), 14, FDF_LONG|FDF_LOOKUP|FDF_RI },
    // Virtual fields
-   { MAXINT("MethodEntry"), (ERR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods, sizeof(Object), 14, FDF_ARRAY|FD_STRUCT|FDF_RI },
-   { 0, NULL, (APTR)SET_Actions,                  writeval_default,   "Actions",           FID_Actions,         sizeof(Object), 15, FDF_POINTER|FDF_I },
-   { 0, (ERR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(Object), 16, FDF_ARRAY|FDF_POINTER|FDF_R },
-   { 0, (ERR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(Object), 17, FDF_STRING|FDF_R },
-   { 0, (ERR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(Object), 18, FDF_STRING|FDF_SYSTEM|FDF_RI },
-   { 0, (ERR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(Object), 19, FDF_STRING|FDF_R },
-   { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(Object), 20, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
-   { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 21, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
-   { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(Object), 22, FDF_OBJECT|FDF_R },
+   { MAXINT("MethodEntry"), (ERR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods, sizeof(Object), 15, FDF_ARRAY|FD_STRUCT|FDF_RI },
+   { 0, NULL, (APTR)SET_Actions,                  writeval_default,   "Actions",           FID_Actions,         sizeof(Object), 16, FDF_POINTER|FDF_I },
+   { 0, (ERR (*)(APTR, APTR))GET_ActionTable, 0,  writeval_default,   "ActionTable",       FID_ActionTable,     sizeof(Object), 17, FDF_ARRAY|FDF_POINTER|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(Object), 18, FDF_STRING|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(Object), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
+   { 0, (ERR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(Object), 20, FDF_STRING|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(Object), 21, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
+   { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(Object), 23, FDF_OBJECT|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
 };
 
@@ -143,7 +144,7 @@ static const FieldArray glMetaFields[] = {
 extern "C" ERR CLASS_FindField(extMetaClass *, struct mc::FindField *);
 extern "C" ERR CLASS_Free(extMetaClass *);
 extern "C" ERR CLASS_Init(extMetaClass *);
-extern "C" ERR CLASS_NewObject(extMetaClass *);
+extern "C" ERR CLASS_NewPlacement(extMetaClass *);
 
 FDEF argsFindField[] = { { "ID", FD_LONG }, { "Field:Field", FD_RESULT|FD_PTR|FD_STRUCT }, { "Source", FD_RESULT|FD_OBJECTPTR }, { 0, 0 } };
 
@@ -174,16 +175,16 @@ void init_metaclass(void)
    glMetaClass.BaseClassID        = CLASSID::METACLASS;
    glMetaClass.Category           = CCF::SYSTEM;
    glMetaClass.FieldLookup        = glMetaFieldsPreset;
-   glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
+   glMetaClass.OriginalFieldTotal = std::ssize(glMetaFields)-1;
    glMetaClass.Local[0]        = 0xff;
 
    glMetaClass.Methods.resize(2);
-   glMetaClass.Methods[1] = { -1, (APTR)CLASS_FindField, "FindField", argsFindField, sizeof(struct mc::FindField) };
+   glMetaClass.Methods[1] = { AC(-1), (APTR)CLASS_FindField, "FindField", argsFindField, sizeof(struct mc::FindField) };
 
-   glMetaClass.ActionTable[AC_Free].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Free;
-   glMetaClass.ActionTable[AC_Init].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Init;
-   glMetaClass.ActionTable[AC_NewObject].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_NewObject;
-   glMetaClass.ActionTable[AC_Signal].PerformAction = &DEFAULT_Signal;
+   glMetaClass.ActionTable[LONG(AC::Free)].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Free;
+   glMetaClass.ActionTable[LONG(AC::Init)].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_Init;
+   glMetaClass.ActionTable[LONG(AC::NewPlacement)].PerformAction = (ERR (*)(OBJECTPTR, APTR))CLASS_NewPlacement;
+   glMetaClass.ActionTable[LONG(AC::Signal)].PerformAction = &DEFAULT_Signal;
 
    sort_class_fields(&glMetaClass, glMetaClass.FieldLookup);
 
@@ -320,7 +321,7 @@ ERR CLASS_Init(extMetaClass *Self)
          Self->Root = (RootModule *)ctx->object();
          break;
       }
-      ctx = ctx->Stack;
+      ctx = ctx->stack;
    }
 
    bool save = false;
@@ -380,7 +381,7 @@ ERR CLASS_Init(extMetaClass *Self)
 
 //********************************************************************************************************************
 
-ERR CLASS_NewObject(extMetaClass *Self)
+ERR CLASS_NewPlacement(extMetaClass *Self)
 {
    new (Self) extMetaClass;
    Self->Local[0] = 0xff;
@@ -402,14 +403,14 @@ can also be auto-generated using our IDL scripts - an approach that we strongly 
 
 <pre>
 ActionArray clActions[] = {
-   { AC_Free,          PIC_Free },
-   { AC_NewObject,     PIC_NewObject },
-   { AC_Init,          PIC_Init },
-   { AC_Query,         PIC_Query },
-   { AC_Read,          PIC_Read },
-   { AC_SaveToObject,  PIC_SaveToObject },
-   { AC_Seek,          PIC_Seek },
-   { AC_Write,         PIC_Write },
+   { AC::Free,          PIC_Free },
+   { AC::NewObject,     PIC_NewObject },
+   { AC::Init,          PIC_Init },
+   { AC::Query,         PIC_Query },
+   { AC::Read,          PIC_Read },
+   { AC::SaveToObject,  PIC_SaveToObject },
+   { AC::Seek,          PIC_Seek },
+   { AC::Write,         PIC_Write },
    { 0, NULL }
 };
 </pre>
@@ -422,12 +423,12 @@ static ERR SET_Actions(extMetaClass *Self, const ActionArray *Actions)
 {
    if (!Actions) return ERR::Failed;
 
-   Self->ActionTable[AC_Signal].PerformAction = &DEFAULT_Signal;
+   Self->ActionTable[LONG(AC::Signal)].PerformAction = &DEFAULT_Signal;
 
-   for (auto i=0; Actions[i].ActionCode; i++) {
+   for (auto i=0; Actions[i].ActionCode != AC::NIL; i++) {
       auto code = Actions[i].ActionCode;
-      if ((code < AC_END) and (code > 0)) {
-         Self->ActionTable[code].PerformAction = (ERR (*)(OBJECTPTR, APTR))Actions[i].Routine;
+      if ((code < AC::END) and (code > AC::NIL)) {
+         Self->ActionTable[LONG(code)].PerformAction = (ERR (*)(OBJECTPTR, APTR))Actions[i].Routine;
       }
    }
 
@@ -441,17 +442,17 @@ ActionTable: This field can be read to retrieve a MetaClass object's internal ac
 
 This field retrieves the internal action table of a class. The action table is arranged into a jump
 table of action routines, with each routine pointing directly to the object support functions.  The size of the
-jump table is defined by the global constant `AC_END`.  The table is sorted by action ID.
+jump table is defined by the global constant `AC::END`.  The table is sorted by action ID.
 
 It is possible to check if an action is supported by a class by looking up its index within the ActionTable, for
-example `Routine[AC_Read]`.  Calling an action routine directly from client code is an illegal operation.
+example `Routine[AC::Read]`.  Calling an action routine directly from client code is an illegal operation.
 
 *********************************************************************************************************************/
 
 static ERR GET_ActionTable(extMetaClass *Self, ActionEntry **Value, LONG *Elements)
 {
    *Value = Self->ActionTable;
-   *Elements = AC_END;
+   *Elements = LONG(AC::END);
    return ERR::Okay;
 }
 
@@ -595,6 +596,12 @@ separated with an OR symbol | as demonstrated in this example for the JPEG heade
 Flags: Optional flag settings.
 
 -FIELD-
+Icon: Associates an icon with the file data for this class.
+
+Files that belong to a class can be associated with an icon that is declared in this field.  The icon string format is 
+`folder/icon`.  Valid icons are available in the icon database.
+
+-FIELD-
 Location: Returns the path from which the class binary is loaded.
 
 The path from which the class binary was loaded is readable from this field.  The path may not necessarily include the
@@ -609,11 +616,11 @@ static ERR GET_Location(extMetaClass *Self, CSTRING *Value)
 
    if (Self->ClassID != CLASSID::NIL) {
       if (glClassDB.contains(Self->ClassID)) {
-         Self->Location = StrClone(glClassDB[Self->ClassID].Path.c_str());
+         Self->Location = strclone(glClassDB[Self->ClassID].Path);
       }
    }
    else if (glClassDB.contains(Self->BaseClassID)) {
-      Self->Location = StrClone(glClassDB[Self->BaseClassID].Path.c_str());
+      Self->Location = strclone(glClassDB[Self->BaseClassID].Path);
    }
 
    if ((*Value = Self->Location)) return ERR::Okay;
@@ -649,8 +656,8 @@ static ERR SET_Methods(extMetaClass *Self, const MethodEntry *Methods, LONG Elem
    // Search for the method with the lowest ID number
 
    LONG lowest = 0;
-   for (LONG i=0; Methods[i].MethodID; i++) {
-      if (Methods[i].MethodID < lowest) lowest = Methods[i].MethodID;
+   for (LONG i=0; Methods[i].MethodID != AC::NIL; i++) {
+      if (LONG(Methods[i].MethodID) < lowest) lowest = LONG(Methods[i].MethodID);
    }
 
    // Generate the method array.  Note that the first entry that we put in the array will
@@ -659,12 +666,13 @@ static ERR SET_Methods(extMetaClass *Self, const MethodEntry *Methods, LONG Elem
    if (lowest < 0) {
       log.msg("Detected %d methods in class %s.", -lowest, Self->ClassName ? Self->ClassName : (STRING)"Unnamed");
       Self->Methods.resize((-lowest) + 1);
-      for (unsigned i=0; Methods[i].MethodID; i++) {
-         Self->Methods[-Methods[i].MethodID].MethodID = Methods[i].MethodID;
-         Self->Methods[-Methods[i].MethodID].Routine  = Methods[i].Routine;
-         Self->Methods[-Methods[i].MethodID].Size     = Methods[i].Size;
-         Self->Methods[-Methods[i].MethodID].Name     = Methods[i].Name;
-         Self->Methods[-Methods[i].MethodID].Args     = Methods[i].Args;
+      for (unsigned i=0; Methods[i].MethodID != AC::NIL; i++) {
+         const LONG lk = -LONG(Methods[i].MethodID);
+         Self->Methods[lk].MethodID = Methods[i].MethodID;
+         Self->Methods[lk].Routine  = Methods[i].Routine;
+         Self->Methods[lk].Size     = Methods[i].Size;
+         Self->Methods[lk].Name     = Methods[i].Name;
+         Self->Methods[lk].Args     = Methods[i].Args;
       }
 
       // NOTE: If this is a sub-class, the initialisation process will add the base-class methods to the list.
@@ -685,7 +693,7 @@ static ERR GET_Module(extMetaClass *Self, CSTRING *Value)
    if (!Self->initialised()) return ERR::NotInitialised;
 
    if (Self->Root) {
-      *Value = Self->Root->LibraryName;
+      *Value = Self->Root->LibraryName.c_str();
       return ERR::Okay;
    }
    else {
@@ -924,7 +932,7 @@ static void field_setup(extMetaClass *Class)
 
       // Build a list of local objects before we do the sort
 
-      ULONG local[ARRAYSIZE(Class->Local)];
+      std::vector<ULONG> local(std::ssize(Class->Local));
 
       UBYTE int_count = 0;
       if ((Class->Flags & CLF::INHERIT_LOCAL) != CLF::NIL) {

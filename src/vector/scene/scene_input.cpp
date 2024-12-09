@@ -187,7 +187,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
          }
       }
 
-      if (input->OverID != Self->SurfaceID) {
+      if ((input->OverID != Self->SurfaceID) and ((input->Flags & JTYPE::CROSSING) IS JTYPE::NIL)) {
          // Activity occurring on another surface may be reported to us in circumstances where our surface is modal.
          continue;
       }

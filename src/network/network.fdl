@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Network", copyright="Paul Manias © 2005-2024", version=1.0, prefix="net", status="stable" }, function()
+module({ name="Network", copyright="Paul Manias © 2005-2024", version=1.0, prefix="net", status="stable", timestamp=20240611 }, function()
   restrict(function()
     loadFile(glPath .. 'common.fdl')
   end)

@@ -29,7 +29,7 @@ inline char read_nibble(CSTRING Str)
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
 
-ERR simplevector_free(APTR Address) {
+static ERR simplevector_free(APTR Address) {
    return ERR::Okay;
 }
 
@@ -38,7 +38,7 @@ static ResourceManager glResourceSimpleVector = {
    &simplevector_free
 };
 
-void set_memory_manager(APTR Address, ResourceManager *Manager)
+static void set_memory_manager(APTR Address, ResourceManager *Manager)
 {
    ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
    address_mgr[0] = Manager;
@@ -254,8 +254,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle,
-   OBJECTPTR FillStyle)
+ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -631,7 +630,7 @@ ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
    if (Callback->isC()) {
       auto routine = ((ERR (*)(SimpleVector *, LONG, LONG, double, double, APTR))(Callback->Routine));
 
-      pf::SwitchContext context(GetParentContext());
+      pf::SwitchContext context(ParentContext());
 
       do {
          cmd = ((SimpleVector *)Path)->mPath.vertex(&x, &y);
@@ -987,10 +986,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
 
    if ((!IRI) or (!Painter)) return ERR::NullArgs;
 
-   Painter->Colour.Alpha = 0; // Nullify the colour
-   Painter->Gradient = NULL;
-   Painter->Image    = NULL;
-   Painter->Pattern  = NULL;
+   Painter->reset();
 
    log.trace("IRI: %s", IRI);
 
@@ -1050,26 +1046,26 @@ next:
       auto &rgb = Painter->Colour;
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
       IRI += 4;
-      rgb.Red = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Red = strtod(IRI, NULL) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
          if (*IRI IS '%') rgb.Red = rgb.Red * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) IRI++;
-      rgb.Green = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Green = strtod(IRI, NULL) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
          if (*IRI IS '%') rgb.Green = rgb.Green * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) IRI++;
-      rgb.Blue = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Blue = strtod(IRI, NULL) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
          if (*IRI IS '%') rgb.Blue = rgb.Blue * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) {
          IRI++;
-         rgb.Alpha = StrToFloat(IRI) * (1.0 / 255.0);
+         rgb.Alpha = strtod(IRI, NULL) * (1.0 / 255.0);
          while (*IRI) {
             if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
             IRI++;
@@ -1101,18 +1097,18 @@ next:
       auto &rgb = Painter->Colour;
       while (*IRI != '(') IRI++;
       IRI++;
-      double hue = StrToFloat(IRI) * (1.0 / 360.0);
+      double hue = strtod(IRI, NULL) * (1.0 / 360.0);
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double sat = StrToFloat(IRI) * 0.01;
+      double sat = strtod(IRI, NULL) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double light = StrToFloat(IRI) * 0.01;
+      double light = strtod(IRI, NULL) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
 
       if (*IRI) {
          IRI++;
-         rgb.Alpha = std::clamp(StrToFloat(IRI), 0.0, 1.0);
+         rgb.Alpha = std::clamp(strtod(IRI, NULL), 0.0, 1.0);
          while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;
@@ -1153,17 +1149,17 @@ next:
       // Rules apply as for HSL, but the conversion algorithm is different.
       auto &rgb = Painter->Colour;
       IRI += 4;
-      double hue = StrToFloat(IRI) * (1.0 / 360.0);
+      double hue = strtod(IRI, NULL) * (1.0 / 360.0);
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double sat = StrToFloat(IRI) * 0.01;
+      double sat = strtod(IRI, NULL) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double val = StrToFloat(IRI) * 0.01;
+      double val = strtod(IRI, NULL) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) {
          IRI++;
-         rgb.Alpha = std::clamp(StrToFloat(IRI), 0.0, 1.0);
+         rgb.Alpha = std::clamp(strtod(IRI, NULL), 0.0, 1.0);
          while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;
@@ -1200,7 +1196,7 @@ next:
       IRI++;
       char nibbles[8];
       UBYTE n = 0;
-      while ((*IRI) and (n < ARRAYSIZE(nibbles))) nibbles[n++] = read_nibble(IRI++);
+      while ((*IRI) and (n < std::ssize(nibbles))) nibbles[n++] = read_nibble(IRI++);
       while ((*IRI) and (*IRI != ';')) IRI++;
 
       if (n IS 3) {

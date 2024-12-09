@@ -71,31 +71,31 @@ FDEF maNewMatrix[] = { { "VectorMatrix:Transform", FD_PTR|FD_STRUCT|FD_RESOURCE|
 FDEF maFreeMatrix[] = { { "VectorMatrix:Matrix", FD_PTR|FD_STRUCT }, { 0, 0 } };
 
 static const struct MethodEntry clVectorMethods[] = {
-   { -1, (APTR)VECTOR_Push, "Push", maPush, sizeof(struct vec::Push) },
-   { -2, (APTR)VECTOR_Trace, "Trace", maTrace, sizeof(struct vec::Trace) },
-   { -3, (APTR)VECTOR_GetBoundary, "GetBoundary", maGetBoundary, sizeof(struct vec::GetBoundary) },
-   { -4, (APTR)VECTOR_PointInPath, "PointInPath", maPointInPath, sizeof(struct vec::PointInPath) },
-   { -5, (APTR)VECTOR_SubscribeInput, "SubscribeInput", maSubscribeInput, sizeof(struct vec::SubscribeInput) },
-   { -6, (APTR)VECTOR_SubscribeKeyboard, "SubscribeKeyboard", maSubscribeKeyboard, sizeof(struct vec::SubscribeKeyboard) },
-   { -7, (APTR)VECTOR_SubscribeFeedback, "SubscribeFeedback", maSubscribeFeedback, sizeof(struct vec::SubscribeFeedback) },
-   { -8, (APTR)VECTOR_Debug, "Debug", 0, 0 },
-   { -9, (APTR)VECTOR_NewMatrix, "NewMatrix", maNewMatrix, sizeof(struct vec::NewMatrix) },
-   { -10, (APTR)VECTOR_FreeMatrix, "FreeMatrix", maFreeMatrix, sizeof(struct vec::FreeMatrix) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)VECTOR_Push, "Push", maPush, sizeof(struct vec::Push) },
+   { AC(-2), (APTR)VECTOR_Trace, "Trace", maTrace, sizeof(struct vec::Trace) },
+   { AC(-3), (APTR)VECTOR_GetBoundary, "GetBoundary", maGetBoundary, sizeof(struct vec::GetBoundary) },
+   { AC(-4), (APTR)VECTOR_PointInPath, "PointInPath", maPointInPath, sizeof(struct vec::PointInPath) },
+   { AC(-5), (APTR)VECTOR_SubscribeInput, "SubscribeInput", maSubscribeInput, sizeof(struct vec::SubscribeInput) },
+   { AC(-6), (APTR)VECTOR_SubscribeKeyboard, "SubscribeKeyboard", maSubscribeKeyboard, sizeof(struct vec::SubscribeKeyboard) },
+   { AC(-7), (APTR)VECTOR_SubscribeFeedback, "SubscribeFeedback", maSubscribeFeedback, sizeof(struct vec::SubscribeFeedback) },
+   { AC(-8), (APTR)VECTOR_Debug, "Debug", 0, 0 },
+   { AC(-9), (APTR)VECTOR_NewMatrix, "NewMatrix", maNewMatrix, sizeof(struct vec::NewMatrix) },
+   { AC(-10), (APTR)VECTOR_FreeMatrix, "FreeMatrix", maFreeMatrix, sizeof(struct vec::FreeMatrix) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clVectorActions[] = {
-   { AC_Disable, VECTOR_Disable },
-   { AC_Draw, VECTOR_Draw },
-   { AC_Enable, VECTOR_Enable },
-   { AC_Free, VECTOR_Free },
-   { AC_Hide, VECTOR_Hide },
-   { AC_Init, VECTOR_Init },
-   { AC_MoveToBack, VECTOR_MoveToBack },
-   { AC_MoveToFront, VECTOR_MoveToFront },
-   { AC_NewObject, VECTOR_NewObject },
-   { AC_NewOwner, VECTOR_NewOwner },
-   { AC_Show, VECTOR_Show },
-   { 0, NULL }
+   { AC::Disable, VECTOR_Disable },
+   { AC::Draw, VECTOR_Draw },
+   { AC::Enable, VECTOR_Enable },
+   { AC::Free, VECTOR_Free },
+   { AC::Hide, VECTOR_Hide },
+   { AC::Init, VECTOR_Init },
+   { AC::MoveToBack, VECTOR_MoveToBack },
+   { AC::MoveToFront, VECTOR_MoveToFront },
+   { AC::NewOwner, VECTOR_NewOwner },
+   { AC::NewPlacement, VECTOR_NewPlacement },
+   { AC::Show, VECTOR_Show },
+   { AC::NIL, NULL }
 };
 

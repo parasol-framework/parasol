@@ -117,7 +117,7 @@ T next_group(T Data, std::string &GroupName)
 
 //********************************************************************************************************************
 
-static std::pair<std::string, std::map<std::string, std::string>> * find_group(extConfig *Self, std::string GroupName)
+static std::pair<std::string, KEYVALUE> * find_group(extConfig *Self, std::string GroupName)
 {
    for (auto scan = Self->Groups->begin(); scan != Self->Groups->end(); scan++) {
       if (!scan->first.compare(GroupName)) return &(*scan);
@@ -629,15 +629,13 @@ static ERR CONFIG_SortByKey(extConfig *Self, struct cfg::SortByKey *Args)
 
    if (Args->Descending) {
       std::sort(Self->Groups->begin(), Self->Groups->end(),
-         [Args](std::pair<std::string, std::map<std::string, std::string>> &a,
-                std::pair<std::string, std::map<std::string, std::string>> &b ) {
+         [Args](ConfigGroup &a, ConfigGroup &b ) {
          return a.second[Args->Key] > b.second[Args->Key];
       });
    }
    else {
       std::sort(Self->Groups->begin(), Self->Groups->end(),
-         [Args](std::pair<std::string, std::map<std::string, std::string>> &a,
-                std::pair<std::string, std::map<std::string, std::string>> &b ) {
+         [Args](ConfigGroup &a, ConfigGroup &b ) {
          return a.second[Args->Key] < b.second[Args->Key];
       });
    }
@@ -754,7 +752,7 @@ static ERR SET_KeyFilter(extConfig *Self, CSTRING Value)
    if (Self->KeyFilter) { FreeResource(Self->KeyFilter); Self->KeyFilter = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->KeyFilter = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->KeyFilter = strclone(Value))) return ERR::AllocMemory;
    }
 
    if (Self->initialised()) apply_key_filter(Self, Self->KeyFilter);
@@ -796,7 +794,7 @@ static ERR SET_GroupFilter(extConfig *Self, CSTRING Value)
    if (Self->GroupFilter) { FreeResource(Self->GroupFilter); Self->GroupFilter = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->GroupFilter = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->GroupFilter = strclone(Value))) return ERR::AllocMemory;
    }
 
    if (Self->initialised()) apply_group_filter(Self, Self->GroupFilter);
@@ -815,7 +813,7 @@ static ERR SET_Path(extConfig *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Path = strclone(Value))) return ERR::AllocMemory;
    }
 
    return ERR::Okay;
@@ -955,7 +953,7 @@ static ERR parse_config(extConfig *Self, CSTRING Buffer)
          continue;
       }
 
-      std::pair<std::string, std::map<std::string, std::string>> *current_group = NULL;
+      std::pair<std::string, KEYVALUE> *current_group = NULL;
       while ((*data) and (*data != '[')) { // Keep processing keys until either a new group or EOF is reached
          if (check_for_key(data)) {
             std::string key, value;
@@ -1088,7 +1086,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_config_class(void)
+extern ERR add_config_class(void)
 {
    glConfigClass = extMetaClass::create::global(
       fl::BaseClassID(CLASSID::CONFIG),
@@ -1097,6 +1095,7 @@ extern "C" ERR add_config_class(void)
       fl::Category(CCF::DATA),
       fl::FileExtension("*.cfg|*.cnf|*.config"),
       fl::FileDescription("Config File"),
+      fl::Icon("filetypes/text"),
       fl::Actions(clConfigActions),
       fl::Methods(clConfigMethods),
       fl::Fields(clFields),

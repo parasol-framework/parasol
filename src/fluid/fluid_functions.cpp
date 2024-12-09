@@ -113,7 +113,7 @@ int fcmd_catch(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    if (lua_gettop(Lua) >= 2) {
-      LONG type = lua_type(Lua, 1);
+      auto type = lua_type(Lua, 1);
       if (type IS LUA_TFUNCTION) {
          LONG catch_filter = 0;
          type = lua_type(Lua, 2);
@@ -202,14 +202,14 @@ int fcmd_catch(lua_State *Lua)
       else luaL_argerror(Lua, 1, "Expected function.");
    }
    else { // In single-function mode, exceptions are returned as a result.
-      LONG type = lua_type(Lua, 1);
+      auto type = lua_type(Lua, 1);
       if (type IS LUA_TFUNCTION) {
          prv->Catch++; // Indicate to other routines that errors must be converted to exceptions.
          prv->CaughtError = ERR::Okay;
 
          lua_pushcfunction(Lua, fcmd_catch_handler);
          lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
-         LONG result_top = lua_gettop(Lua);
+         auto result_top = lua_gettop(Lua);
          if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) {
             prv->Catch--;
 
@@ -242,7 +242,7 @@ int fcmd_catch(lua_State *Lua)
          else {
             prv->Catch--; // Successful call
             lua_pushnil(Lua); // Use nil to indicate that no exception occurred
-            LONG result_count = lua_gettop(Lua) - result_top + 1;
+            auto result_count = lua_gettop(Lua) - result_top + 1;
             lua_insert(Lua, -result_count); // Push the error code in front of any other results
             return result_count;
          }
@@ -261,18 +261,18 @@ int fcmd_catch(lua_State *Lua)
 // Where Args is a named array containing the event parameters.  If the event is not known to Fluid, then no Args will
 // be provided.
 
-static void receive_event(eventsub *Event, APTR Info, LONG InfoSize)
+static void receive_event(pf::Event *Info, LONG InfoSize, APTR CallbackMeta)
 {
    auto Script = (objScript *)CurrentContext();
    auto prv = (prvFluid *)Script->ChildPrivate;
    if (!prv) return;
 
    pf::Log log(__FUNCTION__);
-   log.trace("Received event $%.8x%.8x", (LONG)((Event->EventID>>32) & 0xffffffff), (LONG)(Event->EventID & 0xffffffff));
+   log.trace("Received event $%.8x%.8x", (LONG)((Info->EventID>>32) & 0xffffffff), (LONG)(Info->EventID & 0xffffffff));
 
-   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Event->Function);
+   lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, intptr_t(CallbackMeta));
 
-   lua_pushnumber(prv->Lua, ((rkEvent *)Info)->EventID);
+   lua_pushnumber(prv->Lua, Info->EventID);
    if (lua_pcall(prv->Lua, 1, 0, 0)) {
       process_error(Script, "Event Subscription");
    }
@@ -354,7 +354,7 @@ int fcmd_subscribe_event(lua_State *Lua)
       }
    }
 
-   EVG group_id = EVG::NIL;
+   auto group_id = EVG::NIL;
    if ((group_hash) and (subgroup_hash)) {
       switch (group_hash) {
          case HASH_FILESYSTEM: group_id = EVG::FILESYSTEM; break;
@@ -386,10 +386,11 @@ int fcmd_subscribe_event(lua_State *Lua)
    }
    else {
       APTR handle;
-      if (auto error = SubscribeEvent(event_id, C_FUNCTION(receive_event), NULL, &handle); error IS ERR::Okay) {
+      lua_settop(Lua, 2);
+      auto client_function = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      if (auto error = SubscribeEvent(event_id, C_FUNCTION(receive_event, client_function), &handle); error IS ERR::Okay) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-         lua_settop(Lua, 2);
-         prv->EventList.emplace_back(luaL_ref(Lua, LUA_REGISTRYINDEX), event_id, handle);
+         prv->EventList.emplace_back(client_function, event_id, handle);
          lua_pushlightuserdata(Lua, handle); // 1: Handle
          lua_pushinteger(Lua, LONG(error)); // 2: Error code
       }
@@ -633,8 +634,8 @@ int fcmd_loadfile(lua_State *Lua)
                LONG len, i;
                char header[256];
                if (file->read(header, sizeof(header), &len) IS ERR::Okay) {
-                  if (pf::startswith(LUA_COMPILED, header)) {
-                     recompile = FALSE; // Do not recompile that which is already compiled
+                  if (pf::startswith(LUA_COMPILED, std::string_view(header, sizeof(header)))) {
+                     recompile = false; // Do not recompile that which is already compiled
                      for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
                      if (!header[i]) i++;
                      else i = 0;
@@ -713,7 +714,8 @@ int fcmd_exec(lua_State *Lua)
 
    LONG results = 0;
 
-   if (auto statement = lua_tostring(Lua, 1)) {
+   size_t len;
+   if (auto statement = lua_tolstring(Lua, 1, &len)) {
       CSTRING error_msg = NULL;
 
       {
@@ -722,13 +724,14 @@ int fcmd_exec(lua_State *Lua)
 
          // Check for the presence of a compiled header and skip it if present
 
-         if (pf::startswith(LUA_COMPILED, statement)) {
+         if (pf::startswith(LUA_COMPILED, std::string_view(statement, len))) {
             size_t i;
             for (i=sizeof(LUA_COMPILED)-1; statement[i]; i++);
-            if (!statement[i]) statement += i + 1;
+            statement += i + 1;
+            len -= (i + 1);
          }
 
-         struct luaReader lr = { statement, 0, StrLength(statement) };
+         struct luaReader lr = { statement, 0, LONG(len) };
          if (!lua_load(Lua, &code_reader_buffer, &lr, "exec")) {
             LONG result_top = lua_gettop(prv->Lua);
             if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) {

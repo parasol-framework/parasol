@@ -31,42 +31,38 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
             log.msg("Inappropriate integrity level %d (must be %d or higher), re-launching...\n", il, INTEGRITY_LEVEL_LOW);
 
-            BYTE cmdline[512];
+            std::ostringstream cmdline;
 
-            cmdline[0] = '"';
-            ULONG i = get_exe(cmdline+1, sizeof(cmdline));
-            if ((!i) or (i >= sizeof(cmdline)-30)) return ERR::Failed;
-            i++;
+            char exe_buffer[128];
+            ULONG i = get_exe(exe_buffer, sizeof(exe_buffer));
+            if ((!i) or (i >= sizeof(exe_buffer)-1)) return ERR::Failed;
 
-            i += StrCopy("\" --relaunch", cmdline+i, sizeof(cmdline)-i);
-            if (GetResource(RES::LOG_LEVEL) >= 5) i += StrCopy(" --log-debug", cmdline+i, sizeof(cmdline)-i);
-            else if (GetResource(RES::LOG_LEVEL) >= 3) i += StrCopy(" --log-info", cmdline+i, sizeof(cmdline)-i);
+            cmdline << '"' << exe_buffer << "\" --relaunch";
+            if (GetResource(RES::LOG_LEVEL) >= 5) cmdline << " --log-debug";
+            else if (GetResource(RES::LOG_LEVEL) >= 3) cmdline << "--log-info";
 
             pf::vector<std::string> &args = *params;
-            for (unsigned a=0; a < args.size(); a++) {
+            for (LONG a=0; a < std::ssize(args); a++) {
                if (pf::iequals("--sandbox", args[a])) continue;
-
-               if (i < sizeof(cmdline)-2) {
-                  cmdline[i++] = ' ';
-                  cmdline[i++] ='"';
+               cmdline << " \"";
+               if (args[a].find('"') != std::string::npos) {
+                  std::string sub = args[a];
+                  std::size_t it;
+                  while ((it = sub.find('"')) != std::string::npos) {
+                     sub.replace(sub.begin() + it, sub.begin() + it + 1, "\\\"");
+                  }
+                  cmdline << sub;
                }
-
-               auto arg = args[a].c_str();
-               while ((*arg) and (i < sizeof(cmdline)-2)) {
-                  if (*arg IS '"') cmdline[i++] = '\\'; // Escape '"'
-                  cmdline[i++] = *arg++;
-               }
-               if (i < sizeof(cmdline)-1) cmdline[i++] = '"';
+               else cmdline << args[a];
+               cmdline << '"';
             }
-            cmdline[i] = 0;
-            if (i >= sizeof(cmdline)-3) return ERR::BufferOverflow;
 
             // Temporarily switch off debug messages until the child process returns.
 
             LONG log_level = GetResource(RES::LOG_LEVEL);
             SetResource(RES::LOG_LEVEL, 1);
 
-            create_low_process(cmdline, TRUE);
+            create_low_process(cmdline.str(), true);
 
             SetResource(RES::LOG_LEVEL, log_level);
 
@@ -125,7 +121,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
          for (unsigned i=glArgsIndex; i < args.size(); i++) {
             auto eq = args[i].find('=');
-            if (eq IS std::string::npos) SetKey(glScript, args[i].c_str(), "1");
+            if (eq IS std::string::npos) acSetKey(glScript, args[i].c_str(), "1");
             else {
                auto argname = std::string(args[i], 0, eq);
                eq++;
@@ -133,12 +129,12 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
                   // Array definition, e.g. files={ file1.txt file2.txt }
                   // This will be converted to files(0)=file.txt files(1)=file2.txt
 
-                  if (args[i][eq+1] > 0x20) SetKey(glScript, argname.c_str(), args[i].c_str() + eq);
+                  if (args[i][eq+1] > 0x20) acSetKey(glScript, argname.c_str(), args[i].c_str() + eq);
                   else {
                      unsigned arg_index = 0;
                      for (++i; (i < args.size()) and (args[i][0] != '}'); i++) {
                         auto argindex = argname + '(' + std::to_string(arg_index) + ')';
-                        SetKey(glScript, argindex.c_str(), args[i].c_str());
+                        acSetKey(glScript, argindex.c_str(), args[i].c_str());
                         arg_index++;
                      }
 
@@ -146,10 +142,10 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
                      // Note that the last arg in the array will be the "}" that closes it
 
-                     SetKey(glScript, (argname + ":size").c_str(), std::to_string(arg_index).c_str());
+                     acSetKey(glScript, (argname + ":size").c_str(), std::to_string(arg_index).c_str());
                   }
                }
-               else SetKey(glScript, argname.c_str(), args[i].c_str() + eq);
+               else acSetKey(glScript, argname.c_str(), args[i].c_str() + eq);
             }
          }
       }

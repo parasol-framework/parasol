@@ -234,7 +234,7 @@ jpeg_make_d_derived_tbl (j_decompress_ptr cinfo, boolean isDC, int tblno,
    * with that code.
    */
 
-  ClearMemory(dtbl->look_nbits, SIZEOF(dtbl->look_nbits));
+  pf::clearmem(dtbl->look_nbits, SIZEOF(dtbl->look_nbits));
 
   p = 0;
   for (l = 1; l <= HUFF_LOOKAHEAD; l++) {

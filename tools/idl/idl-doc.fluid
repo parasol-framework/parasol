@@ -17,6 +17,7 @@ glIgnoreList[AC_Init] = true
 glIgnoreList[AC_NewChild] = true
 glIgnoreList[AC_NewObject] = true
 glIgnoreList[AC_NewOwner] = true
+glIgnoreList[nz(AC_NewPlacement,0)] = true
 
 function setAction(Action, Options)
    for k, v in pairs(Options) do
@@ -939,9 +940,11 @@ function docFunction(Function)
          end
 
          if (fa.type == nil) then
-            args = args .. string.format("      <param type=\"?\" name=\"%s\"" .. ref .. ">%s</param>\n", fa.name, substituteReferences(fa.comment:escXML()))
+            args = args .. string.format("      <param type=\"?\" name=\"%s\"" .. ref .. ">%s</param>\n",
+               fa.name, substituteReferences(fa.comment:escXML()))
          else
-            args = args .. string.format("      <param type=\"%s\" name=\"%s\"" .. ref .. ">%s</param>\n", fa.type:escXML(), fa.name, substituteReferences(fa.comment:escXML()))
+            args = args .. string.format("      <param type=\"%s\" name=\"%s\"" .. ref .. ">%s</param>\n",
+               fa.type:escXML(), fa.name, substituteReferences(fa.comment:escXML()))
          end
 
          if (fa.comment == 'Undocumented') then

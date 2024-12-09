@@ -25,7 +25,7 @@ static objSurface *glTarget = NULL;
 pf::vector<std::string> *glArgs;
 static LONG glArgsIndex = 0;
 //static STRING glAllow = NULL;
-static STRING glTargetFile = NULL;
+static std::string glTargetFile;
 static OBJECTPTR glTask = NULL;
 static objScript *glScript = NULL;
 static bool glSandbox = false;
@@ -86,7 +86,7 @@ static ERR process_args(void)
             }
          }
          else { // If argument not recognised, assume this arg is the target file.
-            if (ResolvePath(args[i].c_str(), RSF::APPROXIMATE, &glTargetFile) != ERR::Okay) {
+            if (ResolvePath(args[i], RSF::APPROXIMATE, &glTargetFile) != ERR::Okay) {
                printf("Unable to find file '%s'\n", args[i].c_str());
                return ERR::Terminate;
             }
@@ -117,22 +117,50 @@ extern "C" int main(int argc, char **argv)
 
    int result = 0;
    if (process_args() IS ERR::Okay) {
-      if (glTargetFile) {
+      if (!glTargetFile.empty()) {
          STRING path;
          if (glTask->get(FID_Path, &path) IS ERR::Okay) log.msg("Path: %s", path);
          else log.error("No working path.");
 
          LOC type;
-         if ((AnalysePath(glTargetFile, &type) != ERR::Okay) or (type != LOC::FILE)) {
-            printf("File '%s' does not exist.\n", glTargetFile);
+         if ((AnalysePath(glTargetFile.c_str(), &type) != ERR::Okay) or (type != LOC::FILE)) {
+            printf("File '%s' does not exist.\n", glTargetFile.c_str());
          }
-         else result = LONG(exec_source(glTargetFile, glTime, glProcedure));
+         else result = LONG(exec_source(glTargetFile.c_str(), glTime, glProcedure));
       }
-      else printf(glHelp);
+      else {
+         // Check for the presence of package.zip or main.fluid files in the working directory
+
+         auto path = glTask->get<CSTRING>(FID_ProcessPath);
+         if ((!path) or (!path[0])) path = ".";
+         std::string exe_path(path);
+         if (!((exe_path.ends_with("/")) or (exe_path.ends_with("\\")))) {
+            exe_path.append("/");
+         }
+
+         auto pkg_path = exe_path + "package.zip";
+
+         LOC type;
+         static objCompression *glPackageArchive;
+         if ((AnalysePath(pkg_path.c_str(), &type) IS ERR::Okay) and (type IS LOC::FILE)) {
+            // Create a "package:" volume and attempt to run "package:main.fluid"
+            if ((glPackageArchive = objCompression::create::local(fl::Path(pkg_path), fl::ArchiveName("package"), fl::Flags(CMF::READ_ONLY)))) {
+               if (SetVolume("package", "archive:package/", "filetypes/archive", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return -1;
+
+               result = (LONG)exec_source("package:main.fluid", glTime, glProcedure);
+            }
+            else return -1;
+         }
+         else { // Check for main.fluid
+            if ((AnalysePath("main.fluid", &type) IS ERR::Okay) and (type IS LOC::FILE)) {
+               result = (LONG)exec_source("main.fluid", glTime, glProcedure);
+            }
+            else printf(glHelp);
+         }
+      }
    }
 
-   if (glTargetFile) { FreeResource(glTargetFile); glTargetFile = NULL; }
-   if (glScript)     { FreeResource(glScript); glScript = NULL; }
+   if (glScript) { FreeResource(glScript); glScript = NULL; }
 
    close_parasol();
 

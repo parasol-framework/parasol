@@ -32,4 +32,10 @@ struct DUNIT {
    
    constexpr bool empty() { return (type IS DU::NIL) or (!value); }
    constexpr void clear() { value = 0; type = DU::PIXEL; }
+
+   bool operator!=(DUNIT const &rhs) const {return !(*this == rhs);}
+
+   bool operator==(DUNIT const &rhs) const {
+      return (value == rhs.value) and (type == rhs.type);
+   }
 };

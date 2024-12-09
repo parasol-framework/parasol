@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <sddl.h>
 #include <aclapi.h>
+#include <string>
 
 #ifndef PLATFORM_CONFIG_H
 #include <parasol/config.h>
@@ -142,7 +143,7 @@ IntegrityLevel get_integrity_level(void)
 //********************************************************************************************************************
 // Execute a process at low priority.
 
-ERR create_low_process(const char *ExePath, BYTE SharedOutput)
+ERR create_low_process(std::string_view ExePath, BYTE SharedOutput)
 {
    ERR result = ERR::Failed;
    HANDLE hToken = NULL;
@@ -181,7 +182,7 @@ ERR create_low_process(const char *ExePath, BYTE SharedOutput)
 
    if (CreateProcessAsUser(hNewToken,
          NULL,
-         (LPSTR)ExePath, // Command line
+         (LPSTR)ExePath.data(), // Command line
          NULL, // Process attributes
          NULL, // Thread attributes
          (SharedOutput) ? TRUE : FALSE, // Inherit handles

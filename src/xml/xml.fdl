@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0 }, function()
+module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0, timestamp=20240611 }, function()
   cpp_include("<functional>", "<sstream>", "<parasol/strings.hpp>")
 
   const("XMS", { comment="For SetAttrib()" }, {

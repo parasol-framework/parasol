@@ -240,7 +240,7 @@ static ERR NETLOOKUP_Free(extNetLookup *Self)
    if (Self->ThreadLock) { delete Self->ThreadLock; Self->ThreadLock = NULL; }
 
    if (Self->Callback.isScript()) {
-      UnsubscribeAction(Self->Callback.Context, AC_Free);
+      UnsubscribeAction(Self->Callback.Context, AC::Free);
       Self->Callback.Type = CALL::NIL;
    }
 
@@ -321,15 +321,15 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
 
    IPAddress ip;
    if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
-      auto addr_len = StrLength(Args->Address) + 1;
+      auto addr_len = strlen(Args->Address) + 1;
       LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + addr_len;
       if (auto th = objThread::create::local(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {
          auto buffer = std::make_unique<UBYTE[]>(pkg_size);
          auto rb = (resolve_buffer *)buffer.get();
          rb->NetLookupID = Self->UID;
          rb->ThreadID = th->UID;
-         CopyMemory(&ip, (rb + 1), sizeof(ip));
-         CopyMemory(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), addr_len);
+         pf::copymem(&ip, (rb + 1), sizeof(ip));
+         pf::copymem(Args->Address, ((STRING)(rb + 1)) + sizeof(IPAddress), addr_len);
          if ((th->setData(rb, pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
             std::lock_guard<std::mutex> lock(*Self->ThreadLock);
             Self->Threads->insert(th->UID);
@@ -386,14 +386,14 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
    }
 
    ERR error;
-   LONG pkg_size = sizeof(resolve_buffer) + StrLength(Args->HostName) + 1;
+   LONG pkg_size = sizeof(resolve_buffer) + strlen(Args->HostName) + 1;
    if (auto th = objThread::create::local(fl::Routine((CPTR)thread_resolve_name),
          fl::Flags(THF::AUTO_FREE))) {
       auto buffer = std::make_unique<UBYTE[]>(pkg_size);
       auto rb = (resolve_buffer *)buffer.get();
       rb->NetLookupID = Self->UID;
       rb->ThreadID    = th->UID;
-      StrCopy(Args->HostName, (STRING)(rb + 1), pkg_size - sizeof(resolve_buffer));
+      pf::strcopy(Args->HostName, (STRING)(rb + 1), pkg_size - sizeof(resolve_buffer));
       if ((th->setData(buffer.get(), pkg_size) IS ERR::Okay) and (th->activate() IS ERR::Okay)) {
          std::lock_guard<std::mutex> lock(*Self->ThreadLock);
          Self->Threads->insert(th->UID);
@@ -453,10 +453,10 @@ static ERR GET_Callback(extNetLookup *Self, FUNCTION **Value)
 static ERR SET_Callback(extNetLookup *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Callback.isScript()) UnsubscribeAction(Self->Callback.Context, AC_Free);
+      if (Self->Callback.isScript()) UnsubscribeAction(Self->Callback.Context, AC::Free);
       Self->Callback = *Value;
       if (Self->Callback.isScript()) {
-         SubscribeAction(Self->Callback.Context, AC_Free, C_FUNCTION(notify_free_callback));
+         SubscribeAction(Self->Callback.Context, AC::Free, C_FUNCTION(notify_free_callback));
       }
    }
    else Self->Callback.clear();
@@ -595,7 +595,7 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info
          .sin6_flowinfo = 0,
          .sin6_scope_id = 0
       };
-      CopyMemory(IP->Data, (APTR)sa.sin6_addr.s6_addr, 16);
+      pf::copymem(IP->Data, (APTR)sa.sin6_addr.s6_addr, 16);
       result = getnameinfo((struct sockaddr *)&sa, sizeof(sa), host_name, sizeof(host_name), service, sizeof(service), NI_NAMEREQD);
    }
 
@@ -634,7 +634,7 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
 #ifdef __linux__
    struct addrinfo hints, *servinfo;
 
-   ClearMemory(&hints, sizeof hints);
+   pf::clearmem(&hints, sizeof hints);
    hints.ai_family   = AF_UNSPEC;
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_flags    = AI_CANONNAME;

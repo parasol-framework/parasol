@@ -211,7 +211,7 @@ static ERR create_scintilla(void);
 static void draw_scintilla(extScintilla *, objSurface *, objBitmap *);
 static ERR load_file(extScintilla *, CSTRING);
 static void calc_longest_line(extScintilla *);
-static void key_event(extScintilla *, evKey *, LONG);
+static void key_event(evKey *, LONG, extScintilla *);
 static void report_event(extScintilla *, SEF Event);
 static ERR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime);
 extern ERR init_search(void);
@@ -292,7 +292,7 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERR Result, str
    dc.Datatype = DATA::REQUEST;
    dc.Buffer   = &request;
    dc.Size     = sizeof(request);
-   if (Action(AC_DataFeed, Args->Source, &dc) IS ERR::Okay) {
+   if (Action(AC::DataFeed, Args->Source, &dc) IS ERR::Okay) {
       // The source will return a DATA::RECEIPT for the items that we've asked for (see the DataFeed action).
    }
 }
@@ -307,7 +307,7 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR A
    if (Result != ERR::Okay) return;
 
    if (!Self->prvKeyEvent) {
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), Self, &Self->prvKeyEvent);
+      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, Self), &Self->prvKeyEvent);
    }
 
    if ((Self->Visible) and ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL)) {
@@ -463,7 +463,7 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
       if (!Args->Buffer) str = "";
       else str = (CSTRING)Args->Buffer;
 
-      SCICALL(SCI_APPENDTEXT, StrLength(str), str);
+      SCICALL(SCI_APPENDTEXT, strlen(str), str);
    }
    else if (Args->Datatype IS DATA::RECEIPT) {
       log.msg("Received item receipt from object %d.", Args->Object ? Args->Object->UID : 0);
@@ -488,7 +488,7 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                         };
 
                         auto script = (objScript *)Self->FileDrop.Context;
-                        script->callback(Self->FileDrop.ProcedureID, args, ARRAYSIZE(args), NULL);
+                        script->callback(Self->FileDrop.ProcedureID, args, std::ssize(args), NULL);
                      }
                      break;
                   }
@@ -573,7 +573,7 @@ Disable: Disables the target #Surface.
 static ERR SCINTILLA_Disable(extScintilla *Self)
 {
    Self->Flags |= SCIF::DISABLED;
-   QueueAction(AC_Draw, Self->SurfaceID);
+   QueueAction(AC::Draw, Self->SurfaceID);
    return ERR::Okay;
 }
 
@@ -586,7 +586,7 @@ Draw: Draws the Scintilla object's graphics.
 static ERR SCINTILLA_Draw(extScintilla *Self, struct acDraw *Args)
 {
    pf::ScopedObjectLock surface(Self->SurfaceID);
-   if (surface.granted()) Action(AC_Draw, *surface, Args);
+   if (surface.granted()) Action(AC::Draw, *surface, Args);
    return ERR::Okay;
 }
 
@@ -599,7 +599,7 @@ Enable: Enables the target #Surface.
 static ERR SCINTILLA_Enable(extScintilla *Self)
 {
    Self->Flags &= ~SCIF::DISABLED;
-   QueueAction(AC_Draw, Self->SurfaceID);
+   QueueAction(AC::Draw, Self->SurfaceID);
    return ERR::Okay;
 }
 
@@ -630,14 +630,14 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
 
       if (pf::ScopedObjectLock object(Self->FocusID, 500); object.granted()) {
-         UnsubscribeAction(*object, 0);         
+         UnsubscribeAction(*object, AC::NIL);
       }
    }
 
    if (Self->SurfaceID) {
       if (pf::ScopedObjectLock<objSurface> object(Self->SurfaceID, 500); object.granted()) {
          object->removeCallback(C_FUNCTION(&draw_scintilla));
-         UnsubscribeAction(*object, 0);
+         UnsubscribeAction(*object, AC::NIL);
       }
    }
 
@@ -782,8 +782,8 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
    // Subscribe to the object responsible for the user focus
 
    if (pf::ScopedObjectLock object(Self->FocusID, 5000); object.granted()) {
-      SubscribeAction(*object, AC_Focus, C_FUNCTION(notify_focus));
-      SubscribeAction(*object, AC_LostFocus, C_FUNCTION(notify_lostfocus));
+      SubscribeAction(*object, AC::Focus, C_FUNCTION(notify_focus));
+      SubscribeAction(*object, AC::LostFocus, C_FUNCTION(notify_lostfocus));
    }
 
    // Set up the target surface
@@ -802,13 +802,13 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
 
       //SubscribeFeed(surface); TODO: Deprecated
 
-      SubscribeAction(*surface, AC_DragDrop, C_FUNCTION(notify_dragdrop));
-      SubscribeAction(*surface, AC_Hide, C_FUNCTION(notify_hide));
-      SubscribeAction(*surface, AC_Redimension, C_FUNCTION(notify_redimension));
-      SubscribeAction(*surface, AC_Show, C_FUNCTION(notify_show));
+      SubscribeAction(*surface, AC::DragDrop, C_FUNCTION(notify_dragdrop));
+      SubscribeAction(*surface, AC::Hide, C_FUNCTION(notify_hide));
+      SubscribeAction(*surface, AC::Redimension, C_FUNCTION(notify_redimension));
+      SubscribeAction(*surface, AC::Show, C_FUNCTION(notify_show));
 
       if (surface->hasFocus()) {
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), Self, &Self->prvKeyEvent);
+         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, Self), &Self->prvKeyEvent);
       }
    }
    else return log.warning(ERR::AccessObject);
@@ -850,7 +850,7 @@ static ERR SCINTILLA_Init(extScintilla *Self, APTR)
       Self->API->SetLexer(LONG(Self->Lexer));
    }
 
-   QueueAction(AC_Draw, Self->SurfaceID);
+   QueueAction(AC::Draw, Self->SurfaceID);
 
    if (Self->LongestWidth) SCICALL(SCI_SETSCROLLWIDTH, Self->LongestWidth);
    else SCICALL(SCI_SETSCROLLWIDTH, 1UL);
@@ -1157,8 +1157,8 @@ static ERR SCINTILLA_ReplaceText(extScintilla *Self, struct sci::ReplaceText *Ar
    SCICALL(SCI_SETTARGETSTART, start);
    SCICALL(SCI_SETTARGETEND, end);
 
-   LONG findlen = StrLength(Args->Find);
-   LONG replacelen = StrLength(replace);
+   LONG findlen = strlen(Args->Find);
+   LONG replacelen = strlen(replace);
 
    LONG flags = (((Args->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
                 (((Args->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
@@ -1392,7 +1392,7 @@ static ERR SCINTILLA_TrimWhitespace(extScintilla *Self)
 {
    pf::Log log;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    LONG cursorpos = SCICALL(SCI_GETCURRENTPOS);
    LONG cursorline = SCICALL(SCI_LINEFROMPOSITION, cursorpos);
@@ -1739,7 +1739,7 @@ static ERR SET_Path(extScintilla *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) and (*Value)) {
-      if ((Self->Path = StrClone(Value))) {
+      if ((Self->Path = strclone(Value))) {
          if (Self->initialised()) {
             if (load_file(Self, Self->Path) != ERR::Okay) {
                return ERR::File;
@@ -1768,7 +1768,7 @@ static ERR SET_Origin(extScintilla *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Path = strclone(Value))) return ERR::AllocMemory;
    }
 
    return ERR::Okay;
@@ -1777,13 +1777,13 @@ static ERR SET_Origin(extScintilla *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Modified:  Returns TRUE if the document has been modified and not saved.
+Modified:  Returns `true` if the document has been modified and not saved.
 
 The Modified field controls the modification state of the document.  It is automatically changed to a value of TRUE
 when the user edits the document.  To receive notification of changes to the document state, you should subscribe to
 the Modified field.
 
-It is recommended that you manually set this field to FALSE if the document is saved to disk.  The Scintilla class will
+It is recommended that you manually set this field to `false` if the document is saved to disk.  The Scintilla class will
 not make this change for you automatically.
 
 *********************************************************************************************************************/
@@ -1877,10 +1877,10 @@ static ERR GET_EventCallback(extScintilla *Self, FUNCTION **Value)
 static ERR SET_EventCallback(extScintilla *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Context, AC_Free);
+      if (Self->EventCallback.isScript()) UnsubscribeAction(Self->EventCallback.Context, AC::Free);
       Self->EventCallback = *Value;
       if (Self->EventCallback.isScript()) {
-         SubscribeAction(Self->EventCallback.Context, AC_Free, C_FUNCTION(notify_free_event));
+         SubscribeAction(Self->EventCallback.Context, AC::Free, C_FUNCTION(notify_free_event));
       }
    }
    else Self->EventCallback.clear();
@@ -2184,7 +2184,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERR Error)
          CSTRING *results;
          LONG size;
          if ((GetFieldArray(dialog, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
-            dialog_id = StrToInt(results[0]);
+            dialog_id = strtol(results[0], NULL, 0);
          }
       }
    }
@@ -2204,7 +2204,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
          if (file->startStream(Self->UID, FL::READ, 0) IS ERR::Okay) {
             acClear(Self);
 
-            SubscribeAction(file, AC_Write, C_FUNCTION(notify_write));
+            SubscribeAction(file, AC::Write, C_FUNCTION(notify_write));
             Self->FileStream = file;
             file = NULL;
          }
@@ -2239,7 +2239,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
    else error = ERR::File;
 
    if ((error IS ERR::Okay) and ((Self->Flags & SCIF::DETECT_LEXER) != SCIF::NIL)) {
-      LONG i = StrLength(Path);
+      LONG i = strlen(Path);
       while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
       Path = Path + i;
 
@@ -2252,7 +2252,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
             break;
          }
       }
-      if (i >= ARRAYSIZE(glLexers)) log.msg("Failed to choose a lexer for %s", Path);
+      if (i >= std::ssize(glLexers)) log.msg("Failed to choose a lexer for %s", Path);
    }
 
    return error;
@@ -2260,7 +2260,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
 
 //********************************************************************************************************************
 
-static void key_event(extScintilla *Self, evKey *Event, LONG Size)
+static void key_event(evKey *Event, LONG Size, extScintilla *Self)
 {
    pf::Log log;
 
@@ -2280,7 +2280,7 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
          if (out >= 0) string[out] = 0;
       }
 
-      StrCopy(string, (STRING)Self->API->lastkeytrans, sizeof(Self->API->lastkeytrans));
+      strcopy(string, (STRING)Self->API->lastkeytrans, sizeof(Self->API->lastkeytrans));
 
       LONG keyval;
       switch (Event->Code) {

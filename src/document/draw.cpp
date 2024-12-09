@@ -6,7 +6,7 @@ static void redraw(extDocument *Self, bool Focus)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("");
+   log.traceBranch();
 
    {
       #ifndef RETAIN_LOG_LEVEL
@@ -114,8 +114,8 @@ ERR layout::position_widget(widget_mgr &Widget, doc_segment &Segment, objVectorV
 // sensible for keeping them out of the layout loop.
 //
 // It is intended that the layout process generates the document's entire scene graph every time.  Optimisations
-// relating to things like obscuration of graphics elements are considered to be the job of the VectorScene's drawing
-// functionality.
+// relating to things like the obscuration of graphics elements are considered to be the job of the VectorScene's
+// drawing functionality.
 
 ERR layout::gen_scene_init(objVectorViewport *Viewport)
 {
@@ -152,6 +152,27 @@ ERR layout::gen_scene_init(objVectorViewport *Viewport)
                fl::Fill("rgb(255,200,200,64)") });
       }
    #endif
+
+   // Body background fill is initialised now, if specified.
+
+   if ((!Self->Background.empty()) and (!iequals("none", Self->Background))) {
+      if ((Self->Bkgd = objVectorRectangle::create::global({
+            fl::Name("doc_body_fill"),
+            fl::Owner(Self->Page->UID),
+            fl::X(0), fl::Y(0),
+            fl::Width(Self->CalcWidth),
+            fl::Height(Self->PageHeight < Self->VPHeight ? Self->VPHeight : Self->PageHeight),
+            fl::Fill(Self->Background)
+         }))) {
+
+         Self->UIObjects.push_back(Self->Bkgd->UID);
+
+         // Move-to-back required because vector objects are created within the page during the layout process.
+
+         acMoveToBack(Self->Bkgd);
+      }
+   }
+   else Self->Bkgd = NULL;
 
    return ERR::Okay;
 }
@@ -376,57 +397,34 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
             case SCODE::CELL: {
                // If a cell defines fill/stroke values then it gets an independent rectangle to achieve that.
                //
-               // If it defines a border then it can instead make use of the table's VectorPath object, which is
+               // If it defines a border and the stroke is undefined, we can use the table's VectorPath object, which is
                // more efficient and creates consistent looking output.
 
                auto &cell = segment.stream->lookup<bc_cell>(cursor);
                auto table = stack_table.top();
-
-               if ((!cell.fill.empty()) or (!cell.stroke.empty())) {
-                  if (!cell.stroke.empty()) {
-                     cell.rect_fill->setFields(fl::Stroke(cell.stroke), fl::StrokeWidth(cell.stroke_width.px(*this)));
-                  }
-                  if (!cell.fill.empty()) cell.rect_fill->setFields(fl::Fill(cell.fill));
-               }
-               else if (!cell.rect_fill.empty()) cell.rect_fill->setFields(fl::Fill(NULL), fl::Stroke(NULL));
-
+               
                if ((cell.width >= 1) and (cell.height >= 1)) {
                   cell.viewport->setFields(fl::X(cell.x), fl::Y(cell.y),
                      fl::Width(cell.width), fl::Height(cell.height));
 
-                  if ((cell.border != CB::NIL) and (cell.stroke.empty())) {
-                     // When a cell defines a border value, it piggy-backs the table's stroke definition
-                     if (cell.border IS CB::ALL) {
-                        table->seq.push_back({ .Type = PE::Move, .X = cell.x, .Y = cell.y });
-                        table->seq.push_back({ .Type = PE::HLineRel, .X = cell.width });
-                        table->seq.push_back({ .Type = PE::VLineRel, .Y = cell.height });
-                        table->seq.push_back({ .Type = PE::HLineRel, .X = -cell.width });
-                        table->seq.push_back({ .Type = PE::ClosePath });
+                  if (!cell.rect_fill.empty()) {
+                     if (!cell.fill.empty()) cell.rect_fill->setFields(fl::Fill(cell.fill));
+                     else cell.rect_fill->setFields(fl::Fill(NULL));
+                  }
+
+                  if (!cell.stroke.empty()) {
+                     cell.border_path->setFields(fl::Stroke(cell.stroke), fl::StrokeWidth(cell.stroke_width.px(*this)));
+                  }
+
+                  if (cell.border != CB::NIL) {
+                     if (cell.stroke.empty()) {
+                        // When a cell defines a border value without a stroke, it piggy-backs the table's stroke definition
+                        apply_border_to_path(cell.border, table->seq, FloatRect { cell.x, cell.y, cell.width, cell.height });
                      }
                      else {
-                        if ((cell.border & CB::LEFT) != CB::NIL) {
-                           table->seq.push_back({ .Type = PE::Move, .X = cell.x, .Y = cell.y });
-                           table->seq.push_back({ .Type = PE::VLineRel, .Y = cell.height });
-                           table->seq.push_back({ .Type = PE::ClosePath });
-                        }
-
-                        if ((cell.border & CB::TOP) != CB::NIL) {
-                           table->seq.push_back({ .Type = PE::Move, .X = cell.x, .Y = cell.y });
-                           table->seq.push_back({ .Type = PE::HLineRel, .X = cell.width });
-                           table->seq.push_back({ .Type = PE::ClosePath });
-                        }
-
-                        if ((cell.border & CB::RIGHT) != CB::NIL) {
-                           table->seq.push_back({ .Type = PE::Move, .X = cell.x + cell.width, .Y = cell.y });
-                           table->seq.push_back({ .Type = PE::VLineRel, .Y = cell.height });
-                           table->seq.push_back({ .Type = PE::ClosePath });
-                        }
-
-                        if ((cell.border & CB::BOTTOM) != CB::NIL) {
-                           table->seq.push_back({ .Type = PE::Move, .X = cell.x, .Y = cell.y + cell.height });
-                           table->seq.push_back({ .Type = PE::HLineRel, .X = cell.width });
-                           table->seq.push_back({ .Type = PE::ClosePath });
-                        }
+                        std::vector<PathCommand> seq;
+                        apply_border_to_path(cell.border, seq, FloatRect { 0, 0, cell.width, cell.height });
+                        cell.border_path->setCommand(seq.size(), seq.data(), seq.size() * sizeof(PathCommand));
                      }
                   }
 
@@ -434,6 +432,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                   Self->VPToEntity.emplace(cell.viewport.id, vp_to_entity { &cell });
                }
+               else if (!cell.rect_fill.empty()) cell.rect_fill->setFields(fl::Stroke(NULL), fl::Fill(NULL));
 
                break;
             }
@@ -650,7 +649,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   DOUBLE y = avail_space - ((avail_space - font->metrics.Height) * 0.5);
 
                   combo.input = objVectorText::create::global({
-                     fl::Name("combo_input"),
+                     fl::Name(combo.name.empty() ? "combo_input" : combo.name), // Required for notify_combo_onchange()
                      fl::Owner(combo.clip_vp->UID),
                      fl::X(0), fl::Y(F2T(y)),
                      fl::String(combo.value),
@@ -660,8 +659,11 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::FontStyle(font->style),
                      fl::Fill(combo.font_fill),
                      fl::LineLimit(1),
-                     fl::TextFlags(VTXF::EDITABLE)
+                     fl::TextFlags(VTXF::EDITABLE),
+                     fl::OnChange(C_FUNCTION(notify_combo_onchange))
                   });
+
+                  combo.input->CreatorMeta = *combo.viewport; // Required for notify_combo_onchange()
                }
 
                if (!combo.clip_vp.empty()) {
@@ -750,8 +752,8 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                   DOUBLE y = avail_space - ((avail_space - font->metrics.Height) * 0.5);
 
-                  objVectorText::create::global({
-                     fl::Name("input_text"),
+                  auto vt = objVectorText::create::global({
+                     fl::Name(input.name.empty() ? "input_text" : input.name), // Required for notify_input_onchange()
                      fl::Owner(input.clip_vp->UID),
                      fl::X(0), fl::Y(F2T(y)),
                      fl::String(input.value),
@@ -761,14 +763,18 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::FontStyle(font->style),
                      fl::Fill(input.font_fill),
                      fl::LineLimit(1),
-                     fl::TextFlags(flags)
+                     fl::TextFlags(flags),
+                     fl::OnChange(C_FUNCTION(notify_input_onchange))
                   });
+
+                  vt->CreatorMeta = *input.viewport; // Required for notify_input_onchange()
                }
 
                if (!input.clip_vp.empty()) {
                   input.clip_vp->setFields(fl::X(input.label_pad), fl::Y(0), fl::XOffset(input.label_pad), fl::YOffset(0));
                }
 
+               Self->VPToEntity.emplace(input.viewport.id, vp_to_entity { &input });
                break;
             }
 
@@ -801,9 +807,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                      txt.vector_text.push_back(vt);
 
-                     DOUBLE twidth;
-                     vt->get(FID_TextWidth, &twidth);
-                     x_advance += twidth;
+                     x_advance += vt->get<DOUBLE>(FID_TextWidth);
                   }
                }
                break;

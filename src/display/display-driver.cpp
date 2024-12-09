@@ -105,7 +105,6 @@ static void android_term_window(LONG);
 
 const InputType glInputType[LONG(JET::END)] = {
    { JTYPE::NIL, JTYPE::NIL },                                         // UNUSED
-   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET::DIGITAL_XY
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_1
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_2
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_3
@@ -116,33 +115,20 @@ const InputType glInputType[LONG(JET::END)] = {
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_8
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_9
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_10
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::TRIGGER_LEFT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::TRIGGER_RIGHT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_START
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_SELECT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_1
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_2
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_1
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_2
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_XY
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_Z
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_XY
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_Z
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL_TILT
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_XY
-   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET::ABS_XY
-   { JTYPE::CROSSING,               JTYPE::CROSSING },    // JET::CROSSING_IN
-   { JTYPE::CROSSING,               JTYPE::CROSSING },    // JET::CROSSING_OUT
+   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },     // JET::ABS_XY
+   { JTYPE::CROSSING,               JTYPE::CROSSING },     // JET::CROSSING_IN
+   { JTYPE::CROSSING,               JTYPE::CROSSING },     // JET::CROSSING_OUT
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PRESSURE
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_XY
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_Z
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }     // JET::DISPLAY_EDGE
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }  // JET::DISPLAY_EDGE
 };
 
 const CSTRING glInputNames[LONG(JET::END)] = {
    "",
-   "DIGITAL_XY",
    "BUTTON_1",
    "BUTTON_2",
    "BUTTON_3",
@@ -153,18 +139,6 @@ const CSTRING glInputNames[LONG(JET::END)] = {
    "BUTTON_8",
    "BUTTON_9",
    "BUTTON_10",
-   "TRIGGER_LEFT",
-   "TRIGGER_RIGHT",
-   "BUTTON_START",
-   "BUTTON_SELECT",
-   "LEFT_BUMPER_1",
-   "LEFT_BUMPER_2",
-   "RIGHT_BUMPER_1",
-   "RIGHT_BUMPER_2",
-   "ANALOG_XY",
-   "ANALOG_Z",
-   "ANALOG2_XY",
-   "ANALOG2_Z",
    "WHEEL",
    "WHEEL_TILT",
    "PEN_TILT_XY",
@@ -195,7 +169,7 @@ static OBJECTID glActiveDisplayID = 0;
 #ifdef XRANDR_ENABLED
 static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 1024,768,0,0 }, { 1280,1024,0,0 } };
 static XRRScreenSize *glSizes = glCustomSizes;
-static LONG glSizeCount = ARRAYSIZE(glCustomSizes);
+static LONG glSizeCount = std::ssize(glCustomSizes);
 static LONG glActualCount = 0;
 #endif
 
@@ -207,7 +181,7 @@ struct CoreBase *CoreBase;
 ColourFormat glColourFormat;
 bool glHeadless = false;
 OBJECTPTR glModule = NULL;
-OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL;
+OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL, clController = NULL;
 OBJECTID glPointerID = 0;
 DISPLAYINFO glDisplayInfo;
 APTR glDither = NULL;
@@ -222,6 +196,7 @@ LONG glpMaximise = FALSE, glpFullScreen = FALSE;
 SWIN glpWindowType = SWIN::HOST;
 char glpDPMS[20] = "Standby";
 UBYTE *glDemultiply = NULL;
+int glLastPort = -1;
 
 std::vector<OBJECTID> glFocusList;
 std::recursive_mutex glFocusLock;
@@ -550,7 +525,7 @@ XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 
    if (XDisplay) {
       XGetErrorText(XDisplay, XEvent->error_code, buffer, sizeof(buffer)-1);
-      if ((XEvent->request_code > 0) and (XEvent->request_code < ARRAYSIZE(glXProtoList))) {
+      if ((XEvent->request_code > 0) and (XEvent->request_code < std::ssize(glXProtoList))) {
          log.warning("Function: %s, XError: %s", glXProtoList[XEvent->request_code], buffer);
       }
       else log.warning("Function: Unknown, XError: %s", buffer);
@@ -607,13 +582,13 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
    if (!Info) return log.warning(ERR::NullArgs);
 
    if (InfoSize != sizeof(DisplayInfoV3)) {
-      log.error("Invalid InfoSize of %d (V3: %d)", InfoSize, (LONG)sizeof(DisplayInfoV3));
+      log.error("Invalid InfoSize of %d (V3: %d)", InfoSize, LONG(sizeof(DisplayInfoV3)));
       return log.warning(ERR::Args);
    }
 
    if (DisplayID) {
       if (glDisplayInfo.DisplayID IS DisplayID) {
-         CopyMemory(&glDisplayInfo, Info, InfoSize);
+         copymem(&glDisplayInfo, Info, InfoSize);
          return ERR::Okay;
       }
       else if (ScopedObjectLock<extDisplay> display(DisplayID, 5000); display.granted()) {
@@ -759,7 +734,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
                else glDisplayInfo.BitsPerPixel = 24;
             }
 
-            CopyMemory(&glColourFormat, &glDisplayInfo.PixelFormat, sizeof(glDisplayInfo.PixelFormat));
+            copymem(&glColourFormat, &glDisplayInfo.PixelFormat, sizeof(glDisplayInfo.PixelFormat));
 
             if ((glDisplayInfo.BitsPerPixel < 8) or (glDisplayInfo.BitsPerPixel > 32)) {
                if (glDisplayInfo.BitsPerPixel > 32) glDisplayInfo.BitsPerPixel = 32;
@@ -780,12 +755,12 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       }
       else return log.warning(ERR::TimeOut);
 
-      CopyMemory(glDisplayInfo, Info, InfoSize);
+      copymem(glDisplayInfo, Info, InfoSize);
       return ERR::Okay;
 #else
 
       if (glDisplayInfo.DisplayID) {
-         CopyMemory(glDisplayInfo, Info, InfoSize);
+         copymem(glDisplayInfo, Info, InfoSize);
          return ERR::Okay;
       }
       else {
@@ -847,6 +822,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       create_bitmap_class();
       create_clipboard_class();
       create_surface_class();
+      create_controller_class();
       return ERR::Okay;
    }
 #endif
@@ -965,7 +941,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
       else glXCompositeSupported = false;
 
-      ClearMemory(KeyHeld, sizeof(KeyHeld));
+      clearmem(KeyHeld, sizeof(KeyHeld));
 
       // Drop superuser privileges following X11 initialisation (we only need suid for DGA).
 
@@ -999,8 +975,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
          if (file.ok()) {
             auto write_string = [](objFile *File, CSTRING String) {
-               struct acWrite write = { .Buffer = String, .Length = StrLength(String) };
-               Action(AC_Write, File, &write);
+               struct acWrite write = { .Buffer = String, .Length = LONG(strlen(String)) };
+               Action(AC::Write, File, &write);
             };
 
             write_string(*file, "<?xml version=\"1.0\"?>\n\n");
@@ -1076,7 +1052,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    winDisableBatching();
 
-   winInitCursors(winCursors, ARRAYSIZE(winCursors));
+   winInitCursors(winCursors, std::ssize(winCursors));
 
 #endif
 
@@ -1085,6 +1061,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (create_bitmap_class() != ERR::Okay) return log.warning(ERR::AddClass);
    if (create_clipboard_class() != ERR::Okay) return log.warning(ERR::AddClass);
    if (create_surface_class() != ERR::Okay) return log.warning(ERR::AddClass);
+   if (create_controller_class() != ERR::Okay) return log.warning(ERR::AddClass);
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.
 
@@ -1109,62 +1086,56 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          glpDisplayDepth  = info.BitsPerPixel;
       }
 #else
-   auto config = objConfig::create { fl::Path("user:config/display.cfg") };
-
-   if (config.ok()) {
-      config->read("DISPLAY", "Maximise", &glpMaximise);
+   if (auto config = objConfig::create { fl::Path("user:config/display.cfg") }; config.ok()) {
+      config->read("DISPLAY", "Maximise", glpMaximise);
 
       if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINGDI)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
-         if ((config->read("DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR::Okay) or (!glpDisplayWidth)) {
-            config->read("DISPLAY", "Width", &glpDisplayWidth);
+         if ((config->read("DISPLAY", "WindowWidth", glpDisplayWidth) != ERR::Okay) or (!glpDisplayWidth)) {
+            config->read("DISPLAY", "Width", glpDisplayWidth);
          }
 
-         if ((config->read("DISPLAY", "WindowHeight", &glpDisplayHeight) != ERR::Okay) or (!glpDisplayHeight)) {
-            config->read("DISPLAY", "Height", &glpDisplayHeight);
+         if ((config->read("DISPLAY", "WindowHeight", glpDisplayHeight) != ERR::Okay) or (!glpDisplayHeight)) {
+            config->read("DISPLAY", "Height", glpDisplayHeight);
          }
 
-         config->read("DISPLAY", "WindowX", &glpDisplayX);
-         config->read("DISPLAY", "WindowY", &glpDisplayY);
-         config->read("DISPLAY", "FullScreen", &glpFullScreen);
+         config->read("DISPLAY", "WindowX", glpDisplayX);
+         config->read("DISPLAY", "WindowY", glpDisplayY);
+         config->read("DISPLAY", "FullScreen", glpFullScreen);
       }
       else {
-         config->read("DISPLAY", "Width", &glpDisplayWidth);
-         config->read("DISPLAY", "Height", &glpDisplayHeight);
-         config->read("DISPLAY", "XCoord", &glpDisplayX);
-         config->read("DISPLAY", "YCoord", &glpDisplayY);
-         config->read("DISPLAY", "Depth", &glpDisplayDepth);
+         config->read("DISPLAY", "Width", glpDisplayWidth);
+         config->read("DISPLAY", "Height", glpDisplayHeight);
+         config->read("DISPLAY", "XCoord", glpDisplayX);
+         config->read("DISPLAY", "YCoord", glpDisplayY);
+         config->read("DISPLAY", "Depth", glpDisplayDepth);
          log.msg("Using default display dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
       }
 
-      config->read("DISPLAY", "RefreshRate", &glpRefreshRate);
-      config->read("DISPLAY", "GammaRed", &glpGammaRed);
-      config->read("DISPLAY", "GammaGreen", &glpGammaGreen);
-      config->read("DISPLAY", "GammaBlue", &glpGammaBlue);
-      CSTRING dpms;
-      if (config->readValue("DISPLAY", "DPMS", &dpms) IS ERR::Okay) {
-         StrCopy(dpms, glpDPMS, sizeof(glpDPMS));
+      config->read("DISPLAY", "RefreshRate", glpRefreshRate);
+      config->read("DISPLAY", "GammaRed", glpGammaRed);
+      config->read("DISPLAY", "GammaGreen", glpGammaGreen);
+      config->read("DISPLAY", "GammaBlue", glpGammaBlue);
+
+      std::string dpms;
+      if (config->read("DISPLAY", "DPMS", dpms) IS ERR::Okay) {
+         strcopy(dpms, glpDPMS, sizeof(glpDPMS));
       }
    }
 #endif
 
-   STRING icon_path;
-   if (ResolvePath("iconsource:", RSF::NIL, &icon_path) != ERR::Okay) { // The client can set iconsource: to redefine the icon origins
-      icon_path = StrClone("styles:icons/");
-   }
-
    // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
 
-   auto src = std::string(icon_path) + "Default.zip";
-   if (!(glIconArchive = objCompression::create::local(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
-      return ERR::CreateObject;
+   std::string icon_path;
+   if (ResolvePath("iconsource:", RSF::NIL, &icon_path) != ERR::Okay) { // The client can set iconsource: to redefine the icon origins
+      icon_path = "styles:icons/";
    }
 
-   FreeResource(icon_path);
-
-   // The icons: special volume is a simple reference to the archive path.
-
-   if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return ERR::SetVolume;
+   auto src = icon_path + "Default.zip";
+   if ((glIconArchive = objCompression::create::local(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
+      // The icons: special volume is a simple reference to the archive path.
+      if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return ERR::SetVolume;
+   }
 
 #ifdef _WIN32 // Get any existing Windows clipboard content
 
@@ -1262,6 +1233,7 @@ static ERR MODExpunge(void)
    if (clBitmap)      { FreeResource(clBitmap);      clBitmap      = NULL; }
    if (clClipboard)   { FreeResource(clClipboard);   clClipboard   = NULL; }
    if (clSurface)     { FreeResource(clSurface);     clSurface     = NULL; }
+   if (clController)  { FreeResource(clController);  clController  = NULL; }
 
    #ifdef _GLES_
       free_egl();

@@ -159,8 +159,8 @@ struct NetClient {
 // ClientSocket methods
 
 namespace cs {
-struct ReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct WriteClientMsg { APTR Message; LONG Length; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct WriteClientMsg { APTR Message; LONG Length; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -189,7 +189,7 @@ class objClientSocket : public Object {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+      if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
       }
@@ -199,11 +199,11 @@ class objClientSocket : public Object {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      return Action(AC_Read, this, &read);
+      return Action(AC::Read, this, &read);
    }
    inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -214,7 +214,7 @@ class objClientSocket : public Object {
    }
    inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -225,12 +225,12 @@ class objClientSocket : public Object {
    }
    inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
+      if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
    inline ERR readClientMsg(APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
       struct cs::ReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
-      ERR error = Action(-1, this, &args);
+      ERR error = Action(AC(-1), this, &args);
       if (Message) *Message = args.Message;
       if (Length) *Length = args.Length;
       if (Progress) *Progress = args.Progress;
@@ -239,7 +239,7 @@ class objClientSocket : public Object {
    }
    inline ERR writeClientMsg(APTR Message, LONG Length) noexcept {
       struct cs::WriteClientMsg args = { Message, Length };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
 
    // Customised field setting
@@ -253,9 +253,9 @@ class objClientSocket : public Object {
 // Proxy methods
 
 namespace prx {
-struct DeleteRecord { static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Find { LONG Port; LONG Enabled; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct FindNext { static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DeleteRecord { static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Find { LONG Port; LONG Enabled; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindNext { static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -280,19 +280,19 @@ class objProxy : public Object {
 
    // Action stubs
 
-   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
-   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
+   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, NULL); }
    inline ERR deleteRecord() noexcept {
-      return(Action(-1, this, NULL));
+      return(Action(AC(-1), this, NULL));
    }
    inline ERR find(LONG Port, LONG Enabled) noexcept {
       struct prx::Find args = { Port, Enabled };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR findNext() noexcept {
-      return(Action(-3, this, NULL));
+      return(Action(AC(-3), this, NULL));
    }
 
    // Customised field setting
@@ -366,10 +366,10 @@ class objProxy : public Object {
 // NetLookup methods
 
 namespace nl {
-struct ResolveName { CSTRING HostName; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ResolveAddress { CSTRING Address; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct BlockingResolveName { CSTRING HostName; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct BlockingResolveAddress { CSTRING Address; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResolveName { CSTRING HostName; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResolveAddress { CSTRING Address; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct BlockingResolveName { CSTRING HostName; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct BlockingResolveAddress { CSTRING Address; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -388,19 +388,19 @@ class objNetLookup : public Object {
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR resolveName(CSTRING HostName) noexcept {
       struct nl::ResolveName args = { HostName };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR resolveAddress(CSTRING Address) noexcept {
       struct nl::ResolveAddress args = { Address };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR blockingResolveName(CSTRING HostName) noexcept {
       struct nl::BlockingResolveName args = { HostName };
-      return(Action(-3, this, &args));
+      return(Action(AC(-3), this, &args));
    }
    inline ERR blockingResolveAddress(CSTRING Address) noexcept {
       struct nl::BlockingResolveAddress args = { Address };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
 
    // Customised field setting
@@ -430,12 +430,12 @@ class objNetLookup : public Object {
 // NetSocket methods
 
 namespace ns {
-struct Connect { CSTRING Address; LONG Port; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetLocalIPAddress { struct IPAddress * Address; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DisconnectClient { struct NetClient * Client; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DisconnectSocket { objClientSocket * Socket; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct WriteMsg { APTR Message; LONG Length; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Connect { CSTRING Address; LONG Port; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetLocalIPAddress { struct IPAddress * Address; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DisconnectClient { struct NetClient * Client; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DisconnectSocket { objClientSocket * Socket; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReadMsg { APTR Message; LONG Length; LONG Progress; LONG CRC; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct WriteMsg { APTR Message; LONG Length; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -462,16 +462,16 @@ class objNetSocket : public Object {
 
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
-      return Action(AC_DataFeed, this, &args);
+      return Action(AC::DataFeed, this, &args);
    }
-   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+      if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
       }
@@ -481,11 +481,11 @@ class objNetSocket : public Object {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      return Action(AC_Read, this, &read);
+      return Action(AC::Read, this, &read);
    }
    inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -496,7 +496,7 @@ class objNetSocket : public Object {
    }
    inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -507,28 +507,28 @@ class objNetSocket : public Object {
    }
    inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
+      if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
    inline ERR connect(CSTRING Address, LONG Port) noexcept {
       struct ns::Connect args = { Address, Port };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR getLocalIPAddress(struct IPAddress * Address) noexcept {
       struct ns::GetLocalIPAddress args = { Address };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR disconnectClient(struct NetClient * Client) noexcept {
       struct ns::DisconnectClient args = { Client };
-      return(Action(-3, this, &args));
+      return(Action(AC(-3), this, &args));
    }
    inline ERR disconnectSocket(objClientSocket * Socket) noexcept {
       struct ns::DisconnectSocket args = { Socket };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR readMsg(APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) noexcept {
       struct ns::ReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
-      ERR error = Action(-5, this, &args);
+      ERR error = Action(AC(-5), this, &args);
       if (Message) *Message = args.Message;
       if (Length) *Length = args.Length;
       if (Progress) *Progress = args.Progress;
@@ -537,7 +537,7 @@ class objNetSocket : public Object {
    }
    inline ERR writeMsg(APTR Message, LONG Length) noexcept {
       struct ns::WriteMsg args = { Message, Length };
-      return(Action(-6, this, &args));
+      return(Action(AC(-6), this, &args));
    }
 
    // Customised field setting

@@ -91,7 +91,7 @@ ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    if ((Flags & (MEM::HIDDEN|MEM::UNTRACKED)) != MEM::NIL);
    else if ((Flags & MEM::CALLER) != MEM::NIL) {
       // Rarely used, but this feature allows methods to return memory that is tracked to the caller.
-      if (tlContext->Stack) object_id = tlContext->Stack->resource()->UID;
+      if (tlContext->stack) object_id = tlContext->stack->resource()->UID;
       else object_id = glCurrentTask->UID;
    }
    else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
@@ -231,8 +231,8 @@ ERR FreeResource(MEMORYID MemoryID)
          if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, LONG(mem.Flags), mem.OwnerID);
          ERR error = ERR::Okay;
          if (mem.AccessCount > 0) {
-            log.msg("Private memory ID #%d marked for deletion (open count %d).", MemoryID, mem.AccessCount);
-            mem.Flags |= MEM::DELETE;
+            log.msg("Block #%d marked for collection (open count %d).", MemoryID, mem.AccessCount);
+            mem.Flags |= MEM::COLLECT;
          }
          else {
             // If the block has a resource manager then call its Free() implementation.
@@ -324,7 +324,7 @@ ERR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, LONG Size)
    if ((!MemInfo) or (!MemoryID)) return log.warning(ERR::NullArgs);
    if ((size_t)Size < sizeof(MemInfo)) return log.warning(ERR::Args);
 
-   ClearMemory(MemInfo, Size);
+   clearmem(MemInfo, Size);
 
    if (auto lock = std::unique_lock{glmMemory}) {
       auto mem = glPrivateMemory.find(MemoryID);
@@ -383,7 +383,7 @@ ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
    if ((!MemInfo) or (!Memory)) return log.warning(ERR::NullArgs);
    if ((size_t)Size < sizeof(MemInfo)) return log.warning(ERR::Args);
 
-   ClearMemory(MemInfo, Size);
+   clearmem(MemInfo, Size);
 
    // Search private addresses.  This is a bit slow, but if the memory pointer is guaranteed to have
    // come from AllocMemory() then the optimal solution for the client is to pull the ID from
@@ -468,7 +468,7 @@ ERR ReallocMemory(APTR Address, ULONG NewSize, APTR *Memory, MEMORYID *MemoryID)
 
    if (AllocMemory(NewSize, meminfo.Flags, Memory, MemoryID) IS ERR::Okay) {
       auto copysize = (NewSize < meminfo.Size) ? NewSize : meminfo.Size;
-      CopyMemory(Address, *Memory, copysize);
+      copymem(Address, *Memory, copysize);
 
       // Free the old memory block.  If it is locked then we also release it for the caller.
 
@@ -478,14 +478,4 @@ ERR ReallocMemory(APTR Address, ULONG NewSize, APTR *Memory, MEMORYID *MemoryID)
       return ERR::Okay;
    }
    else return log.error(ERR::AllocMemory);
-}
-
-//********************************************************************************************************************
-// Internal function to set the manager for an allocated resource.  Note: At this stage managed resources are not to
-// be exposed in the published API.
-
-void set_memory_manager(APTR Address, ResourceManager *Manager)
-{
-   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
-   address_mgr[0] = Manager;
 }

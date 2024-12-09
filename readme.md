@@ -33,7 +33,7 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 
 ### Application Example
 
-Here's an example of a simple client application written in Fluid.  It loads an SVG file and displays the content in a window for the user.  Notice that the SVG is parsed in one line of code and all resource cleanup is handled in the background by the garbage collector.  You can find more example programs [here](examples/).
+This is an example of a simple client application written in Fluid.  It loads an SVG file and displays the content in a window for the user.  Notice that the SVG is parsed in one line of code and all resource cleanup is handled in the background by the garbage collector.  You can find more example programs [here](examples/).
 
 ```Lua
    require 'gui'
@@ -92,11 +92,14 @@ Please refer to the following Wiki pages for information on how to build Parasol
 
 A successful build and installation will create a `parasol` command tool, which is [documented here](https://github.com/parasol-framework/parasol/wiki/Parasol-Cmd-Tool).
 
-Please refer to our [customisation wiki page](https://github.com/parasol-framework/parasol/wiki/Customising-Your-Build) for information on customising your build.
+> [!TIP]
+> Please refer to our [customisation wiki page](https://github.com/parasol-framework/parasol/wiki/Customising-Your-Build) for information on customising your build.
 
 ## 4. Next Steps
 
-Full documentation for developers is available online from our [main website](https://www.parasol.ws).
+The [Wiki](https://github.com/parasol-framework/parasol/wiki) provides up-to-date documentation on most facets of the framework.
+
+Detailed technical documentation for the Parasol APIs is available online at the [main website](https://www.parasol.ws).
 
 ## 5. Source Code Licensing
 

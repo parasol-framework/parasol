@@ -46,6 +46,7 @@ ScintillaSearch: Provides search functionality for use on Scintilla objects.
 
 #include <parasol/main.h>
 #include <parasol/modules/display.h>
+#include <parasol/strings.hpp>
 
 #include "scintillaparasol.h"
 #include <parasol/modules/scintilla.h>
@@ -116,7 +117,7 @@ static ERR SEARCH_Find(objScintillaSearch *Self, struct ss::Find *Args)
 
    SCICALL(SCI_SETTARGETSTART, start);
    SCICALL(SCI_SETTARGETEND, end);
-   pos = SCICALL(SCI_SEARCHINTARGET, StrLength(Self->Text), (char *)Self->Text);
+   pos = SCICALL(SCI_SEARCHINTARGET, strlen(Self->Text), (char *)Self->Text);
 
    // If not found and wraparound is wanted, try again
 
@@ -132,7 +133,7 @@ static ERR SEARCH_Find(objScintillaSearch *Self, struct ss::Find *Args)
 
       SCICALL(SCI_SETTARGETSTART, start);
       SCICALL(SCI_SETTARGETEND, end);
-      pos = SCICALL(SCI_SEARCHINTARGET, StrLength((STRING)Self->Text), (char *)Self->Text);
+      pos = SCICALL(SCI_SEARCHINTARGET, strlen((STRING)Self->Text), (char *)Self->Text);
    }
 
    if (pos IS -1) return ERR::Search;
@@ -247,7 +248,7 @@ static ERR SEARCH_Next(objScintillaSearch *Self, struct ss::Next *Args)
 
    SCICALL(SCI_SETTARGETSTART, start);
    SCICALL(SCI_SETTARGETEND, end);
-   LONG pos = SCICALL(SCI_SEARCHINTARGET, StrLength(Self->Text), (char *)Self->Text);
+   LONG pos = SCICALL(SCI_SEARCHINTARGET, strlen(Self->Text), (char *)Self->Text);
 
    // If not found and wraparound is wanted, try again
 
@@ -270,7 +271,7 @@ static ERR SEARCH_Next(objScintillaSearch *Self, struct ss::Next *Args)
 
       SCICALL(SCI_SETTARGETSTART, start);
       SCICALL(SCI_SETTARGETEND, end);
-      pos = SCICALL(SCI_SEARCHINTARGET, StrLength((STRING)Self->Text), (char *)Self->Text);
+      pos = SCICALL(SCI_SEARCHINTARGET, strlen((STRING)Self->Text), (char *)Self->Text);
    }
 
    if (pos IS -1) return ERR::Search;
@@ -354,7 +355,7 @@ static ERR SET_Text(objScintillaSearch *Self, CSTRING Value)
 {
    if (Self->Text) { FreeResource(Self->Text); Self->Text = NULL; }
    if (Value) {
-      if (!(Self->Text = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Text = pf::strclone(Value))) return ERR::AllocMemory;
    }
    return ERR::Okay;
 }
@@ -362,9 +363,9 @@ static ERR SET_Text(objScintillaSearch *Self, CSTRING Value)
 //********************************************************************************************************************
 
 static const ActionArray clActions[] = {
-   { AC_Free, SEARCH_Free },
-   { AC_Init, SEARCH_Init },
-   { 0, NULL }
+   { AC::Free, SEARCH_Free },
+   { AC::Init, SEARCH_Init },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************
@@ -377,7 +378,7 @@ static const MethodEntry clMethods[] = {
    { ss::Next::id, (APTR)SEARCH_Next, "Next", argsNext, sizeof(struct ss::Next) },
    { ss::Prev::id, (APTR)SEARCH_Prev, "Prev", argsPrev, sizeof(struct ss::Prev) },
    { ss::Find::id, (APTR)SEARCH_Find, "Find", argsFind, sizeof(struct ss::Find) },
-   { 0, NULL, NULL, NULL, 0 }
+   { AC::NIL, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************

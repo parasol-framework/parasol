@@ -139,12 +139,12 @@ start_pass_huff (j_compress_ptr cinfo, boolean gather_statistics)
 	entropy->dc_count_ptrs[dctbl] = (long *)
 	  (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
 				      257 * SIZEOF(long));
-      ClearMemory(entropy->dc_count_ptrs[dctbl], 257 * SIZEOF(long));
+      pf::clearmem(entropy->dc_count_ptrs[dctbl], 257 * SIZEOF(long));
       if (entropy->ac_count_ptrs[actbl] == NULL)
 	entropy->ac_count_ptrs[actbl] = (long *)
 	  (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
 				      257 * SIZEOF(long));
-      ClearMemory(entropy->ac_count_ptrs[actbl], 257 * SIZEOF(long));
+      pf::clearmem(entropy->ac_count_ptrs[actbl], 257 * SIZEOF(long));
 #endif
     } else {
       /* Compute derived values for Huffman tables */
@@ -245,7 +245,7 @@ jpeg_make_c_derived_tbl (j_compress_ptr cinfo, boolean isDC, int tblno,
    * this lets us detect duplicate VAL entries here, and later
    * allows emit_bits to detect any attempt to emit such symbols.
    */
-  ClearMemory(dtbl->ehufsi, SIZEOF(dtbl->ehufsi));
+  pf::clearmem(dtbl->ehufsi, SIZEOF(dtbl->ehufsi));
 
   /* This is also a convenient place to check for out-of-range
    * and duplicated VAL entries.  We allow 0..255 for AC symbols
@@ -709,8 +709,8 @@ jpeg_gen_optimal_table (j_compress_ptr cinfo, JHUFF_TBL * htbl, long freq[])
 
   /* This algorithm is explained in section K.2 of the JPEG standard */
 
-  ClearMemory(bits, SIZEOF(bits));
-  ClearMemory(codesize, SIZEOF(codesize));
+  pf::clearmem(bits, SIZEOF(bits));
+  pf::clearmem(codesize, SIZEOF(codesize));
   for (i = 0; i < 257; i++)
     others[i] = -1;		/* init links to empty */
 
@@ -812,7 +812,7 @@ jpeg_gen_optimal_table (j_compress_ptr cinfo, JHUFF_TBL * htbl, long freq[])
   bits[i]--;
 
   /* Return final symbol counts (only for lengths 0..16) */
-  CopyMemory(bits, htbl->bits, SIZEOF(htbl->bits));
+  pf::copymem(bits, htbl->bits, SIZEOF(htbl->bits));
 
   /* Return a list of the symbols sorted by code length */
   /* It's not real clear to me why we don't need to consider the codelength
@@ -850,8 +850,8 @@ finish_pass_gather (j_compress_ptr cinfo)
   /* It's important not to apply jpeg_gen_optimal_table more than once
    * per table, because it clobbers the input frequency counts!
    */
-  ClearMemory(did_dc, SIZEOF(did_dc));
-  ClearMemory(did_ac, SIZEOF(did_ac));
+  pf::clearmem(did_dc, SIZEOF(did_dc));
+  pf::clearmem(did_ac, SIZEOF(did_ac));
 
   for (ci = 0; ci < cinfo->comps_in_scan; ci++) {
     compptr = cinfo->cur_comp_info[ci];

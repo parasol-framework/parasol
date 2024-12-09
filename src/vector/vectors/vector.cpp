@@ -235,7 +235,7 @@ FieldNotSet: The vector's scene graph is not associated with a Surface.
 static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
-      if (Self->dirty()) gen_vector_tree(Self);
+      gen_vector_tree(Self);
 
 #if 0
       // Retrieve bounding box, post-transformations.
@@ -281,10 +281,10 @@ static ERR VECTOR_Free(extVector *Self)
 {
    Self->~extVector();
 
-   if (Self->ClipMask)   UnsubscribeAction(Self->ClipMask, AC_Free);
-   if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
-   if (Self->Morph)      UnsubscribeAction(Self->Morph, AC_Free);
-   if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC_Free);
+   if (Self->ClipMask)   UnsubscribeAction(Self->ClipMask, AC::Free);
+   if (Self->Transition) UnsubscribeAction(Self->Transition, AC::Free);
+   if (Self->Morph)      UnsubscribeAction(Self->Morph, AC::Free);
+   if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC::Free);
 
    if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
    if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }
@@ -446,7 +446,7 @@ static ERR VECTOR_GetBoundary(extVector *Self, struct vec::GetBoundary *Args)
    if (!Self->Scene) return log.warning(ERR::NotInitialised);
 
    if (Self->GeneratePath) { // Path generation must be supported by the vector so that BX/BY etc are defined.
-      if (Self->dirty()) gen_vector_tree(Self);
+      gen_vector_tree(Self);
 
       if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
@@ -472,7 +472,7 @@ static ERR VECTOR_GetBoundary(extVector *Self, struct vec::GetBoundary *Args)
       return ERR::Okay;
    }
    else if (Self->classID() IS CLASSID::VECTORVIEWPORT) {
-      if (Self->dirty()) gen_vector_tree(Self);
+      gen_vector_tree(Self);
 
       auto view = (extVectorViewport *)Self;
       Args->X      = view->vpBounds.left;
@@ -564,7 +564,7 @@ static ERR VECTOR_MoveToFront(extVector *Self)
 
 //********************************************************************************************************************
 
-static ERR VECTOR_NewObject(extVector *Self)
+static ERR VECTOR_NewPlacement(extVector *Self)
 {
    new (Self) extVector;
    Self->StrokeOpacity = 1.0;
@@ -690,7 +690,7 @@ static ERR VECTOR_PointInPath(extVector *Self, struct vec::PointInPath *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
@@ -901,6 +901,8 @@ static ERR VECTOR_SubscribeInput(extVector *Self, struct vec::SubscribeInput *Ar
 {
    pf::Log log;
 
+   // Refer to scene_input_events() for the origin of incoming input messages
+
    if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
    if (Args->Mask != JTYPE::NIL) {
@@ -1012,7 +1014,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (Self->BasePath.empty()) return ERR::NoData;
 
@@ -1026,7 +1028,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
   if (Args->Callback->isC()) {
       auto routine = ((ERR (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->Routine));
 
-      pf::SwitchContext context(GetParentContext());
+      pf::SwitchContext context(ParentContext());
 
       if (Args->Transform) {
          agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
@@ -1125,15 +1127,15 @@ static ERR VECTOR_SET_AppendPath(extVector *Self, extVector *Value)
 
    if (!Value) {
       if (Self->AppendPath) {
-         UnsubscribeAction(Self->AppendPath, AC_Free);
+         UnsubscribeAction(Self->AppendPath, AC::Free);
          Self->AppendPath = NULL;
       }
       return ERR::Okay;
    }
    else if (Value->Class->BaseClassID IS CLASSID::VECTOR) {
-      if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC_Free);
+      if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC::Free);
       if (Value->initialised()) { // The object must be initialised.
-         SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_appendpath));
+         SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_appendpath));
          Self->AppendPath = Value;
          return ERR::Okay;
       }
@@ -1327,7 +1329,7 @@ instance if the vector is the child of a viewport scaled down to 50%, the result
 static ERR VECTOR_GET_DisplayScale(extVector *Self, DOUBLE *Value)
 {
    if (!Self->initialised()) return ERR::NotInitialised;
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
    *Value = Self->Transform.scale();
    return ERR::Okay;
 }
@@ -1386,9 +1388,16 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
    // Note that if an internal routine sets DisableFillColour then the colour will be stored but effectively does nothing.
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
+   Self->FGFill = false;
+
+   if (!Value) {
+      Self->Fill[0].reset();
+      return ERR::Okay;
+   }
+
    CSTRING next;
    if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
-      Self->FillString = StrClone(Value);
+      Self->FillString = strclone(Value);
 
       if (next) {
          vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
@@ -1402,7 +1411,10 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 
       return ERR::Okay;
    }
-   else return error;
+   else {
+      Self->Fill[0].reset();
+      return error;
+   }
 }
 
 /*********************************************************************************************************************
@@ -1506,7 +1518,7 @@ static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 
    if (!Self->Scene) { // Vector is not yet initialised, so store the filter string for later.
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
-      Self->FilterString = StrClone(Value);
+      Self->FilterString = strclone(Value);
       return ERR::Okay;
    }
 
@@ -1518,7 +1530,7 @@ static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 
    if (def->Class->BaseClassID IS CLASSID::VECTORFILTER) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
-      Self->FilterString = StrClone(Value);
+      Self->FilterString = strclone(Value);
       Self->Filter = (extVectorFilter *)def;
       return ERR::Okay;
    }
@@ -1568,7 +1580,7 @@ static ERR VECTOR_SET_ID(extVector *Self, CSTRING Value)
    if (Self->ID) FreeResource(Self->ID);
 
    if (Value) {
-      Self->ID = StrClone(Value);
+      Self->ID = strclone(Value);
       Self->NumericID = strhash(Value);
    }
    else {
@@ -1714,15 +1726,15 @@ static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
 
    if (!Value) {
       if (Self->ClipMask) {
-         UnsubscribeAction(Self->ClipMask, AC_Free);
+         UnsubscribeAction(Self->ClipMask, AC::Free);
          Self->ClipMask = NULL;
       }
       return ERR::Okay;
    }
    else if (Value->classID() IS CLASSID::VECTORCLIP) {
-      if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC_Free);
+      if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC::Free);
       if (Value->initialised()) { // Ensure that the mask is initialised.
-         SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_clipmask));
+         SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_clipmask));
          Self->ClipMask = Value;
          return ERR::Okay;
       }
@@ -1795,15 +1807,15 @@ static ERR VECTOR_SET_Morph(extVector *Self, extVector *Value)
 
    if (!Value) {
       if (Self->Morph) {
-         UnsubscribeAction(Self->Morph, AC_Free);
+         UnsubscribeAction(Self->Morph, AC::Free);
          Self->Morph = NULL;
       }
       return ERR::Okay;
    }
    else if (Value->Class->BaseClassID IS CLASSID::VECTOR) {
-      if (Self->Morph) UnsubscribeAction(Self->Morph, AC_Free);
+      if (Self->Morph) UnsubscribeAction(Self->Morph, AC::Free);
       if (Value->initialised()) { // The object must be initialised.
-         SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_morph));
+         SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_morph));
          Self->Morph = Value;
          return ERR::Okay;
       }
@@ -2016,7 +2028,7 @@ static ERR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
          auto scene = (extVectorScene *)Self->Scene;
          scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
 
-         SubscribeAction(Value->Context, AC_Free, C_FUNCTION(notify_free_resize_event));
+         SubscribeAction(Value->Context, AC::Free, C_FUNCTION(notify_free_resize_event));
       }
       else {
          const std::lock_guard<std::mutex> lock(glResizeLock);
@@ -2078,7 +2090,7 @@ static ERR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    if (!Self->GeneratePath) return log.warning(ERR::Mismatch); // Path generation must be supported by the vector.
 
-   if (Self->dirty()) gen_vector_tree(Self);
+   gen_vector_tree(Self);
 
    if (!Self->BasePath.total_vertices()) return ERR::NoData;
 
@@ -2148,7 +2160,7 @@ static ERR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    auto out = seq.str();
    if (out.length() > 0) {
-      *Value = StrClone(out.c_str());
+      *Value = strclone(out);
       return ERR::Okay;
    }
    else return ERR::NoData;
@@ -2173,8 +2185,13 @@ static ERR VECTOR_GET_Stroke(extVector *Self, CSTRING *Value)
 static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
-   Self->StrokeString = StrClone(Value);
-   vec::ReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
+
+   if (Value) {
+      Self->StrokeString = strclone(Value);
+      vec::ReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
+   }
+   else Self->Stroke.reset();
+
    Self->Stroked = Self->is_stroked();
    return ERR::Okay;
 }
@@ -2327,15 +2344,15 @@ static ERR VECTOR_SET_Transition(extVector *Self, extVectorTransition *Value)
 
    if (!Value) {
       if (Self->Transition) {
-         UnsubscribeAction(Self->Transition, AC_Free);
+         UnsubscribeAction(Self->Transition, AC::Free);
          Self->Transition = NULL;
       }
       return ERR::Okay;
    }
    else if (Value->classID() IS CLASSID::VECTORTRANSITION) {
-      if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
+      if (Self->Transition) UnsubscribeAction(Self->Transition, AC::Free);
       if (Value->initialised()) { // The object must be initialised.
-         SubscribeAction(Value, AC_Free, C_FUNCTION(notify_free_transition));
+         SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_transition));
          Self->Transition = Value;
          return ERR::Okay;
       }

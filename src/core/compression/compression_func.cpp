@@ -17,7 +17,7 @@ static void print(extCompression *Self, CSTRING Buffer)
 
    if (Self->OutputID) {
       pf::ScopedObjectLock output(Self->OutputID);
-      if (output.granted()) acDataFeed(*output, Self, DATA::TEXT, Buffer, StrLength(Buffer) + 1);
+      if (output.granted()) acDataFeed(*output, Self, DATA::TEXT, Buffer, strlen(Buffer) + 1);
    }
    else log.msg("%s", Buffer);
 }
@@ -57,15 +57,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
 
    // Send feedback if requested to do so
 
-   CompressionFeedback feedback = {
-      .FeedbackID     = FDB::COMPRESS_FILE,
-      .Index          = Self->FileIndex,
-      .Path           = Location.c_str(),
-      .Dest           = Path.c_str(),
-      .Progress       = 0,
-      .OriginalSize   = 0,
-      .CompressedSize = 0
-   };
+   CompressionFeedback feedback(FDB::COMPRESS_FILE, Self->FileIndex, Location.c_str(), Path.c_str());
 
    ERR error = send_feedback(Self, &feedback);
 
@@ -118,7 +110,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
       if (acSeekStart(Self->FileIO, entry.Offset) != ERR::Okay) return ERR::Seek;
 
       UBYTE header[sizeof(glHeader)];
-      CopyMemory(glHeader, header, sizeof(glHeader));
+      copymem(glHeader, header, sizeof(glHeader));
 
       wrb<UWORD>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
       wrb<ULONG>(entry.TimeStamp, header + HEAD_TIMESTAMP);
@@ -220,14 +212,8 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    // Send feedback
 
-   CompressionFeedback fb;
-   fb.FeedbackID     = FDB::COMPRESS_FILE;
-   fb.Index          = Self->FileIndex;
-   fb.Path           = Location.c_str();
-   fb.Dest           = filename.c_str();
+   CompressionFeedback fb(FDB::COMPRESS_FILE, Self->FileIndex, Location.c_str(), filename.c_str());
    file->get(FID_Size, &fb.OriginalSize);
-   fb.CompressedSize = 0;
-   fb.Progress       = 0;
 
    switch (send_feedback(Self, &fb)) {
       case ERR::Terminate:
@@ -334,7 +320,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    if (entry.Flags & ZIP_LINK) {
       // Compress the symbolic link to the zip file, rather than the data
-      len = StrLength(symlink);
+      len = strlen(symlink);
       Self->Zip.next_in   = (Bytef *)symlink;
       Self->Zip.avail_in  = len;
       Self->Zip.next_out  = Self->Output;
@@ -347,7 +333,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    }
    else {
       struct acRead read = { .Buffer = Self->Input, .Length = SIZE_COMPRESSION_BUFFER };
-      while ((Action(AC_Read, *file, &read) IS ERR::Okay) and (read.Result > 0)) {
+      while ((Action(AC::Read, *file, &read) IS ERR::Okay) and (read.Result > 0)) {
          Self->Zip.next_in  = Self->Input;
          Self->Zip.avail_in = read.Result;
 
@@ -355,7 +341,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
             if (!Self->Zip.avail_out) {
                // Write out the compression buffer because it is at capacity
                struct acWrite write = { .Buffer = Self->Output, .Length = SIZE_COMPRESSION_BUFFER };
-               Action(AC_Write, Self->FileIO, &write);
+               Action(AC::Write, Self->FileIO, &write);
 
                // Reset the compression buffer
                Self->Zip.next_out  = Self->Output;
@@ -399,7 +385,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    if (acSeek(Self->FileIO, (DOUBLE)entry.Offset, SEEK::START) != ERR::Okay) return ERR::Seek;
 
    UBYTE header[sizeof(glHeader)];
-   CopyMemory(glHeader, header, sizeof(glHeader));
+   copymem(glHeader, header, sizeof(glHeader));
    wrb<UWORD>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
    wrb<ULONG>(entry.TimeStamp, header + HEAD_TIMESTAMP);
    wrb<ULONG>(entry.CRC, header + HEAD_CRC);
@@ -447,10 +433,10 @@ static ERR remove_file(extCompression *Self, std::list<ZipFile>::iterator &File)
    DOUBLE writepos = File->Offset;
 
    struct acRead read = { Self->Input, SIZE_COMPRESSION_BUFFER };
-   while ((Action(AC_Read, Self->FileIO, &read) IS ERR::Okay) and (read.Result > 0)) {
+   while ((Action(AC::Read, Self->FileIO, &read) IS ERR::Okay) and (read.Result > 0)) {
       if (acSeekStart(Self->FileIO, writepos) != ERR::Okay) return log.warning(ERR::Seek);
       struct acWrite write = { Self->Input, read.Result };
-      if (Action(AC_Write, Self->FileIO, &write) != ERR::Okay) return log.warning(ERR::Write);
+      if (Action(AC::Write, Self->FileIO, &write) != ERR::Okay) return log.warning(ERR::Write);
       writepos += write.Result;
 
       currentpos += read.Result;
@@ -480,7 +466,7 @@ static ERR fast_scan_zip(extCompression *Self)
    pf::Log log(__FUNCTION__);
    ziptail tail;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (acSeek(Self->FileIO, TAIL_LENGTH, SEEK::END) != ERR::Okay) return ERR::Seek; // Surface error, fail
    if (acRead(Self->FileIO, &tail, TAIL_LENGTH, NULL) != ERR::Okay) return ERR::Read; // Surface error, fail
@@ -582,7 +568,7 @@ static ERR scan_zip(extCompression *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (acSeek(Self->FileIO, 0.0, SEEK::START) != ERR::Okay) return log.warning(ERR::Seek);
 
@@ -643,7 +629,7 @@ static ERR scan_zip(extCompression *Self)
          if (zipentry.extralen > 0) { // Not currently used
             std::string extra(zipentry.extralen, '\0');
             struct acRead read = { (APTR)extra.c_str(), zipentry.extralen };
-            if (Action(AC_Read, Self->FileIO, &read) != ERR::Okay) return log.warning(ERR::Read);
+            if (Action(AC::Read, Self->FileIO, &read) != ERR::Okay) return log.warning(ERR::Read);
          }
 
          if (zipentry.commentlen > 0) {
@@ -741,7 +727,7 @@ static void write_eof(extCompression *Self)
          UWORD filecount = 0;
          for (auto &chain : Self->Files) {
             UBYTE elist[sizeof(glList)];
-            CopyMemory(glList, elist, sizeof(glList));
+            copymem(glList, elist, sizeof(glList));
 
             wrb<UWORD>(chain.DeflateMethod, elist+LIST_METHOD);
             wrb<ULONG>(chain.TimeStamp, elist+LIST_TIMESTAMP);
@@ -766,7 +752,7 @@ static void write_eof(extCompression *Self)
          }
 
          UBYTE tail[sizeof(glTail)];
-         CopyMemory(glTail, tail, sizeof(glTail));
+         copymem(glTail, tail, sizeof(glTail));
 
          wrb<UWORD>(filecount,  tail + TAIL_FILECOUNT); // File count for this file
          wrb<UWORD>(filecount,  tail + TAIL_TOTALFILECOUNT); // File count for all zip files when spanning multiple archives
@@ -784,7 +770,7 @@ static void write_eof(extCompression *Self)
 
 void zipfile_to_item(ZipFile &ZF, CompressedItem &Item)
 {
-   ClearMemory(&Item, sizeof(Item));
+   clearmem(&Item, sizeof(Item));
 
    Item.Modified.Year   = 1980 + ((ZF.TimeStamp>>25) & 0x3f);
    Item.Modified.Month  = (ZF.TimeStamp>>21) & 0x0f;

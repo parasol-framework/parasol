@@ -137,26 +137,38 @@ template <class T = Object> std::shared_ptr<T> make_shared_object(T *Object) {
 // Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
 template <class T = Object>
-class ScopedObjectLock { // C++ wrapper for automatically releasing an object
+class ScopedObjectLock {
+   private:
+      bool quicklock;
+
    public:
       ERR error;
       T *obj;
 
-      ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
+      inline ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
          error = AccessObject(ObjectID, Milliseconds, (OBJECTPTR *)&obj);
+         quicklock = false;
       }
 
-      ScopedObjectLock(OBJECTPTR Object, LONG Milliseconds = 3000) {
-         error = LockObject(Object, Milliseconds);
-         obj = (T *)Object;
+      inline ScopedObjectLock(T *Object, LONG Milliseconds = 3000) {
+         if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
+            obj = (T *)Object;
+            quicklock = true;
+         }
       }
 
-      ScopedObjectLock() { obj = NULL; error = ERR::NotLocked; }
-      ~ScopedObjectLock() { if (error IS ERR::Okay) ReleaseObject((OBJECTPTR)obj); }
-      bool granted() { return error == ERR::Okay; }
+      inline ~ScopedObjectLock() {
+         if (error IS ERR::Okay) {
+            if (quicklock) obj->unlock();
+            else ReleaseObject((OBJECTPTR)obj);
+         }
+      }
 
-      T * operator->() { return obj; }; // Promotes underlying methods and fields
-      T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
+      inline ScopedObjectLock() { obj = NULL; error = ERR::NotLocked; }
+      inline bool granted() { return error == ERR::Okay; }
+
+      inline T * operator->() { return obj; }; // Promotes underlying methods and fields
+      inline T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
 };
 
 //********************************************************************************************************************
@@ -452,6 +464,9 @@ inline FieldValue Volume(const std::string &Value) { return FieldValue(FID_Volum
 
 constexpr FieldValue DPMS(CSTRING Value) { return FieldValue(FID_DPMS, Value); }
 inline FieldValue DPMS(const std::string &Value) { return FieldValue(FID_DPMS, Value.c_str()); }
+
+constexpr FieldValue Icon(CSTRING Value) { return FieldValue(FID_Icon, Value); }
+inline FieldValue Icon(const std::string &Value) { return FieldValue(FID_Icon, Value.c_str()); }
 
 constexpr FieldValue Procedure(CSTRING Value) { return FieldValue(FID_Procedure, Value); }
 inline FieldValue Procedure(const std::string &Value) { return FieldValue(FID_Procedure, Value.c_str()); }

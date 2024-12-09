@@ -260,50 +260,81 @@ Lookup: VGF
 Dimension flags that indicate whether field values are fixed or scaled are defined here.
 
 -FIELD-
-FX: The horizontal focal point for radial gradients.
+FocalRadius: The size of the focal radius for radial gradients.
 
-The `(FX, FY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the
-center of the gradient.
+If a radial gradient has a defined focal point (by setting #FocalX and #FocalY) then the FocalRadius can be used to
+adjust the size of the focal area.  The default of zero ensures that the focal area matches that defined by #Radius,
+which is the standard maintained by SVG.
+
+The FocalRadius value has no effect if the gradient is linear.
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_FX(extVectorGradient *Self, Unit *Value)
+static ERR VECTORGRADIENT_GET_FocalRadius(extVectorGradient *Self, Unit *Value)
 {
-   Value->set(Self->FX);
+   Value->set(Self->FocalRadius);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_FX(extVectorGradient *Self, Unit &Value)
+static ERR VECTORGRADIENT_SET_FocalRadius(extVectorGradient *Self, Unit &Value)
+{
+   if (Value >= 0) {
+      if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_FOCAL_RADIUS) & (~VGF::FIXED_FOCAL_RADIUS);
+      else Self->Flags = (Self->Flags | VGF::FIXED_FOCAL_RADIUS) & (~VGF::SCALED_FOCAL_RADIUS);
+
+      Self->FocalRadius = Value;
+      return ERR::Okay;
+   }
+   else return ERR::OutOfRange;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+FocalX: The horizontal focal point for radial gradients.
+
+The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point 
+will match the center of the gradient.
+
+*********************************************************************************************************************/
+
+static ERR VECTORGRADIENT_GET_FocalX(extVectorGradient *Self, Unit *Value)
+{
+   Value->set(Self->FocalX);
+   return ERR::Okay;
+}
+
+static ERR VECTORGRADIENT_SET_FocalX(extVectorGradient *Self, Unit &Value)
 {
    if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_FX) & (~VGF::FIXED_FX);
    else Self->Flags = (Self->Flags | VGF::FIXED_FX) & (~VGF::SCALED_FX);
 
-   Self->FX = Value;
+   Self->FocalX = Value;
    return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 
 -FIELD-
-FY: The vertical focal point for radial gradients.
+FocalY: The vertical focal point for radial gradients.
 
-The `(FX, FY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the
-center of the gradient.
+The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point 
+will match the center of the gradient.
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_FY(extVectorGradient *Self, Unit *Value)
+static ERR VECTORGRADIENT_GET_FocalY(extVectorGradient *Self, Unit *Value)
 {
-   Value->set(Self->FY);
+   Value->set(Self->FocalY);
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_FY(extVectorGradient *Self, Unit &Value)
+static ERR VECTORGRADIENT_SET_FocalY(extVectorGradient *Self, Unit &Value)
 {
    if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_FY) & (~VGF::FIXED_FY);
    else Self->Flags = (Self->Flags | VGF::FIXED_FY) & (~VGF::SCALED_FY);
 
-   Self->FY = Value;
+   Self->FocalY = Value;
    return ERR::Okay;
 }
 
@@ -311,7 +342,7 @@ static ERR VECTORGRADIENT_SET_FY(extVectorGradient *Self, Unit &Value)
 -FIELD-
 ID: String identifier for a vector.
 
-The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the
+The ID field is provided for the purpose of SVG support.  Where possible, we recommend that you use the
 existing object name and automatically assigned ID's for identifiers.
 
 *********************************************************************************************************************/
@@ -327,7 +358,7 @@ static ERR VECTORGRADIENT_SET_ID(extVectorGradient *Self, CSTRING Value)
    if (Self->ID) FreeResource(Self->ID);
 
    if (Value) {
-      Self->ID = StrClone(Value);
+      Self->ID = strclone(Value);
       Self->NumericID = strhash(Value);
    }
    else {
@@ -438,7 +469,7 @@ static ERR VECTORGRADIENT_SET_NumericID(extVectorGradient *Self, LONG Value)
 -FIELD-
 Radius: The radius of the gradient.
 
-The radius of the gradient can be defined in fixed units or scaled terms to its container.  A default radius of
+The radius of the gradient can be defined as a fixed unit or scaled relative to its container.  A default radius of
 50% (0.5) applies if this field is not set.
 
 The Radius value has no effect if the gradient is linear.
@@ -469,7 +500,7 @@ static ERR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Unit &Value)
 SpreadMethod: The behaviour to use when the gradient bounds do not match the vector path.
 
 Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is
-`VSPREAD::PAD`.
+`VSPREAD::PAD`.  Other valid options for gradients are `REFLECT` and `REPEAT`.
 
 -FIELD-
 Stops: Defines the colours to use for the gradient.
@@ -493,7 +524,7 @@ static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value
    if (Elements >= 2) {
       if (AllocMemory(sizeof(GradientStop) * Elements, MEM::DATA|MEM::NO_CLEAR, &Self->Stops) IS ERR::Okay) {
          Self->TotalStops = Elements;
-         CopyMemory(Value, Self->Stops, Elements * sizeof(GradientStop));
+         copymem(Value, Self->Stops, Elements * sizeof(GradientStop));
          if (Self->Colours) delete Self->Colours;
          Self->Colours = new (std::nothrow) GradientColours(Self, 1.0);
          if (!Self->Colours) return ERR::AllocMemory;
@@ -587,6 +618,7 @@ static ERR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Unit &Value)
    if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_X1) & (~VGF::FIXED_X1);
    else Self->Flags = (Self->Flags | VGF::FIXED_X1) & (~VGF::SCALED_X1);
    Self->X1 = Value;
+   Self->CalcAngle = true;
    return ERR::Okay;
 }
 
@@ -612,6 +644,7 @@ static ERR VECTORGRADIENT_SET_X2(extVectorGradient *Self, Unit &Value)
    if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_X2) & (~VGF::FIXED_X2);
    else Self->Flags = (Self->Flags | VGF::FIXED_X2) & (~VGF::SCALED_X2);
    Self->X2 = Value;
+   Self->CalcAngle = true;
    return ERR::Okay;
 }
 
@@ -637,6 +670,7 @@ static ERR VECTORGRADIENT_SET_Y1(extVectorGradient *Self, Unit &Value)
    if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_Y1) & (~VGF::FIXED_Y1);
    else Self->Flags = (Self->Flags | VGF::FIXED_Y1) & (~VGF::SCALED_Y1);
    Self->Y1 = Value;
+   Self->CalcAngle = true;
    return ERR::Okay;
 }
 
@@ -662,6 +696,7 @@ static ERR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Unit &Value)
    if (Value.scaled()) Self->Flags = (Self->Flags | VGF::SCALED_Y2) & (~VGF::FIXED_Y2);
    else Self->Flags = (Self->Flags | VGF::FIXED_Y2) & (~VGF::SCALED_Y2);
    Self->Y2 = Value;
+   Self->CalcAngle = true;
    return ERR::Okay;
 }
 
@@ -676,17 +711,22 @@ static const FieldArray clGradientFields[] = {
    { "Y2",           FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Y2, VECTORGRADIENT_SET_Y2 },
    { "CenterX",      FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterX, VECTORGRADIENT_SET_CenterX },
    { "CenterY",      FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterY, VECTORGRADIENT_SET_CenterY },
-   { "FX",           FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FX, VECTORGRADIENT_SET_FX },
-   { "FY",           FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FY, VECTORGRADIENT_SET_FY },
+   { "FocalX",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalX, VECTORGRADIENT_SET_FocalX },
+   { "FocalY",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalY, VECTORGRADIENT_SET_FocalY },
    { "Radius",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Radius, VECTORGRADIENT_SET_Radius },
+   { "FocalRadius",  FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalRadius, VECTORGRADIENT_SET_FocalRadius },
    { "Inherit",      FDF_OBJECT|FDF_RW, NULL, VECTORGRADIENT_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientSpreadMethod },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &clVectorGradientUnits },
-   { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &clVectorGradientType },
+   { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientType },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clVectorGradientFlags },
    { "ColourSpace",  FDF_LONG|FDF_RI, NULL, NULL, &clVectorGradientColourSpace },
    { "TotalStops",   FDF_LONG|FDF_R },
    // Virtual fields
+   { "CX",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterX, VECTORGRADIENT_SET_CenterX },
+   { "CY",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterY, VECTORGRADIENT_SET_CenterY },
+   { "FX",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalX, VECTORGRADIENT_SET_FocalX },
+   { "FY",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalY, VECTORGRADIENT_SET_FocalY },
    { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, VECTORGRADIENT_GET_Matrices, VECTORGRADIENT_SET_Matrices, "VectorMatrix" },
    { "NumericID",    FDF_VIRTUAL|FDF_LONG|FDF_RW, VECTORGRADIENT_GET_NumericID, VECTORGRADIENT_SET_NumericID },
    { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW, VECTORGRADIENT_GET_ID, VECTORGRADIENT_SET_ID },

@@ -521,9 +521,9 @@ static ERR COLOURFX_GET_Values(extColourFX *Self, DOUBLE **Array, LONG *Elements
 
 static ERR COLOURFX_SET_Values(extColourFX *Self, DOUBLE *Array, LONG Elements)
 {
-   if (Elements > ARRAYSIZE(Self->Values)) return ERR::InvalidValue;
-   if (Array) CopyMemory(Array, Self->Values, Elements * sizeof(DOUBLE));
-   ClearMemory(Self->Values + Elements, (ARRAYSIZE(Self->Values) - Elements) * sizeof(DOUBLE));
+   if (Elements > std::ssize(Self->Values)) return ERR::InvalidValue;
+   if (Array) copymem(Array, Self->Values, Elements * sizeof(DOUBLE));
+   clearmem(Self->Values + Elements, (std::ssize(Self->Values) - Elements) * sizeof(DOUBLE));
    return ERR::Okay;
 }
 
@@ -541,7 +541,7 @@ static ERR COLOURFX_GET_XMLDef(extColourFX *Self, STRING *Value)
 
    stream << "feColorMatrix";
 
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

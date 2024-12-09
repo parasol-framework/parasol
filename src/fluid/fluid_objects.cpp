@@ -137,7 +137,7 @@ inline void build_read_table(object *Def)
 
    // Every possible action is hashed because both sub-class and base-class actions require support.
 
-   for (LONG code=1; code < AC_END; code++) {
+   for (LONG code=1; code < LONG(AC::END); code++) {
       auto hash = simple_hash(glActions[code].Name, simple_hash("ac"));
       jmp.insert(obj_read(hash, glJumpActions[code]));
    }
@@ -146,7 +146,7 @@ inline void build_read_table(object *Def)
    LONG total_methods;
    if (GetFieldArray(Def->Class, FID_Methods, (APTR *)&methods, &total_methods) IS ERR::Okay) {
       for (LONG i=1; i < total_methods; i++) {
-         if (methods[i].MethodID) {
+         if (methods[i].MethodID != AC::NIL) {
             auto hash = simple_hash(methods[i].Name, simple_hash("mt"));
             jmp.insert(obj_read(hash, obj_jump_method, &methods[i]));
          }
@@ -305,7 +305,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
    else {
       auto it = glActionLookup.find(action);
       if (it != glActionLookup.end()) {
-         *Args = glActions[it->second].Args;
+         *Args = glActions[LONG(it->second)].Args;
          return it->second;
       }
    }
@@ -329,7 +329,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
    }
    else luaL_error(Lua, GetErrorMsg(ERR::Search));
 
-   return 0;
+   return AC::NIL;
 }
 
 /*********************************************************************************************************************
@@ -384,7 +384,7 @@ static int object_new(lua_State *Lua)
       auto_load_include(Lua, obj->Class);
 
       auto def = (object *)lua_newuserdata(Lua, sizeof(object));
-      ClearMemory(def, sizeof(object));
+      clearmem(def, sizeof(object));
 
       luaL_getmetatable(Lua, "Fluid.obj");
       lua_setmetatable(Lua, -2);
@@ -523,7 +523,7 @@ static int object_newchild(lua_State *Lua)
       auto_load_include(Lua, obj->Class);
 
       auto def = (object *)lua_newuserdata(Lua, sizeof(object));
-      ClearMemory(def, sizeof(object));
+      clearmem(def, sizeof(object));
 
       luaL_getmetatable(Lua, "Fluid.obj");
       lua_setmetatable(Lua, -2);
@@ -588,7 +588,7 @@ static int object_newchild(lua_State *Lua)
 object * push_object(lua_State *Lua, OBJECTPTR Object)
 {
    if (auto newobject = (object *)lua_newuserdata(Lua, sizeof(object))) {
-      ClearMemory(newobject, sizeof(object));
+      clearmem(newobject, sizeof(object));
 
       auto_load_include(Lua, Object->Class);
 
@@ -613,7 +613,7 @@ ERR push_object_id(lua_State *Lua, OBJECTID ObjectID)
    if (!ObjectID) { lua_pushnil(Lua); return ERR::Okay; }
 
    if (auto newobject = (object *)lua_newuserdata(Lua, sizeof(object))) {
-      ClearMemory(newobject, sizeof(object));
+      clearmem(newobject, sizeof(object));
 
       if (auto object = GetObjectPtr(ObjectID)) {
          newobject->UID = ObjectID;
@@ -645,7 +645,7 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
    auto_load_include(Lua, obj->Class);
 
    auto def = (object *)lua_newuserdata(Lua, sizeof(object)); // +1 stack
-   ClearMemory(def, sizeof(object));
+   clearmem(def, sizeof(object));
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
@@ -720,7 +720,7 @@ static int object_class(lua_State *Lua)
 
    objMetaClass *cl = query->Class;
    auto def = (object *)lua_newuserdata(Lua, sizeof(object)); // +1 stack
-   ClearMemory(def, sizeof(object));
+   clearmem(def, sizeof(object));
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
@@ -878,7 +878,7 @@ static int object_subscribe(lua_State *Lua)
    const FunctionField *arglist;
    ACTIONID action_id = get_action_info(Lua, def->Class->ClassID, action, &arglist);
 
-   if (!action_id) {
+   if (action_id IS AC::NIL) {
       luaL_argerror(Lua, 1, "Action/Method name is invalid.");
       return 0;
    }
@@ -942,7 +942,7 @@ static int object_unsubscribe(lua_State *Lua)
    const FunctionField *arglist;
    ACTIONID action_id = get_action_info(Lua, def->Class->ClassID, action, &arglist);
 
-   if (!action_id) {
+   if (action_id IS AC::NIL) {
       luaL_argerror(Lua, 1, "Action/Method name is invalid.");
       return 0;
    }
@@ -952,7 +952,7 @@ static int object_unsubscribe(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    for (auto it=prv->ActionList.begin(); it != prv->ActionList.end(); ) {
       if ((it->ObjectID IS def->UID) and
-          ((!action_id) or (it->ActionID IS action_id))) {
+          ((action_id IS AC::NIL) or (it->ActionID IS action_id))) {
          luaL_unref(Lua, LUA_REGISTRYINDEX, it->Function);
          if (it->Reference) luaL_unref(Lua, LUA_REGISTRYINDEX, it->Reference);
          it = prv->ActionList.erase(it);
@@ -1012,7 +1012,7 @@ static int object_free(lua_State *Lua)
 {
    if (auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
       FreeResource(def->UID);
-      ClearMemory(def, sizeof(object)); // Mark the object as unusable
+      clearmem(def, sizeof(object)); // Mark the object as unusable
    }
 
    return 0;

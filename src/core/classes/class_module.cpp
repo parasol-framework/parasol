@@ -88,8 +88,7 @@ static STRUCTS glStructures = {
 static RootModule glCoreRoot;
 struct ModHeader glCoreHeader(NULL, NULL, NULL, NULL, glIDL, &glStructures, "core");
 
-static bool cmp_mod_names(CSTRING, CSTRING);
-static RootModule * check_resident(extModule *, CSTRING);
+static RootModule * check_resident(extModule *, std::string_view);
 static void free_module(MODHANDLE handle);
 
 //********************************************************************************************************************
@@ -118,11 +117,13 @@ static const FieldArray glModuleFields[] = {
 
 static ERR MODULE_Init(extModule *);
 static ERR MODULE_Free(extModule *);
+static ERR MODULE_NewPlacement(extModule *);
 
 static const ActionArray glModuleActions[] = {
-   { AC_Free, MODULE_Free },
-   { AC_Init, MODULE_Init },
-   { 0, NULL }
+   { AC::Free, MODULE_Free },
+   { AC::Init, MODULE_Init },
+   { AC::NewPlacement, MODULE_NewPlacement },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************
@@ -132,21 +133,17 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
 {
    pf::Log log(__FUNCTION__);
    std::string path;
-   LONG i;
 
-   for (i=0; (Self->Name[i]) and (Self->Name[i] != ':'); i++);
-
-   if ((Self->Name[0] IS '/') or (Self->Name[i] IS ':')) {
+   if ((Self->Name.starts_with('/')) or (Self->Name.find(':') != std::string::npos)) {
       log.trace("Module location is absolute.");
       path.assign(Self->Name);
 
-      STRING volume;
-      if (ResolvePath(path.c_str(), RSF::APPROXIMATE, &volume) IS ERR::Okay) {
+      std::string volume;
+      if (ResolvePath(path, RSF::APPROXIMATE, &volume) IS ERR::Okay) {
          path.assign(volume);
-         FreeResource(volume);
       }
       else {
-         log.warning("Failed to resolve the path of module '%s'", Self->Name);
+         log.warning("Failed to resolve the path of module '%s'", Self->Name.c_str());
          return ERR::ResolvePath;
       }
    }
@@ -162,7 +159,7 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
          if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib/";
 
          #ifdef __ANDROID__
-            if ((Self->Name[0] IS 'l') and (Self->Name[1] IS 'i') and (Self->Name[2] IS 'b'));
+            if ((Self->Name.starts_with("lib"));
             else path += "lib"; // Packaged Android modules have to begin with 'lib'
          #endif
 
@@ -228,7 +225,7 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
          }
       }
       else {
-         log.warning("%s: %s", Self->Name, (CSTRING)dlerror());
+         log.warning("%s: %s", Self->Name.c_str(), (CSTRING)dlerror());
          return ERR::NoSupport;
       }
 
@@ -270,7 +267,7 @@ ERR ROOTMODULE_Free(RootModule *Self)
 
    // Free the module's segment/code area
 
-   if ((Self->NoUnload IS FALSE) and ((Self->Flags & MHF::STATIC) IS MHF::NIL)) {
+   if ((!Self->NoUnload) and ((Self->Flags & MHF::STATIC) IS MHF::NIL)) {
       free_module(Self->LibraryBase);
       Self->LibraryBase = NULL;
    }
@@ -283,8 +280,19 @@ ERR ROOTMODULE_Free(RootModule *Self)
       if (Self->Next) Self->Next->Prev = Self->Prev;
    }
 
+   Self->~RootModule();
    return ERR::Okay;
 }
+
+//********************************************************************************************************************
+
+static ERR ROOTMODULE_NewPlacement(RootModule *Self)
+{
+   new (Self) RootModule;
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
 
 static ERR ROOTMODULE_GET_Header(RootModule *Self, struct ModHeader **Value)
 {
@@ -308,6 +316,7 @@ static ERR MODULE_Free(extModule *Self)
    }
 
    if (Self->prvMBMemory) { FreeResource(Self->prvMBMemory); Self->prvMBMemory = NULL; }
+   Self->~extModule();
    return ERR::Okay;
 }
 
@@ -317,9 +326,7 @@ static ERR MODULE_Init(extModule *Self)
 {
    pf::Log log;
    ERR error = ERR::Failed;
-   LONG i;
    bool root_mod = false;
-   char name[60];
 
    if (!Self->Name[0]) return log.warning(ERR::FieldNotSet);
 
@@ -327,11 +334,16 @@ static ERR MODULE_Init(extModule *Self)
 
    OBJECTPTR context = NULL;
 
-   i = StrLength(Self->Name);
-   while ((i > 0) and (Self->Name[i-1] != ':') and (Self->Name[i-1] != '/') and (Self->Name[i-1] != '\\')) i--;
-   StrCopy(Self->Name+i, name, sizeof(name));
+   std::string_view name = std::string_view(Self->Name);
+   if (auto i = name.find_last_of(":/\\"); i != std::string::npos) {
+      name.remove_prefix(i+1);
+   }
 
-   log.trace("Finding module %s (%s)", Self->Name, name);
+   if (auto sep = name.find_last_of("."); sep != std::string::npos) {
+      name.remove_suffix(name.size() - sep);
+   }
+
+   log.trace("Finding module %s (%s)", Self->Name, name.data());
 
    RootModule *master;
    struct ModHeader *table = NULL;
@@ -347,7 +359,7 @@ static ERR MODULE_Init(extModule *Self)
 
       context = SetContext(master);
 
-      StrCopy(name, master->LibraryName, sizeof(master->LibraryName));
+      master->LibraryName.assign(name);
 
       if (Self->Header) {
          // If the developer has specified a module header, then the module code is memory-resident and not to be
@@ -359,7 +371,7 @@ static ERR MODULE_Init(extModule *Self)
          auto it = glStaticModules.find(Self->Name);
          if (it != glStaticModules.end()) table = it->second;
          else {
-            log.warning("Unable to find module '%s' from %d static modules.", Self->Name, LONG(glStaticModules.size()));
+            log.warning("Unable to find module '%s' from %d static modules.", Self->Name.c_str(), LONG(glStaticModules.size()));
             error = ERR::NotFound;
             goto exit;
          }
@@ -401,7 +413,7 @@ static ERR MODULE_Init(extModule *Self)
          if (error != ERR::Okay) goto exit;
       }
       else if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) {
-         log.msg("Loaded link library '%s'", Self->Name);
+         log.msg("Loaded link library '%s'", Self->Name.c_str());
       }
       else {
          log.warning(ERR::ModuleMissingInit);
@@ -461,7 +473,7 @@ static ERR MODULE_Init(extModule *Self)
 exit:
    if (error != ERR::Okay) { // Free allocations if an error occurred
 
-      if ((error & ERR::Notified) IS ERR::Okay) log.msg("\"%s\" failed: %s", Self->Name, GetErrorMsg(error));
+      if ((error & ERR::Notified) IS ERR::Okay) log.msg("\"%s\" failed: %s", Self->Name.c_str(), GetErrorMsg(error));
       error &= ~(ERR::Notified);
 
       if (root_mod) {
@@ -473,6 +485,14 @@ exit:
 
    if (context) SetContext(context);
    return error;
+}
+
+//********************************************************************************************************************
+
+static ERR MODULE_NewPlacement(extModule *Self)
+{
+   new (Self) extModule;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -513,7 +533,7 @@ static ERR MODULE_ResolveSymbol(extModule *Self, struct mod::ResolveSymbol *Args
       return ERR::Okay;
    }
    else {
-      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Root->Name);
+      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Root->Name.c_str());
       return ERR::NotFound;
    }
 #elif __unix__
@@ -526,7 +546,7 @@ static ERR MODULE_ResolveSymbol(extModule *Self, struct mod::ResolveSymbol *Args
       return ERR::Okay;
    }
    else {
-      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Root->Name);
+      log.msg("Failed to resolve '%s' in %s module.", Args->Name, Self->Root->Name.c_str());
       return ERR::NotFound;
    }
 #else
@@ -545,15 +565,9 @@ Lookup: MOF
 FunctionList: Refers to a list of public functions exported by the module.
 
 After initialisation, the FunctionList will refer to an array of public functions that are exported by the module.  The
-FunctionList array consists of !Function structs, which are in the following format:
+FunctionList array consists of !Function structs in the following format:
 
-<pre>
-struct Function {
-   APTR Address;  // Address of the function routine.
-   CSTRING Name;  // Name of the function.
-   const struct FunctionField *Args; // Descriptor array for the function arguments.
-};
-</pre>
+<struct lookup="Function"/>
 
 -FIELD-
 Header: For internal usage only.
@@ -603,7 +617,7 @@ may use a `.dll` extension.
 
 static ERR GET_Name(extModule *Self, CSTRING *Value)
 {
-   *Value = Self->Name;
+   *Value = Self->Name.c_str();
    return ERR::Okay;
 }
 
@@ -611,13 +625,9 @@ static ERR SET_Name(extModule *Self, CSTRING Name)
 {
    if (!Name) return ERR::Okay;
 
-   LONG i;
-   for (i=0; (Name[i]) and ((size_t)i < sizeof(Self->Name)-1); i++) {
-      if ((Name[i] >= 'A') and (Name[i] <= 'Z')) Self->Name[i] = Name[i] - 'A' + 'a';
-      else Self->Name[i] = Name[i];
-   }
-   Self->Name[i] = 0;
-
+   Self->Name.assign(Name);
+   std::transform(Self->Name.begin(), Self->Name.end(), Self->Name.begin(),
+      [](unsigned char c){ return std::tolower(c); });
    return ERR::Okay;
 }
 
@@ -648,71 +658,17 @@ APTR build_jump_table(const Function *FList)
 #endif
 
 //********************************************************************************************************************
-// Compare strings up to a '.' extension or null character.
-
-static bool cmp_mod_names(CSTRING String1, CSTRING String2)
-{
-   if ((String1) and (String2)) {
-      // Skip past any : or / folder characters
-
-      WORD i = 0;
-      while (String1[i]) {
-         if ((String1[i] IS ':') or (String1[i] IS '/')) {
-            String1 += i + 1;  // Increment string's position
-            i = 0;             // Reset the counter
-         }
-         else i++;
-      }
-
-      i = 0;
-      while (String2[i] != 0) {
-         if ((String2[i] IS ':') or (String2[i] IS '/')) {
-            String2 += i + 1;
-            i = 0;
-         }
-         else i++;
-      }
-
-      // Loop until String1 reaches termination
-
-      while ((*String1 != '.') and (*String1 != 0)) {
-         char ch1 = *String1;
-         char ch2 = *String2;
-         if ((ch2 IS '.') or (ch2 IS 0)) return false;
-         if ((ch1 >= 'a') and (ch1 <= 'z')) ch1 -= 0x20;
-         if ((ch2 >= 'a') and (ch2 <= 'z')) ch2 -= 0x20;
-         if (ch1 != ch2) return false;
-         String1++; String2++;
-      }
-
-      // If we get this far then both strings match up to the end of String1, so now we need to check if String2 has
-      // also terminated at the same point.
-
-      if ((*String2 IS '.') or (*String2 IS 0)) return true;
-   }
-
-   return false;
-}
-
-//********************************************************************************************************************
 // Searches the system for a RootModule header that matches the Module details.  The module must have been
 // loaded into memory in order for this function to return successfully.
 
-static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
+static RootModule * check_resident(extModule *Self, const std::string_view ModuleName)
 {
-   pf::Log log(__FUNCTION__);
-   RootModule *master;
    static bool kminit = false;
 
-   if (!ModuleName) return NULL;
-
-   log.traceBranch("Module Name: %s", ModuleName);
-
    if (iequals("core", ModuleName)) {
-      log.msg("Self-reference to the Core detected.");
       if (!kminit) {
          kminit = true;
-         ClearMemory(&glCoreRoot, sizeof(glCoreRoot));
+         clearmem(&glCoreRoot, sizeof(glCoreRoot));
          glCoreRoot.Class       = glRootModuleClass;
          glCoreRoot.Name        = "Core";
          glCoreRoot.OpenCount   = 1;
@@ -722,12 +678,17 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
       Self->FunctionList = glFunctions;
       return &glCoreRoot;
    }
-   else if ((master = glModuleList)) {
+   else if (auto master = glModuleList) {
       while (master) {
-         if (cmp_mod_names(master->Name, ModuleName)) {
-            log.trace("Entry for module \"%s\" (\"%s\") found.", ModuleName, master->Name);
-            return master;
-         }
+         auto record_name = std::string_view(master->Name);
+
+         auto sep = record_name.find_last_of(":/");
+         if (sep != std::string::npos) record_name.remove_prefix(sep+1);
+
+         sep = record_name.find_last_of(".");
+         if (sep != std::string::npos) record_name.remove_suffix(record_name.size() - sep);
+
+         if (iequals(record_name, ModuleName)) return master;
          master = master->Next;
       }
    }
@@ -765,7 +726,7 @@ static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Addres
 
 static const MethodEntry glModuleMethods[] = {
    { mod::ResolveSymbol::id, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct mod::ResolveSymbol) },
-   { 0, NULL, NULL, NULL, 0 }
+   { AC::NIL, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************
@@ -776,13 +737,14 @@ static const FieldArray glRootModuleFields[] = {
 };
 
 static const ActionArray glRootModuleActions[] = {
-   { AC_Free, ROOTMODULE_Free },
-   { 0, NULL }
+   { AC::Free, ROOTMODULE_Free },
+   { AC::NewPlacement, ROOTMODULE_NewPlacement },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************
 
-extern "C" ERR add_module_class(void)
+extern ERR add_module_class(void)
 {
    if (!(glModuleClass = extMetaClass::create::global(
       fl::BaseClassID(CLASSID::MODULE),
@@ -791,6 +753,7 @@ extern "C" ERR add_module_class(void)
       fl::Category(CCF::SYSTEM),
       fl::FileExtension("*.mod|*.so|*.dll"),
       fl::FileDescription("System Module"),
+      fl::Icon("tools/cog"),
       fl::Actions(glModuleActions),
       fl::Methods(glModuleMethods),
       fl::Fields(glModuleFields),

@@ -7,7 +7,7 @@ Documentation is available in the Parasol Wiki.
 
    if not mGfx then mGfx = mod.load('display') end
 
-local GAP = 8
+local GAP = 6
 local HALF_GAP = GAP / 2
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -29,15 +29,19 @@ local function arrangeAll(self, Middle)
    end
 
    if (self._orientation == 'h') then
-      local margin = GAP
-      self._div = { x = a_len+1, y = self._primary.y + margin, width = GAP-2, height = self._primary.height - (margin*2) }
-      self._pattern.x = self._vp.absX + a_len
-      self._pattern.y = self._primary.absY + margin
+      local margin = 0
+      self._div = { x = a_len, y = self._primary.y + margin, width = GAP, height = self._primary.height - (margin*2) }
+      if self._pattern then
+         self._pattern.x = self._vp.absX + a_len
+         self._pattern.y = self._primary.absY + margin
+      end
    else
-      local margin = GAP
-      self._div = { x = self._primary.x + margin, y = a_len+1, width = self._primary.width - (margin*2), height = GAP-2 }
-      self._pattern.x = self._primary.absX + margin
-      self._pattern.y = self._vp.absY + a_len
+      local margin = 0
+      self._div = { x = self._primary.x + margin, y = a_len, width = self._primary.width - (margin*2), height = GAP }
+      if self._pattern then
+         self._pattern.x = self._primary.absX + margin
+         self._pattern.y = self._vp.absY + a_len
+      end
    end
 
    self._secondary[self._anchor] = a_len + GAP
@@ -103,24 +107,23 @@ gui.divider = function(Options)
 
    local div_name = 'divider-bkgd-' .. self._vp.id
    if (Options.style != 'none') then
-      if (self._orientation == 'h') then
+      local opacity = 0.15
+      if (self._orientation == 'h') then -- Top to bottom tiling
          self._pattern = self._vp.scene.new('VectorPattern', {
-            name='div_pattern', x=0, y=0, pageWidth=GAP, pageHeight=GAP*3, width=GAP, height=GAP*3, units=VUNIT_USERSPACE, spreadMethod=VSPREAD_REPEAT
+            name = 'div_pattern', x = 0, y = 0, pageWidth = GAP, pageHeight = GAP*4, width = GAP, height = GAP*4,
+            units = VUNIT_USERSPACE, spreadMethod = VSPREAD_REPEAT
          })
-         local pt = string.format('0,0, %d,%d, %d,%d 0,%d', GAP, GAP, GAP, GAP*2, GAP)
-         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,20)' })
 
-         local pt = string.format('0,%d, %d,%d, %d,%d 0,%d', GAP, GAP, GAP+GAP, GAP, GAP*2+GAP, GAP+GAP)
-         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,40)' })
-      else
+         local pt = string.format('%d,%d, %d,%d, %d,%d %d,%d', 0, 0, GAP, GAP*2, GAP, GAP*4, 0, GAP*2)
+         self._pattern.viewport.new('VectorPolygon', { points = pt, fill = gui.palette.base, opacity = opacity })
+      else -- Left to right tiling
          self._pattern = self._vp.scene.new('VectorPattern', {
-            name='div_pattern', x=0, y=0, pageWidth=GAP*3, pageHeight=GAP, width=GAP*3, height=GAP, units=VUNIT_USERSPACE, spreadMethod=VSPREAD_REPEAT
+            name = 'div_pattern', x = 0, y = 0, pageWidth = GAP*4, pageHeight=GAP, width=GAP*4, height=GAP,
+            units = VUNIT_USERSPACE, spreadMethod = VSPREAD_REPEAT
          })
-         local pt = string.format('0,0, %d,0, %d,%d %d,%d', GAP, GAP*2, GAP, GAP, GAP)
-         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,20)' })
 
-         local pt = string.format('%d,0, %d,0, %d,%d %d,%d', GAP, GAP+GAP, GAP*2+GAP, GAP, GAP+GAP, GAP)
-         self._pattern.viewport.new('VectorPolygon', { points=pt, fill='rgb(0,0,0,40)' })
+         local pt = string.format('%d,%d, %d,%d, %d,%d %d,%d', GAP*2, 0, GAP*4, 0, GAP*2, GAP, 0, GAP)
+         self._pattern.viewport.new('VectorPolygon', { points = pt, fill = gui.palette.base, opacity = opacity })
       end
 
       check(self._vp.scene.mtAddDef(div_name, self._pattern))
@@ -142,7 +145,7 @@ gui.divider = function(Options)
 
    if (Options.style != 'none') then
       self._dividerVP.new('VectorRectangle', {
-         name='div_fill', x=0, y=0, width='100%', height='100%', fill='url(#' .. div_name .. ')'
+         name='div_fill', x='1%', y='1%', width='98%', height='98%', fill='url(#' .. div_name .. ')'
       })
    end
 

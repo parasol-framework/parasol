@@ -91,11 +91,11 @@ void svgState::applyTag(XMLTag &Tag) noexcept
             m_stroke = val;
             if (!m_stroke_width) m_stroke_width = 1;
             break;
-         case SVF_STROKE_WIDTH: m_stroke_width = StrToFloat(val); break;
+         case SVF_STROKE_WIDTH: m_stroke_width = strtod(val.c_str(), NULL); break;
          case SVF_FONT_FAMILY:  m_font_family = val; break;
          case SVF_FONT_SIZE:    m_font_size = val; break;
          case SVF_FONT_WEIGHT: {
-            m_font_weight = StrToFloat(val);
+            m_font_weight = strtod(val.c_str(), NULL);
             if (!m_font_weight) {
                switch(strihash(val)) {
                   case SVF_NORMAL:  m_font_weight = 400; break;
@@ -110,8 +110,8 @@ void svgState::applyTag(XMLTag &Tag) noexcept
             }
             break;
          }
-         case SVF_FILL_OPACITY: m_fill_opacity = StrToFloat(val); break;
-         case SVF_OPACITY:      m_opacity = StrToFloat(val); break;
+         case SVF_FILL_OPACITY: m_fill_opacity = strtod(val.c_str(), NULL); break;
+         case SVF_OPACITY:      m_opacity = strtod(val.c_str(), NULL); break;
          case SVF_SHAPE_RENDERING: m_path_quality = shape_rendering_to_render_quality(val); break;
       }
    }
@@ -199,6 +199,7 @@ static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
 
             if (InitObject(trans) IS ERR::Okay) {
                if (!Self->Cloning) Self->Scene->addDef(id.c_str(), trans);
+               track_object(Self, trans);
                return;
             }
          }
@@ -266,6 +267,7 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
             process_children(Self, state, Tag, vp);
 
             Self->Scene->addDef(id.c_str(), clip);
+            track_object(Self, clip);
          }
          else FreeResource(clip);
       }
@@ -339,6 +341,7 @@ static void xtag_mask(extSVG *Self, XMLTag &Tag)
             process_children(Self, state, Tag, vp);
 
             Self->Scene->addDef(id.c_str(), clip);
+            track_object(Self, clip);
          }
          else FreeResource(clip);
       }
@@ -410,8 +413,8 @@ static ERR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
       if (val.empty()) continue;
 
       switch(strihash(Tag.Attribs[a].Name)) {
-         case SVF_DX: fx->set(FID_XOffset, StrToInt(val)); break;
-         case SVF_DY: fx->set(FID_YOffset, StrToInt(val)); break;
+         case SVF_DX: fx->set(FID_XOffset, strtol(val.c_str(), NULL, 0)); break;
+         case SVF_DY: fx->set(FID_YOffset, strtol(val.c_str(), NULL, 0)); break;
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: result_name = val; break;
       }
@@ -499,14 +502,14 @@ static ERR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 
 #define CM_SIZE 20
 
-static const DOUBLE glProtanopia[20] = { 0.567,0.433,0,0,0, 0.558,0.442,0,0,0, 0,0.242,0.758,0,0, 0,0,0,1,0 };
-static const DOUBLE glProtanomaly[20] = { 0.817,0.183,0,0,0, 0.333,0.667,0,0,0, 0,0.125,0.875,0,0, 0,0,0,1,0 };
-static const DOUBLE glDeuteranopia[20] = { 0.625,0.375,0,0,0, 0.7,0.3,0,0,0, 0,0.3,0.7,0,0, 0,0,0,1,0 };
-static const DOUBLE glDeuteranomaly[20] = { 0.8,0.2,0,0,0, 0.258,0.742,0,0,0, 0,0.142,0.858,0,0, 0,0,0,1,0 };
-static const DOUBLE glTritanopia[20] = { 0.95,0.05,0,0,0, 0,0.433,0.567,0,0, 0,0.475,0.525,0,0, 0,0,0,1,0 };
-static const DOUBLE glTritanomaly[20] = { 0.967,0.033,0,0,0, 0,0.733,0.267,0,0, 0,0.183,0.817,0,0, 0,0,0,1,0 };
-static const DOUBLE glAchromatopsia[20] = { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 };
-static const DOUBLE glAchromatomaly[20] = { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 };
+static const std::array<DOUBLE,20> glProtanopia = { 0.567,0.433,0,0,0, 0.558,0.442,0,0,0, 0,0.242,0.758,0,0, 0,0,0,1,0 };
+static const std::array<DOUBLE,20> glProtanomaly = { 0.817,0.183,0,0,0, 0.333,0.667,0,0,0, 0,0.125,0.875,0,0, 0,0,0,1,0 };
+static const std::array<DOUBLE,20> glDeuteranopia = { 0.625,0.375,0,0,0, 0.7,0.3,0,0,0, 0,0.3,0.7,0,0, 0,0,0,1,0 };
+static const std::array<DOUBLE,20> glDeuteranomaly = { 0.8,0.2,0,0,0, 0.258,0.742,0,0,0, 0,0.142,0.858,0,0, 0,0,0,1,0 };
+static const std::array<DOUBLE,20> glTritanopia = { 0.95,0.05,0,0,0, 0,0.433,0.567,0,0, 0,0.475,0.525,0,0, 0,0,0,1,0 };
+static const std::array<DOUBLE,20> glTritanomaly = { 0.967,0.033,0,0,0, 0,0.733,0.267,0,0, 0,0.183,0.817,0,0, 0,0,0,1,0 };
+static const std::array<DOUBLE,20> glAchromatopsia = { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 };
+static const std::array<DOUBLE,20> glAchromatomaly = { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 };
 
 static ERR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 {
@@ -523,7 +526,7 @@ static ERR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag 
 
       switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_TYPE: {
-            const DOUBLE *m = NULL;
+            const std::array<DOUBLE, 20> *m = NULL;
             CM mode = CM::NIL;
             switch(strihash(val)) {
                case SVF_NONE:          mode = CM::NONE; break;
@@ -538,14 +541,14 @@ static ERR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag 
                case SVF_COLOURISE:     mode = CM::COLOURISE; break;
                case SVF_DESATURATE:    mode = CM::DESATURATE; break;
                // Colour blindness modes
-               case SVF_PROTANOPIA:    mode = CM::MATRIX; m = glProtanopia; break;
-               case SVF_PROTANOMALY:   mode = CM::MATRIX; m = glProtanomaly; break;
-               case SVF_DEUTERANOPIA:  mode = CM::MATRIX; m = glDeuteranopia; break;
-               case SVF_DEUTERANOMALY: mode = CM::MATRIX; m = glDeuteranomaly; break;
-               case SVF_TRITANOPIA:    mode = CM::MATRIX; m = glTritanopia; break;
-               case SVF_TRITANOMALY:   mode = CM::MATRIX; m = glTritanomaly; break;
-               case SVF_ACHROMATOPSIA: mode = CM::MATRIX; m = glAchromatopsia; break;
-               case SVF_ACHROMATOMALY: mode = CM::MATRIX; m = glAchromatomaly; break;
+               case SVF_PROTANOPIA:    mode = CM::MATRIX; m = &glProtanopia; break;
+               case SVF_PROTANOMALY:   mode = CM::MATRIX; m = &glProtanomaly; break;
+               case SVF_DEUTERANOPIA:  mode = CM::MATRIX; m = &glDeuteranopia; break;
+               case SVF_DEUTERANOMALY: mode = CM::MATRIX; m = &glDeuteranomaly; break;
+               case SVF_TRITANOPIA:    mode = CM::MATRIX; m = &glTritanopia; break;
+               case SVF_TRITANOMALY:   mode = CM::MATRIX; m = &glTritanomaly; break;
+               case SVF_ACHROMATOPSIA: mode = CM::MATRIX; m = &glAchromatopsia; break;
+               case SVF_ACHROMATOMALY: mode = CM::MATRIX; m = &glAchromatomaly; break;
 
                default:
                   log.warning("Unrecognised colour matrix type '%s'", val.c_str());
@@ -554,13 +557,13 @@ static ERR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag 
             }
 
             fx->set(FID_Mode, LONG(mode));
-            if ((mode IS CM::MATRIX) and (m)) fx->setArray(FID_Values, (DOUBLE *)m, CM_SIZE);
+            if ((mode IS CM::MATRIX) and (m)) fx->set(FID_Values, m);
             break;
          }
 
          case SVF_VALUES: {
             auto m = read_array<DOUBLE>(val, CM_SIZE);
-            fx->setArray(FID_Values, m.data(), CM_SIZE);
+            fx->set(FID_Values, m);
             break;
          }
 
@@ -629,9 +632,9 @@ static ERR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, XMLTa
             break;
          }
 
-         case SVF_TARGETX: fx->set(FID_TargetX, StrToInt(val)); break;
+         case SVF_TARGETX: fx->set(FID_TargetX, strtol(val.c_str(), NULL, 0)); break;
 
-         case SVF_TARGETY: fx->set(FID_TargetY, StrToInt(val)); break;
+         case SVF_TARGETY: fx->set(FID_TargetY, strtol(val.c_str(), NULL, 0)); break;
 
          case SVF_EDGEMODE:
             if (iequals("duplicate", val)) fx->set(FID_EdgeMode, LONG(EM::DUPLICATE));
@@ -737,8 +740,8 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             switch(strihash(child.Attribs[a].Name)) {
-               case SVF_AZIMUTH:   azimuth   = StrToFloat(child.Attribs[a].Value); break;
-               case SVF_ELEVATION: elevation = StrToFloat(child.Attribs[a].Value); break;
+               case SVF_AZIMUTH:   azimuth   = strtod(child.Attribs[a].Value.c_str(), NULL); break;
+               case SVF_ELEVATION: elevation = strtod(child.Attribs[a].Value.c_str(), NULL); break;
             }
          }
 
@@ -749,9 +752,9 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             switch(strihash(child.Attribs[a].Name)) {
-               case SVF_X: x = StrToFloat(child.Attribs[a].Value); break;
-               case SVF_Y: y = StrToFloat(child.Attribs[a].Value); break;
-               case SVF_Z: z = StrToFloat(child.Attribs[a].Value); break;
+               case SVF_X: x = strtod(child.Attribs[a].Value.c_str(), NULL); break;
+               case SVF_Y: y = strtod(child.Attribs[a].Value.c_str(), NULL); break;
+               case SVF_Z: z = strtod(child.Attribs[a].Value.c_str(), NULL); break;
             }
          }
 
@@ -764,14 +767,14 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             auto &val = child.Attribs[a].Value;
             switch(strihash(child.Attribs[a].Name)) {
-               case SVF_X:                 x = StrToFloat(val); break;
-               case SVF_Y:                 y = StrToFloat(val); break;
-               case SVF_Z:                 z = StrToFloat(val); break;
-               case SVF_POINTSATX:         px = StrToFloat(val); break;
-               case SVF_POINTSATY:         py = StrToFloat(val); break;
-               case SVF_POINTSATZ:         pz = StrToFloat(val); break;
-               case SVF_SPECULAREXPONENT:  exponent   = StrToFloat(val); break;
-               case SVF_LIMITINGCONEANGLE: cone_angle = StrToFloat(val); break;
+               case SVF_X:                 x = strtod(val.c_str(), NULL); break;
+               case SVF_Y:                 y = strtod(val.c_str(), NULL); break;
+               case SVF_Z:                 z = strtod(val.c_str(), NULL); break;
+               case SVF_POINTSATX:         px = strtod(val.c_str(), NULL); break;
+               case SVF_POINTSATY:         py = strtod(val.c_str(), NULL); break;
+               case SVF_POINTSATZ:         pz = strtod(val.c_str(), NULL); break;
+               case SVF_SPECULAREXPONENT:  exponent   = strtod(val.c_str(), NULL); break;
+               case SVF_LIMITINGCONEANGLE: cone_angle = strtod(val.c_str(), NULL); break;
             }
          }
 
@@ -832,7 +835,7 @@ static ERR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, XMLT
             }
             break;
 
-         case SVF_SCALE: fx->set(FID_Scale, StrToFloat(val)); break;
+         case SVF_SCALE: fx->set(FID_Scale, strtod(val.c_str(), NULL)); break;
 
          case SVF_X:      FUNIT(FID_X, val).set(fx); break;
          case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
@@ -906,7 +909,7 @@ static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag
                case SVF_SLOPE:       read_numseq(child.Attribs[a].Value, { &slope }); break;
                case SVF_EXPONENT:    read_numseq(child.Attribs[a].Value, { &exp }); break;
                case SVF_OFFSET:      read_numseq(child.Attribs[a].Value, { &offset }); break;
-               case SVF_MASK:        mask = StrToInt(child.Attribs[a].Value); break;
+               case SVF_MASK:        mask = strtol(child.Attribs[a].Value.c_str(), NULL, 0); break;
                case SVF_TABLEVALUES: {
                   values = read_array<DOUBLE>(child.Attribs[a].Value, 64);
                   break;
@@ -1121,9 +1124,9 @@ static ERR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, XMLTag &Ta
             break;
          }
 
-         case SVF_NUMOCTAVES: fx->set(FID_Octaves, StrToInt(val)); break;
+         case SVF_NUMOCTAVES: fx->set(FID_Octaves, strtol(val.c_str(), NULL, 0)); break;
 
-         case SVF_SEED: fx->set(FID_Seed, StrToInt(val)); break;
+         case SVF_SEED: fx->set(FID_Seed, strtol(val.c_str(), NULL, 0)); break;
 
          case SVF_STITCHTILES:
             if (iequals("stitch", val)) fx->set(FID_Stitch, TRUE);
@@ -1466,6 +1469,8 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
          Self->Effects.clear();
 
          if (!Self->Cloning) Self->Scene->addDef(id.c_str(), filter);
+
+         track_object(Self, filter);
       }
       else FreeResource(filter);
    }
@@ -1560,6 +1565,7 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
          if (!Self->Cloning) {
             add_id(Self, Tag, id);
             Self->Scene->addDef(id.c_str(), pattern);
+            track_object(Self, pattern);
          }
       }
       else {
@@ -1647,7 +1653,7 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
          if (!Tag.Children.empty()) {
             if (auto buffer = Tag.getContent(); !buffer.empty()) {
                pf::ltrim(buffer);
-               Self->Title = StrClone(buffer.c_str());
+               Self->Title = strclone(buffer);
             }
          }
          break;
@@ -1715,7 +1721,7 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE
             if (*val IS ',') val++;
 
             pf::BASE64DECODE state;
-            ClearMemory(&state, sizeof(state));
+            clearmem(&state, sizeof(state));
 
             UBYTE *output;
             LONG size = strlen(val);
@@ -1812,6 +1818,7 @@ static void def_image(extSVG *Self, XMLTag &Tag)
                if (!Self->Cloning) {
                   add_id(Self, Tag, id);
                   Self->Scene->addDef(id.c_str(), image);
+                  track_object(Self, image);
                }
             }
             else {
@@ -1896,6 +1903,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
             SetOwner(pic, image); // It's best if the pic belongs to the image.
 
             Self->Scene->addDef(id.c_str(), image);
+            track_object(Self, image);
          }
          else return ERR::CreateObject;
       }
@@ -3170,7 +3178,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
             case SVF_FONT_VARIANT: return ERR::NoSupport;
 
             case SVF_FONT_WEIGHT: { // SVG: normal | bold | bolder | lighter | inherit
-               DOUBLE num = StrToFloat(StrValue);
+               DOUBLE num = strtod(StrValue.c_str(), NULL);
                if (num) Vector->set(FID_Weight, num);
                else switch(strihash(StrValue)) {
                   case SVF_NORMAL:  Vector->set(FID_Weight, 400); return ERR::Okay;
@@ -3416,7 +3424,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_STROKE_DASHARRAY: Vector->set(FID_DashArray, StrValue); break;
       case SVF_OPACITY:          Vector->set(FID_Opacity, StrValue); break;
-      case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, StrToFloat(StrValue)); break;
+      case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, strtod(StrValue.c_str(), NULL)); break;
       case SVF_SHAPE_RENDERING:  Vector->set(FID_PathQuality, LONG(shape_rendering_to_render_quality(StrValue))); break;
 
       case SVF_STROKE_WIDTH:            FUNIT(FID_StrokeWidth, StrValue).set(Vector); break;

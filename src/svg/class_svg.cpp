@@ -45,7 +45,7 @@ static ERR SVG_Activate(extSVG *Self)
    if (!Self->Animations.empty()) {
       if (!Self->AnimationTimer) {
          SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
-         SubscribeAction(Self->Scene, AC_Free, C_FUNCTION(notify_free_scene));
+         SubscribeAction(Self->Scene, AC::Free, C_FUNCTION(notify_free_scene));
       }
       else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
    }
@@ -86,15 +86,14 @@ static ERR SVG_DataFeed(extSVG *Self, struct acDataFeed *Args)
 
 static ERR SVG_Free(extSVG *Self)
 {
-   Self->~extSVG();
-
    if (Self->AnimationTimer) {
       UpdateTimer(Self->AnimationTimer, 0);
+      if (Self->Scene) UnsubscribeAction(Self->Scene, AC::Free);
       Self->AnimationTimer = 0;
    }
 
    if (Self->FrameCallback.isScript()) {
-      UnsubscribeAction(Self->FrameCallback.Context, AC_Free);
+      UnsubscribeAction(Self->FrameCallback.Context, AC::Free);
       Self->FrameCallback.clear();
    }
 
@@ -103,11 +102,16 @@ static ERR SVG_Free(extSVG *Self)
       Self->Target = NULL;
    }
 
-   if (Self->Folder)    { FreeResource(Self->Folder);    Self->Folder = NULL; }
    if (Self->Path)      { FreeResource(Self->Path);      Self->Path = NULL; }
    if (Self->Title)     { FreeResource(Self->Title);     Self->Title = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
    if (Self->XML)       { FreeResource(Self->XML);       Self->XML = NULL; }
+
+   if (!Self->Resources.empty()) {
+      for (auto id : Self->Resources) FreeResource(id);
+   }
+
+   Self->~extSVG();
 
    return ERR::Okay;
 }
@@ -140,14 +144,14 @@ static ERR SVG_Init(extSVG *Self)
 
 //********************************************************************************************************************
 
-static ERR SVG_NewObject(extSVG *Self)
+static ERR SVG_NewPlacement(extSVG *Self)
 {
+   new (Self) extSVG;
    #ifdef __ANDROID__
       Self->FrameRate = 30; // Choose a lower frame rate for Android devices, so as to minimise power consumption.
    #else
       Self->FrameRate = 60;
    #endif
-   new (Self) extSVG;
    return ERR::Okay;
 }
 
@@ -193,7 +197,7 @@ static ERR SVG_ParseSymbol(extSVG *Self, struct svg::ParseSymbol *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-Render: Render the scene to a target Bitamp.
+Render: Render the scene to a target Bitmap.
 
 This method will render the vector scene directly to a target bitmap at coordinates `(X,Y)` and scaled to the desired
 `(Width,Height)`.
@@ -231,7 +235,7 @@ static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
    bmp->XOffset += Args->X;
    bmp->YOffset += Args->Y;
 
-   Action(AC_Draw, Self->Scene, NULL);
+   Action(AC::Draw, Self->Scene, NULL);
 
    bmp->XOffset -= Args->X;
    bmp->YOffset -= Args->Y;
@@ -299,12 +303,12 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((mc->getPtr(FID_ActionTable, &actions) IS ERR::Okay) and (actions)) {
-         if ((actions[AC_SaveToObject]) and (actions[AC_SaveToObject] != (APTR)SVG_SaveToObject)) {
-            return actions[AC_SaveToObject](Self, Args);
+         if ((actions[LONG(AC::SaveToObject)]) and (actions[LONG(AC::SaveToObject)] != (APTR)SVG_SaveToObject)) {
+            return actions[LONG(AC::SaveToObject)](Self, Args);
          }
-         else if ((actions[AC_SaveImage]) and (actions[AC_SaveImage] != (APTR)SVG_SaveImage)) {
+         else if ((actions[LONG(AC::SaveImage)]) and (actions[LONG(AC::SaveImage)] != (APTR)SVG_SaveImage)) {
             struct acSaveImage saveimage = { .Dest = Args->Dest };
-            return actions[AC_SaveImage](Self, &saveimage);
+            return actions[LONG(AC::SaveImage)](Self, &saveimage);
          }
          else return log.warning(ERR::NoSupport);
       }
@@ -444,10 +448,10 @@ static ERR GET_FrameCallback(extSVG *Self, FUNCTION **Value)
 static ERR SET_FrameCallback(extSVG *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->FrameCallback.isScript()) UnsubscribeAction(Self->FrameCallback.Context, AC_Free);
+      if (Self->FrameCallback.isScript()) UnsubscribeAction(Self->FrameCallback.Context, AC::Free);
       Self->FrameCallback = *Value;
       if (Self->FrameCallback.isScript()) {
-         SubscribeAction(Self->FrameCallback.Context, AC_Free, C_FUNCTION(notify_free_frame_callback));
+         SubscribeAction(Self->FrameCallback.Context, AC::Free, C_FUNCTION(notify_free_frame_callback));
       }
    }
    else Self->FrameCallback.clear();
@@ -495,10 +499,10 @@ static ERR GET_Path(extSVG *Self, STRING *Value)
 static ERR SET_Path(extSVG *Self, CSTRING Value)
 {
    if (Self->Path)   { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->Folder) { FreeResource(Self->Folder); Self->Folder = NULL; }
+   Self->Folder.clear();
 
    if ((Value) and (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Path = strclone(Value))) return ERR::AllocMemory;
    }
    return ERR::Okay;
 }
@@ -535,7 +539,7 @@ static ERR SET_Statement(extSVG *Self, CSTRING Value)
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Statement = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Statement = strclone(Value))) return ERR::AllocMemory;
    }
    return ERR::Okay;
 }
@@ -553,7 +557,9 @@ The provided Target can be any object class, as long as it forms part of a scene
 object.  It is recommended that the chosen target is a @VectorViewport.
 
 The use of a Target will make the generated scene graph independent of the SVG object.  Consequently, it is possible
-to terminate the SVG object without impacting the resources it created.
+to terminate the SVG object without impacting the resources it created.  If tracking back to the SVG object is
+still required, use the `ENFORCE_TRACKING` option in #Flags to ensure that SVG definitions are still terminated on
+object destruction.
 
 *********************************************************************************************************************/
 
@@ -595,7 +601,7 @@ where a title has been specified, it will be possible to read it from this field
 static ERR SET_Title(extSVG *Self, CSTRING Value)
 {
    if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
-   if (Value) Self->Title = StrClone(Value);
+   if (Value) Self->Title = strclone(Value);
    return ERR::Okay;
 }
 
@@ -656,6 +662,9 @@ static ERR init_svg(void)
    clSVG = objMetaClass::create::global(
       fl::ClassVersion(VER_SVG),
       fl::Name("SVG"),
+      fl::FileExtension("*.svg"),
+      fl::FileDescription("Scalable Vector Graphics (SVG)"),
+      fl::Icon("filetypes/vectorgfx"),
       fl::Category(CCF::GUI),
       fl::Actions(clSVGActions),
       fl::Methods(clSVGMethods),

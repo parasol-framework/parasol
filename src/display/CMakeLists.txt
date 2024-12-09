@@ -14,12 +14,14 @@ set (CLASSES
    "${CMAKE_CURRENT_SOURCE_DIR}/class_bitmap.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_display.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_controller.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_surface/class_surface.cpp")
 
 set (DISPLAY_DEFS # Full paths are required for add_custom_command() dependencies to work correctly
    "${CMAKE_CURRENT_SOURCE_DIR}/class_bitmap_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_clipboard_def.c"
+   "${CMAKE_CURRENT_SOURCE_DIR}/class_controller_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_display_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_pointer_def.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/class_surface/surface_def.c")
@@ -29,13 +31,13 @@ if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output
       ${DISPLAY_DEFS}
       "${DOCS}/modules/classes/bitmap.xml"
       "${DOCS}/modules/classes/clipboard.xml"
+      "${DOCS}/modules/classes/controller.xml"
       "${DOCS}/modules/classes/display.xml"
       "${DOCS}/modules/classes/pointer.xml"
       "${DOCS}/modules/classes/surface.xml"
-      PRE_BUILD
       COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${MOD}.fdl" "sdk=${PROJECT_SOURCE_DIR}"
               "output-proto=prototypes.h" "output-defs=module_def.c" "files={" ${FUNCTIONS} "lib_surfaces.cpp" "}"
-      COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "src=${MOD}.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
+      COMMAND ${PARASOL_CMD} ${IDL_COMPILE_SCRIPT} "--log-warning" "src=${MOD}.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
               "sdk=${PROJECT_SOURCE_DIR}" "format=c"
       DEPENDS
          "${MOD}.fdl"
@@ -78,7 +80,6 @@ if (XDGA_INSTALLED)
    add_definitions ("-DXDGA_ENABLED")
 endif ()
 
-
 add_library (${MOD})
 
 set_module_defaults (${MOD})
@@ -90,7 +91,7 @@ target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PUBLIC linear_rgb)
 
 if (WIN32)
-   target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid ${MATH_LINK})
+   target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid xinput ${MATH_LINK})
    target_sources (${MOD} PRIVATE ${FUNCTIONS} "win32/windows.cpp" "win32/clipboard.c" ${CLASSES})
    add_compile_definitions ("WIN_DRAGDROP")
 elseif (ANDROID)

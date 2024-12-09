@@ -84,7 +84,7 @@ static ERR CLIP_NewChild(extVectorClip *Self, struct acNewChild *Args)
 
 //********************************************************************************************************************
 
-static ERR CLIP_NewObject(extVectorClip *Self)
+static ERR CLIP_NewPlacement(extVectorClip *Self)
 {
    new (Self) extVectorClip;
 
@@ -154,17 +154,17 @@ static ERR CLIP_GET_Viewport(extVectorClip *Self, objVectorViewport **Value)
 #include "clip_def.cpp"
 
 static const ActionArray clClipActions[] = {
-   { AC_Free,      CLIP_Free },
-   { AC_Init,      CLIP_Init },
-   { AC_NewChild,  CLIP_NewChild },
-   { AC_NewObject, CLIP_NewObject },
-   { 0, NULL }
+   { AC::Free,      CLIP_Free },
+   { AC::Init,      CLIP_Init },
+   { AC::NewChild,  CLIP_NewChild },
+   { AC::NewObject, CLIP_NewPlacement },
+   { AC::NIL, NULL }
 };
 
 static const FieldArray clClipFields[] = {
-   { "Viewport",  FDF_OBJECT|FDF_R, CLIP_GET_Viewport },
-   { "Units",     FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipUnits },
-   { "Flags", FDF_LONGFLAGS|FDF_RW, CLIP_GET_Flags, CLIP_SET_Flags, &clVectorClipFlags },
+   { "Viewport", FDF_OBJECT|FDF_R, CLIP_GET_Viewport },
+   { "Units",    FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipUnits },
+   { "Flags",    FDF_LONGFLAGS|FDF_RW, CLIP_GET_Flags, CLIP_SET_Flags, &clVectorClipFlags },
    END_FIELD
 };
 

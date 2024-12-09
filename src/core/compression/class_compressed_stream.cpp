@@ -95,7 +95,7 @@ static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
 
    if (!Self->Inflating) {
       log.trace("Initialising decompression of the stream.");
-      ClearMemory(&Self->Stream, sizeof(Self->Stream));
+      clearmem(&Self->Stream, sizeof(Self->Stream));
       switch (Self->Format) {
          case CF::ZLIB:
             if (inflateInit2(&Self->Stream, MAX_WBITS) != Z_OK) return log.warning(ERR::Decompression);
@@ -221,7 +221,7 @@ static ERR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
    while (pos > 0) {
       struct acRead read = { .Buffer = buffer, .Length = (LONG)pos };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
-      if (Action(AC_Read, Self, &read) != ERR::Okay) return ERR::Decompression;
+      if (Action(AC::Read, Self, &read) != ERR::Okay) return ERR::Decompression;
       pos -= read.Result;
    }
 
@@ -242,7 +242,7 @@ static ERR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
    if (!Self->Deflating) {
-      ClearMemory(&Self->Stream, sizeof(Self->Stream));
+      clearmem(&Self->Stream, sizeof(Self->Stream));
 
       switch (Self->Format) {
          case CF::ZLIB:
@@ -390,17 +390,17 @@ static const FieldArray clStreamFields[] = {
 };
 
 static const ActionArray clStreamActions[] = {
-   { AC_Free,      CSTREAM_Free },
-   { AC_Init,      CSTREAM_Init },
-   { AC_NewObject, CSTREAM_NewObject },
-   { AC_Read,      CSTREAM_Read },
-   { AC_Reset,     CSTREAM_Reset },
-   { AC_Seek,      CSTREAM_Seek },
-   { AC_Write,     CSTREAM_Write },
-   { 0, NULL }
+   { AC::Free,      CSTREAM_Free },
+   { AC::Init,      CSTREAM_Init },
+   { AC::NewObject, CSTREAM_NewObject },
+   { AC::Read,      CSTREAM_Read },
+   { AC::Reset,     CSTREAM_Reset },
+   { AC::Seek,      CSTREAM_Seek },
+   { AC::Write,     CSTREAM_Write },
+   { AC::NIL, NULL }
 };
 
-extern "C" ERR add_compressed_stream_class(void)
+extern ERR add_compressed_stream_class(void)
 {
    glCompressedStreamClass = extMetaClass::create::global(
       fl::BaseClassID(CLASSID::COMPRESSEDSTREAM),

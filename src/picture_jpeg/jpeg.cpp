@@ -158,9 +158,7 @@ static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_dec
    jpeg_destroy_decompress(Cinfo);
 }
 
-/*********************************************************************************************************************
-** Picture: Init
-*/
+//********************************************************************************************************************
 
 static ERR JPEG_Init(extPicture *Self)
 {
@@ -192,7 +190,7 @@ static ERR JPEG_Init(extPicture *Self)
          if ((Self->Flags & PCF::LAZY) IS PCF::NIL) acActivate(Self);
          return ERR::Okay;
       }
-      else log.msg("The file is not a JPEG picture.");
+      else log.msg("The \"%s\" file is not a JPEG picture.", path);
    }
 
    return ERR::NoSupport;
@@ -242,9 +240,7 @@ static ERR JPEG_Query(extPicture *Self)
    else return log.warning(ERR::Memory);
 }
 
-/*********************************************************************************************************************
-** Picture: SaveImage
-*/
+//********************************************************************************************************************
 
 static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
@@ -314,11 +310,11 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 //********************************************************************************************************************
 
 static ActionArray clActions[] = {
-   { AC_Activate,  JPEG_Activate },
-   { AC_Init,      JPEG_Init },
-   { AC_Query,     JPEG_Query },
-   { AC_SaveImage, JPEG_SaveImage },
-   { 0, NULL }
+   { AC::Activate,  JPEG_Activate },
+   { AC::Init,      JPEG_Init },
+   { AC::Query,     JPEG_Query },
+   { AC::SaveImage, JPEG_SaveImage },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************

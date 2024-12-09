@@ -9,7 +9,7 @@ static ERR sslInit(void)
 
    if (ssl_init) return ERR::Okay;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    SSL_load_error_strings();
    ERR_load_BIO_strings();
@@ -92,7 +92,7 @@ static void sslCtxMsgCallback(SSL *s, int where, int ret)
 
 static ERR sslSetup(extNetSocket *Self)
 {
-   STRING path;
+   std::string path;
    ERR error;
    pf::Log log(__FUNCTION__);
 
@@ -103,15 +103,13 @@ static ERR sslSetup(extNetSocket *Self)
 
    if (Self->CTX) return ERR::Okay;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if ((Self->CTX = SSL_CTX_new(SSLv23_client_method()))) {
       //if (GetResource(RES::LOG_LEVEL) > 3) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
 
       if (ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-         if (SSL_CTX_load_verify_locations(Self->CTX, NULL, path)) {
-            FreeResource(path);
-
+         if (SSL_CTX_load_verify_locations(Self->CTX, NULL, path.c_str())) {
             if ((Self->SSL = SSL_new(Self->CTX))) {
                log.msg("SSL connectivity has been configured successfully.");
 
@@ -122,8 +120,7 @@ static ERR sslSetup(extNetSocket *Self)
             else { log.warning("Failed to initialise new SSL object."); error = ERR::Failed; }
          }
          else {
-            FreeResource(path);
-            log.warning("Failed to define certificate folder: %s", path);
+            log.warning("Failed to define certificate folder: %s", path.c_str());
             error = ERR::Failed;
          }
       }
@@ -146,7 +143,7 @@ static ERR sslLinkSocket(extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if ((Self->BIO = BIO_new_socket(Self->SocketHandle, BIO_NOCLOSE))) {
       SSL_set_bio(Self->SSL, Self->BIO, Self->BIO);
@@ -172,7 +169,7 @@ static ERR sslConnect(extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (!Self->SSL) return ERR::FieldNotSet;
 

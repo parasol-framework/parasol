@@ -18,6 +18,7 @@
 class objBitmap;
 class objDisplay;
 class objClipboard;
+class objController;
 class objPointer;
 class objSurface;
 
@@ -282,6 +283,7 @@ enum class SCR : ULONG {
    BORDERLESS = 0x00000020,
    COMPOSITE = 0x00000040,
    ALPHA_BLEND = 0x00000040,
+   GRAB_CONTROLLERS = 0x00000080,
    MAXSIZE = 0x00100000,
    REFRESH = 0x00200000,
    HOSTED = 0x02000000,
@@ -489,17 +491,17 @@ typedef struct BitmapSurfaceV2 {
 // Bitmap methods
 
 namespace bmp {
-struct CopyArea { objBitmap * DestBitmap; BAF Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Compress { LONG Level; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Decompress { LONG RetainData; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Flip { FLIP Orientation; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; BAF Flags; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Premultiply { static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Demultiply { static const ACTIONID id = -11; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ConvertToLinear { static const ACTIONID id = -12; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ConvertToRGB { static const ACTIONID id = -13; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CopyArea { objBitmap * DestBitmap; BAF Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Compress { LONG Level; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Decompress { LONG RetainData; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Flip { FLIP Orientation; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; BAF Flags; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Premultiply { static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Demultiply { static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ConvertToLinear { static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ConvertToRGB { static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -608,26 +610,26 @@ class objBitmap : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
    inline ERR copyData(OBJECTPTR Dest) noexcept {
       struct acCopyData args = { .Dest = Dest };
-      return Action(AC_CopyData, this, &args);
+      return Action(AC::CopyData, this, &args);
    }
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
-   inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR lock() noexcept { return Action(AC_Lock, this, NULL); }
-   inline ERR query() noexcept { return Action(AC_Query, this, NULL); }
+   inline ERR lock() noexcept { return Action(AC::Lock, this, NULL); }
+   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+      if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
       }
@@ -637,27 +639,27 @@ class objBitmap : public Object {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      return Action(AC_Read, this, &read);
+      return Action(AC::Read, this, &read);
    }
    inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
-      return Action(AC_Resize, this, &args);
+      return Action(AC::Resize, this, &args);
    }
    inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
-      return Action(AC_SaveImage, this, &args);
+      return Action(AC::SaveImage, this, &args);
    }
    inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
-      return Action(AC_Seek, this, &args);
+      return Action(AC::Seek, this, &args);
    }
    inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
    inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
    inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
-   inline ERR unlock() noexcept { return Action(AC_Unlock, this, NULL); }
+   inline ERR unlock() noexcept { return Action(AC::Unlock, this, NULL); }
    inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -668,7 +670,7 @@ class objBitmap : public Object {
    }
    inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -679,50 +681,50 @@ class objBitmap : public Object {
    }
    inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
+      if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
    inline ERR copyArea(objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) noexcept {
       struct bmp::CopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR compress(LONG Level) noexcept {
       struct bmp::Compress args = { Level };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR decompress(LONG RetainData) noexcept {
       struct bmp::Decompress args = { RetainData };
-      return(Action(-3, this, &args));
+      return(Action(AC(-3), this, &args));
    }
    inline ERR flip(FLIP Orientation) noexcept {
       struct bmp::Flip args = { Orientation };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR drawRectangle(LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) noexcept {
       struct bmp::DrawRectangle args = { X, Y, Width, Height, Colour, Flags };
-      return(Action(-6, this, &args));
+      return(Action(AC(-6), this, &args));
    }
    inline ERR setClipRegion(LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) noexcept {
       struct bmp::SetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
-      return(Action(-7, this, &args));
+      return(Action(AC(-7), this, &args));
    }
    inline ERR getColour(LONG Red, LONG Green, LONG Blue, LONG Alpha, ULONG * Colour) noexcept {
       struct bmp::GetColour args = { Red, Green, Blue, Alpha, (ULONG)0 };
-      ERR error = Action(-8, this, &args);
+      ERR error = Action(AC(-8), this, &args);
       if (Colour) *Colour = args.Colour;
       return(error);
    }
    inline ERR premultiply() noexcept {
-      return(Action(-10, this, NULL));
+      return(Action(AC(-10), this, NULL));
    }
    inline ERR demultiply() noexcept {
-      return(Action(-11, this, NULL));
+      return(Action(AC(-11), this, NULL));
    }
    inline ERR convertToLinear() noexcept {
-      return(Action(-12, this, NULL));
+      return(Action(AC(-12), this, NULL));
    }
    inline ERR convertToRGB() noexcept {
-      return(Action(-13, this, NULL));
+      return(Action(AC(-13), this, NULL));
    }
 
    // Customised field setting
@@ -876,15 +878,15 @@ class objBitmap : public Object {
 // Display methods
 
 namespace gfx {
-struct WaitVBL { static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct UpdatePalette { struct RGBPalette * NewPalette; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeight; LONG EnforceAspect; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; MON Flags; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Minimise { static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct CheckXWindow { static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct WaitVBL { static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct UpdatePalette { struct RGBPalette * NewPalette; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeight; LONG EnforceAspect; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; MON Flags; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Minimise { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CheckXWindow { static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -920,96 +922,96 @@ class objDisplay : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
-   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
-      return Action(AC_DataFeed, this, &args);
+      return Action(AC::DataFeed, this, &args);
    }
-   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
-   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
-   inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }
-   inline ERR focus() noexcept { return Action(AC_Focus, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
+   inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }
    inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
-      auto error = Action(AC_GetKey, this, &args);
+      auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
-   inline ERR hide() noexcept { return Action(AC_Hide, this, NULL); }
+   inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
       struct acMove args = { X, Y, Z };
-      return Action(AC_Move, this, &args);
+      return Action(AC::Move, this, &args);
    }
-   inline ERR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }
-   inline ERR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }
+   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
+   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
    inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
-      return Action(AC_MoveToPoint, this, &moveto);
+      return Action(AC::MoveToPoint, this, &moveto);
    }
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-      return Action(AC_Redimension, this, &args);
+      return Action(AC::Redimension, this, &args);
    }
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
-      return Action(AC_Redimension, this, &args);
+      return Action(AC::Redimension, this, &args);
    }
    inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
-      return Action(AC_Resize, this, &args);
+      return Action(AC::Resize, this, &args);
    }
    inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
-      return Action(AC_SaveImage, this, &args);
+      return Action(AC::SaveImage, this, &args);
    }
-   inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
-   inline ERR show() noexcept { return Action(AC_Show, this, NULL); }
+   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, NULL); }
+   inline ERR show() noexcept { return Action(AC::Show, this, NULL); }
    inline ERR waitVBL() noexcept {
-      return(Action(-1, this, NULL));
+      return(Action(AC(-1), this, NULL));
    }
    inline ERR updatePalette(struct RGBPalette * NewPalette) noexcept {
       struct gfx::UpdatePalette args = { NewPalette };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR setDisplay(LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
       struct gfx::SetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
-      return(Action(-3, this, &args));
+      return(Action(AC(-3), this, &args));
    }
    inline ERR sizeHints(LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect) noexcept {
       struct gfx::SizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR setGamma(DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
       struct gfx::SetGamma args = { Red, Green, Blue, Flags };
-      return(Action(-5, this, &args));
+      return(Action(AC(-5), this, &args));
    }
    inline ERR setGammaLinear(DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
       struct gfx::SetGammaLinear args = { Red, Green, Blue, Flags };
-      return(Action(-6, this, &args));
+      return(Action(AC(-6), this, &args));
    }
    inline ERR setMonitor(CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) noexcept {
       struct gfx::SetMonitor args = { Name, MinH, MaxH, MinV, MaxV, Flags };
-      return(Action(-7, this, &args));
+      return(Action(AC(-7), this, &args));
    }
    inline ERR minimise() noexcept {
-      return(Action(-8, this, NULL));
+      return(Action(AC(-8), this, NULL));
    }
    inline ERR checkXWindow() noexcept {
-      return(Action(-9, this, NULL));
+      return(Action(AC(-9), this, NULL));
    }
 
    // Customised field setting
 
    inline ERR setRefreshRate(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[43];
+      auto field = &this->Class->Dictionary[39];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -1060,7 +1062,7 @@ class objDisplay : public Object {
 
    inline ERR setPopOver(OBJECTID Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[27];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1072,25 +1074,25 @@ class objDisplay : public Object {
 
    inline ERR setHDensity(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setVDensity(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setResizeFeedback(const FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[32];
+      auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -1115,11 +1117,11 @@ class objDisplay : public Object {
 // Clipboard methods
 
 namespace clip {
-struct AddFile { CLIPTYPE Datatype; CSTRING Path; CEF Flags; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct AddObjects { CLIPTYPE Datatype; OBJECTID * Objects; CEF Flags; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetFiles { CLIPTYPE Filter; LONG Index; CLIPTYPE Datatype; CSTRING * Files; CEF Flags; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct AddText { CSTRING String; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Remove { CLIPTYPE Datatype; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddFile { CLIPTYPE Datatype; CSTRING Path; CEF Flags; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddObjects { CLIPTYPE Datatype; OBJECTID * Objects; CEF Flags; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetFiles { CLIPTYPE Filter; LONG Index; CLIPTYPE Datatype; CSTRING * Files; CEF Flags; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddText { CSTRING String; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Remove { CLIPTYPE Datatype; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1138,23 +1140,23 @@ class objClipboard : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
-      return Action(AC_DataFeed, this, &args);
+      return Action(AC::DataFeed, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR addFile(CLIPTYPE Datatype, CSTRING Path, CEF Flags) noexcept {
       struct clip::AddFile args = { Datatype, Path, Flags };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR addObjects(CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) noexcept {
       struct clip::AddObjects args = { Datatype, Objects, Flags };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR getFiles(CLIPTYPE Filter, LONG Index, CLIPTYPE * Datatype, CSTRING ** Files, CEF * Flags) noexcept {
       struct clip::GetFiles args = { Filter, Index, (CLIPTYPE)0, (CSTRING *)0, (CEF)0 };
-      ERR error = Action(-3, this, &args);
+      ERR error = Action(AC(-3), this, &args);
       if (Datatype) *Datatype = args.Datatype;
       if (Files) *Files = args.Files;
       if (Flags) *Flags = args.Flags;
@@ -1162,11 +1164,11 @@ class objClipboard : public Object {
    }
    inline ERR addText(CSTRING String) noexcept {
       struct clip::AddText args = { String };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR remove(CLIPTYPE Datatype) noexcept {
       struct clip::Remove args = { Datatype };
-      return(Action(-5, this, &args));
+      return(Action(AC(-5), this, &args));
    }
 
    // Customised field setting
@@ -1181,6 +1183,41 @@ class objClipboard : public Object {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+};
+
+// Controller class definition
+
+#define VER_CONTROLLER (1.000000)
+
+class objController : public Object {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::CONTROLLER;
+   static constexpr CSTRING CLASS_NAME = "Controller";
+
+   using create = pf::Create<objController>;
+
+   DOUBLE LeftTrigger;    // Left trigger value between 0.0 and 1.0.
+   DOUBLE RightTrigger;   // Right trigger value between 0.0 and 1.0.
+   DOUBLE LeftStickX;     // Left analog stick value for X axis, between -1.0 and 1.0.
+   DOUBLE LeftStickY;     // Left analog stick value for Y axis, between -1.0 and 1.0.
+   DOUBLE RightStickX;    // Right analog stick value for X axis, between -1.0 and 1.0.
+   DOUBLE RightStickY;    // Right analog stick value for Y axis, between -1.0 and 1.0.
+   CON    Buttons;        // JET button values expressed as bit-fields.
+   LONG   Port;           // The port number assigned to the controller.
+
+   // Action stubs
+
+   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setPort(const LONG Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
+      this->Port = Value;
+      return ERR::Okay;
    }
 
 };
@@ -1308,16 +1345,16 @@ class objPointer : public Object {
 // Surface methods
 
 namespace drw {
-struct InheritedFocus { OBJECTID FocusID; RNF Flags; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ExposeToDisplay { LONG X; LONG Y; LONG Width; LONG Height; EXF Flags; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct InvalidateRegion { LONG X; LONG Y; LONG Width; LONG Height; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetOpacity { DOUBLE Value; DOUBLE Adjustment; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct AddCallback { FUNCTION * Callback; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Minimise { static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; DMF Dimensions; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveCallback { FUNCTION * Callback; static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ScheduleRedraw { static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InheritedFocus { OBJECTID FocusID; RNF Flags; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ExposeToDisplay { LONG X; LONG Y; LONG Width; LONG Height; EXF Flags; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InvalidateRegion { LONG X; LONG Y; LONG Width; LONG Height; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetOpacity { DOUBLE Value; DOUBLE Adjustment; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddCallback { FUNCTION * Callback; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Minimise { static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; DMF Dimensions; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveCallback { FUNCTION * Callback; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ScheduleRedraw { static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1377,82 +1414,82 @@ class objSurface : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
-   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
-   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
-   inline ERR focus() noexcept { return Action(AC_Focus, this, NULL); }
-   inline ERR hide() noexcept { return Action(AC_Hide, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
+   inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }
+   inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR lostFocus() noexcept { return Action(AC_LostFocus, this, NULL); }
+   inline ERR lostFocus() noexcept { return Action(AC::LostFocus, this, NULL); }
    inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
       struct acMove args = { X, Y, Z };
-      return Action(AC_Move, this, &args);
+      return Action(AC::Move, this, &args);
    }
-   inline ERR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }
-   inline ERR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }
+   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
+   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
    inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
-      return Action(AC_MoveToPoint, this, &moveto);
+      return Action(AC::MoveToPoint, this, &moveto);
    }
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-      return Action(AC_Redimension, this, &args);
+      return Action(AC::Redimension, this, &args);
    }
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
-      return Action(AC_Redimension, this, &args);
+      return Action(AC::Redimension, this, &args);
    }
    inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
-      return Action(AC_Resize, this, &args);
+      return Action(AC::Resize, this, &args);
    }
    inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
-      return Action(AC_SaveImage, this, &args);
+      return Action(AC::SaveImage, this, &args);
    }
-   inline ERR show() noexcept { return Action(AC_Show, this, NULL); }
+   inline ERR show() noexcept { return Action(AC::Show, this, NULL); }
    inline ERR inheritedFocus(OBJECTID FocusID, RNF Flags) noexcept {
       struct drw::InheritedFocus args = { FocusID, Flags };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR exposeToDisplay(LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) noexcept {
       struct drw::ExposeToDisplay args = { X, Y, Width, Height, Flags };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR invalidateRegion(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct drw::InvalidateRegion args = { X, Y, Width, Height };
-      return(Action(-3, this, &args));
+      return(Action(AC(-3), this, &args));
    }
    inline ERR setDisplay(LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags) noexcept {
       struct drw::SetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR setOpacity(DOUBLE Value, DOUBLE Adjustment) noexcept {
       struct drw::SetOpacity args = { Value, Adjustment };
-      return(Action(-5, this, &args));
+      return(Action(AC(-5), this, &args));
    }
    inline ERR addCallback(FUNCTION Callback) noexcept {
       struct drw::AddCallback args = { &Callback };
-      return(Action(-6, this, &args));
+      return(Action(AC(-6), this, &args));
    }
    inline ERR minimise() noexcept {
-      return(Action(-7, this, NULL));
+      return(Action(AC(-7), this, NULL));
    }
    inline ERR resetDimensions(DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, DMF Dimensions) noexcept {
       struct drw::ResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
-      return(Action(-8, this, &args));
+      return(Action(AC(-8), this, &args));
    }
    inline ERR removeCallback(FUNCTION Callback) noexcept {
       struct drw::RemoveCallback args = { &Callback };
-      return(Action(-9, this, &args));
+      return(Action(AC(-9), this, &args));
    }
    inline ERR scheduleRedraw() noexcept {
-      return(Action(-10, this, NULL));
+      return(Action(AC(-10), this, NULL));
    }
 
    // Customised field setting

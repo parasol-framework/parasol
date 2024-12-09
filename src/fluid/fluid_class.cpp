@@ -9,10 +9,9 @@
 #include <parasol/strings.hpp>
 #include <sstream>
 
+#include "lua.hpp"
+
 extern "C" {
- #include "lua.h"
- #include "lualib.h"
- #include "lauxlib.h"
  #include "lj_obj.h"
 }
 
@@ -69,12 +68,12 @@ static ERR FLUID_Init(objScript *);
 static ERR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const ActionArray clActions[] = {
-   { AC_Activate,     FLUID_Activate },
-   { AC_DataFeed,     FLUID_DataFeed },
-   { AC_Free,         FLUID_Free },
-   { AC_Init,         FLUID_Init },
-   { AC_SaveToObject, FLUID_SaveToObject },
-   { 0, NULL }
+   { AC::Activate,     FLUID_Activate },
+   { AC::DataFeed,     FLUID_DataFeed },
+   { AC::Free,         FLUID_Free },
+   { AC::Init,         FLUID_Init },
+   { AC::SaveToObject, FLUID_SaveToObject },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************
@@ -85,7 +84,7 @@ static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);
 static const MethodEntry clMethods[] = {
    { sc::GetProcedureID::id, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
    { sc::DerefProcedure::id, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
-   { 0, NULL, NULL, NULL, 0 }
+   { AC::NIL, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************
@@ -151,7 +150,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    CSTRING file = Self->Path;
    if (file) {
       LONG i;
-      for (i=StrLength(file); (i > 0) and (file[i-1] != '/') and (file[i-1] != '\\'); i--);
+      for (i=strlen(file); (i > 0) and (file[i-1] != '/') and (file[i-1] != '\\'); i--);
       log.msg(flags, "%s: %s", file+i, str);
    }
    else log.msg(flags, "%s: Error: %s", Procedure, str);
@@ -180,7 +179,7 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
    log.traceBranch("Args: %p, Buffer: %p", args, Buffer);
 
    for (LONG i=0; args[i].Name; i++) {
-      auto name = std::make_unique<char[]>(StrLength(args[i].Name)+1);
+      auto name = std::make_unique<char[]>(strlen(args[i].Name)+1);
       for (j=0; args[i].Name[j]; j++) name[j] = std::tolower(args[i].Name[j]);
       name[j] = 0;
 
@@ -243,7 +242,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
          {
             pf::Log log;
 
-            log.msg(VLF::BRANCH|VLF::DETAIL, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
+            log.msg(VLF::BRANCH|VLF::DETAIL, "Action notification for object #%d, action %d.  Top: %d", Object->UID, LONG(ActionID), lua_gettop(prv->Lua));
 
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID
@@ -380,7 +379,7 @@ static ERR FLUID_Activate(objScript *Self)
       if (auto core = objModule::create::global(fl::Name("core"))) {
          SetName(core, "mSys");
          auto mod = (struct module *)lua_newuserdata(prv->Lua, sizeof(struct module));
-         ClearMemory(mod, sizeof(struct module));
+         clearmem(mod, sizeof(struct module));
          luaL_getmetatable(prv->Lua, "Fluid.mod");
          lua_setmetatable(prv->Lua, -2);
          mod->Module = core;
@@ -397,7 +396,7 @@ static ERR FLUID_Activate(objScript *Self)
       LONG result;
       if (startswith(LUA_COMPILED, Self->String)) { // The source is compiled
          log.trace("Loading pre-compiled Lua script.");
-         LONG headerlen = StrLength(Self->String) + 1;
+         LONG headerlen = strlen(Self->String) + 1;
          result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, "DefaultChunk");
       }
       else {
@@ -408,9 +407,9 @@ static ERR FLUID_Activate(objScript *Self)
       if (result) { // Error reported from parser
          if (auto errorstr = lua_tostring(prv->Lua,-1)) {
             // Format: [string "..."]:Line:Error
-            if ((i = StrSearchCase("\"]:", errorstr)) != -1) {
+            if ((i = strsearch("\"]:", errorstr)) != -1) {
                i += 3;
-               LONG line = StrToInt(errorstr + i);
+               LONG line = strtol(errorstr + i, NULL, 0);
                while ((errorstr[i]) and (errorstr[i] != ':')) i++;
                if (errorstr[i] IS ':') i++;
 
@@ -714,7 +713,7 @@ static ERR FLUID_Init(objScript *Self)
 
                // Unicode BOM handler - in case the file starts with a BOM header.
                CSTRING bomptr = check_bom(Self->String);
-               if (bomptr != Self->String) CopyMemory(bomptr, Self->String, (len + 1) - (bomptr - Self->String));
+               if (bomptr != Self->String) copymem(bomptr, Self->String, (len + 1) - (bomptr - Self->String));
 
                loaded_size = len;
 
@@ -981,7 +980,7 @@ static ERR run_script(objScript *Self)
 
                      if (args->Address) {
                         struct object *obj = push_object(prv->Lua, (OBJECTPTR)args->Address);
-                        if ((r < ARRAYSIZE(release_list)) and (access_object(obj))) {
+                        if ((r < std::ssize(release_list)) and (access_object(obj))) {
                            release_list[r++] = obj;
                         }
                      }
@@ -1071,6 +1070,7 @@ static ERR run_script(objScript *Self)
       return Self->Error;
    }
 }
+
 //********************************************************************************************************************
 
 static ERR register_interfaces(objScript *Self)

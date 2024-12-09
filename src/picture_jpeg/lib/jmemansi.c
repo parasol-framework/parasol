@@ -63,22 +63,22 @@ void read_backing_store(j_common_ptr cinfo, backing_store_ptr info, void FAR * b
 
    seek.Offset   = file_offset;
    seek.Position = SEEK::START;
-   if (Action(AC_Seek, info->temp_file, &seek) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
+   if (Action(AC::Seek, info->temp_file, &seek) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
 
    read.Buffer = buffer_address;
    read.Length = byte_count;
-   if (Action(AC_Read, info->temp_file, &read) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_READ);
+   if (Action(AC::Read, info->temp_file, &read) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_READ);
 }
 
 void write_backing_store(j_common_ptr cinfo, backing_store_ptr info, void FAR * buffer_address, long file_offset, long byte_count)
 {
    struct acSeek seek = { .Offset = (DOUBLE)file_offset, .Position = SEEK::START };
-   if (Action(AC_Seek, info->temp_file, &seek) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
+   if (Action(AC::Seek, info->temp_file, &seek) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
 
    const long CHUNK = 1024LL * 1024LL;
    while (byte_count > 0) {
       struct acWrite write = { .Buffer = buffer_address, .Length = byte_count > CHUNK ? (LONG)CHUNK : (LONG)byte_count };
-      if (Action(AC_Write, info->temp_file, &write) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_WRITE);
+      if (Action(AC::Write, info->temp_file, &write) != ERR::Okay) ERREXIT(cinfo, JERR_TFILE_WRITE);
       byte_count -= write.Result;
       buffer_address = (UBYTE *)buffer_address + write.Result;
    }

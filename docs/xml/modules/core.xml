@@ -92,21 +92,21 @@
     <name>Action</name>
     <category>Objects</category>
     <comment>This function is responsible for executing action routines.</comment>
-    <prototype>ERR Action(LONG Action, OBJECTPTR Object, APTR Parameters)</prototype>
+    <prototype>ERR Action(AC Action, OBJECTPTR Object, APTR Parameters)</prototype>
     <input>
-      <param type="LONG" name="Action" lookup="AC">An action or method ID must be specified here (e.g. <code>AC_Query</code>).</param>
-      <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
-      <param type="APTR" name="Parameters">If the action or method is documented as taking parameters, point to the relevant parameter structure here.</param>
+      <param type="AC" name="Action" lookup="AC">An action or method ID must be specified.</param>
+      <param type="OBJECTPTR" name="Object">The target object.</param>
+      <param type="APTR" name="Parameters">Optional parameter structure associated with <code>Action</code>.</param>
     </input>
     <description>
 <p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a class implementation. You can find a complete list of available actions and their associated details in the Parasol Wiki. The actions and methods supported by any class will be referenced in their auto-generated documentation.</p>
 <p>Here are two examples that demonstrate how to make an action call.  The first performs an activation, which does not require any additional arguments.  The second performs a move operation, which requires three additional arguments to be passed to the Action() function:</p>
-<pre>1. Action(AC_Activate, Picture, NULL);
+<pre>1. Action(AC::Activate, Picture, NULL);
 
 2. struct acMove move = { 30, 15, 0 };
-   Action(AC_Move, Window, &amp;move);
+   Action(AC::Move, Window, &amp;move);
 </pre>
-<p>In all cases, action calls in C++ can be simplified by using their corresponding helper functions:</p>
+<p>In all cases, action calls in C++ can be simplified by using their corresponding stub functions:</p>
 <pre>1.  acActivate(Picture);
 
 2a. acMove(Window, 30, 15, 0);
@@ -117,9 +117,9 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="NoAction">The action is not supported by the object's supporting class.</error>
-      <error code="IllegalActionID">The Action parameter is invalid.</error>
-      <error code="ObjectCorrupt">The object that was received is badly corrupted in a critical area.</error>
+      <error code="NoAction">The <code>Action</code> is not supported by the object's supporting class.</error>
+      <error code="IllegalActionID">The <code>Action</code> parameter is invalid.</error>
+      <error code="ObjectCorrupt">The <code>Object</code> state is corrupted.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -163,42 +163,13 @@ struct FunctionField argsResize[] = {
   </function>
 
   <function>
-    <name>ActionThread</name>
-    <category>Objects</category>
-    <comment>Execute an action in parallel, via a separate thread.</comment>
-    <prototype>ERR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key)</prototype>
-    <input>
-      <param type="LONG" name="Action" lookup="AC">An action or method ID must be specified here.</param>
-      <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
-      <param type="APTR" name="Args">If the action or method is documented as taking parameters, provide the correct parameter structure here.</param>
-      <param type="FUNCTION *" name="Callback">This function will be called after the thread has finished executing the action.</param>
-      <param type="LONG" name="Key">An optional key value to be passed to the <code>Callback</code> routine.</param>
-    </input>
-    <description>
-<p>This function follows the same principles of execution as the Action() function, with the difference of executing the action in parallel via a dynamically allocated thread.  Please refer to the <function>Action</function> function for general information on action execution.</p>
-<p>To receive feedback of the action's completion, use the <code>Callback</code> parameter and supply a function.  The prototype for the callback routine is <code>callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, LONG Key)</code></p>
-<p>It is crucial that the target object is not destroyed while the thread is executing.  Use the <code>Callback</code> routine to receive notification of the thread's completion and then free the object if desired.  The callback will be processed in the next call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.</p>
-<p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if ActionThread() fails, the callback will never be executed because the thread attempt will have been aborted.</p>
-<p>Please note that there is some overhead involved when safely initialising and executing a new thread.  This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Init">Error in Init()ialising an object.</error>
-      <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
-      <error code="MissingClass">The class could not be found in the system.</error>
-      <error code="NewObject">A call to NewObject() failed to produce a new object.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>AddInfoTag</name>
     <category>Files</category>
     <comment>Adds new tags to <st>FileInfo</st> structures.</comment>
     <prototype>ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value)</prototype>
     <input>
       <param type="struct FileInfo *" name="Info">Pointer to a valid <st>FileInfo</st> structure.</param>
-      <param type="CSTRING" name="Name">The name of the tag.</param>
+      <param type="CSTRING" name="Name">The name of the tag, which must be declared in camel-case.</param>
       <param type="CSTRING" name="Value">The value to associate with the tag name.  If <code>NULL</code>, any existing tag with a matching <code>Name</code> will be removed.</param>
     </input>
     <description>
@@ -326,6 +297,34 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
   </function>
 
   <function>
+    <name>AsyncAction</name>
+    <category>Objects</category>
+    <comment>Execute an action in parallel, via a separate thread.</comment>
+    <prototype>ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback)</prototype>
+    <input>
+      <param type="AC" name="Action" lookup="AC">An action or method ID must be specified here.</param>
+      <param type="OBJECTPTR" name="Object">A pointer to the object that is going to perform the action.</param>
+      <param type="APTR" name="Args">If the action or method is documented as taking parameters, provide the correct parameter structure here.</param>
+      <param type="FUNCTION *" name="Callback">This function will be called after the thread has finished executing the action.</param>
+    </input>
+    <description>
+<p>This function follows the same principles of execution as the Action() function, with the difference of executing the action in parallel via a dynamically allocated thread.  Please refer to the <function>Action</function> function for general information on action execution.</p>
+<p>To receive feedback of the action's completion, use the <code>Callback</code> parameter and supply a function.  The prototype for the callback routine is <code>callback(ACTIONID ActionID, OBJECTPTR Object, ERR Error, APTR Meta)</code></p>
+<p>It is crucial that the target object is not destroyed while the thread is executing.  Use the <code>Callback</code> routine to receive notification of the thread's completion and then free the object if desired.  The callback will be processed when the main thread makes a call to <function>ProcessMessages</function>, so as to maintain an orderly execution process within the application.</p>
+<p>The 'Error' parameter in the callback reflects the error code returned by the action after it has been called.  Note that if AsyncAction() fails, the callback will never be executed because the thread attempt will have been aborted.</p>
+<p>Please note that there is some overhead involved when safely initialising and executing a new thread.  This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Init">Error in Init()ialising an object.</error>
+      <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
+      <error code="MissingClass">The class could not be found in the system.</error>
+      <error code="NewObject">A call to NewObject() failed to produce a new object.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
     <name>BroadcastEvent</name>
     <category>Events</category>
     <comment>Broadcast an event to all event listeners in the system.</comment>
@@ -351,14 +350,14 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <name>CheckAction</name>
     <category>Objects</category>
     <comment>Checks objects to see whether or not they support certain actions.</comment>
-    <prototype>ERR CheckAction(OBJECTPTR Object, LONG Action)</prototype>
+    <prototype>ERR CheckAction(OBJECTPTR Object, AC Action)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
-      <param type="LONG" name="Action">A registered action or method ID.</param>
+      <param type="AC" name="Action" lookup="AC">A registered action or method ID.</param>
     </input>
     <description>
 <p>This function returns <code>ERR::True</code> if an object's class supports a given action or method ID.  For example:</p>
-<pre>if (CheckAction(pic, AC_Query) IS ERR::True) {
+<pre>if (CheckAction(pic, AC::Query) IS ERR::True) {
    // The Query action is supported.
 }
 </pre>
@@ -513,9 +512,9 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <prototype>OBJECTPTR CurrentContext()</prototype>
     <description>
 <p>This function returns a pointer to the object that has the current context.  Context is primarily used to manage resource allocations.  Manipulating the context is sometimes necessary to ensure that a resource is tracked to the correct object.</p>
-<p>To get the parent context (technically the 'context of the current context'), use <code>GetParentContext()</code>, which is implemented as a macro.  This is used in method and action routines where the context of the object's caller may be needed.</p>
+<p>To get the context of the caller (the client), use <function>ParentContext</function>.</p>
     </description>
-    <result type="OBJECTPTR">Returns an object pointer (of which the Task has exclusive access to).  Cannot return <code>NULL</code> except in the initial start-up and late shut-down sequence of the Core.</result>
+    <result type="OBJECTPTR">Returns an object pointer (of which the process has exclusive access to).  Cannot return <code>NULL</code> except in the initial start-up and late shut-down sequence of the Core.</result>
   </function>
 
   <function>
@@ -525,7 +524,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <prototype>objTask * CurrentTask()</prototype>
     <description>
 <p>This function returns the <class name="Task">Task</class> object of the active process.</p>
-<p>If there is a legitimate circumstance where there is no current task (e.g. if the function is called during Core initialisation) then the "system task" may be returned, which has ownership of Core resources.</p>
+<p>If there is a legitimate circumstance where there is no current task (e.g. if this function is called during Core initialisation) then the "system task" may be returned, which has ownership of Core resources.</p>
     </description>
     <result type="objTask *">Returns a pointer to the current Task object or NULL if failure.</result>
   </function>
@@ -697,7 +696,7 @@ FindObject("SystemPointer", CLASSID::POINTER, 0, &amp;id);
     <comment>Returns a message structure if called from an action that was executed by the message system.</comment>
     <prototype>struct Message * GetActionMsg()</prototype>
     <description>
-<p>This function is for use by action and method support routines only.  It will return a Message structure if the action currently under execution has been called directly from the <function>ProcessMessages</function> function.  In all other cases a <code>NULL</code> pointer is returned.</p>
+<p>This function is for use by action and method support routines only.  It will return a <st>Message</st> structure if the action currently under execution has been called directly from the <function>ProcessMessages</function> function.  In all other cases a <code>NULL</code> pointer is returned.</p>
 <p>The <st>Message</st> structure reflects the contents of a standard <function>GetMessage</function> call.  Of particular interest may be the <code>Time</code> field, which indicates the time-stamp at which the action message was originally sent to the object.</p>
     </description>
     <result type="struct Message *">A <st>Message</st> structure is returned if the function is called in valid circumstances, otherwise <code>NULL</code>.  The <st>Message</st> structure's fields are described in the <function>GetMessage</function> function.</result>
@@ -929,9 +928,9 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="CLASSID *" name="SubClass">Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).</param>
     </input>
     <description>
-<p>This function examines the relationship between file data and installed classes.  It allows for instance, a JPEG file to be identified as a datatype of the <class name="Picture">Picture</class> class, or an MP3 file to be identified as a datatype of the <class name="Sound">Sound</class> class.</p>
-<p>The method involves analysing the <code>Path</code>'s file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension then the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
-<p>This function returns an error code of <code>ERR::Search</code> in the event that a suitable class is not available to match against the given file.</p>
+<p>This function examines the relationship between file data and Parasol classes.  For instance, a JPEG file would be identified as a datatype of the <class name="Picture">Picture</class> class.  An MP3 file would be identified as a datatype of the <class name="Sound">Sound</class> class.</p>
+<p>The method involves analysing the <code>Path</code>'s file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension, the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
+<p>The <code>ERR::Search</code> code is returned if a suitable class does not match the targeted file.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1148,10 +1147,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>NotifySubscribers</name>
     <category>Objects</category>
     <comment>Used to send notification messages to action subscribers.</comment>
-    <prototype>void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERR Error)</prototype>
+    <prototype>void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object that is to receive the notification message.</param>
-      <param type="LONG" name="Action" lookup="AC">The action ID for notification.</param>
+      <param type="AC" name="Action" lookup="AC">The action ID for notification.</param>
       <param type="APTR" name="Args">Pointer to an action parameter structure that is relevant to the <code>Action</code> ID.</param>
       <param type="ERR" name="Error">The error code that is associated with the action result.</param>
     </input>
@@ -1183,6 +1182,18 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
+  </function>
+
+  <function>
+    <name>ParentContext</name>
+    <category>Objects</category>
+    <comment>Returns the context of the client.</comment>
+    <prototype>OBJECTPTR ParentContext()</prototype>
+    <description>
+<p>This function is used to return the context of the caller (the client), as opposed to <function>CurrentContext</function>, which returns the operating context.  This feature is commonly used by methods that need to acquire a reference to the client for resource management reasons.</p>
+<p>Note that this function can return <code>NULL</code> if called when running at process-level, although this would never be the case when called from an action or method.</p>
+    </description>
+    <result type="OBJECTPTR">An object reference is returned, or <code>NULL</code> if there is no parent context.</result>
   </function>
 
   <function>
@@ -1222,9 +1233,9 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>QueueAction</name>
     <category>Objects</category>
     <comment>Delay the execution of an action by adding the call to the message queue.</comment>
-    <prototype>ERR QueueAction(LONG Action, OBJECTID Object, APTR Args)</prototype>
+    <prototype>ERR QueueAction(AC Action, OBJECTID Object, APTR Args)</prototype>
     <input>
-      <param type="LONG" name="Action">The ID of an action or method to execute.</param>
+      <param type="AC" name="Action" lookup="AC">The ID of an action or method to execute.</param>
       <param type="OBJECTID" name="Object">The target object.</param>
       <param type="APTR" name="Args">The relevant argument structure for the <code>Action</code>, or <code>NULL</code> if not required.</param>
     </input>
@@ -1276,11 +1287,11 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <prototype>ERR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value)</prototype>
     <input>
       <param type="struct FileInfo *" name="Info">Pointer to a valid <st>FileInfo</st> structure.</param>
-      <param type="CSTRING" name="Name">The name of the tag.</param>
+      <param type="CSTRING" name="Name">The name of the tag, which must be declared in camel-case as tags are case-sensitive.</param>
       <param type="CSTRING *" name="Value">The discovered string value is returned here if found.</param>
     </input>
     <description>
-<p>Call ReadInfoTag() to retrieve the string value associated with a named tag in a <st>FileInfo</st> structure.  The tag must have been added with <function>AddInfoTag</function> or <code>ERR::NotFound</code> will be returned.</p>
+<p>ReadInfoTag() will read the value of a named tag in a <st>FileInfo</st> structure.  The tag must have been added with <function>AddInfoTag</function> or <code>ERR::NotFound</code> will be returned.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1417,19 +1428,19 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ResolvePath</name>
     <category>Files</category>
     <comment>Converts volume-based paths into absolute paths applicable to the host platform.</comment>
-    <prototype>ERR ResolvePath(CSTRING Path, RSF Flags, STRING * Result)</prototype>
+    <prototype>ERR ResolvePath(const std::string_view &amp; Path, RSF Flags, std::string * Result)</prototype>
     <input>
-      <param type="CSTRING" name="Path">The path to be resolved.</param>
+      <param type="const std::string_view &amp;" name="Path">The path to be resolved.</param>
       <param type="RSF" name="Flags" lookup="RSF">Optional flags.</param>
-      <param type="STRING *" name="Result">Must point to an empty <code>STRING</code> variable so that the resolved path can be stored.  If <code>NULL</code>, ResolvePath() will work as normal and return a valid error code without the result string.</param>
+      <param type="std::string *" name="Result">Must point to a <code>std::string</code> variable so that the resolved path can be stored.  If <code>NULL</code>, ResolvePath() will work as normal and return a valid error code without the result string.</param>
     </input>
     <description>
 <p>This function will convert a file path to its resolved form, according to the host system.  For example, a Linux system might resolve <code>drive1:documents/readme.txt</code> to <code>/documents/readme.txt</code>.  A Windows system might resolve the path to <code>c:\documents\readme.txt</code>.</p>
 <p>The resulting path is guaranteed to be absolute, meaning the use of sequences such as <code>..</code>, <code>//</code> and <code>./</code> will be eliminated.</p>
-<p>If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by checking the validity of each possible location.  For instance, if resolving a path of <code>user:document.txt</code> and the <code>user:</code> volume refers to both <code>system:users/joebloggs/</code> and <code>system:users/default/</code>, the routine will check both directories for the existence of the <code>document.txt</code> file to determine the correct location.  While helpful, this can cause problems if the intent is to create a new file.  To circumvent this feature, use the <code>RSF::NO_FILE_CHECK</code> setting in the <code>Flags</code> parameter.</p>
-<p>When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be treated as an approximation (i.e. file extensions can be ignored) then use the <code>RSF::APPROXIMATE</code> flag to tell the function to ignore extensions for the purpose of file name matching.</p>
+<p>If the path can be resolved to more than one file, ResolvePath() will attempt to discover the correct path by checking the validity of each possible location.  For instance, if resolving a path of <code>user:document.txt</code> and the <code>user:</code> volume refers to both <code>system:users/joebloggs/</code> and <code>system:users/default/</code>, the routine will check both directories for the existence of the <code>document.txt</code> file to determine the correct location.  This approach can be problematic if the intent is to create a new file, in which case <code>RSF::NO_FILE_CHECK</code> will circumvent it.</p>
+<p>When checking the file location, ResolvePath() requires an exact match to the provided file name.  If the file name can be approximated (i.e. the file extension can be ignored) then use the <code>RSF::APPROXIMATE</code> flag.</p>
 <p>To resolve the location of executable programs on Unix systems, use the <code>RSF::PATH</code> flag.  This uses the <code>PATH</code> environment variable to resolve the file name specified in the <code>Path</code> parameter.</p>
-<p>The resolved path will be returned in the <code>Result</code> parameter as an allocated memory block.  It must be removed once it is no longer required with <function>FreeResource</function>.</p>
+<p>The resolved path will be copied to the <code>std::string</code> provided in the <code>Result</code> parameter.  This will overwrite any existing content in the string.</p>
 <types lookup="RSF"/>
 <p>If the path resolves to a virtual drive, it may not be possible to confirm whether the target file exists if the virtual driver does not support this check.  This is common when working with network drives.</p>
     </description>
@@ -1568,7 +1579,7 @@ SetArray(Object, FID_Table|TLONG, array, 100);
     <comment>Alters the nominated owner of newly created objects.</comment>
     <prototype>OBJECTPTR SetContext(OBJECTPTR Object)</prototype>
     <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the object that will take on the new context.  If NULL, no change to the context will be made.</param>
+      <param type="OBJECTPTR" name="Object">Pointer to the object that will take on the new context.  If <code>NULL</code>, no change to the context will be made.</param>
     </input>
     <description>
 <p>This function defines the object that has control of the current thread.  Once called, all further resource allocations are assigned to that object.  This is significant for the automatic collection of memory and object allocations.  For example:</p>
@@ -1745,18 +1756,18 @@ SetField(Object, FID_Statement|TSTR, "string");
   <function>
     <name>SetVolume</name>
     <category>Files</category>
-    <comment>Adds a new volume name to the system.</comment>
+    <comment>Create or modify a filesystem volume.</comment>
     <prototype>ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags)</prototype>
     <input>
       <param type="CSTRING" name="Name">Required.  The name of the volume.</param>
       <param type="CSTRING" name="Path">Required.  The path to be associated with the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.</param>
       <param type="CSTRING" name="Icon">An icon can be associated with the volume so that it has graphical representation when viewed in the UI.  The required icon string format is <code>category/name</code>.</param>
       <param type="CSTRING" name="Label">An optional label or short comment may be applied to the volume.  This may be useful if the volume name has little meaning to the user (e.g. <code>drive1</code>, <code>drive2</code> ...).</param>
-      <param type="CSTRING" name="Device">If the volume references the root of a device, specify a code of <code>disk</code>, <code>hd</code>, <code>cd</code>, <code>network</code> or <code>usb</code>.</param>
+      <param type="CSTRING" name="Device">If the volume references the root of a device, specify a device name of <code>portable</code>, <code>fixed</code>, <code>cd</code>, <code>network</code> or <code>usb</code>.</param>
       <param type="VOLUME" name="Flags" lookup="VOLUME">Optional flags.</param>
     </input>
     <description>
-<p>The SetVolume() function is used to create a volume that is associated with one or more paths.  If the volume already exists, it possible to append more paths or replace them entirely.</p>
+<p>SetVolume() is used to create or modify a volume that is associated with one or more paths.  If the named volume already exists, it possible to append more paths or replace them entirely.  Volume changes that are made with this function will only apply to the current process, and are lost after the program closes.</p>
 <p>Flags that may be passed are as follows:</p>
 <types lookup="VOLUME"/>
     </description>
@@ -1771,17 +1782,17 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SubscribeAction</name>
     <category>Objects</category>
     <comment>Monitor action calls made against an object.</comment>
-    <prototype>ERR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback)</prototype>
+    <prototype>ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION * Callback)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
-      <param type="LONG" name="Action">The ID of the action that will be monitored.  Methods are not supported.</param>
+      <param type="AC" name="Action" lookup="AC">The ID of the action that will be monitored.  Methods are not supported.</param>
       <param type="FUNCTION *" name="Callback">A C/C++ function to callback when the action is triggered.</param>
     </input>
     <description>
 <p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This strategy is referred to as "action monitoring" and is often used for responding to UI events and the termination of objects.</p>
 <p>Subscriptions are context sensitive, so the <code>Callback</code> will execute in the space attributed to to the caller.</p>
 <p>The following example illustrates how to listen to a <class name="Surface">Surface</class> object's Redimension action and respond to resize events:</p>
-<pre>SubscribeAction(surface, AC_Redimension, C_FUNCTION(notify_resize, meta_ptr));
+<pre>SubscribeAction(surface, AC::Redimension, C_FUNCTION(notify_resize, meta_ptr));
 </pre>
 <p>The template below illustrates how the <code>Callback</code> function should be constructed:</p>
 <pre>void notify_resize(OBJECTPTR Object, ACTIONID Action, ERR Result, APTR Parameters, APTR CallbackMeta)
@@ -1809,17 +1820,16 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SubscribeEvent</name>
     <category>Events</category>
     <comment>Subscribe to a system event.</comment>
-    <prototype>ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR * Handle)</prototype>
+    <prototype>ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR * Handle)</prototype>
     <input>
       <param type="LARGE" name="Event">An event identifier.</param>
       <param type="FUNCTION *" name="Callback">The function that will be subscribed to the event.</param>
-      <param type="APTR" name="Custom">A custom pointer that will be sent to the callback function, set to <code>NULL</code> if not required.</param>
       <param type="APTR *" name="Handle">Pointer to an address that will receive the event handle.</param>
     </input>
     <description>
 <p>Use the SubscribeEvent() function to listen for system events.  An event ID (obtainable from <function>GetEventID</function>) must be provided, as well as a reference to a function that will be called each time that the event is broadcast.</p>
 <p>An event handle will be returned in the <code>Handle</code> parameter to identify the subscription.  This must be retained to later unsubscribe from the event with the <function>UnsubscribeEvent</function> function.</p>
-<p>The prototype for the <code>Callback</code> function is <code>Function(APTR Custom, APTR Event, LONG Size)</code>, where <code>Event</code> is the event structure that matches to the subscribed EventID.</p>
+<p>The prototype for the <code>Callback</code> function is <code>Function(APTR Event, LONG Size, APTR CallbackMeta)</code>, where <code>Event</code> is the event structure that matches to the subscribed EventID.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -1872,14 +1882,14 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>UnsubscribeAction</name>
     <category>Objects</category>
     <comment>Terminates action subscriptions.</comment>
-    <prototype>ERR UnsubscribeAction(OBJECTPTR Object, LONG Action)</prototype>
+    <prototype>ERR UnsubscribeAction(OBJECTPTR Object, AC Action)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The object that you are unsubscribing from.</param>
-      <param type="LONG" name="Action" lookup="AC">The ID of the action that will be unsubscribed, or zero for all actions.</param>
+      <param type="AC" name="Action" lookup="AC">The ID of the action that will be unsubscribed, or zero for all actions.</param>
     </input>
     <description>
 <p>The UnsubscribeAction() function will terminate subscriptions made by <function>SubscribeAction</function>.</p>
-<p>To terminate multiple subscriptions in a single call, set the Action parameter to zero.</p>
+<p>To terminate multiple subscriptions in a single call, set the <code>Action</code> parameter to zero.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
@@ -2012,6 +2022,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="NewChild"/>
       <const name="NewObject"/>
       <const name="NewOwner"/>
+      <const name="NewPlacement"/>
       <const name="Next"/>
       <const name="Prev"/>
       <const name="Query"/>
@@ -2094,6 +2105,25 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="STRIP_QUOTES">Removes quotes from key values that are quote-encapsulated.</const>
     </constants>
 
+    <constants lookup="CON" comment="Gamepad controller buttons.">
+      <const name="DPAD_DOWN">Directional pad down.</const>
+      <const name="DPAD_LEFT">Directional pad left.</const>
+      <const name="DPAD_RIGHT">Directional pad right.</const>
+      <const name="DPAD_UP">Directional pad up.</const>
+      <const name="GAMEPAD_E">East button (B)</const>
+      <const name="GAMEPAD_N">North button (Y)</const>
+      <const name="GAMEPAD_S">South button (A)</const>
+      <const name="GAMEPAD_W">West button (X)</const>
+      <const name="LEFT_BUMPER_1">Gamepad left-hand bumper 1 (top, primary).</const>
+      <const name="LEFT_BUMPER_2">Gamepad left-hand bumper 2 (lower).</const>
+      <const name="LEFT_THUMB">Left thumb stick depressed.</const>
+      <const name="RIGHT_BUMPER_1">Gamepad right-hand bumper 1 (top, primary).</const>
+      <const name="RIGHT_BUMPER_2">Gamepad right-hand bumper 2 (lower).</const>
+      <const name="RIGHT_THUMB">Right thumb stick depressed.</const>
+      <const name="SELECT">Gamepad select or back button.</const>
+      <const name="START">Gamepad start button.</const>
+    </constants>
+
     <constants lookup="DATA" comment="Data codes">
       <const name="AUDIO">Audio file data, recognised by the Sound class</const>
       <const name="CONTENT">Document content (between XML tags) - sent by document objects only</const>
@@ -2110,7 +2140,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="DEVICE">
+      <const name="BOOKMARK">This marker indicates that the presented volume is a bookmark and not a device name.</const>
       <const name="COMPACT_DISC">Compact disc style device</const>
+      <const name="FIXED">Catch-all for fixed media devices that are not directly identifiable.</const>
       <const name="FLOPPY_DISK">Floppy disk style device</const>
       <const name="HARD_DISK">Hard disk style device</const>
       <const name="MEMORY">Device is RAM, ROM, WORM, NVRAM, flashdisk or other form of memory.  Does not guarantee a fast connection as it could be over a slow USB 1.1 connection for example</const>
@@ -2126,7 +2158,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="SOFTWARE">Device is virtual/software defined</const>
       <const name="TAPE">Tape/Stream style device</const>
       <const name="TEMPORARY">All storage is temporary</const>
-      <const name="USB">Removable USB storage device.  May be further qualified by <code>HARDDISK</code>, <code>FLOPPYDISK</code> etc</const>
+      <const name="USB">Removable USB storage device.  May be further qualified by <code>HARD_DISK</code>, <code>FLOPPY_DISK</code> etc</const>
       <const name="WRITE">Device is writeable</const>
     </constants>
 
@@ -2320,36 +2352,23 @@ SetField(Object, FID_Statement|TSTR, "string");
 
     <constants lookup="JET" comment="JET constants are documented in GetInputEvent()">
       <const name="ABS_XY">The X, Y values are defined as absolute coordinates, relative to the top-left of the display.</const>
-      <const name="ANALOG2_XY">As for <code>ANALOG_XY</code>, this type covers a second analog stick if present.</const>
-      <const name="ANALOG2_Z">As for <code>ANALOG_Z</code>, this type covers a second analog stick if present.</const>
-      <const name="ANALOG_XY">Position for the default analog control (on gamepads this is the left analog control).  Analog values range between -1.0 and 1.0.  A value of zero indicates that the control is at rest.</const>
-      <const name="ANALOG_Z">3D or yoke position for the default analog control.  A negative value indicates that the control has been pulled out and a positive value indicates that it has been pushed in.</const>
-      <const name="BUTTON_1">Left mouse button, XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
+      <const name="BUTTON_1">Left mouse button; XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
       <const name="BUTTON_10">Non-specific button assignment.</const>
-      <const name="BUTTON_2">Right mouse button, XBox X button, PS cross button.</const>
-      <const name="BUTTON_3">Middle mouse button, XBox Y button, PS triangle.</const>
-      <const name="BUTTON_4">XBox B button, PS circle.</const>
-      <const name="BUTTON_5">Left analog stick depressed.</const>
-      <const name="BUTTON_6">Right analog stick depressed.</const>
+      <const name="BUTTON_2">Right mouse button; XBox X button, PS cross button.</const>
+      <const name="BUTTON_3">Middle mouse button; XBox Y button, PS triangle.</const>
+      <const name="BUTTON_4">Alt. mouse button 1; XBox B button, PS circle.</const>
+      <const name="BUTTON_5">Alt. mouse button 2.</const>
+      <const name="BUTTON_6">Non-specific button assignment.</const>
       <const name="BUTTON_7">Non-specific button assignment.</const>
       <const name="BUTTON_8">Non-specific button assignment.</const>
       <const name="BUTTON_9">Non-specific button assignment.</const>
-      <const name="BUTTON_SELECT">Gamepad select button - value is 0 or 1.</const>
-      <const name="BUTTON_START">Gamepad start button - value is 0 or 1.</const>
       <const name="CROSSED_IN">This message is sent by the input system when the mouse pointer enters an area for the first time.  The message value refers to the object ID of the container being monitored for movement.</const>
       <const name="CROSSED_OUT">This message is sent by the input system when the mouse pointer leaves an area.  The message value refers to the object ID of the container being monitored for movement.</const>
       <const name="DEVICE_TILT_XY">Controller tilted on the X/Y axis.  Value indicates angle, -ve = left, +ve = right</const>
       <const name="DEVICE_TILT_Z">Controller is rising or falling.  Value expressed as 'speed',</const>
-      <const name="DIGITAL_XY">Digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.</const>
       <const name="DISPLAY_EDGE">Recently supplied input occurred at the edge of the display.</const>
-      <const name="LEFT_BUMPER_1">Gamepad left-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
-      <const name="LEFT_BUMPER_2">Gamepad left-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
       <const name="PEN_TILT_XY">For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</const>
       <const name="PRESSURE">Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough</const>
-      <const name="RIGHT_BUMPER_1">Gamepad right-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
-      <const name="RIGHT_BUMPER_2">Gamepad right-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
-      <const name="TRIGGER_LEFT">Gamepad left-hand trigger - value is between 0 - 1.0 (0 is released, 1.0 is fully depressed).</const>
-      <const name="TRIGGER_RIGHT">Gamepad right-hand trigger.</const>
       <const name="WHEEL">Mouse wheel rotation - the value generally reflects the number of 'clicks' rotated on the wheel.</const>
       <const name="WHEEL_TILT">Some mouse wheels can be tilted to the left or right.  Ranges from -1.0 to +1.0</const>
     </constants>
@@ -2359,7 +2378,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="ANCHORED">Cursor has been anchored with LockCursor()</const>
       <const name="BUTTON">Input is a physical button or switch</const>
       <const name="CROSSING">Crossing events manage the entering and leaving of an area.</const>
-      <const name="DBL_CLICK">Set by the input system if the Type is a button and the button has been clicked in quick succession so as to be classed as a double-click.</const>
+      <const name="DBL_CLICK">Set by the input system if the <code>Type</code> is a button and the button has been clicked in quick succession so as to be classed as a double-click.</const>
       <const name="DIGITAL">D-Pad or digital joystick source (restricted to +/- 1)</const>
       <const name="DRAGGED">Set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).</const>
       <const name="DRAG_ITEM">This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.</const>
@@ -2817,7 +2836,6 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</const>
       <const name="MAX_PROCESSES">The maximum number of processes that can be supported at any time.</const>
       <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
-      <const name="PARENT_CONTEXT">Read-only pointer to the parent object of the current context.</const>
       <const name="PRIVILEGED">This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</const>
       <const name="PRIVILEGED_USER">If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</const>
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
@@ -2944,17 +2962,17 @@ SetField(Object, FID_Statement|TSTR, "string");
     </constants>
 
     <constants lookup="VOLUME" comment="Options for SetVolume()">
-      <const name="HIDDEN">Hides the volume so that it will not show up when reading the root folder.</const>
+      <const name="HIDDEN">Hides the volume so that it will not show up when reading volumes from the root path <code>:</code>.</const>
       <const name="PRIORITY">If the volume already exists, the path will be inserted at the beginning of the path list so that it has priority over the others.</const>
       <const name="REPLACE">If the volume already exists, all paths that are attached to it will be replaced with the new path setting.</const>
-      <const name="SYSTEM">Identifies the volume as being created by the system, is immutable and persistent between sessions.</const>
+      <const name="SYSTEM">Identifies the volume as being created by the system (this flag is not for client use).</const>
     </constants>
 
   </types>
   <structs>
     <struct name="ActionArray">
       <field name="Routine" type="APTR">Pointer to the function entry point</field>
-      <field name="ActionCode" type="LONG">Action identifier</field>
+      <field name="ActionCode" type="AC" lookup="AC">Action identifier</field>
     </struct>
 
     <struct name="ActionTable" comment="Structure for ActionList">

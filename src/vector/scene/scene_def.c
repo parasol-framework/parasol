@@ -33,21 +33,22 @@ FDEF maSearchByID[] = { { "ID", FD_LONG }, { "Result", FD_OBJECTPTR|FD_RESULT },
 FDEF maFindDef[] = { { "Name", FD_STR }, { "Def", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clVectorSceneMethods[] = {
-   { -1, (APTR)VECTORSCENE_AddDef, "AddDef", maAddDef, sizeof(struct sc::AddDef) },
-   { -2, (APTR)VECTORSCENE_SearchByID, "SearchByID", maSearchByID, sizeof(struct sc::SearchByID) },
-   { -3, (APTR)VECTORSCENE_FindDef, "FindDef", maFindDef, sizeof(struct sc::FindDef) },
-   { -4, (APTR)VECTORSCENE_Debug, "Debug", 0, 0 },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)VECTORSCENE_AddDef, "AddDef", maAddDef, sizeof(struct sc::AddDef) },
+   { AC(-2), (APTR)VECTORSCENE_SearchByID, "SearchByID", maSearchByID, sizeof(struct sc::SearchByID) },
+   { AC(-3), (APTR)VECTORSCENE_FindDef, "FindDef", maFindDef, sizeof(struct sc::FindDef) },
+   { AC(-4), (APTR)VECTORSCENE_Debug, "Debug", 0, 0 },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clVectorSceneActions[] = {
-   { AC_Draw, VECTORSCENE_Draw },
-   { AC_Free, VECTORSCENE_Free },
-   { AC_Init, VECTORSCENE_Init },
-   { AC_NewObject, VECTORSCENE_NewObject },
-   { AC_Redimension, VECTORSCENE_Redimension },
-   { AC_Reset, VECTORSCENE_Reset },
-   { AC_Resize, VECTORSCENE_Resize },
-   { 0, NULL }
+   { AC::Draw, VECTORSCENE_Draw },
+   { AC::Free, VECTORSCENE_Free },
+   { AC::Init, VECTORSCENE_Init },
+   { AC::NewObject, VECTORSCENE_NewObject },
+   { AC::NewPlacement, VECTORSCENE_NewPlacement },
+   { AC::Redimension, VECTORSCENE_Redimension },
+   { AC::Reset, VECTORSCENE_Reset },
+   { AC::Resize, VECTORSCENE_Resize },
+   { AC::NIL, NULL }
 };
 

@@ -498,7 +498,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 
    if (Self->Size < 8192) return ERR::Okay;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if (Self->prvCompress) {
       // If the original compression object still exists, all we are going to do is free up the raw bitmap data.
@@ -524,7 +524,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
       LONG result;
       if (glCompress->compressBuffer(Self->Data, Self->Size, buffer, Self->Size, &result) IS ERR::Okay) {
          if (AllocMemory(result, MEM::NO_CLEAR, &Self->prvCompress) IS ERR::Okay) {
-            CopyMemory(buffer, Self->prvCompress, result);
+            copymem(buffer, Self->prvCompress, result);
             FreeResource(buffer);
          }
          else error = ERR::ReallocMemory;
@@ -1758,7 +1758,7 @@ static ERR BITMAP_Read(extBitmap *Self, struct acRead *Args)
 
    LONG len = Args->Length;
    if (Self->Position + len > Self->Size) len = Self->Size - Self->Position;
-   CopyMemory(Self->Data + Self->Position, Args->Buffer, len);
+   copymem(Self->Data + Self->Position, Args->Buffer, len);
    Self->Position += len;
    Args->Result = len;
    return ERR::Okay;
@@ -1905,7 +1905,7 @@ setfields:
          else if (Self->LineWidth & 0x0002) alignment = 16;
          else alignment = 32;
 
-         ClearMemory(&Self->x11.ximage, sizeof(Self->x11.ximage));
+         clearmem(&Self->x11.ximage, sizeof(Self->x11.ximage));
 
          Self->x11.ximage.width       = Self->Width;
          Self->x11.ximage.height      = Self->Height;
@@ -1931,7 +1931,7 @@ setfields:
       else if (Self->LineWidth & 0x0002) alignment = 16;
       else alignment = 32;
 
-      ClearMemory(&Self->x11.ximage, sizeof(XImage));
+      clearmem(&Self->x11.ximage, sizeof(XImage));
 
       Self->x11.ximage.width       = Self->Width;
       Self->x11.ximage.height      = Self->Height;
@@ -2003,7 +2003,7 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 
    // Create PCX Header
 
-   ClearMemory(&pcx, sizeof(pcx));
+   clearmem(&pcx, sizeof(pcx));
    pcx.Signature = 10;       // ZSoft PCX-files
    pcx.Version   = 5;        // Version
    pcx.Encoding  = 1;        // Run Length Encoding=ON

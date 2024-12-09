@@ -12,18 +12,13 @@ conjunction with the @Vector module.  This means that the output is compatible w
 detail with our existing vector API.  Consequently, document formatting is closely integrated with SVG concepts
 and seamlessly inherits SVG functionality such as filling and stroking commands.
 
-<header>Safety</>
+The native document format in Parasol is RIPL.  Documentation for RIPL is available in the Parasol Wiki.  Other 
+document formats may be supported as sub-classes, but bear in mind that document parsing is a one-way trip and
+stateful information such as the HTML DOM is not supported.
 
-The Document class is intended to be safe to use when loading content from an unknown source.  Processing will be
-aborted if a problem is found or the document appears to be unrenderable.  It is however, not guaranteed that
-exploits are impossible.  Consideration should also be given to the possibility of exploits that target third party
-libraries such as libpng and libjpeg for instance.
-
-By default, script execution is not enabled when parsing a document source.  If support for scripts is enabled,
-there is no meaningful level of safety on offer when the document is processed.  This feature should not be
-used unless the source document has been written by the client, or has otherwise been received from a trusted source.
-
-To mitigate security problems, we recommend that the application is built with some form of sandbox that will stop
+The Document class does not include a security barrier in its current form.  Documents that include scripted code
+should not be processed unless they originate from a trusted source and are confirmed as such.
+To mitigate security problems, we recommend that the application is built with some form of sandbox that can prevent
 the system being compromised by bad actors.  Utilising a project such as Win32 App Isolation
 https://github.com/microsoft/win32-app-isolation is one potential way of doing this.
 
@@ -46,6 +41,8 @@ static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result
    auto Self = (extDocument *)CurrentContext();
    Self->Scene = NULL;
    Self->Viewport = NULL;
+   Self->Page = NULL;
+   Self->View = NULL;
 
    // If the viewport is being forcibly terminated (e.g. by window closure) then the cleanest way to deal with
    // lingering page resources is to remove them now.
@@ -90,6 +87,22 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR R
                Self->Page->draw();
                break;
             }
+         }
+      }
+   }
+}
+
+static void notify_listener_free(OBJECTPTR Listener, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   for (LONG t=0; t < LONG(DRT::END); t++) {
+restart:
+      auto &triggers = Self->Triggers[t];
+      for (auto cb=triggers.begin(); cb != triggers.end(); cb++) {
+         if (cb->Context IS Listener) {
+            Self->Triggers[t].erase(cb);
+            goto restart;
          }
       }
    }
@@ -143,7 +156,7 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
 /*********************************************************************************************************************
 
 -ACTION-
-Activate: Opens the current document selection.
+Activate: Activates all child objects of the document.
 
 Calling the Activate() action on a document object will forward Activate() calls to its child objects.
 
@@ -211,6 +224,13 @@ static ERR DOCUMENT_AddListener(extDocument *Self, struct doc::AddListener *Args
    if ((!Args) or (Args->Trigger IS DRT::NIL) or (!Args->Function)) return ERR::NullArgs;
 
    Self->Triggers[LONG(Args->Trigger)].push_back(*Args->Function);
+
+   // Scripts can't auto-remove listeners, so a Free subscription is necessary.  Functional
+   // subscribers are expected to self-manage however.
+
+   if (Args->Function->isScript()) {
+      SubscribeAction(Args->Function->Context, AC::Free, C_FUNCTION(notify_listener_free));
+   }
    return ERR::Okay;
 }
 
@@ -598,17 +618,14 @@ static ERR DOCUMENT_Free(extDocument *Self)
 {
    if (Self->FlashTimer)  { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
-   Self->Page = NULL; // Page and View are freed by their parent Viewport.
-   Self->View = NULL;
-
-   if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
+   if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, AC::NIL);
 
    if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
 
-   if (Self->Viewport) UnsubscribeAction(Self->Viewport, 0);
+   if (Self->Viewport) UnsubscribeAction(Self->Viewport, AC::NIL);
 
    if (Self->EventCallback.isScript()) {
-      UnsubscribeAction(Self->EventCallback.Context, AC_Free);
+      UnsubscribeAction(Self->EventCallback.Context, AC::Free);
       Self->EventCallback.clear();
    }
 
@@ -616,13 +633,23 @@ static ERR DOCUMENT_Free(extDocument *Self)
 
    if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = NULL; }
 
+   if (Self->Page) { FreeResource(Self->Page); Self->Page = NULL; }
+   if (Self->View) { FreeResource(Self->View); Self->View = NULL; }
+
    Self->~extDocument();
    return ERR::Okay;
 }
 
 /*********************************************************************************************************************
 -ACTION-
-GetKey: Retrieves script parameters.
+GetKey: Retrieves global variables and URI parameters.
+
+Use GetKey() to access the global variables and URI parameters of a document.  Priority is given to global
+variables if there is a name clash.
+
+The current value of each document widget is also available as a global variable accessible from GetKey().  The 
+key-value will be given the same name as that specified in the widget's element.
+
 -END-
 *********************************************************************************************************************/
 
@@ -631,115 +658,16 @@ static ERR DOCUMENT_GetKey(extDocument *Self, struct acGetKey *Args)
    if ((!Args) or (!Args->Value) or (!Args->Key) or (Args->Size < 2)) return ERR::Args;
 
    if (Self->Vars.contains(Args->Key)) {
-      StrCopy(Self->Vars[Args->Key], Args->Value, Args->Size);
+      strcopy(Self->Vars[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
    else if (Self->Params.contains(Args->Key)) {
-      StrCopy(Self->Params[Args->Key], Args->Value, Args->Size);
+      strcopy(Self->Params[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
    Args->Value[0] = 0;
    return ERR::UnsupportedField;
-}
-
-//********************************************************************************************************************
-
-static ERR DOCUMENT_Init(extDocument *Self)
-{
-   pf::Log log;
-
-   if (!Self->Viewport) {
-      if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::VECTORVIEWPORT)) {
-         Self->Viewport = (objVectorViewport *)Self->Owner;
-      }
-      else return log.warning(ERR::UnsupportedOwner);
-   }
-
-   if (!Self->Focus) Self->Focus = Self->Viewport;
-
-   if (Self->Focus->classID() != CLASSID::VECTORVIEWPORT) {
-      return log.warning(ERR::WrongObjectType);
-   }
-
-   if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
-
-   if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
-      Self->Viewport->subscribeKeyboard(C_FUNCTION(key_event));
-      SubscribeAction(Self->Focus, AC_Focus, C_FUNCTION(notify_focus_viewport));
-      SubscribeAction(Self->Focus, AC_LostFocus, C_FUNCTION(notify_lostfocus_viewport));
-      SubscribeAction(Self->Viewport, AC_Disable, C_FUNCTION(notify_disable_viewport));
-      SubscribeAction(Self->Viewport, AC_Enable, C_FUNCTION(notify_enable_viewport));
-   }
-
-   SubscribeAction(Self->Viewport, AC_Free, C_FUNCTION(notify_free_viewport));
-
-   Self->VPWidth  = Self->Viewport->get<DOUBLE>(FID_Width);
-   Self->VPHeight = Self->Viewport->get<DOUBLE>(FID_Height);
-
-   FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
-   Self->Viewport->setFillColour(bkgd, 4);
-
-   // Allocate the view and page areas
-
-   //if ((Self->Scene = objVectorScene::create::local(
-   //      fl::Name("docScene"),
-   //      fl::Owner(Self->Viewport->UID)))) {
-   //}
-   //else return ERR::CreateObject;
-
-   Self->Scene = Self->Viewport->Scene;
-
-   if ((Self->View = objVectorViewport::create::global(
-         fl::Name("docView"),
-         fl::Owner(Self->Viewport->UID),
-         fl::Overflow(VOF::HIDDEN),
-         fl::X(0), fl::Y(0),
-         fl::XOffset(0), fl::YOffset(0)))) {
-   }
-   else return ERR::CreateObject;
-
-   if ((Self->Page = objVectorViewport::create::global(
-         fl::Name("docPage"),
-         fl::Owner(Self->View->UID),
-         fl::X(0), fl::Y(0),
-         fl::Width(MAX_PAGE_WIDTH), fl::Height(MAX_PAGE_HEIGHT)))) {
-
-      // Recent changes mean that page input handling could be merged with inputevent_cell()
-      // if necessary (VectorScene already manages existing use-cases).
-      //if (Self->Page->Scene->SurfaceID) {
-      //   vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(consume_input_events));
-      //}
-   }
-   else return ERR::CreateObject;
-
-   Self->View->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_view));
-
-   // Flash the cursor via the timer
-
-   if ((Self->Flags & DCF::EDIT) != DCF::NIL) {
-      SubscribeTimer(0.5, C_FUNCTION(flash_cursor), &Self->FlashTimer);
-   }
-
-   // Load a document file into the line array if required
-
-   Self->UpdatingLayout = true;
-   if (!Self->Path.empty()) {
-      if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
-         if (auto error = load_doc(Self, Self->Path, false); error != ERR::Okay) {
-            return error;
-         }
-      }
-      else {
-         // XML data is probably forthcoming and the location just contains the page name and/or parameters to use.
-
-         process_parameters(Self, Self->Path);
-      }
-   }
-
-   redraw(Self, true);
-
-   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -827,6 +755,106 @@ static ERR DOCUMENT_HideIndex(extDocument *Self, struct doc::HideIndex *Args)
          }
       }
    }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR DOCUMENT_Init(extDocument *Self)
+{
+   pf::Log log;
+
+   if (!Self->Viewport) {
+      if ((Self->Owner) and (Self->Owner->classID() IS CLASSID::VECTORVIEWPORT)) {
+         Self->Viewport = (objVectorViewport *)Self->Owner;
+      }
+      else return log.warning(ERR::UnsupportedOwner);
+   }
+
+   if (!Self->Focus) Self->Focus = Self->Viewport;
+
+   if (Self->Focus->classID() != CLASSID::VECTORVIEWPORT) {
+      return log.warning(ERR::WrongObjectType);
+   }
+
+   if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
+
+   if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
+      Self->Viewport->subscribeKeyboard(C_FUNCTION(key_event));
+      SubscribeAction(Self->Focus, AC::Focus, C_FUNCTION(notify_focus_viewport));
+      SubscribeAction(Self->Focus, AC::LostFocus, C_FUNCTION(notify_lostfocus_viewport));
+      SubscribeAction(Self->Viewport, AC::Disable, C_FUNCTION(notify_disable_viewport));
+      SubscribeAction(Self->Viewport, AC::Enable, C_FUNCTION(notify_enable_viewport));
+   }
+
+   SubscribeAction(Self->Viewport, AC::Free, C_FUNCTION(notify_free_viewport));
+
+   Self->VPWidth  = Self->Viewport->get<DOUBLE>(FID_Width);
+   Self->VPHeight = Self->Viewport->get<DOUBLE>(FID_Height);
+
+   FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
+   Self->Viewport->setFillColour(bkgd, 4);
+
+   // Allocate the view and page areas.  NB: If the parent Viewport is terminated then the
+   // Page and View references will be nullified automatically.
+
+   //if ((Self->Scene = objVectorScene::create::local(
+   //      fl::Name("docScene"),
+   //      fl::Owner(Self->Viewport->UID)))) {
+   //}
+   //else return ERR::CreateObject;
+
+   Self->Scene = Self->Viewport->Scene;
+
+   if ((Self->View = objVectorViewport::create::global(
+         fl::Name("docView"),
+         fl::Owner(Self->Viewport->UID),
+         fl::Overflow(VOF::HIDDEN),
+         fl::X(0), fl::Y(0),
+         fl::XOffset(0), fl::YOffset(0)))) {
+   }
+   else return ERR::CreateObject;
+
+   if ((Self->Page = objVectorViewport::create::global(
+         fl::Name("docPage"),
+         fl::Owner(Self->View->UID),
+         fl::X(0), fl::Y(0),
+         fl::Width(MAX_PAGE_WIDTH), fl::Height(MAX_PAGE_HEIGHT)))) {
+
+      // Recent changes mean that page input handling could be merged with inputevent_cell()
+      // if necessary (VectorScene already manages existing use-cases).
+      //if (Self->Page->Scene->SurfaceID) {
+      //   vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, C_FUNCTION(consume_input_events));
+      //}
+   }
+   else return ERR::CreateObject;
+
+   Self->View->subscribeFeedback(FM::PATH_CHANGED, C_FUNCTION(feedback_view));
+
+   // Flash the cursor via the timer
+
+   if ((Self->Flags & DCF::EDIT) != DCF::NIL) {
+      SubscribeTimer(0.5, C_FUNCTION(flash_cursor), &Self->FlashTimer);
+   }
+
+   // Load a document file into the line array if required
+
+   Self->UpdatingLayout = true;
+   if (!Self->Path.empty()) {
+      if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
+         if (auto error = load_doc(Self, Self->Path, false); error != ERR::Okay) {
+            return error;
+         }
+      }
+      else {
+         // XML data is probably forthcoming and the location just contains the page name and/or parameters to use.
+
+         process_parameters(Self, Self->Path);
+      }
+   }
+
+   redraw(Self, true);
 
    return ERR::Okay;
 }
@@ -941,8 +969,13 @@ static ERR DOCUMENT_InsertText(extDocument *Self, struct doc::InsertText *Args)
 
 static ERR DOCUMENT_NewObject(extDocument *Self)
 {
-   new (Self) extDocument;
    unload_doc(Self);
+   return ERR::Okay;
+}
+
+static ERR DOCUMENT_NewPlacement(extDocument *Self)
+{
+   new (Self) extDocument;
    return ERR::Okay;
 }
 
@@ -996,13 +1029,13 @@ static ERR DOCUMENT_ReadContent(extDocument *Self, struct doc::ReadContent *Args
 
       auto str = buffer.str();
       if (str.empty()) return ERR::NoData;
-      if ((Args->Result = StrClone(str.c_str()))) return ERR::Okay;
+      if ((Args->Result = strclone(str))) return ERR::Okay;
       else return log.warning(ERR::AllocMemory);
    }
    else if (Args->Format IS DATA::RAW) {
       STRING output;
       if (AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output) IS ERR::Okay) {
-         CopyMemory(Self->Stream.data.data() + Args->Start, output, Args->End - Args->Start);
+         copymem(Self->Stream.data.data() + Args->Start, output, Args->End - Args->Start);
          output[Args->End - Args->Start] = 0;
          Args->Result = output;
          return ERR::Okay;
@@ -1024,7 +1057,7 @@ static ERR DOCUMENT_Refresh(extDocument *Self)
 
    if (Self->Processing) {
       log.msg("Recursion detected - refresh will be delayed.");
-      QueueAction(AC_Refresh, Self->UID);
+      QueueAction(AC::Refresh, Self->UID);
       return ERR::Okay;
    }
 
@@ -1091,7 +1124,7 @@ static ERR DOCUMENT_RemoveContent(extDocument *Self, struct doc::RemoveContent *
    if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
    if (Args->End <= Args->Start) return log.warning(ERR::Args);
 
-   CopyMemory(Self->Stream.data.data() + Args->End, Self->Stream.data.data() + Args->Start, Self->Stream.data.size() - Args->End);
+   copymem(Self->Stream.data.data() + Args->End, Self->Stream.data.data() + Args->Start, Self->Stream.data.size() - Args->End);
    Self->Stream.data.resize(Self->Stream.data.size() - Args->End - Args->Start);
 
    Self->UpdatingLayout = true;
@@ -1220,13 +1253,13 @@ static ERR DOCUMENT_SelectLink(extDocument *Self, struct doc::SelectLink *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-SetKey: Passes variable parameters to loaded documents.
+SetKey: Set a global key-value in the document.
 -END-
 *********************************************************************************************************************/
 
 static ERR DOCUMENT_SetKey(extDocument *Self, struct acSetKey *Args)
 {
-   // Please note that it is okay to set zero-length parameters
+   // Note: Zero-length parameter values are permitted.
 
    if ((!Args) or (!Args->Key)) return ERR::NullArgs;
    if (!Args->Key[0]) return ERR::Args;

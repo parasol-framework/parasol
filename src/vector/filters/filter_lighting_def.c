@@ -5,16 +5,16 @@ FDEF maSetPointLight[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Z", FD_DOU
 FDEF maSetSpotLight[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "Z", FD_DOUBLE }, { "PX", FD_DOUBLE }, { "PY", FD_DOUBLE }, { "PZ", FD_DOUBLE }, { "Exponent", FD_DOUBLE }, { "ConeAngle", FD_DOUBLE }, { 0, 0 } };
 
 static const struct MethodEntry clLightingFXMethods[] = {
-   { -20, (APTR)LIGHTINGFX_SetDistantLight, "SetDistantLight", maSetDistantLight, sizeof(struct lt::SetDistantLight) },
-   { -22, (APTR)LIGHTINGFX_SetPointLight, "SetPointLight", maSetPointLight, sizeof(struct lt::SetPointLight) },
-   { -21, (APTR)LIGHTINGFX_SetSpotLight, "SetSpotLight", maSetSpotLight, sizeof(struct lt::SetSpotLight) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-20), (APTR)LIGHTINGFX_SetDistantLight, "SetDistantLight", maSetDistantLight, sizeof(struct lt::SetDistantLight) },
+   { AC(-22), (APTR)LIGHTINGFX_SetPointLight, "SetPointLight", maSetPointLight, sizeof(struct lt::SetPointLight) },
+   { AC(-21), (APTR)LIGHTINGFX_SetSpotLight, "SetSpotLight", maSetSpotLight, sizeof(struct lt::SetSpotLight) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clLightingFXActions[] = {
-   { AC_Draw, LIGHTINGFX_Draw },
-   { AC_Free, LIGHTINGFX_Free },
-   { AC_NewObject, LIGHTINGFX_NewObject },
-   { 0, NULL }
+   { AC::Draw, LIGHTINGFX_Draw },
+   { AC::Free, LIGHTINGFX_Free },
+   { AC::NewPlacement, LIGHTINGFX_NewPlacement },
+   { AC::NIL, NULL }
 };
 

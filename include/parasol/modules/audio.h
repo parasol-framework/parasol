@@ -161,14 +161,14 @@ struct AudioLoop {
 // Audio methods
 
 namespace snd {
-struct OpenChannels { LONG Total; LONG Result; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct CloseChannels { LONG Handle; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct AddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveSample { LONG Handle; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetSampleLength { LONG Sample; LARGE Length; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct AddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Beep { LONG Pitch; LONG Duration; LONG Volume; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume; static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct OpenChannels { LONG Total; LONG Result; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CloseChannels { LONG Handle; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveSample { LONG Handle; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetSampleLength { LONG Sample; LARGE Length; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Beep { LONG Pitch; LONG Duration; LONG Volume; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -189,51 +189,51 @@ class objAudio : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
-   inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }
+   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, NULL); }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
-      return Action(AC_SaveToObject, this, &args);
+      return Action(AC::SaveToObject, this, &args);
    }
    inline ERR openChannels(LONG Total, LONG * Result) noexcept {
       struct snd::OpenChannels args = { Total, (LONG)0 };
-      ERR error = Action(-1, this, &args);
+      ERR error = Action(AC(-1), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR closeChannels(LONG Handle) noexcept {
       struct snd::CloseChannels args = { Handle };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR addSample(FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
       struct snd::AddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
-      ERR error = Action(-3, this, &args);
+      ERR error = Action(AC(-3), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR removeSample(LONG Handle) noexcept {
       struct snd::RemoveSample args = { Handle };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR setSampleLength(LONG Sample, LARGE Length) noexcept {
       struct snd::SetSampleLength args = { Sample, Length };
-      return(Action(-5, this, &args));
+      return(Action(AC(-5), this, &args));
    }
    inline ERR addStream(FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
       struct snd::AddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
-      ERR error = Action(-6, this, &args);
+      ERR error = Action(AC(-6), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR beep(LONG Pitch, LONG Duration, LONG Volume) noexcept {
       struct snd::Beep args = { Pitch, Duration, Volume };
-      return(Action(-7, this, &args));
+      return(Action(AC(-7), this, &args));
    }
    inline ERR setVolume(LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) noexcept {
       struct snd::SetVolume args = { Index, Name, Flags, Channel, Volume };
-      return(Action(-8, this, &args));
+      return(Action(AC(-8), this, &args));
    }
 
    // Customised field setting
@@ -338,13 +338,13 @@ class objSound : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }
-   inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }
-   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
-   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
    inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
-      auto error = Action(AC_GetKey, this, &args);
+      auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
@@ -354,7 +354,7 @@ class objSound : public Object {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+      if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
       }
@@ -364,22 +364,22 @@ class objSound : public Object {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      return Action(AC_Read, this, &read);
+      return Action(AC::Read, this, &read);
    }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
-      return Action(AC_SaveToObject, this, &args);
+      return Action(AC::SaveToObject, this, &args);
    }
    inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
-      return Action(AC_Seek, this, &args);
+      return Action(AC::Seek, this, &args);
    }
    inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
    inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
    inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
    inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetKey args = { FieldName, Value };
-      return Action(AC_SetKey, this, &args);
+      return Action(AC::SetKey, this, &args);
    }
 
    // Customised field setting

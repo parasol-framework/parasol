@@ -443,7 +443,7 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
                      while (lookup->Name) {
                         if (large & lookup->Value) {
                            if ((pos) and (pos < BufferSize-1)) Buffer[pos++] = '|';
-                           pos += StrCopy(lookup->Name, Buffer+pos, BufferSize-pos);
+                           pos += strcopy(lookup->Name, Buffer+pos, BufferSize-pos);
                         }
                         lookup++;
                      }
@@ -454,7 +454,7 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
                   if ((lookup = (FieldDef *)field->Arg)) {
                      while (lookup->Name) {
                         if (large IS lookup->Value) {
-                           StrCopy(lookup->Name, Buffer, BufferSize);
+                           strcopy(lookup->Name, Buffer, BufferSize);
                            break;
                         }
                         lookup++;
@@ -466,9 +466,9 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
 
             if (field->Flags & FD_OBJECT) {
                Buffer[0] = '#';
-               IntToStr(large, Buffer+1, BufferSize-1);
+               strcopy(std::to_string(large), Buffer+1, BufferSize-1);
             }
-            else IntToStr(large, Buffer, BufferSize);
+            else strcopy(std::to_string(large), Buffer, BufferSize);
          }
          else return error;
       }
@@ -488,7 +488,7 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
             }
             else snprintf(Buffer, BufferSize, "#%d", obj->UID);
          }
-         else StrCopy("0", Buffer, BufferSize);
+         else strcopy("0", Buffer, BufferSize);
       }
       else {
          log.warning("Field %s is not a value that can be converted to a string.", field->Name);
@@ -498,13 +498,13 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
       return ERR::Okay;
    }
    else {
-      if (CheckAction(Object, AC_GetKey) IS ERR::Okay) {
+      if (CheckAction(Object, AC::GetKey) IS ERR::Okay) {
          struct acGetKey var = {
             FieldName, // Must use the original field name argument, not the modified fname
             Buffer,
             BufferSize
          };
-         if (Action(AC_GetKey, Object, &var) IS ERR::Okay) {
+         if (Action(AC::GetKey, Object, &var) IS ERR::Okay) {
             return ERR::Okay;
          }
          else log.msg("Could not find field %s from object %p (%s).", FieldName, Object, Object->className());
@@ -520,14 +520,12 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
 
 ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Result, CSTRING Option, LONG *TotalElements)
 {
-   pf::Log log("GetField");
-
    //log.msg("[%s:%d] Name: %s, Flags: $%x", ((extMetaClass *)Object->Class)->Name, Object->UID, Field->Name, DestFlags);
 
    BYTE value[16]; // 128 bits of space
    APTR data;
    LONG array_size = -1;
-   LONG srcflags = Field->Flags;
+   auto srcflags = Field->Flags;
 
    if (!(DestFlags & (FD_UNIT|FD_LARGE|FD_LONG|FD_DOUBLE|FD_POINTER|FD_STRING|FD_ARRAY))) goto mismatch;
 
@@ -536,7 +534,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
 
       Unit var;
       ERR error;
-      ObjectContext ctx(Object, 0, Field);
+      ObjectContext ctx(Object, AC::NIL, Field);
 
       if (DestFlags & FD_UNIT) {
          error = Field->GetValue(Object, Result);
@@ -570,7 +568,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
    }
 
    if (Field->GetValue) {
-      ObjectContext ctx(Object, 0, Field);
+      ObjectContext ctx(Object, AC::NIL, Field);
       auto get_field = (ERR (*)(APTR, APTR, LONG *))Field->GetValue;
       ERR error = get_field(Object, value, &array_size);
       if (error != ERR::Okay) return error;
@@ -585,7 +583,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
          if (Option) { // If an option is specified, treat it as an array index.
             auto vec = (pf::vector<int> *)data;
             if (TotalElements) *TotalElements = vec->size();
-            unsigned index = StrToInt(Option);
+            unsigned index = strtol(Option, NULL, 0);
             if ((index >= 0) and (index < vec->size())) {
                if (srcflags & FD_LONG) data = &((pf::vector<LONG> *)data)[0][index];
                else if (srcflags & (FD_LARGE|FD_DOUBLE))   data = &((pf::vector<DOUBLE> *)data)[0][index];
@@ -613,7 +611,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
                if (TotalElements) *TotalElements = vec->size();
                for (auto &val : vec[0]) buffer << val << ',';
             }
-            auto i = StrCopy(buffer.str().c_str(), strGetField, sizeof(strGetField));
+            auto i = strcopy(buffer.str(), strGetField, sizeof(strGetField));
             if (i > 0) strGetField[i-1] = 0; // Eliminate trailing comma
             *((STRING *)Result) = strGetField;
          }
@@ -622,6 +620,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
       }
       else {
          if (array_size IS -1) {
+            pf::Log log("GetField");
             log.warning("Array sizing not supported for field %s", Field->Name);
             return ERR::Failed;
          }
@@ -629,7 +628,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
          if (TotalElements) *TotalElements = array_size;
 
          if (Option) { // If an option is specified, treat it as an array index.
-            LONG index = StrToInt(Option);
+            LONG index = strtol(Option, NULL, 0);
             if ((index >= 0) and (index < array_size)) {
                if (srcflags & FD_LONG) data = (BYTE *)data + (sizeof(LONG) * index);
                else if (srcflags & (FD_LARGE|FD_DOUBLE))   data = (BYTE *)data + (sizeof(DOUBLE) * index);
@@ -645,14 +644,14 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
             if (srcflags & FD_LONG) {
                LONG *array = (LONG *)data;
                for (LONG i=0; i < array_size; i++) {
-                  pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
+                  pos += strcopy(std::to_string(*array++), strGetField+pos, sizeof(strGetField)-pos);
                   if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
                }
             }
             else if (srcflags & FD_BYTE) {
                UBYTE *array = (UBYTE *)data;
                for (LONG i=0; i < array_size; i++) {
-                  pos += IntToStr(*array++, strGetField+pos, sizeof(strGetField)-pos);
+                  pos += strcopy(std::to_string(*array++), strGetField+pos, sizeof(strGetField)-pos);
                   if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
                }
             }
@@ -693,7 +692,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
             *((STRING *)Result) = NULL;
          }
          else {
-            IntToStr(*((LONG *)data), strGetField, sizeof(strGetField));
+            strcopy(std::to_string(*((LONG *)data)), strGetField, sizeof(strGetField));
             *((STRING *)Result) = strGetField;
          }
       }
@@ -704,7 +703,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
       else if (DestFlags & FD_LONG)   *((LONG *)Result)   = (LONG)(*((LARGE *)data));
       else if (DestFlags & FD_LARGE)  *((LARGE *)Result)  = *((LARGE *)data);
       else if (DestFlags & FD_STRING) {
-         IntToStr(*((LARGE *)data), strGetField, sizeof(strGetField));
+         strcopy(std::to_string(*((LARGE *)data)), strGetField, sizeof(strGetField));
          *((STRING *)Result) = strGetField;
       }
       else goto mismatch;
@@ -732,13 +731,14 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
       else goto mismatch;
    }
    else {
-      log.warning("I dont recognise field flags of $%.8x.", srcflags);
-      return ERR::UnrecognisedFieldType;
+      pf::Log log("GetField");
+      return log.warning(ERR::UnrecognisedFieldType);
    }
 
    return ERR::Okay;
 
 mismatch:
+   pf::Log log("GetField");
    log.warning("Mismatch while reading %s.%s (field $%.8x, requested $%.8x).", Object->className(), Field->Name, Field->Flags, DestFlags);
    return ERR::FieldTypeMismatch;
 }

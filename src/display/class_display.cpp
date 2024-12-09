@@ -223,38 +223,26 @@ static ERR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
       struct WinDT *data;
       LONG total_items;
       if (!winGetData(request->Preference, &data, &total_items)) {
-         LONG xmlsize = 100; // Receipt header and tail
-
+         std::ostringstream xml;
+         xml << "<receipt totalitems=\"" << total_items << "\" id=\"" << request->Item << "\">";
          for (LONG i=0; i < total_items; i++) {
-            if (DATA(data[i].Datatype) IS DATA::FILE) xmlsize += 30 + data[i].Length;
-            else if (DATA(data[i].Datatype) IS DATA::TEXT) xmlsize += 30 + data[i].Length;
-         }
-
-         STRING xml;
-         if (AllocMemory(xmlsize, MEM::STRING|MEM::NO_CLEAR, &xml) IS ERR::Okay) {
-            LONG pos = snprintf(xml, xmlsize, "<receipt totalitems=\"%d\" id=\"%d\">", total_items, request->Item);
-
-            for (LONG i=0; i < total_items; i++) {
-               if (DATA(data[i].Datatype) IS DATA::FILE) {
-                  pos += snprintf(xml+pos, xmlsize-pos, "<file path=\"%s\"/>", (STRING)data[i].Data);
-               }
-               else if (DATA(data[i].Datatype) IS DATA::TEXT) {
-                  pos += snprintf(xml+pos, xmlsize-pos, "<text>%s</text>", (STRING)data[i].Data);
-               }
-               //else TODO: other types like images need their data saved to disk and referenced as a path, e.g. <image path="clipboard:abc.001"/>
+            if (DATA(data[i].Datatype) IS DATA::FILE) {
+               xml << "<file path=\"" << (CSTRING)data[i].Data << "\"/>";
             }
-            pos += StrCopy("</receipt>", xml+pos, xmlsize-pos);
-
-            struct acDataFeed dc;
-            dc.Object   = Self;
-            dc.Datatype = DATA::RECEIPT;
-            dc.Buffer   = xml;
-            dc.Size     = pos+1;
-            Action(AC_DataFeed, Args->Object, &dc);
-
-            FreeResource(xml);
+            else if (DATA(data[i].Datatype) IS DATA::TEXT) {
+               xml << "<text>" << (CSTRING)data[i].Data << "</text>";
+            }
+            //else TODO: other types like images need their data saved to disk and referenced as a path, e.g. <image path="clipboard:abc.001"/>
          }
-         else return log.warning(ERR::AllocMemory);
+         xml << "</receipt>";
+
+         struct acDataFeed dc;
+         auto result = xml.str();
+         dc.Object   = Self;
+         dc.Datatype = DATA::RECEIPT;
+         dc.Buffer   = pf::strclone(result);
+         dc.Size     = result.size() + 1;
+         Action(AC::DataFeed, Args->Object, &dc);
       }
       else return log.warning(ERR::NoSupport);
       #endif
@@ -332,7 +320,7 @@ static ERR DISPLAY_Focus(extDisplay *Self)
 {
    pf::Log log;
 
-   log.traceBranch("");
+   log.traceBranch();
 #ifdef _WIN32
    winFocus(Self->WindowHandle);
 #elif __xwindows__
@@ -417,19 +405,15 @@ GetKey: Retrieve formatted information from the display.
 static ERR DISPLAY_GetKey(extDisplay *Self, struct acGetKey *Args)
 {
    pf::Log log;
-   ULONG colours;
 
-   if (!Args) return log.warning(ERR::NullArgs);
-   if ((!Args->Key) or (!Args->Value) or (Args->Size < 1)) return log.warning(ERR::Args);
-
-   STRING buffer = Args->Value;
-   buffer[0] = 0;
+   if ((!Args) or (!Args->Key) or (!Args->Value)) return log.warning(ERR::NullArgs);
+   if (Args->Size < 1) return log.warning(ERR::Args);
 
    if (pf::startswith("resolution(", Args->Key)) {
       // Field is in the format:  Resolution(Index, Format) Where 'Format' contains % symbols to indicate variable references.
 
       CSTRING str = Args->Key + 11;
-      LONG index = StrToInt(str);
+      LONG index = strtol(str, NULL, 0);
       while ((*str) and (*str != ')') and (*str != ',')) str++;
       if (*str IS ',') str++;
       while ((*str) and (*str <= 0x20)) str++;
@@ -437,34 +421,28 @@ static ERR DISPLAY_GetKey(extDisplay *Self, struct acGetKey *Args)
       if (Self->Resolutions.empty()) get_resolutions(Self);
 
       if (!Self->Resolutions.empty()) {
-         if (index >= LONG(Self->Resolutions.size())) return ERR::OutOfRange;
+         if (index >= std::ssize(Self->Resolutions)) return ERR::OutOfRange;
 
-         LONG i = 0;
-         while ((*str) and (*str != ')') and (i < Args->Size-1)) {
-            if (*str != '%') {
-               buffer[i++] = *str++;
-               continue;
+         std::ostringstream out;
+         while ((*str) and (*str != ')')) {
+            if (*str != '%') out << *str++;
+            else if (str[1] IS '%') { // Escape?
+               out << '%';
+               str += 2;
             }
-
-            if (str[1] IS '%') {
-               buffer[i++] = '%';
-               continue;
+            else {
+               switch (str[1]) {
+                  case 'w': out << Self->Resolutions[index].width; break;
+                  case 'h': out << Self->Resolutions[index].height; break;
+                  case 'd': out << Self->Resolutions[index].bpp; break;
+                  case 'c': if (Self->Resolutions[index].bpp <= 24) out << (1<<Self->Resolutions[index].bpp);
+                            else out << (1<<24);
+                            break;
+               }
+               str += 2;
             }
-
-            str++;
-
-            switch (*str) {
-               case 'w': i += IntToStr(Self->Resolutions[index].width, buffer+i, Args->Size-i); break;
-               case 'h': i += IntToStr(Self->Resolutions[index].height, buffer+i, Args->Size-i); break;
-               case 'd': i += IntToStr(Self->Resolutions[index].bpp, buffer+i, Args->Size-i); break;
-               case 'c': if (Self->Resolutions[index].bpp <= 24) colours = 1<<Self->Resolutions[index].bpp;
-                         else colours = 1<<24;
-                         i += IntToStr(colours, buffer+i, Args->Size-i);
-                         break;
-            }
-            str++;
          }
-         buffer[i] = 0;
+         pf::strcopy(out.str(), Args->Value, Args->Size);
 
          return ERR::Okay;
       }
@@ -882,7 +860,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
 
    // Take a record of the pixel format for GetDisplayInfo()
 
-   CopyMemory(bmp->ColourFormat, &glColourFormat, sizeof(glColourFormat));
+   copymem(bmp->ColourFormat, &glColourFormat, sizeof(glColourFormat));
 
    if (glSixBitDisplay) Self->Flags |= SCR::BIT_6;
 
@@ -1091,8 +1069,6 @@ static ERR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
 
 static ERR DISPLAY_NewObject(extDisplay *Self)
 {
-   new (Self) extDisplay;
-
    if (NewLocalObject(CLASSID::BITMAP, &Self->Bitmap) != ERR::Okay) return ERR::NewObject;
 
    OBJECTID id;
@@ -1104,35 +1080,35 @@ static ERR DISPLAY_NewObject(extDisplay *Self)
 
    #ifdef __xwindows__
 
-      StrCopy("X11", Self->Chipset, sizeof(Self->Chipset));
-      StrCopy("X Windows", Self->Display, sizeof(Self->Display));
-      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+      strcopy("X11", Self->Chipset, sizeof(Self->Chipset));
+      strcopy("X Windows", Self->Display, sizeof(Self->Display));
+      strcopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      strcopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
 
    #elif _WIN32
 
-      StrCopy("Windows", Self->Chipset, sizeof(Self->Chipset));
-      StrCopy("Windows", Self->Display, sizeof(Self->Display));
-      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+      strcopy("Windows", Self->Chipset, sizeof(Self->Chipset));
+      strcopy("Windows", Self->Display, sizeof(Self->Display));
+      strcopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      strcopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
 
    #elif _GLES_
 
-      StrCopy("OpenGLES", Self->Chipset, sizeof(Self->Chipset));
-      StrCopy("OpenGL", Self->Display, sizeof(Self->Display));
-      StrCopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-      StrCopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
+      strcopy("OpenGLES", Self->Chipset, sizeof(Self->Chipset));
+      strcopy("OpenGL", Self->Display, sizeof(Self->Display));
+      strcopy("N/A", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      strcopy("N/A", Self->Manufacturer, sizeof(Self->Manufacturer));
 
    #else
 
-      StrCopy("Unknown", Self->CertificationDate, sizeof(Self->CertificationDate));
-      StrCopy("Unknown", Self->Chipset, sizeof(Self->Chipset));
-      StrCopy("Unknown", Self->Display, sizeof(Self->Display));
-      StrCopy("Unknown", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-      StrCopy("Unknown", Self->DriverCopyright, sizeof(Self->DriverCopyright));
-      StrCopy("Unknown", Self->DriverVendor, sizeof(Self->DriverVendor));
-      StrCopy("Unknown", Self->DriverVersion, sizeof(Self->DriverVersion));
-      StrCopy("Unknown", Self->Manufacturer, sizeof(Self->Manufacturer));
+      strcopy("Unknown", Self->CertificationDate, sizeof(Self->CertificationDate));
+      strcopy("Unknown", Self->Chipset, sizeof(Self->Chipset));
+      strcopy("Unknown", Self->Display, sizeof(Self->Display));
+      strcopy("Unknown", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
+      strcopy("Unknown", Self->DriverCopyright, sizeof(Self->DriverCopyright));
+      strcopy("Unknown", Self->DriverVendor, sizeof(Self->DriverVendor));
+      strcopy("Unknown", Self->DriverVersion, sizeof(Self->DriverVersion));
+      strcopy("Unknown", Self->Manufacturer, sizeof(Self->Manufacturer));
 
    #endif
 
@@ -1154,6 +1130,12 @@ static ERR DISPLAY_NewObject(extDisplay *Self)
       Self->DisplayType = DT::NATIVE;
    #endif
 
+   return ERR::Okay;
+}
+
+static ERR DISPLAY_NewPlacement(extDisplay *Self)
+{
+   new (Self) extDisplay;
    return ERR::Okay;
 }
 
@@ -1199,7 +1181,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
       return ERR::Failed;
    }
 
-   Action(AC_Resize, Self->Bitmap, Args);
+   Action(AC::Resize, Self->Bitmap, Args);
    Self->Width = Self->Bitmap->Width;
    Self->Height = Self->Bitmap->Height;
 
@@ -1212,7 +1194,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
       XResizeWindow(XDisplay, Self->XWindowHandle, Args->Width, Args->Height);
    }
 
-   Action(AC_Resize, Self->Bitmap, Args);
+   Action(AC::Resize, Self->Bitmap, Args);
    Self->Width = Self->Bitmap->Width;
    Self->Height = Self->Bitmap->Height;
 
@@ -1289,7 +1271,7 @@ SaveImage: Saves the image of a display to a data object.
 
 static ERR DISPLAY_SaveImage(extDisplay *Self, struct acSaveImage *Args)
 {
-   return Action(AC_SaveImage, Self->Bitmap, Args);
+   return Action(AC::SaveImage, Self->Bitmap, Args);
 }
 
 /*********************************************************************************************************************
@@ -1310,18 +1292,18 @@ static ERR DISPLAY_SaveSettings(extDisplay *Self)
 
    if (config.ok()) {
       if ((Self->Flags & SCR::BORDERLESS) IS SCR::NIL) {
-         config->write("DISPLAY", "WindowX", Self->X);
-         config->write("DISPLAY", "WindowY", Self->Y);
+         config->write("DISPLAY", "WindowX", std::to_string(Self->X));
+         config->write("DISPLAY", "WindowY", std::to_string(Self->Y));
 
-         if (Self->Width >= 600) config->write("DISPLAY", "WindowWidth", Self->Width);
-         else config->write("DISPLAY", "WindowWidth", 600);
+         if (Self->Width >= 600) config->write("DISPLAY", "WindowWidth", std::to_string(Self->Width));
+         else config->write("DISPLAY", "WindowWidth", "600");
 
-         if (Self->Height >= 480) config->write("DISPLAY", "WindowHeight", Self->Height);
-         else config->write("DISPLAY", "WindowHeight", 480);
+         if (Self->Height >= 480) config->write("DISPLAY", "WindowHeight", std::to_string(Self->Height));
+         else config->write("DISPLAY", "WindowHeight", "480");
       }
 
       config->write("DISPLAY", "DPMS", dpms_name(Self->PowerMode));
-      config->write("DISPLAY", "FullScreen", ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0);
+      config->write("DISPLAY", "FullScreen", ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? "1" : "0");
 
       config->saveSettings();
    }
@@ -1337,13 +1319,13 @@ static ERR DISPLAY_SaveSettings(extDisplay *Self)
          LONG x, y, width, height, maximise;
 
          if (winGetWindowInfo(Self->WindowHandle, &x, &y, &width, &height, &maximise)) {
-            config->write("DISPLAY", "WindowWidth", width);
-            config->write("DISPLAY", "WindowHeight", height);
-            config->write("DISPLAY", "WindowX", x);
-            config->write("DISPLAY", "WindowY", y);
-            config->write("DISPLAY", "Maximise", maximise);
+            config->write("DISPLAY", "WindowWidth", std::to_string(width));
+            config->write("DISPLAY", "WindowHeight", std::to_string(height));
+            config->write("DISPLAY", "WindowX", std::to_string(x));
+            config->write("DISPLAY", "WindowY", std::to_string(y));
+            config->write("DISPLAY", "Maximise", std::to_string(maximise));
             config->write("DISPLAY", "DPMS", dpms_name(Self->PowerMode));
-            config->write("DISPLAY", "FullScreen", ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0);
+            config->write("DISPLAY", "FullScreen", ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? "1" : "0");
             acSaveSettings(*config);
          }
       }
@@ -1709,7 +1691,7 @@ static ERR DISPLAY_SetMonitor(extDisplay *Self, struct gfx::SetMonitor *Args)
 
    // Get the current monitor record, then set the new scan rates against it.
 
-   ClearMemory(&monitor, sizeof(monitor));
+   clearmem(&monitor, sizeof(monitor));
    glSNAP->Init.GetMonitorInfo(&monitor, glSNAP->Init.GetActiveHead());
 
    monitor.maxResolution = 0;  // Must be zero for SNAP to filter display modes
@@ -1919,7 +1901,7 @@ static ERR DISPLAY_UpdatePalette(extDisplay *Self, struct gfx::UpdatePalette *Ar
       Args->NewPalette->AmtColours = 256;
    }
 
-   CopyMemory(Args->NewPalette, Self->Bitmap->Palette, sizeof(*Args->NewPalette));
+   copymem(Args->NewPalette, Self->Bitmap->Palette, sizeof(*Args->NewPalette));
 
    return ERR::Okay;
 }
@@ -1973,25 +1955,9 @@ If the display is hosted in a client window, the BottomMargin indicates the numb
 and the bottom window edge.
 
 -FIELD-
-CertificationDate: String describing the date of the graphics driver's certification.
-
-The string in this field describes the date on which the graphics card driver was certified.  If this information is
-not available from the driver, a `NULL` pointer is returned.
-
-*********************************************************************************************************************/
-
-static ERR GET_CertificationDate(extDisplay *Self, STRING *Value)
-{
-   *Value = Self->CertificationDate;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
--FIELD-
 Chipset: String describing the graphics chipset.
 
-The string in this field describes the graphic card's chipset.  If this information is not retrievable, a `NULL`
-pointer is returned.
+This string describes the graphic card's chipset, if known.
 
 *********************************************************************************************************************/
 
@@ -2037,7 +2003,7 @@ ERR GET_HDensity(extDisplay *Self, LONG *Value)
       if (style.granted()) {
          char strdpi[32];
          if (acGetKey(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi)) IS ERR::Okay) {
-            *Value = StrToInt(strdpi);
+            *Value = strtol(strdpi, NULL, 0);
             Self->HDensity = *Value; // Store for future use.
             if (!Self->VDensity) Self->VDensity = Self->HDensity;
          }
@@ -2107,7 +2073,7 @@ ERR GET_VDensity(extDisplay *Self, LONG *Value)
       if (style.granted()) {
          char strdpi[32];
          if (acGetKey(style.obj, "/interface/@dpi", strdpi, sizeof(strdpi)) IS ERR::Okay) {
-            *Value = StrToInt(strdpi);
+            *Value = strtol(strdpi, NULL, 0);
             Self->VDensity = *Value;
             if (!Self->HDensity) Self->HDensity = Self->VDensity;
          }
@@ -2145,8 +2111,7 @@ static ERR SET_VDensity(extDisplay *Self, LONG Value)
 -FIELD-
 Display: String describing the display (e.g. model name of the monitor).
 
-The string in this field describes the display device that is connected to the user's graphics card.  If this
-information is not detectable, a `NULL` pointer is returned.
+This string describes the display device that is connected to the user's graphics card.
 
 *********************************************************************************************************************/
 
@@ -2162,8 +2127,7 @@ static ERR GET_Display(extDisplay *Self, CSTRING *Value)
 -FIELD-
 DisplayManufacturer: String describing the display manufacturer.
 
-The string in this field returns the name of the manufacturer that created the user's display device.  If this
-information is not detectable, a `NULL` pointer is returned.
+This string names the manufacturer of the user's display device.
 
 *********************************************************************************************************************/
 
@@ -2183,56 +2147,6 @@ If the display is hosted in a client window, the #BottomMargin indicates the num
 and the bottom window edge.
 
 -FIELD-
-DriverCopyright: String containing copyright information on the graphics driver software.
-
-The string in this field returns copyright information related to the graphics driver.  If this information is not
-available, a `NULL` pointer is returned.
-
-*********************************************************************************************************************/
-
-static ERR GET_DriverCopyright(extDisplay *Self, CSTRING *Value)
-{
-   if (Self->DriverCopyright[0]) *Value = Self->DriverCopyright;
-   else *Value = NULL;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-DriverVersion: String describing the version of the graphics hardware driver.
-
-The string in this field describes the graphic driver's version number. If this information is not detectable, a `NULL`
-pointer is returned.
-
-*********************************************************************************************************************/
-
-static ERR GET_DriverVersion(extDisplay *Self, CSTRING *Value)
-{
-   if (Self->DriverVersion[0]) *Value = Self->DriverVersion;
-   else *Value = NULL;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-DriverVendor: String describing the vendor of the graphics driver.
-
-The string in this field returns the name of the vendor that supplied the graphics card driver.  If this information is
-not available, a `NULL` pointer is returned.
-
-*********************************************************************************************************************/
-
-static ERR GET_DriverVendor(extDisplay *Self, CSTRING *Value)
-{
-   *Value = Self->DriverVendor;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Flags: Optional flag settings.
 
 Optional display flags can be defined here.  Post-initialisation, the only flags that can be set are `AUTO_SAVE` and
@@ -2247,7 +2161,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
    if (Self->initialised()) {
       // Only flags that are explicitly supported here may be set post-initialisation.
 
-      #define ACCEPT_FLAGS (SCR::AUTO_SAVE)
+      static const SCR ACCEPT_FLAGS = SCR::AUTO_SAVE|SCR::GRAB_CONTROLLERS;
       auto accept = Value & ACCEPT_FLAGS;
       Self->Flags = (Self->Flags & (~ACCEPT_FLAGS)) | accept;
 
@@ -2288,7 +2202,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
 
             if ((Self->Flags & SCR::VISIBLE) != SCR::NIL) {
                winShowWindow(Self->WindowHandle, TRUE);
-               QueueAction(AC_Focus, Self->UID);
+               QueueAction(AC::Focus, Self->UID);
             }
          }
 
@@ -2370,7 +2284,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
          if ((Self->Flags & SCR::VISIBLE) != SCR::NIL) {
             acShow(Self);
             XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
-            QueueAction(AC_Focus, Self->UID);
+            QueueAction(AC::Focus, Self->UID);
          }
 
          resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
@@ -2662,10 +2576,10 @@ static ERR GET_ResizeFeedback(extDisplay *Self, FUNCTION **Value)
 static ERR SET_ResizeFeedback(extDisplay *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->ResizeFeedback.isScript()) UnsubscribeAction(Self->ResizeFeedback.Context, AC_Free);
+      if (Self->ResizeFeedback.isScript()) UnsubscribeAction(Self->ResizeFeedback.Context, AC::Free);
       Self->ResizeFeedback = *Value;
       if (Self->ResizeFeedback.isScript()) {
-         SubscribeAction(Self->ResizeFeedback.Context, AC_Free, C_FUNCTION(notify_resize_free));
+         SubscribeAction(Self->ResizeFeedback.Context, AC::Free, C_FUNCTION(notify_resize_free));
       }
    }
    else Self->ResizeFeedback.clear();
@@ -2774,8 +2688,8 @@ static ERR GET_Title(extDisplay *Self, CSTRING *Value)
 
    buffer[0] = 0;
    winGetWindowTitle(Self->WindowHandle, buffer, sizeof(buffer));
-   if (AllocMemory(StrLength(buffer) + 1, MEM::STRING|MEM::UNTRACKED, &str) IS ERR::Okay) {
-      StrCopy(buffer, str);
+   if (AllocMemory(strlen(buffer) + 1, MEM::STRING|MEM::UNTRACKED, &str) IS ERR::Okay) {
+      strcopy(buffer, str);
       if (glWindowTitle) FreeResource(glWindowTitle);
       glWindowTitle = str;
       *Value = glWindowTitle;
@@ -2882,6 +2796,7 @@ void alloc_display_buffer(extDisplay *Self)
 #include "class_display_def.c"
 
 static const FieldArray DisplayFields[] = {
+   // Re-compile the FDL if making changes
    { "RefreshRate",    FDF_DOUBLE|FDF_RW, NULL, SET_RefreshRate },
    { "Bitmap",         FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::BITMAP },
    { "Flags",          FDF_LONGFLAGS|FDF_RW, NULL, SET_Flags, &clDisplayFlags },
@@ -2905,16 +2820,12 @@ static const FieldArray DisplayFields[] = {
    { "TopMargin",      FDF_LONG|FDF_R },
    { "BottomMargin",   FDF_LONG|FDF_R },
    // Virtual fields
-   { "CertificationDate",   FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_CertificationDate },
    { "Chipset",             FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Chipset },
    { "Gamma",               FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RI, GET_Gamma, SET_Gamma },
    { "HDensity",            FDF_VIRTUAL|FDF_LONG|FDF_RW,     GET_HDensity, SET_HDensity },
    { "VDensity",            FDF_VIRTUAL|FDF_LONG|FDF_RW,     GET_VDensity, SET_VDensity },
    { "Display",             FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Display },
    { "DisplayManufacturer", FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DisplayManufacturer },
-   { "DriverCopyright",     FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DriverCopyright },
-   { "DriverVendor",        FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DriverVendor },
-   { "DriverVersion",       FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_DriverVersion },
    { "InsideWidth",         FDF_VIRTUAL|FDF_LONG|FDF_R,      GET_InsideWidth },
    { "InsideHeight",        FDF_VIRTUAL|FDF_LONG|FDF_R,      GET_InsideHeight },
    { "Manufacturer",        FDF_VIRTUAL|FDF_STRING|FDF_R,    GET_Manufacturer },

@@ -96,10 +96,10 @@ static ERR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCoun
          for (LONG pos=0; (Value[pos]) and (point < points);) {
             if (((Value[pos] >= '0') and (Value[pos] <= '9')) or (Value[pos] IS '-') or (Value[pos] IS '+')) {
                if (!(index & 0x1)) {
-                  Array[0][point].X = StrToFloat(Value + pos);
+                  Array[0][point].X = strtod(Value + pos, NULL);
                }
                else {
-                  Array[0][point].Y = StrToFloat(Value + pos);
+                  Array[0][point].Y = strtod(Value + pos, NULL);
                   point++;
                }
                index++;
@@ -320,7 +320,7 @@ static ERR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG El
    if (Elements >= 2) {
       VectorPoint *points;
       if (AllocMemory(sizeof(VectorPoint) * Elements, MEM::DATA|MEM::NO_CLEAR, &points) IS ERR::Okay) {
-         CopyMemory(Value, points, sizeof(VectorPoint) * Elements);
+         copymem(Value, points, sizeof(VectorPoint) * Elements);
          Self->Points = points;
          Self->TotalPoints = Elements;
          reset_path(Self);
@@ -477,13 +477,13 @@ static ERR POLY_SET_Y2(extVectorPoly *Self, Unit &Value)
 //********************************************************************************************************************
 
 static const ActionArray clPolygonActions[] = {
-   { AC_Free,        POLYGON_Free },
-   { AC_NewObject,   POLYGON_NewObject },
-   { AC_Move,        POLYGON_Move },
-   { AC_MoveToPoint, POLYGON_MoveToPoint },
-   //{ AC_Redimension, POLYGON_Redimension },
-   { AC_Resize,      POLYGON_Resize },
-   { 0, NULL }
+   { AC::Free,        POLYGON_Free },
+   { AC::NewObject,   POLYGON_NewObject },
+   { AC::Move,        POLYGON_Move },
+   { AC::MoveToPoint, POLYGON_MoveToPoint },
+   //{ AC::Redimension, POLYGON_Redimension },
+   { AC::Resize,      POLYGON_Resize },
+   { AC::NIL, NULL }
 };
 
 static const FieldArray clPolygonFields[] = {

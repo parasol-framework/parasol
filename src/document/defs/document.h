@@ -187,7 +187,7 @@ struct padding {
    void parse(const std::string &Value);
 
    void scale_all() { left_scl = right_scl = top_scl = bottom_scl = true; }
-}; 
+};
 
 //********************************************************************************************************************
 
@@ -357,8 +357,8 @@ struct font_entry {
    DOUBLE font_size; // 72 DPI pixel size
    ALIGN align;
 
-   font_entry(APTR pHandle, const std::string_view pFace, const std::string_view pStyle, DOUBLE pSize) : 
-      handle(pHandle), face(pFace), style(pStyle), font_size(pSize), align(ALIGN::NIL) { 
+   font_entry(APTR pHandle, const std::string_view pFace, const std::string_view pStyle, DOUBLE pSize) :
+      handle(pHandle), face(pFace), style(pStyle), font_size(pSize), align(ALIGN::NIL) {
       vec::GetFontMetrics(pHandle, &metrics);
    }
 
@@ -662,7 +662,7 @@ struct bc_list_end : public entity {
 struct bc_table : public entity {
    GuardedObject<objVectorPath> path;
    GuardedObject<objVectorViewport> viewport;
-   std::vector<PathCommand> seq;
+   std::vector<PathCommand> seq;         // Commands to be assigned to 'path'
    std::vector<tablecol> columns;        // Table column management
    std::string fill, stroke;             // SVG stroke and fill instructions
    padding cell_padding;                 // Spacing inside each cell (margins)
@@ -775,7 +775,8 @@ struct bc_row_end : public entity {
 
 struct bc_cell : public entity {
    GuardedObject<objVectorViewport> viewport;
-   GuardedObject<objVectorRectangle> rect_fill;
+   GuardedObject<objVectorRectangle> rect_fill; // Custom cell filling
+   GuardedObject<objVectorPath> border_path; // Only used when the border stroke is customised
    KEYVALUE args;                 // Cell attributes, intended for event hooks
    std::vector<doc_segment> segments;
    RSTREAM *stream;               // Internally managed byte code content for the cell
@@ -890,7 +891,7 @@ struct doc_menu {
 
    LARGE m_show_time = 0; // Time of last acShow()
    LARGE m_hide_time = 0; // Time of last acHide()
-   
+
    objSurface * create(DOUBLE);
    objSurface * get();
    void define_font(font_entry *);
@@ -937,7 +938,7 @@ struct bc_combobox : public entity, widget_mgr {
    std::string style;
    std::string value;
    std::string last_good_input;
-  
+
    static void callback(struct doc_menu &, struct dropdown_item &);
 
    bc_combobox() : menu(&callback) { code = SCODE::COMBOBOX; align_to_text = true; }
@@ -1055,7 +1056,7 @@ class extDocument : public objDocument {
    std::vector<tab>            Tabs;
    std::vector<edit_cell>      EditCells;
    std::unordered_map<std::string_view, doc_edit> EditDefs;
-   std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
+   std::array<std::vector<FUNCTION>, size_t(DRT::END)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
    RSTREAM Stream;             // Internal stream buffer
@@ -1072,10 +1073,11 @@ class extDocument : public objDocument {
    objXML *Templates;          // All templates for the current document are stored here
    objXML *PretextXML;         // Execute this XML prior to loading a new page.
    objSVG *SVG;                // Allocated by the <svg> tag
-   XMLTag *PageTag;            // Refers to a specific page that is being processed for the layout
+   objVectorRectangle *Bkgd;   // Background fill object
+   XMLTag    *PageTag;         // Refers to a specific page that is being processed for the layout
    objScript *ClientScript;    // Allows the developer to define a custom default script.
    objScript *DefaultScript;
-   doc_edit *ActiveEditDef;  // As for ActiveEditCell, but refers to the active editing definition
+   doc_edit  *ActiveEditDef; // As for ActiveEditCell, but refers to the active editing definition
    objVectorScene *Scene;    // A document specific scene is required to keep our resources away from the host
    DOUBLE VPWidth, VPHeight; // Dimensions of the host Viewport
    DOUBLE FontSize;          // The default font-size, measured in 72 DPI pixels
@@ -1108,8 +1110,8 @@ class extDocument : public objDocument {
    std::vector<sorted_segment> & get_sorted_segments();
 };
 
-bc_button::bc_button() { 
-   code = SCODE::BUTTON; 
+bc_button::bc_button() {
+   code = SCODE::BUTTON;
    stream = new RSTREAM();
    align_to_text = true;
 }
@@ -1123,7 +1125,7 @@ bc_cell::~bc_cell() {
 }
 
 bc_cell::bc_cell(LONG pCellID, LONG pColumn)
-{ 
+{
    code    = SCODE::CELL;
    cell_id = pCellID;
    column  = pColumn;

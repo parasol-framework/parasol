@@ -20,6 +20,8 @@ class strong_typedef {
       explicit operator T&() noexcept { return val; }
       explicit operator const T&() const noexcept { return val; }
 
+      bool defined() { return val != 0; }
+
    private:
       T val;
 };

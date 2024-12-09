@@ -1,7 +1,7 @@
 -- This program produces C++ headers, auto-generated values and documentation from Parasol FDL files.
 --
--- Usage: parasol sdk:scripts/dev/idl/idl-c.fluid src=source.fdl
--- Example: parasol sdk:scripts/dev/idl/idl-c.fluid src=sdk:core/modules/core/core.fdl
+-- Usage: parasol sdk:tools/idl/idl-c.fluid src=source.fdl
+-- Example: parasol sdk:tools/idl/idl-c.fluid src=sdk:core/modules/core/core.fdl
 
    include 'core'
    include 'xml'
@@ -12,6 +12,7 @@
 
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
+   glIDLTimestamp = 20241015
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -22,60 +23,61 @@ glActionStubs = {
    NewChild      = "",
    NewObject     = "",
    NewOwner      = "",
+   NewPlacement  = "",
 
    -- Actions without parameters
-   Activate     = "   inline ERR activate() noexcept { return Action(AC_Activate, this, NULL); }",
-   Clear        = "   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }",
-   Deactivate   = "   inline ERR deactivate() noexcept { return Action(AC_Deactivate, this, NULL); }",
-   Disable      = "   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }",
-   Enable       = "   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }",
-   Flush        = "   inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }",
-   Focus        = "   inline ERR focus() noexcept { return Action(AC_Focus, this, NULL); }",
-   Hide         = "   inline ERR hide() noexcept { return Action(AC_Hide, this, NULL); }",
+   Activate     = "   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }",
+   Clear        = "   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }",
+   Deactivate   = "   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }",
+   Disable      = "   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }",
+   Enable       = "   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }",
+   Flush        = "   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }",
+   Focus        = "   inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }",
+   Hide         = "   inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }",
    Init         = "   inline ERR init() noexcept { return InitObject(this); }",
-   Lock         = "   inline ERR lock() noexcept { return Action(AC_Lock, this, NULL); }",
-   LostFocus    = "   inline ERR lostFocus() noexcept { return Action(AC_LostFocus, this, NULL); }",
-   MoveToBack   = "   inline ERR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }",
-   MoveToFront  = "   inline ERR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }",
-   Next         = "   inline ERR next() noexcept { return Action(AC_Next, this, NULL); }",
-   Prev         = "   inline ERR prev() noexcept { return Action(AC_Prev, this, NULL); }",
-   Query        = "   inline ERR query() noexcept { return Action(AC_Query, this, NULL); }",
-   Refresh      = "   inline ERR refresh() noexcept { return Action(AC_Refresh, this, NULL); }",
-   Reset        = "   inline ERR reset() noexcept { return Action(AC_Reset, this, NULL); }",
-   SaveSettings = "   inline ERR saveSettings() noexcept { return Action(AC_SaveSettings, this, NULL); }",
-   Show         = "   inline ERR show() noexcept { return Action(AC_Show, this, NULL); }",
-   Unlock       = "   inline ERR unlock() noexcept { return Action(AC_Unlock, this, NULL); }",
+   Lock         = "   inline ERR lock() noexcept { return Action(AC::Lock, this, NULL); }",
+   LostFocus    = "   inline ERR lostFocus() noexcept { return Action(AC::LostFocus, this, NULL); }",
+   MoveToBack   = "   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }",
+   MoveToFront  = "   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }",
+   Next         = "   inline ERR next() noexcept { return Action(AC::Next, this, NULL); }",
+   Prev         = "   inline ERR prev() noexcept { return Action(AC::Prev, this, NULL); }",
+   Query        = "   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }",
+   Refresh      = "   inline ERR refresh() noexcept { return Action(AC::Refresh, this, NULL); }",
+   Reset        = "   inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }",
+   SaveSettings = "   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, NULL); }",
+   Show         = "   inline ERR show() noexcept { return Action(AC::Show, this, NULL); }",
+   Unlock       = "   inline ERR unlock() noexcept { return Action(AC::Unlock, this, NULL); }",
 
    CopyData = [[
    inline ERR copyData(OBJECTPTR Dest) noexcept {
       struct acCopyData args = { .Dest = Dest };
-      return Action(AC_CopyData, this, &args);
+      return Action(AC::CopyData, this, &args);
    }]],
    DragDrop = [[
    inline ERR dragDrop(OBJECTPTR Source, LONG Item, CSTRING Datatype) noexcept {
       struct acDragDrop args = { .Source = Source, .Item = Item, .Datatype = Datatype };
-      return Action(AC_DragDrop, this, &args);
+      return Action(AC::DragDrop, this, &args);
    }]],
    Clipboard = [[
    inline ERR clipboard(CLIPMODE Mode) noexcept {
       struct acClipboard args = { Mode };
-      return Action(AC_Clipboard, this, &args);
+      return Action(AC::Clipboard, this, &args);
    }]],
    Draw = [[
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }]],
    DataFeed = [[
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
-      return Action(AC_DataFeed, this, &args);
+      return Action(AC::DataFeed, this, &args);
    }]],
    Move = [[
    inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
       struct acMove args = { X, Y, Z };
-      return Action(AC_Move, this, &args);
+      return Action(AC::Move, this, &args);
    }]],
    Read = [[
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
@@ -83,7 +85,7 @@ glActionStubs = {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      if (auto error = Action(AC_Read, this, &read); error IS ERR::Okay) {
+      if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
       }
@@ -93,63 +95,63 @@ glActionStubs = {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
-      return Action(AC_Read, this, &read);
+      return Action(AC::Read, this, &read);
    }]],
    Redo = [[
    inline ERR redo(LONG Steps) noexcept {
       struct acRedo args = { Steps };
-      return Action(AC_Redo, this, &args);
+      return Action(AC::Redo, this, &args);
    }]],
    Redimension = [[
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-      return Action(AC_Redimension, this, &args);
+      return Action(AC::Redimension, this, &args);
    }
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
-      return Action(AC_Redimension, this, &args);
+      return Action(AC::Redimension, this, &args);
    }]],
    Rename = [[
    inline ERR rename(CSTRING Name) noexcept {
       struct acRename args = { Name };
-      return Action(AC_Rename, this, &args);
+      return Action(AC::Rename, this, &args);
    }]],
    Resize = [[
    inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
-      return Action(AC_Resize, this, &args);
+      return Action(AC::Resize, this, &args);
    }]],
    Undo = [[
    inline ERR undo(LONG Steps) noexcept {
       struct acUndo args = { Steps };
-      return Action(AC_Undo, this, &args);
+      return Action(AC::Undo, this, &args);
    }]],
    GetKey = [[
    inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
-      auto error = Action(AC_GetKey, this, &args);
+      auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }]],
    MoveToPoint = [[
    inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
-      return Action(AC_MoveToPoint, this, &moveto);
+      return Action(AC::MoveToPoint, this, &moveto);
    }]],
    SaveImage = [[
    inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };
-      return Action(AC_SaveImage, this, &args);
+      return Action(AC::SaveImage, this, &args);
    }]],
    SaveToObject = [[
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
-      return Action(AC_SaveToObject, this, &args);
+      return Action(AC::SaveToObject, this, &args);
    }]],
    Seek = [[
    inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
-      return Action(AC_Seek, this, &args);
+      return Action(AC::Seek, this, &args);
    }
    inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
    inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
@@ -162,7 +164,7 @@ glActionStubs = {
       va_start(list, tags);
       while ((args.Field = va_arg(list, STRING)) != TAGEND) {
          args.Value = va_arg(list, STRING);
-         if (Action(AC_SetKey, this, &args) != ERR::Okay) {
+         if (Action(AC::SetKey, this, &args) != ERR::Okay) {
             va_end(list);
             return ERR::Failed;
          }
@@ -173,7 +175,7 @@ glActionStubs = {
    Write = [[
    inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -184,7 +186,7 @@ glActionStubs = {
    }
    inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
-      if (auto error = Action(AC_Write, this, &write); error IS ERR::Okay) {
+      if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
       }
@@ -195,18 +197,18 @@ glActionStubs = {
    }
    inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
-      if (Action(AC_Write, this, &write) IS ERR::Okay) return write.Result;
+      if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }]],
    SelectArea = [[
    inline ERR acSelectArea(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acSelectArea area = { X, Y, Width, Height };
-      return Action(AC_SelectArea, this, &area);
+      return Action(AC::SelectArea, this, &area);
    }]],
    SetKey = [[
    inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetKey args = { FieldName, Value };
-      return Action(AC_SetKey, this, &args);
+      return Action(AC::SetKey, this, &args);
    }]],
 }
 
@@ -315,6 +317,12 @@ end
 -- FDL function
 
 function module(Options, Function)
+   if (nz(Options['timestamp'],0) > glIDLTimestamp) then
+      -- Do nothing if the timestamp is > than the timestamp on this idl-c release
+      glAbort = 'Timestamp on IDL file (' .. Options['timestamp'] .. ') exceeds IDL-C timestamp of ' .. glIDLTimestamp
+      return
+   end
+
    glModule = Options
 
    if nz(glModule.name) then
@@ -1084,7 +1092,7 @@ function class(Name, Options, Spec, Private, Custom)
             end
          end
 
-         local action_support = 'static const ACTIONID id = -' .. method.id .. '; ERR call(OBJECTPTR Object) { return Action(id, Object, this); }'
+         local action_support = 'static const AC id = AC(-' .. method.id .. '); ERR call(OBJECTPTR Object) { return Action(id, Object, this); }'
          if (method.params != nil) and (#method.params > 0) then
             class.methods[k].struct = 'struct ' .. method.name .. ' { ' .. struct_params .. action_support .. ' };'
          else
@@ -1103,7 +1111,7 @@ function class(Name, Options, Spec, Private, Custom)
          end
 
          if (results) then
-            inline = inline .. '      ERR error = Action(-' .. method.id .. ', this, ' .. args .. ');\n'
+            inline = inline .. '      ERR error = Action(AC(-' .. method.id .. '), this, ' .. args .. ');\n'
             for _, p in pairs(method.params) do
                if (p.resultValue) then
                   inline = inline .. '      if (' .. p.name .. ') *' .. p.name .. ' = args.' .. p.name .. ';\n'
@@ -1111,7 +1119,7 @@ function class(Name, Options, Spec, Private, Custom)
             end
             inline = inline .. '      return(error);\n'
          else
-            inline = inline .. '      return(Action(-' .. method.id .. ', this, ' .. args .. '));\n'
+            inline = inline .. '      return(Action(AC(-' .. method.id .. '), this, ' .. args .. '));\n'
          end
 
          inline = inline .. '   }'
@@ -1166,21 +1174,21 @@ function class(Name, Options, Spec, Private, Custom)
          for k, m in ipairs(class.methods) do
             local structSize
             if not nz(m.params) then
-               mdef = mdef .. '   { -' .. m.id .. ', (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", 0, 0 },\n'
+               mdef = mdef .. '   { AC(-' .. m.id .. '), (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", 0, 0 },\n'
             else
                structSize = 'sizeof(struct ' .. class.methodPrefix:lower() .. '::' .. m.name .. ')'
-               mdef = mdef .. '   { -' .. m.id .. ', (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", ma' .. m.name .. ', ' .. structSize .. ' },\n'
+               mdef = mdef .. '   { AC(-' .. m.id .. '), (APTR)' .. Name:upper() .. '_' .. m.funcName .. ', "' .. m.name .. '", ma' .. m.name .. ', ' .. structSize .. ' },\n'
             end
          end
-         mdef = mdef .. '   { 0, 0, 0, 0, 0 }\n};\n\n'
+         mdef = mdef .. '   { AC::NIL, 0, 0, 0, 0 }\n};\n\n'
       end
 
       if nz(class.sortedActions) then
          mdef = mdef .. "static const struct ActionArray cl" .. Name .. "Actions[] = {\n"
          for _, action in ipairs(class.sortedActions) do
-            mdef = mdef .. "   { AC_" .. action.name .. ", " .. Name:upper() .. "_" .. action.name .. " },\n"
+            mdef = mdef .. "   { AC::" .. action.name .. ", " .. Name:upper() .. "_" .. action.name .. " },\n"
          end
-         mdef = mdef .. "   { 0, NULL }\n};\n\n"
+         mdef = mdef .. "   { AC::NIL, NULL }\n};\n\n"
       end
 
       local file = obj.new("file", { flags="WRITE|NEW", location=glFDLFolder .. Options.output } )
@@ -2147,8 +2155,8 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    if nz(Def.input) then
       func.input = { }
       for line, content in ipairs(Def.input:split("\n")) do
-         local comment = content:match("^.+:%s-(.+)$")
-         if nz(comment) then content = content:match("^(.+):%s-.+$") end
+         local comment = content:match("^.-:%s-(.+)$")
+         if nz(comment) then content = content:match("^(.-):%s-.+$") end
          local type, name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
          if (type != nil) then
             local param = cType({
@@ -2591,6 +2599,11 @@ end
    loadFile(glPath .. 'idl-doc.fluid')
 
    if (processFDLFile(glSource) == ERR_Okay) then
+      if glAbort then
+         print('FDL processing cancelled, reason: ' .. glAbort)
+         return
+      end
+
       processSourceFiles()
       saveOutput()
 

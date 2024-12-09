@@ -246,19 +246,19 @@ static const FieldArray clFields[] = {
 };
 
 static const ActionArray clActions[] = {
-   { AC_Query,   TIME_Query },
-   { AC_Refresh, TIME_Query },
-   { 0, NULL }
+   { AC::Query,   TIME_Query },
+   { AC::Refresh, TIME_Query },
+   { AC::NIL, NULL }
 };
 
 static const MethodEntry clMethods[] = {
    { pt::SetTime::id, (APTR)TIME_SetTime, "SetTime", 0, 0 },
-   { 0, NULL, NULL, NULL, 0 }
+   { AC::NIL, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************
 
-extern "C" ERR add_time_class(void)
+extern ERR add_time_class(void)
 {
    glTimeClass = objMetaClass::create::global(
       fl::BaseClassID(CLASSID::TIME),

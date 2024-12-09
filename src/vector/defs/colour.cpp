@@ -37,8 +37,8 @@ static ERR COLOUR_NewObject(objVectorColour *Self)
 }
 
 static const ActionArray clColourActions[] = {
-   { AC_NewObject, (APTR)COLOUR_NewObject },
-   { 0, NULL }
+   { AC::NewObject, (APTR)COLOUR_NewObject },
+   { AC::NIL, NULL }
 };
 
 static const FieldArray clColourFields[] = {

@@ -229,7 +229,7 @@ static ERR DISPLACEMENTFX_GET_XMLDef(extDisplacementFX *Self, STRING *Value)
 
    stream << "<feDisplacement/>";
 
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

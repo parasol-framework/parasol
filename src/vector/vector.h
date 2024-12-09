@@ -323,6 +323,9 @@ class extVectorGradient : public objVectorGradient {
    STRING ID;
    LONG NumericID;
    WORD ChangeCounter;
+   DOUBLE Angle;
+   DOUBLE Length;
+   bool CalcAngle; // True if the Angle/Length values require recalculation.
 };
 
 class extVectorPattern : public objVectorPattern {
@@ -944,7 +947,7 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
       const LONG byte_width = Width * pic->Bitmap->BytesPerPixel;
       UBYTE *out = pic->Bitmap->Data;
       for (LONG y=0; y < Height; y++) {
-         CopyMemory(Data, out, byte_width);
+         copymem(Data, out, byte_width);
          out  += pic->Bitmap->LineWidth;
          Data += Width * pic->Bitmap->BytesPerPixel;
       }

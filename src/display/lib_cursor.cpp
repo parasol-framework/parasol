@@ -82,7 +82,7 @@ static Cursor get_x11_cursor(PTC CursorID)
 {
    pf::Log log(__FUNCTION__);
 
-   for (WORD i=0; i < ARRAYSIZE(XCursors); i++) {
+   for (WORD i=0; i < std::ssize(XCursors); i++) {
       if (XCursors[i].CursorID IS CursorID) return XCursors[i].XCursor;
    }
 
@@ -92,7 +92,7 @@ static Cursor get_x11_cursor(PTC CursorID)
 
 void init_xcursors(void)
 {
-   for (WORD i=0; i < ARRAYSIZE(XCursors); i++) {
+   for (WORD i=0; i < std::ssize(XCursors); i++) {
       if (XCursors[i].CursorID IS PTC::INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
       else XCursors[i].XCursor = XCreateFontCursor(XDisplay, XCursors[i].XCursorID);
    }
@@ -100,7 +100,7 @@ void init_xcursors(void)
 
 void free_xcursors(void)
 {
-   for (WORD i=0; i < ARRAYSIZE(XCursors); i++) {
+   for (WORD i=0; i < std::ssize(XCursors); i++) {
       if (XCursors[i].XCursor) XFreeCursor(XDisplay, XCursors[i].XCursor);
    }
 }
@@ -111,7 +111,7 @@ void free_xcursors(void)
 #ifdef _WIN32
 HCURSOR GetWinCursor(PTC CursorID)
 {
-   for (WORD i=0; i < ARRAYSIZE(winCursors); i++) {
+   for (WORD i=0; i < std::ssize(winCursors); i++) {
       if (winCursors[i].CursorID IS CursorID) return winCursors[i].WinCursor;
    }
 
@@ -191,7 +191,7 @@ ERR GetCursorInfo(CursorInfo *Info, LONG Size)
 
 #ifdef __ANDROID__
    // TODO: Some Android devices probably do support a mouse or similar input device.
-   ClearMemory(Info, sizeof(CursorInfo));
+   clearmem(Info, sizeof(CursorInfo));
    return ERR::NoSupport;
 #else
    Info->Width  = 32;
@@ -367,10 +367,10 @@ SetCursor: Sets the cursor image and can anchor the pointer to any surface.
 
 Use the SetCursor() function to change the pointer image and/or restrict the movement of the pointer to a surface area.
 
-To change the cursor image, set the `Cursor` or `Name` parameters to define the new image.  Valid cursor ID's and 
-their equivalent names are listed in the documentation for the @Pointer.Cursor field.  If the `Surface` field is set 
+To change the cursor image, set the `Cursor` or `Name` parameters to define the new image.  Valid cursor ID's and
+their equivalent names are listed in the documentation for the @Pointer.Cursor field.  If the `Surface` field is set
 to a valid surface, the cursor image will switch back to its default once the pointer moves outside of the surface's
-area.  If both the `Cursor` and `Name` parameters are `NULL`, the cursor image will remain unchanged from its 
+area.  If both the `Cursor` and `Name` parameters are `NULL`, the cursor image will remain unchanged from its
 current image.
 
 The SetCursor() function accepts the following flags in the `Flags` parameter:
@@ -574,15 +574,15 @@ ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID
 SetCustomCursor: Sets the cursor to a customised bitmap image.
 
 Use the SetCustomCursor() function to change the pointer image and/or anchor the position of the pointer so that it
-cannot move without permission.  The functionality provided is identical to that of the ~SetCursor() function with 
+cannot move without permission.  The functionality provided is identical to that of the ~SetCursor() function with
 some minor adjustments to allow custom images to be set.
 
 The `Bitmap` that is provided should be within the width, height and bits-per-pixel settings that are returned by the
-~GetCursorInfo() function.  If the basic settings are outside the allowable parameters, the `Bitmap` will be trimmed 
+~GetCursorInfo() function.  If the basic settings are outside the allowable parameters, the `Bitmap` will be trimmed
 or resampled appropriately when the cursor is downloaded to the video card.
 
 It may be possible to speed up the creation of custom cursors by drawing directly to the pointer's internal bitmap
-buffer rather than supplying a fresh bitmap.  To do this, the `Bitmap` parameter must be `NULL` and it is necessary to 
+buffer rather than supplying a fresh bitmap.  To do this, the `Bitmap` parameter must be `NULL` and it is necessary to
 draw to the pointer's bitmap before calling SetCustomCursor().  Note that the bitmap is always returned as a 32-bit,
 alpha-enabled graphics area.  The following code illustrates this process:
 
@@ -648,10 +648,10 @@ ERR SetCursorPos(DOUBLE X, DOUBLE Y)
 {
    struct acMoveToPoint move = { X, Y, 0, MTF::X|MTF::Y };
    if (auto pointer = gfx::AccessPointer()) {
-      Action(AC_MoveToPoint, pointer, &move);
+      Action(AC::MoveToPoint, pointer, &move);
       ReleaseObject(pointer);
    }
-   else QueueAction(AC_MoveToPoint, glPointerID, &move);
+   else QueueAction(AC::MoveToPoint, glPointerID, &move);
 
    return ERR::Okay;
 }
@@ -720,7 +720,7 @@ ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surf
       pointer->DragSurface = Surface;
       pointer->DragItem    = Item;
       pointer->DragSourceID = Source;
-      StrCopy(Datatypes, pointer->DragData, sizeof(pointer->DragData));
+      strcopy(Datatypes, pointer->DragData, sizeof(pointer->DragData));
 
       SURFACEINFO *info;
       if (gfx::GetSurfaceInfo(Surface, &info) IS ERR::Okay) {

@@ -184,7 +184,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
 
    pf::SwitchContext context(Self);
 
-   log.traceBranch("");
+   log.traceBranch();
 
 #ifdef ENABLE_SSL
    if (Self->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)

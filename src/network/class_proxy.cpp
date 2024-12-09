@@ -30,7 +30,7 @@ each entry the proxy database.  You may change existing values of any proxy and 
 
 class extProxy : public objProxy {
    public:
-   char  GroupName[40];
+   std::string GroupName;
    char  FindPort[16];
    BYTE  FindEnabled;
    UBYTE Find:1;
@@ -82,7 +82,7 @@ static ERR PROXY_DeleteRecord(extProxy *Self)
 {
    pf::Log log;
 
-   if ((!Self->GroupName[0]) or (!Self->Record)) return log.error(ERR::Failed);
+   if ((Self->GroupName.empty()) or (!Self->Record)) return log.error(ERR::Failed);
 
    log.branch();
 
@@ -95,7 +95,7 @@ static ERR PROXY_DeleteRecord(extProxy *Self)
    if (glConfig) { FreeResource(glConfig); glConfig = NULL; }
 
    if ((glConfig = objConfig::create::untracked(fl::Path("user:config/network/proxies.cfg")))) {
-      glConfig->deleteGroup(Self->GroupName);
+      glConfig->deleteGroup(Self->GroupName.c_str());
       acSaveSettings(glConfig);
    }
 
@@ -200,7 +200,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
          bool bypass = false;
          auto task = CurrentTask();
          if (task->getEnv(HKEY_PROXY "ProxyEnable", &value) IS ERR::Okay) {
-            LONG enabled = StrToInt(value);
+            LONG enabled = strtol(value, NULL, 0);
 
             // If ProxyOverride is set and == <local> then you should bypass the proxy for local addresses.
 
@@ -254,34 +254,34 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
 
                   if ((name) and (port != -1)) {
                      LONG id, serverport;
-                     char group[32];
+                     std::string group;
                      char server[80];
 
                      id = 0;
-                     glConfig->read("ID", "Value", &id);
+                     glConfig->read("ID", "Value", id);
                      id = id + 1;
-                     glConfig->write("ID", "Value", id);
+                     glConfig->write("ID", "Value", std::to_string(id));
 
-                     IntToStr(id, group, sizeof(group));
+                     group = std::to_string(id);
 
                      size_t s;
                      for (s=0; servers[index+s] and (servers[index+s] != ':') and (s < sizeof(server)-1); s++) server[s] = servers[index+s];
                      server[s] = 0;
 
                      if (servers[index+s] IS ':') {
-                        serverport = StrToInt(servers + index + s + 1);
+                        serverport = strtol(servers + index + s + 1, NULL, 0);
 
                         log.trace("Discovered proxy server %s, port %d", server, serverport);
 
                         glConfig->write(group, "Name", name);
                         glConfig->write(group, "Server", server);
 
-                        if (enabled > 0) glConfig->write(group, "Enabled", enabled);
-                        else glConfig->write(group, "Enabled", enabled);
+                        if (enabled > 0) glConfig->write(group, "Enabled", std::to_string(enabled));
+                        else glConfig->write(group, "Enabled", std::to_string(enabled));
 
-                        glConfig->write(group, "Port", port);
-                        glConfig->write(group, "ServerPort", serverport);
-                        glConfig->write(group, "Host", 1); // Indicate that this proxy originates from host OS settings
+                        glConfig->write(group, "Port", std::to_string(port));
+                        glConfig->write(group, "ServerPort", std::to_string(serverport));
+                        glConfig->write(group, "Host", "1"); // Indicate that this proxy originates from host OS settings
 
                         i = index + s;
                      }
@@ -299,7 +299,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
       #endif
 
       if (Args) {
-         if (Args->Port > 0) IntToStr(Args->Port, Self->FindPort, sizeof(Self->FindPort));
+         if (Args->Port > 0) pf::strcopy(std::to_string(Args->Port), Self->FindPort, sizeof(Self->FindPort));
          else Self->FindPort[0] = 0;
          Self->FindEnabled = Args->Enabled;
       }
@@ -308,7 +308,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
          Self->FindEnabled = -1;
       }
 
-      Self->GroupName[0] = 0;
+      Self->GroupName.clear();
 
       return find_proxy(Self);
    }
@@ -358,7 +358,7 @@ static ERR find_proxy(extProxy *Self)
 
    auto group = groups->begin();
 
-   if (Self->GroupName[0]) {
+   if (!Self->GroupName.empty()) {
       // Go to the next record
       while (group != groups->end()) {
          if (!group->first.compare(Self->GroupName)) { group++; break; }
@@ -392,7 +392,7 @@ static ERR find_proxy(extProxy *Self)
 
       if ((match) and (Self->FindEnabled != -1)) { // Does the enabled status match for this proxy?
          if (keys.contains("Enabled")) {
-            auto num = StrToInt(keys["Enabled"].c_str());
+            auto num = std::stoi(keys["Enabled"]);
             if (Self->FindEnabled != num) {
                log.trace("Enabled state of %d does not match requested state %d.", num, Self->FindEnabled);
                match = false;
@@ -414,7 +414,7 @@ static ERR find_proxy(extProxy *Self)
 
       if (match) {
          log.trace("Found a matching proxy.");
-         StrCopy(group->first, Self->GroupName, sizeof(Self->GroupName));
+         Self->GroupName.assign(group->first);
          return get_record(Self);
       }
    }
@@ -430,6 +430,7 @@ static ERR find_proxy(extProxy *Self)
 static ERR PROXY_Free(extProxy *Self)
 {
    clear_values(Self);
+   Self->~extProxy();
    return ERR::Okay;
 }
 
@@ -442,10 +443,10 @@ static ERR PROXY_Init(extProxy *Self)
 
 //********************************************************************************************************************
 
-static ERR PROXY_NewObject(extProxy *Self)
+static ERR PROXY_NewPlacement(extProxy *Self)
 {
-   Self->GroupName[0] = 0;
-   Self->Enabled = TRUE;
+   new (Self) extProxy;
+   Self->Enabled = true;
    Self->Port = 80;
    return ERR::Okay;
 }
@@ -495,26 +496,22 @@ static ERR PROXY_SaveSettings(extProxy *Self)
             task->setEnv(HKEY_PROXY "ProxyServer", buffer);
          }
          else {
-            char buffer[120];
-            STRING newlist;
-            LONG index, end, len;
-
-            CSTRING portname = NULL;
+            std::string portname;
             switch(Self->Port) {
                case 21: portname = "ftp"; break;
                case 80: portname = "http"; break;
                case 443: portname = "https"; break;
             }
 
-            if (portname) {
+            if (!portname.empty()) {
                CSTRING servers;
                char server_buffer[200];
                task->getEnv(HKEY_PROXY "ProxyServer", &servers);
                if (!servers) servers = "";
-               StrCopy(servers, server_buffer, sizeof(server_buffer));
+               pf::strcopy(servers, server_buffer, sizeof(server_buffer));
 
-               snprintf(buffer, sizeof(buffer), "%s=", portname);
-               if ((index = StrSearch(buffer, server_buffer)) != -1) { // Entry already exists - remove it first
+               if (auto index = pf::strisearch(portname + "=", server_buffer); index != -1) { // Entry already exists - remove it first
+                  LONG end;
                   for (end=index; server_buffer[end]; end++) {
                      if (server_buffer[end] IS ';') {
                         end++;
@@ -527,15 +524,17 @@ static ERR PROXY_SaveSettings(extProxy *Self)
 
                // Add the entry to the end of the string list
 
-               len = snprintf(buffer, sizeof(buffer), "%s=%s:%d", portname, Self->Server, Self->ServerPort);
-               end = StrLength(server_buffer);
-               if (AllocMemory(end + len + 2, MEM::STRING|MEM::NO_CLEAR, &newlist) IS ERR::Okay) {
+               std::string server = portname + "=" + Self->Server + ":" + std::to_string(Self->ServerPort);
+
+               STRING newlist;
+               LONG end = strlen(server_buffer);
+               if (AllocMemory(end + server.size() + 2, MEM::STRING|MEM::NO_CLEAR, &newlist) IS ERR::Okay) {
                   if (end > 0) {
-                     CopyMemory(server_buffer, newlist, end);
+                     pf::copymem(server_buffer, newlist, end);
                      newlist[end++] = ';';
                   }
 
-                  CopyMemory(buffer, newlist+end, len+1);
+                  pf::copymem(server.c_str(), newlist+end, server.size()+1);
 
                   // Save the new proxy list
 
@@ -554,26 +553,26 @@ static ERR PROXY_SaveSettings(extProxy *Self)
    objConfig::create config = { fl::Path("user:config/network/proxies.cfg") };
 
    if (config.ok()) {
-      if (Self->GroupName[0]) config->deleteGroup(Self->GroupName);
+      if (!Self->GroupName.empty()) config->deleteGroup(Self->GroupName.c_str());
       else { // This is a new proxy
          LONG id = 0;
-         config->read("ID", "Value", &id);
+         config->read("ID", "Value", id);
          id = id + 1;
-         config->write("ID", "Value", id);
+         config->write("ID", "Value", std::to_string(id));
 
-         IntToStr(id, Self->GroupName, sizeof(Self->GroupName));
+         Self->GroupName = std::to_string(id);
          Self->Record = id;
       }
 
-      config->write(Self->GroupName, "Port",          Self->Port);
+      config->write(Self->GroupName, "Port",          std::to_string(Self->Port));
       config->write(Self->GroupName, "NetworkFilter", Self->NetworkFilter);
       config->write(Self->GroupName, "GatewayFilter", Self->GatewayFilter);
       config->write(Self->GroupName, "Username",      Self->Username);
       config->write(Self->GroupName, "Password",      Self->Password);
       config->write(Self->GroupName, "Name",          Self->ProxyName);
       config->write(Self->GroupName, "Server",        Self->Server);
-      config->write(Self->GroupName, "ServerPort",    Self->ServerPort);
-      config->write(Self->GroupName, "Enabled",       Self->Enabled);
+      config->write(Self->GroupName, "ServerPort",    std::to_string(Self->ServerPort));
+      config->write(Self->GroupName, "Enabled",       std::to_string(Self->Enabled));
 
       objFile::create file = {
          fl::Path("user:config/network/proxies.cfg"),
@@ -602,7 +601,7 @@ static ERR SET_GatewayFilter(extProxy *Self, CSTRING Value)
    if (Self->GatewayFilter) { FreeResource(Self->GatewayFilter); Self->GatewayFilter = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->GatewayFilter = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->GatewayFilter = pf::strclone(Value))) return ERR::AllocMemory;
    }
 
    return ERR::Okay;
@@ -650,7 +649,7 @@ static ERR SET_NetworkFilter(extProxy *Self, CSTRING Value)
    if (Self->NetworkFilter) { FreeResource(Self->NetworkFilter); Self->NetworkFilter = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->NetworkFilter = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->NetworkFilter = pf::strclone(Value))) return ERR::AllocMemory;
    }
 
    return ERR::Okay;
@@ -672,7 +671,7 @@ static ERR SET_Username(extProxy *Self, CSTRING Value)
    if (Self->Username) { FreeResource(Self->Username); Self->Username = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->Username = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Username = pf::strclone(Value))) return ERR::AllocMemory;
    }
 
    return ERR::Okay;
@@ -694,7 +693,7 @@ static ERR SET_Password(extProxy *Self, CSTRING Value)
    if (Self->Password) { FreeResource(Self->Password); Self->Password = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->Password = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Password = pf::strclone(Value))) return ERR::AllocMemory;
    }
 
    return ERR::Okay;
@@ -714,7 +713,7 @@ static ERR SET_ProxyName(extProxy *Self, CSTRING Value)
    if (Self->ProxyName) { FreeResource(Self->ProxyName); Self->ProxyName = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->ProxyName = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->ProxyName = pf::strclone(Value))) return ERR::AllocMemory;
    }
 
    return ERR::Okay;
@@ -734,7 +733,7 @@ static ERR SET_Server(extProxy *Self, CSTRING Value)
    if (Self->Server) { FreeResource(Self->Server); Self->Server = NULL; }
 
    if ((Value) and (Value[0])) {
-      if (!(Self->Server = StrClone(Value))) return ERR::AllocMemory;
+      if (!(Self->Server = pf::strclone(Value))) return ERR::AllocMemory;
    }
 
    return ERR::Okay;
@@ -793,7 +792,7 @@ record is found and all record fields will be updated to reflect the data of tha
 static ERR SET_Record(extProxy *Self, LONG Value)
 {
    clear_values(Self);
-   IntToStr(Value, Self->GroupName, sizeof(Self->GroupName));
+   Self->GroupName = std::to_string(Value);
    return get_record(Self);
 }
 
@@ -806,22 +805,22 @@ static ERR get_record(extProxy *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("Group: %s", Self->GroupName);
+   log.traceBranch("Group: %s", Self->GroupName.c_str());
 
-   Self->Record = StrToInt(Self->GroupName);
+   Self->Record = std::stoi(Self->GroupName);
 
-   CSTRING str;
-   if (glConfig->readValue(Self->GroupName, "Server", &str) IS ERR::Okay)   {
-      Self->Server = StrClone(str);
-      if (glConfig->readValue(Self->GroupName, "NetworkFilter", &str) IS ERR::Okay) Self->NetworkFilter = StrClone(str);
-      if (glConfig->readValue(Self->GroupName, "GatewayFilter", &str) IS ERR::Okay) Self->GatewayFilter = StrClone(str);
-      if (glConfig->readValue(Self->GroupName, "Username", &str) IS ERR::Okay)      Self->Username = StrClone(str);
-      if (glConfig->readValue(Self->GroupName, "Password", &str) IS ERR::Okay)      Self->Password = StrClone(str);
-      if (glConfig->readValue(Self->GroupName, "Name", &str) IS ERR::Okay)          Self->ProxyName = StrClone(str);
-      glConfig->read(Self->GroupName, "Port", &Self->Port);
-      glConfig->read(Self->GroupName, "ServerPort", &Self->ServerPort);
-      glConfig->read(Self->GroupName, "Enabled", &Self->Enabled);
-      glConfig->read(Self->GroupName, "Host", &Self->Host);
+   std::string str;
+   if (glConfig->read(Self->GroupName, "Server", str) IS ERR::Okay)   {
+      Self->Server = pf::strclone(str);
+      if (glConfig->read(Self->GroupName, "NetworkFilter", str) IS ERR::Okay) Self->NetworkFilter = pf::strclone(str);
+      if (glConfig->read(Self->GroupName, "GatewayFilter", str) IS ERR::Okay) Self->GatewayFilter = pf::strclone(str);
+      if (glConfig->read(Self->GroupName, "Username", str) IS ERR::Okay)      Self->Username = pf::strclone(str);
+      if (glConfig->read(Self->GroupName, "Password", str) IS ERR::Okay)      Self->Password = pf::strclone(str);
+      if (glConfig->read(Self->GroupName, "Name", str) IS ERR::Okay)          Self->ProxyName = pf::strclone(str);
+      glConfig->read(Self->GroupName, "Port", Self->Port);
+      glConfig->read(Self->GroupName, "ServerPort", Self->ServerPort);
+      glConfig->read(Self->GroupName, "Enabled", Self->Enabled);
+      glConfig->read(Self->GroupName, "Host", Self->Host);
       return ERR::Okay;
    }
    else return log.error(ERR::NotFound);

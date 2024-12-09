@@ -143,7 +143,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 
    if (Args->Address != Self->Address) {
       if (Self->Address) FreeResource(Self->Address);
-      Self->Address = StrClone(Args->Address);
+      Self->Address = pf::strclone(Args->Address);
    }
    Self->Port = Args->Port;
 
@@ -193,7 +193,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 
    // Start connect()
 
-   ClearMemory(&server_address, sizeof(struct sockaddr_in));
+   pf::clearmem(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
    server_address.sin_port = net::HostToShort((UWORD)Socket->Port);
    server_address.sin_addr.s_addr = net::HostToLong(IPs[0].Data[0]);
@@ -402,7 +402,7 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
 {
    pf::Log log;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    if ((!Args) or (!Args->Address)) return log.warning(ERR::NullArgs);
 
@@ -501,7 +501,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
             struct sockaddr_in6 addr;
 
-            ClearMemory(&addr, sizeof(addr));
+            pf::clearmem(&addr, sizeof(addr));
             addr.sin6_family = AF_INET6;
             addr.sin6_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
             addr.sin6_addr   = in6addr_any;   // Must be passed in in network byte order
@@ -524,7 +524,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
       else {
          // IPV4
          struct sockaddr_in addr;
-         ClearMemory(&addr, sizeof(addr));
+         pf::clearmem(&addr, sizeof(addr));
          addr.sin_family = AF_INET;
          addr.sin_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
          addr.sin_addr.s_addr   = INADDR_ANY;   // Must be passed in in network byte order
@@ -719,7 +719,7 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
                APTR buffer;
                if (AllocMemory(total_length, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
                   if (queue->Buffer) {
-                     CopyMemory(queue->Buffer, buffer, queue->Index);
+                     pf::copymem(queue->Buffer, buffer, queue->Index);
                      FreeResource(queue->Buffer);
                   }
                   queue->Buffer = buffer;
@@ -905,7 +905,7 @@ connection.
 static ERR SET_Address(extNetSocket *Self, CSTRING Value)
 {
    if (Self->Address) { FreeResource(Self->Address); Self->Address = NULL; }
-   if (Value) Self->Address = StrClone(Value);
+   if (Value) Self->Address = pf::strclone(Value);
    return ERR::Okay;
 }
 
@@ -969,10 +969,10 @@ static ERR GET_Feedback(extNetSocket *Self, FUNCTION **Value)
 static ERR SET_Feedback(extNetSocket *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC_Free);
+      if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC::Free);
       Self->Feedback = *Value;
       if (Self->Feedback.isScript()) {
-         SubscribeAction(Self->Feedback.Context, AC_Free, C_FUNCTION(notify_free_feedback));
+         SubscribeAction(Self->Feedback.Context, AC::Free, C_FUNCTION(notify_free_feedback));
       }
    }
    else Self->Feedback.clear();
@@ -1012,10 +1012,10 @@ static ERR GET_Incoming(extNetSocket *Self, FUNCTION **Value)
 static ERR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC_Free);
+      if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC::Free);
       Self->Incoming = *Value;
       if (Self->Incoming.isScript()) {
-         SubscribeAction(Self->Incoming.Context, AC_Free, C_FUNCTION(notify_free_incoming));
+         SubscribeAction(Self->Incoming.Context, AC::Free, C_FUNCTION(notify_free_incoming));
       }
    }
    else Self->Incoming.clear();
@@ -1057,9 +1057,9 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
       return log.warning(ERR::NoSupport);
    }
    else {
-      if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC_Free);
+      if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC::Free);
       Self->Outgoing = *Value;
-      if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Context, AC_Free, C_FUNCTION(notify_free_outgoing));
+      if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Context, AC::Free, C_FUNCTION(notify_free_outgoing));
 
       if (Self->initialised()) {
          if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {
@@ -1293,7 +1293,7 @@ static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG L
       log.trace("Extending current buffer to %d bytes.", Queue->Length + Length);
 
       if (Queue->Index) { // Compact the existing data if some of it has been sent
-         CopyMemory((BYTE *)Queue->Buffer + Queue->Index, Queue->Buffer, Queue->Length - Queue->Index);
+         pf::copymem((BYTE *)Queue->Buffer + Queue->Index, Queue->Buffer, Queue->Length - Queue->Index);
          Queue->Length -= Queue->Index;
          Queue->Index = 0;
       }
@@ -1301,7 +1301,7 @@ static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG L
       // Adjust the buffer size
 
       if (ReallocMemory(Queue->Buffer, Queue->Length + Length, &Queue->Buffer, NULL) IS ERR::Okay) {
-         CopyMemory(Message, (BYTE *)Queue->Buffer + Queue->Length, Length);
+         pf::copymem(Message, (BYTE *)Queue->Buffer + Queue->Length, Length);
          Queue->Length += Length;
       }
       else return ERR::ReallocMemory;
@@ -1310,7 +1310,7 @@ static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG L
       log.trace("Allocated new buffer of %d bytes.", Length);
       Queue->Index = 0;
       Queue->Length = Length;
-      CopyMemory(Message, Queue->Buffer, Length);
+      pf::copymem(Message, Queue->Buffer, Length);
    }
    else return log.warning(ERR::AllocMemory);
 

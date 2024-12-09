@@ -99,7 +99,7 @@ static ERR TASK_Free(extTask *);
 static ERR TASK_GetEnv(extTask *, struct task::GetEnv *);
 static ERR TASK_GetKey(extTask *, struct acGetKey *);
 static ERR TASK_Init(extTask *);
-static ERR TASK_NewObject(extTask *);
+static ERR TASK_NewPlacement(extTask *);
 static ERR TASK_SetEnv(extTask *, struct task::SetEnv *);
 static ERR TASK_SetKey(extTask *, struct acSetKey *);
 static ERR TASK_Write(extTask *, struct acWrite *);
@@ -123,14 +123,14 @@ static const FieldDef clFlags[] = {
 };
 
 static const ActionArray clActions[] = {
-   { AC_Activate,      TASK_Activate },
-   { AC_Free,          TASK_Free },
-   { AC_GetKey,        TASK_GetKey },
-   { AC_NewObject,     TASK_NewObject },
-   { AC_SetKey,        TASK_SetKey },
-   { AC_Init,          TASK_Init },
-   { AC_Write,         TASK_Write },
-   { 0, NULL }
+   { AC::Activate,      TASK_Activate },
+   { AC::Free,          TASK_Free },
+   { AC::GetKey,        TASK_GetKey },
+   { AC::NewPlacement,  TASK_NewPlacement },
+   { AC::SetKey,        TASK_SetKey },
+   { AC::Init,          TASK_Init },
+   { AC::Write,         TASK_Write },
+   { AC::NIL, NULL }
 };
 
 #include "class_task_def.c"
@@ -289,7 +289,7 @@ static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
    if (recursive) return;
    if (!Task->Platform) return;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    char buffer[4096];
    LONG size = sizeof(buffer) - 1;
@@ -311,7 +311,7 @@ static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
    if (recursive) return;
    if (!Task->Platform) return;
 
-   log.traceBranch("");
+   log.traceBranch();
 
    char buffer[4096];
    LONG size = sizeof(buffer) - 1;
@@ -359,14 +359,14 @@ static ERR msg_waitforobjects(APTR Custom, LONG MsgID, LONG MsgType, APTR Messag
 
 //********************************************************************************************************************
 
-static CSTRING action_id_name(LONG ActionID)
+static CSTRING action_id_name(ACTIONID ActionID)
 {
    static char idname[20];
-   if ((ActionID > 0) and (ActionID < AC_END)) {
-      return ActionTable[ActionID].Name;
+   if ((ActionID > AC::NIL) and (ActionID < AC::END)) {
+      return ActionTable[LONG(ActionID)].Name;
    }
    else {
-      snprintf(idname, sizeof(idname), "%d", ActionID);
+      snprintf(idname, sizeof(idname), "%d", LONG(ActionID));
       return idname;
    }
 }
@@ -387,7 +387,7 @@ static ERR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
       log.function("Executing action %s on object #%d, Data: %p, Size: %d", action_id_name(action->ActionID), action->ObjectID, Message, MsgSize);
    #endif
 
-   if ((action->ObjectID) and (action->ActionID)) {
+   if ((action->ObjectID) and (action->ActionID != AC::NIL)) {
       OBJECTPTR obj;
       ERR error;
       if ((error = AccessObject(action->ObjectID, 5000, &obj)) IS ERR::Okay) {
@@ -399,11 +399,11 @@ static ERR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
          }
          else {
             const FunctionField *fields;
-            if (action->ActionID > 0) fields = ActionTable[action->ActionID].Args;
+            if (action->ActionID > AC::NIL) fields = ActionTable[LONG(action->ActionID)].Args;
             else {
                auto cl = obj->ExtClass;
                if (cl->Base) cl = cl->Base;
-               fields = cl->Methods[-action->ActionID].Args;
+               fields = cl->Methods[-LONG(action->ActionID)].Args;
             }
 
             // Use resolve_args() to process the args structure back into something readable
@@ -426,8 +426,8 @@ static ERR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
       }
       else {
          if ((error != ERR::NoMatchingObject) and (error != ERR::MarkedForDeletion)) {
-            if (action->ActionID > 0) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
-            else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, action->ActionID);
+            if (action->ActionID > AC::NIL) log.warning("Could not gain access to object %d to execute action %s.", action->ObjectID, action_id_name(action->ActionID));
+            else log.warning("Could not gain access to object %d to execute method %d.", action->ObjectID, LONG(action->ActionID));
          }
       }
    }
@@ -610,14 +610,12 @@ TimeOut:     Can be returned if the `WAIT` flag is used.  Indicates that the pro
 static ERR TASK_Activate(extTask *Self)
 {
    pf::Log log;
-   LONG i, j, k;
-   char buffer[1000];
+   LONG i, j;
    STRING path;
    ERR error;
    #ifdef _WIN32
-      char launchdir[500];
-      STRING redirect_stdout, redirect_stderr;
-      BYTE hide_output;
+      std::string launchdir;
+      bool hide_output;
       LONG winerror;
    #endif
    #ifdef __unix__
@@ -641,130 +639,111 @@ static ERR TASK_Activate(extTask *Self)
 #ifdef _WIN32
    // Determine the launch folder
 
-   launchdir[0] = 0;
    if ((GET_LaunchPath(Self, &path) IS ERR::Okay) and (path)) {
-      if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
-         for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
-         launchdir[i] = 0;
-         FreeResource(path);
+      std::string rpath;
+      if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
+         launchdir.assign(rpath);
       }
-      else {
-         for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
-         launchdir[i] = 0;
-      }
+      else launchdir.assign(path);
    }
    else if ((Self->Flags & TSF::RESET_PATH) != TSF::NIL) {
-      if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
-         for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
-         FreeResource(path);
+      std::string rpath;
+      if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
+         launchdir.assign(rpath);
       }
-      else for (i=0; (Self->Location[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = Self->Location[i];
+      else launchdir.assign(Self->Location);
 
-      while ((i > 0) and (launchdir[i] != '\\')) i--;
-      launchdir[i] = 0;
+      if (auto i = launchdir.rfind('\\'); i != std::string::npos) launchdir.resize(i);
+      else launchdir.clear();
    }
 
    // Resolve the location of the executable (may contain a volume) and copy it to the command line buffer.
 
    i = 0;
-   buffer[i++] = '"';
-   if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
-      for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1); i++,j++) {
-         if (path[j] IS '/') buffer[i] = '\\';
-         else buffer[i] = path[j];
-      }
-      FreeResource(path);
+   std::ostringstream buffer;
+   buffer << '"';
+   std::string rpath;
+   if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
+      buffer << rpath;
    }
-   else {
-      for (j=0; (Self->Location[j]) and ((size_t)i < sizeof(buffer)-1); i++,j++) {
-         if (Self->Location[j] IS '/') buffer[i] = '\\';
-         else buffer[i] = Self->Location[j];
-      }
-   }
-   buffer[i++] = '"';
+   else buffer << Self->Location;
+   buffer << '"';
 
    // Following the executable path are any arguments that have been used
 
-   redirect_stdout = NULL;
-   redirect_stderr = NULL;
+   std::string redirect_stdout;
+   std::string redirect_stderr;
    hide_output = false;
 
    for (auto &param : Self->Parameters) {
       if (param[0] IS '>') {
          // Redirection argument detected
 
-         if (ResolvePath(param.c_str() + 1, RSF::NO_FILE_CHECK, &redirect_stdout) IS ERR::Okay) {
-            redirect_stderr = redirect_stdout;
+         auto sv = std::string_view(param.begin()+1, param.end());
+         if (ResolvePath(sv, RSF::NO_FILE_CHECK, &redirect_stdout) IS ERR::Okay) {
+            redirect_stderr.assign(redirect_stdout);
          }
 
-         log.msg("StdOut/Err redirected to %s", redirect_stdout);
+         log.msg("StdOut/Err redirected to %s", redirect_stdout.c_str());
 
          hide_output = true;
          continue;
       }
       else if ((param[0] IS '2') and (param[1] IS '>')) {
          log.msg("StdErr redirected to %s", param.c_str() + 2);
-         ResolvePath(param.c_str() + 2, RSF::NO_FILE_CHECK, &redirect_stderr);
+         auto sv = std::string_view(param.begin()+2, param.end());
+         ResolvePath(sv, RSF::NO_FILE_CHECK, &redirect_stderr);
          hide_output = true;
          continue;
       }
       else if ((param[0] IS '1') and (param[1] IS '>')) {
          log.msg("StdOut redirected to %s", param.c_str() + 2);
-         ResolvePath(param.c_str() + 2, RSF::NO_FILE_CHECK, &redirect_stdout);
+         auto sv = std::string_view(param.begin()+2, param.end());
+         ResolvePath(sv, RSF::NO_FILE_CHECK, &redirect_stdout);
          hide_output = true;
          continue;
       }
 
-      buffer[i++] = ' ';
+      buffer << ' ';
 
-      // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just
-      // copy it as normal.
-
-      for (k=0; (param[k]) and (param[k] != ' '); k++);
-
-      if (param[k] IS ' ') {
-         buffer[i++] = '"';
-         for (k=0; param[k]; k++) buffer[i++] = param[k];
-         buffer[i++] = '"';
-      }
-      else for (k=0; param[k]; k++) buffer[i++] = param[k];
+      if (param.find(' ') != std::string::npos) buffer << '"' << param << '"';
+      else buffer << param;
    }
-
-   buffer[i] = 0;
 
    // Convert single quotes into double quotes
 
+   std::string final_buffer = buffer.str();
    bool whitespace = true;
-   for (i=0; buffer[i]; i++) {
+   for (i=0; i < std::ssize(final_buffer); i++) {
       if (whitespace) {
-         if (buffer[i] IS '"') {
+         if (final_buffer[i] IS '"') {
             // Skip everything inside double quotes
             i++;
-            while ((buffer[i]) and (buffer[i] != '"')) i++;
-            if (!buffer[i]) break;
+            while ((i < std::ssize(final_buffer)) and (final_buffer[i] != '"')) i++;
+            if (i >= std::ssize(final_buffer)) break;
             whitespace = false;
             continue;
          }
-         else if (buffer[i] IS '\'') {
-            for (j=i+1; buffer[j]; j++) {
-               if (buffer[j] IS '\'') {
-                  if (buffer[j+1] <= 0x20) {
-                     buffer[i] = '"';
-                     buffer[j] = '"';
+         else if (final_buffer[i] IS '\'') {
+            for (j=i+1; final_buffer[j]; j++) {
+               if (final_buffer[j] IS '\'') {
+                  if (final_buffer[j+1] <= 0x20) {
+                     final_buffer[i] = '"';
+                     final_buffer[j] = '"';
                   }
                   i = j;
                   break;
                }
-               else if (buffer[j] IS '"') break;
+               else if (final_buffer[j] IS '"') break;
             }
          }
       }
 
-      if (buffer[i] <= 0x20) whitespace = true;
+      if (final_buffer[i] <= 0x20) whitespace = true;
       else whitespace = false;
    }
 
-   log.trace("Exec: %s", buffer);
+   log.trace("Exec: %s", final_buffer.c_str());
 
    // Hide window if this is designated a shell program (i.e. hide the DOS window).
    // NB: If you hide a non-shell program, this usually results in the first GUI window that pops up being hidden.
@@ -785,8 +764,8 @@ static ERR TASK_Activate(extTask *Self)
    if (Self->ErrorCallback.defined()) internal_redirect |= TSTD_ERR;
    if ((Self->Flags & TSF::PIPE) != TSF::NIL) internal_redirect |= TSTD_IN;
 
-   if (!(winerror = winLaunchProcess(Self, buffer, (launchdir[0] != 0) ? launchdir : 0, group,
-         internal_redirect, &Self->Platform, hide_output, redirect_stdout, redirect_stderr, &Self->ProcessID))) {
+   if (!(winerror = winLaunchProcess(Self, final_buffer.data(), (!launchdir.empty()) ? launchdir.data() : 0, group,
+         internal_redirect, &Self->Platform, hide_output, redirect_stdout.data(), redirect_stderr.data(), &Self->ProcessID))) {
 
       error = ERR::Okay;
       if (((Self->Flags & TSF::WAIT) != TSF::NIL) and (Self->TimeOut > 0)) {
@@ -808,10 +787,6 @@ static ERR TASK_Activate(extTask *Self)
       error = ERR::Failed;
    }
 
-   if (redirect_stderr IS redirect_stdout) redirect_stderr = NULL;
-   if (redirect_stdout) FreeResource(redirect_stdout);
-   if (redirect_stderr) FreeResource(redirect_stderr);
-
    return error;
 
 #elif __unix__
@@ -821,77 +796,59 @@ static ERR TASK_Activate(extTask *Self)
    path = NULL;
    GET_LaunchPath(Self, &path);
 
+   std::ostringstream buffer;
+
    i = 0;
    if (((Self->Flags & TSF::RESET_PATH) != TSF::NIL) or (path)) {
       Self->Flags |= TSF::SHELL;
 
-      buffer[i++] = 'c';
-      buffer[i++] = 'd';
-      buffer[i++] = ' ';
+      buffer << "cd ";
 
       if (!path) path = Self->Location;
-      if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
-         for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
-         FreeResource(path);
+      std::string rpath;
+      if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
+         while (rpath.ends_with('/')) rpath.pop_back();
+         buffer << rpath;
       }
       else {
-         for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
-      }
-
-      while ((i > 0) and (buffer[i-1] != '/')) i--;
-      if (i > 0) {
-         buffer[i++] = ';';
-         buffer[i++] = ' ';
+         auto p = std::string_view(path);
+         while (p.ends_with('/')) p.remove_suffix(1);
+         buffer << p;
       }
    }
 
    // Resolve the location of the executable (may contain an volume) and copy it to the command line buffer.
 
-   if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path) IS ERR::Okay) {
-      for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
-      buffer[i] = 0;
-      FreeResource(path);
+   std::string rpath;
+   if (ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
+      buffer << rpath;
    }
-   else {
-      for (j=0; (Self->Location[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = Self->Location[j++];
-      buffer[i] = 0;
-   }
-
-   CSTRING argslist[Self->Parameters.size()+2];
-   LONG bufend = i;
+   else buffer << Self->Location;
 
    // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF::SHELL is used,
    // however it is extremely useful in the debug printout to see what is being executed.
 
-   for (auto &param : Self->Parameters) {
-      buffer[i++] = ' ';
-
-      // Check if the argument contains spaces - if so, we need to encapsulate it within quotes.  Otherwise, just
-      // copy it as normal.
-
-      for (k=0; (param[k]) and (param[k] != ' '); k++);
-
-      if (param[k] IS ' ') {
-         buffer[i++] = '"';
-         for (k=0; param[k]; k++) buffer[i++] = param[k];
-         buffer[i++] = '"';
+   std::ostringstream params;
+   if ((Self->Flags & TSF::SHELL) != TSF::NIL) {
+      for (auto &param : Self->Parameters) {
+         params << ' ';
+         if (param.find(' ') != std::string::npos) params << '"' << param << '"';
+         else params << param;
       }
-      else for (k=0; param[k]; k++) buffer[i++] = param[k];
    }
-   buffer[i] = 0;
 
    // Convert single quotes into double quotes
 
-   for (i=0; buffer[i]; i++) if (buffer[i] IS '\'') buffer[i] = '"';
+   auto final_buffer = buffer.str();
+   for (LONG i=0; i < std::ssize(final_buffer); i++) if (final_buffer[i] IS '\'') final_buffer[i] = '"';
 
-   log.warning("%s", buffer);
+   log.warning("%s", final_buffer.c_str());
 
    // If we're not going to run in shell mode, create an argument list for passing to the program.
 
+   CSTRING argslist[Self->Parameters.size()+2];
    if ((Self->Flags & TSF::SHELL) IS TSF::NIL) {
-      buffer[bufend] = 0;
-
-      argslist[0] = buffer;
+      argslist[0] = final_buffer.c_str();
       unsigned i;
       for (i=0; i < Self->Parameters.size(); i++) {
          argslist[i+1] = Self->Parameters[i].c_str();
@@ -1074,15 +1031,15 @@ static ERR TASK_Activate(extTask *Self)
       setgid(glGID);
    }
 
+   final_buffer.append(params.str());
    if (shell) { // For some reason, bash terminates the argument list if it encounters a # symbol, so we'll strip those out.
-      for (j=0,i=0; buffer[i]; i++) {
-         if (buffer[i] != '#') buffer[j++] = buffer[i];
+      for (j=0,i=0; i < std::ssize(final_buffer); i++) {
+         if (final_buffer[i] != '#') final_buffer[j++] = final_buffer[i];
       }
-      buffer[j] = 0;
 
-      execl("/bin/sh", "sh", "-c", buffer, (char *)NULL);
+      execl("/bin/sh", "sh", "-c", final_buffer.c_str(), (char *)NULL);
    }
-   else execv(buffer, (char * const *)&argslist);
+   else execv(final_buffer.c_str(), (char * const *)&argslist);
 
    exit(EXIT_FAILURE);
 #endif
@@ -1235,7 +1192,6 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 #ifdef _WIN32
 
    #define ENV_SIZE 4096
-   LONG len;
 
    Args->Value = NULL;
 
@@ -1248,9 +1204,9 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
    }
 
    if (Args->Name[0] IS '\\') {
-      struct {
+      struct key {
          ULONG ID;
-         CSTRING HKey;
+         std::string_view HKey;
       } keys[] = {
          { HKEY_LOCAL_MACHINE,  "\\HKEY_LOCAL_MACHINE\\" },
          { HKEY_CURRENT_USER,   "\\HKEY_CURRENT_USER\\" },
@@ -1258,58 +1214,53 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
          { HKEY_USERS,          "\\HKEY_USERS\\" }
       };
 
-      for (LONG ki=0; ki < std::ssize(keys); ki++) {
-         if (startswith(keys[ki].HKey, Args->Name)) {
-            CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
-            len = StrLength(str); // End of string
+      std::string full_path(Args->Name);
+      for (auto &key : keys) {
+         if (!full_path.starts_with(key.HKey)) continue;
 
-            while (len > 0) {
-               if (str[len] IS '\\') break;
-               len--;
-            }
+         auto sep = full_path.find_last_of('\\');
+         if (sep IS std::string::npos) return log.warning(ERR::Syntax);
 
-            if (len > 0) {
-               std::string path(str, len);
+         std::string folder = full_path.substr(key.HKey.size(), sep - key.HKey.size() + 1);
 
-               APTR keyhandle;
-               if (!RegOpenKeyExA(keys[ki].ID, path.c_str(), 0, KEY_READ, &keyhandle)) {
-                  LONG type;
-                  LONG envlen = ENV_SIZE;
-                  if (!RegQueryValueExA(keyhandle, str+len+1, 0, &type, Self->Env, &envlen)) {
-                     // Numerical registry types can be converted into strings
+         APTR keyhandle;
+         if (!RegOpenKeyExA(key.ID, folder.c_str(), 0, KEY_READ, &keyhandle)) {
+            LONG type;
+            LONG envlen = ENV_SIZE;
+            std::string name = full_path.substr(sep+1);
+            if (!RegQueryValueExA(keyhandle, name.c_str(), 0, &type, Self->Env, &envlen)) {
+               // Numerical registry types can be converted into strings
 
-                     switch(type) {
-                        case REG_DWORD:
-                           snprintf(Self->Env, ENV_SIZE, "%d", ((LONG *)Self->Env)[0]);
-                           break;
-                        case REG_DWORD_BIG_ENDIAN: {
-                           if constexpr (std::endian::native == std::endian::little) {
-                              StrCopy(std::to_string(reverse_long(((LONG *)Self->Env)[0])).c_str(), Self->Env, ENV_SIZE);
-                           }
-                           else {
-                              StrCopy(std::to_string(((LONG *)Self->Env)[0]).c_str(), Self->Env, ENV_SIZE);
-                           }
-                           break;
-                        }
-                        case REG_QWORD:
-                           IntToStr(((LARGE *)Self->Env)[0], Self->Env, ENV_SIZE);
-                           break;
+               switch(type) {
+                  case REG_DWORD:
+                     snprintf(Self->Env, ENV_SIZE, "%d", ((LONG *)Self->Env)[0]);
+                     break;
+                  case REG_DWORD_BIG_ENDIAN: {
+                     if constexpr (std::endian::native == std::endian::little) {
+                        strcopy(std::to_string(reverse_long(((LONG *)Self->Env)[0])), Self->Env, ENV_SIZE);
                      }
-
-                     Args->Value = Self->Env;
+                     else {
+                        strcopy(std::to_string(((LONG *)Self->Env)[0]), Self->Env, ENV_SIZE);
+                     }
+                     break;
                   }
-                  winCloseHandle(keyhandle);
+                  case REG_QWORD:
+                     strcopy(std::to_string(((LARGE *)Self->Env)[0]), Self->Env, ENV_SIZE);
+                     break;
                }
 
-               if (Args->Value) return ERR::Okay;
-               else return ERR::DoesNotExist;
+               Args->Value = Self->Env;
             }
-            else return log.warning(ERR::Syntax);
+            winCloseHandle(keyhandle);
+
+            if (Args->Value) return ERR::Okay;
+            else return ERR::DoesNotExist;
          }
+         else return ERR::DoesNotExist;
       }
    }
 
-   len = winGetEnv(Args->Name, Self->Env, ENV_SIZE);
+   auto len = winGetEnv(Args->Name, Self->Env, ENV_SIZE);
    if (!len) return ERR::DoesNotExist;
    if (len >= ENV_SIZE) return log.warning(ERR::BufferOverflow);
 
@@ -1370,7 +1321,7 @@ static ERR TASK_Init(extTask *Self)
       LONG i;
       char buffer[300];
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
-         LONG len = StrLength(buffer);
+         LONG len = strlen(buffer);
          while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
          if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, NULL) IS ERR::Okay) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
@@ -1463,7 +1414,7 @@ static ERR TASK_Init(extTask *Self)
 
 //********************************************************************************************************************
 
-static ERR TASK_NewObject(extTask *Self)
+static ERR TASK_NewPlacement(extTask *Self)
 {
    new (Self) extTask;
 #ifdef __unix__
@@ -1571,9 +1522,9 @@ static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
 
       for (ki=0; ki < std::ssize(keys); ki++) {
          if (startswith(keys[ki].HKey, Args->Name)) {
-            CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
+            CSTRING str = Args->Name + strlen(keys[ki].HKey); // str = Parasol\Something
 
-            for (len=StrLength(str); (len > 0) and (str[len] != '\\'); len--);
+            for (len=strlen(str); (len > 0) and (str[len] != '\\'); len--);
 
             if (len > 0) {
                std::string path(str, len);
@@ -1585,23 +1536,23 @@ static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
 
                      switch(type) {
                         case REG_DWORD: {
-                           LONG int32 = StrToInt(Args->Value);
+                           LONG int32 = strtol(Args->Value, NULL, 0);
                            RegSetValueExA(keyhandle, str+len+1, 0, REG_DWORD, &int32, sizeof(int32));
                            break;
                         }
 
                         case REG_QWORD: {
-                           LARGE int64 = StrToInt(Args->Value);
+                           LARGE int64 = strtoll(Args->Value, NULL, 0);
                            RegSetValueExA(keyhandle, str+len+1, 0, REG_QWORD, &int64, sizeof(int64));
                            break;
                         }
 
                         default: {
-                           RegSetValueExA(keyhandle, str+len+1, 0, REG_SZ, Args->Value, StrLength(Args->Value)+1);
+                           RegSetValueExA(keyhandle, str+len+1, 0, REG_SZ, Args->Value, strlen(Args->Value)+1);
                         }
                      }
                   }
-                  else RegSetValueExA(keyhandle, str+len+1, 0, REG_SZ, Args->Value, StrLength(Args->Value)+1);
+                  else RegSetValueExA(keyhandle, str+len+1, 0, REG_SZ, Args->Value, strlen(Args->Value)+1);
 
                   winCloseHandle(keyhandle);
                }
@@ -1692,7 +1643,7 @@ index in the table with a pointer to the action routine.  For example:
 <pre>
 if (!AccessObject(CurrentTask(), 5000, &task)) {
    task->getPtr(FID_Actions, &amp;actions);
-   actions[AC_Seek] = PROGRAM_Seek;
+   actions[AC::Seek] = PROGRAM_Seek;
    ReleaseObject(task);
 }
 </pre>
@@ -1917,7 +1868,7 @@ static ERR SET_LaunchPath(extTask *Self, CSTRING Value)
       LONG i;
       for (i=0; Value[i]; i++);
       if (AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->LaunchPath, NULL) IS ERR::Okay) {
-         CopyMemory(Value, Self->LaunchPath, i+1);
+         copymem(Value, Self->LaunchPath, i+1);
       }
       else return log.warning(ERR::AllocMemory);
    }
@@ -1987,7 +1938,7 @@ static ERR GET_Name(extTask *Self, STRING *Value)
 
 static ERR SET_Name(extTask *Self, CSTRING Value)
 {
-   StrCopy(Value, Self->Name, sizeof(Self->Name));
+   strcopy(Value, Self->Name, sizeof(Self->Name));
    return ERR::Okay;
 }
 
@@ -2064,30 +2015,28 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
 
    ERR error = ERR::Okay;
    if ((Value) and (*Value)) {
-      LONG len = StrLength(Value);
+      LONG len = strlen(Value);
       while ((len > 1) and (Value[len-1] != '/') and (Value[len-1] != '\\') and (Value[len-1] != ':')) len--;
       if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&new_path, NULL) IS ERR::Okay) {
-         CopyMemory(Value, new_path, len);
+         copymem(Value, new_path, len);
          new_path[len] = 0;
 
 #ifdef __unix__
-         STRING path;
+         std::string path;
          if (ResolvePath(new_path, RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-            if (chdir(path)) {
+            if (chdir(path.c_str())) {
                error = ERR::InvalidPath;
-               log.msg("Failed to switch current path to: %s", path);
+               log.msg("Failed to switch current path to: %s", path.c_str());
             }
-            FreeResource(path);
          }
          else error = log.warning(ERR::ResolvePath);
 #elif _WIN32
-         STRING path;
+         std::string path;
          if (ResolvePath(new_path, RSF::NO_FILE_CHECK|RSF::PATH, &path) IS ERR::Okay) {
-            if (chdir(path)) {
+            if (chdir(path.c_str())) {
                error = ERR::InvalidPath;
-               log.msg("Failed to switch current path to: %s", path);
+               log.msg("Failed to switch current path to: %s", path.c_str());
             }
-            FreeResource(path);
          }
          else error = log.warning(ERR::ResolvePath);
 #else
@@ -2112,8 +2061,8 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
 -FIELD-
 ProcessPath: The path of the executable that is associated with the task.
 
-The ProcessPath is set to the path of the executable file that is associated with the task.  It is managed internally
-and cannot be altered.
+The ProcessPath is set to the path of the executable file that is associated with the task (not including the 
+executable file name).  This value is managed internally and cannot be altered.
 
 In Microsoft Windows it is not always possible to determine the origins of an executable, in which case the
 ProcessPath is set to the working folder in use at the time the process was launched.
@@ -2261,7 +2210,7 @@ static const FieldArray clFields[] = {
 
 //********************************************************************************************************************
 
-extern "C" ERR add_task_class(void)
+extern ERR add_task_class(void)
 {
    glTaskClass = objMetaClass::create::global(
       fl::ClassVersion(VER_TASK),
@@ -2270,6 +2219,7 @@ extern "C" ERR add_task_class(void)
       fl::FileExtension("*.exe|*.bat|*.com"),
       fl::FileDescription("Executable File"),
       fl::FileHeader("[0:$4d5a]|[0:$7f454c46]"),
+      fl::Icon("items/launch"),
       fl::Actions(clActions),
       fl::Methods(clTaskMethods),
       fl::Fields(clFields),

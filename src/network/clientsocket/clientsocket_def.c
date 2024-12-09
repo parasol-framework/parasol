@@ -4,16 +4,16 @@ FDEF maReadClientMsg[] = { { "Message", FD_PTR|FD_RESULT }, { "Length", FD_LONG|
 FDEF maWriteClientMsg[] = { { "Message", FD_BUFFER|FD_PTR }, { "Length", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 
 static const struct MethodEntry clClientSocketMethods[] = {
-   { -1, (APTR)CLIENTSOCKET_ReadClientMsg, "ReadClientMsg", maReadClientMsg, sizeof(struct cs::ReadClientMsg) },
-   { -2, (APTR)CLIENTSOCKET_WriteClientMsg, "WriteClientMsg", maWriteClientMsg, sizeof(struct cs::WriteClientMsg) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)CLIENTSOCKET_ReadClientMsg, "ReadClientMsg", maReadClientMsg, sizeof(struct cs::ReadClientMsg) },
+   { AC(-2), (APTR)CLIENTSOCKET_WriteClientMsg, "WriteClientMsg", maWriteClientMsg, sizeof(struct cs::WriteClientMsg) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clClientSocketActions[] = {
-   { AC_Free, CLIENTSOCKET_Free },
-   { AC_Init, CLIENTSOCKET_Init },
-   { AC_Read, CLIENTSOCKET_Read },
-   { AC_Write, CLIENTSOCKET_Write },
-   { 0, NULL }
+   { AC::Free, CLIENTSOCKET_Free },
+   { AC::Init, CLIENTSOCKET_Init },
+   { AC::Read, CLIENTSOCKET_Read },
+   { AC::Write, CLIENTSOCKET_Write },
+   { AC::NIL, NULL }
 };
 

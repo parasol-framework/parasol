@@ -332,7 +332,7 @@ ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
             return ERR::Okay|ERR::Notified;
          }
       }
-      else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->UID)) {
+      else if ((action->ActionID IS AC::Draw) and (action->ObjectID IS Self->UID)) {
          if (action->SendArgs IS TRUE) {
             auto msgdraw = (struct acDraw *)(action + 1);
 

@@ -71,10 +71,10 @@ static ERR GET_Feedback(extCompression *Self, FUNCTION **Value)
 static ERR SET_Feedback(extCompression *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC_Free);
+      if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC::Free);
       Self->Feedback = *Value;
       if (Self->Feedback.isScript()) {
-         SubscribeAction(Self->Feedback.Context, AC_Free, C_FUNCTION(notify_free_feedback));
+         SubscribeAction(Self->Feedback.Context, AC::Free, C_FUNCTION(notify_free_feedback));
       }
    }
    else Self->Feedback.clear();
@@ -121,7 +121,7 @@ static ERR SET_Path(extCompression *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
 
    if ((Value) and (*Value)) {
-      if (!(Self->Path = StrClone(Value))) return log.warning(ERR::AllocMemory);
+      if (!(Self->Path = strclone(Value))) return log.warning(ERR::AllocMemory);
    }
    return ERR::Okay;
 }
@@ -164,7 +164,7 @@ static ERR GET_Password(extCompression *Self, CSTRING *Value)
 static ERR SET_Password(extCompression *Self, CSTRING Value)
 {
    if ((Value) and (*Value)) {
-      StrCopy(Value, Self->Password, sizeof(Self->Password));
+      strcopy(Value, Self->Password, sizeof(Self->Password));
       Self->Flags |= CMF::PASSWORD;
    }
    else Self->Password[0] = 0;

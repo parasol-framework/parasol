@@ -401,15 +401,17 @@ enum class VGF : ULONG {
    SCALED_FX = 0x00000040,
    SCALED_FY = 0x00000080,
    SCALED_RADIUS = 0x00000100,
-   FIXED_X1 = 0x00000200,
-   FIXED_Y1 = 0x00000400,
-   FIXED_X2 = 0x00000800,
-   FIXED_Y2 = 0x00001000,
-   FIXED_CX = 0x00002000,
-   FIXED_CY = 0x00004000,
-   FIXED_FX = 0x00008000,
-   FIXED_FY = 0x00010000,
-   FIXED_RADIUS = 0x00020000,
+   SCALED_FOCAL_RADIUS = 0x00000200,
+   FIXED_X1 = 0x00000400,
+   FIXED_Y1 = 0x00000800,
+   FIXED_X2 = 0x00001000,
+   FIXED_Y2 = 0x00002000,
+   FIXED_CX = 0x00004000,
+   FIXED_CY = 0x00008000,
+   FIXED_FX = 0x00010000,
+   FIXED_FY = 0x00020000,
+   FIXED_RADIUS = 0x00040000,
+   FIXED_FOCAL_RADIUS = 0x00080000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(VGF)
@@ -532,6 +534,12 @@ struct VectorPainter {
    objVectorImage * Image;        // A VectorImage object, suitable for image fills.
    objVectorGradient * Gradient;  // A VectorGradient object, suitable for gradient fills.
    struct FRGB Colour;            // A single RGB colour definition, suitable for block colour fills.
+   void reset() {
+      Colour.Alpha = 0;
+      Gradient = NULL;
+      Image    = NULL;
+      Pattern  = NULL;
+   }
 };
 
 struct PathCommand {
@@ -643,10 +651,10 @@ class objVectorTransition : public Object {
 // VectorScene methods
 
 namespace sc {
-struct AddDef { CSTRING Name; OBJECTPTR Def; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SearchByID { LONG ID; OBJECTPTR Result; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct FindDef { CSTRING Name; OBJECTPTR Def; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Debug { static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddDef { CSTRING Name; OBJECTPTR Def; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SearchByID { LONG ID; OBJECTPTR Result; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindDef { CSTRING Name; OBJECTPTR Def; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Debug { static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -670,43 +678,43 @@ class objVectorScene : public Object {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-      return Action(AC_Redimension, this, &args);
+      return Action(AC::Redimension, this, &args);
    }
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
-      return Action(AC_Redimension, this, &args);
+      return Action(AC::Redimension, this, &args);
    }
-   inline ERR reset() noexcept { return Action(AC_Reset, this, NULL); }
+   inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }
    inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
-      return Action(AC_Resize, this, &args);
+      return Action(AC::Resize, this, &args);
    }
    inline ERR addDef(CSTRING Name, OBJECTPTR Def) noexcept {
       struct sc::AddDef args = { Name, Def };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR searchByID(LONG ID, OBJECTPTR * Result) noexcept {
       struct sc::SearchByID args = { ID, (OBJECTPTR)0 };
-      ERR error = Action(-2, this, &args);
+      ERR error = Action(AC(-2), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR findDef(CSTRING Name, OBJECTPTR * Def) noexcept {
       struct sc::FindDef args = { Name, (OBJECTPTR)0 };
-      ERR error = Action(-3, this, &args);
+      ERR error = Action(AC(-3), this, &args);
       if (Def) *Def = args.Def;
       return(error);
    }
    inline ERR debug() noexcept {
-      return(Action(-4, this, NULL));
+      return(Action(AC(-4), this, NULL));
    }
 
    // Customised field setting
@@ -935,9 +943,10 @@ class objVectorGradient : public Object {
    DOUBLE  Y2;                     // Final Y coordinate for the gradient.
    DOUBLE  CenterX;                // The horizontal center point of the gradient.
    DOUBLE  CenterY;                // The vertical center point of the gradient.
-   DOUBLE  FX;                     // The horizontal focal point for radial gradients.
-   DOUBLE  FY;                     // The vertical focal point for radial gradients.
+   DOUBLE  FocalX;                 // The horizontal focal point for radial gradients.
+   DOUBLE  FocalY;                 // The vertical focal point for radial gradients.
    DOUBLE  Radius;                 // The radius of the gradient.
+   DOUBLE  FocalRadius;            // The size of the focal radius for radial gradients.
    objVectorGradient * Inherit;    // Inherit attributes from the VectorGradient referenced here.
    VSPREAD SpreadMethod;           // The behaviour to use when the gradient bounds do not match the vector path.
    VUNIT   Units;                  // Defines the coordinate system for X1, Y1, X2 and Y2.
@@ -954,70 +963,77 @@ class objVectorGradient : public Object {
 
    inline ERR setX1(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[3];
+      auto field = &this->Class->Dictionary[5];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY1(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[7];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setX2(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[6];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setY2(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[8];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[23];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[24];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setFX(const DOUBLE Value) noexcept {
+   inline ERR setFocalX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[0];
+      auto field = &this->Class->Dictionary[28];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setFY(const DOUBLE Value) noexcept {
+   inline ERR setFocalY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[1];
+      auto field = &this->Class->Dictionary[29];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setRadius(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[16];
+      Unit var(Value);
+      return field->WriteValue(target, field, FD_UNIT, &var, 1);
+   }
+
+   inline ERR setFocalRadius(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setInherit(objVectorGradient * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -1051,31 +1067,31 @@ class objVectorGradient : public Object {
 
    inline ERR setMatrices(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, 0x08000318, Value, 1);
    }
 
    inline ERR setNumeric(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    template <class T> inline ERR setID(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[2];
+      auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERR setStops(const APTR Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
    }
 
    template <class T> inline ERR setTransform(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
    }
 
@@ -1108,8 +1124,8 @@ class objFilterEffect : public Object {
    // Action stubs
 
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }
-   inline ERR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }
+   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
+   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
 
    // Customised field setting
 
@@ -1199,10 +1215,10 @@ class objImageFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1241,10 +1257,10 @@ class objSourceFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1283,10 +1299,10 @@ class objBlurFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1319,10 +1335,10 @@ class objColourFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1355,10 +1371,10 @@ class objCompositeFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1409,10 +1425,10 @@ class objConvolveFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1499,10 +1515,10 @@ class objDisplacementFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1541,10 +1557,10 @@ class objFloodFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1571,9 +1587,9 @@ class objFloodFX : public objFilterEffect {
 // LightingFX methods
 
 namespace lt {
-struct SetDistantLight { DOUBLE Azimuth; DOUBLE Elevation; static const ACTIONID id = -20; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetPointLight { DOUBLE X; DOUBLE Y; DOUBLE Z; static const ACTIONID id = -22; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetSpotLight { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE PX; DOUBLE PY; DOUBLE PZ; DOUBLE Exponent; DOUBLE ConeAngle; static const ACTIONID id = -21; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetDistantLight { DOUBLE Azimuth; DOUBLE Elevation; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetPointLight { DOUBLE X; DOUBLE Y; DOUBLE Z; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetSpotLight { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE PX; DOUBLE PY; DOUBLE PZ; DOUBLE Exponent; DOUBLE ConeAngle; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1586,23 +1602,23 @@ class objLightingFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR setDistantLight(DOUBLE Azimuth, DOUBLE Elevation) noexcept {
       struct lt::SetDistantLight args = { Azimuth, Elevation };
-      return(Action(-20, this, &args));
+      return(Action(AC(-20), this, &args));
    }
    inline ERR setPointLight(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
       struct lt::SetPointLight args = { X, Y, Z };
-      return(Action(-22, this, &args));
+      return(Action(AC(-22), this, &args));
    }
    inline ERR setSpotLight(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUBLE PY, DOUBLE PZ, DOUBLE Exponent, DOUBLE ConeAngle) noexcept {
       struct lt::SetSpotLight args = { X, Y, Z, PX, PY, PZ, Exponent, ConeAngle };
-      return(Action(-21, this, &args));
+      return(Action(AC(-21), this, &args));
    }
 
    // Customised field setting
@@ -1664,10 +1680,10 @@ class objMergeFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1694,10 +1710,10 @@ class objMorphologyFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1736,10 +1752,10 @@ class objOffsetFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1766,13 +1782,13 @@ class objOffsetFX : public objFilterEffect {
 // RemapFX methods
 
 namespace rf {
-struct SelectGamma { CMP Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent; static const ACTIONID id = -20; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectTable { CMP Component; DOUBLE * Values; LONG Size; static const ACTIONID id = -21; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectLinear { CMP Component; DOUBLE Slope; DOUBLE Intercept; static const ACTIONID id = -22; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectIdentity { CMP Component; static const ACTIONID id = -23; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectDiscrete { CMP Component; DOUBLE * Values; LONG Size; static const ACTIONID id = -24; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectInvert { CMP Component; static const ACTIONID id = -25; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectMask { CMP Component; LONG Mask; static const ACTIONID id = -26; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectGamma { CMP Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectTable { CMP Component; DOUBLE * Values; LONG Size; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectLinear { CMP Component; DOUBLE Slope; DOUBLE Intercept; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectIdentity { CMP Component; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectDiscrete { CMP Component; DOUBLE * Values; LONG Size; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectInvert { CMP Component; static const AC id = AC(-25); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectMask { CMP Component; LONG Mask; static const AC id = AC(-26); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1785,39 +1801,39 @@ class objRemapFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR selectGamma(CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) noexcept {
       struct rf::SelectGamma args = { Component, Amplitude, Offset, Exponent };
-      return(Action(-20, this, &args));
+      return(Action(AC(-20), this, &args));
    }
    inline ERR selectTable(CMP Component, DOUBLE * Values, LONG Size) noexcept {
       struct rf::SelectTable args = { Component, Values, Size };
-      return(Action(-21, this, &args));
+      return(Action(AC(-21), this, &args));
    }
    inline ERR selectLinear(CMP Component, DOUBLE Slope, DOUBLE Intercept) noexcept {
       struct rf::SelectLinear args = { Component, Slope, Intercept };
-      return(Action(-22, this, &args));
+      return(Action(AC(-22), this, &args));
    }
    inline ERR selectIdentity(CMP Component) noexcept {
       struct rf::SelectIdentity args = { Component };
-      return(Action(-23, this, &args));
+      return(Action(AC(-23), this, &args));
    }
    inline ERR selectDiscrete(CMP Component, DOUBLE * Values, LONG Size) noexcept {
       struct rf::SelectDiscrete args = { Component, Values, Size };
-      return(Action(-24, this, &args));
+      return(Action(AC(-24), this, &args));
    }
    inline ERR selectInvert(CMP Component) noexcept {
       struct rf::SelectInvert args = { Component };
-      return(Action(-25, this, &args));
+      return(Action(AC(-25), this, &args));
    }
    inline ERR selectMask(CMP Component, LONG Mask) noexcept {
       struct rf::SelectMask args = { Component, Mask };
-      return(Action(-26, this, &args));
+      return(Action(AC(-26), this, &args));
    }
 
    // Customised field setting
@@ -1837,10 +1853,10 @@ class objTurbulenceFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
 
@@ -1942,7 +1958,7 @@ class objVectorFilter : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
@@ -2028,16 +2044,16 @@ class objVectorFilter : public Object {
 // Vector methods
 
 namespace vec {
-struct Push { LONG Position; static const ACTIONID id = -1; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Trace { FUNCTION * Callback; DOUBLE Scale; LONG Transform; static const ACTIONID id = -2; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; static const ACTIONID id = -3; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct PointInPath { DOUBLE X; DOUBLE Y; static const ACTIONID id = -4; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SubscribeInput { JTYPE Mask; FUNCTION * Callback; static const ACTIONID id = -5; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SubscribeKeyboard { FUNCTION * Callback; static const ACTIONID id = -6; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SubscribeFeedback { FM Mask; FUNCTION * Callback; static const ACTIONID id = -7; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Debug { static const ACTIONID id = -8; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct NewMatrix { struct VectorMatrix * Transform; LONG End; static const ACTIONID id = -9; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct FreeMatrix { struct VectorMatrix * Matrix; static const ACTIONID id = -10; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Push { LONG Position; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Trace { FUNCTION * Callback; DOUBLE Scale; LONG Transform; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct PointInPath { DOUBLE X; DOUBLE Y; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SubscribeInput { JTYPE Mask; FUNCTION * Callback; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SubscribeKeyboard { FUNCTION * Callback; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SubscribeFeedback { FM Mask; FUNCTION * Callback; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Debug { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct NewMatrix { struct VectorMatrix * Transform; LONG End; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FreeMatrix { struct VectorMatrix * Matrix; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -2069,29 +2085,29 @@ class objVector : public Object {
 
    // Action stubs
 
-   inline ERR disable() noexcept { return Action(AC_Disable, this, NULL); }
-   inline ERR draw() noexcept { return Action(AC_Draw, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
    inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
-      return Action(AC_Draw, this, &args);
+      return Action(AC::Draw, this, &args);
    }
-   inline ERR enable() noexcept { return Action(AC_Enable, this, NULL); }
-   inline ERR hide() noexcept { return Action(AC_Hide, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
+   inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR moveToBack() noexcept { return Action(AC_MoveToBack, this, NULL); }
-   inline ERR moveToFront() noexcept { return Action(AC_MoveToFront, this, NULL); }
-   inline ERR show() noexcept { return Action(AC_Show, this, NULL); }
+   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
+   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
+   inline ERR show() noexcept { return Action(AC::Show, this, NULL); }
    inline ERR push(LONG Position) noexcept {
       struct vec::Push args = { Position };
-      return(Action(-1, this, &args));
+      return(Action(AC(-1), this, &args));
    }
    inline ERR trace(FUNCTION Callback, DOUBLE Scale, LONG Transform) noexcept {
       struct vec::Trace args = { &Callback, Scale, Transform };
-      return(Action(-2, this, &args));
+      return(Action(AC(-2), this, &args));
    }
    inline ERR getBoundary(VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) noexcept {
       struct vec::GetBoundary args = { Flags, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0 };
-      ERR error = Action(-3, this, &args);
+      ERR error = Action(AC(-3), this, &args);
       if (X) *X = args.X;
       if (Y) *Y = args.Y;
       if (Width) *Width = args.Width;
@@ -2100,32 +2116,32 @@ class objVector : public Object {
    }
    inline ERR pointInPath(DOUBLE X, DOUBLE Y) noexcept {
       struct vec::PointInPath args = { X, Y };
-      return(Action(-4, this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR subscribeInput(JTYPE Mask, FUNCTION Callback) noexcept {
       struct vec::SubscribeInput args = { Mask, &Callback };
-      return(Action(-5, this, &args));
+      return(Action(AC(-5), this, &args));
    }
    inline ERR subscribeKeyboard(FUNCTION Callback) noexcept {
       struct vec::SubscribeKeyboard args = { &Callback };
-      return(Action(-6, this, &args));
+      return(Action(AC(-6), this, &args));
    }
    inline ERR subscribeFeedback(FM Mask, FUNCTION Callback) noexcept {
       struct vec::SubscribeFeedback args = { Mask, &Callback };
-      return(Action(-7, this, &args));
+      return(Action(AC(-7), this, &args));
    }
    inline ERR debug() noexcept {
-      return(Action(-8, this, NULL));
+      return(Action(AC(-8), this, NULL));
    }
    inline ERR newMatrix(struct VectorMatrix ** Transform, LONG End) noexcept {
       struct vec::NewMatrix args = { (struct VectorMatrix *)0, End };
-      ERR error = Action(-9, this, &args);
+      ERR error = Action(AC(-9), this, &args);
       if (Transform) *Transform = args.Transform;
       return(error);
    }
    inline ERR freeMatrix(struct VectorMatrix * Matrix) noexcept {
       struct vec::FreeMatrix args = { Matrix };
-      return(Action(-10, this, &args));
+      return(Action(AC(-10), this, &args));
    }
 
    // Customised field setting
@@ -2346,11 +2362,11 @@ class objVector : public Object {
 // VectorPath methods
 
 namespace vp {
-struct AddCommand { struct PathCommand * Commands; LONG Size; static const ACTIONID id = -30; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveCommand { LONG Index; LONG Total; static const ACTIONID id = -31; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetCommand { LONG Index; struct PathCommand * Command; LONG Size; static const ACTIONID id = -32; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetCommand { LONG Index; struct PathCommand * Command; static const ACTIONID id = -33; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetCommandList { APTR Commands; LONG Size; static const ACTIONID id = -34; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddCommand { struct PathCommand * Commands; LONG Size; static const AC id = AC(-30); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveCommand { LONG Index; LONG Total; static const AC id = AC(-31); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetCommand { LONG Index; struct PathCommand * Command; LONG Size; static const AC id = AC(-32); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetCommand { LONG Index; struct PathCommand * Command; static const AC id = AC(-33); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetCommandList { APTR Commands; LONG Size; static const AC id = AC(-34); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -2363,30 +2379,30 @@ class objVectorPath : public objVector {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
-   inline ERR flush() noexcept { return Action(AC_Flush, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR addCommand(struct PathCommand * Commands, LONG Size) noexcept {
       struct vp::AddCommand args = { Commands, Size };
-      return(Action(-30, this, &args));
+      return(Action(AC(-30), this, &args));
    }
    inline ERR removeCommand(LONG Index, LONG Total) noexcept {
       struct vp::RemoveCommand args = { Index, Total };
-      return(Action(-31, this, &args));
+      return(Action(AC(-31), this, &args));
    }
    inline ERR setCommand(LONG Index, struct PathCommand * Command, LONG Size) noexcept {
       struct vp::SetCommand args = { Index, Command, Size };
-      return(Action(-32, this, &args));
+      return(Action(AC(-32), this, &args));
    }
    inline ERR getCommand(LONG Index, struct PathCommand ** Command) noexcept {
       struct vp::GetCommand args = { Index, (struct PathCommand *)0 };
-      ERR error = Action(-33, this, &args);
+      ERR error = Action(AC(-33), this, &args);
       if (Command) *Command = args.Command;
       return(error);
    }
    inline ERR setCommandList(APTR Commands, LONG Size) noexcept {
       struct vp::SetCommandList args = { Commands, Size };
-      return(Action(-34, this, &args));
+      return(Action(AC(-34), this, &args));
    }
 
    // Customised field setting
@@ -2424,7 +2440,7 @@ class objVectorPath : public objVector {
 // VectorText methods
 
 namespace vt {
-struct DeleteLine { LONG Line; static const ACTIONID id = -30; ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DeleteLine { LONG Line; static const AC id = AC(-30); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -2440,7 +2456,7 @@ class objVectorText : public objVector {
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR deleteLine(LONG Line) noexcept {
       struct vt::DeleteLine args = { Line };
-      return(Action(-30, this, &args));
+      return(Action(AC(-30), this, &args));
    }
 
    // Customised field setting
@@ -2497,7 +2513,7 @@ class objVectorText : public objVector {
 
    template <class T> inline ERR setFontStyle(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[33];
+      auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
    }
 
@@ -2571,6 +2587,12 @@ class objVectorText : public objVector {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08000409, Value, 1);
+   }
+
+   inline ERR setOnChange(FUNCTION Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[33];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setFocus(OBJECTID Value) noexcept {
@@ -3144,27 +3166,27 @@ class objVectorViewport : public objVector {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC_Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
       struct acMove args = { X, Y, Z };
-      return Action(AC_Move, this, &args);
+      return Action(AC::Move, this, &args);
    }
    inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
-      return Action(AC_MoveToPoint, this, &moveto);
+      return Action(AC::MoveToPoint, this, &moveto);
    }
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
-      return Action(AC_Redimension, this, &args);
+      return Action(AC::Redimension, this, &args);
    }
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
-      return Action(AC_Redimension, this, &args);
+      return Action(AC::Redimension, this, &args);
    }
    inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
-      return Action(AC_Resize, this, &args);
+      return Action(AC::Resize, this, &args);
    }
 
    // Customised field setting
@@ -3945,6 +3967,9 @@ constexpr FieldValue AppendPath(OBJECTPTR Value) { return FieldValue(FID_AppendP
 
 constexpr FieldValue DragCallback(const FUNCTION &Value) { return FieldValue(FID_DragCallback, &Value); }
 constexpr FieldValue DragCallback(const FUNCTION *Value) { return FieldValue(FID_DragCallback, Value); }
+
+constexpr FieldValue OnChange(const FUNCTION &Value) { return FieldValue(FID_OnChange, &Value); }
+constexpr FieldValue OnChange(const FUNCTION *Value) { return FieldValue(FID_OnChange, Value); }
 
 constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, LONG(Value)); }
 constexpr FieldValue Overflow(VOF Value) { return FieldValue(FID_Overflow, LONG(Value)); }

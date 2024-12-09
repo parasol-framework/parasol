@@ -160,6 +160,7 @@ typedef struct DateTime {
 #define DRIVETYPE_CDROM     2
 #define DRIVETYPE_FIXED     3
 #define DRIVETYPE_NETWORK   4
+#define DRIVETYPE_USB       5
 
 #define MFF_READ 0x00000001
 #define MFF_MODIFY 0x00000002
@@ -179,10 +180,14 @@ typedef struct DateTime {
 
 // Return codes available to the feedback routine
 
-#define FFR_OKAY 0
-#define FFR_CONTINUE 0
-#define FFR_SKIP 1
-#define FFR_ABORT 2
+enum class FFR : LONG {
+   NIL = 0,
+   OKAY = 0,
+   CONTINUE = 0,
+   SKIP = 1,
+   ABORT = 2,
+};
+
 
 #define PERMIT_READ 0x00000001
 #define PERMIT_WRITE 0x00000002
@@ -235,7 +240,7 @@ struct FileFeedback {
    char   Reserved[32];  // Reserved in case of future expansion
 };
 
-extern "C" LONG CALL_FEEDBACK(struct FileFeedback *);
+extern "C" FFR CALL_FEEDBACK(struct FUNCTION *, struct FileFeedback *);
 extern "C" ERR convert_errno(LONG Error, ERR Default);
 extern "C" LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size);
 
@@ -263,7 +268,7 @@ static void printerror(void)
 
 BYTE is_console(HANDLE h)
 {
-   if (FILE_TYPE_UNKNOWN == GetFileType(h) && ERROR_INVALID_HANDLE == GetLastError()) {
+   if (FILE_TYPE_UNKNOWN == GetFileType(h) and ERROR_INVALID_HANDLE == GetLastError()) {
        if ((h = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL))) {
            CloseHandle(h);
            return TRUE;
@@ -1263,7 +1268,7 @@ extern "C" void winEnumSpecialFolders(void (*enumfolder)(const char *, const cha
       //{ CSIDL_PRINTERS, "printers:",  "Printers",        "devices/printer" },
       //{ CSIDL_DRIVES,   "computer:",  "My Computer",     "programs/filemanager" }
       { CSIDL_NETHOOD,  "network:",   "Network Places", "devices/network", 0 },
-      { CSIDL_PERSONAL, "documents:", "Documents",      "office/documents", 0 },
+      { CSIDL_PERSONAL, "documents:", "Documents",      "page/multiple", 0 },
       { CSIDL_DESKTOPDIRECTORY, "desktop:", "Desktop",  "devices/harddisk", 0 }
    };
    char path[MAX_PATH];
@@ -1395,16 +1400,16 @@ extern "C" ERR winCreateDir(const char *Path)
 //********************************************************************************************************************
 // Returns TRUE on success.
 
-extern "C" LONG winGetFreeDiskSpace(unsigned char Drive, long long *TotalSpace, long long *BytesUsed)
+extern "C" LONG winGetFreeDiskSpace(char Drive, long long *TotalSpace, long long *BytesUsed)
 {
    DWORD sectors, bytes_per_sector, free_clusters, total_clusters;
 
    *TotalSpace = 0;
    *BytesUsed = 0;
 
-   std::string location = std::to_string(Drive) + ":\\";
+   char location[4] = { Drive, ':', '\\', 0 };
 
-   if (GetDiskFreeSpace(location.c_str(), &sectors, &bytes_per_sector, &free_clusters, &total_clusters)) {
+   if (GetDiskFreeSpace(location, &sectors, &bytes_per_sector, &free_clusters, &total_clusters)) {
       *TotalSpace = (double)sectors * (double)bytes_per_sector * (double)free_clusters;
       *BytesUsed  = ((double)sectors * (double)bytes_per_sector * (double)total_clusters);
       return 1;
@@ -1544,14 +1549,20 @@ extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags,
 
 //********************************************************************************************************************
 
-extern "C" LONG winSetFileTime(STRING Location, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second)
+extern "C" LONG winSetFileTime(STRING Location, bool Folder, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second)
 {
    SYSTEMTIME time;
    FILETIME filetime, localtime;
-   LONG err;
 
-   if (auto handle = CreateFile(Location, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL,
-         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); handle != INVALID_HANDLE_VALUE) {
+   LONG flags = FILE_ATTRIBUTE_NORMAL, rw;
+   if (Folder) {
+      rw = FILE_SHARE_WRITE;
+      flags |= FILE_FLAG_BACKUP_SEMANTICS;
+   }
+   else rw = FILE_SHARE_READ|FILE_SHARE_WRITE;
+
+   if (auto handle = CreateFile(Location, GENERIC_WRITE, rw, NULL,
+         OPEN_EXISTING, flags, NULL); handle != INVALID_HANDLE_VALUE) {
       time.wYear         = Year;
       time.wMonth        = Month;
       time.wDayOfWeek    = 0;
@@ -1564,7 +1575,7 @@ extern "C" LONG winSetFileTime(STRING Location, WORD Year, WORD Month, WORD Day,
       SystemTimeToFileTime(&time, &localtime);
       LocalFileTimeToFileTime(&localtime, &filetime);
 
-      err = SetFileTime(handle, &filetime, &filetime, &filetime);
+      LONG err = SetFileTime(handle, &filetime, &filetime, &filetime);
       CloseHandle(handle);
       if (err) return 1;
    }
@@ -1660,7 +1671,7 @@ extern "C" LONG winSetEOF(CSTRING Location, __int64 Size)
    if ((handle = CreateFile(Location, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
       li.LowPart = SetFilePointer(handle, li.LowPart, &li.HighPart, FILE_BEGIN);
 
-      if (li.LowPart == INVALID_SET_FILE_POINTER && GetLastError() != NO_ERROR) {
+      if (li.LowPart == INVALID_SET_FILE_POINTER and GetLastError() != NO_ERROR) {
          printerror();
       }
       else if (SetEndOfFile(handle)) {
@@ -1691,15 +1702,40 @@ extern "C" LONG winGetLogicalDriveStrings(STRING Buffer, LONG Length)
 
 //********************************************************************************************************************
 
-extern "C" LONG winGetDriveType(STRING Name)
+extern ERR winGetVolumeInformation(STRING Volume, std::string &Label, std::string &FileSystem, int &Type)
 {
-   LONG flags = GetDriveType(Name);
+   char label_buffer[80] = { 0 };
+   char fs_buffer[32] = { 0 };
 
-   if (flags IS DRIVE_CDROM) return DRIVETYPE_CDROM;
-   else if (flags IS DRIVE_FIXED) return DRIVETYPE_FIXED;
-   else if (flags IS DRIVE_REMOVABLE) return DRIVETYPE_REMOVABLE;
-   else if (flags IS DRIVE_REMOTE) return DRIVETYPE_NETWORK;
-   else return 0;
+   switch (GetDriveType(Volume)) {
+      case DRIVE_CDROM:     Type = DRIVETYPE_CDROM; break;
+      case DRIVE_FIXED:     Type = DRIVETYPE_FIXED; break;
+      case DRIVE_REMOVABLE: Type = DRIVETYPE_REMOVABLE; break;
+      case DRIVE_REMOTE:    Type = DRIVETYPE_NETWORK; break;
+      default: Type = 0;
+   }
+
+   if (GetVolumeInformation(Volume, label_buffer, sizeof(label_buffer), NULL, NULL, NULL, fs_buffer, sizeof(fs_buffer))) {
+      if (label_buffer[0]) Label.assign(label_buffer);
+      if (fs_buffer[0]) FileSystem.assign(fs_buffer);
+   }
+
+   if (Type IS DRIVETYPE_REMOVABLE) {
+      char drive[] = "\\\\?\\X:";
+      drive[4] = Volume[0];
+      if (auto hDevice = CreateFile(drive, 0, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL); hDevice != INVALID_HANDLE_VALUE) {
+         char buffer[1024];
+         DWORD dwOutBytes;
+         STORAGE_PROPERTY_QUERY query = { .PropertyId = StorageDeviceProperty, .QueryType = PropertyStandardQuery };
+         if (DeviceIoControl(hDevice, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), buffer, sizeof(buffer), &dwOutBytes, (LPOVERLAPPED)NULL)) {
+            auto info = (PSTORAGE_DEVICE_DESCRIPTOR)buffer;
+            if (info->BusType == BusTypeUsb) Type = DRIVETYPE_USB;
+         }
+         CloseHandle(hDevice);
+      }
+   }
+
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -1782,44 +1818,42 @@ extern "C" LONG winTestLocation(STRING Location, BYTE CaseSensitive)
 }
 
 //********************************************************************************************************************
+// The Path must not include a trailing slash.
 
-extern "C" ERR delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
+extern ERR delete_tree(std::string &Path, FUNCTION *Callback, struct FileFeedback *Feedback)
 {
-   LONG len, cont, i;
-   WIN32_FIND_DATA find;
-   HANDLE handle;
-
-   if (Feedback) {
-      Feedback->Path = Path;
-      i = CALL_FEEDBACK(Feedback);
-      if (i IS FFR_ABORT) return ERR::Cancelled;
-      else if (i IS FFR_SKIP) return ERR::Okay;
+   if ((Callback) and (Feedback)) {
+      Feedback->Path = Path.data();
+      auto result = CALL_FEEDBACK(Callback, Feedback);
+      if (result IS FFR::ABORT) return ERR::Cancelled;
+      else if (result IS FFR::SKIP) return ERR::Okay;
    }
 
-   for (len=0; Path[len]; len++);
-   Path[len] = '\\';
-   Path[len+1] = '*';
-   Path[len+2] = 0;
+   WIN32_FIND_DATA find;
+   auto path_size = Path.size();
+   Path.append("\\*");
+   auto handle = FindFirstFile(Path.c_str(), &find);
+   Path.pop_back();
 
-   if ((handle = FindFirstFile(Path, &find)) != INVALID_HANDLE_VALUE) {
-      cont = 1;
+   if (handle != INVALID_HANDLE_VALUE) {
+      LONG cont = 1;
       while (cont) {
          if ((find.cFileName[0] IS '.') and (find.cFileName[1] IS 0));
          else if ((find.cFileName[0] IS '.') and (find.cFileName[1] IS '.') and (find.cFileName[2] IS 0));
          else {
-            for (i=0; find.cFileName[i]; i++) Path[len+1+i] = find.cFileName[i];
-            Path[len+1+i] = 0;
+            Path.resize(path_size + 1);
+            Path.append(find.cFileName);
 
             if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-               delete_tree(Path, Size, Feedback);
+               delete_tree(Path, Callback, Feedback);
             }
             else {
                if (find.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
                   find.dwFileAttributes &= ~FILE_ATTRIBUTE_READONLY;
-                  SetFileAttributes(Path, find.dwFileAttributes);
+                  SetFileAttributes(Path.c_str(), find.dwFileAttributes);
                }
 
-               unlink(Path); // Delete a file or empty folder
+               unlink(Path.c_str()); // Delete a file or empty folder
             }
          }
 
@@ -1829,23 +1863,23 @@ extern "C" ERR delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
       FindClose(handle);
    }
 
-   Path[len] = 0;
+   Path.resize(path_size);
 
    // Remove the file/folder itself - first check if it is read-only
 
-   auto attrib = GetFileAttributes(Path);
+   auto attrib = GetFileAttributes(Path.c_str());
    if (attrib != INVALID_FILE_ATTRIBUTES) {
       if (attrib & FILE_ATTRIBUTE_READONLY) {
          attrib &= ~FILE_ATTRIBUTE_READONLY;
-         SetFileAttributes(Path, attrib);
+         SetFileAttributes(Path.c_str(), attrib);
       }
    }
 
    if (attrib & FILE_ATTRIBUTE_DIRECTORY) {
-      if (RemoveDirectory(Path)) return ERR::Okay;
+      if (RemoveDirectory(Path.c_str())) return ERR::Okay;
       else return ERR::Failed;
    }
-   else if (!unlink(Path)) {
+   else if (!unlink(Path.c_str())) {
       return ERR::Okay;
    }
    else {

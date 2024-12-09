@@ -1,0 +1,19 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <!-- Radial Gradient using a xlink:href to another radial gradient -->
+
+  <radialGradient id="Grad2a" gradientUnits="objectBoundingBox" cx=".5" cy=".5" fx=".5" fy=".5" r=".5">
+    <stop stop-color="black" offset="0"/>
+    <stop stop-color="rgb(255,165,0)" offset="1"/>
+  </radialGradient>
+
+  <radialGradient id="Grad2b" xlink:href="#Grad2a" gradientUnits="userSpaceOnUse" cx="240" cy="190" fx="240" fy="190" r="40"/>
+  <rect x="20" y="20" width="440" height="80" fill="url(#Grad2a)"/>
+  <text font-size="30" x="20" y="130">Radial gradient.</text>
+
+  <rect x="20" y="150" width="440" height="80" fill="url(#Grad2b)"/>
+  <text font-size="30" x="20" y="260">Referencing gradient below.</text>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000000"/>
+</svg>

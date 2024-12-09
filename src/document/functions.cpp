@@ -2,7 +2,7 @@
 static const LONG MAXLOOP = 1000;
 
 static const char glDefaultStyles[] =
-"<template name=\"h1\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"18pt\" font-style=\"bold\"><inject/></p></template>\n\
+"<template name=\"h1\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"22pt\" font-style=\"bold\"><inject/></p></template>\n\
 <template name=\"h2\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"16pt\" font-style=\"bold\"><inject/></p></template>\n\
 <template name=\"h3\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14pt\" font-style=\"bold\"><inject/></p></template>\n\
 <template name=\"h4\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14pt\"><inject/></p></template>\n\
@@ -25,7 +25,7 @@ static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Sourc
 
 //********************************************************************************************************************
 
-constexpr DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
+constexpr static DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
 {
    if (Width > Height) std::swap(Width, Height);
    if ((Height / Width) <= 1.5) return 5.0 * (Width + Height) / 7.0; // Fast hypot calculation accurate to within 1% for specific use cases.
@@ -66,6 +66,44 @@ static std::string stream_to_string(RSTREAM &Stream, stream_char Start, stream_c
       }
    }
    return str.str();
+}
+
+//********************************************************************************************************************
+
+static void apply_border_to_path(CB Border, std::vector<PathCommand> &Seq, FloatRect Area)
+{
+   if (Border IS CB::ALL) {
+      Seq.push_back({ .Type = PE::Move, .X = Area.X, .Y = Area.Y });
+      Seq.push_back({ .Type = PE::HLineRel, .X = Area.Width });
+      Seq.push_back({ .Type = PE::VLineRel, .Y = Area.Height });
+      Seq.push_back({ .Type = PE::HLineRel, .X = -Area.Width });
+      Seq.push_back({ .Type = PE::ClosePath });
+   }
+   else {
+      if ((Border & CB::LEFT) != CB::NIL) {
+         Seq.push_back({ .Type = PE::Move, .X = Area.X, .Y = Area.Y });
+         Seq.push_back({ .Type = PE::VLineRel, .Y = Area.Height });
+         Seq.push_back({ .Type = PE::ClosePath });
+      }
+
+      if ((Border & CB::TOP) != CB::NIL) {
+         Seq.push_back({ .Type = PE::Move, .X = Area.X, .Y = Area.Y });
+         Seq.push_back({ .Type = PE::HLineRel, .X = Area.Width });
+         Seq.push_back({ .Type = PE::ClosePath });
+      }
+
+      if ((Border & CB::RIGHT) != CB::NIL) {
+         Seq.push_back({ .Type = PE::Move, .X = Area.X + Area.Width, .Y = Area.Y });
+         Seq.push_back({ .Type = PE::VLineRel, .Y = Area.Height });
+         Seq.push_back({ .Type = PE::ClosePath });
+      }
+
+      if ((Border & CB::BOTTOM) != CB::NIL) {
+         Seq.push_back({ .Type = PE::Move, .X = Area.X, .Y = Area.Y + Area.Height });
+         Seq.push_back({ .Type = PE::HLineRel, .X = Area.Width });
+         Seq.push_back({ .Type = PE::ClosePath });
+      }
+   }
 }
 
 /*********************************************************************************************************************
@@ -157,7 +195,7 @@ static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Scaled)
       else if ((str[0] IS 'p') and (str[1] IS 't')) { str += 2; multiplier = (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
       else if ((str[0] IS 'p') and (str[1] IS 'c')) { str += 2; multiplier = (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
 
-      Output = StrToFloat(v) * multiplier;
+      Output = strtod(v, NULL) * multiplier;
    }
    else Output = 0;
 
@@ -248,7 +286,7 @@ static ERR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML::T
       }
    }
 
-   // Check that the FocusIndex is valid (there's a slim possibility that it may not be if AC_Focus has been
+   // Check that the FocusIndex is valid (there's a slim possibility that it may not be if AC::Focus has been
    // incorrectly used).
 
    if (Self->FocusIndex >= std::ssize(Self->Tabs)) Self->FocusIndex = -1;
@@ -479,15 +517,18 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    }
 
    if ((Self->View) and (Self->Page)) {
-      // Client generated objects can appear in the view if <svg placement="background"/> was used.
+      // Client generated objects can appear in the View if <svg placement="background"/> was used.
       pf::vector<ChildEntry> list;
       if (ListChildren(Self->View->UID, &list) IS ERR::Okay) {
-         for (auto it=list.rbegin(); it != list.rend(); it++) {
-            if (it->ObjectID != Self->Page->UID) FreeResource(it->ObjectID);
+         for (auto child=list.rbegin(); child != list.rend(); child++) {
+            if (child->ObjectID != Self->Page->UID) FreeResource(child->ObjectID);
          }
       }
    }
 
+   for (auto it=Self->UIObjects.rbegin(); it != Self->UIObjects.rend(); it++) {
+      FreeResource(*it);
+   }
    Self->UIObjects.clear();
 
    if (Self->Page) acMoveToPoint(Self->Page, 0, 0, 0, MTF::X|MTF::Y);
@@ -844,7 +885,7 @@ void ui_link::exec(extDocument *Self)
 
    pf::Log log(__FUNCTION__);
 
-   log.branch("");
+   log.branch();
 
    Self->Processing++;
 

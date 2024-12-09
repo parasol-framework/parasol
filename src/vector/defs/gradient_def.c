@@ -37,15 +37,17 @@ static const struct FieldDef clVectorGradientFlags[] = {
    { "ScaledFX", 0x00000040 },
    { "ScaledFY", 0x00000080 },
    { "ScaledRadius", 0x00000100 },
-   { "FixedX1", 0x00000200 },
-   { "FixedY1", 0x00000400 },
-   { "FixedX2", 0x00000800 },
-   { "FixedY2", 0x00001000 },
-   { "FixedCX", 0x00002000 },
-   { "FixedCY", 0x00004000 },
-   { "FixedFX", 0x00008000 },
-   { "FixedFY", 0x00010000 },
-   { "FixedRadius", 0x00020000 },
+   { "ScaledFocalRadius", 0x00000200 },
+   { "FixedX1", 0x00000400 },
+   { "FixedY1", 0x00000800 },
+   { "FixedX2", 0x00001000 },
+   { "FixedY2", 0x00002000 },
+   { "FixedCX", 0x00004000 },
+   { "FixedCY", 0x00008000 },
+   { "FixedFX", 0x00010000 },
+   { "FixedFY", 0x00020000 },
+   { "FixedRadius", 0x00040000 },
+   { "FixedFocalRadius", 0x00080000 },
    { NULL, 0 }
 };
 
@@ -57,9 +59,9 @@ static const struct FieldDef clVectorGradientColourSpace[] = {
 };
 
 static const struct ActionArray clVectorGradientActions[] = {
-   { AC_Free, VECTORGRADIENT_Free },
-   { AC_Init, VECTORGRADIENT_Init },
-   { AC_NewObject, VECTORGRADIENT_NewObject },
-   { 0, NULL }
+   { AC::Free, VECTORGRADIENT_Free },
+   { AC::Init, VECTORGRADIENT_Init },
+   { AC::NewObject, VECTORGRADIENT_NewObject },
+   { AC::NIL, NULL }
 };
 

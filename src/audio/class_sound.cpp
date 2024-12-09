@@ -276,7 +276,7 @@ static ERR SOUND_Activate(extSound *Self)
       if (Self->Length > buffer_len) {
          log.msg("Streaming enabled because sample length %d exceeds buffer size %d.", Self->Length, buffer_len);
          Self->Flags |= SDF::STREAM;
-         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, TRUE);
+         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, true);
       }
       else {
          // Create the buffer and fill it completely with sample data.
@@ -284,7 +284,7 @@ static ERR SOUND_Activate(extSound *Self)
          Self->Flags &= ~SDF::STREAM;
          auto client_pos = Self->Position; // Save the seek cursor from pollution
          if (client_pos) Self->seekStart(0);
-         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
+         strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, false);
          Self->seekStart(client_pos);
       }
 
@@ -312,7 +312,7 @@ static ERR SOUND_Activate(extSound *Self)
    }
    else if (set_playback_trigger(Self) != ERR::Okay) return log.warning(ERR::Failed);
 
-   auto response = sndPlay((PlatformData *)Self->PlatformData, ((Self->Flags & SDF::LOOP) != SDF::NIL) ? TRUE : FALSE, Self->Position);
+   auto response = sndPlay((PlatformData *)Self->PlatformData, ((Self->Flags & SDF::LOOP) != SDF::NIL) ? true : false, Self->Position);
    return response ? log.warning(ERR::Failed) : ERR::Okay;
 #else
 
@@ -600,7 +600,7 @@ static ERR SOUND_Free(extSound *Self)
    if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
 
    if (Self->OnStop.isScript()) {
-      UnsubscribeAction(Self->OnStop.Context, AC_Free);
+      UnsubscribeAction(Self->OnStop.Context, AC::Free);
       Self->OnStop.clear();
    }
 
@@ -649,7 +649,7 @@ static ERR SOUND_GetKey(extSound *Self, struct acGetKey *Args)
 
    std::string name(Args->Key);
    if (Self->Tags.contains(name)) {
-      StrCopy(Self->Tags[name].c_str(), Args->Value, Args->Size);
+      strcopy(Self->Tags[name], Args->Value, Args->Size);
       return ERR::Okay;
    }
    else return ERR::UnsupportedField;
@@ -898,10 +898,9 @@ static ERR SOUND_Init(extSound *Self)
 
 //********************************************************************************************************************
 
-static ERR SOUND_NewObject(extSound *Self)
+static ERR SOUND_NewPlacement(extSound *Self)
 {
    new (Self) extSound;
-
    Self->Compression = 50;     // 50% compression by default
    Self->Volume      = 1.0;    // Playback at 100% volume level
    Self->Pan         = 0;
@@ -966,8 +965,8 @@ static ERR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
 
       ERR (**routine)(OBJECTPTR, APTR);
       if ((mclass->getPtr(FID_ActionTable, (APTR *)&routine) IS ERR::Okay) and (routine)) {
-         if (routine[AC_SaveToObject]) {
-            return routine[AC_SaveToObject](Self, Args);
+         if (routine[LONG(AC::SaveToObject)]) {
+            return routine[LONG(AC::SaveToObject)](Self, Args);
          }
          else return log.warning(ERR::NoSupport);
       }
@@ -1187,7 +1186,7 @@ The buffer that is referred to by the Header field is not populated until the In
 static ERR SOUND_GET_Header(extSound *Self, BYTE **Value, LONG *Elements)
 {
    *Value = (BYTE *)Self->Header;
-   *Elements = ARRAYSIZE(Self->Header);
+   *Elements = std::ssize(Self->Header);
    return ERR::Okay;
 }
 
@@ -1339,7 +1338,7 @@ static ERR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    CSTRING str = Value;
    if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-')) {
-      note = StrToInt(Value);
+      note = strtol(Value, NULL, 0);
    }
    else {
       note = 0;
@@ -1460,10 +1459,10 @@ static ERR SOUND_GET_OnStop(extSound *Self, FUNCTION **Value)
 static ERR SOUND_SET_OnStop(extSound *Self, FUNCTION *Value)
 {
    if (Value) {
-      if (Self->OnStop.isScript()) UnsubscribeAction(Self->OnStop.Context, AC_Free);
+      if (Self->OnStop.isScript()) UnsubscribeAction(Self->OnStop.Context, AC::Free);
       Self->OnStop = *Value;
       if (Self->OnStop.isScript()) {
-         SubscribeAction(Self->OnStop.Context, AC_Free, C_FUNCTION(notify_onstop_free));
+         SubscribeAction(Self->OnStop.Context, AC::Free, C_FUNCTION(notify_onstop_free));
       }
    }
    else Self->OnStop.clear();
@@ -1741,19 +1740,19 @@ static const FieldArray clFields[] = {
 };
 
 static const ActionArray clActions[] = {
-   { AC_Activate,      SOUND_Activate },
-   { AC_Deactivate,    SOUND_Deactivate },
-   { AC_Disable,       SOUND_Disable },
-   { AC_Enable,        SOUND_Enable },
-   { AC_Free,          SOUND_Free },
-   { AC_GetKey,        SOUND_GetKey },
-   { AC_Init,          SOUND_Init },
-   { AC_NewObject,     SOUND_NewObject },
-   { AC_Read,          SOUND_Read },
-   { AC_SaveToObject,  SOUND_SaveToObject },
-   { AC_Seek,          SOUND_Seek },
-   { AC_SetKey,        SOUND_SetKey },
-   { 0, NULL }
+   { AC::Activate,      SOUND_Activate },
+   { AC::Deactivate,    SOUND_Deactivate },
+   { AC::Disable,       SOUND_Disable },
+   { AC::Enable,        SOUND_Enable },
+   { AC::Free,          SOUND_Free },
+   { AC::GetKey,        SOUND_GetKey },
+   { AC::Init,          SOUND_Init },
+   { AC::NewPlacement,  SOUND_NewPlacement },
+   { AC::Read,          SOUND_Read },
+   { AC::SaveToObject,  SOUND_SaveToObject },
+   { AC::Seek,          SOUND_Seek },
+   { AC::SetKey,        SOUND_SetKey },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************
@@ -1766,6 +1765,7 @@ ERR add_sound_class(void)
       fl::FileExtension("*.wav|*.wave|*.snd"),
       fl::FileDescription("Sound Sample"),
       fl::FileHeader("[0:$52494646][8:$57415645]"),
+      fl::Icon("filetypes/audio"),
       fl::Name("Sound"),
       fl::Category(CCF::AUDIO),
       fl::Actions(clActions),

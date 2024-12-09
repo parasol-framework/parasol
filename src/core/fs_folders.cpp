@@ -68,19 +68,17 @@ ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
 
    if ((Flags & (RDF::FOLDER|RDF::FILE)) IS RDF::NIL) Flags |= RDF::FOLDER|RDF::FILE;
 
-   STRING resolved_path;
+   std::string resolved_path;
    if (!Path[0]) Path = ":"; // A path of ':' will return all known volumes.
    if (auto error = ResolvePath(Path, RSF::NIL, &resolved_path); error IS ERR::Okay) {
       auto vd = get_fs(resolved_path);
 
       // NB: We use MAX_FILENAME rather than resolve_len in the allocation size because fs_opendir() requires more space.
-      LONG path_len = StrLength(Path) + 1;
-      LONG resolve_len = StrLength(resolved_path) + 1;
+      LONG path_len = strlen(Path) + 1;
       DirInfo *dir;
       // Layout: [DirInfo] [FileInfo] [Driver] [Name] [Path]
       LONG size = sizeof(DirInfo) + sizeof(FileInfo) + vd->DriverSize + MAX_FILENAME + path_len + MAX_FILENAME;
       if (AllocMemory(size, MEM::DATA|MEM::MANAGED, (APTR *)&dir, NULL) != ERR::Okay) {
-         FreeResource(resolved_path);
          return ERR::AllocMemory;
       }
 
@@ -93,14 +91,12 @@ ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
       dir->prvFlags        = Flags | RDF::OPENDIR;
       dir->prvVirtualID    = DEFAULT_VIRTUALID;
       dir->prvResolvedPath = dir->prvPath + path_len;
-      dir->prvResolveLen   = resolve_len;
+      dir->prvResolveLen   = resolved_path.size() + 1;
       #ifdef _WIN32
          dir->prvHandle = (WINHANDLE)-1;
       #endif
-      CopyMemory(Path, dir->prvPath, path_len);
-      CopyMemory(resolved_path, dir->prvResolvedPath, resolve_len);
-
-      FreeResource(resolved_path);
+      copymem(Path, dir->prvPath, path_len);
+      copymem(resolved_path.c_str(), dir->prvResolvedPath, resolved_path.size() + 1);
 
       if ((Path[0] IS ':') or (!Path[0])) {
          if ((Flags & RDF::FOLDER) IS RDF::NIL) {
@@ -193,7 +189,7 @@ ERR ScanDir(DirInfo *Dir)
             if (count IS Dir->prvIndex) {
                Dir->prvIndex++;
                auto &volume = pair.first;
-               LONG j = StrCopy(volume.c_str(), file->Name, MAX_FILENAME-2);
+               LONG j = strcopy(volume, file->Name, MAX_FILENAME-2);
                if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
                   file->Name[j++] = ':';
                   file->Name[j] = 0;

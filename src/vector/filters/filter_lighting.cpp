@@ -336,12 +336,12 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
 
    objBitmap *bmp;
    if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
-   
+
    // Note! Linear conversion of the source bitmap is unnecessary because only the alpha channel is used.
 
    // The alpha channel of the source bitmap will function as the Z value for the bump map.  The RGB components
    // are ignored for input purposes.
-   
+
    const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
    const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
    const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
@@ -524,7 +524,7 @@ static ERR LIGHTINGFX_Free(extLightingFX *Self)
 
 //********************************************************************************************************************
 
-static ERR LIGHTINGFX_NewObject(extLightingFX *Self)
+static ERR LIGHTINGFX_NewPlacement(extLightingFX *Self)
 {
    new (Self) extLightingFX;
    return ERR::Okay;
@@ -863,7 +863,7 @@ static ERR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, STRING *Value)
    // TODO
    stream << "<" << type << ">";
    stream << "</" << type << ">";
-   *Value = StrClone(stream.str().c_str());
+   *Value = strclone(stream.str());
    return ERR::Okay;
 }
 

@@ -66,7 +66,7 @@ static ERR MERGEFX_Free(extMergeFX *Self)
 
 //********************************************************************************************************************
 
-static ERR MERGEFX_NewObject(extMergeFX *Self)
+static ERR MERGEFX_NewPlacement(extMergeFX *Self)
 {
    new (Self) extMergeFX;
    Self->SourceType = VSF::IGNORE;
@@ -114,7 +114,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 
 static ERR MERGEFX_GET_XMLDef(extMergeFX *Self, STRING *Value)
 {
-   *Value = StrClone("feMerge");
+   *Value = strclone("feMerge");
    return ERR::Okay;
 }
 

@@ -21,25 +21,26 @@ FDEF maBeep[] = { { "Pitch", FD_LONG }, { "Duration", FD_LONG }, { "Volume", FD_
 FDEF maSetVolume[] = { { "Index", FD_LONG }, { "Name", FD_STR }, { "Flags", FD_LONG }, { "Channel", FD_LONG }, { "Volume", FD_DOUBLE }, { 0, 0 } };
 
 static const struct MethodEntry clAudioMethods[] = {
-   { -1, (APTR)AUDIO_OpenChannels, "OpenChannels", maOpenChannels, sizeof(struct snd::OpenChannels) },
-   { -2, (APTR)AUDIO_CloseChannels, "CloseChannels", maCloseChannels, sizeof(struct snd::CloseChannels) },
-   { -3, (APTR)AUDIO_AddSample, "AddSample", maAddSample, sizeof(struct snd::AddSample) },
-   { -4, (APTR)AUDIO_RemoveSample, "RemoveSample", maRemoveSample, sizeof(struct snd::RemoveSample) },
-   { -5, (APTR)AUDIO_SetSampleLength, "SetSampleLength", maSetSampleLength, sizeof(struct snd::SetSampleLength) },
-   { -6, (APTR)AUDIO_AddStream, "AddStream", maAddStream, sizeof(struct snd::AddStream) },
-   { -7, (APTR)AUDIO_Beep, "Beep", maBeep, sizeof(struct snd::Beep) },
-   { -8, (APTR)AUDIO_SetVolume, "SetVolume", maSetVolume, sizeof(struct snd::SetVolume) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)AUDIO_OpenChannels, "OpenChannels", maOpenChannels, sizeof(struct snd::OpenChannels) },
+   { AC(-2), (APTR)AUDIO_CloseChannels, "CloseChannels", maCloseChannels, sizeof(struct snd::CloseChannels) },
+   { AC(-3), (APTR)AUDIO_AddSample, "AddSample", maAddSample, sizeof(struct snd::AddSample) },
+   { AC(-4), (APTR)AUDIO_RemoveSample, "RemoveSample", maRemoveSample, sizeof(struct snd::RemoveSample) },
+   { AC(-5), (APTR)AUDIO_SetSampleLength, "SetSampleLength", maSetSampleLength, sizeof(struct snd::SetSampleLength) },
+   { AC(-6), (APTR)AUDIO_AddStream, "AddStream", maAddStream, sizeof(struct snd::AddStream) },
+   { AC(-7), (APTR)AUDIO_Beep, "Beep", maBeep, sizeof(struct snd::Beep) },
+   { AC(-8), (APTR)AUDIO_SetVolume, "SetVolume", maSetVolume, sizeof(struct snd::SetVolume) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clAudioActions[] = {
-   { AC_Activate, AUDIO_Activate },
-   { AC_Deactivate, AUDIO_Deactivate },
-   { AC_Free, AUDIO_Free },
-   { AC_Init, AUDIO_Init },
-   { AC_NewObject, AUDIO_NewObject },
-   { AC_SaveSettings, AUDIO_SaveSettings },
-   { AC_SaveToObject, AUDIO_SaveToObject },
-   { 0, NULL }
+   { AC::Activate, AUDIO_Activate },
+   { AC::Deactivate, AUDIO_Deactivate },
+   { AC::Free, AUDIO_Free },
+   { AC::Init, AUDIO_Init },
+   { AC::NewObject, AUDIO_NewObject },
+   { AC::NewPlacement, AUDIO_NewPlacement },
+   { AC::SaveSettings, AUDIO_SaveSettings },
+   { AC::SaveToObject, AUDIO_SaveToObject },
+   { AC::NIL, NULL }
 };
 

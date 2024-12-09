@@ -188,7 +188,7 @@
 <p>The Actions field points to a lookup table of ActionEntry items.  Hooking into an action involves writing its <code>AC</code> index in the table with a pointer to the action routine.  For example:</p>
 <pre>if (!AccessObject(CurrentTask(), 5000, &amp;task)) {
    task-&gt;getPtr(FID_Actions, &amp;actions);
-   actions[AC_Seek] = PROGRAM_Seek;
+   actions[AC::Seek] = PROGRAM_Seek;
    ReleaseObject(task);
 }
 </pre>
@@ -349,7 +349,7 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The ProcessPath is set to the path of the executable file that is associated with the task.  It is managed internally and cannot be altered.</p>
+<p>The ProcessPath is set to the path of the executable file that is associated with the task (not including the executable file name).  This value is managed internally and cannot be altered.</p>
 <p>In Microsoft Windows it is not always possible to determine the origins of an executable, in which case the ProcessPath is set to the working folder in use at the time the process was launched.</p>
       </description>
     </field>

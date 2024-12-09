@@ -45,8 +45,8 @@ extern "C" {
 JUMPTABLE_DISPLAY
 
 static int input_unsubscribe(lua_State *Lua);
-static void focus_event(lua_State *, evFocus *, LONG);
-static void key_event(struct finput *, evKey *, LONG);
+static void focus_event(evFocus *, LONG, lua_State *);
+static void key_event(evKey *, LONG, struct finput *);
 
 //********************************************************************************************************************
 
@@ -147,7 +147,7 @@ static int input_keyboard(lua_State *Lua)
    bool sub_keyevent = false;
    if (object_id) {
       if (!prv->FocusEventHandle) { // Monitor the focus state of the target surface with a global function.
-         SubscribeEvent(EVID_GUI_SURFACE_FOCUS, C_FUNCTION(focus_event), Lua, &prv->FocusEventHandle);
+         SubscribeEvent(EVID_GUI_SURFACE_FOCUS, C_FUNCTION(focus_event, Lua), &prv->FocusEventHandle);
       }
 
       if (ScopedObjectLock<objSurface> surface(object_id, 5000); surface.granted()) {
@@ -166,7 +166,7 @@ static int input_keyboard(lua_State *Lua)
       lua_setmetatable(Lua, -2);
 
       APTR event = NULL;
-      if (sub_keyevent) SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), input, &event);
+      if (sub_keyevent) SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, input), &event);
 
       input->InputHandle = 0;
       input->Script      = Lua->Script;
@@ -361,7 +361,7 @@ static int input_unsubscribe(lua_State *Lua)
    }
 
    pf::Log log("input.unsubscribe");
-   log.traceBranch("");
+   log.traceBranch();
 
    if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
    if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
@@ -412,7 +412,7 @@ static int input_destruct(lua_State *Lua)
 //********************************************************************************************************************
 // Key events should only be received when a monitored surface has the focus.
 
-static void key_event(struct finput *Input, evKey *Event, LONG Size)
+static void key_event(evKey *Event, LONG Size, struct finput *Input)
 {
    pf::Log log("input.key_event");
    objScript *script = Input->Script;
@@ -448,7 +448,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
 //********************************************************************************************************************
 // This is a global function for monitoring the focus of surfaces that we want to filter on for keyboard input.
 
-static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
+static void focus_event(evFocus *Event, LONG Size, lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
@@ -465,10 +465,11 @@ static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
       if (input->Mode != FIM_KEYBOARD) continue;
       if (input->KeyEvent) continue;
 
+      auto callback = C_FUNCTION(key_event, input);
       for (LONG i=0; i < Event->TotalWithFocus; i++) {
          if (input->SurfaceID IS Event->FocusList[i]) {
             log.trace("Focus notification received for key events on surface #%d.", input->SurfaceID);
-            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event), input, &input->KeyEvent);
+            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, callback, &input->KeyEvent);
             break;
          }
       }

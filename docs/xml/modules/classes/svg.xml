@@ -91,7 +91,7 @@
 
     <method>
       <name>Render</name>
-      <comment>Render the scene to a target Bitamp.</comment>
+      <comment>Render the scene to a target Bitmap.</comment>
       <prototype>ERR svg::Render(OBJECTPTR Object, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
       <input>
         <param type="objBitmap *" name="Bitmap">The target <class name="Bitmap">Bitmap</class>.</param>
@@ -200,7 +200,7 @@
       <description>
 <p>During the normal initialisation process, a new <class name="VectorViewport">VectorViewport</class> is created to host the SVG scene graph.  By default, the viewport and its content is strictly owned by the SVG object unless a Target is defined to redirect the scene graph elsewhere.</p>
 <p>The provided Target can be any object class, as long as it forms part of a scene graph owned by a <class name="VectorScene">VectorScene</class> object.  It is recommended that the chosen target is a <class name="VectorViewport">VectorViewport</class>.</p>
-<p>The use of a Target will make the generated scene graph independent of the SVG object.  Consequently, it is possible to terminate the SVG object without impacting the resources it created.</p>
+<p>The use of a Target will make the generated scene graph independent of the SVG object.  Consequently, it is possible to terminate the SVG object without impacting the resources it created.  If tracking back to the SVG object is still required, use the <code>ENFORCE_TRACKING</code> option in <fl>Flags</fl> to ensure that SVG definitions are still terminated on object destruction.</p>
       </description>
     </field>
 
@@ -229,6 +229,7 @@
     <constants lookup="SVF" comment="SVG flags.">
       <const name="ALPHA">Generate an alpha channel in the rendered image.</const>
       <const name="AUTOSCALE">In auto-resize mode, vector dimensions are scaled to the width and height of the vector page.  The <class name="VectorScene" field="PageWidth">VectorScene.PageWidth</class> and <class name="VectorScene" field="PageHeight">VectorScene.PageHeight</class> must be set for this.</const>
+      <const name="ENFORCE_TRACKING">Enforce tracking of definition objects when a Target is used.</const>
     </constants>
 
   </types>

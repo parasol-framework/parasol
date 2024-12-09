@@ -104,6 +104,7 @@
       <const name="NewChild"/>
       <const name="NewObject"/>
       <const name="NewOwner"/>
+      <const name="NewPlacement"/>
       <const name="Next"/>
       <const name="Prev"/>
       <const name="Query"/>
@@ -305,7 +306,6 @@
       <const name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</const>
       <const name="MAX_PROCESSES">The maximum number of processes that can be supported at any time.</const>
       <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
-      <const name="PARENT_CONTEXT">Read-only pointer to the parent object of the current context.</const>
       <const name="PRIVILEGED">This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</const>
       <const name="PRIVILEGED_USER">If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</const>
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
@@ -354,10 +354,10 @@
     </constants>
 
     <constants lookup="VOLUME" comment="Options for SetVolume()">
-      <const name="HIDDEN">Hides the volume so that it will not show up when reading the root folder.</const>
+      <const name="HIDDEN">Hides the volume so that it will not show up when reading volumes from the root path <code>:</code>.</const>
       <const name="PRIORITY">If the volume already exists, the path will be inserted at the beginning of the path list so that it has priority over the others.</const>
       <const name="REPLACE">If the volume already exists, all paths that are attached to it will be replaced with the new path setting.</const>
-      <const name="SYSTEM">Identifies the volume as being created by the system, is immutable and persistent between sessions.</const>
+      <const name="SYSTEM">Identifies the volume as being created by the system (this flag is not for client use).</const>
     </constants>
 
   </types>

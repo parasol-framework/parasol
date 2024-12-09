@@ -94,10 +94,7 @@ ERR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
          return ERR::NoFieldAccess;
       }
 
-
-      Object->lock();
       ERR error = field->WriteValue(Object, field, type, Array, Elements);
-      Object->unlock();
       return error;
    }
    else {
@@ -181,8 +178,6 @@ ERR SetField(OBJECTPTR Object, FIELD FieldID, ...)
          return ERR::NoFieldAccess;
       }
 
-      Object->lock();
-
       ERR error;
       va_list list;
       va_start(list, FieldID);
@@ -204,8 +199,6 @@ ERR SetField(OBJECTPTR Object, FIELD FieldID, ...)
          }
 
       va_end(list);
-
-      Object->unlock();
       return error;
    }
    else {
@@ -253,7 +246,7 @@ static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
       // Assume String is in CSV format
       if (Flags & FD_LONG) {
          for (i=0; (i < ArraySize) and (*String); i++) {
-            ((LONG *)Dest)[i] = StrToInt(String);
+            ((LONG *)Dest)[i] = strtol(String, NULL, 0);
             while ((*String > 0x20) and (*String != ',')) String++;
             if (*String) String++;
          }
@@ -261,7 +254,7 @@ static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
       }
       else if (Flags & FD_BYTE) {
          for (i=0; (i < ArraySize) and (*String); i++) {
-            ((UBYTE *)Dest)[i] = StrToInt(String);
+            ((UBYTE *)Dest)[i] = strtol(String, NULL, 0);
             while ((*String > 0x20) and (*String != ',')) String++;
             if (*String) String++;
          }
@@ -269,7 +262,7 @@ static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
       }
       else if (Flags & FD_FLOAT) {
          for (i=0; (i < ArraySize) and (*String); i++) {
-            ((FLOAT *)Dest)[i] = StrToFloat(String);
+            ((FLOAT *)Dest)[i] = strtod(String, NULL);
             while ((*String > 0x20) and (*String != ',')) String++;
             if (*String) String++;
          }
@@ -277,7 +270,7 @@ static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
       }
       else if (Flags & FD_DOUBLE) {
          for (i=0; (i < ArraySize) and (*String); i++) {
-            ((DOUBLE *)Dest)[i] = StrToFloat(String);
+            ((DOUBLE *)Dest)[i] = strtod(String, NULL);
             while ((*String > 0x20) and (*String != ',')) String++;
             if (*String) String++;
          }
@@ -372,7 +365,7 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
          // Check if the string is a number
          for (j=0; str[j] and (str[j] >= '0') and (str[j] <= '9'); j++);
          if (!str[j]) {
-            int64 = StrToInt(str);
+            int64 = strtoll(str, NULL, 0);
          }
          else if (Field->Arg) {
             bool reverse = false;
@@ -442,7 +435,7 @@ static ERR writeval_lookup(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data
    if (Flags & FD_STRING) {
       if (Data) {
          FieldDef *lookup;
-         int32 = StrToInt((CSTRING)Data); // If the Data string is a number rather than a lookup, this will extract it
+         int32 = strtol((CSTRING)Data, NULL, 0); // If the Data string is a number rather than a lookup, this will extract it
          if ((lookup = (FieldDef *)Field->Arg)) {
             while (lookup->Name) {
                if (iequals((CSTRING)Data, lookup->Name)) {
@@ -469,7 +462,7 @@ static ERR writeval_long(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, 
    if (Flags & FD_LONG)        *offset = *((LONG *)Data);
    else if (Flags & FD_LARGE)  *offset = (LONG)(*((LARGE *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((DOUBLE *)Data));
-   else if (Flags & FD_STRING) *offset = (LONG)StrToInt((STRING)Data);
+   else if (Flags & FD_STRING) *offset = strtol((STRING)Data, NULL, 0);
    else return ERR::SetValueNotNumeric;
    return ERR::Okay;
 }
@@ -525,8 +518,8 @@ class FieldContext : public ObjectContext {
    bool success;
 
    public:
-   FieldContext(OBJECTPTR Object, struct Field *Field) : ObjectContext(Object, AC_SetField, NULL) {
-      if ((tlContext->Field IS Field) and (tlContext->object() IS Object)) { // Detect recursion
+   FieldContext(OBJECTPTR Object, struct Field *Field) : ObjectContext(Object, AC::SetField, NULL) {
+      if ((tlContext->field IS Field) and (tlContext->object() IS Object)) { // Detect recursion
          success = false;
          return;
       }
@@ -536,7 +529,7 @@ class FieldContext : public ObjectContext {
    }
 
    ~FieldContext() {
-      if (success) Object->ActionDepth--;
+      if (success) obj->ActionDepth--;
    }
 };
 
@@ -608,7 +601,7 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, L
    }
    else if (Flags & FD_STRING) {
       APTR arraybuffer;
-      if ((arraybuffer = malloc(StrLength((CSTRING)Data) * 8))) {
+      if ((arraybuffer = malloc(strlen((CSTRING)Data) * 8))) {
          if (!Data) {
             if (Field->Flags & FD_RGB) {
                Data = "0,0,0,0"; // A string of NULL will 'clear' the colour (the alpha value will be zero)
@@ -694,19 +687,13 @@ static ERR setval_pointer(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
       return ((ERR (*)(APTR, CPTR ))(Field->SetValue))(Object, Data);
    }
    else if (Flags & FD_LONG) {
-      char buffer[32];
-      IntToStr(*((LONG *)Data), buffer, sizeof(buffer));
-      return ((ERR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
+      return ((ERR (*)(APTR, char *))(Field->SetValue))(Object, std::to_string(*((LONG *)Data)).data());
    }
    else if (Flags & FD_LARGE) {
-      char buffer[64];
-      IntToStr(*((LARGE *)Data), buffer, sizeof(buffer));
-      return ((ERR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
+      return ((ERR (*)(APTR, char *))(Field->SetValue))(Object, std::to_string(*((LARGE *)Data)).data());
    }
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) {
-      char buffer[64];
-      IntToStr(*((DOUBLE *)Data), buffer, sizeof(buffer));
-      return ((ERR (*)(APTR, char *))(Field->SetValue))(Object, buffer);
+      return ((ERR (*)(APTR, char *))(Field->SetValue))(Object, std::to_string(*((DOUBLE *)Data)).data());
    }
    else return ERR::SetValueNotPointer;
 }

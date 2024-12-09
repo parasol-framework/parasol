@@ -49,7 +49,7 @@ static ERR RSVG_Init(extPicture *Self)
 
    if (wildcmp("*.svg|*.svgz", path));
    else if (Self->getPtr(FID_Header, &buffer) IS ERR::Okay) {
-      if (StrSearch("<svg", buffer) >= 0) {
+      if (strisearch("<svg", buffer) >= 0) {
       }
       else return ERR::NoSupport;
    }
@@ -166,7 +166,7 @@ static ERR RSVG_Resize(extPicture *Self, struct acResize *Args)
          if (InitObject(Self->Bitmap) != ERR::Okay) return ERR::Init;
       }
 
-      if (Action(AC_Resize, Self->Bitmap, Args) IS ERR::Okay) {
+      if (Action(AC::Resize, Self->Bitmap, Args) IS ERR::Okay) {
          objVectorScene *scene;
          if ((prv->SVG->getPtr(FID_Scene, &scene) IS ERR::Okay) and (scene)) {
             scene->setPageWidth(Self->Bitmap->Width);
@@ -187,12 +187,12 @@ static ERR RSVG_Resize(extPicture *Self, struct acResize *Args)
 //********************************************************************************************************************
 
 static const ActionArray clActions[] = {
-   { AC_Activate, RSVG_Activate },
-   { AC_Free,     RSVG_Free },
-   { AC_Init,     RSVG_Init },
-   { AC_Query,    RSVG_Query },
-   { AC_Resize,   RSVG_Resize },
-   { 0, NULL }
+   { AC::Activate, RSVG_Activate },
+   { AC::Free,     RSVG_Free },
+   { AC::Init,     RSVG_Init },
+   { AC::Query,    RSVG_Query },
+   { AC::Resize,   RSVG_Resize },
+   { AC::NIL, NULL }
 };
 
 //********************************************************************************************************************

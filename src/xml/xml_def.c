@@ -36,35 +36,35 @@ FDEF maRemoveXPath[] = { { "XPath", FD_STR }, { "Limit", FD_LONG }, { 0, 0 } };
 FDEF maGetTag[] = { { "Index", FD_LONG }, { "XMLTag:Result", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clXMLMethods[] = {
-   { -1, (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xml::SetAttrib) },
-   { -2, (APTR)XML_Serialise, "Serialise", maSerialise, sizeof(struct xml::Serialise) },
-   { -3, (APTR)XML_InsertXML, "InsertXML", maInsertXML, sizeof(struct xml::InsertXML) },
-   { -4, (APTR)XML_GetContent, "GetContent", maGetContent, sizeof(struct xml::GetContent) },
-   { -5, (APTR)XML_Sort, "Sort", maSort, sizeof(struct xml::Sort) },
-   { -6, (APTR)XML_RemoveTag, "RemoveTag", maRemoveTag, sizeof(struct xml::RemoveTag) },
-   { -7, (APTR)XML_MoveTags, "MoveTags", maMoveTags, sizeof(struct xml::MoveTags) },
-   { -8, (APTR)XML_GetAttrib, "GetAttrib", maGetAttrib, sizeof(struct xml::GetAttrib) },
-   { -9, (APTR)XML_InsertXPath, "InsertXPath", maInsertXPath, sizeof(struct xml::InsertXPath) },
-   { -10, (APTR)XML_FindTag, "FindTag", maFindTag, sizeof(struct xml::FindTag) },
-   { -11, (APTR)XML_Filter, "Filter", maFilter, sizeof(struct xml::Filter) },
-   { -13, (APTR)XML_Count, "Count", maCount, sizeof(struct xml::Count) },
-   { -14, (APTR)XML_InsertContent, "InsertContent", maInsertContent, sizeof(struct xml::InsertContent) },
-   { -15, (APTR)XML_RemoveXPath, "RemoveXPath", maRemoveXPath, sizeof(struct xml::RemoveXPath) },
-   { -18, (APTR)XML_GetTag, "GetTag", maGetTag, sizeof(struct xml::GetTag) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-1), (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xml::SetAttrib) },
+   { AC(-2), (APTR)XML_Serialise, "Serialise", maSerialise, sizeof(struct xml::Serialise) },
+   { AC(-3), (APTR)XML_InsertXML, "InsertXML", maInsertXML, sizeof(struct xml::InsertXML) },
+   { AC(-4), (APTR)XML_GetContent, "GetContent", maGetContent, sizeof(struct xml::GetContent) },
+   { AC(-5), (APTR)XML_Sort, "Sort", maSort, sizeof(struct xml::Sort) },
+   { AC(-6), (APTR)XML_RemoveTag, "RemoveTag", maRemoveTag, sizeof(struct xml::RemoveTag) },
+   { AC(-7), (APTR)XML_MoveTags, "MoveTags", maMoveTags, sizeof(struct xml::MoveTags) },
+   { AC(-8), (APTR)XML_GetAttrib, "GetAttrib", maGetAttrib, sizeof(struct xml::GetAttrib) },
+   { AC(-9), (APTR)XML_InsertXPath, "InsertXPath", maInsertXPath, sizeof(struct xml::InsertXPath) },
+   { AC(-10), (APTR)XML_FindTag, "FindTag", maFindTag, sizeof(struct xml::FindTag) },
+   { AC(-11), (APTR)XML_Filter, "Filter", maFilter, sizeof(struct xml::Filter) },
+   { AC(-13), (APTR)XML_Count, "Count", maCount, sizeof(struct xml::Count) },
+   { AC(-14), (APTR)XML_InsertContent, "InsertContent", maInsertContent, sizeof(struct xml::InsertContent) },
+   { AC(-15), (APTR)XML_RemoveXPath, "RemoveXPath", maRemoveXPath, sizeof(struct xml::RemoveXPath) },
+   { AC(-18), (APTR)XML_GetTag, "GetTag", maGetTag, sizeof(struct xml::GetTag) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clXMLActions[] = {
-   { AC_Clear, XML_Clear },
-   { AC_DataFeed, XML_DataFeed },
-   { AC_Free, XML_Free },
-   { AC_GetKey, XML_GetKey },
-   { AC_Init, XML_Init },
-   { AC_NewObject, XML_NewObject },
-   { AC_Reset, XML_Reset },
-   { AC_SaveToObject, XML_SaveToObject },
-   { AC_SetKey, XML_SetKey },
-   { 0, NULL }
+   { AC::Clear, XML_Clear },
+   { AC::DataFeed, XML_DataFeed },
+   { AC::Free, XML_Free },
+   { AC::GetKey, XML_GetKey },
+   { AC::Init, XML_Init },
+   { AC::NewPlacement, XML_NewPlacement },
+   { AC::Reset, XML_Reset },
+   { AC::SaveToObject, XML_SaveToObject },
+   { AC::SetKey, XML_SetKey },
+   { AC::NIL, NULL }
 };
 
 #undef MOD_IDL

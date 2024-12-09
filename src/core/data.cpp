@@ -35,7 +35,7 @@ std::string glRootPath   = "" _ROOT_PATH "";
 std::string glSystemPath = "" _SYSTEM_PATH "";
 std::string glModulePath = "" _MODULE_PATH ""; // NB: This path will be updated to its resolved-form during Core initialisation.
 
-char glDisplayDriver[28] = "";
+std::string glDisplayDriver;
 
 #ifndef PARASOL_STATIC
 CSTRING glClassBinPath = "system:config/classes.bin";
@@ -95,6 +95,8 @@ std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjec
 std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
 std::unordered_map<ULONG, std::string> glFields;
 
+std::unordered_map<ULONG, CLASSID> glWildClassMap;
+
 std::vector<FDRecord> glRegisterFD;
 std::vector<TaskMessage> glQueue;
 std::vector<TaskRecord> glTasks;
@@ -105,7 +107,6 @@ struct MsgHandler *glMsgHandlers = NULL, *glLastMsgHandler = 0;
 
 objFile *glClassFile   = NULL;
 extTask *glCurrentTask = NULL;
-objConfig *glDatatypes = NULL;
 
 APTR glJNIEnv = 0;
 std::atomic_ushort glFunctionID = 3333; // IDTYPE_FUNCTION
@@ -115,6 +116,7 @@ LONG glMemoryFD = -1;
 LONG glValidateProcessID = 0;
 LONG glProcessID = 0;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
+LONG glWildClassMapTotal = 0;
 std::atomic_int glPrivateIDCounter = 500;
 std::atomic_int glMessageIDCount = 10000;
 std::atomic_int glGlobalIDCount = 1;
@@ -197,7 +199,7 @@ THREADVAR WORD tlPrivateLockCount = 0; // Count of private *memory* locks held p
 struct Object glDummyObject = {
    .Class = NULL, .ChildPrivate = NULL, .CreatorMeta = NULL, .Owner = NULL, .NotifyFlags = 0,
    .ThreadPending = 0, .Queue = 0, .SleepQueue = 0, .ActionDepth = 0,
-   .UID = 0, .Flags = NF::NIL, .ThreadID = 0, .Name = "", .Locked = 0
+   .UID = 0, .Flags = NF::NIL, .ThreadID = 0, .Name = "", .PermitTerminate = false
 };
 class ObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
 THREADVAR ObjectContext *tlContext = &glTopContext;

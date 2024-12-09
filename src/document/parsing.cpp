@@ -1,7 +1,7 @@
 /*
 
 The parsing code converts XML data to a serial byte stream, after which the XML data can be discarded.  A DOM
-of the original XML content is not maintained.  After parsing, the stream will be ready for presentation via the
+of the original XML content is *not* maintained.  After parsing, the stream will be ready for presentation via the
 layout code elsewhere in this code base.
 
 The stream consists of byte codes represented by the entity class.  Each type of code is represented by a C++
@@ -354,16 +354,16 @@ void parser::translate_args(const std::string &Input, std::string &Output)
       for (i=0; i < Input.size(); i++) {
          if (Input[i] IS '[') break;
          if ((Input[i] IS '&') and
-             ((startswith("&lsqr;", Input.c_str()+i)) or
-              (startswith("&rsqr;", Input.c_str()+i)))) break;
+             ((startswith("&lsqr;", std::string_view(Input.begin()+i, Input.end()))) or
+              (startswith("&rsqr;", std::string_view(Input.begin()+i, Input.end()))))) break;
       }
       if (i >= Input.size()) return;
    }
 
    for (auto pos = std::ssize(Output)-1; pos >= 0; pos--) {
       if (Output[pos] IS '&') {
-         if (startswith("&lsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "[");
-         else if (startswith("&rsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "]");
+         if (startswith("&lsqr;", std::string_view(Output.begin()+pos, Output.end()))) Output.replace(pos, 6, "[");
+         else if (startswith("&rsqr;", std::string_view(Output.begin()+pos, Output.end()))) Output.replace(pos, 6, "]");
       }
       else if (Output[pos] IS '[') {
          if (Output[pos+1] IS '=') { // Perform a calcuation within [= ... ]
@@ -766,7 +766,7 @@ static bool eval_condition(const std::string &String)
    // If there is no condition statement, evaluate the statement as an integer
 
    if (i >= String.size()) {
-      if (StrToInt(String)) return true;
+      if (std::stoi(String)) return true;
       else return false;
    }
 
@@ -1534,7 +1534,7 @@ void parser::tag_body(XMLTag &Tag)
          case HASH_page_width:
             [[fallthrough]];
          case HASH_width:
-            Self->PageWidth = std::clamp(StrToFloat(Tag.Attribs[i].Value), 1.0, 6000.0);
+            Self->PageWidth = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), NULL), 1.0, 6000.0);
 
             if (Tag.Attribs[i].Value.find('%') != std::string::npos) Self->RelPageWidth = true;
             else Self->RelPageWidth = false;
@@ -1861,6 +1861,8 @@ void parser::tag_checkbox(XMLTag &Tag)
 
    if (!widget.label.empty()) widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
 
+   if (!widget.name.empty()) Self->Vars[widget.name] = widget.alt_state ? "1" : "0";
+
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
 
@@ -1978,6 +1980,8 @@ void parser::tag_combobox(XMLTag &Tag)
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
    widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
 
+   if (!widget.name.empty()) Self->Vars[widget.name] = widget.value;
+
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
 
@@ -2018,6 +2022,8 @@ void parser::tag_input(XMLTag &Tag)
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
    widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
 
+   if (!widget.name.empty()) Self->Vars[widget.name] = widget.value;
+
    Self->NoWhitespace = false; // Widgets are treated as inline characters
 }
 
@@ -2033,8 +2039,8 @@ void parser::tag_debug(XMLTag &Tag)
 
 //********************************************************************************************************************
 // Declaring <svg> anywhere can execute an SVG statement of any kind, with the caveat that it will target the
-// Page viewport.  This feature should only be used for the creation of resources that can then be referred to in the
-// document as named patterns, or via the 'use' option for symbols.
+// Page viewport (or View if 'background' is used).  The SVG feature should only be used for the creation of resources 
+// that can then be referred to in the document as named patterns, or via the 'use' option for symbols.
 //
 // This tag can only be used ONCE per document.  Potentially we could improve this by appending to the existing
 // SVG object via data feeds.
@@ -2067,6 +2073,8 @@ void parser::tag_svg(XMLTag &Tag)
          }
       }
       else Self->Error = ERR::CreateObject;
+
+      FreeResource(xml_svg);
    }
 }
 
@@ -2133,7 +2141,7 @@ void parser::tag_editdef(XMLTag &Tag)
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       switch (strihash(Tag.Attribs[i].Name)) {
          case HASH_max_chars:
-            edit.max_chars = StrToInt(Tag.Attribs[i].Value);
+            edit.max_chars = std::stoi(Tag.Attribs[i].Value);
             if (edit.max_chars < 0) edit.max_chars = -1;
             break;
 
@@ -2141,7 +2149,7 @@ void parser::tag_editdef(XMLTag &Tag)
 
          case HASH_select_fill: break;
 
-         case HASH_line_breaks: edit.line_breaks = StrToInt(Tag.Attribs[i].Value); break;
+         case HASH_line_breaks: edit.line_breaks = std::stoi(Tag.Attribs[i].Value); break;
 
          case HASH_edit_fonts:
          case HASH_edit_images:
@@ -2186,31 +2194,31 @@ void parser::tag_head(XMLTag &Tag)
       if (iequals("title", scan.name())) {
          if (scan.hasContent()) {
             if (Self->Title) FreeResource(Self->Title);
-            Self->Title = StrClone(scan.Children[0].Attribs[0].Value.c_str());
+            Self->Title = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if (iequals("author", scan.name())) {
          if (scan.hasContent()) {
             if (Self->Author) FreeResource(Self->Author);
-            Self->Author = StrClone(scan.Children[0].Attribs[0].Value.c_str());
+            Self->Author = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if (iequals("copyright", scan.name())) {
          if (scan.hasContent()) {
             if (Self->Copyright) FreeResource(Self->Copyright);
-            Self->Copyright = StrClone(scan.Children[0].Attribs[0].Value.c_str());
+            Self->Copyright = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if (iequals("keywords", scan.name())) {
          if (scan.hasContent()) {
             if (Self->Keywords) FreeResource(Self->Keywords);
-            Self->Keywords = StrClone(scan.Children[0].Attribs[0].Value.c_str());
+            Self->Keywords = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
       else if (iequals("description", scan.name())) {
          if (scan.hasContent()) {
             if (Self->Description) FreeResource(Self->Description);
-            Self->Description = StrClone(scan.Children[0].Attribs[0].Value.c_str());
+            Self->Description = pf::strclone(scan.Children[0].Attribs[0].Value);
          }
       }
    }
@@ -2621,27 +2629,27 @@ void parser::tag_template(XMLTag &Tag)
 
    // Validate the template (must have a name)
 
-   LONG i;
-   for (i=1; i < std::ssize(Tag.Attribs); i++) {
-      if ((iequals("name", Tag.Attribs[i].Name)) and (!Tag.Attribs[i].Value.empty())) break;
-      if ((iequals("class", Tag.Attribs[i].Name)) and (!Tag.Attribs[i].Value.empty())) break;
+   LONG n;
+   for (n=1; n < std::ssize(Tag.Attribs); n++) {
+      if ((iequals("name", Tag.Attribs[n].Name)) and (!Tag.Attribs[n].Value.empty())) break;
    }
 
-   if (i >= std::ssize(Tag.Attribs)) {
-      log.warning("A <template> is missing a name or class attribute.");
+   if (n >= std::ssize(Tag.Attribs)) {
+      log.warning("A <template> is missing a name attribute.");
       return;
    }
 
-   Self->RefreshTemplates = true;
-
-   // TODO: It would be nice if we scanned the existing templates and
-   // replaced them correctly, however we're going to be lazy and override
-   // styles by placing updated definitions at the end of the style list.
-
    STRING strxml;
    if (m_xml->serialise(Tag.ID, XMF::NIL, &strxml) IS ERR::Okay) {
-      Self->Templates->insertXML(0, XMI::PREV, strxml, 0);
+      // Remove any existing tag that uses the same name.
+      if (Self->TemplateIndex.contains(strihash(Tag.Attribs[n].Value))) {
+         Self->Templates->removeTag(Tag.ID, 1);
+      }
+
+      Self->Templates->insertXML(Self->Templates->Tags[0].ID, XMI::END, strxml, 0);
       FreeResource(strxml);
+
+      Self->RefreshTemplates = true; // Force a refresh of the TemplateIndex because the pointers will be changed
    }
    else log.warning("Failed to convert template %d to an XML string.", Tag.ID);
 }
@@ -3177,7 +3185,7 @@ void parser::tag_object(XMLTag &Tag)
 
             static const CLASSID classes[] = { CLASSID::VECTOR };
 
-            for (unsigned i=0; i < ARRAYSIZE(classes); i++) {
+            for (unsigned i=0; i < std::ssize(classes); i++) {
                if (classes[i] IS class_id) {
                   add_tabfocus(Self, TT::OBJECT, object->UID);
                   break;
@@ -3357,7 +3365,7 @@ void parser::tag_script(XMLTag &Tag)
          // Pass document arguments to the script
 
          std::unordered_map<std::string, std::string> *vs;
-         if (script->getPtr(FID_Variables, &vs) IS ERR::Okay) {
+         if ((script->getPtr(FID_Variables, &vs) IS ERR::Okay) and (vs) and (vs->size() > 0)) {
             Self->Vars   = *vs;
             Self->Params = *vs;
          }
@@ -3493,21 +3501,21 @@ void parser::tag_repeat(XMLTag &Tag)
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("start", Tag.Attribs[i].Name)) {
-         loop_start = StrToInt(Tag.Attribs[i].Value);
+         loop_start = std::stoi(Tag.Attribs[i].Value);
          if (loop_start < 0) loop_start = 0;
       }
       else if (iequals("count", Tag.Attribs[i].Name)) {
-         count = StrToInt(Tag.Attribs[i].Value);
+         count = std::stoi(Tag.Attribs[i].Value);
          if (count < 0) {
             log.warning("Invalid count value of %d", count);
             return;
          }
       }
       else if (iequals("end", Tag.Attribs[i].Name)) {
-         loop_end = StrToInt(Tag.Attribs[i].Value) + 1;
+         loop_end = std::stoi(Tag.Attribs[i].Value) + 1;
       }
       else if (iequals("step", Tag.Attribs[i].Name)) {
-         step = StrToInt(Tag.Attribs[i].Value);
+         step = std::stoi(Tag.Attribs[i].Value);
       }
       else if (iequals("index", Tag.Attribs[i].Name)) {
          // If an index name is specified, the programmer will need to refer to it as [@indexname] and [%index] will
@@ -3540,7 +3548,7 @@ void parser::tag_repeat(XMLTag &Tag)
 
    while (loop_start < loop_end) {
       if (index_name.empty()) m_loop_index = loop_start;
-      else SetKey(Self, index_name.c_str(), std::to_string(loop_start).c_str());
+      else acSetKey(Self, index_name.c_str(), std::to_string(loop_start).c_str());
 
       parse_tags(Tag.Children);
       loop_start += step;
@@ -3633,7 +3641,7 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_stroke_width:
-            table.stroke_width = std::clamp(StrToFloat(value), 0.0, 255.0);
+            table.stroke_width = std::clamp(strtod(value.c_str(), NULL), 0.0, 255.0);
             break;
       }
    }
@@ -3655,10 +3663,17 @@ void parser::tag_table(XMLTag &Tag)
          i = end + 1;
       }
 
-      unsigned i;
+      size_t i;
       for (i=0; (i < table.columns.size()) and (i < list.size()); i++) {
-         table.columns[i].preset_width = StrToFloat(list[i]);
-         if (list[i].find_first_of('%') != std::string::npos) table.columns[i].preset_width_rel = true;
+         table.columns[i].preset_width = strtod(list[i].c_str(), NULL);
+         if (list[i].find_first_of('%') != std::string::npos) {
+            table.columns[i].preset_width *= 0.01;
+            table.columns[i].preset_width_rel = true;
+            if ((table.columns[i].preset_width < 0.0000001) or (table.columns[i].preset_width > 1.0)) {
+               log.warning("A <table> column value is invalid.");
+               Self->Error = ERR::InvalidDimension;
+            }
+         }
       }
 
       if (i < table.columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), LONG(table.columns.size()));
@@ -3686,7 +3701,7 @@ void parser::tag_row(XMLTag &Tag)
 
    for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("height", Tag.Attribs[i].Name)) {
-         escrow.min_height = std::clamp(StrToFloat(Tag.Attribs[i].Value), 0.0, 4000.0);
+         escrow.min_height = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), NULL), 0.0, 4000.0);
       }
       else if (iequals("fill", Tag.Attribs[i].Name))   escrow.fill   = Tag.Attribs[i].Value;
       else if (iequals("stroke", Tag.Attribs[i].Name)) escrow.stroke = Tag.Attribs[i].Value;
@@ -3745,11 +3760,11 @@ void parser::tag_cell(XMLTag &Tag)
          }
 
          case HASH_col_span:
-            cell.col_span = std::clamp(LONG(StrToInt(Tag.Attribs[i].Value)), 1, 1000);
+            cell.col_span = std::clamp(LONG(std::stoi(Tag.Attribs[i].Value)), 1, 1000);
             break;
 
          case HASH_row_span:
-            cell.row_span = std::clamp(LONG(StrToInt(Tag.Attribs[i].Value)), 1, 1000);
+            cell.row_span = std::clamp(LONG(std::stoi(Tag.Attribs[i].Value)), 1, 1000);
             break;
 
          case HASH_edit:
@@ -3826,6 +3841,8 @@ void parser::tag_cell(XMLTag &Tag)
 
       parser parse(Self, cell.stream);
 
+      parse.m_in_template = m_in_template;
+      parse.m_inject_tag  = m_inject_tag;
       parse.m_paragraph_depth++;
       parse.parse_tags_with_style(Tag.Children, new_style);
       parse.m_paragraph_depth--;

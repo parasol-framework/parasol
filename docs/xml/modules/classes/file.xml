@@ -264,7 +264,7 @@
       </input>
       <description>
 <p>Reads one line from the file into an internal buffer, which is returned in the Result argument.  Reading a line will increase the <fl>Position</fl> field by the amount of bytes read from the file.  You must have set the <code>FL::READ</code> bit in the <fl>Flags</fl> field when you initialised the file, or the call will fail.</p>
-<p>The line buffer is managed internally, so there is no need for you to free the result string.  This method returns <code>ERR::NoData</code> when it runs out of information to read from the file.</p>
+<p>The line buffer is managed internally, so there is no need to free the <code>Result</code> string.  <code>ERR::NoData</code> is returned once all lines have been read.</p>
       </description>
       <result>
         <error code="Okay">The file information was read into the buffer.</error>
@@ -318,8 +318,8 @@
 <p>If a file object is a stream (indicated by the <code>STREAM</code> flag), the StartStream method should be used for reading or writing data to the file object.  Although it is possible to call the Read and Write actions on streamed files, they will be limited to returning only the amount of data that is cached locally (if any), or writing as much as buffers will allow in software.</p>
 <p>A single file object can support read or write streams (pass <code>FL::READ</code> or <code>FL::WRITE</code> in the <code>Flags</code> parameter). However, only one of the two can be active at any time.  To switch between read and write modes, the stream must be stopped with the <method>StopStream</method> method and then restarted with StartStream.</p>
 <p>A stream can be limited by setting the Length parameter to a non-zero value.</p>
-<p>If the StartStream request is successful, the file object will return action notifications to the Subscriber to indicate activity on the file stream.  When reading from a stream, <code>AC_Write</code> notifications will be received to indicate that new data has been written to the file cache.  The Buffer parameter of the reported acWrite structure may refer to a private address that contains the data that was received from the stream and the Result indicates the amount of new data available.</p>
-<p>When writing to a stream, <code>AC_Read</code> notifications will be received to indicate that the stream is ready to accept more data.  The Result parameter will indicate the maximum amount of data that should be written to the stream using the <action>Write</action> action.</p>
+<p>If the StartStream request is successful, the file object will return action notifications to the Subscriber to indicate activity on the file stream.  When reading from a stream, <code>AC::Write</code> notifications will be received to indicate that new data has been written to the file cache.  The Buffer parameter of the reported acWrite structure may refer to a private address that contains the data that was received from the stream and the Result indicates the amount of new data available.</p>
+<p>When writing to a stream, <code>AC::Read</code> notifications will be received to indicate that the stream is ready to accept more data.  The Result parameter will indicate the maximum amount of data that should be written to the stream using the <action>Write</action> action.</p>
 <p>A stream can be cancelled at any time by calling <method>StopStream</method>.</p>
       </description>
       <result>
@@ -441,7 +441,7 @@
       <type>STRING</type>
       <description>
 <p>This field returns the name of the best icon to use when representing the file to the user, for instance in a file list.  The icon style is determined by analysing the File's <fl>Path</fl>.</p>
-<p>The resulting string is returned in the format <code>icons:category/name</code> and can be opened with the <class name="Picture">Picture</class> class.</p>
+<p>The resulting string is returned in the format <code>icons:category/name</code> and will refer to an SVG file.</p>
       </description>
     </field>
 

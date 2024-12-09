@@ -126,7 +126,7 @@ static int thread_action(lua_State *Lua)
    }
 
    LONG type = lua_type(Lua, 2);
-   ACTIONID action_id;
+   AC action_id;
    CSTRING action = NULL;
    if (type IS LUA_TSTRING) {
       action = lua_tostring(Lua, 2);
@@ -139,7 +139,7 @@ static int thread_action(lua_State *Lua)
       }
    }
    else if (type IS LUA_TNUMBER) {
-      action_id = lua_tointeger(Lua, 2);
+      action_id = AC(lua_tointeger(Lua, 2));
    }
    else {
       luaL_argerror(Lua, 2, "Action name required.");
@@ -147,7 +147,7 @@ static int thread_action(lua_State *Lua)
    }
 
    FUNCTION callback;
-   LONG key = lua_tointeger(Lua, 4);
+   auto key = lua_tointeger(Lua, 4);
 
    type = lua_type(Lua, 3); // Optional callback.
    if (type IS LUA_TSTRING) {
@@ -163,25 +163,26 @@ static int thread_action(lua_State *Lua)
    const FunctionField *args = NULL;
    ERR error = ERR::Okay;
 
-   if ((glActions[action_id].Args) and (glActions[action_id].Size)) {
-      argsize = glActions[action_id].Size;
-      args = glActions[action_id].Args;
+   if ((glActions[LONG(action_id)].Args) and (glActions[LONG(action_id)].Size)) {
+      argsize = glActions[LONG(action_id)].Size;
+      args = glActions[LONG(action_id)].Args;
    }
 
-   log.trace("#%d/%p, Action: %s/%d, Key: %d, Args: %d", object->UID, object->ObjectPtr, action, action_id, key, argsize);
+   log.trace("#%d/%p, Action: %s/%d, Args: %d", object->UID, object->ObjectPtr, action, LONG(action_id), argsize);
 
    if (argsize > 0) {
       auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
       LONG resultcount;
 
       if ((error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount)) IS ERR::Okay) {
+         callback.Meta = (APTR)key;
          if (object->ObjectPtr) {
-            error = ActionThread(action_id, object->ObjectPtr, argbuffer.get(), &callback, key);
+            error = AsyncAction(action_id, object->ObjectPtr, argbuffer.get(), &callback);
          }
          else {
             if (!resultcount) {
                if (auto obj = access_object(object)) {
-                  error = ActionThread(action_id, obj, argbuffer.get(), &callback, key);
+                  error = AsyncAction(action_id, obj, argbuffer.get(), &callback);
                   release_object(object);
                }
             }
@@ -190,17 +191,18 @@ static int thread_action(lua_State *Lua)
       }
       else {
          luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-         luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
+         luaL_error(Lua, "Argument build failure for %s.", glActions[LONG(action_id)].Name);
          return 0;
       }
    }
    else {
       // No parameters.
+      callback.Meta = (APTR)key;
       if (object->ObjectPtr) {
-         error = ActionThread(action_id, object->ObjectPtr, NULL, &callback, key);
+         error = AsyncAction(action_id, object->ObjectPtr, NULL, &callback);
       }
       else if (auto obj = access_object(object)) {
-         error = ActionThread(action_id, obj, NULL, &callback, key);
+         error = AsyncAction(action_id, obj, NULL, &callback);
          release_object(object);
       }
       else error = log.warning(ERR::AccessObject);
@@ -237,16 +239,15 @@ static int thread_method(lua_State *Lua)
             }
 
             if (found) {
-               // If an obj.new() lock is still present, detach it first because ActionThread() is going to attempt to
+               // If an obj.new() lock is still present, detach it first because AsyncAction() is going to attempt to
                // lock the object with LockObject() and a timeout error will occur otherwise.
 
                auto args = table[i].Args;
                LONG argsize = table[i].Size;
-               LONG action_id = table[i].MethodID;
+               AC action_id = table[i].MethodID;
                ERR error;
                OBJECTPTR obj;
                FUNCTION callback;
-               LONG key = lua_tointeger(Lua, 4);
 
                LONG type = lua_type(Lua, 3); // Optional callback.
                if (type IS LUA_TSTRING) {
@@ -258,6 +259,7 @@ static int thread_method(lua_State *Lua)
                   callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
                }
                else callback.Type = CALL::NIL;
+               callback.Meta = APTR(lua_tointeger(Lua, 4));
 
                if (argsize > 0) {
                   auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
@@ -269,12 +271,12 @@ static int thread_method(lua_State *Lua)
                   lua_remove(Lua, 1);
                   if ((error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount)) IS ERR::Okay) {
                      if (object->ObjectPtr) {
-                        error = ActionThread(action_id, object->ObjectPtr, argbuffer.get(), &callback, key);
+                        error = AsyncAction(action_id, object->ObjectPtr, argbuffer.get(), &callback);
                      }
                      else {
                         if (!resultcount) {
                            if ((obj = access_object(object))) {
-                              error = ActionThread(action_id, obj, argbuffer.get(), &callback, key);
+                              error = AsyncAction(action_id, obj, argbuffer.get(), &callback);
                               release_object(object);
                            }
                         }
@@ -283,16 +285,16 @@ static int thread_method(lua_State *Lua)
                   }
                   else {
                      luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-                     luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
+                     luaL_error(Lua, "Argument build failure for %s.", glActions[LONG(action_id)].Name);
                      return 0;
                   }
                }
                else { // No parameters.
                   if (object->ObjectPtr) {
-                     error = ActionThread(action_id, object->ObjectPtr, NULL, &callback, key);
+                     error = AsyncAction(action_id, object->ObjectPtr, NULL, &callback);
                   }
                   else if ((obj = access_object(object))) {
-                     error = ActionThread(action_id, obj, NULL, &callback, key);
+                     error = AsyncAction(action_id, obj, NULL, &callback);
                      release_object(object);
                   }
                   else error = log.warning(ERR::AccessObject);

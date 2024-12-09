@@ -184,7 +184,7 @@ static DOUBLE global_point_size(void)
             char pointsize[20];
             glPointSet = true;
             if (acGetKey(style.obj, "/interface/@fontsize", pointsize, sizeof(pointsize)) IS ERR::Okay) {
-               glDefaultPoint = StrToFloat(pointsize);
+               glDefaultPoint = strtod(pointsize, NULL);
                if (glDefaultPoint < 6) glDefaultPoint = 6;
                else if (glDefaultPoint > 80) glDefaultPoint = 80;
                log.msg("Global font size is %.1f.", glDefaultPoint);
@@ -465,31 +465,31 @@ ERR GetList(FontList **Result)
 
             if (keys.contains("Name")) {
                list->Name = buffer;
-               buffer += StrCopy(keys["Name"], buffer) + 1;
+               buffer += strcopy(keys["Name"], buffer) + 1;
             }
 
             if (keys.contains("Hidden")) {
-               if (iequals("Yes", keys["Hidden"])) list->Hidden = TRUE;
+               if (iequals("Yes", keys["Hidden"])) list->Hidden = true;
             }
 
             auto it = keys.find("Alias");
             if ((it != keys.end()) and (!it->second.empty())) {
                list->Alias = buffer;
-               buffer += StrCopy(keys["Alias"], buffer) + 1;
+               buffer += strcopy(keys["Alias"], buffer) + 1;
                // An aliased font can define a Name and Hidden values only.
             }
             else {
                if (keys.contains("Styles")) {
                   list->Styles = buffer;
-                  buffer += StrCopy(keys["Styles"], buffer) + 1;
+                  buffer += strcopy(keys["Styles"], buffer) + 1;
                }
 
                if (keys.contains("Scalable")) {
-                  if (iequals("Yes", keys["Scalable"])) list->Scalable = TRUE;
+                  if (iequals("Yes", keys["Scalable"])) list->Scalable = true;
                }
 
                if (keys.contains("Variable")) {
-                  if (iequals("Yes", keys["Variable"])) list->Variable = TRUE;
+                  if (iequals("Yes", keys["Variable"])) list->Variable = true;
                }
 
                if (keys.contains("Hinting")) {
@@ -500,19 +500,19 @@ ERR GetList(FontList **Result)
 
                if (keys.contains("Axes")) {
                   list->Axes = buffer;
-                  buffer += StrCopy(keys["Axes"], buffer) + 1;
+                  buffer += strcopy(keys["Axes"], buffer) + 1;
                }
 
                list->Points = NULL;
                if (keys.contains("Points")) {
-                  auto fontpoints = keys["Points"].c_str();
-                  if (*fontpoints) {
+                  auto fontpoints = std::string_view(keys["Points"]);
+                  if (!fontpoints.empty()) {
                      list->Points = (LONG *)buffer;
-                     for (WORD j=0; *fontpoints; j++) {
-                        ((LONG *)buffer)[0] = StrToInt(fontpoints);
+                     std::size_t i = 0;
+                     for (WORD j=0; i != std::string::npos; j++) {
+                        ((LONG *)buffer)[0] = svtonum<LONG>(fontpoints);
                         buffer += sizeof(LONG);
-                        while ((*fontpoints) and (*fontpoints != ',')) fontpoints++;
-                        if (*fontpoints IS ',') fontpoints++;
+                        if (i = fontpoints.find(','); i != std::string::npos) fontpoints.remove_prefix(i+1);
                      }
                      ((LONG *)buffer)[0] = 0;
                      buffer += sizeof(LONG);
@@ -642,7 +642,7 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
    if (glConfig->getPtr(FID_Data, &groups) != ERR::Okay) return ERR::Search;
 
    auto get_meta = [](ConfigKeys &Group) {
-      FMETA meta = FMETA::NIL;
+      auto meta = FMETA::NIL;
       if (Group.contains("Hinting")) {
          if (iequals("Normal", Group["Hinting"])) meta |= FMETA::HINT_NORMAL;
          else if (iequals("Internal", Group["Hinting"])) meta |= FMETA::HINT_INTERNAL;
@@ -656,9 +656,9 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
    };
 
    auto get_font_path = [](ConfigKeys &Keys, const std::string &Style) {
-      if (Keys.contains(Style)) return StrClone(Keys[Style].c_str());
-      else if (!iequals("Regular", Style.c_str())) {
-         if (Keys.contains("Regular")) return StrClone(Keys["Regular"].c_str());
+      if (Keys.contains(Style)) return strclone(Keys[Style]);
+      else if (!iequals("Regular", Style)) {
+         if (Keys.contains("Regular")) return strclone(Keys["Regular"]);
       }
       return STRING(NULL);
    };
@@ -682,7 +682,7 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
       std::string first_style = styles.substr(0, end);
 
       if (keys.contains(first_style)) {
-         *Path = StrClone(keys[first_style].c_str());
+         *Path = strclone(keys[first_style]);
          if (Meta) *Meta = get_meta(keys);
          return ERR::Okay;
       }
@@ -849,16 +849,15 @@ static void scan_truetype_folder(objConfig *Config)
 
    log.branch("Scanning for truetype fonts.");
 
-   STRING path;
-   if (ResolvePath("fonts:truetype/", RSF::NO_FILE_CHECK|RSF::PATH, (STRING *)&path) IS ERR::Okay) {
-      LocalResource free_path(path);
-
+   std::string ttpath;
+   if (ResolvePath("fonts:truetype/", RSF::NO_FILE_CHECK|RSF::PATH, &ttpath) IS ERR::Okay) {
       DirInfo *dir;
-      if (OpenDir(path, RDF::FILE, &dir) IS ERR::Okay) {
+      if (OpenDir(ttpath.c_str(), RDF::FILE, &dir) IS ERR::Okay) {
          LocalResource free_dir(dir);
 
+         auto ttpath_len = ttpath.size();
          while (ScanDir(dir) IS ERR::Okay) {
-            std::string ttpath(path);
+            ttpath.resize(ttpath_len);
             ttpath.append(dir->Info->Name);
 
             FT_Face ftface;

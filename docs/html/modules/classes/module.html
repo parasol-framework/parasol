@@ -24,13 +24,8 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
       </div></div></td></tr><tr id="_" data-toggle="collapse" data-target="#fl-FunctionList" class="clickable"><td class="col-md-1"><a id="tf-FunctionList"></a><span class="glyphicon glyphicon-ok text-success" data-toggle="tooltip" title="Direct read access"></span>
                            
                           <span class="glyphicon glyphicon-ok text-success" data-toggle="tooltip" title="Direct write access"></span></td><th class="col-md-1">FunctionList</th><td class="col-md-1"><span class="text-nowrap">const struct Function *</span></td><td>Refers to a list of public functions exported by the module.</td></tr><tr class="no-hover"><td colspan="4" class="hiddenRow"><div id="fl-FunctionList" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>After initialisation, the FunctionList will refer to an array of public functions that are exported by the module.  The FunctionList array consists of <a data-toggle="tooltip" title="" href="?page=struct-Function">Function</a> structs, which are in the following format:</p>
-<pre>struct Function {
-   APTR Address;  // Address of the function routine.
-   CSTRING Name;  // Name of the function.
-   const struct FunctionField *Args; // Descriptor array for the function arguments.
-};
-</pre>
+<p>After initialisation, the FunctionList will refer to an array of public functions that are exported by the module.  The FunctionList array consists of <a data-toggle="tooltip" title="" href="?page=struct-Function">Function</a> structs in the following format:</p>
+<table class="table"><thead><tr><th class="col-md-1">Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">Address</th><td>APTR</td><td>Pointer to the function entry point</td></tr><tr><th class="col-md-1">Name</th><td>CSTRING</td><td>Name of the function</td></tr><tr><th class="col-md-1">Args</th><td>const struct FunctionField *</td><td>A list of parameters accepted by the function</td></tr></tbody></table>
       </div></div></td></tr><tr id="_" data-toggle="collapse" data-target="#fl-ModBase" class="clickable"><td class="col-md-1"><a id="tf-ModBase"></a><span class="glyphicon glyphicon-ok text-success" data-toggle="tooltip" title="Direct read access"></span>
                            
                           <span class="glyphicon glyphicon-minus text-muted" data-toggle="tooltip" title="Not writeable"></span></td><th class="col-md-1">ModBase</th><td class="col-md-1"><span class="text-nowrap">APTR</span></td><td>The Module's function base (jump table) must be read from this field.</td></tr><tr class="no-hover"><td colspan="4" class="hiddenRow"><div id="fl-ModBase" class="accordion-body collapse"><div class="doc-content" style="margin:20px">

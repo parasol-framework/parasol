@@ -133,7 +133,7 @@ void SceneRenderer::ClipBuffer::resize_bitmap(LONG X, LONG Y, LONG Width, LONG H
 
    if ((X < Width) and (Y < Height)) {
       for (; Y < Height; Y += Width) {
-         ClearMemory(m_bitmap.data() + Y + X, Width - X);
+         clearmem(m_bitmap.data() + Y + X, Width - X);
       }
    }
 }

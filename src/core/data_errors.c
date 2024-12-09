@@ -35,7 +35,7 @@ const CSTRING glMessages[LONG(ERR::END)+1] = {
  "Array is at low capacity.",
  "Error in Init()ialising an object.",
  "General security violation.",
- "The operating system has been badly corrupted.",
+ "System corruption detected.",
  "I need a container to operate correctly.",
  "My container needs to have a Bitmap field.",
  "I need a newer version of the kernel.",
@@ -193,4 +193,4 @@ const CSTRING glMessages[LONG(ERR::END)+1] = {
  NULL // Needs to be null-terminated for Fluid support
 };
 
-const LONG glTotalMessages = ARRAYSIZE(glMessages);
+const LONG glTotalMessages = std::ssize(glMessages);

@@ -420,7 +420,7 @@ static void notify_free_parent(OBJECTPTR Object, ACTIONID ActionID, ERR Result)
 
    Self->Flags &= ~RNF::VISIBLE;
    UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
-   if (Self->defined(NF::LOCAL)) QueueAction(AC_Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
+   if (Self->defined(NF::LOCAL)) QueueAction(AC::Free, Self->UID); // If the object is a child of something, give the parent object time to do the deallocation itself
    else FreeResource(Self);
 }
 
@@ -612,7 +612,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   OBJECTPTR context = GetParentContext();
+   OBJECTPTR context = ParentContext();
    OBJECTPTR call_context = NULL;
    if (Args->Callback->isC()) call_context = (OBJECTPTR)Args->Callback->Context;
    else if (Args->Callback->isScript()) call_context = context; // Scripts use runtime ID resolution...
@@ -666,7 +666,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
          if (new_size > 255) new_size = 255;
          SurfaceCallback *scb;
          if (AllocMemory(sizeof(SurfaceCallback) * new_size, MEM::DATA|MEM::NO_CLEAR, &scb) IS ERR::Okay) {
-            CopyMemory(Self->Callback, scb, sizeof(SurfaceCallback) * Self->CallbackCount);
+            copymem(Self->Callback, scb, sizeof(SurfaceCallback) * Self->CallbackCount);
 
             scb[Self->CallbackCount].Object   = context;
             scb[Self->CallbackCount].Function = *Args->Callback;
@@ -683,13 +683,13 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
    else {
       Self->Callback = Self->CallbackCache;
       Self->CallbackCount = 1;
-      Self->CallbackSize = ARRAYSIZE(Self->CallbackCache);
+      Self->CallbackSize = std::ssize(Self->CallbackCache);
       Self->Callback[0].Object = context;
       Self->Callback[0].Function = *Args->Callback;
    }
 
    if (Args->Callback->Type IS CALL::SCRIPT) {
-      SubscribeAction(Args->Callback->Context, AC_Free, C_FUNCTION(notify_free_callback));
+      SubscribeAction(Args->Callback->Context, AC::Free, C_FUNCTION(notify_free_callback));
    }
 
    return ERR::Okay;
@@ -926,7 +926,7 @@ static ERR SURFACE_Free(extSurface *Self)
 
    if (Self->ParentID) {
       if (pf::ScopedObjectLock<extSurface> parent(Self->ParentID, 5000); parent.granted()) {
-         UnsubscribeAction(*parent, 0);
+         UnsubscribeAction(*parent, AC::NIL);
          if (Self->transparent()) {
             Action(drw::RemoveCallback::id, Self, NULL);
          }
@@ -1067,7 +1067,7 @@ static ERR SURFACE_InheritedFocus(extSurface *Self, struct drw::InheritedFocus *
 
       //UpdateSurfaceField(Self, Flags); // Not necessary because SURFACE_Focus sets the surfacelist
 
-      NotifySubscribers(Self, AC_Focus, NULL, ERR::Okay);
+      NotifySubscribers(Self, AC::Focus, NULL, ERR::Okay);
       return ERR::Okay;
    }
 }
@@ -1117,8 +1117,8 @@ static ERR SURFACE_Init(extSurface *Self)
 
       // Subscribe to the surface parent's Resize and Redimension actions
 
-      SubscribeAction(*parent, AC_Free, C_FUNCTION(notify_free_parent));
-      SubscribeAction(*parent, AC_Redimension, C_FUNCTION(notify_redimension_parent));
+      SubscribeAction(*parent, AC::Free, C_FUNCTION(notify_free_parent));
+      SubscribeAction(*parent, AC::Redimension, C_FUNCTION(notify_redimension_parent));
 
       // If the surface object is transparent, subscribe to the Draw action of the parent object.
 
@@ -1368,7 +1368,7 @@ static ERR SURFACE_Init(extSurface *Self)
          if (Self->DisplayWindow) {
             display->setResizeFeedback(C_FUNCTION(display_resized));
 
-            SubscribeAction(display, AC_Draw, C_FUNCTION(notify_draw_display));
+            SubscribeAction(display, AC::Draw, C_FUNCTION(notify_draw_display));
          }
 
          Self->DisplayID = display->UID;
@@ -1570,10 +1570,10 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
    while (ScanMessages(&index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-      if ((action->ActionID IS AC_MoveToPoint) and (action->ObjectID IS Self->UID)) {
+      if ((action->ActionID IS AC::MoveToPoint) and (action->ObjectID IS Self->UID)) {
          return ERR::Okay|ERR::Notified;
       }
-      else if ((action->ActionID IS AC_Move) and (action->SendArgs IS true) and
+      else if ((action->ActionID IS AC::Move) and (action->SendArgs IS true) and
                (action->ObjectID IS Self->UID)) {
          auto msgmove = (struct acMove *)(action + 1);
          msgmove->DeltaX += Args->DeltaX;
@@ -1664,7 +1664,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 
    log.traceBranch("Sending redimension notifications");
    struct acRedimension redimension = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, (DOUBLE)Self->Width, (DOUBLE)Self->Height, 0 };
-   NotifySubscribers(Self, AC_Redimension, &redimension, ERR::Okay);
+   NotifySubscribers(Self, AC::Redimension, &redimension, ERR::Okay);
    return ERR::Okay|ERR::Notified;
 }
 
@@ -1867,7 +1867,7 @@ static ERR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
 
    move.DeltaZ = 0;
 
-   return Action(AC_Move, Self, &move)|ERR::Notified;
+   return Action(AC::Move, Self, &move)|ERR::Notified;
 }
 
 //********************************************************************************************************************
@@ -1938,7 +1938,7 @@ static ERR SURFACE_RemoveCallback(extSurface *Self, struct drw::RemoveCallback *
    }
    else log.trace("Current Total: %d [Remove All]", Self->CallbackCount);
 
-   if (!context) context = GetParentContext();
+   if (!context) context = ParentContext();
 
    if (!Self->Callback) return ERR::Okay;
 
@@ -1959,7 +1959,7 @@ static ERR SURFACE_RemoveCallback(extSurface *Self, struct drw::RemoveCallback *
    }
 
    if (Args->Callback->isScript()) {
-      UnsubscribeAction(Args->Callback->Context, AC_Free);
+      UnsubscribeAction(Args->Callback->Context, AC::Free);
    }
 
    // Find the callback entry, then shrink the list.
@@ -2203,7 +2203,7 @@ static ERR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
             }
          }
 
-         if (Action(AC_SaveImage, picture, Args) IS ERR::Okay) { // Save the picture to disk
+         if (Action(AC::SaveImage, picture, Args) IS ERR::Okay) { // Save the picture to disk
             FreeResource(picture);
             return ERR::Okay;
          }

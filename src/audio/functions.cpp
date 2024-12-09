@@ -555,7 +555,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
          BYTELEN bytes_read = fill_stream_buffer(Channel.SampleHandle, sample, -1);
          auto buffer_len = sample.SampleLength<<sample_shift(sample.SampleType);
          if (bytes_read < buffer_len) {
-            ClearMemory(sample.Data + bytes_read, buffer_len - bytes_read);
+            clearmem(sample.Data + bytes_read, buffer_len - bytes_read);
          }
 
          if ((bytes_read <= 0) or (sample.PlayPos >= sample.StreamLength)) {
@@ -639,7 +639,7 @@ static ERR mix_data(extAudio *Self, LONG Elements, APTR Dest)
       // Clear the mix buffer, then mix all channels to the buffer
 
       LONG window_size = sizeof(FLOAT) * (Self->Stereo ? (window<<1) : window);
-      ClearMemory(Self->MixBuffer, window_size);
+      clearmem(Self->MixBuffer, window_size);
 
       for (auto n=1; n < (LONG)Self->Sets.size(); n++) {
          for (auto &c : Self->Sets[n].Channel) {

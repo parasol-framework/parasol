@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Document", copyright="Paul Manias © 2005-2024", version=1.0 }, function()
+module({ name="Document", copyright="Paul Manias © 2005-2024", version=1.0, timestamp=20240611 }, function()
   restrict(function()
     loadFile(glPath .. 'common-graphics.fdl')
   end)
@@ -22,6 +22,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2024", version=1.0 }, f
     "ON_CROSSING_IN: The mouse pointer has crossed into an element.",
     "ON_CROSSING_OUT: The mouse pointer has crossed out of an element.",
     "LINK_ACTIVATED: The user has interacted with a hyperlink.  This event can be cancelled by returning ERR::Skip.",
+    "WIDGET_STATE: The state value of a widget has changed (e.g. input, checkbox, text).  `name` and `value` keys will be defined in the event parameters.",
     { ON_CROSSING = "ON_CROSSING_IN|ON_CROSSING_OUT" }
   )
 
@@ -36,7 +37,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2024", version=1.0 }, f
     "LOST_FOCUS",
     "LEAVING_PAGE",
     "PAGE_PROCESSED",
-    "MAX")
+    "END")
 
   flags("DCF", { comment="Document flags" },
     "EDIT: Allow direct keyboard input and document editing.",

@@ -58,12 +58,12 @@ static const struct FieldDef clVectorFilterAspectRatio[] = {
 };
 
 static const struct ActionArray clVectorFilterActions[] = {
-   { AC_Clear, VECTORFILTER_Clear },
-   { AC_Free, VECTORFILTER_Free },
-   { AC_Init, VECTORFILTER_Init },
-   { AC_NewChild, VECTORFILTER_NewChild },
-   { AC_NewObject, VECTORFILTER_NewObject },
-   { AC_NewOwner, VECTORFILTER_NewOwner },
-   { 0, NULL }
+   { AC::Clear, VECTORFILTER_Clear },
+   { AC::Free, VECTORFILTER_Free },
+   { AC::Init, VECTORFILTER_Init },
+   { AC::NewChild, VECTORFILTER_NewChild },
+   { AC::NewOwner, VECTORFILTER_NewOwner },
+   { AC::NewPlacement, VECTORFILTER_NewPlacement },
+   { AC::NIL, NULL }
 };
 

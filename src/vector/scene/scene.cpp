@@ -12,7 +12,7 @@ The VectorScene class acts as a container and control point for the management o
 purpose is to draw the scene to a target @Bitmap or @Surface provided by the client.
 
 Vector scenes are created by initialising multiple Vector objects such as @VectorPath and @VectorViewport and
-positioning them within a vector tree.  The VectorScene must lie at the root.
+positioning them within a vector tree.  The VectorScene must lie at the root of the tree.
 
 The default mode of operation is for scenes to be manually drawn, for which the client must set the target #Bitmap
 and call the #Draw() action as required.  Automated drawing can be enabled by setting the target #Surface prior
@@ -46,7 +46,7 @@ static void fill_image(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_
    agg::rasterizer_scanline_aa<> &, DOUBLE Alpha = 1.0);
 
 static void fill_gradient(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *,
-   const agg::trans_affine &, DOUBLE, DOUBLE, const extVectorGradient &, GRADIENT_TABLE *,
+   const agg::trans_affine &, DOUBLE, DOUBLE, extVectorGradient &, GRADIENT_TABLE *,
    agg::renderer_base<agg::pixfmt_psl> &, agg::rasterizer_scanline_aa<> &);
 
 static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *,
@@ -64,7 +64,7 @@ static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::pat
 static ERR VECTORSCENE_Reset(extVectorScene *);
 
 void apply_focus(extVectorScene *, extVector *);
-static void scene_key_event(extVectorScene *, evKey *, LONG);
+static void scene_key_event(evKey *, LONG, extVectorScene *);
 static void process_resize_msgs(extVectorScene *);
 
 static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
@@ -81,10 +81,29 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
 }
 
 //********************************************************************************************************************
+// Clear references to definition objects when they are freed.  Note that this function can sometimes be called after
+// the Defs table has been cleared.
+
+static void notify_def_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+{
+   auto Self = (extVectorScene *)CurrentContext();
+
+restart:
+   if (!Self->Defs.size()) return; // Necessary when dealing with poor quality mapping libs
+
+   for (auto it = Self->Defs.begin(); it != Self->Defs.end(); it++) {
+      if (it->second IS Object) {
+         Self->Defs.erase(it);
+         goto restart;
+      }
+   }
+}
+
+//********************************************************************************************************************
 
 static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   auto Self = (objVectorScene *)CurrentContext();
+   auto Self = (extVectorScene *)CurrentContext();
    if (Self->SurfaceID IS Object->UID) Self->SurfaceID = 0;
 }
 
@@ -92,7 +111,7 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Ar
 
 static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct acRedimension *Args)
 {
-   auto Self = (objVectorScene *)CurrentContext();
+   auto Self = (extVectorScene *)CurrentContext();
 
    if ((Self->Flags & VPF::RESIZE) != VPF::NIL) {
       Self->PageWidth  = Args->Width;
@@ -125,7 +144,7 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR A
 {
    auto Self = (extVectorScene *)CurrentContext();
    if (!Self->KeyHandle) {
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event), Self, &Self->KeyHandle);
+      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event, Self), &Self->KeyHandle);
    }
 }
 
@@ -190,14 +209,14 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
       return ERR::UnsupportedOwner;
    }
 
-   // TODO: Subscribe to the Free() action of the definition object so that we can avoid invalid pointer references.
-
-   log.detail("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
-
    if (Self->Defs.contains(Args->Name)) { // Check that the definition name is unique.
       log.detail("The vector definition name '%s' is already in use.", Args->Name);
       return ERR::ResourceExists;
    }
+
+   log.detail("Adding definition '%s' referencing %s #%d", Args->Name, def->Class->ClassName, def->UID);
+
+   SubscribeAction(def, AC::Free, C_FUNCTION(notify_def_free));
 
    Self->Defs[Args->Name] = def;
    return ERR::Okay;
@@ -368,6 +387,7 @@ static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct sc::FindDef *Args)
 
 static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 {
+   Self->Defs.clear(); // Required because the standard destructor is lazy and doesn't clear the table size
    Self->~extVectorScene();
 
    if (Self->Viewport) Self->Viewport->Parent = NULL;
@@ -377,7 +397,7 @@ static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
    if (Self->SurfaceID) {
       OBJECTPTR surface;
       if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR::Okay) {
-         UnsubscribeAction(surface, 0);
+         UnsubscribeAction(surface, AC::NIL);
          ReleaseObject(surface);
       }
    }
@@ -405,13 +425,13 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
             Self->PageHeight = surface->get<LONG>(FID_Height);
          }
 
-         SubscribeAction(*surface, AC_Redimension, C_FUNCTION(notify_redimension));
-         SubscribeAction(*surface, AC_Free, C_FUNCTION(notify_free));
-         SubscribeAction(*surface, AC_Focus, C_FUNCTION(notify_focus));
-         SubscribeAction(*surface, AC_LostFocus, C_FUNCTION(notify_lostfocus));
+         SubscribeAction(*surface, AC::Redimension, C_FUNCTION(notify_redimension));
+         SubscribeAction(*surface, AC::Free, C_FUNCTION(notify_free));
+         SubscribeAction(*surface, AC::Focus, C_FUNCTION(notify_focus));
+         SubscribeAction(*surface, AC::LostFocus, C_FUNCTION(notify_lostfocus));
 
          if (surface->hasFocus()) {
-            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event), Self, &Self->KeyHandle);
+            SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(scene_key_event, Self), &Self->KeyHandle);
          }
       }
 
@@ -432,10 +452,14 @@ static ERR VECTORSCENE_NewObject(extVectorScene *Self)
 {
    Self->SampleMethod = VSM::BILINEAR;
 
-   new (Self) extVectorScene;
-
    // Please refer to the Reset action for setting variable defaults
    return VECTORSCENE_Reset(Self);
+}
+
+static ERR VECTORSCENE_NewPlacement(extVectorScene *Self)
+{
+   new (Self) extVectorScene;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -762,12 +786,14 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
 
    // Report lost focus events, starting from the foreground.
 
-   for (auto const fv : glVectorFocusList) {
-      if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
-         pf::ScopedObjectLock<extVector> vec(fv, 1000);
-         if (vec.granted()) send_feedback(fv, FM::LOST_FOCUS, Vector);
+   if (!glVectorFocusList.empty()) { // Check required to avoid crashing on empty std::vector :-/
+      for (auto const fv : glVectorFocusList) {
+         if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
+            pf::ScopedObjectLock<extVector> vec(fv, 1000);
+            if (vec.granted()) send_feedback(fv, FM::LOST_FOCUS, Vector);
+         }
+         else break;
       }
-      else break;
    }
 
    glVectorFocusList = std::move(focus_gained);
@@ -841,7 +867,7 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
 //********************************************************************************************************************
 // Distribute input events to any vectors that have subscribed and have the focus
 
-static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
+static void scene_key_event(evKey *Event, LONG Size, extVectorScene *Self)
 {
    const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
 

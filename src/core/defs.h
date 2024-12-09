@@ -46,7 +46,7 @@ using namespace std::chrono_literals;
 #define MAX_NB_LOCKS      20  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
 #define MAX_WAITLOCKS     60  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
 
-#define CLASSDB_HEADER 0x7f887f88
+#define CLASSDB_HEADER 0x7f887f89
 
 #ifndef O_LARGEFILE
 #define O_LARGEFILE 0
@@ -68,6 +68,7 @@ using namespace std::chrono_literals;
 #define DRIVETYPE_CDROM     2
 #define DRIVETYPE_FIXED     3
 #define DRIVETYPE_NETWORK   4
+#define DRIVETYPE_USB       5
 
 #define DEFAULT_VIRTUALID 0xffffffff
 
@@ -89,7 +90,6 @@ using namespace std::chrono_literals;
 #include <parasol/system/errors.h>
 #include <parasol/system/types.h>
 #include <parasol/system/registry.h>
-#include <parasol/strings.hpp>
 
 #include <stdarg.h>
 
@@ -139,8 +139,15 @@ enum class CCF    : ULONG;
 enum class MEM    : ULONG;
 enum class ALF    : UWORD;
 enum class EVG    : LONG;
+enum class AC     : LONG;
 
 #define STAT_FOLDER 0x0001
+
+struct THREADID : strong_typedef<THREADID, LONG> { // Internal thread ID, unrelated to the host platform.
+   // Make constructors available
+   using strong_typedef::strong_typedef;
+   bool operator==(const THREADID & other) const { return LONG(*this) == LONG(other); }
+};
 
 struct rkWatchPath {
    LARGE      Custom;    // User's custom data pointer or value
@@ -158,6 +165,7 @@ struct rkWatchPath {
 #include "prototypes.h"
 
 #include <parasol/main.h>
+#include <parasol/strings.hpp>
 
 using namespace pf;
 
@@ -168,7 +176,7 @@ struct ThreadMessage {
 
 struct ThreadActionMessage {
    OBJECTPTR Object;    // Direct pointer to a target object.
-   LONG      ActionID;  // The action to execute.
+   AC        ActionID;  // The action to execute.
    LONG      Key;       // Internal
    ERR       Error;     // The error code resulting from the action's execution.
    FUNCTION  Callback;  // Callback function to execute on action completion.
@@ -214,7 +222,7 @@ public:
    MEMORYID MemoryID;   // Unique identifier
    OBJECTID OwnerID;    // The object that allocated this block.
    ULONG    Size;       // 4GB max
-   volatile LONG ThreadLockID = 0;
+   THREADID ThreadLockID = THREADID(0);
    MEM      Flags;
    WORD     AccessCount = 0; // Total number of locks
 
@@ -226,7 +234,7 @@ public:
       MemoryID = 0;
       OwnerID  = 0;
       Flags    = MEM::NIL;
-      ThreadLockID = 0;
+      ThreadLockID = THREADID(0);
    }
 };
 
@@ -250,24 +258,24 @@ struct ActionSubscription {
 struct virtual_drive {
    ULONG VirtualID;   // Hash name of the volume, not including the trailing colon
    LONG  DriverSize;  // The driver may reserve a private area for its own structure attached to DirInfo.
-   char  Name[32];    // Volume name, including the trailing colon at the end
-   ULONG CaseSensitive:1;
+   std::string Name;  // Volume name, including the trailing colon at the end
+   bool CaseSensitive;
    ERR (*ScanDir)(DirInfo *);
-   ERR (*Rename)(STRING, STRING);
-   ERR (*Delete)(STRING, FUNCTION *);
+   ERR (*Rename)(std::string_view, std::string_view);
+   ERR (*Delete)(std::string_view, FUNCTION *);
    ERR (*OpenDir)(DirInfo *);
    ERR (*CloseDir)(DirInfo *);
-   ERR (*Obsolete)(CSTRING, DirInfo **, LONG);
-   ERR (*TestPath)(CSTRING, RSF, LOC *);
+   ERR (*Obsolete)(std::string_view, DirInfo **, LONG);
+   ERR (*TestPath)(std::string &, RSF, LOC *);
    ERR (*WatchPath)(class extFile *);
    void  (*IgnoreFile)(class extFile *);
-   ERR (*GetInfo)(CSTRING, FileInfo *, LONG);
-   ERR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
-   ERR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
-   ERR (*CreateFolder)(CSTRING, PERMIT);
-   ERR (*SameFile)(CSTRING, CSTRING);
-   ERR (*ReadLink)(STRING, STRING *);
-   ERR (*CreateLink)(CSTRING, CSTRING);
+   ERR (*GetInfo)(std::string_view, FileInfo *, LONG);
+   ERR (*GetDeviceInfo)(std::string_view, objStorageDevice *);
+   ERR (*IdentifyFile)(std::string_view, CLASSID *, CLASSID *);
+   ERR (*CreateFolder)(std::string_view, PERMIT);
+   ERR (*SameFile)(std::string_view, std::string_view);
+   ERR (*ReadLink)(std::string_view, STRING *);
+   ERR (*CreateLink)(std::string_view, std::string_view);
    inline bool is_default() const { return VirtualID IS 0; }
    inline bool is_virtual() const { return VirtualID != 0; }
 };
@@ -322,7 +330,7 @@ public:
    LARGE     Interval;       // The amount of microseconds to wait at each interval
    OBJECTPTR Subscriber;     // The object that is subscribed (pointer, if private)
    OBJECTID  SubscriberID;   // The object that is subscribed
-   FUNCTION  Routine;        // Routine to call if not using AC_Timer - ERR Routine(OBJECTID, LONG, LONG);
+   FUNCTION  Routine;        // Routine to call if not using AC::Timer - ERR Routine(OBJECTID, LONG, LONG);
    UBYTE     Cycle;
    bool      Locked;
 };
@@ -355,7 +363,7 @@ class extMetaClass : public objMetaClass {
    class RootModule *Root;              // Root module that owns this class, if any.
    UBYTE Local[8];                      // Local object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
-   ActionEntry ActionTable[AC_END];
+   ActionEntry ActionTable[LONG(AC::END)];
    WORD OriginalFieldTotal;
    UWORD BaseCeiling;                   // FieldLookup ceiling value for the base-class fields
 };
@@ -365,25 +373,26 @@ class extFile : public objFile {
    using create = pf::Create<extFile>;
    struct DateTime prvModified;
    struct DateTime prvCreated;
+   std::string Path;
+   std::string prvIcon;
+   std::string prvLine;
+   std::string prvResolvedPath;
+   #ifdef __unix__
+      std::string prvLink;
+   #endif
    LARGE Size;
+   LARGE ProgressTime;
    #ifdef _WIN32
       LONG  Stream;
    #else
       APTR  Stream;
    #endif
-   STRING Path;
-   STRING prvResolvedPath;  // Used on initialisation to speed up processing (nb: string deallocated after initialisation).
-   STRING prvLink;
-   STRING prvLine;
-   CSTRING prvIcon;
    struct rkWatchPath *prvWatch;
    OBJECTPTR ProgressDialog;
    struct DirInfo *prvList;
-   LARGE  ProgressTime;
    PERMIT Permissions;
-   LONG   prvType;
+   bool   isFolder;
    LONG   Handle;         // Native system file handle
-   WORD   prvLineLen;
 };
 
 class extConfig : public objConfig {
@@ -449,7 +458,7 @@ class extTask : public objTask {
       STRING Env;
       APTR Platform;
    #endif
-   struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
+   struct ActionEntry Actions[LONG(AC::END)]; // Action routines to be intercepted by the program
 };
 
 //********************************************************************************************************************
@@ -478,7 +487,7 @@ struct TaskRecord {
 class extModule : public objModule {
    public:
    using create = pf::Create<extModule>;
-   char   Name[60];      // Name of the module
+   std::string Name;     // Name of the module
    APTR   prvMBMemory;   // Module base memory
 };
 
@@ -493,6 +502,7 @@ struct ClassRecord {
    std::string Path;
    std::string Match;
    std::string Header;
+   std::string Icon;
 
    static const LONG MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(LONG) + (sizeof(LONG) * 4);
 
@@ -510,16 +520,18 @@ struct ClassRecord {
 
       if (pClass->FileExtension) Match.assign(pClass->FileExtension);
       if (pClass->FileHeader) Header.assign(pClass->FileHeader);
+      if (pClass->Icon) Icon.assign(pClass->Icon);
    }
 
-   inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL) {
+   inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL, CSTRING pIcon = NULL) {
       ClassID  = pClassID;
       ParentID = CLASSID::NIL;
       Category = CCF::SYSTEM;
       Name     = pName;
       Path     = "modules:core";
-      if (pMatch) Match   = pMatch;
+      if (pMatch)  Match  = pMatch;
       if (pHeader) Header = pHeader;
+      if (pIcon)   Icon   = pIcon;
    }
 
    inline ERR write(objFile *File) {
@@ -543,6 +555,10 @@ struct ClassRecord {
       File->write(&size, sizeof(size));
       if (size) File->write(Header.c_str(), size);
 
+      size = Icon.size();
+      File->write(&size, sizeof(size));
+      if (size) File->write(Icon.c_str(), size);
+
       return ERR::Okay;
    }
 
@@ -554,30 +570,47 @@ struct ClassRecord {
       char buffer[256];
       LONG size = 0;
       File->read(&size, sizeof(size));
-      if (size < (LONG)sizeof(buffer)) {
-         File->read(buffer, size);
-         Name.assign(buffer, size);
+      if (size < std::ssize(buffer)) {
+         if (size > 0) {
+            File->read(buffer, size);
+            Name.assign(buffer, size);
+         }
       }
       else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
-      if (size < (LONG)sizeof(buffer)) {
-         File->read(buffer, size);
-         Path.assign(buffer, size);
+      if (size < std::ssize(buffer)) {
+         if (size > 0) {
+            File->read(buffer, size);
+            Path.assign(buffer, size);
+         }
       }
       else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
-      if (size < (LONG)sizeof(buffer)) {
-         File->read(buffer, size);
-         Match.assign(buffer, size);
+      if (size < std::ssize(buffer)) {
+         if (size > 0) {
+            File->read(buffer, size);
+            Match.assign(buffer, size);
+         }
       }
       else return ERR::BufferOverflow;
 
       File->read(&size, sizeof(size));
-      if (size < (LONG)sizeof(buffer)) {
-         File->read(buffer, size);
-         Header.assign(buffer, size);
+      if (size < std::ssize(buffer)) {
+         if (size > 0) {
+            File->read(buffer, size);
+            Header.assign(buffer, size);
+         }
+      }
+      else return ERR::BufferOverflow;
+
+      File->read(&size, sizeof(size));
+      if (size < std::ssize(buffer)) {
+         if (size > 0) {
+            File->read(buffer, size);
+            Icon.assign(buffer, size);
+         }
       }
       else return ERR::BufferOverflow;
 
@@ -631,7 +664,7 @@ extern LONG glEUID, glEGID, glUID, glGID;
 extern std::string glSystemPath;
 extern std::string glModulePath;
 extern std::string glRootPath;
-extern char glDisplayDriver[28];
+extern std::string glDisplayDriver;
 extern bool glShowIO, glShowPrivate, glEnableCrashHandler;
 extern bool glJanitorActive;
 extern bool glLogThreads;
@@ -654,6 +687,8 @@ extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 extern std::unordered_map<ULONG, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
+extern std::unordered_map<ULONG, CLASSID> glWildClassMap; // Fast lookup for identifying classes by file extension
+extern LONG glWildClassMapTotal;
 extern std::vector<TaskRecord> glTasks;
 extern const CSTRING glMessages[LONG(ERR::END)+1];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
@@ -672,7 +707,6 @@ extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
 extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern objTime *glTime;
-extern objConfig *glDatatypes;
 extern objFile *glClassFile;
 extern Object glDummyObject;
 extern TIMER glProcessJanitor;
@@ -811,10 +845,10 @@ class TaskMessage {
    void setBuffer(APTR pData, size_t pSize) {
       if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = NULL; }
 
-      if (pSize <= Buffer.size()) CopyMemory(pData, Buffer.data(), pSize);
+      if (pSize <= Buffer.size()) copymem(pData, Buffer.data(), pSize);
       else {
          ExtBuffer = new (std::nothrow) char[pSize];
-         if (ExtBuffer) CopyMemory(pData, ExtBuffer, pSize);
+         if (ExtBuffer) copymem(pData, ExtBuffer, pSize);
       }
 
       Size = pSize;
@@ -827,7 +861,7 @@ class TaskMessage {
       Type = Source.Type;
       Size = Source.Size;
       if (Source.ExtBuffer) setBuffer(Source.ExtBuffer, Size);
-      else if (Size) CopyMemory(Source.Buffer.data(), Buffer.data(), Size);
+      else if (Size) copymem(Source.Buffer.data(), Buffer.data(), Size);
    }
 };
 
@@ -840,55 +874,55 @@ extern std::vector<TaskMessage> glQueue;
 
 class ObjectContext {
    public:
-   class ObjectContext *Stack; // Call stack.
-   struct Field *Field;        // Set if the context is linked to a get/set field operation.  For logging purposes only.
-   WORD Action;                // Set if the context enters an action or method routine.
+   class ObjectContext *stack; // Call stack.
+   struct Field *field;        // Set if the context is linked to a get/set field operation.  For logging purposes only.
+   AC action;                  // Set if the context enters an action or method routine.
 
    protected:
-   OBJECTPTR Object;           // Required.  The object that currently has the operating context.
+   OBJECTPTR obj;           // Required.  The object that currently has the operating context.
 
    public:
    ObjectContext() { // Dummy initialisation
-      Stack  = NULL;
-      Object = &glDummyObject;
-      Field  = NULL;
-      Action = 0;
+      stack  = NULL;
+      obj = &glDummyObject;
+      field  = NULL;
+      action = AC::NIL;
    }
 
-   ObjectContext(OBJECTPTR pObject, WORD pAction, struct Field *pField = NULL) {
-      Stack  = tlContext;
-      Object = pObject;
-      Field  = pField;
-      Action = pAction;
+   ObjectContext(OBJECTPTR pObject, AC pAction, struct Field *pField = NULL) {
+      stack  = tlContext;
+      obj = pObject;
+      field  = pField;
+      action = pAction;
 
       tlContext = this;
    }
 
    ~ObjectContext() {
-      if (Stack) tlContext = Stack;
+      if (stack) tlContext = stack;
    }
 
    // Return the nearest object for resourcing purposes.  Note that an action ID of 0 has special meaning and indicates
    // that resources should be tracked to the next object on the stack (this feature is used by GetField*() functionality).
 
-   inline OBJECTPTR resource() {
-      if (Action) return Object;
+   inline OBJECTPTR resource() const {
+      if (action != AC::NIL) return obj;
       else {
-         for (auto ctx = Stack; ctx; ctx=ctx->Stack) {
-            if (Action) return ctx->Object;
+         for (auto ctx = stack; ctx; ctx=ctx->stack) {
+            if (action != AC::NIL) return ctx->obj;
          }
          return &glDummyObject;
       }
    }
 
    inline OBJECTPTR setContext(OBJECTPTR NewObject) {
-      auto old = Object;
-      Object = NewObject;
+      auto old = obj;
+      obj = NewObject;
       return old;
    }
 
-   constexpr inline OBJECTPTR object() { // Return the object that has the context (but not necessarily for resourcing)
-      return Object;
+   constexpr inline OBJECTPTR object() const { // Return the object that has the context (but not necessarily for resourcing)
+      return obj;
    }
 };
 
@@ -920,76 +954,72 @@ extern std::vector<FDRecord> glRegisterFD;
 #define LRT_Exclusive 1
 
 //********************************************************************************************************************
+// The RootModule class is used to represent the first instantation of a loaded module library.  It is managed
+// internally.  Clients interface with modules via the Module class.
 
 class RootModule : public Object {
    public:
    class RootModule *Next;     // Next module in list
    class RootModule *Prev;     // Previous module in list
-   struct ModHeader  *Header;  // Pointer to module header - for memory resident modules only.
+   struct ModHeader *Header;   // Pointer to module header - for memory resident modules only.
    struct CoreBase *CoreBase;  // Module's personal Core reference
    #ifdef __unix__
       APTR LibraryBase;        // Module code
    #else
       MODHANDLE LibraryBase;
    #endif
-   CSTRING Name;               // Name of the module (as declared by the header)
+   std::string Name;           // Name of the module (as declared by the header)
    struct ModHeader *Table;
    WORD   Version;
    WORD   OpenCount;           // Amount of programs with this module open
    FLOAT  ModVersion;          // Version of this module
    MHF    Flags;
-   UBYTE  NoUnload;
-   UBYTE  DLL;                 // TRUE if the module is a Windows DLL
+   bool   NoUnload;
+   bool   DLL;                 // TRUE if the module is a Windows DLL
    ERR    (*Init)(OBJECTPTR, struct CoreBase *);
    void   (*Close)(OBJECTPTR);
    ERR    (*Open)(OBJECTPTR);
    ERR    (*Expunge)(void);
-   struct ActionEntry prvActions[AC_END]; // Action routines to be intercepted by the program
-   char   LibraryName[40]; // Name of the library loaded from disk
+   struct ActionEntry prvActions[LONG(AC::END)]; // Action routines to be intercepted by the program
+   std::string LibraryName; // Name of the library loaded from disk
 };
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+THREADID get_thread_id(void);
 
 //********************************************************************************************************************
 
 ERR SetFieldF(OBJECTPTR, FIELD, va_list);
 
 ERR fs_closedir(DirInfo *);
-ERR fs_createlink(CSTRING, CSTRING);
-ERR fs_delete(STRING, FUNCTION *);
-ERR fs_getinfo(CSTRING, FileInfo *, LONG);
-ERR fs_getdeviceinfo(CSTRING, objStorageDevice *);
+ERR fs_createlink(std::string_view, std::string_view);
+ERR fs_delete(std::string_view, FUNCTION *);
+ERR fs_getinfo(std::string_view, FileInfo *, LONG);
+ERR fs_getdeviceinfo(std::string_view, objStorageDevice *);
 void  fs_ignore_file(class extFile *);
-ERR fs_makedir(CSTRING, PERMIT);
+ERR fs_makedir(std::string_view, PERMIT);
 ERR fs_opendir(DirInfo *);
-ERR fs_readlink(STRING, STRING *);
-ERR fs_rename(STRING, STRING);
-ERR fs_samefile(CSTRING, CSTRING);
+ERR fs_readlink(std::string_view, STRING *);
+ERR fs_rename(std::string_view, std::string_view);
+ERR fs_samefile(std::string_view, std::string_view);
 ERR fs_scandir(DirInfo *);
-ERR fs_testpath(CSTRING, RSF, LOC *);
+ERR fs_testpath(std::string &, RSF, LOC *);
 ERR fs_watch_path(class extFile *);
 
-const virtual_drive * get_fs(CSTRING Path);
+const virtual_drive * get_fs(std::string_view Path);
 void  free_storage_class(void);
 
-ERR  convert_zip_error(struct z_stream_s *, LONG);
-ERR  check_cache(OBJECTPTR, LARGE, LARGE);
-ERR  get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
-ERR  fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
-ERR  fs_copydir(STRING, STRING, FileFeedback *, FUNCTION *, BYTE);
-PERMIT get_parent_permissions(CSTRING, LONG *, LONG *);
-ERR  load_datatypes(void);
-ERR  RenameVolume(CSTRING, CSTRING);
-ERR  findfile(STRING);
+ERR    convert_zip_error(struct z_stream_s *, LONG);
+ERR    check_cache(OBJECTPTR, LARGE, LARGE);
+ERR    fs_copy(std::string_view, std::string_view, FUNCTION *, bool);
+ERR    fs_copydir(std::string &, std::string &, FileFeedback *, FUNCTION *, BYTE);
+PERMIT get_parent_permissions(std::string_view, LONG *, LONG *);
+ERR    RenameVolume(CSTRING, CSTRING);
+ERR    findfile(std::string &);
 PERMIT convert_fs_permissions(LONG);
-LONG convert_permissions(PERMIT);
-bool strip_folder(STRING) __attribute__ ((unused));
-void set_memory_manager(APTR, ResourceManager *);
-ERR  get_file_info(CSTRING, FileInfo *, LONG);
-extern "C" ERR  convert_errno(LONG Error, ERR Default);
-void   free_file_cache(void);
+LONG   convert_permissions(PERMIT);
+ERR    get_file_info(std::string_view, FileInfo *, LONG);
+extern "C" ERR convert_errno(LONG Error, ERR Default);
+void free_file_cache(void);
 
 __export void Expunge(WORD);
 
@@ -1001,51 +1031,51 @@ CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 #ifndef PARASOL_STATIC
 APTR   build_jump_table(const Function *);
 #endif
-ERR  copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
-ERR  copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
-ERR  create_archive_volume(void);
-ERR  delete_tree(STRING, LONG, FUNCTION *, FileFeedback *);
+ERR    copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
+ERR    copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
+ERR    create_archive_volume(void);
+ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
-ERR  find_private_object_entry(OBJECTID, LONG *);
+ERR    find_private_object_entry(OBJECTID, LONG *);
 void   free_events(void);
 void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
-LONG   get_thread_id(void);
 void   init_metaclass(void);
-ERR  init_sleep(LONG, LONG, LONG);
+ERR    init_sleep(THREADID, LONG, LONG);
 void   local_free_args(APTR, const FunctionField *);
 Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
-ERR  msg_event(APTR, LONG, LONG, APTR, LONG);
-ERR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
-ERR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);
-ERR  msg_free(APTR, LONG, LONG, APTR, LONG);
+ERR    msg_event(APTR, LONG, LONG, APTR, LONG);
+ERR    msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
+ERR    msg_threadaction(APTR, LONG, LONG, APTR, LONG);
+ERR    msg_free(APTR, LONG, LONG, APTR, LONG);
 void   optimise_write_field(Field &);
 void   PrepareSleep(void);
-ERR  process_janitor(OBJECTID, LONG, LONG);
+ERR    process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
-ERR  resolve_args(APTR, const FunctionField *);
+ERR    resolve_args(APTR, const FunctionField *);
+CLASSID lookup_class_by_ext(std::string_view);
 
 #ifndef PARASOL_STATIC
 void   scan_classes(void);
 #endif
 
-void   remove_threadpool(void);
+void remove_threadpool(void);
 ERR  threadpool_get(extThread **);
-void   threadpool_release(extThread *);
+void threadpool_release(extThread *);
 ERR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
-extern "C" ERR validate_process(LONG);
 ERR  check_paths(CSTRING, PERMIT);
-void   merge_groups(ConfigGroups &, ConfigGroups &);
+void merge_groups(ConfigGroups &, ConfigGroups &);
+extern "C" ERR validate_process(LONG);
 
 #ifdef _WIN32
-   extern "C" ERR open_public_waitlock(WINHANDLE *, CSTRING);
    extern "C" WINHANDLE get_threadlock(void);
-   extern "C" void  free_threadlocks(void);
-   extern "C" ERR wake_waitlock(WINHANDLE, LONG);
-   extern "C" ERR alloc_public_waitlock(WINHANDLE *, const char *Name);
-   extern "C" void  free_public_waitlock(WINHANDLE);
-   extern "C" ERR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
-   extern "C" LONG  sleep_waitlock(WINHANDLE, LONG);
+   extern "C" ERR  open_public_waitlock(WINHANDLE *, CSTRING);
+   extern "C" void free_threadlocks(void);
+   extern "C" ERR  wake_waitlock(WINHANDLE, LONG);
+   extern "C" ERR  alloc_public_waitlock(WINHANDLE *, const char *Name);
+   extern "C" void free_public_waitlock(WINHANDLE);
+   extern "C" ERR  send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
+   extern "C" LONG sleep_waitlock(WINHANDLE, LONG);
 #else
    struct sockaddr_un * get_socket_path(LONG, socklen_t *);
    ERR alloc_public_cond(CONDLOCK *, ALF);
@@ -1115,10 +1145,10 @@ extern "C" void winFindClose(WINHANDLE);
 extern "C" void winFindNextChangeNotification(WINHANDLE);
 extern "C" void winGetAttrib(CSTRING, LONG *);
 extern "C" BYTE winGetCommand(char *, char *, LONG);
-extern "C" LONG winGetFreeDiskSpace(UBYTE, LARGE *, LARGE *);
+extern "C" LONG winGetFreeDiskSpace(char, LARGE *, LARGE *);
 extern "C" LONG winGetLogicalDrives(void);
 extern "C" LONG winGetLogicalDriveStrings(STRING, LONG);
-extern "C" LONG winGetDriveType(STRING);
+extern ERR winGetVolumeInformation(STRING Volume, std::string &Label, std::string &FileSystem, int &Type);
 extern "C" LONG winGetFullPathName(const char *Path, LONG PathLength, char *Output, char **NamePart);
 extern "C" LONG winGetUserFolder(STRING, LONG);
 extern "C" LONG winGetUserName(STRING, LONG);
@@ -1136,16 +1166,21 @@ extern "C" ERR winWatchFile(LONG, CSTRING, APTR, WINHANDLE *, LONG *);
 extern "C" void winFindCloseChangeNotification(WINHANDLE);
 extern "C" APTR winFindDirectory(STRING, APTR *, STRING);
 extern "C" APTR winFindFile(STRING, APTR *, STRING);
-extern "C" LONG winSetFileTime(CSTRING, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second);
+extern "C" LONG winSetFileTime(CSTRING, bool, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second);
 extern "C" LONG winResetDate(STRING);
 extern "C" void winSetDllDirectory(CSTRING);
 extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, BYTE));
 
 #endif
 
-#ifdef  __cplusplus
+//********************************************************************************************************************
+// Internal function to set the manager for an allocated resource.
+
+inline void set_memory_manager(APTR Address, ResourceManager *Manager)
+{
+   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
+   address_mgr[0] = Manager;
 }
-#endif
 
 //********************************************************************************************************************
 

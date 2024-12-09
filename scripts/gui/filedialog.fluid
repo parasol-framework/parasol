@@ -107,11 +107,17 @@ gui.dialog.file = function(Options)
 
    self.viewport = self.window:clientViewport({ })
 
+   local bkgd = self.viewport.new('VectorRectangle', {
+      x=0, y=0, xOffset=0, height=1, fill=gui.palette.base
+   })
+
    self.toolbar = gui.toolbar({
-      target  = self.viewport, 
-      x       = 0,
-      y       = 0,
-      xOffset = 0,
+      target    = self.viewport,
+      iconTheme = 'pearl',
+      x         = 0,
+      y         = 0,
+      xOffset   = 0,
+      flush     = true,
       createItems = function(Bar)
          Bar.addGroup(1, 'Navigation', 2)
 
@@ -162,6 +168,8 @@ gui.dialog.file = function(Options)
          end)
       end
    })
+
+   bkgd.height = self.toolbar.viewport.height
 
    self.pathbox = gui.input({
       target    = self.viewport,

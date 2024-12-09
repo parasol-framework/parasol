@@ -86,7 +86,7 @@ static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG
                      }
                      else if (type IS LUA_TUSERDATA) {
                         if (auto fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
-                           CopyMemory(fstruct->Data, sti, fstruct->StructSize);
+                           copymem(fstruct->Data, sti, fstruct->StructSize);
                         }
                      }
                      else {
@@ -309,7 +309,7 @@ static int object_get(lua_State *Lua)
       else { // Assume this is a custom key since FindField() failed
          char buffer[8192];
 
-         if ((GetKey(obj, fieldname, buffer, sizeof(buffer)) IS ERR::Okay) and (buffer[0])) {
+         if ((acGetKey(obj, fieldname, buffer, sizeof(buffer)) IS ERR::Okay) and (buffer[0])) {
             lua_pushstring(Lua, buffer);
          }
          else lua_pushvalue(Lua, 2); // Push the client's default value
@@ -333,7 +333,7 @@ static int object_getkey(lua_State *Lua)
       ERR error;
       if (auto obj = access_object(def)) {
          char buffer[8192];
-         if ((error = GetKey(obj, fieldname, buffer, sizeof(buffer))) IS ERR::Okay) {
+         if ((error = acGetKey(obj, fieldname, buffer, sizeof(buffer))) IS ERR::Okay) {
             lua_pushstring(Lua, buffer);
          }
          release_object(def);
@@ -460,7 +460,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
                            }
                            else if (type IS LUA_TUSERDATA) {
                               if (auto fs = (fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
-                                 CopyMemory(fs->Data, sti, fs->StructSize);
+                                 copymem(fs->Data, sti, fs->StructSize);
                               }
                            }
                            else {

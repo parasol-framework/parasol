@@ -34,14 +34,14 @@ static const struct FieldDef clVectorTextVTS[] = {
 FDEF maDeleteLine[] = { { "Line", FD_LONG }, { 0, 0 } };
 
 static const struct MethodEntry clVectorTextMethods[] = {
-   { -30, (APTR)VECTORTEXT_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct vt::DeleteLine) },
-   { 0, 0, 0, 0, 0 }
+   { AC(-30), (APTR)VECTORTEXT_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct vt::DeleteLine) },
+   { AC::NIL, 0, 0, 0, 0 }
 };
 
 static const struct ActionArray clVectorTextActions[] = {
-   { AC_Free, VECTORTEXT_Free },
-   { AC_Init, VECTORTEXT_Init },
-   { AC_NewObject, VECTORTEXT_NewObject },
-   { 0, NULL }
+   { AC::Free, VECTORTEXT_Free },
+   { AC::Init, VECTORTEXT_Init },
+   { AC::NewObject, VECTORTEXT_NewObject },
+   { AC::NIL, NULL }
 };
 

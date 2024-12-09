@@ -8,16 +8,9 @@ Documentation is available in the Parasol Wiki.
    require 'translate'
    include 'vector'
 
-local lColours = {
-   textFill      = 'rgb(255,255,255)',
-   textHighlight = 'rgb(160,160,220)',
-   iconGradient  = { first={ r=250,g=249,b=248 }, last={ r=190,g=191,b=192 } }
-}
-
-local VMARGIN   = 6
+local VMARGIN   = gui.style.widget.margin
 local GAP       = 26
 local ICON_SIZE = 12
-local FONT_SIZE = 16
 local count = 0
 
 local function counter()
@@ -34,7 +27,7 @@ local function activateItem(self) -- Activate the current menu item.
 
    local menu = self._currentItem.menu
    if not menu then
-      if not (#self._currentItem.menuConfig > 0) then 
+      if not (#self._currentItem.menuConfig > 0) then
          if self._lastMenu then self._lastMenu.hide() end
          return
       end
@@ -101,11 +94,12 @@ end
 
 local function highlightItem(self, Item)
    self._currentItem = Item
-   self._hIcon.x          = Item.x + 1
-   self._hIcon.y          = 1
-   self._hIcon.width      = Item.width - 2
-   self._hIcon.height     = self.viewport.height - 2
-   self._hIcon.visibility = 'visible'
+
+   self._highlight.x          = Item.x
+   self._highlight.y          = 0
+   self._highlight.width      = Item.width
+   self._highlight.height     = self.viewport.height - 1
+   self._highlight.visibility = 'visible'
 
    self.viewport.acDraw()
 end
@@ -127,10 +121,10 @@ local function arrangeItems(self)
       item.gfxWidth = item.width
 
       local iconWidth = 0
-      if item.svg then
+      if item.icon then
          iconWidth = ICON_SIZE + VMARGIN
-         item.svgGroup.x = x + VMARGIN
-         item.svgGroup.y = y + VMARGIN
+         item.icon.x = x + VMARGIN
+         item.icon.y = y + VMARGIN
          if self._disabled or item.disabled then
             item.vectorIcon.opacity = 0.5
          end
@@ -139,9 +133,9 @@ local function arrangeItems(self)
       if nz(item.displayName) then
          item.vectorText = self._vg.new('VectorText', {
             x        = x + iconWidth + VMARGIN,
-            face     = 'Source Sans Pro,*',
-            fontSize = FONT_SIZE,
-            fill     = lColours.textFill,
+            face     = gui.fonts.menu.face,
+            fontSize = string.format('%.2fpt', gui.fonts.menu.size),
+            fill     = gui.style.menubar.text,
             string   = item.displayName
          })
 
@@ -194,31 +188,10 @@ gui.menubar = function(Options)
       item.menuConfig = Menu
 
       if Icon then
-         catch(function()
-            local gname = 'menu_grd' .. counter()
-            item.svgGroup = self.viewport.new('VectorViewport', { x=0, y=0, width=ICON_SIZE, height=ICON_SIZE })
-            item.svgGradient = gui.simpleGradient(self.viewport.scene, gname, { lColours.iconGradient.first, lColours.iconGradient.last }, 0, 0, 0, ICON_SIZE, 'userspace', true)
-            item.svg = obj.new('svg', { target=item.svgGroup, path='icons:' .. Icon .. '.svg' })
-            applyFill(item.svgGroup, 'url(#' .. gname .. ')')
-
-            local viewport = item.svgGroup.child
-            if (viewport != nil) then
-               while (child != nil) do
-                  if (child.class.id == ID_VECTORVIEWPORT) then
-                     viewport = child
-                     break
-                  end
-               end
-
-               if (viewport.viewHeight < viewport.viewWidth) then
-                  item.svgGradient.y1 = viewport.viewY - ((viewport.viewWidth - viewport.viewHeight) * 0.5)
-                  item.svgGradient.y2 = item.svgGradient.y1 + viewport.viewWidth
-               else
-                  item.svgGradient.y1 = viewport.viewY
-                  item.svgGradient.y2 = viewport.viewY + viewport.viewHeight
-               end
-            end
-         end)
+         local icon = gui.createIcon(self.viewport.scene, Icon, ICON_SIZE, 'pearl')
+         item.icon = self.viewport.new('VectorRectangle', {
+            x=0, y=0, width=ICON_SIZE, height=ICON_SIZE, fill = icon.fill
+         })
       end
 
       self._arranged = false
@@ -247,15 +220,15 @@ gui.menubar = function(Options)
    local function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.
       if (self._currentItem == Item) and (StateChanged != true) then return end
 
-      self._hIcon.visibility = 'hidden' -- Turn off keyboard highlighting
+      self._highlight.visibility = 'hidden'
       self._currentItem = Item
 
       if self._prevItem and (self._prevItem != self._currentItem) then
-         self._prevItem.vectorText.fill = lColours.textFill
+         -- Reset prevItem presentation if necessary
       end
 
       if self._currentItem and (not self._currentItem.disabled) and (not self._disabled) then
-         self._currentItem.vectorText.fill = lColours.textHighlight
+         highlightItem(self, self._currentItem)
          self._prevItem = self._currentItem
       end
 
@@ -264,7 +237,7 @@ gui.menubar = function(Options)
 
    -- Main entry point
 
-   catch(function()
+   xpcall(function()
       if (not Options.target) then error('A target viewport is required.') end
 
       self.viewport = Options.target.new('vectorviewport')
@@ -283,7 +256,7 @@ gui.menubar = function(Options)
          if (Event == FM_LOST_FOCUS) then
             self._hasFocus = false
             if self._currentItem then
-               self._hIcon.visibility = 'hidden' -- Turn off keyboard highlighting
+               self._highlight.visibility = 'hidden' -- Turn off highlighting
             end
 
             if self._lastMenu then
@@ -369,44 +342,34 @@ gui.menubar = function(Options)
 
       self._bkgd = self.viewport.new('VectorGroup', { name='ItemBackground' })
 
-      self._hIcon = self.viewport.new('VectorRectangle', { -- Keyboard-based selection
-         stroke    = 'rgb(0,0,0,128)',
-         dashArray = '1, 1',
-         roundX    = 3,
-         roundY    = 3,
-         x         = 0,
-         y         = 0,
-         width     = 16,
-         height    = 16,
-         visibility = 'hidden'
-      })
-
       Options.createItems(self)
 
       self.viewport.height = ICON_SIZE + (VMARGIN * 2)
 
       self._bkgd.new('VectorRectangle', { -- Main background
-         fill   = 'rgb(0,0,0,200)',
+         fill   = gui.style.menubar.bkgd,
          x      = 0,
          y      = 0,
          width  = '100%',
          height = self.viewport.height - 1
       })
 
+      self._highlight = self._bkgd.new('VectorRectangle', { -- Highlight for items
+         fill = gui.style.menubar.highlight,
+         x = 0, y = 0, width = 1, height = self.viewport.height - 1,
+         visibility = 'hidden'
+      })
+
       self._bkgd.new('VectorRectangle', { -- Bottom stroke
-         fill        = 'rgb(0,0,0,64)',
-         stroke      = 'rgb(255,255,255,64)',
-         strokeWidth = 1,
-         x           = 0,
-         y           = self.viewport.height - 1,
-         width       = '100%',
-         height      = 1
+         fill = 'rgb(0,0,0,64)',
+         stroke = 'rgb(255,255,255,64)', strokeWidth = 1,
+         x = 0, y = self.viewport.height - 1, width = '100%', height = 1
       })
 
       arrangeItems(self)
    end,
-   function(Exception)
-      error('Failed to initialise Menubar: ' .. Exception.message)
+   function(Error)
+      print(Error .. '\n' .. debug.traceback())
    end)
 
    return self

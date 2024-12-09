@@ -159,6 +159,7 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
       display_id = surface->DisplayID;
       if (ScopedObjectLock<extDisplay> display(display_id, 3000); display.granted()) {
+         if (!display->ResizeFeedback.defined()) return;
          feedback = display->ResizeFeedback;
          display->X = WinX;
          display->Y = WinY;
@@ -188,7 +189,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
       pf::Log log;
       if ((!surface->hasFocus()) and (surface->visible())) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
-         QueueAction(AC_Focus, SurfaceID);
+         QueueAction(AC::Focus, SurfaceID);
       }
       else log.trace("WM_SETFOCUS: Surface #%d already has the focus, or is hidden.", SurfaceID);
    }

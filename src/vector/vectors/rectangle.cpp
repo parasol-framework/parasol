@@ -308,7 +308,7 @@ static ERR RECTANGLE_GET_Rounding(extVectorRectangle *Self, DOUBLE **Value, LONG
 static ERR RECTANGLE_SET_Rounding(extVectorRectangle *Self, DOUBLE *Value, LONG Elements)
 {
    if (Elements >= 8) {
-      CopyMemory(Value, Self->rRound.data(), sizeof(DOUBLE) * 8);
+      copymem(Value, Self->rRound.data(), sizeof(DOUBLE) * 8);
       Self->rFullControl = true;
       reset_path(Self);
       return ERR::Okay;
@@ -556,12 +556,12 @@ static const FieldArray clRectangleFields[] = {
 };
 
 static const ActionArray clRectangleActions[] = {
-   { AC_Move,          RECTANGLE_Move },
-   { AC_MoveToPoint,   RECTANGLE_MoveToPoint },
-   { AC_NewObject,     RECTANGLE_NewObject },
-   //{ AC_Redimension, RECTANGLE_Redimension },
-   { AC_Resize,      RECTANGLE_Resize },
-   { 0, NULL }
+   { AC::Move,          RECTANGLE_Move },
+   { AC::MoveToPoint,   RECTANGLE_MoveToPoint },
+   { AC::NewObject,     RECTANGLE_NewObject },
+   //{ AC::Redimension, RECTANGLE_Redimension },
+   { AC::Resize,      RECTANGLE_Resize },
+   { AC::NIL, NULL }
 };
 
 static ERR init_rectangle(void)

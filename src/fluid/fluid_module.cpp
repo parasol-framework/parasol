@@ -26,7 +26,7 @@ template<class... Args> void RMSG(Args...) {
 #define MAX_MODULE_ARGS 16
 
 static int module_call(lua_State *);
-static LONG process_results(prvFluid *, APTR, const FunctionField *, LONG);
+static LONG process_results(prvFluid *, APTR, const FunctionField *);
 
 //********************************************************************************************************************
 // Usage: module = mod.load('core')
@@ -53,7 +53,7 @@ static int module_load(lua_State *Lua)
 
    if (auto loaded_mod = objModule::create::global(fl::Name(modname))) {
       auto mod = (module *)lua_newuserdata(Lua, sizeof(module));
-      ClearMemory(mod, sizeof(struct module));
+      clearmem(mod, sizeof(struct module));
 
       luaL_getmetatable(Lua, "Fluid.mod");
       lua_setmetatable(Lua, -2);
@@ -226,7 +226,24 @@ static int module_call(lua_State *Lua)
                return 0;
             }
          }
-         else if (argtype & (FD_STR|FD_PTR|FD_ARRAY)) {
+         else if (argtype & FD_STR) { // FD_RESULT
+            if (argtype & FD_CPP) { 
+               // Special case; we provide a std::string that will be used as a buffer for storing the result.
+               ((std::string **)(buffer + j))[0] = new std::string;
+               arg_values[in]  = buffer + j;
+               arg_types[in++] = &ffi_type_pointer;
+               j += sizeof(APTR);
+            }
+            else {
+               end -= sizeof(APTR);
+               ((APTR *)(buffer + j))[0] = end;
+               ((APTR *)end)[0] = NULL;
+               arg_values[in]  = buffer + j;
+               arg_types[in++] = &ffi_type_pointer;
+               j += sizeof(APTR);
+            }
+         }
+         else if (argtype & (FD_PTR|FD_ARRAY)) { // FD_RESULT
             end -= sizeof(APTR);
             ((APTR *)(buffer + j))[0] = end;
             ((APTR *)end)[0] = NULL;
@@ -234,7 +251,7 @@ static int module_call(lua_State *Lua)
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
-         else if (argtype & (FD_LONG)) {
+         else if (argtype & FD_LONG) { // FD_RESULT
             end -= sizeof(LONG);
             ((APTR *)(buffer + j))[0] = end;
             ((LONG *)end)[0] = 0;
@@ -242,7 +259,7 @@ static int module_call(lua_State *Lua)
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
-         else if (argtype & (FD_DOUBLE|FD_LARGE)) {
+         else if (argtype & (FD_DOUBLE|FD_LARGE)) { // FD_RESULT
             end -= sizeof(LARGE);
             ((APTR *)(buffer + j))[0] = end;
             ((LARGE *)end)[0] = 0;
@@ -254,10 +271,6 @@ static int module_call(lua_State *Lua)
             luaL_error(Lua, "Unrecognised arg %d type %d", i, argtype);
             return 0;
          }
-      }
-      else if (argtype & (FD_TAGS|FD_VARTAGS)) {
-         luaL_error(Lua, "Functions using tags are not supported.");
-         return 0;
       }
       else if (argtype & FD_FUNCTION) {
          if (func.defined()) { // Is the function reserve already used?
@@ -297,7 +310,12 @@ static int module_call(lua_State *Lua)
       else if (argtype & FD_STR) {
          auto type = lua_type(Lua, i);
 
-         if ((type IS LUA_TSTRING) or (type IS LUA_TNUMBER) or (type IS LUA_TBOOLEAN)) {
+         if (argtype & FD_CPP) { // std::string_view (enforced, cannot be NULL)
+            size_t len;
+            auto str = lua_tolstring(Lua, i, &len);
+            ((std::string_view **)(buffer + j))[0] = new std::string_view(str, len);
+         }
+         else if ((type IS LUA_TSTRING) or (type IS LUA_TNUMBER) or (type IS LUA_TBOOLEAN)) {
             ((CSTRING *)(buffer + j))[0] = lua_tostring(Lua, i);
          }
          else if (type <= 0) {
@@ -314,7 +332,7 @@ static int module_call(lua_State *Lua)
 
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_pointer;
-         j += sizeof(STRING);
+         j += sizeof(APTR);
       }
       else if (argtype & FD_ARRAY) {
          if (argtype & FD_CPP) {
@@ -511,6 +529,10 @@ static int module_call(lua_State *Lua)
          arg_types[in++] = &ffi_type_sint32;
          j += sizeof(LONG);
       }
+      else if (argtype & (FD_TAGS|FD_VARTAGS)) {
+         luaL_error(Lua, "Functions using tags are not supported.");
+         return 0;
+      }
       else {
          log.warning("%s() unsupported arg '%s', flags $%.8x, aborting now.", mod->Functions[index].Name, args[i].Name, argtype);
          return 0;
@@ -622,33 +644,28 @@ static int module_call(lua_State *Lua)
       return 0;
    }
 
-   return process_results(prv, buffer, args, result);
+   return process_results(prv, buffer, args) + result;
 }
 
 //********************************************************************************************************************
-// This code looks for FD_RESULT arguments in the function's parameter list and converts them into multiple Fluid results.
+// Convert FD_RESULT parameters to the equivalent Fluid result value.
+// Also takes care of any cleanup code for dynamically allocated values.
 
-static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField *args, LONG result)
+static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField *args)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
-   APTR var;
 
    auto scan = (UBYTE *)resultsidx;
-   for (i=1; args[i].Name; i++) {
-      LONG argtype = args[i].Type;
-      CSTRING argname = args[i].Name;
-
-      if (argtype & FD_RESULT) {
-         var = ((APTR *)scan)[0];
-         RMSG("Result Arg %d @ %p", i, var);
-      }
-      else var = NULL;
+   LONG results = 0;
+   for (LONG i=1; args[i].Name; i++) {
+      const auto argtype = args[i].Type;
 
       if ((argtype & FD_ARRAY) and (!(argtype & FD_BUFFER))) {
-         scan += sizeof(APTR);
          if (argtype & FD_RESULT) {
+            auto var = ((APTR *)scan)[0];
+            scan += sizeof(APTR);
             if (var) {
+               const auto argname = args[i].Name;
                APTR values = ((APTR *)var)[0];
                LONG total_elements = -1; // If -1, make_any_table() assumes the array is null terminated.
 
@@ -666,27 +683,37 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                else lua_pushnil(prv->Lua);
             }
             else lua_pushnil(prv->Lua);
-            result++;
+            results++;
          }
+         else scan += sizeof(APTR);
       }
       else if (argtype & FD_STR) {
-         scan += sizeof(APTR);
          if (argtype & FD_RESULT) {
-            if (var) {
-               RMSG("Result-Arg: %s, Value: %.20s (String)", argname, ((STRING *)var)[0]);
-               lua_pushstring(prv->Lua, ((STRING *)var)[0]);
-               if ((argtype & FD_ALLOC) and (((STRING *)var)[0])) FreeResource(((STRING *)var)[0]);
+            if (auto var = ((APTR *)scan)[0]) {
+               if (argtype & FD_CPP) { // std::string variant
+                  auto str_result = (std::string *)var;
+                  lua_pushlstring(prv->Lua, str_result->data(), str_result->size());
+                  delete str_result;
+               }
+               else {
+                  lua_pushstring(prv->Lua, ((STRING *)var)[0]);
+                  if ((argtype & FD_ALLOC) and (((STRING *)var)[0])) FreeResource(((STRING *)var)[0]);
+               }
             }
             else lua_pushnil(prv->Lua);
-            result++;
+            results++;
          }
+         else if (argtype & FD_CPP) { // Delete dynamically created std::string_view
+            delete ((std::string_view **)scan)[0];
+         }
+         scan += sizeof(APTR);
       }
       else if (argtype & (FD_PTR|FD_BUFFER|FD_STRUCT)) {
-         scan += sizeof(APTR);
          if (argtype & FD_RESULT) {
+            auto var = ((APTR *)scan)[0];
+            scan += sizeof(APTR);
             if (var) {
                if (argtype & FD_OBJECT) {
-                  RMSG("Result-Arg: %s, Value: %p (Object)", argname, ((OBJECTPTR *)var)[0]);
                   if (((APTR *)var)[0]) {
                      object *obj = push_object(prv->Lua, ((OBJECTPTR *)var)[0]);
                      if (argtype & FD_ALLOC) obj->Detached = false;
@@ -734,60 +761,47 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                   if (size > 0) lua_pushlstring(prv->Lua, ((CSTRING *)var)[0], size);
                   else lua_pushnil(prv->Lua);
                }
-               else {
-                  RMSG("Result-Arg: %s, Value: %p (Pointer)", argname, ((CSTRING *)var)[0]);
-                  lua_pushlightuserdata(prv->Lua, ((APTR *)var)[0]);
-               }
+               else lua_pushlightuserdata(prv->Lua, ((APTR *)var)[0]);
             }
             else lua_pushnil(prv->Lua);
-            result++;
+            results++;
          }
+         else scan += sizeof(APTR);
       }
       else if (argtype & FD_LONG) {
          if (argtype & FD_RESULT) {
-            scan += sizeof(APTR);
-            if (var) {
-               RMSG("Result-Arg: %s, Value: %d (Long)", argname, ((LONG *)var)[0]);
-               lua_pushinteger(prv->Lua, ((LONG *)var)[0]);
-            }
+            if (auto var = ((APTR *)scan)[0]) lua_pushinteger(prv->Lua, ((LONG *)var)[0]);
             else lua_pushnil(prv->Lua);
-            result++;
+            scan += sizeof(APTR);
+            results++;
          }
          else scan += sizeof(LONG);
       }
       else if (argtype & FD_DOUBLE) {
          if (argtype & FD_RESULT) {
-            scan += sizeof(APTR);
-            if (var) {
-               RMSG("Result-Arg: %s, Value: %.2f (Double)", argname, ((DOUBLE *)var)[0]);
-               lua_pushnumber(prv->Lua, ((DOUBLE *)var)[0]);
-            }
+            if (auto var = ((APTR *)scan)[0]) lua_pushnumber(prv->Lua, ((DOUBLE *)var)[0]);
             else lua_pushnil(prv->Lua);
-            result++;
+            scan += sizeof(APTR);
+            results++;
          }
          else scan += sizeof(DOUBLE);
       }
       else if (argtype & FD_LARGE) {
          if (argtype & FD_RESULT) {
-            scan += sizeof(APTR);
-            if (var) {
-               RMSG("Result-Arg: %s, Value: %" PF64 " (Large)", argname, ((LARGE *)var)[0]);
-               lua_pushnumber(prv->Lua, ((LARGE *)var)[0]);
-            }
+            if (auto var = ((APTR *)scan)[0]) lua_pushnumber(prv->Lua, ((LARGE *)var)[0]);
             else lua_pushnil(prv->Lua);
-            result++;
+            scan += sizeof(APTR);
+            results++;
          }
          else scan += sizeof(LARGE);
       }
       else {
-         log.warning("Unsupported arg '%s', flags $%x, aborting now.", argname, argtype);
-         break;
+         log.warning("Unsupported arg '%s', flags $%x, aborting now.", args[i].Name, argtype);
+         return results;
       }
    }
 
-   RMSG("module_call: Wrote %d results.", result);
-
-   return result;
+   return results;
 }
 
 //********************************************************************************************************************

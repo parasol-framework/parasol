@@ -1,0 +1,146 @@
+--[[
+Gradient Demonstration
+
+This is a replica of an AGG demo that was originally built to test focal gradient capabilities.
+--]]
+
+   require 'gui/window'
+   require 'gui/combobox'
+
+   local win, viewport, gradient, gradientVP
+   local adjust_focal = true, focal_ellipse
+
+----------------------------------------------------------------------------------------------------------------------
+
+function buildScene()
+   local colours = { { offset=0, r=0, g=255, b=0 }, { offset=0.2, r=120, g=0, b=0 }, { offset=0.7, r=120, g=120, b=0 }, { offset=1, r=0, g=0, b=255 } }
+   local stops = { }
+   for _, col in pairs(colours) do
+      local vc = struct.new('GradientStop')
+      vc.offset    = col.offset
+      vc.rgb.red   = col.r / 255
+      vc.rgb.green = col.g / 255
+      vc.rgb.blue  = col.b / 255
+      vc.rgb.alpha = 1.0
+      table.insert(stops, vc)
+   end
+
+   gradient = viewport.scene.new('VectorGradient', {
+      name = 'gradient', type = 'radial', stops = stops,
+      cX = '50%', cY = '50%',
+      fX = '50%', fY = '50%', focalRadius = 100,
+      units = 'userSpace', radius = 100,
+      spreadMethod = 'reflect'
+   })
+
+   viewport.scene.mtAddDef('gradient', gradient)
+
+   gradientVP = viewport.new('VectorViewport', { x = 0, y = 20, width = '100%', height='100%' })
+   local rect = gradientVP.new('VectorRectangle', { x = 0, y = 0, width='100%', height='100%', fill='url(#gradient)' })
+   focal_ellipse = gradientVP.new('VectorEllipse', {
+      cx ='50%', cy='50%', radius=100, stroke='rgb(255,255,255)', strokeWidth=1
+   })
+
+   local cmbGradient = gui.combobox({
+      target = viewport,
+      label  = 'Gradient:',
+      text   = 'Radial',
+      x      = win.margins.left,
+      y      = 10,
+      items = {
+         { item='Radial' },
+         { item='Conic' },
+         { item='Diamond' },
+         { item='Contour' }
+      },
+      events = {
+         activate = function(Widget, Text)
+            if Text == 'Radial' then
+               gradient.type = 'radial'
+               focal_ellipse.visibility = 'visible'
+               adjust_focal = true
+               gradient.cX = '50%'
+               gradient.cY = '50%'
+            elseif Text == 'Conic' then
+               focal_ellipse.visibility = 'hidden'
+               gradient.type = 'conic'
+               adjust_focal = false
+            elseif Text == 'Diamond' then
+               focal_ellipse.visibility = 'hidden'
+               gradient.type = 'diamond'
+               adjust_focal = false
+            elseif Text == 'Contour' then
+               focal_ellipse.visibility = 'hidden'
+               gradient.type = 'contour'
+               adjust_focal = false
+            end
+            gradientVP.scene.surface.mtScheduleRedraw()
+         end
+      }
+   })
+
+   local cmbSpread = gui.combobox({
+      target = viewport,
+      label  = 'Spread Method:',
+      text   = 'Reflect',
+      x      = cmbGradient.viewport.x + cmbGradient.viewport.width + 10,
+      y      = 10,
+      items  = { { item='Pad' }, { item='Repeat' }, { item='Reflect' } },
+      events = {
+         activate = function(Widget, Text)
+            if Text == 'Pad' then
+               gradient.spreadMethod = VSPREAD_PAD
+            elseif Text == 'Reflect' then
+               gradient.spreadMethod = VSPREAD_REFLECT
+            elseif Text == 'Repeat' then
+               gradient.spreadMethod = VSPREAD_REPEAT
+            end
+            gradientVP.scene.surface.mtScheduleRedraw()
+         end
+      }
+   })
+
+   gradientVP.y = cmbGradient.viewport.y + cmbGradient.viewport.height + 12
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+   win = gui.window({ title='Focal Gradient Demo', insideWidth=1024, insideHeight=800, center=true })
+   viewport = win:clientViewport({
+      aspectRatio = ARF_MEET
+   })
+
+   buildScene()
+
+   local button_held = false
+   check(gradientVP.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_REPEATED), function(Viewport, Events)
+      local ev = Events
+      while ev do
+         if (ev.type == JET_ABS_XY) then
+            if button_held == 1 then
+               if adjust_focal then
+                  gradient.fX = (ev.x / gradientVP.width * 100) .. '%'
+                  gradient.fY = (ev.y / gradientVP.height * 100) .. '%'
+               else
+                  gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
+                  gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+               end
+               gradientVP.scene.surface.mtScheduleRedraw()
+            end
+         elseif (ev.type == JET_BUTTON_1) then -- LMB
+            button_held = ev.value
+            if adjust_focal then
+               gradient.fX = (ev.x / gradientVP.width * 100) .. '%'
+               gradient.fY = (ev.y / gradientVP.height * 100) .. '%'
+            else
+               gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
+               gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+            end
+            gradientVP.scene.surface.mtScheduleRedraw()
+         end
+         ev = ev.next
+      end
+   end))
+
+   win:show()
+   processing.sleep()
