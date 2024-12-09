@@ -1270,7 +1270,7 @@ ERR findfile(std::string &Path)
 
    auto len = Path.find_last_of(":/\\");
    auto folder = (len IS std::string::npos) ? "" : Path.substr(0, len);
-   auto name = (len IS std::string::npos) ? Path : Path.substr(len+1);
+   auto name = (len IS std::string::npos) ? std::string_view(Path) : std::string_view(Path.c_str() + len + 1);
 
    // Scan the files at the Path to find a similar filename (ignore the filename extension).
 

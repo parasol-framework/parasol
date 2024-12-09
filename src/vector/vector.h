@@ -284,7 +284,7 @@ public:
 
 };
 
-#define TB_NOISE 1
+constexpr LONG TB_NOISE = 1;
 
 #include <parasol/modules/vector.h>
 
@@ -297,7 +297,7 @@ public:
 
 //********************************************************************************************************************
 
-#define MAX_TRANSITION_STOPS 10
+constexpr LONG MAX_TRANSITION_STOPS = 10;
 
 struct TransitionStop { // Passed to the Stops field.
    DOUBLE Offset;
