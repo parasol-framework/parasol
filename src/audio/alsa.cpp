@@ -411,10 +411,6 @@ next_card:
    if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
 
    if (AllocMemory(Self->AudioBufferSize, MEM::DATA, &Self->AudioBuffer) IS ERR::Okay) {
-      #ifdef _DEBUG
-         snd_pcm_hw_params_dump(hwparams, log);
-      #endif
-
       if ((Self->Flags & ADF::SYSTEM_WIDE) != ADF::NIL) {
          log.msg("Applying user configured volumes.");
 
