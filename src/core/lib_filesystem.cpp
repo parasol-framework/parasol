@@ -357,7 +357,7 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
 
    std::string test_path;
    if (ResolvePath(Path, flags, &test_path) IS ERR::Okay) {
-      log.trace("Testing path type for '%s'", test_path);
+      log.trace("Testing path type for '%s'", test_path.c_str());
 
       auto vd = get_fs(test_path);
       if (vd->TestPath) {
@@ -1258,7 +1258,6 @@ struct olddirent {
 ERR findfile(std::string &Path)
 {
    pf::Log log("FindFile");
-   DIR *dummydir;
 
    if (Path.empty() or Path.starts_with(':')) return ERR::Args;
 
@@ -1270,35 +1269,35 @@ ERR findfile(std::string &Path)
    }
 
    auto len = Path.find_last_of(":/\\");
-   if (len IS std::string::npos) len = 0;
-   auto namelen = Path.size() - len;
-
-   auto save = Path[len];
-   Path[len] = 0;
+   auto folder = (len IS std::string::npos) ? "" : Path.substr(0, len);
+   auto name = (len IS std::string::npos) ? Path : Path.substr(len+1);
 
    // Scan the files at the Path to find a similar filename (ignore the filename extension).
 
-   // Note: We use getdents() instead of the opendir()/readdir() method due to glibc bugs surrounding readdir() [problem noticed around kernel 2.4+].
+   log.trace("Scanning Path %s", folder.c_str());
 
-   log.trace("Scanning Path %s", Path);
-
-#if 1
-   if (auto dir = opendir(Path.c_str())) {
+   if (auto dir = opendir(folder.c_str())) {
       rewinddir(dir);
-      Path[len] = save;
 
       struct dirent *entry;
       while ((entry = readdir(dir))) {
-         if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
-         if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
+         if (entry->d_name[0] IS '.') {
+            if (entry->d_name[1] IS 0) continue;
+            if ((entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
+         }
 
-         if ((iequals(Path.c_str()+len, entry->d_name)) and
-             ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
-            strcopy(entry->d_name, Path.data()+len);
+         std::string_view filename(entry->d_name);
+         auto dot = filename.find_last_of(".");
+         if (dot != std::string::npos) filename.remove_suffix(filename.size() - dot);
+
+         if (iequals(name, filename)) {
+            Path.resize(folder.size());
+            if (!Path.ends_with('/')) Path.append("/");
+            Path.append(entry->d_name);
 
             // If it turns out that the Path is a folder, ignore it
 
-            if ((dummydir = opendir(Path.c_str()))) {
+            if (auto dummydir = opendir(Path.c_str())) {
                closedir(dummydir);
                continue;
             }
@@ -1310,44 +1309,6 @@ ERR findfile(std::string &Path)
 
       closedir(dir);
    }
-   else Path[len] = save;
-
-#else
-
-   struct olddirent *entry;
-   UBYTE buffer[8192];
-   LONG dir, bytes;
-
-   if ((dir = open(Path, O_RDONLY|O_NONBLOCK|O_LARGEFILE|WIN32OPEN, NULL)) != -1) {
-      Path[len] = save;
-
-      if ((bytes = syscall(SYS_getdents, dir, buffer, sizeof(buffer))) > 0) {
-         for (entry = (struct olddirent *)buffer; (size_t)entry < (size_t)(buffer + bytes); entry = (struct olddirent *)(((BYTE *)entry) + entry->d_reclen)) {
-            if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
-            if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
-
-            if ((iequals(Path+len, entry->d_name)) and
-                ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
-               strcopy(entry->d_name, Path+len);
-
-               // If it turns out that the Path is a folder, ignore it
-
-               if ((dummydir = opendir(Path))) {
-                  closedir(dummydir);
-                  continue;
-               }
-
-               close(dir);
-               return ERR::Okay;
-            }
-         }
-      }
-
-      close(dir);
-   }
-   else Path[len] = save;
-
-#endif
 
    return ERR::Search;
 }
