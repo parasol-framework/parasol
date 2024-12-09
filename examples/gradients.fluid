@@ -26,17 +26,17 @@ function buildScene()
    end
 
    gradient = viewport.scene.new('VectorGradient', {
-      name = 'focal', type = 'radial', stops = stops,
+      name = 'gradient', type = 'radial', stops = stops,
       cX = '50%', cY = '50%',
       fX = '50%', fY = '50%', focalRadius = 100,
-      units = 'boundingbox', radius = 100,
+      units = 'userSpace', radius = 100,
       spreadMethod = 'reflect'
    })
 
-   viewport.scene.mtAddDef('focal', gradient)
+   viewport.scene.mtAddDef('gradient', gradient)
 
    gradientVP = viewport.new('VectorViewport', { x = 0, y = 20, width = '100%', height='100%' })
-   local rect = gradientVP.new('VectorRectangle', { x = 0, y = 0, width='100%', height='100%', fill='url(#focal)' })
+   local rect = gradientVP.new('VectorRectangle', { x = 0, y = 0, width='100%', height='100%', fill='url(#gradient)' })
    focal_ellipse = gradientVP.new('VectorEllipse', {
       cx ='50%', cy='50%', radius=100, stroke='rgb(255,255,255)', strokeWidth=1
    })
