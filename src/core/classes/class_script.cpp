@@ -896,7 +896,7 @@ extern ERR add_script_class(void)
       fl::Methods(clScriptMethods),
       fl::Fields(clScriptFields),
       fl::Size(sizeof(objScript)),
-      fl::Icon("filetypes/shellscript"),
+      fl::Icon("filetypes/source"),
       fl::Path("modules:core"));
 
    return glScriptClass ? ERR::Okay : ERR::AddClass;
