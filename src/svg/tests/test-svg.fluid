@@ -67,7 +67,7 @@ function testSnake()              hashTestSVG('patterns/snake.svg', 0xbb7d40f0) 
 function testVStripes()           hashTestSVG('patterns/vstripes.svg', 0x2f85dc21) end
 
 function testW3Gradients01() hashTestSVG('gradients/w3-pservers-grad-01-b.svg', 0xe637a6fa) end
-function testW3Gradients02() hashTestSVG('gradients/w3-pservers-grad-02-b.svg', 0x69157174) end
+function testW3Gradients02() hashTestSVG('gradients/w3-pservers-grad-02-b.svg', 0x2b80ff2f) end
 function testW3Gradients04() hashTestSVG('gradients/w3-pservers-grad-04-b.svg', 0x30e19fc3) end
 function testW3Gradients05() hashTestSVG('gradients/w3-pservers-grad-05-b.svg', 0x80b6a37d) end
 function testW3Gradients07() hashTestSVG('gradients/w3-pservers-grad-07-b.svg', 0xfb7be5fe) end
@@ -75,9 +75,10 @@ function testW3Gradients08() hashTestSVG('gradients/w3-pservers-grad-08-b.svg', 
 function testW3Gradients09() hashTestSVG('gradients/w3-pservers-grad-09-b.svg', 0xfd34d4f1) end
 function testW3Gradients10() hashTestSVG('gradients/w3-pservers-grad-10-b.svg', 0x8a32cb66) end
 function testW3Gradients11() hashTestSVG('gradients/w3-pservers-grad-11-b.svg', 0x4f4a58f3) end
-function testW3Gradients12() hashTestSVG('gradients/w3-pservers-grad-12-b.svg', 0xd59b60ce) end
-function testW3Gradients14() hashTestSVG('gradients/w3-pservers-grad-14-b.svg', 0xb26061f7) end
-function testW3Gradients15() hashTestSVG('gradients/w3-pservers-grad-15-b.svg', 0x531aca96) end
+function testW3Gradients12() hashTestSVG('gradients/w3-pservers-grad-12-b.svg', 0x2f3c750e) end
+function testW3Gradients13() hashTestSVG('gradients/w3-pservers-grad-13-b.svg', 0x5dc91e94) end
+function testW3Gradients14() hashTestSVG('gradients/w3-pservers-grad-14-b.svg', 0xd80b0bd2) end
+function testW3Gradients15() hashTestSVG('gradients/w3-pservers-grad-15-b.svg', 0x1a612a1a) end
 function testW3Gradients22() hashTestSVG('gradients/w3-pservers-grad-22-b.svg', 0x5477019b) end
 
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
@@ -137,10 +138,10 @@ function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x4b8
 
 function testBottleTree()         hashTestSVG('images/bottletree.svg', 0xd7fb84ff) end
 function testButton()             hashTestSVG('images/button.svg', 0x0e8f5a31) end
-function testClock()              hashTestSVG('images/clock.svg', 0xa2cf50e4) end
+function testClock()              hashTestSVG('images/clock.svg', 0x8b30aba4) end
 function testIceCube()            hashTestSVG('images/icecube.svg', 0xc8dc1cd4) end
 function testTiger()              hashTestSVG('images/tiger.svg', 0xa7b2c808) end
-function testPod()                hashTestSVG('images/pod.svg', 0xf51113c0) end
+function testPod()                hashTestSVG('images/pod.svg', 0xfd1904d6) end
 
 function testClip()               hashTestSVG('masks/clip.svg', 0x209c16aa) end
 function testClipViewBox()        hashTestSVG('masks/clip-viewbox.svg', 0xd66308b7) end
@@ -264,6 +265,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Gradients10',
         'testW3Gradients11',
         'testW3Gradients12',
+        'testW3Gradients13',
         'testW3Gradients14',
         'testW3Gradients15',
         'testW3Gradients22',
