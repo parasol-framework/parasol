@@ -122,8 +122,8 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
    Path->approximation_scale(Transform.scale());
 
-   auto render_gradient = [&]<typename S>(S SpreadMethod, double Span) {
-      typedef agg::span_gradient<agg::rgba8, interpolator_type, S, color_array_type> span_gradient_type;
+   auto render_gradient = [&]<typename Method>(Method SpreadMethod, double Span) {
+      typedef agg::span_gradient<agg::rgba8, interpolator_type, Method, color_array_type> span_gradient_type;
       typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
 
       span_gradient_type  span_gradient(span_interpolator, SpreadMethod, *Table, 0, Span);
@@ -208,56 +208,68 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
    }
    else if (Gradient.Type IS VGT::RADIAL) {
       agg::point_d c, f;
+      
+      double radial_col_span = Gradient.Radius;
+      double focal_radius = Gradient.FocalRadius;
+      if (focal_radius <= 0) focal_radius = Gradient.Radius;
 
-      if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) c.x = x_offset + (c_width * Gradient.CenterX);
-      else c.x = x_offset + Gradient.CenterX;
+      if (Gradient.Units IS VUNIT::BOUNDING_BOX) {
+         // NOTE: In this mode we are stretching a 1x1 gradient square into the target path.
 
-      if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) c.y = y_offset + (c_height * Gradient.CenterY);
-      else c.y = y_offset + Gradient.CenterY;
+         c.x = Gradient.CenterX;
+         c.y = Gradient.CenterY;
+         if ((Gradient.Flags & (VGF::SCALED_FX|VGF::FIXED_FX)) != VGF::NIL) f.x = Gradient.FocalX;
+         else f.x = c.x;
 
-      if ((Gradient.Flags & VGF::SCALED_FX) != VGF::NIL) f.x = x_offset + (c_width * Gradient.FocalX);
-      else if ((Gradient.Flags & VGF::FIXED_FX) != VGF::NIL) f.x = x_offset + Gradient.FocalX;
-      else f.x = c.x;
+         if ((Gradient.Flags & (VGF::SCALED_FY|VGF::FIXED_FY)) != VGF::NIL) f.y = Gradient.FocalY;
+         else f.y = c.y;
+         
+         transform.translate(c);
+         transform.scale(c_width, c_height);
+         apply_transforms(Gradient, transform);
+         transform.translate(x_offset, y_offset);
+         transform *= Transform;
+         transform.invert();
 
-      if ((Gradient.Flags & VGF::SCALED_FY) != VGF::NIL) f.y = y_offset + (c_height * Gradient.FocalY);
-      else if ((Gradient.Flags & VGF::FIXED_FY) != VGF::NIL) f.y = y_offset + Gradient.FocalY;
-      else f.y = c.y;
+         // Increase the gradient scale from 1.0 in order for AGG to draw a smooth gradient.
 
-      if ((c.x IS f.x) and (c.y IS f.y)) {
-         // Standard radial gradient, where the focal point is the same as the gradient center
+         radial_col_span *= MAX_SPAN;
+         transform.scale(MAX_SPAN);
+         focal_radius *= MAX_SPAN;
+            
+         c.x *= MAX_SPAN;
+         c.y *= MAX_SPAN;
+         f.x *= MAX_SPAN;
+         f.y *= MAX_SPAN;
+      }
+      else {
+         if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) c.x = x_offset + (c_width * Gradient.CenterX);
+         else c.x = x_offset + Gradient.CenterX;
 
-         double radial_col_span = Gradient.Radius;
-         if (Gradient.Units IS VUNIT::USERSPACE) { // Coordinates are relative to the viewport
-            if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) { // Gradient is a ratio of the viewport's dimensions
-               radial_col_span = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
-            }
+         if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) c.y = y_offset + (c_height * Gradient.CenterY);
+         else c.y = y_offset + Gradient.CenterY;
+
+         if ((Gradient.Flags & VGF::SCALED_FX) != VGF::NIL) f.x = x_offset + (c_width * Gradient.FocalX);
+         else if ((Gradient.Flags & VGF::FIXED_FX) != VGF::NIL) f.x = x_offset + Gradient.FocalX;
+         else f.x = c.x;
+
+         if ((Gradient.Flags & VGF::SCALED_FY) != VGF::NIL) f.y = y_offset + (c_height * Gradient.FocalY);
+         else if ((Gradient.Flags & VGF::FIXED_FY) != VGF::NIL) f.y = y_offset + Gradient.FocalY;
+         else f.y = c.y;
+
+         if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) { // Gradient is a ratio of the viewport's dimensions
+            radial_col_span = (ViewWidth + ViewHeight) * radial_col_span * 0.5;
+            focal_radius = (ViewWidth + ViewHeight) * focal_radius * 0.5;
          }
-         else { // Coordinates are scaled to the bounding box
-            // Set radial_col_span to the wider of the width/height
-            if (c_height > c_width) {
-               radial_col_span = c_height * Gradient.Radius;
-               transform.scaleX(c_width / c_height);
-            }
-            else {
-               radial_col_span = c_width * Gradient.Radius;
-               transform.scaleY(c_height / c_width);
-            }
-         }
-
-         constexpr double MIN_SPAN = 32;
-         if (radial_col_span < MIN_SPAN) { // Blending looks best if it meets a minimum span (radius) value.
-            transform.scale(radial_col_span * (1.0 / MIN_SPAN));
-            radial_col_span = MIN_SPAN;
-         }
-         else if (radial_col_span > MAX_SPAN) {
-            transform.scale(radial_col_span * (1.0 / MAX_SPAN));
-            radial_col_span = MAX_SPAN;
-         }
-
+         
          transform.translate(c);
          apply_transforms(Gradient, transform);
          transform *= Transform;
          transform.invert();
+      }
+
+      if ((c.x IS f.x) and (c.y IS f.y)) {
+         // Standard radial gradient, where the focal point is the same as the gradient center
 
          agg::gradient_radial gradient_func;
 
@@ -276,40 +288,11 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
          // the SVG standard, the focal point had to be within the base radius.  Later specifications allowed it to
          // be placed outside of that radius.
 
-         double radial_col_span = Gradient.Radius;
-         double focal_radius = Gradient.FocalRadius;
-         if (focal_radius <= 0) focal_radius = Gradient.Radius;
-
-         if (Gradient.Units IS VUNIT::USERSPACE) { // Coordinates are relative to the viewport
-            if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) { // Gradient is a ratio of the viewport's dimensions
-               radial_col_span = (ViewWidth + ViewHeight) * radial_col_span * 0.5;
-               focal_radius = (ViewWidth + ViewHeight) * focal_radius * 0.5;
-            }
-         }
-         else { // Coordinates are scaled to the bounding box
-            // Set radial_col_span to the wider of the width/height
-            if (c_height > c_width) {
-               radial_col_span = c_height * radial_col_span;
-               focal_radius = c_height * focal_radius;
-               transform.scaleX(c_width / c_height);
-            }
-            else {
-               radial_col_span = c_width * radial_col_span;
-               focal_radius = c_width * focal_radius;
-               transform.scaleY(c_height / c_width);
-            }
-         }
-
-         // Changing the focal radius allows the client to increase or decrease the border to which the focal
+         // The FocalRadius allows the client to increase or decrease the border to which the focal
          // calculations are being made.  If not supported by the underlying implementation (e.g. SVG) then
-         // it must match the base radius.
+         // FocalRadius must match the base radius.
 
          agg::gradient_radial_focus gradient_func(focal_radius, f.x - c.x, f.y - c.y);
-
-         transform.translate(c);
-         apply_transforms(Gradient, transform);
-         transform *= Transform;
-         transform.invert();
 
          if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
             agg::gradient_reflect_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
