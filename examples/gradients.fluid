@@ -51,7 +51,8 @@ function buildScene()
          { item='Radial' },
          { item='Conic' },
          { item='Diamond' },
-         { item='Contour' }
+         { item='Contour' },
+         { item='Linear' }
       },
       events = {
          activate = function(Widget, Text)
@@ -73,6 +74,14 @@ function buildScene()
                focal_ellipse.visibility = 'hidden'
                gradient.type = 'contour'
                adjust_focal = false
+            elseif Text == 'Linear' then
+               focal_ellipse.visibility = 'hidden'
+               gradient.type = 'linear'
+               adjust_focal = false
+               gradient.x1 = '50%'
+               gradient.y1 = '50%'
+               gradient.x2 = '100%'
+               gradient.y2 = '100%'
             end
             gradientVP.scene.surface.mtScheduleRedraw()
          end
@@ -124,6 +133,8 @@ end
                else
                   gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
                   gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+                  gradient.x2 = (ev.x / gradientVP.width * 100) .. '%'
+                  gradient.y2 = (ev.y / gradientVP.height * 100) .. '%'
                end
                gradientVP.scene.surface.mtScheduleRedraw()
             end
@@ -135,6 +146,8 @@ end
             else
                gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
                gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+               gradient.x2 = (ev.x / gradientVP.width * 100) .. '%'
+               gradient.y2 = (ev.y / gradientVP.height * 100) .. '%'
             end
             gradientVP.scene.surface.mtScheduleRedraw()
          end
