@@ -26,11 +26,12 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
 
    log.traceBranch();
 
+   double last_stop = 0;
    std::vector<GradientStop> stops;
    for (auto &scan : Tag.Children) {
       if (iequals("stop", scan.name())) {
          GradientStop stop;
-         DOUBLE stop_opacity = 1.0;
+         double stop_opacity = 1.0;
          stop.Offset = 0;
          stop.RGB.Red   = 0;
          stop.RGB.Green = 0;
@@ -53,6 +54,9 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
 
                if (stop.Offset < 0.0) stop.Offset = 0;
                else if (stop.Offset > 1.0) stop.Offset = 1.0;
+
+               if (stop.Offset < last_stop) stop.Offset = last_stop;
+               else last_stop = stop.Offset;
             }
             else if (iequals("stop-color", name)) {
                VectorPainter painter;
@@ -68,11 +72,19 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
             else log.warning("Unable to process stop attribute '%s'", name.c_str());
          }
 
-         stop.RGB.Alpha = ((DOUBLE)stop.RGB.Alpha) * stop_opacity;
+         stop.RGB.Alpha = ((double)stop.RGB.Alpha) * stop_opacity;
 
          stops.emplace_back(stop);
       }
       else log.warning("Unknown element in gradient, '%s'", scan.name());
+   }
+
+   // SVG: If one stop is defined, then paint with the solid color fill using the color defined for that gradient stop.
+
+   if (stops.size() IS 1) {
+      stops[0].Offset = 0;
+      stops.emplace_back(stops[0]);
+      stops[1].Offset = 1;
    }
 
    return stops;

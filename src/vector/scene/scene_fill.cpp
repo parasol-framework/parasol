@@ -204,6 +204,10 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
          agg::gradient_repeat_adaptor<agg::gradient_x> spread_method(gradient_func);
          render_gradient(spread_method, span);
       }
+      else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
+         agg::gradient_clip_adaptor<agg::gradient_x> spread_method(gradient_func);
+         render_gradient(spread_method, span);
+      }
       else render_gradient(gradient_func, span);
    }
    else if (Gradient.Type IS VGT::RADIAL) {
@@ -281,6 +285,10 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
             agg::gradient_repeat_adaptor<agg::gradient_radial> spread_method(gradient_func);
             render_gradient(spread_method, radial_col_span);
          }
+         else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
+            agg::gradient_clip_adaptor<agg::gradient_radial> spread_method(gradient_func);
+            render_gradient(spread_method, radial_col_span);
+         }
          else render_gradient(gradient_func, radial_col_span);
       }
       else {
@@ -300,6 +308,10 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
          }
          else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
             agg::gradient_repeat_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
+            render_gradient(spread_method, radial_col_span);
+         }
+         else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
+            agg::gradient_clip_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
             render_gradient(spread_method, radial_col_span);
          }
          else render_gradient(gradient_func, radial_col_span);
@@ -348,6 +360,10 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       }
       else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
          agg::gradient_repeat_adaptor<agg::gradient_diamond> spread_method(gradient_func);
+         render_gradient(spread_method, radial_col_span);
+      }
+      else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
+         agg::gradient_clip_adaptor<agg::gradient_diamond> spread_method(gradient_func);
          render_gradient(spread_method, radial_col_span);
       }
       else render_gradient(gradient_func, radial_col_span);

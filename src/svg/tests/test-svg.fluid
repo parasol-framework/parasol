@@ -79,6 +79,7 @@ function testW3Gradients12() hashTestSVG('gradients/w3-pservers-grad-12-b.svg', 
 function testW3Gradients13() hashTestSVG('gradients/w3-pservers-grad-13-b.svg', 0x5dc91e94) end
 function testW3Gradients14() hashTestSVG('gradients/w3-pservers-grad-14-b.svg', 0xd80b0bd2) end
 function testW3Gradients15() hashTestSVG('gradients/w3-pservers-grad-15-b.svg', 0x1a612a1a) end
+function testW3Gradients16() hashTestSVG('gradients/w3-pservers-grad-16-b.svg', 0) end
 function testW3Gradients22() hashTestSVG('gradients/w3-pservers-grad-22-b.svg', 0x5477019b) end
 
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
@@ -268,6 +269,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Gradients13',
         'testW3Gradients14',
         'testW3Gradients15',
+        'testW3Gradients16',
         'testW3Gradients22',
         -- Patterns
         'testChevrons',

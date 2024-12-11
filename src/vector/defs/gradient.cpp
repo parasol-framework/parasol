@@ -500,7 +500,7 @@ static ERR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Unit &Value)
 SpreadMethod: The behaviour to use when the gradient bounds do not match the vector path.
 
 Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is
-`VSPREAD::PAD`.  Other valid options for gradients are `REFLECT` and `REPEAT`.
+`VSPREAD::PAD`.  Other valid options for gradients are `REFLECT`, `REPEAT` and `CLIP`.
 
 -FIELD-
 Stops: Defines the colours to use for the gradient.
