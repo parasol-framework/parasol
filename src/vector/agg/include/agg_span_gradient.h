@@ -44,6 +44,7 @@ namespace agg
             m_d2(iround(d2 * gradient_subpixel_scale))
         {
            if (fallback.has_value()) m_fallback = fallback.value();
+           else m_fallback.clear();
         }
 
         interpolator_type& interpolator() { return *m_interpolator; }
@@ -57,6 +58,7 @@ namespace agg
         void color_function(const ColorF& cf) { m_color_function = &cf; }
         void d1(double v) { m_d1 = iround(v * gradient_subpixel_scale); }
         void d2(double v) { m_d2 = iround(v * gradient_subpixel_scale); }
+        void fallback(ColorT col) { m_fallback = col; }
 
         void prepare() {}
 
@@ -173,8 +175,8 @@ namespace agg
             m_fy2 = double(m_fy) * double(m_fy);
             double d = (m_r2 - (m_fx2 + m_fy2));
             if (d == 0) {
-                if(m_fx) { if(m_fx < 0) ++m_fx; else --m_fx; }
-                if(m_fy) { if(m_fy < 0) ++m_fy; else --m_fy; }
+                if (m_fx) { if (m_fx < 0) ++m_fx; else --m_fx; }
+                if (m_fy) { if (m_fy < 0) ++m_fy; else --m_fy; }
                 m_fx2 = double(m_fx) * double(m_fx);
                 m_fy2 = double(m_fy) * double(m_fy);
                 d = (m_r2 - (m_fx2 + m_fy2));

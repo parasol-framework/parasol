@@ -320,6 +320,8 @@ class extVectorGradient : public objVectorGradient {
    struct GradientStop *Stops;  // An array of gradient stop colours.
    struct VectorMatrix *Matrices;
    class GradientColours *Colours;
+   FRGB   Colour;
+   RGB8   ColourRGB; // A cached conversion of the FRGB value
    STRING ID;
    LONG NumericID;
    WORD ChangeCounter;
