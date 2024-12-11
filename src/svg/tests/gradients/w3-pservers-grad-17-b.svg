@@ -1,0 +1,58 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+This test has a gradient with gradientUnits='objectBoundingBox' which is a fade from black to white.
+The gradient is used for the stroke of a line. Vertical and horizontal lines don't have a boundingbox,
+since they are one-dimensional, even though the stroke-width makes it look like they should have a
+boundingbox with non-zero width and height.
+
+See the coordinate chapter, last paragraph of 7.11 "Keyword objectBoundingBox should not be used when
+the geometry of the applicable element has no width or no height, such as the case of a horizontal or
+vertical line, even when the line has actual thickness when viewed due to having a non-zero stroke
+width since stroke width is ignored for bounding box calculations. When the geometry of the applicable
+element has no width or height and objectBoundingBox is specified, then the given effect (e.g., a
+gradient or a filter) will be ignored."
+
+The left rectangle has four 'line' elements rotated in different ways. The stroke for the lines have a green solid stroke fallback which
+should be used if the gradient should be ignored. For this sub-test to pass there must be three lines with solid green stroke, and one line
+(from bottom left to top right) with a gradient stroke, visible in the rectangle.
+
+The right rectangle is the same as the left rectangle except that the stroke paintservers don't have a fallback specified.
+For this sub-test to pass only the line from bottom left to top right must be visible in the rectangle, and it must have a gradient stroke.
+-->
+
+  <defs>
+    <linearGradient id="grad">
+      <stop offset="0" stop-color="black"/>
+      <stop offset="1" stop-color="white"/>
+    </linearGradient>
+  </defs>
+
+  <!-- sub-test 1: stroke with solid color fallback -->
+
+  <g transform="translate(50, 100) scale(0.3)">
+    <!-- These three shapes are perfectly horizontal lines prior to any transform -->
+    <line x1="0" y1="180" x2="480" y2="180" stroke="url(#grad) #0f0" stroke-width="20"/>
+    <line x1="0" y1="180" x2="480" y2="180" stroke="url(#grad) #0f0" stroke-width="20" transform="rotate(45 240 180)"/>
+    <line x1="0" y1="180" x2="480" y2="180" stroke="url(#grad) #0f0" stroke-width="20" transform="rotate(90 240 180)"/>
+    <!-- This shape is explicitly declared to be diagonal -->
+    <line x1="410" y1="10" x2="70" y2="350" stroke="url(#grad) #0f0" stroke-width="20"/>
+    <rect x="0" y="-60" width="480" height="480" fill="none" stroke="black"/>
+  </g>
+
+  <text x="120" y="250" text-anchor="middle">With fallback</text>
+
+  <!-- sub-test 2: stroke without a fallback -->
+
+  <g transform="translate(280,100) scale(0.3)">
+    <line x1="0" y1="180" x2="480" y2="180" stroke="url(#grad)" stroke-width="20"/>
+    <line x1="0" y1="180" x2="480" y2="180" stroke="url(#grad)" stroke-width="20" transform="rotate(45 240 180)"/>
+    <line x1="0" y1="180" x2="480" y2="180" stroke="url(#grad)" stroke-width="20" transform="rotate(90 240 180)"/>
+    <line x1="410" y1="10" x2="70" y2="350" stroke="url(#grad)" stroke-width="20"/>
+    <rect x="0" y="-60" width="480" height="480" fill="none" stroke="black"/>
+  </g>
+
+  <text x="350" y="250" text-anchor="middle">Without fallback</text>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000000"/>
+</svg>
