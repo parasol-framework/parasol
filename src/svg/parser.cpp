@@ -246,7 +246,7 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
 
    // A clip-path with an ID can only be added once (important when a clip-path is repeatedly referenced)
 
-   if (add_id(Self, Tag, id)) {
+   if (Self->Scene->findDef(id.c_str(), NULL) != ERR::Okay) {
       objVector *clip;
       if (NewObject(CLASSID::VECTORCLIP, &clip) IS ERR::Okay) {
          clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGClip"));
@@ -328,25 +328,25 @@ static void xtag_mask(extSVG *Self, XMLTag &Tag)
 
    // A clip-path with an ID can only be added once (important when a clip-path is repeatedly referenced)
 
-   if (add_id(Self, Tag, id)) {
-      objVector *clip;
-      if (NewObject(CLASSID::VECTORCLIP, &clip) IS ERR::Okay) {
-         clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGMask"),
-            fl::Flags(VCLF::APPLY_FILLS|VCLF::APPLY_STROKES),
-            fl::Units(units));
+   if (Self->Scene->findDef(id.c_str(), NULL) IS ERR::Okay) return;
 
-         if (!transform.empty()) parse_transform(clip, transform, MTAG_SVG_TRANSFORM);
+   objVector *clip;
+   if (NewObject(CLASSID::VECTORCLIP, &clip) IS ERR::Okay) {
+      clip->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGMask"),
+         fl::Flags(VCLF::APPLY_FILLS|VCLF::APPLY_STROKES),
+         fl::Units(units));
 
-         if (InitObject(clip) IS ERR::Okay) {
-            svgState state(Self);
-            auto vp = clip->get<OBJECTPTR>(FID_Viewport);
-            process_children(Self, state, Tag, vp);
+      if (!transform.empty()) parse_transform(clip, transform, MTAG_SVG_TRANSFORM);
 
-            Self->Scene->addDef(id.c_str(), clip);
-            track_object(Self, clip);
-         }
-         else FreeResource(clip);
+      if (InitObject(clip) IS ERR::Okay) {
+         svgState state(Self);
+         auto vp = clip->get<OBJECTPTR>(FID_Viewport);
+         process_children(Self, state, Tag, vp);
+
+         Self->Scene->addDef(id.c_str(), clip);
+         track_object(Self, clip);
       }
+      else FreeResource(clip);
    }
 }
 
@@ -1392,7 +1392,7 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
                else if (iequals("objectBoundingBox", val)) filter->Units = VUNIT::BOUNDING_BOX;
                break;
 
-            case SVF_ID:      if (add_id(Self, Tag, val)) id = val; break;
+            case SVF_ID:      id = val; break;
 
             case SVF_X:       FUNIT(FID_X, val).set(filter); break;
             case SVF_Y:       FUNIT(FID_Y, val).set(filter); break;
@@ -1565,7 +1565,6 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
          process_children(Self, state, Tag, viewport);
 
          if (!Self->Cloning) {
-            add_id(Self, Tag, id);
             Self->Scene->addDef(id.c_str(), pattern);
             track_object(Self, pattern);
          }
@@ -1818,7 +1817,6 @@ static void def_image(extSVG *Self, XMLTag &Tag)
             image->set(FID_Picture, pic);
             if (InitObject(image) IS ERR::Okay) {
                if (!Self->Cloning) {
-                  add_id(Self, Tag, id);
                   Self->Scene->addDef(id.c_str(), image);
                   track_object(Self, image);
                }
@@ -1887,7 +1885,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
       xml::NewAttrib(Tag, "id", id);
    }
 
-   if (add_id(Self, Tag, id)) {
+   if (Self->Scene->findDef(id.c_str(), NULL) != ERR::Okay) {
       // Load the image and add it to the vector definition.  It will be rendered as a rectangle within the scene.
       // This may appear a little confusing because an image can be invoked in SVG like a first-class shape; however to
       // do so would be inconsistent with all other scene graph members being true path-based objects.
@@ -1968,18 +1966,6 @@ static ERR xtag_defs(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
          case SVF_CLIPPATH:        xtag_clippath(Self, child); break;
          case SVF_MASK:            xtag_mask(Self, child); break;
          case SVF_PARASOL_TRANSITION: xtag_pathtransition(Self, child); break;
-
-         default: {
-            // Anything not immediately recognised is added to the dictionary if it has an 'id' attribute.
-            // No object is instantiated -- this is left to the referencee.
-            for (LONG a=1; a < std::ssize(child.Attribs); a++) {
-               if (iequals("id", child.Attribs[a].Name)) {
-                  add_id(Self, child, child.Attribs[a].Value);
-                  break;
-               }
-            }
-            break;
-         }
       }
    }
 
@@ -2051,17 +2037,7 @@ static ERR xtag_style(extSVG *Self, XMLTag &Tag)
 
 static void xtag_symbol(extSVG *Self, XMLTag &Tag)
 {
-   pf::Log log(__FUNCTION__);
-   log.traceBranch("Tag: %d", Tag.ID);
-
-   for (auto &a : Tag.Attribs) {
-      if (iequals("id", a.Name)) {
-         add_id(Self, Tag, a.Value);
-         return;
-      }
-   }
-
-   log.warning("No id attribute specified in <symbol> at line %d.", Tag.LineNo);
+   // Symbols are ignored at these stage as they will already have been parsed for their 'id' reference.
 }
 
 //********************************************************************************************************************
@@ -2544,7 +2520,6 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
          case SVF_ID:
             viewport->set(FID_ID, val);
-            add_id(Self, Tag, val);
             SetName(viewport, val.c_str());
             break;
 
@@ -3376,7 +3351,6 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_ID:
          if (!Self->Cloning) {
             Vector->set(FID_ID, StrValue);
-            add_id(Self, Tag, StrValue);
             Self->Scene->addDef(StrValue.c_str(), Vector);
             SetName(Vector, StrValue.c_str());
          }

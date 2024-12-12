@@ -432,8 +432,8 @@ template<class T = double> std::vector<T> read_array(const std::string Value, LO
 }
 
 //********************************************************************************************************************
-// Currently used by gradient functions to defer inheritance management.  It results in the gradient Inherit field 
-// being set to the referenced gradient object.  The reason why the process is deferred is because there is no 
+// Currently used by gradient functions to defer inheritance management.  It results in the gradient Inherit field
+// being set to the referenced gradient object.  The reason why the process is deferred is because there is no
 // requirement that a gradient must exist before its name is referenced.
 
 static void add_inherit(extSVG *Self, OBJECTPTR Object, const std::string ID)
@@ -447,6 +447,30 @@ static void add_inherit(extSVG *Self, OBJECTPTR Object, const std::string ID)
    auto hash = ID.find('#');
    if (hash IS std::string::npos) inherit.ID = ID;
    else inherit.ID = ID.substr(hash);
+}
+
+//********************************************************************************************************************
+// This function is called before fully parsing the document so that we can extract all tags making use of the
+// 'id' attribute.
+
+static void parse_ids(extSVG *Self, XMLTag &Tag)
+{
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &name = Tag.Attribs[a].Name;
+      if ((name.size() IS 2) and (name[0] IS 'i') and (name[1] IS 'd')) {
+         if (Tag.Attribs[a].Value.empty()) continue;
+
+         if (Self->IDs.contains(Tag.Attribs[a].Value)) break;
+         Self->IDs.emplace(Tag.Attribs[a].Value, Tag);
+         break;
+      }
+   }
+
+   for (auto &child : Tag.Children) {
+      if (child.isTag()) {
+         parse_ids(Self, child);
+      }
+   }
 }
 
 //********************************************************************************************************************
@@ -519,6 +543,12 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          for (auto &scan : xml->Tags) {
             if (iequals("svg", scan.name())) {
                svgState state(Self);
+
+               // Parse all tags with an 'id' reference so that href's can target them even when
+               // are out-of-order.
+
+               parse_ids(Self, scan);
+
                if (Self->Target) xtag_svg(Self, state, scan, Self->Target, sibling);
                else xtag_svg(Self, state, scan, Self->Scene, sibling);
             }
