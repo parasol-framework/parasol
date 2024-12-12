@@ -133,14 +133,14 @@ static ERR xtag_lineargradient(extSVG *Self, svgState &State, const XMLTag &Tag)
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
             if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
@@ -212,14 +212,14 @@ static ERR xtag_radialgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
             if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
          log.trace("Processing radial gradient attribute %s = %s", Tag.Attribs[a].Name, val);
@@ -352,14 +352,14 @@ static ERR xtag_contourgradient(extSVG *Self, svgState &State, const XMLTag &Tag
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
             if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
