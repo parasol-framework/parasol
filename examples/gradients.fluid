@@ -94,7 +94,7 @@ function buildScene()
       text   = 'Reflect',
       x      = cmbGradient.viewport.x + cmbGradient.viewport.width + 10,
       y      = 10,
-      items  = { { item='Pad' }, { item='Repeat' }, { item='Reflect' } },
+      items  = { { item='Pad' }, { item='Repeat' }, { item='Reflect' }, { item='Clip' } },
       events = {
          activate = function(Widget, Text)
             if Text == 'Pad' then
@@ -103,6 +103,8 @@ function buildScene()
                gradient.spreadMethod = VSPREAD_REFLECT
             elseif Text == 'Repeat' then
                gradient.spreadMethod = VSPREAD_REPEAT
+            elseif Text == 'Clip' then
+               gradient.spreadMethod = VSPREAD_CLIP
             end
             gradientVP.scene.surface.mtScheduleRedraw()
          end

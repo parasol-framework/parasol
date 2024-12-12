@@ -45,31 +45,33 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testCircles()            hashTestSVG('paths/circles.svg', 0xc2063c38) end
-function testMorph()              hashTestSVG('paths/morph.svg', 0x4f9e9c4f) end
-function testEllipseVertices()    hashTestSVG('paths/ellipse_vertices.svg', 0x00d2264b) end
-function testPolygons()           hashTestSVG('paths/polygons.svg', 0x2f17adec) end
-function testShapes()             hashTestSVG('paths/shapes.svg', 0xd67937c9) end
-function testSpirals()            hashTestSVG('paths/spirals.svg', 0x0d713688) end
-function testStrokes()            hashTestSVG('paths/strokes.svg', 0x087fb44e) end
-function testSuperShapes()        hashTestSVG('paths/supershapes.svg', 0x915ba38c) end
-function testSuperSpiral()        hashTestSVG('paths/superspiral.svg', 0xd981df67) end
-function testTransitions()        hashTestSVG('paths/transitions.svg', 0x6774b2a9) end
-function testWave()               hashTestSVG('paths/wave.svg', 0xc462fb58) end
+function testCircles()         hashTestSVG('paths/circles.svg', 0xc2063c38) end
+function testMorph()           hashTestSVG('paths/morph.svg', 0x4f9e9c4f) end
+function testEllipseVertices() hashTestSVG('paths/ellipse_vertices.svg', 0x00d2264b) end
+function testPolygons()        hashTestSVG('paths/polygons.svg', 0x2f17adec) end
+function testShapes()          hashTestSVG('paths/shapes.svg', 0xd67937c9) end
+function testSpirals()         hashTestSVG('paths/spirals.svg', 0x0d713688) end
+function testStrokes()         hashTestSVG('paths/strokes.svg', 0x087fb44e) end
+function testSuperShapes()     hashTestSVG('paths/supershapes.svg', 0x915ba38c) end
+function testSuperSpiral()     hashTestSVG('paths/superspiral.svg', 0xd981df67) end
+function testTransitions()     hashTestSVG('paths/transitions.svg', 0x6774b2a9) end
+function testWave()            hashTestSVG('paths/wave.svg', 0xc462fb58) end
 
-function testChevrons()           hashTestSVG('patterns/chevrons.svg', 0x42a1be4b) end
-function testComplex()            hashTestSVG('patterns/complex.svg', 0x3a30b99a) end
-function testDiamonds()           hashTestSVG('patterns/diamonds.svg', 0x4642c53a) end
-function testDimple()             hashTestSVG('patterns/dimple.svg', 0x1806e6a0) end
-function testDot()                hashTestSVG('patterns/dot.svg', 0x6736bc6c) end
-function testHoneycomb()          hashTestSVG('patterns/honeycomb.svg', 0x7b678ada) end
-function testSnake()              hashTestSVG('patterns/snake.svg', 0xbb7d40f0) end
-function testVStripes()           hashTestSVG('patterns/vstripes.svg', 0x2f85dc21) end
+function testChevrons()     hashTestSVG('patterns/chevrons.svg', 0x42a1be4b) end
+function testComplex()      hashTestSVG('patterns/complex.svg', 0x3a30b99a) end
+function testDiamonds()     hashTestSVG('patterns/diamonds.svg', 0x4642c53a) end
+function testDimple()       hashTestSVG('patterns/dimple.svg', 0x1806e6a0) end
+function testDot()          hashTestSVG('patterns/dot.svg', 0x6736bc6c) end
+function testHoneycomb()    hashTestSVG('patterns/honeycomb.svg', 0x7b678ada) end
+function testSnake()        hashTestSVG('patterns/snake.svg', 0xbb7d40f0) end
+function testVStripes()     hashTestSVG('patterns/vstripes.svg', 0x2f85dc21) end
 
 function testW3Gradients01() hashTestSVG('gradients/w3-pservers-grad-01-b.svg', 0xe637a6fa) end
 function testW3Gradients02() hashTestSVG('gradients/w3-pservers-grad-02-b.svg', 0x2b80ff2f) end
 function testW3Gradients04() hashTestSVG('gradients/w3-pservers-grad-04-b.svg', 0x30e19fc3) end
 function testW3Gradients05() hashTestSVG('gradients/w3-pservers-grad-05-b.svg', 0x80b6a37d) end
+-- Test 6 pattern not scaling
+function testW3Gradients06() hashTestSVG('gradients/w3-pservers-grad-06-b.svg', 0) end
 function testW3Gradients07() hashTestSVG('gradients/w3-pservers-grad-07-b.svg', 0xfb7be5fe) end
 function testW3Gradients08() hashTestSVG('gradients/w3-pservers-grad-08-b.svg', 0x97f7b810) end
 function testW3Gradients09() hashTestSVG('gradients/w3-pservers-grad-09-b.svg', 0xfd34d4f1) end
@@ -79,6 +81,12 @@ function testW3Gradients12() hashTestSVG('gradients/w3-pservers-grad-12-b.svg', 
 function testW3Gradients13() hashTestSVG('gradients/w3-pservers-grad-13-b.svg', 0x5dc91e94) end
 function testW3Gradients14() hashTestSVG('gradients/w3-pservers-grad-14-b.svg', 0xd80b0bd2) end
 function testW3Gradients15() hashTestSVG('gradients/w3-pservers-grad-15-b.svg', 0x1a612a1a) end
+function testW3Gradients16() hashTestSVG('gradients/w3-pservers-grad-16-b.svg', 0xe6c90425) end
+function testW3Gradients17() hashTestSVG('gradients/w3-pservers-grad-17-b.svg', 0x8f128446) end
+-- Test 18 requires the creation of gradients to be deferred.
+function testW3Gradients18() hashTestSVG('gradients/w3-pservers-grad-18-b.svg', 0) end
+function testW3Gradients20() hashTestSVG('gradients/w3-pservers-grad-20-b.svg', 0x8f128446) end
+function testW3Gradients21() hashTestSVG('gradients/w3-pservers-grad-21-b.svg', 0) end
 function testW3Gradients22() hashTestSVG('gradients/w3-pservers-grad-22-b.svg', 0x5477019b) end
 
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
@@ -255,6 +263,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         --'testW3MasksOpacity',
         'testSplitCircles',
         'testInheritClip',
+        -- Gradients
         'testW3Gradients01',
         'testW3Gradients02',
         'testW3Gradients04',
@@ -268,6 +277,9 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Gradients13',
         'testW3Gradients14',
         'testW3Gradients15',
+        'testW3Gradients16',
+        'testW3Gradients17',
+        'testW3Gradients20',
         'testW3Gradients22',
         -- Patterns
         'testChevrons',

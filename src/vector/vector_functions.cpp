@@ -1022,12 +1022,14 @@ next:
             }
             else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), ULONG(def->classID()));
 
-            // Check for combinations like url(#this)+url(#that)
+            // Check for combinations like url(#this)+url(#that) or the SVG variant "url(#this) rgb(that)"
 
             IRI += i;
             if (*IRI IS ')') {
+               IRI++;
                while ((*IRI) and (*IRI <= 0x20)) IRI++;
-               if (*IRI++ IS '+') goto next;
+               if (*IRI IS '+') { IRI++; goto next; }
+               else if (*IRI) goto next;
             }
 
             if (Result) *Result = IRI[0] ? IRI : NULL;

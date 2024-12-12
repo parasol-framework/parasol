@@ -247,6 +247,48 @@ static ERR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Unit &Value)
 /*********************************************************************************************************************
 
 -FIELD-
+Colour: The default background colour to use when clipping is enabled.
+
+The colour value in this field is applicable only when a gradient is in clip-mode - by specifying the `VSPREAD::CLIP` 
+flag in #SpreadMethod.  By default, this field has an alpha value of 0 to ensure that nothing is drawn 
+outside the initial bounds of the gradient.  Setting any other colour value here will otherwise 
+fill-in those areas.
+
+The Colour value is defined in floating-point RGBA format, using a range of 0 - 1.0 per component.
+
+*********************************************************************************************************************/
+
+static ERR VECTORGRADIENT_GET_Colour(extVectorGradient *Self, FLOAT **Value, LONG *Elements)
+{
+   *Value = (FLOAT *)&Self->Colour;
+   *Elements = 4;
+   return ERR::Okay;
+}
+
+static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, FLOAT *Value, LONG Elements)
+{
+   pf::Log log;
+   if (Value) {
+      if (Elements >= 3) {
+         Self->Colour.Red   = Value[0];
+         Self->Colour.Green = Value[1];
+         Self->Colour.Blue  = Value[2];
+         Self->Colour.Alpha = (Elements >= 4) ? Value[3] : 1.0;
+
+         Self->ColourRGB.Red   = F2T(Self->Colour.Red * 255.0);
+         Self->ColourRGB.Green = F2T(Self->Colour.Green * 255.0);
+         Self->ColourRGB.Blue  = F2T(Self->Colour.Blue * 255.0);
+         Self->ColourRGB.Alpha = F2T(Self->Colour.Alpha * 255.0);
+      }
+      else return log.warning(ERR::InvalidValue);
+   }
+   else Self->Colour.Alpha = 0;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 ColourSpace: Defines the colour space to use when interpolating gradient colours.
 Lookup: VCS
 
@@ -500,7 +542,7 @@ static ERR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Unit &Value)
 SpreadMethod: The behaviour to use when the gradient bounds do not match the vector path.
 
 Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is
-`VSPREAD::PAD`.  Other valid options for gradients are `REFLECT` and `REPEAT`.
+`VSPREAD::PAD`.  Other valid options for gradients are `REFLECT`, `REPEAT` and `CLIP`.
 
 -FIELD-
 Stops: Defines the colours to use for the gradient.
@@ -723,6 +765,7 @@ static const FieldArray clGradientFields[] = {
    { "ColourSpace",  FDF_LONG|FDF_RI, NULL, NULL, &clVectorGradientColourSpace },
    { "TotalStops",   FDF_LONG|FDF_R },
    // Virtual fields
+   { "Colour",       FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW, VECTORGRADIENT_GET_Colour, VECTORGRADIENT_SET_Colour },
    { "CX",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterX, VECTORGRADIENT_SET_CenterX },
    { "CY",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterY, VECTORGRADIENT_SET_CenterY },
    { "FX",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalX, VECTORGRADIENT_SET_FocalX },

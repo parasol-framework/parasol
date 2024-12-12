@@ -432,7 +432,9 @@ template<class T = double> std::vector<T> read_array(const std::string Value, LO
 }
 
 //********************************************************************************************************************
-// Currently used by gradient functions.
+// Currently used by gradient functions to defer inheritance management.  It results in the gradient Inherit field 
+// being set to the referenced gradient object.  The reason why the process is deferred is because there is no 
+// requirement that a gradient must exist before its name is referenced.
 
 static void add_inherit(extSVG *Self, OBJECTPTR Object, const std::string ID)
 {

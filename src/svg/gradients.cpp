@@ -20,22 +20,29 @@ static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG At
 //********************************************************************************************************************
 // Note that all offsets are percentages.
 
-static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, const XMLTag &Tag)
+static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch();
 
+   double last_stop = 0;
    std::vector<GradientStop> stops;
    for (auto &scan : Tag.Children) {
       if (iequals("stop", scan.name())) {
          GradientStop stop;
-         DOUBLE stop_opacity = 1.0;
+         double stop_opacity = 1.0;
          stop.Offset = 0;
          stop.RGB.Red   = 0;
          stop.RGB.Green = 0;
          stop.RGB.Blue  = 0;
          stop.RGB.Alpha = 0;
+
+         if (!State.m_stop_color.empty()) {
+            VectorPainter painter;
+            vec::ReadPainter(Self->Scene, State.m_stop_color.c_str(), &painter, NULL);
+            stop.RGB = painter.Colour;
+         }
 
          for (LONG a=1; a < std::ssize(scan.Attribs); a++) {
             auto &name  = scan.Attribs[a].Name;
@@ -53,14 +60,32 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
 
                if (stop.Offset < 0.0) stop.Offset = 0;
                else if (stop.Offset > 1.0) stop.Offset = 1.0;
+
+               if (stop.Offset < last_stop) stop.Offset = last_stop;
+               else last_stop = stop.Offset;
             }
             else if (iequals("stop-color", name)) {
-               VectorPainter painter;
-               vec::ReadPainter(Self->Scene, value.c_str(), &painter, NULL);
-               stop.RGB = painter.Colour;
+               if (iequals("inherit", value)) {
+                  VectorPainter painter;
+                  vec::ReadPainter(Self->Scene, State.m_stop_color.c_str(), &painter, NULL);
+                  stop.RGB = painter.Colour;
+               }
+               else if (iequals("currentColor", value)) { 
+                  VectorPainter painter;
+                  vec::ReadPainter(Self->Scene, State.m_color.c_str(), &painter, NULL);
+                  stop.RGB = painter.Colour;
+               }
+               else {
+                  VectorPainter painter;
+                  vec::ReadPainter(Self->Scene, value.c_str(), &painter, NULL);
+                  stop.RGB = painter.Colour;
+               }
             }
             else if (iequals("stop-opacity", name)) {
-               stop_opacity = strtod(value.c_str(), NULL);
+               if (iequals("inherit", value)) {
+                  stop_opacity = State.m_stop_opacity;
+               }
+               else stop_opacity = strtod(value.c_str(), NULL);
             }
             else if (iequals("id", name)) {
                log.trace("Use of id attribute in <stop/> ignored.");
@@ -68,11 +93,19 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
             else log.warning("Unable to process stop attribute '%s'", name.c_str());
          }
 
-         stop.RGB.Alpha = ((DOUBLE)stop.RGB.Alpha) * stop_opacity;
+         stop.RGB.Alpha = ((double)stop.RGB.Alpha) * stop_opacity;
 
          stops.emplace_back(stop);
       }
       else log.warning("Unknown element in gradient, '%s'", scan.name());
+   }
+
+   // SVG: If one stop is defined, then paint with the solid color fill using the color defined for that gradient stop.
+
+   if (stops.size() IS 1) {
+      stops[0].Offset = 0;
+      stops.emplace_back(stops[0]);
+      stops[1].Offset = 1;
    }
 
    return stops;
@@ -80,7 +113,7 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
 
 //********************************************************************************************************************
 
-static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_lineargradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -100,14 +133,14 @@ static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
             if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
@@ -145,7 +178,7 @@ static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      auto stops = process_gradient_stops(Self, Tag);
+      auto stops = process_gradient_stops(Self, State, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
@@ -164,7 +197,7 @@ static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_radialgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -179,14 +212,14 @@ static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
             if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
          log.trace("Processing radial gradient attribute %s = %s", Tag.Attribs[a].Name, val);
@@ -216,7 +249,7 @@ static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      auto stops = process_gradient_stops(Self, Tag);
+      auto stops = process_gradient_stops(Self, State, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
@@ -235,7 +268,7 @@ static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_diamondgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -286,7 +319,7 @@ static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      auto stops = process_gradient_stops(Self, Tag);
+      auto stops = process_gradient_stops(Self, State, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
@@ -306,7 +339,7 @@ static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
 //********************************************************************************************************************
 // NB: Contour gradients are not part of the SVG standard.
 
-static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_contourgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -319,14 +352,14 @@ static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
             if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 
@@ -354,7 +387,7 @@ static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      auto stops = process_gradient_stops(Self, Tag);
+      auto stops = process_gradient_stops(Self, State, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
@@ -373,7 +406,7 @@ static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_conicgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -428,7 +461,7 @@ static ERR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      auto stops = process_gradient_stops(Self, Tag);
+      auto stops = process_gradient_stops(Self, State, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {

@@ -616,49 +616,61 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::ra
    if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
    else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
 
-   if (Vector.Stroke.Gradient) {
-      if (auto table = get_stroke_gradient_table(Vector)) {
-         fill_gradient(State, Vector.Bounds, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.Stroke.Gradient)->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *((extVectorGradient *)Vector.Stroke.Gradient), table, mRenderBase, Raster);
-      }
-   }
-   else if (Vector.Stroke.Pattern) {
-      fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Stroke.Pattern->Units IS VUNIT::USERSPACE, State),
-         view_width(), view_height(), *((extVectorPattern *)Vector.Stroke.Pattern), mRenderBase, Raster);
-   }
-   else if (Vector.Stroke.Image) {
-      DOUBLE stroke_width = Vector.fixed_stroke_width() * Vector.Transform.scale();
-      if (stroke_width < 1) stroke_width = 1;
+   // Regarding this validation check, SVG requires that stroked vectors have a size > 0 when a paint server is used
+   // as a stroker.  If the size is zero, the paint server is ignored and the solid colour can be used as a stroker
+   // if the client has specified one.  Ref: W3C SVG Coordinate chapter, last paragraph of 7.11 
 
-      auto transform = Vector.Transform;
-      Vector.BasePath.approximation_scale(transform.scale());
-      agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(Vector.BasePath, transform);
-
-      stroke_brush(State, *Vector.Stroke.Image, mRenderBase, stroke_path, stroke_width);
-   }
-   else { // Solid colour
-      if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
-         agg::renderer_scanline_bin_solid renderer(mRenderBase);
-         renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
-
-         if (!State.mClipStack->empty()) {
-            agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
-            agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
-            agg::render_scanlines(Raster, mScanLineMasked, renderer);
+   if (Vector.Bounds.valid()) {
+      if (Vector.Stroke.Gradient) {
+         if (auto table = get_stroke_gradient_table(Vector)) {
+            fill_gradient(State, Vector.Bounds, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.Stroke.Gradient)->Units IS VUNIT::USERSPACE, State),
+               view_width(), view_height(), *((extVectorGradient *)Vector.Stroke.Gradient), table, mRenderBase, Raster);
          }
-         else agg::render_scanlines(Raster, mScanLine, renderer);
+         return;
       }
-      else {
-         agg::renderer_scanline_aa_solid renderer(mRenderBase);
-         renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 
-         if (!State.mClipStack->empty()) {
-            agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
-            agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
-            agg::render_scanlines(Raster, mScanLineMasked, renderer);
-         }
-         else agg::render_scanlines(Raster, mScanLine, renderer);
+      if (Vector.Stroke.Pattern) {
+         fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Stroke.Pattern->Units IS VUNIT::USERSPACE, State),
+            view_width(), view_height(), *((extVectorPattern *)Vector.Stroke.Pattern), mRenderBase, Raster);
+         return;
       }
+
+      if (Vector.Stroke.Image) {
+         DOUBLE stroke_width = Vector.fixed_stroke_width() * Vector.Transform.scale();
+         if (stroke_width < 1) stroke_width = 1;
+
+         auto transform = Vector.Transform;
+         Vector.BasePath.approximation_scale(transform.scale());
+         agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(Vector.BasePath, transform);
+
+         stroke_brush(State, *Vector.Stroke.Image, mRenderBase, stroke_path, stroke_width);
+         return;
+      }
+   }
+   
+   // Solid colour
+   
+   if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
+      agg::renderer_scanline_bin_solid renderer(mRenderBase);
+      renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
+
+      if (!State.mClipStack->empty()) {
+         agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+         agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+         agg::render_scanlines(Raster, mScanLineMasked, renderer);
+      }
+      else agg::render_scanlines(Raster, mScanLine, renderer);
+   }
+   else {
+      agg::renderer_scanline_aa_solid renderer(mRenderBase);
+      renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
+
+      if (!State.mClipStack->empty()) {
+         agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
+         agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
+         agg::render_scanlines(Raster, mScanLineMasked, renderer);
+      }
+      else agg::render_scanlines(Raster, mScanLine, renderer);
    }
 }
 
