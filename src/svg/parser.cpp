@@ -86,6 +86,7 @@ void svgState::applyTag(XMLTag &Tag) noexcept
 
       switch (strihash(Tag.Attribs[a].Name)) {
          case SVF_COLOR:  m_color = val; break; // Affects 'currentColor'
+         case SVF_STOP_COLOR: m_stop_color = val; break;
          case SVF_FILL:   m_fill = val; break;
          case SVF_STROKE:
             m_stroke = val;
@@ -112,6 +113,7 @@ void svgState::applyTag(XMLTag &Tag) noexcept
          }
          case SVF_FILL_OPACITY: m_fill_opacity = strtod(val.c_str(), NULL); break;
          case SVF_OPACITY:      m_opacity = strtod(val.c_str(), NULL); break;
+         case SVF_STOP_OPACITY: m_stop_opacity = strtod(val.c_str(), NULL); break;
          case SVF_SHAPE_RENDERING: m_path_quality = shape_rendering_to_render_quality(val); break;
       }
    }
@@ -1630,11 +1632,11 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
       case SVF_PARASOL_WAVE:     process_shape(Self, CLASSID::VECTORWAVE, State, Tag, Parent, Vector); break;
       case SVF_PARASOL_SHAPE:    process_shape(Self, CLASSID::VECTORSHAPE, State, Tag, Parent, Vector); break;
       case SVF_IMAGE:            xtag_image(Self, State, Tag, Parent, Vector); break;
-      case SVF_CONTOURGRADIENT:  xtag_contourgradient(Self, Tag); break;
-      case SVF_RADIALGRADIENT:   xtag_radialgradient(Self, Tag); break;
-      case SVF_DIAMONDGRADIENT:  xtag_diamondgradient(Self, Tag); break;
-      case SVF_CONICGRADIENT:    xtag_conicgradient(Self, Tag); break;
-      case SVF_LINEARGRADIENT:   xtag_lineargradient(Self, Tag); break;
+      case SVF_CONTOURGRADIENT:  xtag_contourgradient(Self, State, Tag); break;
+      case SVF_RADIALGRADIENT:   xtag_radialgradient(Self, State, Tag); break;
+      case SVF_DIAMONDGRADIENT:  xtag_diamondgradient(Self, State, Tag); break;
+      case SVF_CONICGRADIENT:    xtag_conicgradient(Self, State, Tag); break;
+      case SVF_LINEARGRADIENT:   xtag_lineargradient(Self, State, Tag); break;
       case SVF_SYMBOL:           xtag_symbol(Self, Tag); break;
       case SVF_ANIMATE:          xtag_animate(Self, State, Tag, ParentTag, Parent); break;
       case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, State, Tag, ParentTag, Parent); break;
@@ -1955,11 +1957,11 @@ static ERR xtag_defs(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
    for (auto &child : Tag.Children) {
       switch (strihash(child.name())) {
-         case SVF_CONTOURGRADIENT: xtag_contourgradient(Self, child); break;
-         case SVF_RADIALGRADIENT:  xtag_radialgradient(Self, child); break;
-         case SVF_DIAMONDGRADIENT: xtag_diamondgradient(Self, child); break;
-         case SVF_CONICGRADIENT:   xtag_conicgradient(Self, child); break;
-         case SVF_LINEARGRADIENT:  xtag_lineargradient(Self, child); break;
+         case SVF_CONTOURGRADIENT: xtag_contourgradient(Self, State, child); break;
+         case SVF_RADIALGRADIENT:  xtag_radialgradient(Self, State, child); break;
+         case SVF_DIAMONDGRADIENT: xtag_diamondgradient(Self, State, child); break;
+         case SVF_CONICGRADIENT:   xtag_conicgradient(Self, State, child); break;
+         case SVF_LINEARGRADIENT:  xtag_lineargradient(Self, State, child); break;
          case SVF_PATTERN:         process_pattern(Self, child); break;
          case SVF_IMAGE:           def_image(Self, child); break;
          case SVF_FILTER:          xtag_filter(Self, state, child); break;

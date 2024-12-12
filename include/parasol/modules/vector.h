@@ -1005,14 +1005,14 @@ class objVectorGradient : public Object {
 
    inline ERR setFocalX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[29];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setFocalY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[29];
+      auto field = &this->Class->Dictionary[30];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
@@ -1049,7 +1049,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setType(const VGT Value) noexcept {
-      if (this->initialised()) return ERR::NoFieldAccess;
       this->Type = Value;
       return ERR::Okay;
    }
@@ -1063,6 +1062,12 @@ class objVectorGradient : public Object {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->ColourSpace = Value;
       return ERR::Okay;
+   }
+
+   inline ERR setColour(const FLOAT * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[28];
+      return field->WriteValue(target, field, 0x10001308, Value, Elements);
    }
 
    inline ERR setMatrices(APTR Value) noexcept {
@@ -3844,6 +3849,8 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_SPRINGGREEN 0x6a6ae329
 #define SVF_START 0x106149d3
 #define SVF_STEELBLUE 0xa604b22a
+#define SVF_STOP_COLOR 0x5d0c7df7
+#define SVF_STOP_OPACITY 0x6f662071
 #define SVF_STROKE 0x1c93c91d
 #define SVF_STROKE_DASHARRAY 0x5faa6be9
 #define SVF_STROKE_DASHOFFSET 0x74c0b1b1

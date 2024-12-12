@@ -7,6 +7,8 @@
     <type>class</type>
     <module>SVG</module>
     <comment>Provides support for parsing and rendering SVG files.</comment>
+    <fileExtension>*.svg</fileExtension>
+    <fileDescription>Scalable Vector Graphics (SVG)</fileDescription>
     <version>1</version>
     <id>0b88abb5</id>
     <idstring>ID_SVG</idstring>

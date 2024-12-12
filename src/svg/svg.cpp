@@ -104,6 +104,7 @@ class extSVG : public objSVG {
 
 struct svgState {
    std::string m_color;       // currentColor value, initialised to SVG.Colour
+   std::string m_stop_color;
    std::string m_fill;        // Defaults to rgb(0,0,0)
    std::string m_stroke;      // Empty by default
    std::string m_font_size;
@@ -111,6 +112,7 @@ struct svgState {
    DOUBLE  m_stroke_width;    // 0 if undefined
    DOUBLE  m_fill_opacity;    // -1 if undefined
    DOUBLE  m_opacity;         // -1 if undefined
+   DOUBLE  m_stop_opacity;    // -1 if undefined
    LONG    m_font_weight;     // 0 if undefined
    RQ      m_path_quality;    // RQ::AUTO default
 
@@ -119,7 +121,7 @@ struct svgState {
 
    public:
    svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_family("Noto Sans"), m_stroke_width(0),
-      m_fill_opacity(-1), m_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), Scene(pSVG->Scene) { }
+      m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), Scene(pSVG->Scene) { }
 
    void applyTag(XMLTag &) noexcept;
    void applyAttribs(OBJECTPTR) const noexcept;

@@ -7,6 +7,7 @@
     <type>class</type>
     <module>Scintilla</module>
     <comment>Provides advanced text display and editing facilities.</comment>
+    <fileExtension>*.txt|*.text</fileExtension>
     <version>1</version>
     <id>3f218968</id>
     <idstring>ID_SCINTILLA</idstring>

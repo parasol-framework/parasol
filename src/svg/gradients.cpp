@@ -20,7 +20,7 @@ static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG At
 //********************************************************************************************************************
 // Note that all offsets are percentages.
 
-static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, const XMLTag &Tag)
+static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -37,6 +37,12 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
          stop.RGB.Green = 0;
          stop.RGB.Blue  = 0;
          stop.RGB.Alpha = 0;
+
+         if (!State.m_stop_color.empty()) {
+            VectorPainter painter;
+            vec::ReadPainter(Self->Scene, State.m_stop_color.c_str(), &painter, NULL);
+            stop.RGB = painter.Colour;
+         }
 
          for (LONG a=1; a < std::ssize(scan.Attribs); a++) {
             auto &name  = scan.Attribs[a].Name;
@@ -59,12 +65,27 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
                else last_stop = stop.Offset;
             }
             else if (iequals("stop-color", name)) {
-               VectorPainter painter;
-               vec::ReadPainter(Self->Scene, value.c_str(), &painter, NULL);
-               stop.RGB = painter.Colour;
+               if (iequals("inherit", value)) {
+                  VectorPainter painter;
+                  vec::ReadPainter(Self->Scene, State.m_stop_color.c_str(), &painter, NULL);
+                  stop.RGB = painter.Colour;
+               }
+               else if (iequals("currentColor", value)) { 
+                  VectorPainter painter;
+                  vec::ReadPainter(Self->Scene, State.m_color.c_str(), &painter, NULL);
+                  stop.RGB = painter.Colour;
+               }
+               else {
+                  VectorPainter painter;
+                  vec::ReadPainter(Self->Scene, value.c_str(), &painter, NULL);
+                  stop.RGB = painter.Colour;
+               }
             }
             else if (iequals("stop-opacity", name)) {
-               stop_opacity = strtod(value.c_str(), NULL);
+               if (iequals("inherit", value)) {
+                  stop_opacity = State.m_stop_opacity;
+               }
+               else stop_opacity = strtod(value.c_str(), NULL);
             }
             else if (iequals("id", name)) {
                log.trace("Use of id attribute in <stop/> ignored.");
@@ -92,7 +113,7 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
 
 //********************************************************************************************************************
 
-static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_lineargradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -157,7 +178,7 @@ static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      auto stops = process_gradient_stops(Self, Tag);
+      auto stops = process_gradient_stops(Self, State, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
@@ -176,7 +197,7 @@ static ERR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_radialgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -228,7 +249,7 @@ static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      auto stops = process_gradient_stops(Self, Tag);
+      auto stops = process_gradient_stops(Self, State, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
@@ -247,7 +268,7 @@ static ERR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_diamondgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -298,7 +319,7 @@ static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      auto stops = process_gradient_stops(Self, Tag);
+      auto stops = process_gradient_stops(Self, State, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
@@ -318,7 +339,7 @@ static ERR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
 //********************************************************************************************************************
 // NB: Contour gradients are not part of the SVG standard.
 
-static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_contourgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -366,7 +387,7 @@ static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      auto stops = process_gradient_stops(Self, Tag);
+      auto stops = process_gradient_stops(Self, State, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
@@ -385,7 +406,7 @@ static ERR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
+static ERR xtag_conicgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
@@ -440,7 +461,7 @@ static ERR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
          }
       }
 
-      auto stops = process_gradient_stops(Self, Tag);
+      auto stops = process_gradient_stops(Self, State, Tag);
       if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
