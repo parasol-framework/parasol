@@ -58,6 +58,7 @@ function testTransitions()     hashTestSVG('paths/transitions.svg', 0x6774b2a9) 
 function testWave()            hashTestSVG('paths/wave.svg', 0xc462fb58) end
 function testW3Paths01()       hashTestSVG('paths/w3-paths-data-01-t.svg', 0x349fdafe) end
 function testW3Paths02()       hashTestSVG('paths/w3-paths-data-02-t.svg', 0xac503928) end
+function testW3Paths03()       hashTestSVG('paths/w3-paths-data-03-f.svg', 0x827561bc) end
 function testW3Paths04()       hashTestSVG('paths/w3-paths-data-04-t.svg', 0x669c3679) end
 function testW3Paths05()       hashTestSVG('paths/w3-paths-data-05-t.svg', 0xee8ec042) end
 function testW3Paths06()       hashTestSVG('paths/w3-paths-data-06-t.svg', 0x56390d38) end
@@ -384,6 +385,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testWave',
         'testW3Paths01',
         'testW3Paths02',
+        'testW3Paths03',
         'testW3Paths04',
         'testW3Paths05',
         'testW3Paths06',

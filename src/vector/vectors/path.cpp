@@ -163,8 +163,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             path.AbsX = path.X;
             path.AbsY = path.Y;
             // rx, ry, angle, large_arc_flag, sweep_flag, DestX, DestY
-            BasePath.arc_to(path.X2, path.Y2, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
-            //BasePath.move_to(path.AbsX, path.AbsY);
+            BasePath.arc_to(path.X2, path.Y2, path.Angle * DEG2RAD, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
@@ -172,7 +171,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = lp.x + path.X;
             path.AbsY = lp.y + path.Y;
-            BasePath.arc_to(path.X2, path.Y2, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
+            BasePath.arc_to(path.X2, path.Y2, path.Angle * DEG2RAD, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
