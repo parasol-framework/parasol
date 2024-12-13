@@ -200,24 +200,6 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 }
 
 //********************************************************************************************************************
-// Save an id reference for an SVG element.  The element can be then be found at any time with find_href_tag().  We store
-// a copy of the tag data as pointer references are too high a risk.
-
-inline bool add_id(extSVG *Self, const XMLTag &Tag, const std::string_view Name)
-{
-   if (Self->IDs.contains(std::string(Name))) return false;
-   Self->IDs.emplace(Name, Tag);
-   return true;
-}
-
-inline bool add_id(extSVG *Self, const XMLTag &Tag, const std::string Name)
-{
-   if (Self->IDs.contains(Name)) return false;
-   Self->IDs.emplace(Name, Tag);
-   return true;
-}
-
-//********************************************************************************************************************
 
 static CSTRING folder(extSVG *Self)
 {
@@ -281,7 +263,7 @@ static XMLTag * find_href_tag(extSVG *Self, std::string Ref)
 {
    auto ref = uri_name(Ref);
    if ((!ref.empty()) and (Self->IDs.contains(ref))) {
-      return &Self->IDs[ref];
+      return Self->IDs[ref];
    }
    return NULL;
 }
@@ -461,7 +443,7 @@ static void parse_ids(extSVG *Self, XMLTag &Tag)
          if (Tag.Attribs[a].Value.empty()) continue;
 
          if (Self->IDs.contains(Tag.Attribs[a].Value)) break;
-         Self->IDs.emplace(Tag.Attribs[a].Value, Tag);
+         Self->IDs.emplace(Tag.Attribs[a].Value, &Tag);
          break;
       }
    }

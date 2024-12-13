@@ -12,6 +12,11 @@ static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG At
       case SVF_HREF:
       case SVF_XLINK_HREF: add_inherit(Self, Gradient, Value);
          return ERR::Okay;
+
+      // Ignored attributes (sometimes defined to propagate to child tags)
+      case SVF_STOP_COLOR:
+      case SVF_STOP_OPACITY:
+         return ERR::Okay;
    }
 
    return ERR::Failed;
@@ -36,13 +41,7 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, svgS
          stop.RGB.Red   = 0;
          stop.RGB.Green = 0;
          stop.RGB.Blue  = 0;
-         stop.RGB.Alpha = 0;
-
-         if (!State.m_stop_color.empty()) {
-            VectorPainter painter;
-            vec::ReadPainter(Self->Scene, State.m_stop_color.c_str(), &painter, NULL);
-            stop.RGB = painter.Colour;
-         }
+         stop.RGB.Alpha = 1.0;
 
          for (LONG a=1; a < std::ssize(scan.Attribs); a++) {
             auto &name  = scan.Attribs[a].Name;
@@ -119,6 +118,8 @@ static ERR xtag_lineargradient(extSVG *Self, svgState &State, const XMLTag &Tag)
    objVectorGradient *gradient;
 
    std::string id;
+
+   State.applyTag(Tag);
 
    if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
@@ -201,6 +202,8 @@ static ERR xtag_radialgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
+   
+   State.applyTag(Tag);
 
    if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
@@ -271,6 +274,8 @@ static ERR xtag_diamondgradient(extSVG *Self, svgState &State, const XMLTag &Tag
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
+   
+   State.applyTag(Tag);
 
    if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
@@ -341,6 +346,8 @@ static ERR xtag_contourgradient(extSVG *Self, svgState &State, const XMLTag &Tag
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
    std::string id;
+   
+   State.applyTag(Tag);
 
    if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);
@@ -406,6 +413,8 @@ static ERR xtag_conicgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorGradient *gradient;
+   
+   State.applyTag(Tag);
 
    if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
       SetOwner(gradient, Self->Scene);

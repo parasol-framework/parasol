@@ -83,8 +83,7 @@ function testW3Gradients14() hashTestSVG('gradients/w3-pservers-grad-14-b.svg', 
 function testW3Gradients15() hashTestSVG('gradients/w3-pservers-grad-15-b.svg', 0x1a612a1a) end
 function testW3Gradients16() hashTestSVG('gradients/w3-pservers-grad-16-b.svg', 0xe6c90425) end
 function testW3Gradients17() hashTestSVG('gradients/w3-pservers-grad-17-b.svg', 0x8f128446) end
--- Test 18 requires the creation of gradients to be deferred.
-function testW3Gradients18() hashTestSVG('gradients/w3-pservers-grad-18-b.svg', 0) end
+function testW3Gradients18() hashTestSVG('gradients/w3-pservers-grad-18-b.svg', 0xde0190bb) end
 function testW3Gradients20() hashTestSVG('gradients/w3-pservers-grad-20-b.svg', 0x8f128446) end
 function testW3Gradients21() hashTestSVG('gradients/w3-pservers-grad-21-b.svg', 0) end
 function testW3Gradients22() hashTestSVG('gradients/w3-pservers-grad-22-b.svg', 0x5477019b) end
@@ -279,6 +278,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Gradients15',
         'testW3Gradients16',
         'testW3Gradients17',
+        'testW3Gradients18',
         'testW3Gradients20',
         'testW3Gradients22',
         -- Patterns
