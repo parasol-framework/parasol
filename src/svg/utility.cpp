@@ -414,24 +414,6 @@ template<class T = double> std::vector<T> read_array(const std::string Value, LO
 }
 
 //********************************************************************************************************************
-// Currently used by gradient functions to defer inheritance management.  It results in the gradient Inherit field
-// being set to the referenced gradient object.  The reason why the process is deferred is because there is no
-// requirement that a gradient must exist before its name is referenced.
-
-static void add_inherit(extSVG *Self, OBJECTPTR Object, const std::string ID)
-{
-   pf::Log log(__FUNCTION__);
-   log.trace("Object: %d, ID: %s", Object->UID, ID.c_str());
-
-   auto &inherit = Self->Inherit.emplace_back();
-   inherit.Object = Object;
-
-   auto hash = ID.find('#');
-   if (hash IS std::string::npos) inherit.ID = ID;
-   else inherit.ID = ID.substr(hash);
-}
-
-//********************************************************************************************************************
 // This function is called before fully parsing the document so that we can extract all tags making use of the
 // 'id' attribute.
 

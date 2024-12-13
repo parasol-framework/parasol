@@ -28,7 +28,6 @@ GRADIENT_TABLE * get_fill_gradient_table(extPainter &Painter, DOUBLE Opacity)
 
    GradientColours *cols = ((extVectorGradient *)Painter.Gradient)->Colours;
    if (!cols) {
-      if (Painter.Gradient->Inherit) cols = ((extVectorGradient *)Painter.Gradient->Inherit)->Colours;
       if (!cols) {
          log.warning("No colour table referenced in fill gradient %p.", Painter.Gradient);
          return NULL;
@@ -67,7 +66,6 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 
    GradientColours *cols = ((extVectorGradient *)Vector.Stroke.Gradient)->Colours;
    if (!cols) {
-      if (Vector.Stroke.Gradient->Inherit) cols = ((extVectorGradient *)Vector.Stroke.Gradient->Inherit)->Colours;
       if (!cols) {
          log.warning("No colour table referenced in stroke gradient %p for vector #%d.", Vector.Stroke.Gradient, Vector.UID);
          return NULL;
@@ -411,26 +409,6 @@ static ERR VECTORGRADIENT_SET_ID(extVectorGradient *Self, CSTRING Value)
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-Inherit: Inherit attributes from the VectorGradient referenced here.
-
-Attributes can be inherited from another gradient by referencing that gradient in this field.  This feature is provided
-primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance penalty.
-
-*********************************************************************************************************************/
-
-static ERR VECTORGRADIENT_SET_Inherit(extVectorGradient *Self, extVectorGradient *Value)
-{
-   if (Value) {
-      if (Value->classID() IS CLASSID::VECTORGRADIENT) Self->Inherit = Value;
-      else return ERR::InvalidValue;
-   }
-   else Self->Inherit = NULL;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
 -FIELD-
 Matrices: A linked list of transform matrices that have been applied to the gradient.
 
@@ -757,7 +735,6 @@ static const FieldArray clGradientFields[] = {
    { "FocalY",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalY, VECTORGRADIENT_SET_FocalY },
    { "Radius",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Radius, VECTORGRADIENT_SET_Radius },
    { "FocalRadius",  FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalRadius, VECTORGRADIENT_SET_FocalRadius },
-   { "Inherit",      FDF_OBJECT|FDF_RW, NULL, VECTORGRADIENT_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientSpreadMethod },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &clVectorGradientUnits },
    { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientType },

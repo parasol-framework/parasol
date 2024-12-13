@@ -937,23 +937,22 @@ class objVectorGradient : public Object {
 
    using create = pf::Create<objVectorGradient>;
 
-   DOUBLE  X1;                     // Initial X coordinate for the gradient.
-   DOUBLE  Y1;                     // Initial Y coordinate for the gradient.
-   DOUBLE  X2;                     // Final X coordinate for the gradient.
-   DOUBLE  Y2;                     // Final Y coordinate for the gradient.
-   DOUBLE  CenterX;                // The horizontal center point of the gradient.
-   DOUBLE  CenterY;                // The vertical center point of the gradient.
-   DOUBLE  FocalX;                 // The horizontal focal point for radial gradients.
-   DOUBLE  FocalY;                 // The vertical focal point for radial gradients.
-   DOUBLE  Radius;                 // The radius of the gradient.
-   DOUBLE  FocalRadius;            // The size of the focal radius for radial gradients.
-   objVectorGradient * Inherit;    // Inherit attributes from the VectorGradient referenced here.
-   VSPREAD SpreadMethod;           // The behaviour to use when the gradient bounds do not match the vector path.
-   VUNIT   Units;                  // Defines the coordinate system for X1, Y1, X2 and Y2.
-   VGT     Type;                   // Specifies the type of gradient (e.g. RADIAL, LINEAR)
-   VGF     Flags;                  // Dimension flags are stored here.
-   VCS     ColourSpace;            // Defines the colour space to use when interpolating gradient colours.
-   LONG    TotalStops;             // Total number of stops defined in the Stops array.
+   DOUBLE  X1;            // Initial X coordinate for the gradient.
+   DOUBLE  Y1;            // Initial Y coordinate for the gradient.
+   DOUBLE  X2;            // Final X coordinate for the gradient.
+   DOUBLE  Y2;            // Final Y coordinate for the gradient.
+   DOUBLE  CenterX;       // The horizontal center point of the gradient.
+   DOUBLE  CenterY;       // The vertical center point of the gradient.
+   DOUBLE  FocalX;        // The horizontal focal point for radial gradients.
+   DOUBLE  FocalY;        // The vertical focal point for radial gradients.
+   DOUBLE  Radius;        // The radius of the gradient.
+   DOUBLE  FocalRadius;   // The size of the focal radius for radial gradients.
+   VSPREAD SpreadMethod;  // The behaviour to use when the gradient bounds do not match the vector path.
+   VUNIT   Units;         // Defines the coordinate system for X1, Y1, X2 and Y2.
+   VGT     Type;          // Specifies the type of gradient (e.g. RADIAL, LINEAR)
+   VGF     Flags;         // Dimension flags are stored here.
+   VCS     ColourSpace;   // Defines the colour space to use when interpolating gradient colours.
+   LONG    TotalStops;    // Total number of stops defined in the Stops array.
 
    // Action stubs
 
@@ -991,28 +990,28 @@ class objVectorGradient : public Object {
 
    inline ERR setCenterX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[22];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[23];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setFocalX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[29];
+      auto field = &this->Class->Dictionary[28];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setFocalY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[30];
+      auto field = &this->Class->Dictionary[29];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
@@ -1026,15 +1025,9 @@ class objVectorGradient : public Object {
 
    inline ERR setFocalRadius(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[27];
+      auto field = &this->Class->Dictionary[26];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
-   }
-
-   inline ERR setInherit(objVectorGradient * Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[21];
-      return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
@@ -1066,7 +1059,7 @@ class objVectorGradient : public Object {
 
    inline ERR setColour(const FLOAT * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
    }
 
@@ -1078,7 +1071,7 @@ class objVectorGradient : public Object {
 
    inline ERR setNumeric(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 

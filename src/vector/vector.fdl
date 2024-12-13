@@ -450,7 +450,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, times
     double FocalY                # Focal Y coordinate for radial gradient shapes.
     double Radius                # The radius size for radial gradients.
     double FocalRadius           # The size of the focal radius for radial gradients.
-    obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes.
     int(VSPREAD) SpreadMethod    # Defines the spread method to use for gradient fills.
     int(VUNIT) Units             # Defines the coordinate system for `(X1, Y1), (X2, Y2)`
     int(VGT) Type
