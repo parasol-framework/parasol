@@ -213,7 +213,7 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
             break;
 
          case 'T': case 't': // Quadratic Smooth Curve To
-            read_numseq_zero(Value, { &path.X2, &path.Y2, &path.X, &path.Y });
+            read_numseq_zero(Value, { &path.X, &path.Y });
             if (cmd IS 'T') path.Type = PE::QuadSmooth;
             else path.Type = PE::QuadSmoothRel;
            break;
