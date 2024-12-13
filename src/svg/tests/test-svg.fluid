@@ -56,6 +56,19 @@ function testSuperShapes()     hashTestSVG('paths/supershapes.svg', 0x915ba38c) 
 function testSuperSpiral()     hashTestSVG('paths/superspiral.svg', 0xd981df67) end
 function testTransitions()     hashTestSVG('paths/transitions.svg', 0x6774b2a9) end
 function testWave()            hashTestSVG('paths/wave.svg', 0xc462fb58) end
+function testW3Paths01()       hashTestSVG('paths/w3-paths-data-01-t.svg', 0x349fdafe) end
+function testW3Paths04()       hashTestSVG('paths/w3-paths-data-04-t.svg', 0x669c3679) end
+function testW3Paths05()       hashTestSVG('paths/w3-paths-data-05-t.svg', 0xee8ec042) end
+function testW3Paths06()       hashTestSVG('paths/w3-paths-data-06-t.svg', 0x56390d38) end
+function testW3Paths07()       hashTestSVG('paths/w3-paths-data-07-t.svg', 0x4aef10e5) end
+function testW3Paths08()       hashTestSVG('paths/w3-paths-data-08-t.svg', 0x426f1502) end
+function testW3Paths09()       hashTestSVG('paths/w3-paths-data-09-t.svg', 0x1a47324e) end
+function testW3Paths10()       hashTestSVG('paths/w3-paths-data-10-t.svg', 0x5aef363f) end
+function testW3Paths12()       hashTestSVG('paths/w3-paths-data-12-t.svg', 0x7d8a4e33) end
+function testW3Paths13()       hashTestSVG('paths/w3-paths-data-13-t.svg', 0xd59a80be) end
+function testW3Paths14()       hashTestSVG('paths/w3-paths-data-14-t.svg', 0x1efd8c81) end
+function testW3Paths15()       hashTestSVG('paths/w3-paths-data-15-t.svg', 0x524dac2e) end
+function testW3Paths17()       hashTestSVG('paths/w3-paths-data-17-f.svg', 0x1ac9c431) end
 
 function testChevrons()     hashTestSVG('patterns/chevrons.svg', 0x42a1be4b) end
 function testComplex()      hashTestSVG('patterns/complex.svg', 0x3a30b99a) end
@@ -367,7 +380,20 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testSuperShapes',
         'testSuperSpiral',
         'testTransitions',
-        'testWave'
+        'testWave',
+        'testW3Paths01',
+        'testW3Paths04',
+        'testW3Paths05',
+        'testW3Paths06',
+        'testW3Paths07',
+        'testW3Paths08',
+        'testW3Paths09',
+        'testW3Paths10',
+        'testW3Paths12',
+        'testW3Paths13',
+        'testW3Paths14',
+        'testW3Paths15',
+        'testW3Paths17',
       },
       init = function(Folder)
          glSVGFolder = Folder
