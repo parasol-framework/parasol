@@ -119,18 +119,23 @@ static RQ shape_rendering_to_render_quality(const std::string_view Value)
 }
 
 //********************************************************************************************************************
-// Apply the current state values to a vector.
+// Apply the current state values to a vector.  Used for applying state to child vectors.
+// If you're adding more to this, matching code is needed in svgState::applyTag()
 
-void svgState::applyAttribs(OBJECTPTR Vector) const noexcept
+void svgState::applyAttribs(objVector *Vector) const noexcept
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("%s: Fill: %s, Stroke: %s, Opacity: %.2f, Font: %s %s",
       Vector->Class->ClassName, m_fill.c_str(), m_stroke.c_str(), m_opacity, m_font_family.c_str(), m_font_size.c_str());
 
-   if (!m_fill.empty())   Vector->set(FID_Fill, m_fill);
-   if (!m_stroke.empty()) Vector->set(FID_Stroke, m_stroke);
-   if (m_stroke_width)    Vector->set(FID_StrokeWidth, m_stroke_width);
+   if (!m_fill.empty())   Vector->setFill(m_fill);
+   if (!m_stroke.empty()) Vector->setStroke(m_stroke);
+   if (m_stroke_width)    Vector->setStrokeWidth(m_stroke_width);
+   if (m_line_join != VLJ::NIL)  Vector->setLineJoin(LONG(m_line_join));
+   if (m_inner_join != VIJ::NIL) Vector->setInnerJoin(LONG(m_inner_join));
+   if (m_line_cap != VLC::NIL)   Vector->setLineCap(LONG(m_line_cap));
+
    if (Vector->classID() IS CLASSID::VECTORTEXT) {
       if (!m_font_family.empty()) Vector->set(FID_Face, m_font_family);
       if (!m_font_size.empty())   Vector->set(FID_FontSize, m_font_size);
@@ -146,6 +151,7 @@ void svgState::applyAttribs(OBJECTPTR Vector) const noexcept
 
 //********************************************************************************************************************
 // Copy a tag's attributes to the current state.
+// If you're adding more to this, matching code is needed in svgState::applyAttribs()
 
 void svgState::applyTag(const XMLTag &Tag) noexcept
 {
@@ -167,6 +173,37 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
             m_stroke = val;
             if (!m_stroke_width) m_stroke_width = 1;
             break;
+
+         case SVF_STROKE_LINEJOIN:
+            switch(strihash(val)) {
+               case SVF_MITER:   m_line_join = VLJ::MITER; break;
+               case SVF_ROUND:   m_line_join = VLJ::ROUND; break;
+               case SVF_BEVEL:   m_line_join = VLJ::BEVEL; break;
+               case SVF_INHERIT: m_line_join = VLJ::INHERIT; break;
+               case SVF_MITER_REVERT: m_line_join = VLJ::MITER_REVERT; break; // Special AGG only join type
+               case SVF_MITER_ROUND:  m_line_join = VLJ::MITER_ROUND; break; // Special AGG only join type
+            }
+            break;
+
+         case SVF_STROKE_INNERJOIN: // AGG ONLY
+            switch(strihash(val)) {
+               case SVF_MITER:   m_inner_join = VIJ::MITER; break;
+               case SVF_ROUND:   m_inner_join = VIJ::ROUND; break;
+               case SVF_BEVEL:   m_inner_join = VIJ::BEVEL; break;
+               case SVF_INHERIT: m_inner_join = VIJ::INHERIT; break;
+               case SVF_JAG:     m_inner_join = VIJ::JAG; break;
+            }
+            break;
+
+         case SVF_STROKE_LINECAP:
+            switch(strihash(val)) {
+               case SVF_BUTT:    m_line_cap = VLC::BUTT; break;
+               case SVF_SQUARE:  m_line_cap = VLC::SQUARE; break;
+               case SVF_ROUND:   m_line_cap = VLC::ROUND; break;
+               case SVF_INHERIT: m_line_cap = VLC::INHERIT; break;
+            }
+            break;
+
          case SVF_STROKE_WIDTH: m_stroke_width = strtod(val.c_str(), NULL); break;
          case SVF_FONT_FAMILY:  m_font_family = val; break;
          case SVF_FONT_SIZE:    m_font_size = val; break;

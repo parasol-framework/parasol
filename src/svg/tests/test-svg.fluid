@@ -70,7 +70,9 @@ function testW3Paths12()       hashTestSVG('paths/w3-paths-data-12-t.svg', 0x7d8
 function testW3Paths13()       hashTestSVG('paths/w3-paths-data-13-t.svg', 0xd59a80be) end
 function testW3Paths14()       hashTestSVG('paths/w3-paths-data-14-t.svg', 0x1efd8c81) end
 function testW3Paths15()       hashTestSVG('paths/w3-paths-data-15-t.svg', 0x524dac2e) end
-function testW3Paths17()       hashTestSVG('paths/w3-paths-data-17-f.svg', 0x1ac9c431) end
+function testW3Paths16()       hashTestSVG('paths/w3-paths-data-16-t.svg', 0x6f71b982) end
+function testW3Paths17()       hashTestSVG('paths/w3-paths-data-17-f.svg', 0x7ae35b09) end
+function testW3Paths19()       hashTestSVG('paths/w3-paths-data-19-f.svg', 0x6af6be3e) end
 
 function testChevrons()     hashTestSVG('patterns/chevrons.svg', 0x42a1be4b) end
 function testComplex()      hashTestSVG('patterns/complex.svg', 0x3a30b99a) end
@@ -397,7 +399,9 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Paths13',
         'testW3Paths14',
         'testW3Paths15',
+        'testW3Paths16',
         'testW3Paths17',
+        'testW3Paths19',
       },
       init = function(Folder)
          glSVGFolder = Folder
