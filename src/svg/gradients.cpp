@@ -446,6 +446,10 @@ static ERR xtag_radialgradient(extSVG *Self, svgState &State, const XMLTag &Tag)
 
       parse_radialgradient(Self, state, Tag, gradient, id);
 
+      // Enforce SVG limits on focal point positioning.
+
+      gradient->Flags |= VGF::CONTAIN_FOCAL;
+
       if (InitObject(gradient) IS ERR::Okay) {
          if (!id.empty()) {
             SetName(gradient, id.c_str());

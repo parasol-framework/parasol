@@ -28,10 +28,8 @@ GRADIENT_TABLE * get_fill_gradient_table(extPainter &Painter, DOUBLE Opacity)
 
    GradientColours *cols = ((extVectorGradient *)Painter.Gradient)->Colours;
    if (!cols) {
-      if (!cols) {
-         log.warning("No colour table referenced in fill gradient %p.", Painter.Gradient);
-         return NULL;
-      }
+      log.warning("No colour table in gradient %p.", Painter.Gradient);
+      return NULL;
    }
 
    if (Opacity >= 1.0) { // Return the original gradient table if no translucency is applicable.

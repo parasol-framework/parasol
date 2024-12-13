@@ -78,14 +78,14 @@ function testW3Gradients09() hashTestSVG('gradients/w3-pservers-grad-09-b.svg', 
 function testW3Gradients10() hashTestSVG('gradients/w3-pservers-grad-10-b.svg', 0x8a32cb66) end
 function testW3Gradients11() hashTestSVG('gradients/w3-pservers-grad-11-b.svg', 0x4f4a58f3) end
 function testW3Gradients12() hashTestSVG('gradients/w3-pservers-grad-12-b.svg', 0x2f3c750e) end
-function testW3Gradients13() hashTestSVG('gradients/w3-pservers-grad-13-b.svg', 0x5dc91e94) end
+function testW3Gradients13() hashTestSVG('gradients/w3-pservers-grad-13-b.svg', 0x290a6c0f) end
 function testW3Gradients14() hashTestSVG('gradients/w3-pservers-grad-14-b.svg', 0xd80b0bd2) end
 function testW3Gradients15() hashTestSVG('gradients/w3-pservers-grad-15-b.svg', 0x1a612a1a) end
 function testW3Gradients16() hashTestSVG('gradients/w3-pservers-grad-16-b.svg', 0xe6c90425) end
 function testW3Gradients17() hashTestSVG('gradients/w3-pservers-grad-17-b.svg', 0x8f128446) end
 function testW3Gradients18() hashTestSVG('gradients/w3-pservers-grad-18-b.svg', 0xde0190bb) end
 function testW3Gradients20() hashTestSVG('gradients/w3-pservers-grad-20-b.svg', 0x8f128446) end
-function testW3Gradients21() hashTestSVG('gradients/w3-pservers-grad-21-b.svg', 0) end
+function testW3Gradients21() hashTestSVG('gradients/w3-pservers-grad-21-b.svg', 0x57eb4dd7) end
 function testW3Gradients22() hashTestSVG('gradients/w3-pservers-grad-22-b.svg', 0x5477019b) end
 
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
@@ -280,6 +280,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Gradients17',
         'testW3Gradients18',
         'testW3Gradients20',
+        'testW3Gradients21',
         'testW3Gradients22',
         -- Patterns
         'testChevrons',

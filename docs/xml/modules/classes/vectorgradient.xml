@@ -269,6 +269,7 @@
     </constants>
 
     <constants lookup="VGF" comment="Gradient flags">
+      <const name="CONTAIN_FOCAL">Contain the FX,FY point to the base radius.</const>
       <const name="FIXED_CX">CX is fixed</const>
       <const name="FIXED_CY">CY is fixed</const>
       <const name="FIXED_FOCAL_RADIUS">Focal radius is fixed</const>

@@ -292,13 +292,23 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
          else render_gradient(gradient_func, radial_col_span);
       }
       else {
-         // Radial gradient with a displaced focal point (uses agg::gradient_radial_focus).  NB: In early versions of
-         // the SVG standard, the focal point had to be within the base radius.  Later specifications allowed it to
-         // be placed outside of that radius.
+         // Radial gradient with a displaced focal point (uses agg::gradient_radial_focus).
+         // The FocalRadius allows the client to alter the border region at which the focal
+         // calculations are being made. 
+         // 
+         // SVG requires the focal point to be within the base radius, this can be enforced by setting CONTAIN_FOCAL.
 
-         // The FocalRadius allows the client to increase or decrease the border to which the focal
-         // calculations are being made.  If not supported by the underlying implementation (e.g. SVG) then
-         // FocalRadius must match the base radius.
+         if ((Gradient.Flags & VGF::CONTAIN_FOCAL) != VGF::NIL) {
+            agg::point_d d = { f.x - c.x, f.y - c.y };
+            const double sqr_radius = radial_col_span * radial_col_span;
+            const double outside = ((d.x * d.x) / sqr_radius) + ((d.y * d.y) / sqr_radius);
+
+            if (outside > 1.0) {
+               const double k = std::sqrt(1.0 / outside);
+               f.x = c.x + (d.x * k);
+               f.y = c.y + (d.y * k);
+            }
+         }
 
          agg::gradient_radial_focus gradient_func(focal_radius, f.x - c.x, f.y - c.y);
 

@@ -236,7 +236,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, times
     "FIXED_FX: FX is fixed",
     "FIXED_FY: FY is fixed",
     "FIXED_RADIUS: Radius is fixed",
-    "FIXED_FOCAL_RADIUS: Focal radius is fixed")
+    "FIXED_FOCAL_RADIUS: Focal radius is fixed",
+    "CONTAIN_FOCAL: Contain the FX,FY point to the base radius.")
 
   flags("VPF", { comment="Optional flags for the VectorScene object." },
     "BITMAP_SIZED: Automatically adjust the @VectorScene.PageWidth and @VectorScene.PageHeight to match the target @Bitmap.Width and @Bitmap.Height.",

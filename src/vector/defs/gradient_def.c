@@ -48,6 +48,7 @@ static const struct FieldDef clVectorGradientFlags[] = {
    { "FixedFY", 0x00020000 },
    { "FixedRadius", 0x00040000 },
    { "FixedFocalRadius", 0x00080000 },
+   { "ContainFocal", 0x00100000 },
    { NULL, 0 }
 };
 
