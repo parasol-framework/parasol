@@ -40,7 +40,6 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
    switch (Hash) {
       case SVF_ID:
          Anim.id = Value;
-         add_id(Anim.svg, Tag, Value);
          break;
 
       case SVF_HREF:

@@ -56,6 +56,26 @@ function testSuperShapes()     hashTestSVG('paths/supershapes.svg', 0x915ba38c) 
 function testSuperSpiral()     hashTestSVG('paths/superspiral.svg', 0xd981df67) end
 function testTransitions()     hashTestSVG('paths/transitions.svg', 0x6774b2a9) end
 function testWave()            hashTestSVG('paths/wave.svg', 0xc462fb58) end
+function testW3Paths01()       hashTestSVG('paths/w3-paths-data-01-t.svg', 0x349fdafe) end
+function testW3Paths02()       hashTestSVG('paths/w3-paths-data-02-t.svg', 0xac503928) end
+function testW3Paths03()       hashTestSVG('paths/w3-paths-data-03-f.svg', 0x827561bc) end
+function testW3Paths04()       hashTestSVG('paths/w3-paths-data-04-t.svg', 0x669c3679) end
+function testW3Paths05()       hashTestSVG('paths/w3-paths-data-05-t.svg', 0xee8ec042) end
+function testW3Paths06()       hashTestSVG('paths/w3-paths-data-06-t.svg', 0x56390d38) end
+function testW3Paths07()       hashTestSVG('paths/w3-paths-data-07-t.svg', 0x4aef10e5) end
+function testW3Paths08()       hashTestSVG('paths/w3-paths-data-08-t.svg', 0x426f1502) end
+function testW3Paths09()       hashTestSVG('paths/w3-paths-data-09-t.svg', 0x1a47324e) end
+function testW3Paths10()       hashTestSVG('paths/w3-paths-data-10-t.svg', 0x5aef363f) end
+function testW3Paths12()       hashTestSVG('paths/w3-paths-data-12-t.svg', 0x7d8a4e33) end
+function testW3Paths13()       hashTestSVG('paths/w3-paths-data-13-t.svg', 0xd59a80be) end
+function testW3Paths14()       hashTestSVG('paths/w3-paths-data-14-t.svg', 0x1efd8c81) end
+function testW3Paths15()       hashTestSVG('paths/w3-paths-data-15-t.svg', 0x524dac2e) end
+function testW3Paths16()       hashTestSVG('paths/w3-paths-data-16-t.svg', 0x6f71b982) end
+function testW3Paths17()       hashTestSVG('paths/w3-paths-data-17-f.svg', 0x7ae35b09) end
+function testW3Paths18()       hashTestSVG('paths/w3-paths-data-18-f.svg', 0x80027352) end
+function testW3Paths19()       hashTestSVG('paths/w3-paths-data-19-f.svg', 0x6af6be3e) end
+-- Some aspects of this test do not pass but we do not intend to support them
+function testW3Paths20()       hashTestSVG('paths/w3-paths-data-20-f.svg', 0x70082db1) end
 
 function testChevrons()     hashTestSVG('patterns/chevrons.svg', 0x42a1be4b) end
 function testComplex()      hashTestSVG('patterns/complex.svg', 0x3a30b99a) end
@@ -78,15 +98,14 @@ function testW3Gradients09() hashTestSVG('gradients/w3-pservers-grad-09-b.svg', 
 function testW3Gradients10() hashTestSVG('gradients/w3-pservers-grad-10-b.svg', 0x8a32cb66) end
 function testW3Gradients11() hashTestSVG('gradients/w3-pservers-grad-11-b.svg', 0x4f4a58f3) end
 function testW3Gradients12() hashTestSVG('gradients/w3-pservers-grad-12-b.svg', 0x2f3c750e) end
-function testW3Gradients13() hashTestSVG('gradients/w3-pservers-grad-13-b.svg', 0x5dc91e94) end
+function testW3Gradients13() hashTestSVG('gradients/w3-pservers-grad-13-b.svg', 0x290a6c0f) end
 function testW3Gradients14() hashTestSVG('gradients/w3-pservers-grad-14-b.svg', 0xd80b0bd2) end
 function testW3Gradients15() hashTestSVG('gradients/w3-pservers-grad-15-b.svg', 0x1a612a1a) end
 function testW3Gradients16() hashTestSVG('gradients/w3-pservers-grad-16-b.svg', 0xe6c90425) end
 function testW3Gradients17() hashTestSVG('gradients/w3-pservers-grad-17-b.svg', 0x8f128446) end
--- Test 18 requires the creation of gradients to be deferred.
-function testW3Gradients18() hashTestSVG('gradients/w3-pservers-grad-18-b.svg', 0) end
+function testW3Gradients18() hashTestSVG('gradients/w3-pservers-grad-18-b.svg', 0xde0190bb) end
 function testW3Gradients20() hashTestSVG('gradients/w3-pservers-grad-20-b.svg', 0x8f128446) end
-function testW3Gradients21() hashTestSVG('gradients/w3-pservers-grad-21-b.svg', 0) end
+function testW3Gradients21() hashTestSVG('gradients/w3-pservers-grad-21-b.svg', 0x57eb4dd7) end
 function testW3Gradients22() hashTestSVG('gradients/w3-pservers-grad-22-b.svg', 0x5477019b) end
 
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
@@ -279,7 +298,9 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Gradients15',
         'testW3Gradients16',
         'testW3Gradients17',
+        'testW3Gradients18',
         'testW3Gradients20',
+        'testW3Gradients21',
         'testW3Gradients22',
         -- Patterns
         'testChevrons',
@@ -366,7 +387,26 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testSuperShapes',
         'testSuperSpiral',
         'testTransitions',
-        'testWave'
+        'testWave',
+        'testW3Paths01',
+        'testW3Paths02',
+        'testW3Paths03',
+        'testW3Paths04',
+        'testW3Paths05',
+        'testW3Paths06',
+        'testW3Paths07',
+        'testW3Paths08',
+        'testW3Paths09',
+        'testW3Paths10',
+        'testW3Paths12',
+        'testW3Paths13',
+        'testW3Paths14',
+        'testW3Paths15',
+        'testW3Paths16',
+        'testW3Paths17',
+        'testW3Paths18',
+        'testW3Paths19',
+        'testW3Paths20'
       },
       init = function(Folder)
          glSVGFolder = Folder

@@ -4,6 +4,7 @@ DOUBLE glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 static HSV rgb_to_hsl(FRGB Colour) __attribute__((unused));
 static FRGB hsl_to_rgb(HSV Colour) __attribute__((unused));
+static void read_numseq_zero(CSTRING &, std::initializer_list<DOUBLE *>);
 
 //********************************************************************************************************************
 
@@ -158,6 +159,12 @@ static void update_dpi(void)
 
 //********************************************************************************************************************
 // Read a string-based series of vector commands and add them to Path.
+//
+// SVG position on error handling: Unrecognized contents within a path data stream (i.e., contents that are not part 
+// of the path data grammar) is an error.  The general rule for error handling in path data is that the SVG user agent 
+// shall render a ‘path’ element up to (but not including) the path command containing the first error in the path 
+// data specification. This will provide a visual clue to the user or developer about where the error might be in the 
+// path data specification.
 
 ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 {
@@ -170,8 +177,9 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
    while (*Value) {
       if ((*Value >= 'a') and (*Value <= 'z')) cmd = *Value++;
       else if ((*Value >= 'A') and (*Value <= 'Z')) cmd = *Value++;
-      else if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-') or (*Value IS '+')); // Use the previous command
-      else { Value++; continue; }
+      else if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-') or (*Value IS '+') or (*Value IS '.')); // Use the previous command
+      else if ((*Value <= 0x20) or (*Value IS ',')) { Value++; continue; }
+      else break;
 
       switch (cmd) {
          case 'M': case 'm': // MoveTo
@@ -213,7 +221,7 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
             break;
 
          case 'T': case 't': // Quadratic Smooth Curve To
-            read_numseq_zero(Value, { &path.X2, &path.Y2, &path.X, &path.Y });
+            read_numseq_zero(Value, { &path.X, &path.Y });
             if (cmd IS 'T') path.Type = PE::QuadSmooth;
             else path.Type = PE::QuadSmoothRel;
            break;
@@ -235,6 +243,8 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
             read_numseq_zero(Value, { &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y });
             path.LargeArc = F2T(largearc);
             path.Sweep = F2T(sweep);
+            if ((path.LargeArc != 1) and (path.LargeArc != 0)) return ERR::Failed;
+            if ((path.Sweep != 1) and (path.Sweep != 0)) return ERR::Failed;
             if (cmd IS 'A') path.Type = PE::Arc;
             else path.Type = PE::ArcRel;
             break;
@@ -610,7 +620,7 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
 //
 // Parsed characters include: 0 - 9 , ( ) - + SPACE
 
-void read_numseq(CSTRING &String, std::initializer_list<DOUBLE *> Value)
+ERR read_numseq(CSTRING &String, std::initializer_list<DOUBLE *> Value)
 {
    for (DOUBLE *v : Value) {
       STRING next = NULL;
@@ -618,11 +628,13 @@ void read_numseq(CSTRING &String, std::initializer_list<DOUBLE *> Value)
       DOUBLE num = strtod(String, &next);
       if ((!num) and ((!next) or (String IS next))) {  // Invalid character or end-of-stream check.
          String = next;
-         return;
+         return ERR::Syntax;
       }
       String = next;
       *v = num;
    }
+
+   return ERR::Okay;
 }
 
 void read_numseq_zero(CSTRING &String, std::initializer_list<DOUBLE *> Value)

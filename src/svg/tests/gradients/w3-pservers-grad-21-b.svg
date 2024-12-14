@@ -9,6 +9,8 @@
 
     <radialGradient id="grad2" xlink:href="#grad1" cx="0%"/>
 
+    <!-- The FX is zero, but becomes 80% when SVG focal rules restrict it to the radius of 20% -->
+
     <radialGradient id="grad3" cx="100%" r="20%" fx="0%">
       <stop offset="0" stop-color="black" />
       <stop offset="1" stop-opacity="0"/>

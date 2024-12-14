@@ -1400,8 +1400,18 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
       Self->FillString = strclone(Value);
 
       if (next) {
-         vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
-         Self->FGFill = true;
+         if (*next IS ';') {
+            next++;
+            vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
+            Self->FGFill = true;
+         }
+         else {
+            // SVG rules allow for a solid colour fallback to follow the initial painter reference.
+            // This typically looks something like 'url(#thing) rgb(values)'
+            VectorPainter fallback;
+            vec::ReadPainter(Self->Scene, next, &fallback, NULL);
+            if (fallback.Colour.Alpha) Self->Fill[0].Colour = fallback.Colour;
+         }
       }
       else Self->FGFill = false;
 
@@ -2188,7 +2198,15 @@ static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 
    if (Value) {
       Self->StrokeString = strclone(Value);
-      vec::ReadPainter(Self->Scene, Value, &Self->Stroke, NULL);
+      CSTRING next;
+      vec::ReadPainter(Self->Scene, Value, &Self->Stroke, &next);
+      if (next) {
+         // SVG rules allow for a solid colour fallback to follow the initial painter reference.
+         // This typically looks something like 'url(#thing) rgb(values)'
+         VectorPainter fallback;
+         vec::ReadPainter(Self->Scene, next, &fallback, NULL);
+         if (fallback.Colour.Alpha) Self->Stroke.Colour = fallback.Colour;
+      }
    }
    else Self->Stroke.reset();
 

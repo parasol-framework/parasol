@@ -81,7 +81,7 @@ struct svgState;
 class extSVG : public objSVG {
    public:
    FUNCTION FrameCallback;
-   std::unordered_map<std::string, XMLTag> IDs;
+   std::unordered_map<std::string, XMLTag *> IDs;
    std::unordered_map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
    DOUBLE SVGVersion;
    DOUBLE AnimEpoch;  // Epoch time for the animations.
@@ -115,16 +115,21 @@ struct svgState {
    DOUBLE  m_stop_opacity;    // -1 if undefined
    LONG    m_font_weight;     // 0 if undefined
    RQ      m_path_quality;    // RQ::AUTO default
+   VLJ     m_line_join;
+   VLC     m_line_cap;
+   VIJ     m_inner_join;
 
    private:
    objVectorScene *Scene;
 
    public:
    svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_family("Noto Sans"), m_stroke_width(0),
-      m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), Scene(pSVG->Scene) { }
+      m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), 
+      m_line_join(VLJ::NIL), m_line_cap(VLC::NIL), m_inner_join(VIJ::NIL),
+      Scene(pSVG->Scene) { }
 
-   void applyTag(XMLTag &) noexcept;
-   void applyAttribs(OBJECTPTR) const noexcept;
+   void applyTag(const XMLTag &) noexcept;
+   void applyAttribs(objVector *) const noexcept;
 };
 
 //********************************************************************************************************************

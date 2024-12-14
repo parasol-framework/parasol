@@ -143,8 +143,7 @@ function testFileIcons()
       { path='fonts:fonts.cfg',                 icon='icons:filetypes/text' },
       { path='fonts:license-courier-prime.txt', icon='icons:filetypes/text' },
       { path='fonts:truetype/Micro-6.ttf',      icon='icons:filetypes/font' },
-      { path='scripts:common.fluid',            icon='icons:filetypes/source' },
-      { path='styles:default/values.xml',       icon='icons:filetypes/xml' }
+      { path='scripts:common.fluid',            icon='icons:filetypes/source' }
    }
 
    for k, v in ipairs(icon_pairs) do

@@ -200,24 +200,6 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 }
 
 //********************************************************************************************************************
-// Save an id reference for an SVG element.  The element can be then be found at any time with find_href_tag().  We store
-// a copy of the tag data as pointer references are too high a risk.
-
-inline bool add_id(extSVG *Self, const XMLTag &Tag, const std::string_view Name)
-{
-   if (Self->IDs.contains(std::string(Name))) return false;
-   Self->IDs.emplace(Name, Tag);
-   return true;
-}
-
-inline bool add_id(extSVG *Self, const XMLTag &Tag, const std::string Name)
-{
-   if (Self->IDs.contains(Name)) return false;
-   Self->IDs.emplace(Name, Tag);
-   return true;
-}
-
-//********************************************************************************************************************
 
 static CSTRING folder(extSVG *Self)
 {
@@ -281,7 +263,7 @@ static XMLTag * find_href_tag(extSVG *Self, std::string Ref)
 {
    auto ref = uri_name(Ref);
    if ((!ref.empty()) and (Self->IDs.contains(ref))) {
-      return &Self->IDs[ref];
+      return Self->IDs[ref];
    }
    return NULL;
 }
@@ -432,21 +414,27 @@ template<class T = double> std::vector<T> read_array(const std::string Value, LO
 }
 
 //********************************************************************************************************************
-// Currently used by gradient functions to defer inheritance management.  It results in the gradient Inherit field 
-// being set to the referenced gradient object.  The reason why the process is deferred is because there is no 
-// requirement that a gradient must exist before its name is referenced.
+// This function is called before fully parsing the document so that we can extract all tags making use of the
+// 'id' attribute.
 
-static void add_inherit(extSVG *Self, OBJECTPTR Object, const std::string ID)
+static void parse_ids(extSVG *Self, XMLTag &Tag)
 {
-   pf::Log log(__FUNCTION__);
-   log.trace("Object: %d, ID: %s", Object->UID, ID.c_str());
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &name = Tag.Attribs[a].Name;
+      if ((name.size() IS 2) and (name[0] IS 'i') and (name[1] IS 'd')) {
+         if (Tag.Attribs[a].Value.empty()) continue;
 
-   auto &inherit = Self->Inherit.emplace_back();
-   inherit.Object = Object;
+         if (Self->IDs.contains(Tag.Attribs[a].Value)) break;
+         Self->IDs.emplace(Tag.Attribs[a].Value, &Tag);
+         break;
+      }
+   }
 
-   auto hash = ID.find('#');
-   if (hash IS std::string::npos) inherit.ID = ID;
-   else inherit.ID = ID.substr(hash);
+   for (auto &child : Tag.Children) {
+      if (child.isTag()) {
+         parse_ids(Self, child);
+      }
+   }
 }
 
 //********************************************************************************************************************
@@ -519,6 +507,12 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          for (auto &scan : xml->Tags) {
             if (iequals("svg", scan.name())) {
                svgState state(Self);
+
+               // Parse all tags with an 'id' reference so that href's can target them even when
+               // are out-of-order.
+
+               parse_ids(Self, scan);
+
                if (Self->Target) xtag_svg(Self, state, scan, Self->Target, sibling);
                else xtag_svg(Self, state, scan, Self->Scene, sibling);
             }
