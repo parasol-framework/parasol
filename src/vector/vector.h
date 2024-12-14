@@ -552,8 +552,7 @@ template <class T> void next_value(T &Value)
 //********************************************************************************************************************
 
 extern CSTRING get_name(OBJECTPTR);
-extern void read_numseq(CSTRING &, std::initializer_list<DOUBLE *>);
-extern void read_numseq_zero(CSTRING &, std::initializer_list<DOUBLE *>);
+extern ERR read_numseq(CSTRING &, std::initializer_list<DOUBLE *>);
 extern DOUBLE read_unit(CSTRING &, bool &);
 extern ERR init_blurfx(void);
 extern ERR init_colour(void);
