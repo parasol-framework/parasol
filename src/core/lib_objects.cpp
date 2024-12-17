@@ -1145,7 +1145,7 @@ ERR InitObject(OBJECTPTR Object)
    }
    else if ((error IS ERR::NoSupport) and (GetField(Object, FID_Path|TSTR, &path) IS ERR::Okay) and (path)) {
       CLASSID class_id, subclass_id;
-      if (IdentifyFile(path, &class_id, &subclass_id) IS ERR::Okay) {
+      if (IdentifyFile(path, cl->BaseClassID, &class_id, &subclass_id) IS ERR::Okay) {
          if ((class_id IS Object->classID()) and (subclass_id != CLASSID::NIL)) {
             log.msg("Searching for subclass $%.8x", ULONG(subclass_id));
             if ((Object->ExtClass = (extMetaClass *)FindClass(subclass_id))) {

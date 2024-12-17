@@ -1053,7 +1053,7 @@ void   PrepareSleep(void);
 ERR    process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
 ERR    resolve_args(APTR, const FunctionField *);
-CLASSID lookup_class_by_ext(std::string_view);
+CLASSID lookup_class_by_ext(CLASSID, std::string_view);
 
 #ifndef PARASOL_STATIC
 void   scan_classes(void);
