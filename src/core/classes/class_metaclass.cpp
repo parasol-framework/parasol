@@ -1110,8 +1110,8 @@ void scan_classes(void)
    DeleteFile(glClassBinPath, NULL);
 
    DirInfo *dir;
+   LONG total = 0;
    if (OpenDir("modules:", RDF::QUALIFY, &dir) IS ERR::Okay) {
-      LONG total = 0;
       while (ScanDir(dir) IS ERR::Okay) {
          FileInfo *list = dir->Info;
 
@@ -1140,7 +1140,7 @@ void scan_classes(void)
       FreeResource(dir);
    }
 
-   log.msg("Class scan complete.");
+   log.msg("Class scan complete - processed %d modules.", total);
 }
 #endif
 
