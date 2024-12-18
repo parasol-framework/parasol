@@ -36,7 +36,7 @@ extern "C" ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR * Object);
 extern "C" void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error);
 extern "C" ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 extern "C" ERR ProcessMessages(PMF Flags, LONG TimeOut);
-extern "C" ERR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
+extern "C" ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID * Class, CLASSID * SubClass);
 extern "C" ERR ReallocMemory(APTR Memory, ULONG Size, APTR * Address, MEMORYID * ID);
 extern "C" ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size);
 extern "C" ERR ReleaseMemory(MEMORYID MemoryID);

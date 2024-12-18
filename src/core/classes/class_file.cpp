@@ -1960,7 +1960,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
 
    if (auto sep = Self->Path.find_last_of("."); sep != std::string::npos) {
       auto ext = Self->Path.substr(sep + 1, std::string::npos);
-      if (auto ext_class_id = lookup_class_by_ext(ext); ext_class_id != CLASSID::NIL) {
+      if (auto ext_class_id = lookup_class_by_ext(CLASSID::NIL, ext); ext_class_id != CLASSID::NIL) {
          icon = glClassDB[ext_class_id].Icon;
       }
    }
@@ -1969,7 +1969,7 @@ static ERR GET_Icon(extFile *Self, CSTRING *Value)
       // Use IdentifyFile() to see if this file can be associated with a class
 
       CLASSID class_id, subclass_id;
-      if (IdentifyFile(Self->Path.c_str(), &class_id, &subclass_id) IS ERR::Okay) {
+      if (IdentifyFile(Self->Path.c_str(), CLASSID::NIL, &class_id, &subclass_id) IS ERR::Okay) {
          if (glClassDB.contains(subclass_id)) {
             auto &record = glClassDB[subclass_id];
             if (!record.Icon.empty()) icon = record.Icon;

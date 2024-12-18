@@ -969,7 +969,7 @@ void ui_link::exec(extDocument *Self)
 
             auto lk = path + origin.ref;
             auto end = lk.find_first_of("?#&");
-            if (IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id) IS ERR::Okay) {
+            if (IdentifyFile(lk.substr(0, end).c_str(), CLASSID::NIL, &class_id, &subclass_id) IS ERR::Okay) {
                if (class_id IS CLASSID::DOCUMENT) {
                   Self->set(FID_Path, lk);
 

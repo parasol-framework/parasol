@@ -687,7 +687,7 @@ extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 extern std::unordered_map<ULONG, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
-extern std::unordered_map<ULONG, CLASSID> glWildClassMap; // Fast lookup for identifying classes by file extension
+extern std::unordered_multimap<ULONG, CLASSID> glWildClassMap; // Fast lookup for identifying classes by file extension
 extern LONG glWildClassMapTotal;
 extern std::vector<TaskRecord> glTasks;
 extern const CSTRING glMessages[LONG(ERR::END)+1];       // Read-only table of error messages.
@@ -1053,7 +1053,7 @@ void   PrepareSleep(void);
 ERR    process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
 ERR    resolve_args(APTR, const FunctionField *);
-CLASSID lookup_class_by_ext(std::string_view);
+CLASSID lookup_class_by_ext(CLASSID, std::string_view);
 
 #ifndef PARASOL_STATIC
 void   scan_classes(void);

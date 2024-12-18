@@ -2051,7 +2051,7 @@ struct CoreBase {
    void (*_NotifySubscribers)(OBJECTPTR Object, AC Action, APTR Args, ERR Error);
    ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
    ERR (*_ProcessMessages)(PMF Flags, LONG TimeOut);
-   ERR (*_IdentifyFile)(CSTRING Path, CLASSID *Class, CLASSID *SubClass);
+   ERR (*_IdentifyFile)(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
    ERR (*_ReallocMemory)(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID);
    ERR (*_GetMessage)(LONG Type, MSF Flags, APTR Buffer, LONG Size);
    ERR (*_ReleaseMemory)(MEMORYID MemoryID);
@@ -2150,7 +2150,7 @@ inline ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object) { return Core
 inline void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERR ProcessMessages(PMF Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
-inline ERR IdentifyFile(CSTRING Path, CLASSID *Class, CLASSID *SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
+inline ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass) { return CoreBase->_IdentifyFile(Path,Filter,Class,SubClass); }
 inline ERR ReallocMemory(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
 inline ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Type,Flags,Buffer,Size); }
 inline ERR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
@@ -2243,7 +2243,7 @@ extern "C" ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object);
 extern "C" void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error);
 extern "C" ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR ProcessMessages(PMF Flags, LONG TimeOut);
-extern "C" ERR IdentifyFile(CSTRING Path, CLASSID *Class, CLASSID *SubClass);
+extern "C" ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
 extern "C" ERR ReallocMemory(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID);
 extern "C" ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size);
 extern "C" ERR ReleaseMemory(MEMORYID MemoryID);

@@ -817,6 +817,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 #ifndef PARASOL_STATIC
    if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
+      glHeadless = true;
       create_pointer_class();
       create_display_class();
       create_bitmap_class();
