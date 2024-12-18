@@ -241,7 +241,7 @@ ERR CLASS_Free(extMetaClass *Self)
       // Sanity check - if a base has sub-classes present then there is an issue that requires resolution.
       // Note that for static builds there is no way to control termination order, so these controls are disabled.
       pf::Log log;
-      log.warning("Out-of-order termination: Base-class has active sub-classes.");
+      log.warning("Out-of-order termination: Base-class %s has active sub-classes.", Self->Name);
    }
 
    if (Self->Base) {
@@ -614,7 +614,7 @@ Flags: Optional flag settings.
 -FIELD-
 Icon: Associates an icon with the file data for this class.
 
-Files that belong to a class can be associated with an icon that is declared in this field.  The icon string format is 
+Files that belong to a class can be associated with an icon that is declared in this field.  The icon string format is
 `folder/icon`.  Valid icons are available in the icon database.
 
 -FIELD-
