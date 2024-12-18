@@ -359,6 +359,7 @@ class extMetaClass : public objMetaClass {
    class extMetaClass *Base;            // Reference to the base class if this is a sub-class
    std::vector<Field> FieldLookup;      // Field dictionary for base-class fields
    std::vector<MethodEntry> Methods;    // Original method array supplied by the module.
+   std::vector<extMetaClass *> SubClasses;
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
    class RootModule *Root;              // Root module that owns this class, if any.
    UBYTE Local[8];                      // Local object references (by field indexes), in order

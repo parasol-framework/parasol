@@ -120,10 +120,11 @@ static ERR MODExpunge(void)
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    if (modFont)    { FreeResource(modFont); modFont = NULL; }
 
+   // Sub-classes
+
    if (clVectorShape)      { FreeResource(clVectorShape);      clVectorShape = NULL; }
    if (clVectorSpiral)     { FreeResource(clVectorSpiral);     clVectorSpiral = NULL; }
    if (clVectorScene)      { FreeResource(clVectorScene);      clVectorScene = NULL; }
-   if (clVector)           { FreeResource(clVector);           clVector = NULL; }
    if (clVectorClip)       { FreeResource(clVectorClip);       clVectorClip = NULL; }
    if (clVectorColour)     { FreeResource(clVectorColour);     clVectorColour = NULL; }
    if (clVectorRectangle)  { FreeResource(clVectorRectangle);  clVectorRectangle = NULL; }
@@ -139,7 +140,7 @@ static ERR MODExpunge(void)
    if (clVectorImage)      { FreeResource(clVectorImage);      clVectorImage = NULL; }
    if (clVectorWave)       { FreeResource(clVectorWave);       clVectorWave = NULL; }
    if (clVectorTransition) { FreeResource(clVectorTransition); clVectorTransition = NULL; }
-   if (clFilterEffect)     { FreeResource(clFilterEffect);     clFilterEffect = NULL; }
+
    if (clImageFX)          { FreeResource(clImageFX);          clImageFX = NULL; }
    if (clSourceFX)         { FreeResource(clSourceFX);         clSourceFX = NULL; }
    if (clBlurFX)           { FreeResource(clBlurFX);           clBlurFX = NULL; }
@@ -154,6 +155,12 @@ static ERR MODExpunge(void)
    if (clRemapFX)          { FreeResource(clRemapFX);          clRemapFX = NULL; }
    if (clLightingFX)       { FreeResource(clLightingFX);       clLightingFX = NULL; }
    if (clDisplacementFX)   { FreeResource(clDisplacementFX);   clDisplacementFX = NULL; }
+
+   // Base-classes
+
+   if (clFilterEffect)     { FreeResource(clFilterEffect);     clFilterEffect = NULL; }
+   if (clVector)           { FreeResource(clVector);           clVector = NULL; }
+
    return ERR::Okay;
 }
 
