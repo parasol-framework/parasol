@@ -894,8 +894,10 @@ class ObjectContext {
       obj = pObject;
       field  = pField;
       action = pAction;
-
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wdangling-pointer"
       tlContext = this;
+      #pragma GCC diagnostic pop
    }
 
    ~ObjectContext() {
