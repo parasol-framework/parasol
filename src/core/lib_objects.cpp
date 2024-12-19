@@ -1664,11 +1664,11 @@ ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 /*********************************************************************************************************************
 
 -FUNCTION-
-SetContext: Alters the nominated owner of newly created objects.
+SetContext: Sets the nominated owner of new resources.
 
 This function defines the object that has control of the current thread.  Once called, all further resource
 allocations are assigned to that object.  This is significant for the automatic collection of memory and object
-allocations.  For example:
+resources.  For example:
 
 <pre>
 InitObject(display);
