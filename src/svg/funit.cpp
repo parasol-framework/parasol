@@ -17,22 +17,22 @@ struct FUNIT {
 
    // With field
 
-   FUNIT(FIELD pField, DOUBLE pValue) : field_id(pField), value(pValue), type(DU::NIL) { }
+   FUNIT(FIELD pField, DOUBLE pValue, DU pType = DU::NIL) : field_id(pField), value(pValue), type(pType) { }
    
-   FUNIT(FIELD pField, const std::string &pValue, DOUBLE pMin = -DBL_MAX) : 
-      FUNIT(pValue.c_str(), pMin) { field_id = pField; }
+   FUNIT(FIELD pField, const std::string &pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX) : 
+      FUNIT(pValue.c_str(), pType, pMin) { field_id = pField; }
 
-   FUNIT(FIELD pField, CSTRING pValue, DOUBLE pMin = -DBL_MAX) :
-      FUNIT(pValue, pMin) { field_id = pField; };
+   FUNIT(FIELD pField, CSTRING pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX) :
+      FUNIT(pValue, pType, pMin) { field_id = pField; };
 
    // Without field
 
    FUNIT(DOUBLE pValue, DU pType = DU::PIXEL) : value(pValue), type(pType) { }
 
-   FUNIT(const std::string &pValue, DOUBLE pMin = -DBL_MAX) : 
-      FUNIT(pValue.c_str(), pMin) { }
+   FUNIT(const std::string &pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX) : 
+      FUNIT(pValue.c_str(), pType, pMin) { }
 
-   FUNIT(CSTRING pValue, DOUBLE pMin = -DBL_MAX);
+   FUNIT(CSTRING pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX);
 
    constexpr bool empty() { return (type IS DU::NIL) or (!value); }
    constexpr void clear() { value = 0; type = DU::PIXEL; }
@@ -51,7 +51,7 @@ struct FUNIT {
    inline ERR set(OBJECTPTR Object) { return SetField(Object, field(), value); }
 };
 
-FUNIT::FUNIT(CSTRING pValue, DOUBLE pMin)
+FUNIT::FUNIT(CSTRING pValue, DU pType, DOUBLE pMin)
 {
    char *str = (char *)pValue;
    while ((*str) and (unsigned(*str) <= 0x20)) str++;
@@ -59,9 +59,9 @@ FUNIT::FUNIT(CSTRING pValue, DOUBLE pMin)
    const DOUBLE dpi = 96.0;
    const DOUBLE fv = strtod(str, &str);
 
-   if (str[0] IS '%') { value = fv * 0.01; type = DU::SCALED; }
+   if (str[0] IS '%') { value = fv * 0.01; type = pType != DU::NIL ? pType : DU::SCALED; }
    else {
-      type = DU::PIXEL;
+      type = pType != DU::NIL ? pType : DU::PIXEL;
 
       if (str[0]) {
          if ((str[0] IS 'e') and (str[1] IS 'm')) value = fv * 12.0 * (4.0 / 3.0); // Multiply the current font's pixel height by the provided em value
