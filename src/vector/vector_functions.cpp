@@ -970,7 +970,7 @@ optional `Result` string can store a reference to the character up to which the 
 obj(VectorScene) Scene: Optional.  Required if `url()` references are to be resolved.
 cstr IRI: The IRI string to be translated.
 struct(*VectorPainter) Painter: This !VectorPainter structure will store the deserialised result.
-&cstr Result: Optional pointer for storing the end of the parsed IRI string.  `NULL` is returned if there is no further content to parse.
+&cstr Result: Optional pointer for storing the end of the parsed IRI string.  `NULL` is returned if there is no further content to parse or an error occurred.
 
 -ERRORS-
 Okay:
@@ -984,6 +984,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
    pf::Log log(__FUNCTION__);
    ULONG i;
 
+   if (Result) *Result = NULL;
    if ((!IRI) or (!Painter)) return ERR::NullArgs;
 
    Painter->reset();

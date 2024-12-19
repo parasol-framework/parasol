@@ -471,7 +471,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
    Path->approximation_scale(Transform.scale());
 
-   if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coordinates specified in the pattern.
+   if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coords in the pattern; equiv. to 'userSpaceOnUse' in SVG
       double dwidth, dheight;
       if (dmf::hasScaledWidth(Pattern.Dimensions)) dwidth = c_width * Pattern.Width;
       else if (dmf::hasWidth(Pattern.Dimensions)) dwidth = Pattern.Width;
@@ -493,19 +493,17 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
       double dwidth, dheight;
 
-      if (dmf::hasScaledWidth(Pattern.Dimensions)) dwidth = Pattern.Width * c_width;
-      else if (dmf::hasWidth(Pattern.Dimensions)) {
+      if (dmf::hasScaledWidth(Pattern.Dimensions)) {
          if (Pattern.Viewport->vpViewWidth) dwidth = (Pattern.Width / Pattern.Viewport->vpViewWidth) * c_width;
          else dwidth = Pattern.Width * c_width; // A quirk of SVG is that the fixed value has to be interpreted as a multiplier if the viewbox is unspecified.
       }
-      else dwidth = 1;
+      else dwidth = Pattern.Width;
 
-      if (dmf::hasScaledHeight(Pattern.Dimensions)) dheight = Pattern.Height * c_height;
-      else if (dmf::hasHeight(Pattern.Dimensions)) {
+      if (dmf::hasScaledHeight(Pattern.Dimensions)) {
          if (Pattern.Viewport->vpViewHeight) dheight = (Pattern.Height / Pattern.Viewport->vpViewHeight) * c_height;
          else dheight = Pattern.Height * c_height;
       }
-      else dheight = 1;
+      else dheight = Pattern.Height;
 
       if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
          if ((dwidth < 1) or (dheight < 1) or (dwidth > 8192) or (dheight > 8192)) {
@@ -544,7 +542,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    }
    else transform.translate(dx, dy);
 
-   if (Pattern.Units != VUNIT::USERSPACE) transform *= Transform;
+   transform *= Transform;
 
    transform.invert(); // Required
 
