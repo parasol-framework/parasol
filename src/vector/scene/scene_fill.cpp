@@ -464,11 +464,12 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    extVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
-   constexpr bool SCALE_BITMAP = true;
+   constexpr bool SCALE_BITMAP = true; // Should always be true for fidelity, but switch to false if debugging coordinate issues.
    const double elem_width  = (Pattern.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
    const double elem_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
    const double x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
    const double y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
+   double dx, dy;
 
    Path->approximation_scale(Transform.scale());
 
@@ -482,6 +483,14 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       else if (dmf::hasHeight(Pattern.Dimensions)) target_height = Pattern.Height;
       else target_height = 1;
       
+      if (dmf::hasScaledX(Pattern.Dimensions)) dx = x_offset + (elem_width * Pattern.X);
+      else if (dmf::hasX(Pattern.Dimensions)) dx = x_offset + Pattern.X;
+      else dx = x_offset;
+
+      if (dmf::hasScaledY(Pattern.Dimensions)) dy = y_offset + (elem_height * Pattern.Y);
+      else if (dmf::hasY(Pattern.Dimensions)) dy = y_offset + Pattern.Y;
+      else dy = y_offset;
+
       LONG page_width = F2T(target_width);
       LONG page_height = F2T(target_height);
 
@@ -500,17 +509,18 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
       Pattern.Viewport->vpAspectRatio = ARF::X_MAX|ARF::Y_MAX; // Stretch the 1x1 viewport to match the PageW/H
 
-      if (dmf::hasScaledWidth(Pattern.Dimensions)) {
-         if (Pattern.Viewport->vpViewWidth) target_width = (Pattern.Width / Pattern.Viewport->vpViewWidth) * elem_width;
-         else target_width = Pattern.Width * elem_width;
+      if (Pattern.ContentUnits IS VUNIT::BOUNDING_BOX) {
+         Pattern.Viewport->setFields(fl::ViewWidth(Pattern.Width), fl::ViewHeight(Pattern.Height));
       }
+
+      if (dmf::hasScaledWidth(Pattern.Dimensions)) target_width = Pattern.Width * elem_width;
       else target_width = Pattern.Width;
 
-      if (dmf::hasScaledHeight(Pattern.Dimensions)) {
-         if (Pattern.Viewport->vpViewHeight) target_height = (Pattern.Height / Pattern.Viewport->vpViewHeight) * elem_height;
-         else target_height = Pattern.Height * elem_height;
-      }
+      if (dmf::hasScaledHeight(Pattern.Dimensions)) target_height = Pattern.Height * elem_height;
       else target_height = Pattern.Height;
+      
+      dx = x_offset + ((elem_width * Pattern.X) * (SCALE_BITMAP ? Transform.sx : 1.0));
+      dy = y_offset + ((elem_height * Pattern.Y) * (SCALE_BITMAP ? Transform.sy : 1.0));
 
       // Scale the bitmap so that it matches the final scale on the display.  This requires a matching inverse
       // adjustment when computing the final transform.
@@ -542,14 +552,6 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
    agg::trans_affine transform;
 
-   double dx, dy;
-   if (dmf::hasScaledX(Pattern.Dimensions)) dx = x_offset + (elem_width * Pattern.X);
-   else if (dmf::hasX(Pattern.Dimensions)) dx = x_offset + Pattern.X;
-   else dx = x_offset;
-
-   if (dmf::hasScaledY(Pattern.Dimensions)) dy = y_offset + elem_height * Pattern.Y;
-   else if (dmf::hasY(Pattern.Dimensions)) dy = y_offset + Pattern.Y;
-   else dy = y_offset;
 
    if (Pattern.Matrices) {
       auto &m = *Pattern.Matrices;

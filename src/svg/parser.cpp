@@ -1685,8 +1685,20 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
 
       if (!x.empty()) FUNIT(FID_X, x, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
       if (!y.empty()) FUNIT(FID_Y, y, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
-      if (!width.empty()) FUNIT(FID_Width, width, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
-      if (!height.empty()) FUNIT(FID_Height, height, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
+
+      if (!width.empty()) {
+         if (pattern->ContentUnits IS VUNIT::BOUNDING_BOX) {
+            FUNIT(FID_Width, width, DU::SCALED).set(pattern);
+         }
+         else FUNIT(FID_Width, width, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
+      }
+
+      if (!height.empty()) {
+         if (pattern->ContentUnits IS VUNIT::BOUNDING_BOX) {
+            FUNIT(FID_Height, height, DU::SCALED).set(pattern);
+         }
+         else FUNIT(FID_Height, height, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
+      }
 
       if (id.empty()) {
          FreeResource(pattern);

@@ -176,8 +176,8 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
          Anim.values.clear();
          LONG s, v = 0;
          while (v < std::ssize(Value)) {
-            while ((Value[v]) and (Value[v] <= 0x20)) v++;
-            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            while ((v < std::ssize(Value)) and (Value[v] <= 0x20)) v++;
+            for (s=v; (s < std::ssize(Value)) and (Value[s] != ';'); s++);
             Anim.values.push_back(std::string(Value.substr(v, s-v)));
             v = s;
             if (Value[v] IS ';') v++;
