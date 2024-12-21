@@ -221,11 +221,11 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 [[nodiscard]] inline LONG strsearch(const std::string_view Keyword, CSTRING String) noexcept
 {
-   LONG i;
-   LONG pos = 0;
+   size_t i;
+   size_t pos = 0;
    while (String[pos]) {
-      for (i=0; Keyword[i]; i++) if (String[pos+i] != Keyword[i]) break;
-      if (!Keyword[i]) return pos;
+      for (i=0; i < Keyword.size(); i++) if (String[pos+i] != Keyword[i]) break;
+      if (i IS Keyword.size()) return pos;
       for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
    }
 
@@ -236,11 +236,11 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 [[nodiscard]] inline LONG strisearch(const std::string_view Keyword, CSTRING String) noexcept
 {
-   LONG i;
-   LONG pos = 0;
+   size_t i;
+   size_t pos = 0;
    while (String[pos]) {
-      for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
-      if (!Keyword[i]) return pos;
+      for (i=0; i < Keyword.size(); i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
+      if (i IS Keyword.size()) return pos;
       for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
    }
 

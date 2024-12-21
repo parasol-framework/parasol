@@ -20,8 +20,10 @@
 #include <array>
 #endif
 
-#if defined(_DEBUG) && defined(__linux__)
- #include <signal.h>
+#if defined(_DEBUG)
+ #ifndef _MSC_VER
+  #include <signal.h>
+ #endif
 #endif
 
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
@@ -1519,8 +1521,10 @@ template <class T> T roundup(T Num, LONG Alignment) {
 #ifdef _DEBUG
  #ifdef _MSC_VER
   #define DEBUG_BREAK __debugbreak();
- #else
+ #elif __linux__
   #define DEBUG_BREAK raise(SIGTRAP);
+ #else
+  #define DEBUG_BREAK
  #endif
 #else
  #define DEBUG_BREAK
