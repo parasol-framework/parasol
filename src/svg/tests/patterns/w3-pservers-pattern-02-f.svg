@@ -1,0 +1,16 @@
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <!-- Test that the 'patternTransform' attribute has an effect on the 'pattern' element. -->
+
+  <defs>
+    <pattern id="pattern" viewBox="0 0 100 100" patternTransform="rotate(45)" height="0.1" width="0.1">
+      <rect y="50" width="50" height="50" fill="blue"/>
+      <rect x="50" width="50" height="50" fill="blue"/>
+    </pattern>
+  </defs>
+
+  <rect fill="url(#pattern)" width="480" height="480"/>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000"/>
+</svg>

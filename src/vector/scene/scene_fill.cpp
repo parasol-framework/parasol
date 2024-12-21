@@ -464,58 +464,73 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    extVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
-   const double c_width  = (Pattern.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
-   const double c_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
+   constexpr bool SCALE_BITMAP = true;
+   const double elem_width  = (Pattern.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
+   const double elem_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds.height();
    const double x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
    const double y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
 
    Path->approximation_scale(Transform.scale());
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coords in the pattern; equiv. to 'userSpaceOnUse' in SVG
-      double dwidth, dheight;
-      if (dmf::hasScaledWidth(Pattern.Dimensions)) dwidth = c_width * Pattern.Width;
-      else if (dmf::hasWidth(Pattern.Dimensions)) dwidth = Pattern.Width;
-      else dwidth = 1;
+      double target_width, target_height;
+      if (dmf::hasScaledWidth(Pattern.Dimensions)) target_width = elem_width * Pattern.Width;
+      else if (dmf::hasWidth(Pattern.Dimensions)) target_width = Pattern.Width;
+      else target_width = 1;
 
-      if (dmf::hasScaledHeight(Pattern.Dimensions)) dheight = c_height * Pattern.Height;
-      else if (dmf::hasHeight(Pattern.Dimensions)) dheight = Pattern.Height;
-      else dheight = 1;
+      if (dmf::hasScaledHeight(Pattern.Dimensions)) target_height = elem_height * Pattern.Height;
+      else if (dmf::hasHeight(Pattern.Dimensions)) target_height = Pattern.Height;
+      else target_height = 1;
+      
+      LONG page_width = F2T(target_width);
+      LONG page_height = F2T(target_height);
 
-      if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
-         Pattern.Scene->PageWidth = dwidth;
-         Pattern.Scene->PageHeight = dheight;
+      if ((page_width != Pattern.Scene->PageWidth) or (page_height != Pattern.Scene->PageHeight)) {
+         Pattern.Scene->PageWidth = page_width;
+         Pattern.Scene->PageHeight = page_height;
          mark_dirty(Pattern.Scene->Viewport, RC::ALL);
       }
    }
    else {
-      // BOUNDING_BOX.  The pattern (x,y) is an optional offset applied to the base position of the vector's
-      // path.  The area is relative to the vector's bounds.
+      // BOUNDING_BOX.  The tile size is 1.0x1.0 and member coordinates should range from 0.0 - 1.0.
+      // The tile will be stretched to fit the target Bounds area.  The Pattern Viewport must have
+      // its ViewX/Y/W/H values set to 0/0/1.0/1.0.
 
-      double dwidth, dheight;
+      double target_width, target_height;
+
+      Pattern.Viewport->vpAspectRatio = ARF::X_MAX|ARF::Y_MAX; // Stretch the 1x1 viewport to match the PageW/H
 
       if (dmf::hasScaledWidth(Pattern.Dimensions)) {
-         if (Pattern.Viewport->vpViewWidth) dwidth = (Pattern.Width / Pattern.Viewport->vpViewWidth) * c_width;
-         else dwidth = Pattern.Width * c_width; // A quirk of SVG is that the fixed value has to be interpreted as a multiplier if the viewbox is unspecified.
+         if (Pattern.Viewport->vpViewWidth) target_width = (Pattern.Width / Pattern.Viewport->vpViewWidth) * elem_width;
+         else target_width = Pattern.Width * elem_width;
       }
-      else dwidth = Pattern.Width;
+      else target_width = Pattern.Width;
 
       if (dmf::hasScaledHeight(Pattern.Dimensions)) {
-         if (Pattern.Viewport->vpViewHeight) dheight = (Pattern.Height / Pattern.Viewport->vpViewHeight) * c_height;
-         else dheight = Pattern.Height * c_height;
+         if (Pattern.Viewport->vpViewHeight) target_height = (Pattern.Height / Pattern.Viewport->vpViewHeight) * elem_height;
+         else target_height = Pattern.Height * elem_height;
       }
-      else dheight = Pattern.Height;
+      else target_height = Pattern.Height;
 
-      if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
-         if ((dwidth < 1) or (dheight < 1) or (dwidth > 8192) or (dheight > 8192)) {
+      // Scale the bitmap so that it matches the final scale on the display.  This requires a matching inverse
+      // adjustment when computing the final transform.
+
+      LONG page_width = F2T(target_width * (SCALE_BITMAP ? Transform.sx : 1.0));
+      LONG page_height = F2T(target_height * (SCALE_BITMAP ? Transform.sy : 1.0));
+
+      // Mark the bitmap for recomputation if needed.
+
+      if ((page_width != Pattern.Scene->PageWidth) or (page_height != Pattern.Scene->PageHeight)) {
+         if ((page_width < 1) or (page_height < 1) or (page_width > 8192) or (page_height > 8192)) {
             // Dimensions in excess of reasonable values can occur if the user is confused over the application
             // of bounding-box values that are being scaled.
             pf::Log log(__FUNCTION__);
-            log.warning("Invalid pattern dimensions of %gx%g detected.", dwidth, dheight);
-            dwidth  = 1;
-            dheight = 1;
+            log.warning("Invalid pattern dimensions of %dx%d detected.", page_width, page_height);
+            page_width  = 1;
+            page_height = 1;
          }
-         Pattern.Scene->PageWidth  = dwidth;
-         Pattern.Scene->PageHeight = dheight;
+         Pattern.Scene->PageWidth  = page_width;
+         Pattern.Scene->PageHeight = page_height;
          mark_dirty(Pattern.Scene->Viewport, RC::ALL);
       }
    }
@@ -528,11 +543,11 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    agg::trans_affine transform;
 
    double dx, dy;
-   if (dmf::hasScaledX(Pattern.Dimensions)) dx = x_offset + (c_width * Pattern.X);
+   if (dmf::hasScaledX(Pattern.Dimensions)) dx = x_offset + (elem_width * Pattern.X);
    else if (dmf::hasX(Pattern.Dimensions)) dx = x_offset + Pattern.X;
    else dx = x_offset;
 
-   if (dmf::hasScaledY(Pattern.Dimensions)) dy = y_offset + c_height * Pattern.Y;
+   if (dmf::hasScaledY(Pattern.Dimensions)) dy = y_offset + elem_height * Pattern.Y;
    else if (dmf::hasY(Pattern.Dimensions)) dy = y_offset + Pattern.Y;
    else dy = y_offset;
 
@@ -541,6 +556,11 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       transform.load_all(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX + dx, m.TranslateY + dy);
    }
    else transform.translate(dx, dy);
+
+   if ((SCALE_BITMAP) and (Pattern.Units IS VUNIT::BOUNDING_BOX)) {
+      // Invert any prior bitmap scaling
+      transform.scale(1.0 / Transform.sx, 1.0 / Transform.sy);
+   }
 
    transform *= Transform;
 

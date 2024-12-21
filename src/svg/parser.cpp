@@ -10,12 +10,12 @@ static ERR set_paint_server(extSVG *Self, svgState &State, objVector *Vector, FI
          for (i=5; (Value[i] != ')') and Value[i]; i++);
          std::string lookup;
          lookup.assign(Value, 5, i-5);
-         
+
          if (Self->Scene->findDef(lookup.c_str(), NULL) != ERR::Okay) {
             if (Self->IDs.contains(lookup)) {
                auto tag = Self->IDs[lookup];
 
-               switch(strihash(tag->name())) {                  
+               switch(strihash(tag->name())) {
                   case SVF_CONTOURGRADIENT:  xtag_contourgradient(Self, State, *tag); break;
                   case SVF_RADIALGRADIENT:   xtag_radialgradient(Self, State, *tag); break;
                   case SVF_DIAMONDGRADIENT:  xtag_diamondgradient(Self, State, *tag); break;
@@ -1613,7 +1613,6 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
       objVectorViewport *viewport;
       pattern->getPtr(FID_Viewport, &viewport);
 
-      bool client_set_viewbox = false;
       bool rel_coords = true; // True because the default is 'objectBoundingBox'
       std::string x, y, width, height;
       std::vector<XMLTag *> children; // Multiple retrieval points for children is possible due to the href attrib
@@ -1627,22 +1626,26 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
             switch(strihash(Tags.Attribs[a].Name)) {
                case SVF_PATTERNCONTENTUNITS:
                   // SVG: "This attribute has no effect if viewbox is specified"
-                  // userSpaceOnUse: Default. The user coordinate system for the contents of the 'pattern' element is the coordinate system that results from taking the current user coordinate system in place at the time when the 'pattern' element is referenced (i.e., the user coordinate system for the element referencing the 'pattern' element via a 'fill' or 'stroke' property) and then applying the transform specified by attribute 'patternTransform'.
-                  // objectBoundingBox: The user coordinate system for the contents of the 'pattern' element is established using the bounding box of the element to which the pattern is applied (see Object bounding box units) and then applying the transform specified by attribute 'patternTransform'.
+                  //
+                  // userSpaceOnUse: Default. Coordinate values are fixed.
+                  // objectBoundingBox: Coordinate values are relative (0 - 1.0) to the bounding box of the requesting element.
+                  //   Implementing this means allocating a 1x1 viewbox for the content, then stretching it to fit the parent element.
 
                   if (iequals("userSpaceOnUse", val)) pattern->ContentUnits = VUNIT::USERSPACE;
-                  else if (iequals("objectBoundingBox", val)) pattern->ContentUnits = VUNIT::BOUNDING_BOX;
+                  else if (iequals("objectBoundingBox", val)) {
+                     pattern->ContentUnits = VUNIT::BOUNDING_BOX;
+                     viewport->setFields(fl::ViewX(0), fl::ViewY(0), fl::ViewWidth(1.0), fl::ViewHeight(1.0));
+                  }
                   break;
 
                case SVF_PATTERNUNITS:
-                  // userSpaceOnUse and objectBoundingBox differ only in the way that X/Y/W/H values are treated as fixed or relative.
-                  // userSpace is a deprecated option from SVG 1.0 - perhaps due to the introduction of patternContentUnits.
+                  // 'userSpace' is a deprecated option from SVG 1.0 - perhaps due to the introduction of patternContentUnits.
                   if (iequals("userSpaceOnUse", val)) { rel_coords = false; pattern->Units = VUNIT::USERSPACE; }
                   else if (iequals("objectBoundingBox", val)) { rel_coords = true; pattern->Units = VUNIT::BOUNDING_BOX; }
                   else if (iequals("userSpace", val)) { rel_coords = false; pattern->Units = VUNIT::USERSPACE; }
                   break;
 
-               case SVF_PATTERNTRANSFORM: pattern->set(FID_Transform, val); break;
+               case SVF_PATTERNTRANSFORM: pattern->setTransform(val); break;
 
                case SVF_ID:       ID = val; break;
 
@@ -1656,7 +1659,6 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
 
                case SVF_VIEWBOX: {
                   DOUBLE vx=0, vy=0, vwidth=1, vheight=1; // Default view-box for bounding-box mode
-                  client_set_viewbox = true;
                   pattern->ContentUnits = VUNIT::USERSPACE;
                   read_numseq(val, { &vx, &vy, &vwidth, &vheight });
                   viewport->setFields(fl::ViewX(vx), fl::ViewY(vy), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
@@ -1690,10 +1692,6 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
          FreeResource(pattern);
          log.trace("Failed to create a valid definition.");
       }
-
-      /*if (!client_set_viewbox) {
-         viewport->setFields(fl::ViewX(0), fl::ViewY(0), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
-      }*/
 
       if (InitObject(pattern) IS ERR::Okay) {
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.

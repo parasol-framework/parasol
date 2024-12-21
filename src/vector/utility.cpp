@@ -175,9 +175,8 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
    LONG max_cmds = 8192; // Maximum commands per path - this acts as a safety net in case the parser gets stuck.
    UBYTE cmd = 0;
    while (*Value) {
-      if ((*Value >= 'a') and (*Value <= 'z')) cmd = *Value++;
-      else if ((*Value >= 'A') and (*Value <= 'Z')) cmd = *Value++;
-      else if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-') or (*Value IS '+') or (*Value IS '.')); // Use the previous command
+      if (std::isalpha(*Value)) cmd = *Value++;
+      else if (std::isdigit(*Value) or (*Value IS '-') or (*Value IS '+') or (*Value IS '.')); // Use the previous command
       else if ((*Value <= 0x20) or (*Value IS ',')) { Value++; continue; }
       else break;
 
@@ -332,11 +331,11 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
    }
    else { // ARF::NONE
       *X = 0;
-      if ((TargetWidth >= 1.0) and (SourceWidth >= 1.0)) *XScale = TargetWidth / SourceWidth;
+      if ((TargetWidth >= 1.0) and (SourceWidth > 0)) *XScale = TargetWidth / SourceWidth;
       else *XScale = 1.0;
 
       *Y = 0;
-      if ((TargetHeight >= 1.0) and (SourceHeight >= 1.0)) *YScale = TargetHeight / SourceHeight;
+      if ((TargetHeight >= 1.0) and (SourceHeight > 0)) *YScale = TargetHeight / SourceHeight;
       else *YScale = 1.0;
    }
 
@@ -411,13 +410,13 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
    CSTRING str = Value;
    if ((*str IS '-') or (*str IS '+')) str++;
 
-   if ((*str >= '0') and (*str <= '9')) {
-      while ((*str >= '0') and (*str <= '9')) str++;
+   if (std::isdigit(*str)) {
+      while (std::isdigit(*str)) str++;
 
       if (*str IS '.') {
          str++;
-         if ((*str >= '0') and (*str <= '9')) {
-            while ((*str >= '0') and (*str <= '9')) str++;
+         if (std::isdigit(*str)) {
+            while (std::isdigit(*str)) str++;
          }
       }
 

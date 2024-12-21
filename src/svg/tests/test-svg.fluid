@@ -87,6 +87,8 @@ function testSnake()        hashTestSVG('patterns/snake.svg', 0xbb7d40f0) end
 function testVStripes()     hashTestSVG('patterns/vstripes.svg', 0x2f85dc21) end
 function testPatTransform() hashTestSVG('patterns/pattern-transform.svg', 0xccf7d341) end
 function testW3Patterns01() hashTestSVG('patterns/w3-pservers-grad-03-b.svg', 0xed40a6bf) end
+function testW3Patterns02() hashTestSVG('patterns/w3-pservers-pattern-01-b.svg', 0xa13ce714) end
+function testW3Coords03() hashTestSVG('coords/w3-coords-viewattr-03-b.svg', 0xdffce566) end
 
 function testW3Gradients01() hashTestSVG('gradients/w3-pservers-grad-01-b.svg', 0xe637a6fa) end
 function testW3Gradients02() hashTestSVG('gradients/w3-pservers-grad-02-b.svg', 0x2b80ff2f) end
@@ -284,6 +286,8 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         --'testW3MasksOpacity',
         'testSplitCircles',
         'testInheritClip',
+        -- Coordinates
+        'testW3Coords03',
         -- Gradients
         'testW3Gradients01',
         'testW3Gradients02',
@@ -316,6 +320,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testSnake',
         'testVStripes',
         'testW3Patterns01',
+        'testW3Patterns02',
         -- Filters
         'testCoarsePaper',
         'testConvolve',
