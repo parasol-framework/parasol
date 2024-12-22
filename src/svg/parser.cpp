@@ -1631,18 +1631,18 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
                   // objectBoundingBox: Coordinate values are relative (0 - 1.0) to the bounding box of the requesting element.
                   //   Implementing this means allocating a 1x1 viewbox for the content, then stretching it to fit the parent element.
 
-                  if (iequals("userSpaceOnUse", val)) pattern->ContentUnits = VUNIT::USERSPACE;
+                  if (iequals("userSpaceOnUse", val)) pattern->setContentUnits(VUNIT::USERSPACE);
                   else if (iequals("objectBoundingBox", val)) {
-                     pattern->ContentUnits = VUNIT::BOUNDING_BOX;
+                     pattern->setContentUnits(VUNIT::BOUNDING_BOX);
                      viewport->setFields(fl::ViewX(0), fl::ViewY(0), fl::ViewWidth(1.0), fl::ViewHeight(1.0));
                   }
                   break;
 
                case SVF_PATTERNUNITS:
                   // 'userSpace' is a deprecated option from SVG 1.0 - perhaps due to the introduction of patternContentUnits.
-                  if (iequals("userSpaceOnUse", val)) { rel_coords = false; pattern->Units = VUNIT::USERSPACE; }
-                  else if (iequals("objectBoundingBox", val)) { rel_coords = true; pattern->Units = VUNIT::BOUNDING_BOX; }
-                  else if (iequals("userSpace", val)) { rel_coords = false; pattern->Units = VUNIT::USERSPACE; }
+                  if (iequals("userSpaceOnUse", val)) { rel_coords = false; pattern->setUnits(VUNIT::USERSPACE); }
+                  else if (iequals("objectBoundingBox", val)) { rel_coords = true; pattern->setUnits(VUNIT::BOUNDING_BOX); }
+                  else if (iequals("userSpace", val)) { rel_coords = false; pattern->setUnits(VUNIT::USERSPACE); }
                   break;
 
                case SVF_PATTERNTRANSFORM: pattern->setTransform(val); break;

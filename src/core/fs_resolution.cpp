@@ -113,9 +113,9 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 
    bool resolved = false;
 #ifdef _WIN32
-   if ((std::tolower(Path[0]) >= 'a') and (std::tolower(Path[0]) <= 'z') and (Path[1] IS ':')) {
-      resolved = true; // Windows drive letter reference discovered
-      if ((Path[2] != '/') and (Path[2] != '\\')) {
+   if ((Path.size() >= 2) and (std::tolower(Path[0]) >= 'a') and (std::tolower(Path[0]) <= 'z') and (Path[1] IS ':')) {
+      resolved = true;
+      if ((Path.size() >= 3) and (Path[2] != '/') and (Path[2] != '\\')) {
          // Ensure that the path is correctly formed in order to pass test_path()
          src = { Path[0], ':', '\\' };
          src.append(Path, 2, std::string::npos);
