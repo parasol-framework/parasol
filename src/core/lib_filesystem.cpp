@@ -2402,20 +2402,18 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
       }
    }
 
-   for (len=0; Path[len]; len++);
-
-   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Info->Flags |= RDF::FOLDER|RDF::TIME;
+   if (Path.ends_with('/') or Path.ends_with('\\')) Info->Flags |= RDF::FOLDER|RDF::TIME;
    else if (dir) Info->Flags |= RDF::FOLDER|RDF::TIME;
    else Info->Flags |= RDF::FILE|RDF::SIZE|RDF::TIME;
 
    // Extract the file name
 
-   i = len;
-   if ((Path[i-1] IS '/') or (Path[i-1] IS '\\')) i--;
+   size_t fi;
+   if (Path.ends_with('/') or Path.ends_with('\\')) fi = Path.find_last_of("/\\:", Path.size()-2);
+   else fi = Path.find_last_of("/\\:");
 
-   while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
-
-   i = strcopy(Path.data() + i, Info->Name, MAX_FILENAME-2);
+   if (fi IS std::string::npos) i = strcopy(Path.data(), Info->Name, MAX_FILENAME - 2);
+   else i = strcopy(Path.data() + fi + 1, Info->Name, MAX_FILENAME - 2);
 
    if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
       if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';

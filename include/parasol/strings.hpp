@@ -17,7 +17,7 @@ void split(InType Input, OutIt Output, char Sep = ',') noexcept
    auto end = Input.end();
    auto current = begin;
    while (begin != end) {
-      if (*begin == Sep) {
+      if (*begin IS Sep) {
          *Output++ = std::string(current, begin);
          current = ++begin;
       }
@@ -29,32 +29,29 @@ void split(InType Input, OutIt Output, char Sep = ',') noexcept
 inline void ltrim(std::string &String, const std::string &Whitespace = " \n\r\t") noexcept
 {
    const auto start = String.find_first_not_of(Whitespace);
-   if ((start != std::string::npos) and (start != 0)) String.erase(0, start);
+   if (start != std::string::npos) String.erase(0, start);
 }
 
 inline void rtrim(std::string &String, const std::string &Whitespace = " \n\r\t") noexcept
 {
    const auto end = String.find_last_not_of(Whitespace);
-   if ((end != std::string::npos) and (end != String.size()-1)) String.erase(end+1, String.size()-end);
+   if (end != std::string::npos) String.erase(end + 1);
 }
 
 inline void trim(std::string &String, const std::string &Whitespace = " \n\r\t") noexcept
 {
-   const auto start = String.find_first_not_of(Whitespace);
-   if ((start != std::string::npos) and (start != 0)) String.erase(0, start);
-
-   const auto end = String.find_last_not_of(Whitespace);
-   if ((end != std::string::npos) and (end != String.size()-1)) String.erase(end+1, String.size()-end);
+   ltrim(String, Whitespace);
+   rtrim(String, Whitespace);
 }
 
 inline void camelcase(std::string &s) noexcept {
    bool raise = true;
-   for (std::size_t i=0; i < s.size(); i++) {
+   for (auto &ch : s) {
       if (raise) {
-         s[i] = std::toupper(s[i]);
+         ch = std::toupper(ch);
          raise = false;
       }
-      else if (s[i] <= 0x20) raise = true;
+      else if (unsigned(ch) <= 0x20) raise = true;
    }
 }
 
@@ -62,12 +59,10 @@ inline void camelcase(std::string &s) noexcept {
 
 [[nodiscard]] inline bool iequals(const std::string_view lhs, const std::string_view rhs) noexcept
 {
-   auto ichar_equals = [](char a, char b) {
-       return std::tolower((unsigned char)(a)) == std::tolower((unsigned char)(b));
-   };
-
    if (lhs.size() != rhs.size()) return false;
-   return std::ranges::equal(lhs, rhs, ichar_equals);
+   return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), [](char a, char b) {
+       return std::tolower(static_cast<unsigned char>(a)) IS std::tolower(static_cast<unsigned char>(b));
+   });
 }
 
 [[nodiscard]] inline bool wildcmp(const std::string_view Wildcard, std::string_view String, bool Case = false) noexcept
@@ -80,7 +75,7 @@ inline void camelcase(std::string &s) noexcept {
    while ((w < Wildcard.size()) and (s < String.size())) {
       bool fail = false;
       if (Wildcard[w] IS '*') {
-         while ((Wildcard[w] IS '*') and (w < Wildcard.size())) w++;
+         while (w < Wildcard.size() and Wildcard[w] IS '*') w++;
          if (w IS Wildcard.size()) return true; // Wildcard terminated with a '*'; rest of String will match.
 
          auto i = Wildcard.find_first_of("*|", w); // Count the printable characters after the '*'
@@ -99,8 +94,8 @@ inline void camelcase(std::string &s) noexcept {
                   if (Wildcard[w] IS String[s]) break;
                }
                else {
-                  auto char1 = Wildcard[w]; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-                  auto char2 = String[s]; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+                  auto char1 = std::tolower(static_cast<unsigned char>(Wildcard[w]));
+                  auto char2 = std::tolower(static_cast<unsigned char>(String[s]));
                   if (char1 IS char2) break;
                }
                s++;
@@ -117,8 +112,8 @@ inline void camelcase(std::string &s) noexcept {
             if (Wildcard[w++] != String[s++]) fail = true;
          }
          else {
-            auto char1 = Wildcard[w++]; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-            auto char2 = String[s++]; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+            auto char1 = std::tolower(static_cast<unsigned char>(Wildcard[w++]));
+            auto char2 = std::tolower(static_cast<unsigned char>(String[s++]));
             if (char1 != char2) fail = true;
          }
       }
@@ -131,8 +126,8 @@ inline void camelcase(std::string &s) noexcept {
             if (Wildcard[w++] != String[s++]) fail = true;
          }
          else {
-            auto char1 = Wildcard[w++]; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-            auto char2 = String[s++]; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
+            auto char1 = std::tolower(static_cast<unsigned char>(Wildcard[w++]));
+            auto char2 = std::tolower(static_cast<unsigned char>(String[s++]));
             if (char1 != char2) fail = true;
          }
       }
@@ -149,8 +144,7 @@ inline void camelcase(std::string &s) noexcept {
    }
 
    if (String.size() IS s) {
-      if (Wildcard.size() IS w) return true;
-      else if (Wildcard[w] IS '|') return true;
+      if (w IS Wildcard.size() or Wildcard[w] IS '|') return true;
    }
 
    if ((w < Wildcard.size()) and (Wildcard[w] IS '*')) return true;
@@ -163,11 +157,9 @@ inline void camelcase(std::string &s) noexcept {
 [[nodiscard]] inline bool startswith(const std::string_view StringA, const std::string_view StringB) noexcept
 {
    if (StringA.size() > StringB.size()) return false;
-   std::size_t i;
-   for (i = 0; i < StringA.size(); i++) {
-      if (std::tolower(StringA[i]) != std::tolower(StringB[i])) return false;
-   }
-   return true;
+   return std::equal(StringA.begin(), StringA.end(), StringB.begin(), [](char a, char b) {
+       return std::tolower(static_cast<unsigned char>(a)) IS std::tolower(static_cast<unsigned char>(b));
+   });
 }
 
 [[nodiscard]] inline bool startswith(const std::string_view StringA, CSTRING StringB) noexcept
@@ -221,11 +213,11 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 [[nodiscard]] inline LONG strsearch(const std::string_view Keyword, CSTRING String) noexcept
 {
-   LONG i;
-   LONG pos = 0;
+   size_t i;
+   size_t pos = 0;
    while (String[pos]) {
-      for (i=0; Keyword[i]; i++) if (String[pos+i] != Keyword[i]) break;
-      if (!Keyword[i]) return pos;
+      for (i=0; i < Keyword.size(); i++) if (String[pos+i] != Keyword[i]) break;
+      if (i IS Keyword.size()) return pos;
       for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
    }
 
@@ -236,11 +228,11 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 [[nodiscard]] inline LONG strisearch(const std::string_view Keyword, CSTRING String) noexcept
 {
-   LONG i;
-   LONG pos = 0;
+   size_t i;
+   size_t pos = 0;
    while (String[pos]) {
-      for (i=0; Keyword[i]; i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
-      if (!Keyword[i]) return pos;
+      for (i=0; i < Keyword.size(); i++) if (std::toupper(String[pos+i]) != std::toupper(Keyword[i])) break;
+      if (i IS Keyword.size()) return pos;
       for (++pos; (String[pos] & 0xc0) IS 0x80; pos++);
    }
 

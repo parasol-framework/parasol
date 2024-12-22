@@ -409,6 +409,9 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
       // This is only needed if the application crashes and a stack trace is printed.
       SymSetOptions(SymGetOptions() | SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS);
       if (SymInitialize(GetCurrentProcess(), 0, TRUE)) glSymbolsLoaded = TRUE;
+      // These hooks prevent MSVC dialog boxes from appearing when an assert() is made.
+      _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG );
+      _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR );
    #endif
 
    // This turns off dialog boxes that Microsoft forces upon the user in certain situations (e.g. "No Disk in Drive"

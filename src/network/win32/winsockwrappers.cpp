@@ -496,7 +496,6 @@ const char * StartupWinsock() // Return zero if succesful
       glWinsockInitialised = TRUE;
    }
 
-   csNetLookup.unlock();
    return NULL;
 }
 

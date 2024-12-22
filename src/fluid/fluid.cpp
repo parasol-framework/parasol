@@ -630,6 +630,7 @@ ERR load_include(objScript *Script, CSTRING IncName)
 static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
+
    LONG i;
    for (i=0; (Line[i] >= 0x20) and (Line[i] != ':'); i++);
 
@@ -661,15 +662,12 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
 static BYTE datatype(std::string_view String)
 {
-   LONG i = 0;
-   while ((String[i]) and (String[i] <= 0x20)) i++; // Skip white-space
+   size_t i = 0;
+   while ((i < String.size()) and (String[i] <= 0x20)) i++; // Skip white-space
 
    if ((String[i] IS '0') and (String[i+1] IS 'x')) {
-      for (i+=2; String[i]; i++) {
-         if (((String[i] >= '0') and (String[i] <= '9')) or
-             ((String[i] >= 'A') and (String[i] <= 'F')) or
-             ((String[i] >= 'a') and (String[i] <= 'f')));
-         else return 's';
+      for (i+=2; i < String.size(); i++) {
+         if (!std::isxdigit(String[i])) return 's';
       }
       return 'h';
    }
@@ -677,8 +675,8 @@ static BYTE datatype(std::string_view String)
    bool is_number = true;
    bool is_float  = false;
 
-   for (; (String[i]) and (is_number); i++) {
-      if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = false;
+   for (; (i < String.size()) and (is_number); i++) {
+      if ((!std::isdigit(String[i])) and (String[i] != '.') and (String[i] != '-')) is_number = false;
       if (String[i] IS '.') is_float = true;
    }
 

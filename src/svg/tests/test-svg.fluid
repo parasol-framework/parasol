@@ -85,13 +85,20 @@ function testDot()          hashTestSVG('patterns/dot.svg', 0x6736bc6c) end
 function testHoneycomb()    hashTestSVG('patterns/honeycomb.svg', 0x7b678ada) end
 function testSnake()        hashTestSVG('patterns/snake.svg', 0xbb7d40f0) end
 function testVStripes()     hashTestSVG('patterns/vstripes.svg', 0x2f85dc21) end
+function testPatTransform() hashTestSVG('patterns/pattern-transform.svg', 0xccf7d341) end
+function testW3Patterns01() hashTestSVG('patterns/w3-pservers-grad-03-b.svg', 0xed40a6bf) end
+function testW3Patterns02() hashTestSVG('patterns/w3-pservers-pattern-01-b.svg', 0xa13ce714) end
+function testW3Patterns03() hashTestSVG('patterns/w3-pservers-pattern-02-f.svg', 0x1a2cce66) end
+
+function testW3Coords01() hashTestSVG('coords/w3-coords-units-01-b.svg', 0xa0448180) end
+function testW3Coords03() hashTestSVG('coords/w3-coords-viewattr-03-b.svg', 0xdffce566) end
 
 function testW3Gradients01() hashTestSVG('gradients/w3-pservers-grad-01-b.svg', 0xe637a6fa) end
 function testW3Gradients02() hashTestSVG('gradients/w3-pservers-grad-02-b.svg', 0x2b80ff2f) end
 function testW3Gradients04() hashTestSVG('gradients/w3-pservers-grad-04-b.svg', 0x30e19fc3) end
 function testW3Gradients05() hashTestSVG('gradients/w3-pservers-grad-05-b.svg', 0x80b6a37d) end
 -- Test 6 pattern not scaling
-function testW3Gradients06() hashTestSVG('gradients/w3-pservers-grad-06-b.svg', 0) end
+function testW3Gradients06() hashTestSVG('gradients/w3-pservers-grad-06-b.svg', 0x9c5db4aa) end
 function testW3Gradients07() hashTestSVG('gradients/w3-pservers-grad-07-b.svg', 0xfb7be5fe) end
 function testW3Gradients08() hashTestSVG('gradients/w3-pservers-grad-08-b.svg', 0x97f7b810) end
 function testW3Gradients09() hashTestSVG('gradients/w3-pservers-grad-09-b.svg', 0xfd34d4f1) end
@@ -174,7 +181,7 @@ function testClip()               hashTestSVG('masks/clip.svg', 0x209c16aa) end
 function testClipViewBox()        hashTestSVG('masks/clip-viewbox.svg', 0xd66308b7) end
 function testClipViaUse()         hashTestSVG('masks/clip-via-use.svg', 0x56a4a9ac) end
 function testSplitCircles()       hashTestSVG('masks/split-circles.svg', 0xfc119919) end
-function testInheritClip()        hashTestSVG('masks/inherit-clip-path.svg', 0xb0749a78) end
+function testInheritClip()        hashTestSVG('masks/inherit-clip-path.svg', 0x755ce55c) end
 function testW3MasksFilter()      hashTestSVG('masks/w3-masking-filter-01-f.svg', 0x8cb644c2) end
 function testW3MasksIntro()       hashTestSVG('masks/w3-masking-intro-01-f.svg', 0xeb147b4c) end
 function testW3Masks1()           hashTestSVG('masks/w3-masking-mask-01-b.svg', 0x74e684d6) end
@@ -188,7 +195,7 @@ function testW3MasksPath5()       hashTestSVG('masks/w3-masking-path-05-f.svg', 
 function testW3MasksPath7()       hashTestSVG('masks/w3-masking-path-07-b.svg', -1) end
 function testW3MasksPath8()       hashTestSVG('masks/w3-masking-path-08-b.svg', 0x4d197454) end
 function testW3MasksPath10()      hashTestSVG('masks/w3-masking-path-10-b.svg', 0x6ee58f7d) end
-function testW3MasksPath11()      hashTestSVG('masks/w3-masking-path-11-b.svg', 0x37eef93f) end
+function testW3MasksPath11()      hashTestSVG('masks/w3-masking-path-11-b.svg', 0x0624a7b6) end
 function testW3MasksPath13()      hashTestSVG('masks/w3-masking-path-13-f.svg', 0x1760390b) end
 function testW3MasksPath14()      hashTestSVG('masks/w3-masking-path-14-f.svg', 0x2755d2bf) end
 
@@ -282,11 +289,15 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         --'testW3MasksOpacity',
         'testSplitCircles',
         'testInheritClip',
+        -- Coordinates
+        'testW3Coords01',
+        'testW3Coords03',
         -- Gradients
         'testW3Gradients01',
         'testW3Gradients02',
         'testW3Gradients04',
         'testW3Gradients05',
+        'testW3Gradients06',
         'testW3Gradients07',
         'testW3Gradients08',
         'testW3Gradients09',
@@ -309,8 +320,12 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testDimple',
         'testDot',
         'testHoneycomb',
+        'testPatTransform',
         'testSnake',
         'testVStripes',
+        'testW3Patterns01',
+        'testW3Patterns02',
+        'testW3Patterns03',
         -- Filters
         'testCoarsePaper',
         'testConvolve',

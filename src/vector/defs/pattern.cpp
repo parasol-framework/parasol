@@ -85,13 +85,13 @@ static ERR PATTERN_Init(extVectorPattern *Self)
    }
 
    if (!Self->Width) {
-      Self->Width = 1;
-      Self->Dimensions |= DMF::FIXED_WIDTH;
+      Self->Width = 1.0;
+      Self->Dimensions |= DMF::SCALED_WIDTH;
    }
 
    if (!Self->Height) {
-      Self->Height = 1;
-      Self->Dimensions |= DMF::FIXED_HEIGHT;
+      Self->Height = 1.0;
+      Self->Dimensions |= DMF::SCALED_HEIGHT;
    }
 
    if (InitObject(Self->Scene) != ERR::Okay) return ERR::Init;

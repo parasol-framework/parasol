@@ -13,45 +13,43 @@ struct FUNIT {
    DOUBLE value;
    DU type;
 
-   FUNIT() : field_id(0), value(0), type(DU::NIL) { }
+   constexpr FUNIT() noexcept : field_id(0), value(0), type(DU::NIL) { }
 
    // With field
-
-   FUNIT(FIELD pField, DOUBLE pValue, DU pType = DU::NIL) : field_id(pField), value(pValue), type(pType) { }
+   explicit FUNIT(FIELD pField, DOUBLE pValue, DU pType = DU::NIL) noexcept : field_id(pField), value(pValue), type(pType) { }
    
-   FUNIT(FIELD pField, const std::string &pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX) : 
+   FUNIT(FIELD pField, const std::string &pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX) noexcept : 
       FUNIT(pValue.c_str(), pType, pMin) { field_id = pField; }
 
-   FUNIT(FIELD pField, CSTRING pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX) :
-      FUNIT(pValue, pType, pMin) { field_id = pField; };
+   FUNIT(FIELD pField, CSTRING pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX) noexcept :
+      FUNIT(pValue, pType, pMin) { field_id = pField; }
 
    // Without field
+   explicit FUNIT(DOUBLE pValue, DU pType = DU::PIXEL) noexcept : value(pValue), type(pType) { }
 
-   FUNIT(DOUBLE pValue, DU pType = DU::PIXEL) : value(pValue), type(pType) { }
-
-   FUNIT(const std::string &pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX) : 
+   FUNIT(const std::string &pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX) noexcept : 
       FUNIT(pValue.c_str(), pType, pMin) { }
 
-   FUNIT(CSTRING pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX);
+   FUNIT(CSTRING pValue, DU pType = DU::NIL, DOUBLE pMin = -DBL_MAX) noexcept;
 
-   constexpr bool empty() { return (type IS DU::NIL) or (!value); }
-   constexpr void clear() { value = 0; type = DU::PIXEL; }
+   constexpr bool empty() const noexcept { return (type == DU::NIL) || (!value); }
+   constexpr void clear() noexcept { value = 0; type = DU::PIXEL; }
 
-   operator double() const{ return value; }
-   operator DU() const { return type; }
+   operator double() const noexcept { return value; }
+   operator DU() const noexcept { return type; }
 
-   inline LARGE field() const {
-      return (type IS DU::SCALED) ? (field_id|TDOUBLE|TSCALE) : field_id|TDOUBLE;
+   inline LARGE field() const noexcept {
+      return (type == DU::SCALED) ? (field_id | TDOUBLE | TSCALE) : field_id | TDOUBLE;
    }
 
-   inline bool valid_size() const { // Return true if this is a valid width/height
+   inline bool valid_size() const noexcept { // Return true if this is a valid width/height
       return (value >= 0.001);
    }
 
-   inline ERR set(OBJECTPTR Object) { return SetField(Object, field(), value); }
+   inline ERR set(OBJECTPTR Object) const noexcept { return SetField(Object, field(), value); }
 };
 
-FUNIT::FUNIT(CSTRING pValue, DU pType, DOUBLE pMin)
+FUNIT::FUNIT(CSTRING pValue, DU pType, DOUBLE pMin) noexcept
 {
    char *str = (char *)pValue;
    while ((*str) and (unsigned(*str) <= 0x20)) str++;

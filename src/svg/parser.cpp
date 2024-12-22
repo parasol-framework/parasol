@@ -10,12 +10,12 @@ static ERR set_paint_server(extSVG *Self, svgState &State, objVector *Vector, FI
          for (i=5; (Value[i] != ')') and Value[i]; i++);
          std::string lookup;
          lookup.assign(Value, 5, i-5);
-         
+
          if (Self->Scene->findDef(lookup.c_str(), NULL) != ERR::Okay) {
             if (Self->IDs.contains(lookup)) {
                auto tag = Self->IDs[lookup];
 
-               switch(strihash(tag->name())) {                  
+               switch(strihash(tag->name())) {
                   case SVF_CONTOURGRADIENT:  xtag_contourgradient(Self, State, *tag); break;
                   case SVF_RADIALGRADIENT:   xtag_radialgradient(Self, State, *tag); break;
                   case SVF_DIAMONDGRADIENT:  xtag_diamondgradient(Self, State, *tag); break;
@@ -1602,6 +1602,9 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
 
    if (NewObject(CLASSID::VECTORPATTERN, &pattern) IS ERR::Okay) {
       SetOwner(pattern, Self->Scene);
+
+      // NOTE: In SVG 1.0 the default pattern units value is 'userSpaceOnUse'; from 1.1 it changed to 'objectBoundingBox'.
+
       pattern->setFields(fl::Name("SVGPattern"),
          fl::Units(VUNIT::BOUNDING_BOX),
          fl::SpreadMethod(VSPREAD::REPEAT),
@@ -1610,56 +1613,91 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
       objVectorViewport *viewport;
       pattern->getPtr(FID_Viewport, &viewport);
 
-      bool client_set_viewbox = false;
-      for (unsigned a=1; a < Tag.Attribs.size(); a++) {
-         auto &val = Tag.Attribs[a].Value;
-         if (val.empty()) continue;
+      bool rel_coords = true; // True because the default is 'objectBoundingBox'
+      std::string x, y, width, height;
+      std::vector<XMLTag *> children; // Multiple retrieval points for children is possible due to the href attrib
+      std::string dummy;
 
-         LONG j;
-         for (j=0; Tag.Attribs[a].Name[j] and (Tag.Attribs[a].Name[j] != ':'); j++);
-         if (Tag.Attribs[a].Name[j] IS ':') continue;
+      const auto parse_pattern = [&](const auto &parse_self, XMLTag &Tags, std::string &ID) -> void {
+         for (LONG a=1; a < std::ssize(Tags.Attribs); a++) {
+            auto &val = Tags.Attribs[a].Value;
+            if (val.empty()) continue;
 
-         switch(strihash(Tag.Attribs[a].Name)) {
-            case SVF_PATTERNCONTENTUNITS:
-               // SVG: "This attribute has no effect if viewbox is specified"
-               // userSpaceOnUse: The user coordinate system for the contents of the 'pattern' element is the coordinate system that results from taking the current user coordinate system in place at the time when the 'pattern' element is referenced (i.e., the user coordinate system for the element referencing the 'pattern' element via a 'fill' or 'stroke' property) and then applying the transform specified by attribute 'patternTransform'.
-               // objectBoundingBox: The user coordinate system for the contents of the 'pattern' element is established using the bounding box of the element to which the pattern is applied (see Object bounding box units) and then applying the transform specified by attribute 'patternTransform'.
-               // The default is userSpaceOnUse
+            switch(strihash(Tags.Attribs[a].Name)) {
+               case SVF_PATTERNCONTENTUNITS:
+                  // SVG: "This attribute has no effect if viewbox is specified"
+                  //
+                  // userSpaceOnUse: Default. Coordinate values are fixed.
+                  // objectBoundingBox: Coordinate values are relative (0 - 1.0) to the bounding box of the requesting element.
+                  //   Implementing this means allocating a 1x1 viewbox for the content, then stretching it to fit the parent element.
 
-               if (iequals("userSpaceOnUse", val)) pattern->ContentUnits = VUNIT::USERSPACE;
-               else if (iequals("objectBoundingBox", val)) pattern->ContentUnits = VUNIT::BOUNDING_BOX;
-               break;
+                  if (iequals("userSpaceOnUse", val)) pattern->setContentUnits(VUNIT::USERSPACE);
+                  else if (iequals("objectBoundingBox", val)) {
+                     pattern->setContentUnits(VUNIT::BOUNDING_BOX);
+                     viewport->setFields(fl::ViewX(0), fl::ViewY(0), fl::ViewWidth(1.0), fl::ViewHeight(1.0));
+                  }
+                  break;
 
-            case SVF_PATTERNUNITS:
-               if (iequals("userSpaceOnUse", val)) pattern->Units = VUNIT::USERSPACE;
-               else if (iequals("objectBoundingBox", val)) pattern->Units = VUNIT::BOUNDING_BOX;
-               break;
+               case SVF_PATTERNUNITS:
+                  // 'userSpace' is a deprecated option from SVG 1.0 - perhaps due to the introduction of patternContentUnits.
+                  if (iequals("userSpaceOnUse", val)) { rel_coords = false; pattern->setUnits(VUNIT::USERSPACE); }
+                  else if (iequals("objectBoundingBox", val)) { rel_coords = true; pattern->setUnits(VUNIT::BOUNDING_BOX); }
+                  else if (iequals("userSpace", val)) { rel_coords = false; pattern->setUnits(VUNIT::USERSPACE); }
+                  break;
 
-            case SVF_PATTERNTRANSFORM: pattern->set(FID_Transform, val); break;
+               case SVF_PATTERNTRANSFORM: pattern->setTransform(val); break;
 
-            case SVF_ID:       id = val; break;
+               case SVF_ID:       ID = val; break;
 
-            case SVF_OVERFLOW: viewport->set(FID_Overflow, val); break;
+               case SVF_OVERFLOW: viewport->set(FID_Overflow, val); break;
 
-            case SVF_OPACITY:  FUNIT(FID_Opacity, val).set(pattern); break;
-            case SVF_X:        FUNIT(FID_X, val).set(pattern); break;
-            case SVF_Y:        FUNIT(FID_Y, val).set(pattern); break;
-            case SVF_WIDTH:    FUNIT(FID_Width, val).set(pattern); break;
-            case SVF_HEIGHT:   FUNIT(FID_Height, val).set(pattern); break;
+               case SVF_OPACITY:  FUNIT(FID_Opacity, val).set(pattern); break;
+               case SVF_X:        x = val; break;
+               case SVF_Y:        y = val; break;
+               case SVF_WIDTH:    width = val; break;
+               case SVF_HEIGHT:   height = val; break;
 
-            case SVF_VIEWBOX: {
-               DOUBLE vx=0, vy=0, vwidth=1, vheight=1; // Default view-box for bounding-box mode
-               client_set_viewbox = true;
-               pattern->ContentUnits = VUNIT::USERSPACE;
-               read_numseq(val, { &vx, &vy, &vwidth, &vheight });
-               viewport->setFields(fl::ViewX(vx), fl::ViewY(vy), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
-               break;
+               case SVF_VIEWBOX: {
+                  DOUBLE vx=0, vy=0, vwidth=1, vheight=1; // Default view-box for bounding-box mode
+                  pattern->ContentUnits = VUNIT::USERSPACE;
+                  read_numseq(val, { &vx, &vy, &vwidth, &vheight });
+                  viewport->setFields(fl::ViewX(vx), fl::ViewY(vy), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
+                  break;
+               }
+
+               case SVF_HREF:
+               case SVF_XLINK_HREF:
+                  if (auto other = find_href_tag(Self, val)) {
+                     parse_self(parse_self, *other, dummy);
+                  }
+                  break;
+
+               default:
+                  log.warning("%s attribute '%s' unrecognised @ line %d", Tags.name(), Tags.Attribs[a].Name.c_str(), Tags.LineNo);
+                  break;
             }
-
-            default:
-               log.warning("%s attribute '%s' unrecognised @ line %d", Tag.name(), Tag.Attribs[a].Name.c_str(), Tag.LineNo);
-               break;
          }
+
+         if (Tags.hasChildTags()) children.push_back(&Tags);
+      };
+
+      parse_pattern(parse_pattern, Tag, id);
+
+      if (!x.empty()) FUNIT(FID_X, x, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
+      if (!y.empty()) FUNIT(FID_Y, y, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
+
+      if (!width.empty()) {
+         if (pattern->ContentUnits IS VUNIT::BOUNDING_BOX) {
+            FUNIT(FID_Width, width, DU::SCALED).set(pattern);
+         }
+         else FUNIT(FID_Width, width, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
+      }
+
+      if (!height.empty()) {
+         if (pattern->ContentUnits IS VUNIT::BOUNDING_BOX) {
+            FUNIT(FID_Height, height, DU::SCALED).set(pattern);
+         }
+         else FUNIT(FID_Height, height, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
       }
 
       if (id.empty()) {
@@ -1667,14 +1705,12 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
          log.trace("Failed to create a valid definition.");
       }
 
-      /*if (!client_set_viewbox) {
-         viewport->setFields(fl::ViewX(0), fl::ViewY(0), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
-      }*/
-
       if (InitObject(pattern) IS ERR::Okay) {
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
          svgState state(Self);
-         process_children(Self, state, Tag, viewport);
+         for (auto tag : children) {
+            process_children(Self, state, *tag, viewport);
+         }
 
          if (!Self->Cloning) {
             Self->Scene->addDef(id.c_str(), pattern);

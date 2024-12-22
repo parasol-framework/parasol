@@ -175,9 +175,8 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
    LONG max_cmds = 8192; // Maximum commands per path - this acts as a safety net in case the parser gets stuck.
    UBYTE cmd = 0;
    while (*Value) {
-      if ((*Value >= 'a') and (*Value <= 'z')) cmd = *Value++;
-      else if ((*Value >= 'A') and (*Value <= 'Z')) cmd = *Value++;
-      else if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-') or (*Value IS '+') or (*Value IS '.')); // Use the previous command
+      if (std::isalpha(*Value)) cmd = *Value++;
+      else if (std::isdigit(*Value) or (*Value IS '-') or (*Value IS '+') or (*Value IS '.')); // Use the previous command
       else if ((*Value <= 0x20) or (*Value IS ',')) { Value++; continue; }
       else break;
 
@@ -311,33 +310,28 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
       // viewport and do not exceed it.  SLICE: Choose the larger scale, expanding beyond the boundary on one axis.
 
       if ((AspectRatio & ARF::MEET) != ARF::NIL) {
-         if (yScale > xScale) yScale = xScale;
-         else if (xScale > yScale) xScale = yScale;
+         xScale = yScale = std::min(xScale, yScale);
       }
       else if ((AspectRatio & ARF::SLICE) != ARF::NIL) {
-         // Choose the larger of the two scaling factors.
-         if (yScale < xScale) yScale = xScale;
-         else if (xScale < yScale) xScale = yScale;
+         xScale = yScale = std::max(xScale, yScale);
       }
 
       *XScale = xScale;
-      if ((AspectRatio & ARF::X_MIN) != ARF::NIL) *X = 0;
-      else if ((AspectRatio & ARF::X_MID) != ARF::NIL) *X = (TargetWidth - (SourceWidth * xScale)) * 0.5;
-      else if ((AspectRatio & ARF::X_MAX) != ARF::NIL) *X = TargetWidth - (SourceWidth * xScale);
-
       *YScale = yScale;
-      if ((AspectRatio & ARF::Y_MIN) != ARF::NIL) *Y = 0;
-      else if ((AspectRatio & ARF::Y_MID) != ARF::NIL) *Y = (TargetHeight - (SourceHeight * yScale)) * 0.5;
-      else if ((AspectRatio & ARF::Y_MAX) != ARF::NIL) *Y = TargetHeight - (SourceHeight * yScale);
+
+      *X = ((AspectRatio & ARF::X_MIN) != ARF::NIL) ? 0 :
+           ((AspectRatio & ARF::X_MID) != ARF::NIL) ? (TargetWidth - (SourceWidth * xScale)) * 0.5 :
+           ((AspectRatio & ARF::X_MAX) != ARF::NIL) ? TargetWidth - (SourceWidth * xScale) : 0;
+
+      *Y = ((AspectRatio & ARF::Y_MIN) != ARF::NIL) ? 0 :
+           ((AspectRatio & ARF::Y_MID) != ARF::NIL) ? (TargetHeight - (SourceHeight * yScale)) * 0.5 :
+           ((AspectRatio & ARF::Y_MAX) != ARF::NIL) ? TargetHeight - (SourceHeight * yScale) : 0;
    }
    else { // ARF::NONE
       *X = 0;
-      if ((TargetWidth >= 1.0) and (SourceWidth >= 1.0)) *XScale = TargetWidth / SourceWidth;
-      else *XScale = 1.0;
-
+      *XScale = (TargetWidth >= 1.0 and SourceWidth > 0) ? TargetWidth / SourceWidth : 1.0;
       *Y = 0;
-      if ((TargetHeight >= 1.0) and (SourceHeight >= 1.0)) *YScale = TargetHeight / SourceHeight;
-      else *YScale = 1.0;
+      *YScale = (TargetHeight >= 1.0 and SourceHeight > 0) ? TargetHeight / SourceHeight : 1.0;
    }
 
    log.trace("ARF Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
@@ -411,13 +405,13 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
    CSTRING str = Value;
    if ((*str IS '-') or (*str IS '+')) str++;
 
-   if ((*str >= '0') and (*str <= '9')) {
-      while ((*str >= '0') and (*str <= '9')) str++;
+   if (std::isdigit(*str)) {
+      while (std::isdigit(*str)) str++;
 
       if (*str IS '.') {
          str++;
-         if ((*str >= '0') and (*str <= '9')) {
-            while ((*str >= '0') and (*str <= '9')) str++;
+         if (std::isdigit(*str)) {
+            while (std::isdigit(*str)) str++;
          }
       }
 

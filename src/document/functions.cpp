@@ -320,7 +320,7 @@ static ERR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index, c
       auto ws = Self->NoWhitespace; // Retrieve previous whitespace state
       for (unsigned i=0; i < Text.size(); ) {
          if (unsigned(Text[i]) <= 0x20) { // Whitespace encountered
-            for (++i; (unsigned(Text[i]) <= 0x20) and (i < Text.size()); i++);
+            for (++i; (i < Text.size()) and (unsigned(Text[i]) <= 0x20); i++);
             if (!ws) et.text += ' ';
             ws = true;
          }
