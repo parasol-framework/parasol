@@ -414,11 +414,11 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    Self->Highlight = glHighlight;
 
-   Self->CursorStroke   = "rgb(102,102,204,255)";
+   Self->CursorStroke   = "rgba(102,102,204,1.0)";
    Self->FontFill       = "rgb(0,0,0)";
    Self->LinkFill       = "rgb(0,0,255)";
    Self->LinkSelectFill = "rgb(255,0,0)";
-   Self->Background     = "rgb(255,255,255,255)";
+   Self->Background     = "rgba(255,255,255,1.0)";
 
    Self->LeftMargin    = 10;
    Self->RightMargin   = 10;

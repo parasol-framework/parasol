@@ -143,7 +143,7 @@ struct parser {
             fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
             fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(1.0),
             fl::RoundX(SCALE(0.03)), fl::RoundY(SCALE(0.03)),
-            fl::Fill("rgb(0,0,0,128)")
+            fl::Fill("rgba(0,0,0,.5)")
          });
 
          Self->Viewport->Scene->addDef("/widget/default", pattern);
@@ -1715,9 +1715,9 @@ void parser::tag_button(XMLTag &Tag)
             objVectorRectangle::create::global({
                fl::Owner(pattern_active->Scene->Viewport->UID),
                fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-               fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0),
+               fl::Stroke("rgba(64,64,64,.5)"), fl::StrokeWidth(2.0),
                fl::RoundX(SCALE(0.1)),
-               fl::Fill("rgb(0,0,0,32)")
+               fl::Fill("rgba(0,0,0,.125)")
             });
          }
 
@@ -1738,9 +1738,9 @@ void parser::tag_button(XMLTag &Tag)
             objVectorRectangle::create::global({
                fl::Owner(pattern_inactive->Scene->Viewport->UID),
                fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-               fl::Stroke("rgb(0,0,0,64)"), fl::StrokeWidth(2.0),
+               fl::Stroke("rgba(0,0,0,.25)"), fl::StrokeWidth(2.0),
                fl::RoundX(SCALE(0.1)),
-               fl::Fill("rgb(255,255,255,96)")
+               fl::Fill("rgba(255,255,255,.37)")
             });
          }
 
@@ -1749,7 +1749,7 @@ void parser::tag_button(XMLTag &Tag)
    }
 
    if (widget.fill.empty())      widget.fill      = "url(#/widget/button/inactive)";
-   if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255,220)";
+   if (widget.font_fill.empty()) widget.font_fill = "rgba(255,255,255,.86)";
 
    widget.def_size = DUNIT(1.7, DU::FONT_SIZE);
 
@@ -1815,7 +1815,7 @@ void parser::tag_checkbox(XMLTag &Tag)
             fl::X(-8), fl::Y(-8), fl::Width(54), fl::Height(54),
             fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0),
             fl::RoundX(6), fl::RoundY(6),
-            fl::Fill("rgb(0,0,0,128)")
+            fl::Fill("rgba(0,0,0,.5)")
          });
 
          objVectorPath::create::global({
@@ -1841,13 +1841,13 @@ void parser::tag_checkbox(XMLTag &Tag)
             fl::X(-8), fl::Y(-8), fl::Width(54), fl::Height(54),
             fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0),
             fl::RoundX(6), fl::RoundY(6),
-            fl::Fill("rgb(0,0,0,128)")
+            fl::Fill("rgba(0,0,0,.5)")
          });
 
          objVectorPath::create::global({
             fl::Owner(vp->UID),
             fl::Sequence("M4.75 15.0832 15.8333 26.1665 33.2498 4 38 8.75 15.8333 35.6665 0 19.8332 4.75 15.0832Z"),
-            fl::Fill("rgb(255,255,255,64)")
+            fl::Fill("rgba(255,255,255,.25)")
          });
 
          vp->setFields(fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN|ARF::MEET),
@@ -1949,7 +1949,7 @@ void parser::tag_combobox(XMLTag &Tag)
          auto rect = objVectorRectangle::create::global({ // Button background
             fl::Owner(vp->UID),
             fl::X(-(PAD-1)), fl::Y(-(PAD-1)), fl::Width(29+((PAD-1)*2)), fl::Height(29+((PAD-1)*2)),
-            fl::Fill("rgb(0,0,0,128)")
+            fl::Fill("rgba(0,0,0,.5)")
          });
 
          std::array<DOUBLE, 8> round = { 0, 0, 6, 6, 6, 6, 0, 0 };
@@ -1959,7 +1959,7 @@ void parser::tag_combobox(XMLTag &Tag)
             fl::Owner(vp->UID),
             fl::Sequence("M14.5 16.1 26.1 4.5 26.1 12.9 14.5 24.5 2.9 12.9 2.9 4.5 14.5 16.1Z"), // 80% size
             //fl::Sequence("M14.5 16.5 29 2 29 12.5 14.5 27 0 12.5 0 2 14.5 16.5Z"), // Original size; 29x29
-            fl::Fill("rgb(255,255,255,220)")
+            fl::Fill("rgba(255,255,255,.86)")
          });
 
          vp->setFields(fl::AspectRatio(ARF::X_MAX|ARF::Y_MIN|ARF::MEET),
