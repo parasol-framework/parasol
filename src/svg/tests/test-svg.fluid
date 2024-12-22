@@ -91,6 +91,7 @@ function testW3Patterns02() hashTestSVG('patterns/w3-pservers-pattern-01-b.svg',
 function testW3Patterns03() hashTestSVG('patterns/w3-pservers-pattern-02-f.svg', 0x1a2cce66) end
 
 function testW3Coords01() hashTestSVG('coords/w3-coords-units-01-b.svg', 0xa0448180) end
+function testW3Coords02() hashTestSVG('coords/w3-coords-units-02-b.svg', 0x1a70f9e3) end
 function testW3Coords03() hashTestSVG('coords/w3-coords-viewattr-03-b.svg', 0xdffce566) end
 
 function testW3Gradients01() hashTestSVG('gradients/w3-pservers-grad-01-b.svg', 0xe637a6fa) end
@@ -168,7 +169,7 @@ function testW3TransformAttr05() hashTestSVG('transforms/w3-coords-transformattr
 
 function testCSS()                hashTestSVG('misc/css.svg', 0xefdc1bcf) end
 function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x21e65d43) end
-function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x4b865f18) end
+function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x5726053f) end
 
 function testBottleTree()         hashTestSVG('images/bottletree.svg', 0xd7fb84ff) end
 function testButton()             hashTestSVG('images/button.svg', 0x0e8f5a31) end
@@ -291,6 +292,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testInheritClip',
         -- Coordinates
         'testW3Coords01',
+        'testW3Coords02',
         'testW3Coords03',
         -- Gradients
         'testW3Gradients01',
