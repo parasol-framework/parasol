@@ -21,7 +21,7 @@ TODO: Add a SetPoint(DOUBLE X, DOUBLE Y) method for modifying existing points.
 
 *********************************************************************************************************************/
 
-#define MAX_POINTS 1024 * 16 // Maximum of 16k points per polygon object.
+constexpr LONG MAX_POINTS = 1024 * 16; // Maximum of 16k points per polygon object.
 
 static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
 {

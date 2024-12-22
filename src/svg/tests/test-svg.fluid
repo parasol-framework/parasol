@@ -116,6 +116,16 @@ function testW3Gradients20() hashTestSVG('gradients/w3-pservers-grad-20-b.svg', 
 function testW3Gradients21() hashTestSVG('gradients/w3-pservers-grad-21-b.svg', 0x57eb4dd7) end
 function testW3Gradients22() hashTestSVG('gradients/w3-pservers-grad-22-b.svg', 0x5477019b) end
 
+function testW3Painting01() hashTestSVG('painting/w3-painting-control-01-f.svg', 0x130f9677) end
+function testW3Painting02() hashTestSVG('painting/w3-painting-control-02-f.svg', 0x7fc07377) end
+function testW3Painting03() hashTestSVG('painting/w3-painting-control-03-f.svg', 0x2235bed0) end
+function testW3Painting07() hashTestSVG('painting/w3-painting-fill-01-t.svg', 0x8735d728) end
+function testW3Painting09() hashTestSVG('painting/w3-painting-fill-03-t.svg', 0x28e350c3) end
+function testW3Painting10() hashTestSVG('painting/w3-painting-fill-04-t.svg', 0x91368cb6) end
+function testW3Painting21() hashTestSVG('painting/w3-painting-stroke-01-t.svg', 0x67e96bde) end
+function testW3Painting22() hashTestSVG('painting/w3-painting-stroke-02-t.svg', 0xa3033923) end
+function testW3Painting24() hashTestSVG('painting/w3-painting-stroke-04-t.svg', 0x9f58fb67) end
+function testW3Painting25() hashTestSVG('painting/w3-painting-stroke-05-t.svg', 0xc71a7d8c) end
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
 function testComposite()          hashTestSVG('filters/composite.svg', 0x66a96a50) end
 function testConvolve()           hashTestSVG('filters/convolve.svg', 0x29d31e69) end
@@ -390,6 +400,17 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testIceCube',
         'testTiger',
         'testPod',
+        -- Painting
+        'testW3Painting01',
+        'testW3Painting02',
+        'testW3Painting03',
+        'testW3Painting07',
+        'testW3Painting09',
+        'testW3Painting10',
+        'testW3Painting21',
+        'testW3Painting22',
+        'testW3Painting24',
+        'testW3Painting25',
         -- Paths
         'testCircles',
         'testClip',
