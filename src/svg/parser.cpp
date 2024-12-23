@@ -119,10 +119,10 @@ static RQ shape_rendering_to_render_quality(const std::string_view Value)
 }
 
 //********************************************************************************************************************
-// Apply the current state values to a vector.  Used for applying state to child vectors.
+// Apply current state values to a new vector as its defaults.  Used for applying state to child vectors.
 // If you're adding more to this, matching code is needed in svgState::applyTag()
 
-void svgState::applyAttribs(objVector *Vector) const noexcept
+void svgState::applyStateToVector(objVector *Vector) const noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -165,25 +165,37 @@ void svgState::applyAttribs(objVector *Vector) const noexcept
 
 //********************************************************************************************************************
 // Copy a tag's attributes to the current state.
-// If you're adding more to this, matching code is needed in svgState::applyAttribs()
+// If you're adding more to this, matching code is needed in svgState::applyStateToVector()
 
 void svgState::applyTag(const XMLTag &Tag) noexcept
 {
-   if (Tag.Children.empty()) return; // No need to save state if the tag has no children.
-
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Total Attributes: %d", LONG(std::ssize(Tag.Attribs)));
+
+   if (Tag.Children.empty()) { 
+      // If the tag has no children then few tags are worth saving to the state. E.g.
+      // 'color' is only required for the 'currentColor' value.
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+         auto &val = Tag.Attribs[a].Value;
+         if (val.empty()) continue;
+
+         switch (strihash(Tag.Attribs[a].Name)) {
+            case SVF_COLOR: m_color = val; break;
+         }
+      }
+      return;
+   }
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
       switch (strihash(Tag.Attribs[a].Name)) {
-         case SVF_COLOR:  m_color = val; break; // Affects 'currentColor'
+         case SVF_COLOR:      m_color = val; break; // Affects 'currentColor'
          case SVF_STOP_COLOR: m_stop_color = val; break;
-         case SVF_FILL:   m_fill = val; break;
-         case SVF_DISPLAY: m_display = val; break;
+         case SVF_FILL:       m_fill = val; break;
+         case SVF_DISPLAY:    m_display = val; break;
          case SVF_VISIBILITY: m_visibility = val; break;
          case SVF_STROKE:
             m_stroke = val;
@@ -1752,13 +1764,13 @@ static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag
    if (auto error = NewObject(VectorID, &vector); error IS ERR::Okay) {
       SetOwner(vector, Parent);
       svgState state = State;
-      state.applyAttribs(vector);
+      state.applyStateToVector(vector);
       state.applyTag(Tag); // Apply all attribute values to the current state.
 
-      process_attrib(Self, Tag, State, vector);
+      process_attrib(Self, Tag, state, vector);
 
       if (vector->init() IS ERR::Okay) {
-         process_shape_children(Self, State, Tag, vector);
+         process_shape_children(Self, state, Tag, vector);
          Tag.Attribs.push_back(XMLAttrib { "_id", std::to_string(vector->UID) });
          Result = vector;
          return error;
@@ -2081,7 +2093,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
 
    if (auto error = NewObject(CLASSID::VECTORRECTANGLE, &Vector); error IS ERR::Okay) {
       SetOwner(Vector, Parent);
-      State.applyAttribs(Vector);
+      State.applyStateToVector(Vector);
 
       // All attributes of <image> will be applied to the rectangle.
 
@@ -3556,7 +3568,9 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_FILL:
          if (iequals("currentColor", StrValue)) {
             FRGB rgb;
-            if (current_colour(Self, Vector, State, rgb) IS ERR::Okay) SetArray(Vector, FID_Fill|TFLOAT, &rgb, 4);
+            if (current_colour(Self, Vector, State, rgb) IS ERR::Okay) {
+               SetArray(Vector, FID_FillColour|TFLOAT, &rgb, 4);
+            }
          }
          else set_paint_server(Self, State, Vector, FID_Fill, StrValue);
          break;

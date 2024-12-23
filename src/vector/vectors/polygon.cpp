@@ -11,7 +11,7 @@ The VectorPolygon class provides support for three different types of vector:
 <li>Single lines consisting of two points only (a 'line' in SVG).</li>
 </list>
 
-To create a polyline, set the #Closed field to `false`.  
+To create a polyline, set the #Closed field to `false`.
 
 To create a line, set the #Closed field to `false` and set only two points (#X1,#Y1) and (#X2,#Y2)
 
@@ -49,11 +49,14 @@ static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
          if (p.x > max.x) max.x = p.x;
          if (p.y > max.y) max.y = p.y;
 
-         // A quirk of AGG is that it won't draw a line if the start and end points are equal.  This might
-         // seem reasonable, but it has side-effects such as stroke end-caps not being drawn at all.  For the
-         // time being we can avoid this problem by making a slight adjustment so that the points don't match.
+         // AGG won't draw a line if the start and end points are equal.  The SVG take on zero-length lines
+         // complicates things: A zero length subpath with 'stroke-linecap' set to 'square' or 'round' is stroked,
+         // but not stroked when 'stroke-linecap' is set to 'butt'.
+         //
+         // A ham-fisted way of controlling whether or not the line is stroked is to make a micro-adjustment
+         // to the coordinate so that they remain unequal.
 
-         if (p == last) p.x += 0.000001;
+         if ((Vector->LineCap != agg::line_cap_e::butt_cap) and (p IS last)) p.x += 1.0e-10;
 
          Path.line_to(p.x, p.y);
          last = p;
@@ -335,7 +338,7 @@ static ERR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG El
 -FIELD-
 Points: A series of (X,Y) coordinates that define the polygon.
 
-The Points field can be set with a series of `(X, Y)` coordinates that will define the polygon's shape.  A minimum of 
+The Points field can be set with a series of `(X, Y)` coordinates that will define the polygon's shape.  A minimum of
 two numbered pairs will be required to define a valid polygon.  Each point must be separated with either white-space or
 a comma.
 

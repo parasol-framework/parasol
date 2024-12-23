@@ -26,6 +26,13 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
    agg::point_d lp = { 0, 0 }; // Previous point in the path
    agg::point_d start = { 0, 0 }; // Starting point of the current polygon
 
+   // check_point() Checks for equality between lines and adjusts according to SVG rules.  A zero length subpath with 
+   // 'stroke-linecap' set to 'square' or 'round' is stroked, but not stroked when 'stroke-linecap' is set to 'butt'.
+
+   auto check_point = [&lp, &Vector](PathCommand &Cmd) {
+      if ((Cmd.AbsX IS lp.x) and (Cmd.AbsY IS lp.y) and (Vector->LineCap != agg::line_cap_e::butt_cap)) Cmd.AbsX += 1.0e-10;
+   };
+
    for (size_t i=0; i < Paths.size(); i++) {
       auto &path = Paths[i];
       switch (path.Type) {
@@ -47,6 +54,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
@@ -55,6 +63,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X + lp.x;
             path.AbsY = path.Y + lp.y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
@@ -63,6 +72,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = lp.y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
@@ -71,6 +81,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X + lp.x;
             path.AbsY = lp.y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
@@ -79,6 +90,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = lp.x;
             path.AbsY = path.Y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
@@ -87,6 +99,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = lp.x;
             path.AbsY = path.Y + lp.y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;

@@ -13,7 +13,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 
 *********************************************************************************************************************/
 
-//#define DEBUG
+#define DEBUG
 #define PRV_SVG
 #include <unordered_map>
 #include <string>
@@ -131,7 +131,7 @@ struct svgState {
       Scene(pSVG->Scene) { }
 
    void applyTag(const XMLTag &) noexcept;
-   void applyAttribs(objVector *) const noexcept;
+   void applyStateToVector(objVector *) const noexcept;
 };
 
 //********************************************************************************************************************
