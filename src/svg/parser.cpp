@@ -3437,7 +3437,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_APPEND_PATH: {
          // The append-path option is a Parasol attribute that requires a reference to an instantiated vector with a path.
          OBJECTPTR other = NULL;
-         if (Self->Scene->findDef(StrValue.c_str(), &other) IS ERR::Okay) Vector->set(FID_AppendPath, other);
+         if (Self->Scene->findDef(StrValue.c_str(), &other) IS ERR::Okay) Vector->setAppendPath(other);
          else log.warning("Unable to find element '%s' referenced at line %d", StrValue.c_str(), Tag.LineNo);
          break;
       }
@@ -3455,7 +3455,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_TRANSITION: {
          OBJECTPTR trans = NULL;
-         if (Self->Scene->findDef(StrValue.c_str(), &trans) IS ERR::Okay) Vector->set(FID_Transition, trans);
+         if (Self->Scene->findDef(StrValue.c_str(), &trans) IS ERR::Okay) Vector->setTransition(trans);
          else log.warning("Unable to find element '%s' referenced at line %d", StrValue.c_str(), Tag.LineNo);
          break;
       }
@@ -3579,7 +3579,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_STROKE_DASHARRAY: Vector->set(FID_DashArray, StrValue); break;
       case SVF_OPACITY:          Vector->set(FID_Opacity, StrValue); break;
-      case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, strtod(StrValue.c_str(), NULL)); break;
+      case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, std::clamp(strtod(StrValue.c_str(), NULL), 0.0, 1.0)); break;
       case SVF_SHAPE_RENDERING:  Vector->set(FID_PathQuality, LONG(shape_rendering_to_render_quality(StrValue))); break;
 
       case SVF_STROKE_WIDTH:            FUNIT(FID_StrokeWidth, StrValue).set(Vector); break;

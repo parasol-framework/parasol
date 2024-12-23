@@ -126,6 +126,7 @@ function testW3Painting07() hashTestSVG('painting/w3-painting-fill-01-t.svg', 0x
 function testW3Painting08() hashTestSVG('painting/w3-painting-fill-02-t.svg', 0x04d7a3cd) end
 function testW3Painting09() hashTestSVG('painting/w3-painting-fill-03-t.svg', 0x28e350c3) end
 function testW3Painting10() hashTestSVG('painting/w3-painting-fill-04-t.svg', 0x91368cb6) end
+function testW3Painting11() hashTestSVG('painting/w3-painting-fill-05-b.svg', 0x683935a6) end
 function testW3Painting21() hashTestSVG('painting/w3-painting-stroke-01-t.svg', 0x67e96bde) end
 function testW3Painting22() hashTestSVG('painting/w3-painting-stroke-02-t.svg', 0xa3033923) end
 function testW3Painting24() hashTestSVG('painting/w3-painting-stroke-04-t.svg', 0x9f58fb67) end
@@ -417,8 +418,10 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Painting05',
         'testW3Painting06',
         'testW3Painting07',
+        'testW3Painting08',
         'testW3Painting09',
         'testW3Painting10',
+        'testW3Painting11',
         'testW3Painting21',
         'testW3Painting22',
         'testW3Painting24',
