@@ -108,6 +108,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
+            check_point(path);
             BasePath.curve4(path.X2, path.Y2, path.X3, path.Y3, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
@@ -116,6 +117,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = lp.x + path.X;
             path.AbsY = lp.y + path.Y;
+            check_point(path);
             BasePath.curve4(path.X2+lp.x, path.Y2+lp.y, path.X3+lp.x, path.Y3+lp.y, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
@@ -125,6 +127,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
+            check_point(path);
             if (!lp_curved) BasePath.curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
             else BasePath.curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
             lp_curved = true;
@@ -134,6 +137,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = lp.x + path.X;
             path.AbsY = lp.y + path.Y;
+            check_point(path);
             if (!lp_curved) BasePath.curve3(path.X2+lp.x, path.Y2+lp.y, path.AbsX, path.AbsY);
             else BasePath.curve4(path.X2+lp.x, path.Y2+lp.y, path.AbsX, path.AbsY);
             lp_curved = true;
@@ -143,6 +147,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
+            check_point(path);
             BasePath.curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
@@ -151,6 +156,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = lp.x + path.X;
             path.AbsY = lp.y + path.Y;
+            check_point(path);
             BasePath.curve3(path.X2+lp.x, path.Y2+lp.y, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
@@ -159,6 +165,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
+            check_point(path);
             BasePath.curve3(path.AbsX, path.AbsY);
             lp_curved = true;
             break;
@@ -167,6 +174,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = lp.x + path.X;
             path.AbsY = lp.y + path.Y;
+            check_point(path);
             BasePath.curve3(path.X+lp.x, path.Y+lp.y);
             lp_curved = true;
             break;
@@ -175,7 +183,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            // rx, ry, angle, large_arc_flag, sweep_flag, DestX, DestY
+            check_point(path);
             BasePath.arc_to(path.X2, path.Y2, path.Angle * DEG2RAD, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
@@ -184,6 +192,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = lp.x + path.X;
             path.AbsY = lp.y + path.Y;
+            check_point(path);
             BasePath.arc_to(path.X2, path.Y2, path.Angle * DEG2RAD, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
