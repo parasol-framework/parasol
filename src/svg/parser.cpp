@@ -137,10 +137,24 @@ void svgState::applyAttribs(objVector *Vector) const noexcept
    if (m_line_cap != VLC::NIL)   Vector->setLineCap(LONG(m_line_cap));
 
    if (Vector->classID() IS CLASSID::VECTORTEXT) {
-      if (!m_font_family.empty()) Vector->set(FID_Face, m_font_family);
-      if (!m_font_size.empty())   Vector->set(FID_FontSize, m_font_size);
-      if (m_font_weight) Vector->set(FID_Weight, m_font_weight);
+      if (!m_font_family.empty()) Vector->setFields(fl::Face(m_font_family));
+      if (!m_font_size.empty())   Vector->setFields(fl::FontSize(m_font_size));
+      if (m_font_weight)          Vector->setFields(fl::Weight(m_font_weight));
    }
+
+   if (!m_display.empty()) {
+      if (iequals("none", m_display))          Vector->setVisibility(VIS::HIDDEN);
+      else if (iequals("inline", m_display))   Vector->setVisibility(VIS::VISIBLE);
+      else if (iequals("inherit", m_display))  Vector->setVisibility(VIS::INHERIT);
+   }
+   
+   if (!m_visibility.empty()) {
+      if (iequals("visible", m_visibility))       Vector->setVisibility(VIS::VISIBLE);
+      else if (iequals("hidden", m_visibility))   Vector->setVisibility(VIS::HIDDEN);
+      else if (iequals("collapse", m_visibility)) Vector->setVisibility(VIS::COLLAPSE); // Same effect as hidden, kept for SVG compatibility
+      else if (iequals("inherit", m_visibility))  Vector->setVisibility(VIS::INHERIT);
+   }
+
    if (m_fill_opacity >= 0.0) Vector->set(FID_FillOpacity, m_fill_opacity);
    if (m_opacity >= 0.0) Vector->set(FID_Opacity, m_opacity);
 
@@ -169,6 +183,8 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
          case SVF_COLOR:  m_color = val; break; // Affects 'currentColor'
          case SVF_STOP_COLOR: m_stop_color = val; break;
          case SVF_FILL:   m_fill = val; break;
+         case SVF_DISPLAY: m_display = val; break;
+         case SVF_VISIBILITY: m_visibility = val; break;
          case SVF_STROKE:
             m_stroke = val;
             if (!m_stroke_width) m_stroke_width = 1;
@@ -3434,62 +3450,62 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_COLOUR_INTERPOLATION:
       case SVF_COLOR_INTERPOLATION:
-         if (iequals("auto", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::SRGB));
-         else if (iequals("sRGB", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::SRGB));
-         else if (iequals("linearRGB", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
-         else if (iequals("inherit", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::INHERIT));
+         if (iequals("auto", StrValue)) Vector->setColourSpace(VCS::SRGB);
+         else if (iequals("sRGB", StrValue)) Vector->setColourSpace(VCS::SRGB);
+         else if (iequals("linearRGB", StrValue)) Vector->setColourSpace(VCS::LINEAR_RGB);
+         else if (iequals("inherit", StrValue)) Vector->setColourSpace(VCS::INHERIT);
          else log.warning("Invalid color-interpolation value '%s' at line %d", StrValue.c_str(), Tag.LineNo);
          break;
 
       case SVF_STROKE_LINEJOIN:
          switch(strihash(StrValue)) {
-            case SVF_MITER: Vector->set(FID_LineJoin, LONG(VLJ::MITER)); break;
-            case SVF_ROUND: Vector->set(FID_LineJoin, LONG(VLJ::ROUND)); break;
-            case SVF_BEVEL: Vector->set(FID_LineJoin, LONG(VLJ::BEVEL)); break;
-            case SVF_INHERIT: Vector->set(FID_LineJoin, LONG(VLJ::INHERIT)); break;
-            case SVF_MITER_REVERT: Vector->set(FID_LineJoin, LONG(VLJ::MITER_REVERT)); break; // Special AGG only join type
-            case SVF_MITER_ROUND: Vector->set(FID_LineJoin, LONG(VLJ::MITER_ROUND)); break; // Special AGG only join type
+            case SVF_MITER: Vector->setLineJoin(LONG(VLJ::MITER)); break;
+            case SVF_ROUND: Vector->setLineJoin(LONG(VLJ::ROUND)); break;
+            case SVF_BEVEL: Vector->setLineJoin(LONG(VLJ::BEVEL)); break;
+            case SVF_INHERIT: Vector->setLineJoin(LONG(VLJ::INHERIT)); break;
+            case SVF_MITER_REVERT: Vector->setLineJoin(LONG(VLJ::MITER_REVERT)); break; // Special AGG only join type
+            case SVF_MITER_ROUND: Vector->setLineJoin(LONG(VLJ::MITER_ROUND)); break; // Special AGG only join type
          }
          break;
 
       case SVF_STROKE_INNERJOIN: // AGG ONLY
          switch(strihash(StrValue)) {
-            case SVF_MITER:   Vector->set(FID_InnerJoin, LONG(VIJ::MITER));  break;
-            case SVF_ROUND:   Vector->set(FID_InnerJoin, LONG(VIJ::ROUND)); break;
-            case SVF_BEVEL:   Vector->set(FID_InnerJoin, LONG(VIJ::BEVEL)); break;
-            case SVF_INHERIT: Vector->set(FID_InnerJoin, LONG(VIJ::INHERIT)); break;
-            case SVF_JAG:     Vector->set(FID_InnerJoin, LONG(VIJ::JAG)); break;
+            case SVF_MITER:   Vector->setInnerJoin(LONG(VIJ::MITER));  break;
+            case SVF_ROUND:   Vector->setInnerJoin(LONG(VIJ::ROUND)); break;
+            case SVF_BEVEL:   Vector->setInnerJoin(LONG(VIJ::BEVEL)); break;
+            case SVF_INHERIT: Vector->setInnerJoin(LONG(VIJ::INHERIT)); break;
+            case SVF_JAG:     Vector->setInnerJoin(LONG(VIJ::JAG)); break;
          }
          break;
 
       case SVF_STROKE_LINECAP:
          switch(strihash(StrValue)) {
-            case SVF_BUTT:    Vector->set(FID_LineCap, LONG(VLC::BUTT)); break;
-            case SVF_SQUARE:  Vector->set(FID_LineCap, LONG(VLC::SQUARE)); break;
-            case SVF_ROUND:   Vector->set(FID_LineCap, LONG(VLC::ROUND)); break;
-            case SVF_INHERIT: Vector->set(FID_LineCap, LONG(VLC::INHERIT)); break;
+            case SVF_BUTT:    Vector->setLineCap(LONG(VLC::BUTT)); break;
+            case SVF_SQUARE:  Vector->setLineCap(LONG(VLC::SQUARE)); break;
+            case SVF_ROUND:   Vector->setLineCap(LONG(VLC::ROUND)); break;
+            case SVF_INHERIT: Vector->setLineCap(LONG(VLC::INHERIT)); break;
          }
          break;
 
       case SVF_VISIBILITY:
-         if (iequals("visible", StrValue))       Vector->set(FID_Visibility, LONG(VIS::VISIBLE));
-         else if (iequals("hidden", StrValue))   Vector->set(FID_Visibility, LONG(VIS::HIDDEN));
-         else if (iequals("collapse", StrValue)) Vector->set(FID_Visibility, LONG(VIS::COLLAPSE)); // Same effect as hidden, kept for SVG compatibility
-         else if (iequals("inherit", StrValue))  Vector->set(FID_Visibility, LONG(VIS::INHERIT));
+         if (iequals("visible", StrValue))       Vector->setVisibility(VIS::VISIBLE);
+         else if (iequals("hidden", StrValue))   Vector->setVisibility(VIS::HIDDEN);
+         else if (iequals("collapse", StrValue)) Vector->setVisibility(VIS::COLLAPSE); // Same effect as hidden, kept for SVG compatibility
+         else if (iequals("inherit", StrValue))  Vector->setVisibility(VIS::INHERIT);
          else log.warning("Unsupported visibility value '%s'", StrValue.c_str());
          break;
 
       case SVF_FILL_RULE:
-         if (iequals("nonzero", StrValue)) Vector->set(FID_FillRule, LONG(VFR::NON_ZERO));
-         else if (iequals("evenodd", StrValue)) Vector->set(FID_FillRule, LONG(VFR::EVEN_ODD));
-         else if (iequals("inherit", StrValue)) Vector->set(FID_FillRule, LONG(VFR::INHERIT));
+         if (iequals("nonzero", StrValue)) Vector->setFillRule(LONG(VFR::NON_ZERO));
+         else if (iequals("evenodd", StrValue)) Vector->setFillRule(LONG(VFR::EVEN_ODD));
+         else if (iequals("inherit", StrValue)) Vector->setFillRule(LONG(VFR::INHERIT));
          else log.warning("Unsupported fill-rule value '%s'", StrValue.c_str());
          break;
 
       case SVF_CLIP_RULE:
-         if (iequals("nonzero", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::NON_ZERO));
-         else if (iequals("evenodd", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::EVEN_ODD));
-         else if (iequals("inherit", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::INHERIT));
+         if (iequals("nonzero", StrValue)) Vector->setClipRule(LONG(VFR::NON_ZERO));
+         else if (iequals("evenodd", StrValue)) Vector->setClipRule(LONG(VFR::EVEN_ODD));
+         else if (iequals("inherit", StrValue)) Vector->setClipRule(LONG(VFR::INHERIT));
          else log.warning("Unsupported clip-rule value '%s'", StrValue.c_str());
          break;
 
@@ -3510,9 +3526,9 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          // whitespace in document layout mode.  This has no relevance in our Vector Scene Graph, so 'display' is
          // treated as an obsolete feature and converted to visibility.
 
-         if (iequals("none", StrValue))          Vector->set(FID_Visibility, LONG(VIS::HIDDEN));
-         else if (iequals("inline", StrValue))   Vector->set(FID_Visibility, LONG(VIS::VISIBLE));
-         else if (iequals("inherit", StrValue))  Vector->set(FID_Visibility, LONG(VIS::INHERIT));
+         if (iequals("none", StrValue))          Vector->setVisibility(VIS::HIDDEN);
+         else if (iequals("inline", StrValue))   Vector->setVisibility(VIS::VISIBLE);
+         else if (iequals("inherit", StrValue))  Vector->setVisibility(VIS::INHERIT);
          break;
 
       case SVF_NUMERIC_ID: Vector->set(FID_NumericID, StrValue); break;
@@ -3526,8 +3542,8 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_MARKER_MID:   log.warning("marker-mid is not supported."); break;
       case SVF_MARKER_START: log.warning("marker-start is not supported."); break;
 
-      case SVF_FILTER:       Vector->set(FID_Filter, StrValue); break;
-      case SVF_COLOR:        Vector->set(FID_Fill, StrValue); break;
+      case SVF_FILTER:       Vector->setFilter(StrValue); break;
+      case SVF_COLOR:        Vector->setFill(StrValue); break;
 
       case SVF_STROKE:
          if (iequals("currentColor", StrValue)) {

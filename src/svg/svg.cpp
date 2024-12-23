@@ -109,6 +109,8 @@ struct svgState {
    std::string m_stroke;      // Empty by default
    std::string m_font_size;
    std::string m_font_family;
+   std::string m_display;
+   std::string m_visibility;
    DOUBLE  m_stroke_width;    // 0 if undefined
    DOUBLE  m_fill_opacity;    // -1 if undefined
    DOUBLE  m_opacity;         // -1 if undefined

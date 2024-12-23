@@ -690,7 +690,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       if (shape->dirty()) gen_vector_path(shape);
       else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Class->ClassName, shape->UID, shape->ParentView ? shape->ParentView->UID : 0);
 
-      // Visibility management.
+      // Visibility management.  NB: Under SVG rules VectorGroup objects are always visible as they are not
+      // classed as a graphics element.
 
       {
          bool visible = true;
@@ -699,7 +700,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          }
          else if (shape->Visibility != VIS::VISIBLE) visible = false;
 
-         if ((!visible) or (!shape->ValidState)) {
+         if (((!visible) or (!shape->ValidState)) and (shape->classID() != CLASSID::VECTORGROUP)) {
             log.trace("%s: #%d, Not Visible", get_name(shape), shape->UID);
             continue;
          }
