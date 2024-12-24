@@ -1,0 +1,14 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+<!--
+This tests that the "stroke-dasharray" property accepts values that are separated by white space.
+
+The test is passed if it matches the reference rendering by showing a thick stroke with alternating long and short
+stroke dashes.
+-->
+
+  <path fill="none" stroke="black" stroke-width="25" stroke-dasharray="25  5 , 5 5" d="M50,120 h385"/>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000000"/>
+</svg>

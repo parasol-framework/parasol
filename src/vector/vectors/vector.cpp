@@ -1258,7 +1258,7 @@ static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
 
    if (Self->DashArray) { delete Self->DashArray; Self->DashArray = NULL; }
 
-   if ((Value) and (Elements >= 2)) {
+   if ((Value) and (Elements >= 1)) {
       LONG total;
 
       if (Elements & 1) total = Elements * 2; // To satisfy requirements, the dash path can be doubled to make an even number.
@@ -1282,6 +1282,13 @@ static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
 
             Self->DashArray->path.add_dash(Self->DashArray->values[i], Self->DashArray->values[i+1]);
             total_length += Self->DashArray->values[i] + Self->DashArray->values[i+1];
+         }
+
+         if (total_length <= 0) {
+            log.warning("DashArray has invalid length.");
+            delete Self->DashArray;
+            Self->DashArray = NULL;
+            return ERR::InvalidValue;
          }
 
          // The stroke-dashoffset is used to set how far into dash pattern to start the pattern.  E.g. a

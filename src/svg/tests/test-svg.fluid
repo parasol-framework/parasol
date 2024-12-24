@@ -131,6 +131,7 @@ function testW3Painting21() hashTestSVG('painting/w3-painting-stroke-01-t.svg', 
 function testW3Painting22() hashTestSVG('painting/w3-painting-stroke-02-t.svg', 0xa3033923) end
 function testW3Painting24() hashTestSVG('painting/w3-painting-stroke-04-t.svg', 0x9f58fb67) end
 function testW3Painting25() hashTestSVG('painting/w3-painting-stroke-05-t.svg', 0xc71a7d8c) end
+function testW3Painting26() hashTestSVG('painting/w3-painting-stroke-06-t.svg', 0x1d2c9f10) end
 function testW3Painting30() hashTestSVG('painting/w3-painting-stroke-10-t.svg', 0xfe0e9883) end
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
 function testComposite()          hashTestSVG('filters/composite.svg', 0x66a96a50) end
@@ -426,6 +427,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Painting22',
         'testW3Painting24',
         'testW3Painting25',
+        'testW3Painting26',
         'testW3Painting30',
         -- Paths
         'testCircles',
