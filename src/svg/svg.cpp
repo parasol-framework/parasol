@@ -139,6 +139,7 @@ struct svgState {
 static ERR  animation_timer(extSVG *, LARGE, LARGE);
 static void convert_styles(objXML::TAGS &);
 static ERR  set_property(extSVG *, objVector *, ULONG, XMLTag &, svgState &, std::string);
+static double read_unit(std::string_view &, LARGE * = nullptr);
 
 static ERR  init_svg(void);
 static ERR  init_rsvg(void);

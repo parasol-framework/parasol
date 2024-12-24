@@ -3577,7 +3577,12 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_TRANSFORM: parse_transform(Vector, StrValue, MTAG_SVG_TRANSFORM); break;
 
-      case SVF_STROKE_DASHARRAY: Vector->set(FID_DashArray, StrValue); break;
+      case SVF_STROKE_DASHARRAY: {
+         auto values = read_array(StrValue);
+         Vector->setDashArray(values.data(), values.size()); 
+         break;
+      }
+
       case SVF_OPACITY:          Vector->set(FID_Opacity, StrValue); break;
       case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, std::clamp(strtod(StrValue.c_str(), NULL), 0.0, 1.0)); break;
       case SVF_SHAPE_RENDERING:  Vector->set(FID_PathQuality, LONG(shape_rendering_to_render_quality(StrValue))); break;

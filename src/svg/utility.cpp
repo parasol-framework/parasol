@@ -321,7 +321,7 @@ static double read_time(const std::string_view Value)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static double read_unit(const std::string_view Value, LARGE *FieldID)
+static double read_unit(std::string_view &Value, LARGE *FieldID)
 {
    if (FieldID) *FieldID |= TDOUBLE;
 
@@ -329,25 +329,30 @@ static double read_unit(const std::string_view Value, LARGE *FieldID)
 
    std::size_t i = 0;
    while ((i < Value.size()) and (unsigned(Value[i]) <= 0x20)) i++;
+   if (i > 0) Value.remove_prefix(i);
 
    double fv;
-   auto [ ptr, error ] = std::from_chars(Value.data() + i, Value.data() + Value.size(), fv);
+   auto [ ptr, error ] = std::from_chars(Value.data(), Value.data() + Value.size(), fv);
 
    if (error IS std::errc()) {
+      Value.remove_prefix(ptr - Value.data());
+
       if (ptr[0] IS '%') {
+         Value.remove_prefix(1);
          if (FieldID) *FieldID |= TSCALE;
          return fv * 0.01;
       }
-      else if ((ptr[0] IS 'e') and (ptr[1] IS 'm')) return fv * 12.0 * (4.0 / 3.0); // Multiply the current font's pixel height by the provided em value
-      else if ((ptr[0] IS 'e') and (ptr[1] IS 'x')) return fv * 6.0 * (4.0 / 3.0); // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
-      else if ((ptr[0] IS 'i') and (ptr[1] IS 'n')) return fv * dpi; // Inches
-      else if ((ptr[0] IS 'c') and (ptr[1] IS 'm')) return fv * (1.0 / 2.56) * dpi; // Centimetres
-      else if ((ptr[0] IS 'm') and (ptr[1] IS 'm')) return fv * (1.0 / 20.56) * dpi; // Millimetres
-      else if ((ptr[0] IS 'p') and (ptr[1] IS 't')) return fv * (4.0 / 3.0); // Points.  A point is 4/3 of a pixel
-      else if ((ptr[0] IS 'p') and (ptr[1] IS 'c')) return fv * (4.0 / 3.0) * 12.0; // Pica.  1 Pica is equal to 12 Points
+      else if ((ptr[0] IS 'e') and (ptr[1] IS 'm')) { Value.remove_prefix(2); return fv * 12.0 * (4.0 / 3.0); } // Multiply the current font's pixel height by the provided em value
+      else if ((ptr[0] IS 'e') and (ptr[1] IS 'x')) { Value.remove_prefix(2); return fv * 6.0 * (4.0 / 3.0); } // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
+      else if ((ptr[0] IS 'i') and (ptr[1] IS 'n')) { Value.remove_prefix(2); return fv * dpi; } // Inches
+      else if ((ptr[0] IS 'c') and (ptr[1] IS 'm')) { Value.remove_prefix(2); return fv * (1.0 / 2.56) * dpi; } // Centimetres
+      else if ((ptr[0] IS 'm') and (ptr[1] IS 'm')) { Value.remove_prefix(2); return fv * (1.0 / 20.56) * dpi; } // Millimetres
+      else if ((ptr[0] IS 'p') and (ptr[1] IS 't')) { Value.remove_prefix(2); return fv * (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
+      else if ((ptr[0] IS 'p') and (ptr[1] IS 'c')) { Value.remove_prefix(2); return fv * (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
+      else if ((ptr[0] IS 'p') and (ptr[1] IS 'x')) { Value.remove_prefix(2); return fv; } // Pixel
       else return fv; // Default to 'px' / pixel
    }
-   else return 0;
+   else { Value = std::string_view(); return DBL_MIN; }
 }
 
 //********************************************************************************************************************
@@ -359,7 +364,8 @@ static double read_unit(const std::string_view Value, LARGE *FieldID)
 inline void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string_view Value, VUNIT Units)
 {
    auto field = FieldID;
-   double num = read_unit(Value, &field);
+   auto v = Value;
+   double num = read_unit(v, &field);
    if (Units IS VUNIT::BOUNDING_BOX) field |= TSCALE;
    SetField(Object, field, num);
 }
@@ -393,21 +399,23 @@ template <class T = double> std::string_view read_numseq(std::string_view String
 }
 
 //********************************************************************************************************************
+// Read a sequence of doubles from a string.  Commas, parenthesis and whitespace is ignored.
 
 template<class T = double> std::vector<T> read_array(const std::string Value, LONG Limit = 0x7fffffff)
 {
    std::vector<T> result;
 
-   CSTRING v = Value.c_str();
-   while ((*v) and (LONG(result.size()) < Limit)) {
-      while ((*v) and ((*v <= 0x20) or (*v IS ',') or (*v IS '(') or (*v IS ')'))) v++;
-      if (!*v) return result;
+   if (iequals("none", Value)) return result;
 
-      STRING next = NULL;
-      double num = strtod(v, &next);
-      if ((!num) and (!next)) return result;
+   auto v = std::string_view(Value);
+   while ((!v.empty()) and (std::ssize(result) < Limit)) {
+      while ((!v.empty()) and ((v[0] <= 0x20) or (v[0] IS ',') or (v[0] IS '(') or (v[0] IS ')'))) v.remove_prefix(1);
+      if (v.empty()) return result;
+
+      auto num = read_unit(v);
+      if (num IS DBL_MIN) return result;
+
       result.push_back(num);
-      v = next;
    }
 
    return result;
