@@ -113,7 +113,7 @@ end
 -- Convert an RGB table to a SVG colour string
 
 gui.rgbToSVG = function(Value)
-   return string.format('rgb(%d,%d,%d,%d)', Value.r, Value.g, Value.b, nz(Value.a,255))
+   return string.format('rgba(%d,%d,%d,%g)', Value.r, Value.g, Value.b, nz(Value.a, 255) / 255)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -450,7 +450,7 @@ end
      widget = {
        text   = gui.palette.altText,
        bkgd   = gui.palette.prime,
-       stroke = 'rgb(255,255,255,60)',
+       stroke = 'rgba(255,255,255,.25)',
        strokeFocus = gui.palette.contrast,
        strokeWidth = 2,
        width  = 160, -- Default width for common widgets (px)

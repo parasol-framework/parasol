@@ -79,7 +79,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
 
    local function refreshExample()
       if not self.guidelines then
-         self.guidelines = self.examplePage.new('VectorPath', { strokeWidth = 0.5, stroke = 'rgb(0,0,180,64)' })
+         self.guidelines = self.examplePage.new('VectorPath', { strokeWidth = 0.5, stroke = 'rgba(0,0,180,.25)' })
       end
 
       local pageWidth = self.examplePage.width
@@ -265,7 +265,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
    })
 
    self.exampleBkgd = self.exampleVP.new('VectorRectangle', {
-      fill = 'rgb(253,255,246)', stroke = 'rgb(0,0,0,64)', strokeWidth = 2,
+      fill = 'rgb(253,255,246)', stroke = 'rgba(0,0,0,.25)', strokeWidth = 2,
       x = 0, y = 0, width = '100%', height = '100%'
    })
 

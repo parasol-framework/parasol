@@ -14,8 +14,8 @@ local ITEM_HEIGHT = math.floor(FONT_MAX_HEIGHT * 1.5)
 local VMARGIN = math.floor(ITEM_HEIGHT * 0.33)
 local HMARGIN = 6
 local ICON_SIZE = math.floor(ITEM_HEIGHT * 0.8)
-local KB_HIGHLIGHT = 'rgb(0,0,0,120)'
-local ICON_STRIP = 'rgb(255,255,255,40)'
+local KB_HIGHLIGHT = 'rgba(0,0,0,.5)'
+local ICON_STRIP = 'rgba(255,255,255,.15)'
 
 gui.menu = function(Options)
    local self = { -- Public variables
