@@ -132,12 +132,12 @@ void anim_value::set_value(objVector &Vector)
 
       case SVF_STROKE_LINEJOIN:
          switch(strihash(get_string())) {
-            case SVF_MITER: Vector.set(FID_LineJoin, LONG(VLJ::MITER)); return;
-            case SVF_ROUND: Vector.set(FID_LineJoin, LONG(VLJ::ROUND)); return;
-            case SVF_BEVEL: Vector.set(FID_LineJoin, LONG(VLJ::BEVEL)); return;
-            case SVF_INHERIT: Vector.set(FID_LineJoin, LONG(VLJ::INHERIT)); return;
-            case SVF_MITER_REVERT: Vector.set(FID_LineJoin, LONG(VLJ::MITER_REVERT)); return; // Special AGG only join type
-            case SVF_MITER_ROUND: Vector.set(FID_LineJoin, LONG(VLJ::MITER_ROUND)); return; // Special AGG only join type
+            case SVF_MITER: Vector.setLineJoin(LONG(VLJ::MITER)); return;
+            case SVF_ROUND: Vector.setLineJoin(LONG(VLJ::ROUND)); return;
+            case SVF_BEVEL: Vector.setLineJoin(LONG(VLJ::BEVEL)); return;
+            case SVF_INHERIT: Vector.setLineJoin(LONG(VLJ::INHERIT)); return;
+            case SVF_MITER_CLIP: Vector.setLineJoin(LONG(VLJ::MITER_SMART)); return; // Special AGG only join type
+            case SVF_MITER_ROUND: Vector.setLineJoin(LONG(VLJ::MITER_ROUND)); return; // Special AGG only join type
          }
          return;
 

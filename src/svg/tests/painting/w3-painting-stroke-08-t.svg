@@ -1,0 +1,39 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+Test effects of stroke-opacity range. Values outside the range 0-1.0 must be clamped.
+
+There must be no blue bars visible beside the three pink dots.
+Four semitransparent blue bars, increasingly more opaque,
+must line up with the yellow dots. Three fully opaque
+blue bars must line up with the green dots.
+-->
+  <g transform="translate(50, 0) scale(1.7)">
+    <circle r="5" fill="#f66" cx="200" cy="20"/>
+    <circle r="5" fill="#f66" cx="200" cy="40"/>
+    <circle r="5" fill="#f66" cx="200" cy="60"/>
+    <circle r="5" fill="#f66" cx="200" cy="80"/>
+    <circle r="5" fill="#ff0" cx="200" cy="80"/>
+    <circle r="5" fill="#ff0" cx="200" cy="100"/>
+    <circle r="5" fill="#ff0" cx="200" cy="120"/>
+    <circle r="5" fill="#ff0" cx="200" cy="140"/>
+    <circle r="5" fill="#6f3" cx="200" cy="160"/>
+    <circle r="5" fill="#6f3" cx="200" cy="180"/>
+    <circle r="5" fill="#6f3" cx="200" cy="200"/>
+
+    <!-- Test range and values outside range (should be clamped to valid range) -->
+
+    <path stroke="blue" stroke-width="10" fill="none" stroke-opacity="-1.0" d="M20 20 L200 20"/>
+    <path stroke="blue" stroke-width="10" fill="none" stroke-opacity="-0.1" d="M20 40 L200 40"/>
+    <path stroke="blue" stroke-width="10" fill="none" stroke-opacity="0.0" d="M20 60 L200 60"/>
+    <path stroke="blue" stroke-width="10" fill="none" stroke-opacity="0.2" d="M20 80 L200 80"/>
+    <path stroke="blue" stroke-width="10" fill="none" stroke-opacity="0.4" d="M20 100 L200 100"/>
+    <path stroke="blue" stroke-width="10" fill="none" stroke-opacity="0.6" d="M20 120 L200 120"/>
+    <path stroke="blue" stroke-width="10" fill="none" stroke-opacity="0.8" d="M20 140 L200 140"/>
+    <path stroke="blue" stroke-width="10" fill="none" stroke-opacity="1.0" d="M20 160 L200 160"/>
+    <path stroke="blue" stroke-width="10" fill="none" stroke-opacity="1.1" d="M20 180 L200 180"/>
+    <path stroke="blue" stroke-width="10" fill="none" stroke-opacity="2.0" d="M20 200 L200 200"/>
+  </g>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000000"/>
+</svg>

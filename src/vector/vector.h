@@ -1034,12 +1034,11 @@ void configure_stroke(extVector &Vector, T &Stroke)
    if (Vector.LineCap)   Stroke.line_cap(Vector.LineCap); // butt, square, round
    if (Vector.InnerJoin) Stroke.inner_join(Vector.InnerJoin); // miter, round, bevel, jag
 
-   // TODO: AGG seems to have issues with using the correct cap at the end of closed polygons.  For the moment
-   // this hack is being used, but it can result in dashed lines being switched to the wrong line cap.  For illustration, use:
-   //
-   //   <polygon points="100,50 140,50 120,15.36" stroke="darkslategray" stroke-width="5" stroke-dasharray="20 20"
-   //     stroke-dashoffset="10" fill="lightslategray" stroke-linejoin="round" />
+   // It has been noted that there may be issues between miter_join, miter_join_revert and line-caps that 
+   // need further investigation.  This section experiments with adjusting the line-cap according to the selected
+   // line-join.
 
+   /*
    if (Vector.LineJoin) {
       if (Vector.classID() IS CLASSID::VECTORPOLYGON) {
          if (((extVectorPoly &)Vector).Closed) {
@@ -1054,7 +1053,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
          }
       }
    }
-
+   */
    if (Vector.MiterLimit > 0) Stroke.miter_limit(Vector.MiterLimit);
    if (Vector.InnerMiterLimit > 0) Stroke.inner_miter_limit(Vector.InnerMiterLimit);
 }

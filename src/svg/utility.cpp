@@ -337,22 +337,24 @@ static double read_unit(std::string_view &Value, LARGE *FieldID)
    if (error IS std::errc()) {
       Value.remove_prefix(ptr - Value.data());
 
-      if (ptr[0] IS '%') {
+      if (Value.starts_with('%')) {
          Value.remove_prefix(1);
          if (FieldID) *FieldID |= TSCALE;
          return fv * 0.01;
       }
-      else if ((ptr[0] IS 'e') and (ptr[1] IS 'm')) { Value.remove_prefix(2); return fv * 12.0 * (4.0 / 3.0); } // Multiply the current font's pixel height by the provided em value
-      else if ((ptr[0] IS 'e') and (ptr[1] IS 'x')) { Value.remove_prefix(2); return fv * 6.0 * (4.0 / 3.0); } // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
-      else if ((ptr[0] IS 'i') and (ptr[1] IS 'n')) { Value.remove_prefix(2); return fv * dpi; } // Inches
-      else if ((ptr[0] IS 'c') and (ptr[1] IS 'm')) { Value.remove_prefix(2); return fv * (1.0 / 2.56) * dpi; } // Centimetres
-      else if ((ptr[0] IS 'm') and (ptr[1] IS 'm')) { Value.remove_prefix(2); return fv * (1.0 / 20.56) * dpi; } // Millimetres
-      else if ((ptr[0] IS 'p') and (ptr[1] IS 't')) { Value.remove_prefix(2); return fv * (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
-      else if ((ptr[0] IS 'p') and (ptr[1] IS 'c')) { Value.remove_prefix(2); return fv * (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
-      else if ((ptr[0] IS 'p') and (ptr[1] IS 'x')) { Value.remove_prefix(2); return fv; } // Pixel
-      else return fv; // Default to 'px' / pixel
+      else if (Value.starts_with("em")) { Value.remove_prefix(2); return fv * 12.0 * (4.0 / 3.0); } // Multiply the current font's pixel height by the provided em value
+      else if (Value.starts_with("ex")) { Value.remove_prefix(2); return fv * 6.0 * (4.0 / 3.0); } // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
+      else if (Value.starts_with("in")) { Value.remove_prefix(2); return fv * dpi; } // Inches
+      else if (Value.starts_with("cm")) { Value.remove_prefix(2); return fv * (1.0 / 2.56) * dpi; } // Centimetres
+      else if (Value.starts_with("mm")) { Value.remove_prefix(2); return fv * (1.0 / 20.56) * dpi; } // Millimetres
+      else if (Value.starts_with("pt")) { Value.remove_prefix(2); return fv * (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
+      else if (Value.starts_with("pc")) { Value.remove_prefix(2); return fv * (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
+      else if (Value.starts_with("px")) { Value.remove_prefix(2); return fv; } // Pixel
+
+      return fv; // Default to 'px' / pixel
    }
-   else { Value = std::string_view(); return DBL_MIN; }
+   Value = std::string_view();
+   return DBL_MIN;
 }
 
 //********************************************************************************************************************

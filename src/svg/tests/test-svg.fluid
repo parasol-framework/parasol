@@ -48,12 +48,13 @@ end
 function testCircles()         hashTestSVG('paths/circles.svg', 0xc2063c38) end
 function testMorph()           hashTestSVG('paths/morph.svg', 0x4f9e9c4f) end
 function testEllipseVertices() hashTestSVG('paths/ellipse_vertices.svg', 0x00d2264b) end
-function testPolygons()        hashTestSVG('paths/polygons.svg', 0x2f17adec) end
+function testPolygons()        hashTestSVG('paths/polygons.svg', 0x605a79fa) end
+function testRough()           hashTestSVG('paths/rough_js.svg', 0x3b80407f) end
 function testShapes()          hashTestSVG('paths/shapes.svg', 0xd67937c9) end
 function testSpirals()         hashTestSVG('paths/spirals.svg', 0x0d713688) end
 function testStrokes()         hashTestSVG('paths/strokes.svg', 0x087fb44e) end
-function testSuperShapes()     hashTestSVG('paths/supershapes.svg', 0x915ba38c) end
-function testSuperSpiral()     hashTestSVG('paths/superspiral.svg', 0xd981df67) end
+function testSuperShapes()     hashTestSVG('paths/supershapes.svg', 0x2362adac) end
+function testSuperSpiral()     hashTestSVG('paths/superspiral.svg', 0xd2045a9e) end
 function testTransitions()     hashTestSVG('paths/transitions.svg', 0x6774b2a9) end
 function testWave()            hashTestSVG('paths/wave.svg', 0xc462fb58) end
 function testW3Paths01()       hashTestSVG('paths/w3-paths-data-01-t.svg', 0x349fdafe) end
@@ -72,8 +73,8 @@ function testW3Paths14()       hashTestSVG('paths/w3-paths-data-14-t.svg', 0x1ef
 function testW3Paths15()       hashTestSVG('paths/w3-paths-data-15-t.svg', 0x524dac2e) end
 function testW3Paths16()       hashTestSVG('paths/w3-paths-data-16-t.svg', 0x6f71b982) end
 function testW3Paths17()       hashTestSVG('paths/w3-paths-data-17-f.svg', 0x7ae35b09) end
-function testW3Paths18()       hashTestSVG('paths/w3-paths-data-18-f.svg', 0x80027352) end
-function testW3Paths19()       hashTestSVG('paths/w3-paths-data-19-f.svg', 0x6af6be3e) end
+function testW3Paths18()       hashTestSVG('paths/w3-paths-data-18-f.svg', 0x54e77352) end
+function testW3Paths19()       hashTestSVG('paths/w3-paths-data-19-f.svg', 0x1986e739) end
 -- Some aspects of this test do not pass but we do not intend to support them
 function testW3Paths20()       hashTestSVG('paths/w3-paths-data-20-f.svg', 0x70082db1) end
 
@@ -129,9 +130,12 @@ function testW3Painting10() hashTestSVG('painting/w3-painting-fill-04-t.svg', 0x
 function testW3Painting11() hashTestSVG('painting/w3-painting-fill-05-b.svg', 0x683935a6) end
 function testW3Painting21() hashTestSVG('painting/w3-painting-stroke-01-t.svg', 0x67e96bde) end
 function testW3Painting22() hashTestSVG('painting/w3-painting-stroke-02-t.svg', 0xa3033923) end
+function testW3Painting23() hashTestSVG('painting/w3-painting-stroke-03-t.svg', 0xb2b7026a) end
 function testW3Painting24() hashTestSVG('painting/w3-painting-stroke-04-t.svg', 0x9f58fb67) end
 function testW3Painting25() hashTestSVG('painting/w3-painting-stroke-05-t.svg', 0xc71a7d8c) end
 function testW3Painting26() hashTestSVG('painting/w3-painting-stroke-06-t.svg', 0x1d2c9f10) end
+function testW3Painting27() hashTestSVG('painting/w3-painting-stroke-07-t.svg', 0x2285095f) end
+function testW3Painting28() hashTestSVG('painting/w3-painting-stroke-08-t.svg', 0x40da452a) end
 function testW3Painting29() hashTestSVG('painting/w3-painting-stroke-09-t.svg', 0xb153164f) end
 function testW3Painting30() hashTestSVG('painting/w3-painting-stroke-10-t.svg', 0xfe0e9883) end
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
@@ -193,7 +197,7 @@ function testBottleTree()         hashTestSVG('images/bottletree.svg', 0xd7fb84f
 function testButton()             hashTestSVG('images/button.svg', 0x0e8f5a31) end
 function testClock()              hashTestSVG('images/clock.svg', 0x8b30aba4) end
 function testIceCube()            hashTestSVG('images/icecube.svg', 0xc8dc1cd4) end
-function testTiger()              hashTestSVG('images/tiger.svg', 0xa7b2c808) end
+function testTiger()              hashTestSVG('images/tiger.svg', 0x91002efa) end
 function testPod()                hashTestSVG('images/pod.svg', 0xfd1904d6) end
 
 function testClip()               hashTestSVG('masks/clip.svg', 0x209c16aa) end
@@ -426,9 +430,12 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Painting11',
         'testW3Painting21',
         'testW3Painting22',
+        'testW3Painting23',
         'testW3Painting24',
         'testW3Painting25',
         'testW3Painting26',
+        'testW3Painting27',
+        'testW3Painting28',
         'testW3Painting29',
         'testW3Painting30',
         -- Paths
@@ -439,6 +446,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testEllipseVertices',
         'testMorph',
         'testPolygons',
+        'testRough',
         'testShapes',
         'testSpirals',
         'testStrokes',

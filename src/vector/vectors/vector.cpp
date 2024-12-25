@@ -571,7 +571,7 @@ static ERR VECTOR_NewPlacement(extVector *Self)
    Self->FillOpacity   = 1.0;
    Self->Opacity       = 1.0;              // Overall opacity multiplier
    Self->MiterLimit    = 4;                // SVG default is 4;
-   Self->LineJoin      = agg::miter_join;  // SVG default is miter
+   Self->LineJoin      = agg::miter_join_revert;  // SVG default is miter; the 'revert' version matches SVG rules
    Self->LineCap       = agg::butt_cap;    // SVG default is butt
    Self->InnerJoin     = agg::inner_miter; // AGG only
    Self->NumericID     = 0x7fffffff;
@@ -1697,11 +1697,11 @@ that are being stroked.
 
 static ERR VECTOR_GET_LineJoin(extVector *Self, VLJ *Value)
 {
-   if (Self->LineJoin IS agg::miter_join)        *Value = VLJ::MITER;
+   if (Self->LineJoin IS agg::miter_join_revert) *Value = VLJ::MITER;
    else if (Self->LineJoin IS agg::round_join)   *Value = VLJ::ROUND;
    else if (Self->LineJoin IS agg::bevel_join)   *Value = VLJ::BEVEL;
    else if (Self->LineJoin IS agg::inherit_join) *Value = VLJ::INHERIT;
-   else if (Self->LineJoin IS agg::miter_join_revert) *Value = VLJ::MITER_REVERT;
+   else if (Self->LineJoin IS agg::miter_join)   *Value = VLJ::MITER_SMART;
    else if (Self->LineJoin IS agg::miter_join_round)  *Value = VLJ::MITER_ROUND;
    else *Value = VLJ::NIL;
 
@@ -1711,10 +1711,10 @@ static ERR VECTOR_GET_LineJoin(extVector *Self, VLJ *Value)
 static ERR VECTOR_SET_LineJoin(extVector *Self, VLJ Value)
 {
    switch (Value) {
-      case VLJ::MITER:        Self->LineJoin = agg::miter_join; break;
+      case VLJ::MITER:        Self->LineJoin = agg::miter_join_revert; break;
       case VLJ::ROUND:        Self->LineJoin = agg::round_join; break;
       case VLJ::BEVEL:        Self->LineJoin = agg::bevel_join; break;
-      case VLJ::MITER_REVERT: Self->LineJoin = agg::miter_join_revert; break;
+      case VLJ::MITER_SMART:  Self->LineJoin = agg::miter_join; break;
       case VLJ::MITER_ROUND:  Self->LineJoin = agg::miter_join_round; break;
       case VLJ::INHERIT:      Self->LineJoin = agg::inherit_join; break;
       default: return ERR::Failed;
@@ -2456,12 +2456,12 @@ static const FieldDef clMorphFlags[] = {
 };
 
 static const FieldDef clLineJoin[] = {
-   { "Miter",       VLJ::MITER },
-   { "Round",       VLJ::ROUND },
-   { "Bevel",       VLJ::BEVEL },
-   { "MiterRevert", VLJ::MITER_REVERT },
-   { "MiterRound",  VLJ::MITER_ROUND },
-   { "Inherit",     VLJ::INHERIT },
+   { "Miter",      VLJ::MITER },
+   { "Round",      VLJ::ROUND },
+   { "Bevel",      VLJ::BEVEL },
+   { "MiterSmart", VLJ::MITER_SMART },
+   { "MiterRound", VLJ::MITER_ROUND },
+   { "Inherit",    VLJ::INHERIT },
    { NULL, 0 }
 };
 

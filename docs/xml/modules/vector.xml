@@ -408,7 +408,7 @@ Z: Close Path
       <param type="objVectorScene *" name="Scene">Optional.  Required if <code>url()</code> references are to be resolved.</param>
       <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
       <param type="struct VectorPainter *" name="Painter">This <st>VectorPainter</st> structure will store the deserialised result.</param>
-      <param type="CSTRING *" name="Result">Optional pointer for storing the end of the parsed IRI string.  <code>NULL</code> is returned if there is no further content to parse.</param>
+      <param type="CSTRING *" name="Result">Optional pointer for storing the end of the parsed IRI string.  <code>NULL</code> is returned if there is no further content to parse or an error occurred.</param>
     </input>
     <description>
 <p>This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
@@ -864,9 +864,9 @@ Z: Close Path
     <constants lookup="VLJ" comment="Options for the look of line joins.">
       <const name="BEVEL">The join is blunted, eliminating overly sharp edges.</const>
       <const name="INHERIT">Inherit the join option from the parent.</const>
-      <const name="MITER">The default.  The join will form a pointed edge.</const>
-      <const name="MITER_REVERT"/>
+      <const name="MITER">The default.  A sharp corner is used to join path segments.  The corner is formed by extending the outer edges of the stroke at the tangents of the path segments until they intersect. If the ‘stroke-miterlimit’ is exceeded, the line join falls back to BEVEL.</const>
       <const name="MITER_ROUND">Default to <code>MITER</code>, but switch to <code>ROUND</code> if the miter limit is exceeded.</const>
+      <const name="MITER_SMART">An alternative form of MITER that extends beyond the intersection point, similarly to the miter-clip SVG rules.</const>
       <const name="ROUND">The join is rounded.</const>
     </constants>
 

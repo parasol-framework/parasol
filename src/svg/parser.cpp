@@ -208,7 +208,7 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
                case SVF_ROUND:   m_line_join = VLJ::ROUND; break;
                case SVF_BEVEL:   m_line_join = VLJ::BEVEL; break;
                case SVF_INHERIT: m_line_join = VLJ::INHERIT; break;
-               case SVF_MITER_REVERT: m_line_join = VLJ::MITER_REVERT; break; // Special AGG only join type
+               case SVF_MITER_CLIP: m_line_join = VLJ::MITER_SMART; break; // Special AGG only join type
                case SVF_MITER_ROUND:  m_line_join = VLJ::MITER_ROUND; break; // Special AGG only join type
             }
             break;
@@ -251,9 +251,9 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
             }
             break;
          }
-         case SVF_FILL_OPACITY: m_fill_opacity = strtod(val.c_str(), NULL); break;
-         case SVF_OPACITY:      m_opacity = strtod(val.c_str(), NULL); break;
-         case SVF_STOP_OPACITY: m_stop_opacity = strtod(val.c_str(), NULL); break;
+         case SVF_FILL_OPACITY: m_fill_opacity = std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0); break;
+         case SVF_OPACITY:      m_opacity = std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0); break;
+         case SVF_STOP_OPACITY: m_stop_opacity = std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0); break;
          case SVF_SHAPE_RENDERING: m_path_quality = shape_rendering_to_render_quality(val); break;
       }
    }
@@ -1216,9 +1216,7 @@ static ERR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter
          }
 
          case SVF_FLOOD_OPACITY: {
-            DOUBLE opacity;
-            read_numseq(val, { &opacity });
-            error = fx->set(FID_Opacity, opacity);
+            error = fx->set(FID_Opacity, std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0));
             break;
          }
 
@@ -1538,7 +1536,7 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
             case SVF_Y:       FUNIT(FID_Y, val).set(filter); break;
             case SVF_WIDTH:   FUNIT(FID_Width, val).set(filter); break;
             case SVF_HEIGHT:  FUNIT(FID_Height, val).set(filter); break;
-            case SVF_OPACITY: FUNIT(FID_Opacity, val).set(filter); break;
+            case SVF_OPACITY: FUNIT(FID_Opacity, std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0)).set(filter); break;
 
             case SVF_FILTERRES: {
                DOUBLE x = 0, y = 0;
@@ -3475,7 +3473,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
             case SVF_ROUND: Vector->setLineJoin(LONG(VLJ::ROUND)); break;
             case SVF_BEVEL: Vector->setLineJoin(LONG(VLJ::BEVEL)); break;
             case SVF_INHERIT: Vector->setLineJoin(LONG(VLJ::INHERIT)); break;
-            case SVF_MITER_REVERT: Vector->setLineJoin(LONG(VLJ::MITER_REVERT)); break; // Special AGG only join type
+            case SVF_MITER_CLIP: Vector->setLineJoin(LONG(VLJ::MITER_SMART)); break; // Special AGG only join type
             case SVF_MITER_ROUND: Vector->setLineJoin(LONG(VLJ::MITER_ROUND)); break; // Special AGG only join type
          }
          break;
@@ -3583,12 +3581,12 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          break;
       }
 
-      case SVF_OPACITY:          Vector->set(FID_Opacity, StrValue); break;
+      case SVF_OPACITY:          Vector->set(FID_Opacity, std::clamp(strtod(StrValue.c_str(), NULL), 0.0, 1.0)); break;
       case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, std::clamp(strtod(StrValue.c_str(), NULL), 0.0, 1.0)); break;
       case SVF_SHAPE_RENDERING:  Vector->set(FID_PathQuality, LONG(shape_rendering_to_render_quality(StrValue))); break;
 
       case SVF_STROKE_WIDTH:            FUNIT(FID_StrokeWidth, StrValue).set(Vector); break;
-      case SVF_STROKE_OPACITY:          Vector->set(FID_StrokeOpacity, StrValue); break;
+      case SVF_STROKE_OPACITY:          Vector->set(FID_StrokeOpacity, std::clamp(strtod(StrValue.c_str(), NULL), 0.0, 1.0)); break;
       case SVF_STROKE_MITERLIMIT:       Vector->set(FID_MiterLimit, StrValue); break;
       case SVF_STROKE_MITERLIMIT_THETA: Vector->set(FID_MiterLimitTheta, StrValue); break;
       case SVF_STROKE_INNER_MITERLIMIT: Vector->set(FID_InnerMiterLimit, StrValue); break;
