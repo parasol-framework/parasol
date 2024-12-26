@@ -1181,7 +1181,7 @@ ColourSpace: Defines the colour space to use when blending the vector with a tar
 Lookup: VCS
 
 By default, vectors are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour
-space to `LINEAR_RGB` will force the renderer to automatically convert sRGB values to linear RGB when blending on the
+space to `LINEAR_RGB` will tell the renderer to automatically convert sRGB values to linear RGB when blending on the
 fly.
 
 -FIELD-

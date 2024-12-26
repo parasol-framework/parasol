@@ -39,19 +39,22 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
    }
 
    if (Painter.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-      fill_image(State, Vector.Bounds, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Painter.Image->Units IS VUNIT::USERSPACE, State),
+      fill_image(State, Vector.Bounds, Vector.BasePath, Vector.Scene->SampleMethod, 
+         build_fill_transform(Vector, Painter.Image->Units IS VUNIT::USERSPACE, State),
          view_width(), view_height(), *Painter.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
    }
 
    if (Painter.Gradient) {
       if (auto table = get_fill_gradient_table(Painter, State.mOpacity * Vector.FillOpacity)) {
-         fill_gradient(State, Vector.Bounds, &Vector.BasePath, build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
+         fill_gradient(State, Vector.Bounds, &Vector.BasePath, 
+            build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
             view_width(), view_height(), *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster);
       }
    }
 
    if (Painter.Pattern) {
-      fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Painter.Pattern->Units IS VUNIT::USERSPACE, State),
+      fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod, 
+         build_fill_transform(Vector, Painter.Pattern->Units IS VUNIT::USERSPACE, State),
          view_width(), view_height(), *((extVectorPattern *)Painter.Pattern), mRenderBase, Raster);
    }
 }

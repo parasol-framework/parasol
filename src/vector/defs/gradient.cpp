@@ -122,7 +122,10 @@ GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
       if (i1 <= i2) {
          for (i=i1; i <= i2; i++) {
             DOUBLE j = (DOUBLE)(i - i1) / (DOUBLE)(i2-i1);
-            table[i] = begin.gradient(end, j);
+            if (Gradient->ColourSpace IS VCS::LINEAR_RGB) {
+               table[i] = begin.linear_gradient(end, j);
+            }
+            else table[i] = begin.gradient(end, j);
          }
       }
 

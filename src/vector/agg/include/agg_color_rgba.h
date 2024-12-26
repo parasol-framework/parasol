@@ -297,7 +297,7 @@ namespace agg {
             return double(a) / double(base_mask);
         }
 
-        AGG_INLINE const self_type& premultiply() {
+        inline const self_type& premultiply() {
             if (a == base_mask) return *this;
             if (a == 0) {
                 r = g = b = 0;
@@ -309,7 +309,7 @@ namespace agg {
             return *this;
         }
 
-        AGG_INLINE const self_type& premultiply(unsigned a_) {
+        inline const self_type& premultiply(unsigned a_) {
             if (a == base_mask && a_ >= base_mask) return *this;
             if (a == 0 || a_ == 0) {
                 r = g = b = a = 0;
@@ -326,7 +326,7 @@ namespace agg {
         }
 
 
-        AGG_INLINE const self_type& demultiply() {
+        inline const self_type& demultiply() {
             if (a == base_mask) return *this;
             if (a == 0) {
                 r = g = b = 0;
@@ -341,7 +341,7 @@ namespace agg {
             return *this;
         }
 
-        AGG_INLINE self_type gradient(const self_type& c, double k) const {
+        inline self_type gradient(const self_type& c, double k) const {
             self_type ret;
             calc_type ik = uround(k * int(base_scale));
             ret.r = value_type(calc_type(r) + (((calc_type(c.r) - r) * ik) >> base_shift));
@@ -351,7 +351,24 @@ namespace agg {
             return ret;
         }
 
-        AGG_INLINE void add(const self_type& c, unsigned cover) {
+        inline self_type linear_gradient(const self_type& c, double k) const {
+            self_type ret;
+            calc_type ik = uround(k * int(base_scale));
+            calc_type r_linear = glLinearRGB.convert(r);
+            calc_type g_linear = glLinearRGB.convert(g);
+            calc_type b_linear = glLinearRGB.convert(b);
+            calc_type c_r_linear = glLinearRGB.convert(c.r);
+            calc_type c_g_linear = glLinearRGB.convert(c.g);
+            calc_type c_b_linear = glLinearRGB.convert(c.b);
+
+            ret.r = glLinearRGB.invert(value_type(r_linear + (((c_r_linear - r_linear) * ik) >> base_shift)));
+            ret.g = glLinearRGB.invert(value_type(g_linear + (((c_g_linear - g_linear) * ik) >> base_shift)));
+            ret.b = glLinearRGB.invert(value_type(b_linear + (((c_b_linear - b_linear) * ik) >> base_shift)));
+            ret.a = value_type(calc_type(a) + (((calc_type(c.a) - a) * ik) >> base_shift));
+            return ret;
+        }
+
+        inline void add(const self_type& c, unsigned cover) {
             calc_type cr, cg, cb, ca;
             if (cover == cover_mask) {
                 if (c.a == base_mask) {
@@ -377,30 +394,30 @@ namespace agg {
         }
 
         template<class GammaLUT>
-        AGG_INLINE void apply_gamma_dir(const GammaLUT& gamma) {
+        inline void apply_gamma_dir(const GammaLUT& gamma) {
             r = gamma.dir(r);
             g = gamma.dir(g);
             b = gamma.dir(b);
         }
 
         template<class GammaLUT>
-        AGG_INLINE void apply_gamma_inv(const GammaLUT& gamma) {
+        inline void apply_gamma_inv(const GammaLUT& gamma) {
             r = gamma.inv(r);
             g = gamma.inv(g);
             b = gamma.inv(b);
         }
 
-      void to_linear() {
-         r = glLinearRGB.convert(r);
-         g = glLinearRGB.convert(g);
-         b = glLinearRGB.convert(b);
-      }
-
-      void to_rgb() {
-         r = glLinearRGB.invert(r);
-         g = glLinearRGB.invert(g);
-         b = glLinearRGB.invert(b);
-      }
+        inline void to_linear() {
+           r = glLinearRGB.convert(r);
+           g = glLinearRGB.convert(g);
+           b = glLinearRGB.convert(b);
+        }
+      
+        inline void to_rgb() {
+           r = glLinearRGB.invert(r);
+           g = glLinearRGB.invert(g);
+           b = glLinearRGB.invert(b);
+        }
 
       static self_type no_color() { return self_type(0,0,0,0); }
 
@@ -526,7 +543,7 @@ namespace agg {
         }
 
 
-        AGG_INLINE const self_type& opacity(double a_) {
+        inline const self_type& opacity(double a_) {
             if (a_ < 0.0) a_ = 0.0;
             if (a_ > 1.0) a_ = 1.0;
             a = (value_type)uround(a_ * double(base_mask));
@@ -539,7 +556,7 @@ namespace agg {
         }
 
 
-        AGG_INLINE const self_type& premultiply() {
+        inline const self_type& premultiply() {
             if (a == base_mask) return *this;
             if (a == 0) {
                 r = g = b = 0;
@@ -552,7 +569,7 @@ namespace agg {
         }
 
 
-        AGG_INLINE const self_type& premultiply(unsigned a_) {
+        inline const self_type& premultiply(unsigned a_) {
             if (a == base_mask && a_ >= base_mask) return *this;
             if (a == 0 || a_ == 0) {
                 r = g = b = a = 0;
@@ -569,7 +586,7 @@ namespace agg {
         }
 
 
-        AGG_INLINE const self_type& demultiply() {
+        inline const self_type& demultiply() {
             if (a == base_mask) return *this;
             if (a == 0) {
                 r = g = b = 0;
@@ -585,7 +602,7 @@ namespace agg {
         }
 
 
-        AGG_INLINE self_type gradient(const self_type& c, double k) const {
+        inline self_type gradient(const self_type& c, double k) const {
             self_type ret;
             calc_type ik = uround(k * int(base_scale));
             ret.r = value_type(calc_type(r) + (((calc_type(c.r) - r) * ik) >> base_shift));
@@ -596,7 +613,7 @@ namespace agg {
         }
 
 
-        AGG_INLINE void add(const self_type& c, unsigned cover) {
+        inline void add(const self_type& c, unsigned cover) {
             calc_type cr, cg, cb, ca;
             if (cover == cover_mask) {
                 if (c.a == base_mask) *this = c;
@@ -620,14 +637,14 @@ namespace agg {
         }
 
         template<class GammaLUT>
-        AGG_INLINE void apply_gamma_dir(const GammaLUT& gamma) {
+        inline void apply_gamma_dir(const GammaLUT& gamma) {
             r = gamma.dir(r);
             g = gamma.dir(g);
             b = gamma.dir(b);
         }
 
         template<class GammaLUT>
-        AGG_INLINE void apply_gamma_inv(const GammaLUT& gamma) {
+        inline void apply_gamma_inv(const GammaLUT& gamma) {
             r = gamma.inv(r);
             g = gamma.inv(g);
             b = gamma.inv(b);
