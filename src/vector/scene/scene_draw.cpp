@@ -58,7 +58,7 @@ private:
    }
 
    void render_fill(VectorState &, extVector &, agg::rasterizer_scanline_aa<> &, extPainter &);
-   void render_stroke(VectorState &, extVector &, agg::rasterizer_scanline_aa<> &);
+   void render_stroke(VectorState &, extVector &);
    void draw_vectors(extVector *, VectorState &);
    static const agg::trans_affine build_fill_transform(extVector &, bool,  VectorState &);
 
@@ -608,13 +608,16 @@ void SceneRenderer::draw(objBitmap *Bitmap)
 }
 
 //********************************************************************************************************************
+// Refer to configure_stroke() for the configuration of StrokeRaster.
 
-void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster)
+void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
 {
-   if (Vector.Scene->Gamma != 1.0) Raster.gamma(agg::gamma_power(Vector.Scene->Gamma));
+   auto &raster = *Vector.StrokeRaster;
 
-   if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
-   else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
+   if (Vector.Scene->Gamma != 1.0) raster.gamma(agg::gamma_power(Vector.Scene->Gamma));
+
+   if (Vector.FillRule IS VFR::NON_ZERO) raster.filling_rule(agg::fill_non_zero);
+   else if (Vector.FillRule IS VFR::EVEN_ODD) raster.filling_rule(agg::fill_even_odd);
 
    // Regarding this validation check, SVG requires that stroked vectors have a size > 0 when a paint server is used
    // as a stroker.  If the size is zero, the paint server is ignored and the solid colour can be used as a stroker
@@ -624,14 +627,14 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::ra
       if (Vector.Stroke.Gradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
             fill_gradient(State, Vector.Bounds, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.Stroke.Gradient)->Units IS VUNIT::USERSPACE, State),
-               view_width(), view_height(), *((extVectorGradient *)Vector.Stroke.Gradient), table, mRenderBase, Raster);
+               view_width(), view_height(), *((extVectorGradient *)Vector.Stroke.Gradient), table, mRenderBase, raster);
          }
          return;
       }
 
       if (Vector.Stroke.Pattern) {
          fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Stroke.Pattern->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *((extVectorPattern *)Vector.Stroke.Pattern), mRenderBase, Raster);
+            view_width(), view_height(), *((extVectorPattern *)Vector.Stroke.Pattern), mRenderBase, raster);
          return;
       }
 
@@ -657,9 +660,9 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::ra
       if (!State.mClipStack->empty()) {
          agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
          agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
-         agg::render_scanlines(Raster, mScanLineMasked, renderer);
+         agg::render_scanlines(raster, mScanLineMasked, renderer);
       }
-      else agg::render_scanlines(Raster, mScanLine, renderer);
+      else agg::render_scanlines(raster, mScanLine, renderer);
    }
    else {
       agg::renderer_scanline_aa_solid renderer(mRenderBase);
@@ -668,9 +671,9 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector, agg::ra
       if (!State.mClipStack->empty()) {
          agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
          agg::scanline_u8_am<agg::alpha_mask_gray8> mScanLineMasked(alpha_mask);
-         agg::render_scanlines(Raster, mScanLineMasked, renderer);
+         agg::render_scanlines(raster, mScanLineMasked, renderer);
       }
-      else agg::render_scanlines(Raster, mScanLine, renderer);
+      else agg::render_scanlines(raster, mScanLine, renderer);
    }
 }
 
@@ -690,7 +693,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       if (shape->dirty()) gen_vector_path(shape);
       else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Class->ClassName, shape->UID, shape->ParentView ? shape->ParentView->UID : 0);
 
-      // Visibility management.
+      // Visibility management.  NB: Under SVG rules VectorGroup objects are always visible as they are not
+      // classed as a graphics element.
 
       {
          bool visible = true;
@@ -699,7 +703,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          }
          else if (shape->Visibility != VIS::VISIBLE) visible = false;
 
-         if ((!visible) or (!shape->ValidState)) {
+         if (((!visible) or (!shape->ValidState)) and (shape->classID() != CLASSID::VECTORGROUP)) {
             log.trace("%s: #%d, Not Visible", get_name(shape), shape->UID);
             continue;
          }
@@ -940,7 +944,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             }
 
             if (shape->StrokeRaster) {
-               render_stroke(state, *shape, *shape->StrokeRaster);
+               render_stroke(state, *shape);
             }
 
             if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {

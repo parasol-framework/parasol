@@ -252,7 +252,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
       switch (line_join) {
          default:
          case VLJ::MITER:        break; // Default
-         case VLJ::MITER_REVERT: xml::NewAttrib(tag, "stroke-linejoin", "miter-revert"); break; // Parasol
+         case VLJ::MITER_SMART:  xml::NewAttrib(tag, "stroke-linejoin", "miter-clip"); break; // Parasol
          case VLJ::ROUND:        xml::NewAttrib(tag, "stroke-linejoin", "round"); break;
          case VLJ::BEVEL:        xml::NewAttrib(tag, "stroke-linejoin", "bevel"); break;
          case VLJ::MITER_ROUND:  xml::NewAttrib(tag, "stroke-linejoin", "arcs"); break; // (SVG2) Not sure if compliant

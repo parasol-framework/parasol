@@ -1040,47 +1040,31 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          return ERR::Syntax;
       }
    }
-   else if (startswith("rgb(", IRI)) {
+   else if ((startswith("rgb(", IRI)) or (startswith("rgba(", IRI))) {
       auto &rgb = Painter->Colour;
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
+      // The rgba() format is a CSS3 convention that is not supported prior to SVG2.
       IRI += 4;
-      rgb.Red = strtod(IRI, NULL) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') rgb.Red = rgb.Red * (255.0 / 100.0);
+      if (*IRI IS '(') IRI++;
+      rgb.Red = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
+      if (*IRI IS '%') { rgb.Red *= (255.0 / 100.0); IRI++; }
+      if (*IRI IS ',') IRI++;
+      rgb.Green = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
+      if (*IRI IS '%') { rgb.Green *= (255.0 / 100.0); IRI++; }
+      if (*IRI IS ',') IRI++;
+      rgb.Blue = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
+      if (*IRI IS '%') { rgb.Blue *= (255.0 / 100.0); IRI++; }
+      if (*IRI IS ',') {
          IRI++;
-      }
-      if (*IRI) IRI++;
-      rgb.Green = strtod(IRI, NULL) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') rgb.Green = rgb.Green * (255.0 / 100.0);
-         IRI++;
-      }
-      if (*IRI) IRI++;
-      rgb.Blue = strtod(IRI, NULL) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') rgb.Blue = rgb.Blue * (255.0 / 100.0);
-         IRI++;
-      }
-      if (*IRI) {
-         IRI++;
-         rgb.Alpha = strtod(IRI, NULL) * (1.0 / 255.0);
-         while (*IRI) {
-            if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
-            IRI++;
-         }
-         if (rgb.Alpha > 1) rgb.Alpha = 1;
-         else if (rgb.Alpha < 0) rgb.Alpha = 0;
+         rgb.Alpha = strtod(IRI, (STRING *)&IRI); // CSS3 dictates the alpha range is 0 - 1.0 by default
+         if (*IRI IS '%') { rgb.Alpha *= (255.0 / 100.0); IRI++; } // A % value is also valid
+         rgb.Alpha = std::clamp(rgb.Alpha, 0.0f, 1.0f);
       }
       else rgb.Alpha = 1.0;
 
-      if (rgb.Red > 1) rgb.Red = 1;
-      else if (rgb.Red < 0) rgb.Red = 0;
-
-      if (rgb.Green > 1) rgb.Green = 1;
-      else if (rgb.Green < 0) rgb.Green = 0;
-
-      if (rgb.Blue > 1) rgb.Blue = 1;
-      else if (rgb.Blue < 0) rgb.Blue = 0;
+      rgb.Red   = std::clamp(rgb.Red, 0.0f, 1.0f);
+      rgb.Green = std::clamp(rgb.Green, 0.0f, 1.0f);
+      rgb.Blue  = std::clamp(rgb.Blue, 0.0f, 1.0f);
 
       if (Result) {
          while ((*IRI) and (*IRI != ';')) IRI++;
@@ -1227,10 +1211,10 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       if (auto it = glNamedColours.find(strihash(IRI)); it != glNamedColours.end()) {
          auto &src = it->second;
          auto &rgb = Painter->Colour;
-         rgb.Red   = (FLOAT)src.Red   * (1.0 / 255.0);
-         rgb.Green = (FLOAT)src.Green * (1.0 / 255.0);
-         rgb.Blue  = (FLOAT)src.Blue  * (1.0 / 255.0);
-         rgb.Alpha = (FLOAT)src.Alpha * (1.0 / 255.0);
+         rgb.Red   = (float)src.Red   * (1.0 / 255.0);
+         rgb.Green = (float)src.Green * (1.0 / 255.0);
+         rgb.Blue  = (float)src.Blue  * (1.0 / 255.0);
+         rgb.Alpha = (float)src.Alpha * (1.0 / 255.0);
          if (Result) {
             while ((*IRI) and (*IRI != ';')) IRI++;
             *Result = IRI[0] ? IRI : NULL;

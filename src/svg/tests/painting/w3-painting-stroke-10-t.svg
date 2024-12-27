@@ -1,0 +1,27 @@
+<svg id="svg-root" width="100%" height="100%"
+  viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+This tests that stroking of zero length subpaths will result in
+some rendering if the 'stroke-linecap' property is set to
+'square' or 'round', but not if it is set to 'butt'.
+-->
+  <text x='10' y='40'>Test stroking of zero length subpaths</text>
+
+  <g stroke-width='50' stroke='blue' fill='none'>
+    <path d='M190,170 L190,170' stroke-linecap='round'/>
+    <path d='M290,170 L290,170' stroke-linecap='square'/>
+    <path d='M390,170 L390,170' stroke-linecap='butt' stroke='red'/>
+
+    <path d='M190,240 c0,0 0,0 0,0' stroke-linecap='round'/>
+    <path d='M290,240 c0,0 0,0 0,0' stroke-linecap='square'/>
+    <path d='M390,240 c0,0 0,0 0,0' stroke-linecap='butt' stroke='red'/>
+  </g>
+
+  <g font-size='12'>
+    <text x='10' y='175'>Using an 'L' command:</text>
+    <text x='10' y='245'>Using a 'c' command:</text>
+  </g>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000"/>
+</svg>

@@ -87,8 +87,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, times
     "ALPHA: The alpha channel.")
 
   enum("VLJ", { type="int", start=0, comment="Options for the look of line joins." }, // Match to agg::line_join_e
-    "MITER: The default.  The join will form a pointed edge.",
-    "MITER_REVERT",
+    "MITER: The default.  A sharp corner is used to join path segments.  The corner is formed by extending the outer edges of the stroke at the tangents of the path segments until they intersect. If the ‘stroke-miterlimit’ is exceeded, the line join falls back to BEVEL.",
+    "MITER_SMART: An alternative form of MITER that extends beyond the intersection point, similarly to the miter-clip SVG rules.",
     "ROUND: The join is rounded.",
     "BEVEL: The join is blunted, eliminating overly sharp edges.",
     "MITER_ROUND: Default to `MITER`, but switch to `ROUND` if the miter limit is exceeded.",
@@ -826,6 +826,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "METHOD",
     "MINUS",
     "MITER",
+    "MITER-CLIP",
     "MITER-REVERT",
     "MITER-ROUND",
     "MOD",
@@ -1188,7 +1189,10 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "KEYSPLINES",
     "BY",
     "YELLOW",
-    "YELLOWGREEN"
+    "YELLOWGREEN",
+    "REQUIREDFEATURES",
+    "REQUIREDEXTENSIONS",
+    "SYSTEMLANGUAGE"
     )
 
     c_insert([[

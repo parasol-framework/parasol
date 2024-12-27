@@ -32,7 +32,7 @@ return {
 
       State.slider.bkRect = Viewport.new('VectorRectangle', {
          width = '100%', height = '100%',
-         stroke = 'rgb(148,149,160,255)',
+         stroke = 'rgba(148,149,160,1)',
          strokeWidth = 1,
          fill = 'url(#' .. gradient .. ')'
       })
@@ -40,7 +40,7 @@ return {
       State.slider.border = Viewport.new('VectorRectangle', {
          x = 1, y = 1,
          width = Viewport.width-2, height = Viewport.height-2,
-         stroke = 'rgb(255,255,255,150)'
+         stroke = 'rgba(255,255,255,.58)'
       })
 
       State.slider.decoration = Viewport.new('VectorViewport', {
@@ -52,13 +52,13 @@ return {
 
       local decA = dec.new('VectorPolygon', {
          strokeWidth = 1,
-         stroke      = 'rgb(0,0,0,70)',
+         stroke      = 'rgba(0,0,0,.25)',
          dashArray   = '3,6'
       })
 
       local decB = dec.new('VectorPolygon', {
          strokeWidth = 1,
-         stroke      = 'rgb(255,255,255,70)',
+         stroke      = 'rgba(255,255,255,.25)',
          dashArray   = '3,6'
       })
 
@@ -116,7 +116,7 @@ return {
       })
 
       State.negButton.arrow = Viewport.new('VectorPath', { -- Arrow
-         fill = 'rgb(0,0,0,128)',
+         fill = 'rgba(0,0,0,.5)',
          sequence = 'M 37.8516,35.625L 34.6849,38.7917L 23.6016,50.2708L 23.6016,39.9792L 37.8516,24.9375L 52.1016,39.9792L 52.1016,50.2708L 41.0182,38.7917L 37.8516,35.625 Z'
       })
 
@@ -147,7 +147,7 @@ return {
       })
 
       State.posButton.arrow = Viewport.new('VectorPath', {
-         fill = 'rgb(0,0,0,128)',
+         fill = 'rgba(0,0,0,.5)',
          sequence = 'M 37.8516,35.625L 34.6849,38.7917L 23.6016,50.2708L 23.6016,39.9792L 37.8516,24.9375L 52.1016,39.9792L 52.1016,50.2708L 41.0182,38.7917L 37.8516,35.625 Z'
       })
 
@@ -160,17 +160,17 @@ return {
    end,
    negButtonPress = function(State, Value)
       if (Value == 1) then
-         State.negButton.arrow.fill = 'rgb(255,255,255,160)'
+         State.negButton.arrow.fill = 'rgba(255,255,255,.63)'
       else
-         State.negButton.arrow.fill = 'rgb(0,0,0,128)'
+         State.negButton.arrow.fill = 'rgba(0,0,0,.5)'
       end
       State.negButton.viewport.acDraw()
    end,
    posButtonPress = function(State, Value)
       if (Value == 1) then
-         State.posButton.arrow.fill = 'rgb(255,255,255,160)'
+         State.posButton.arrow.fill = 'rgba(255,255,255,.63)'
       else
-         State.posButton.arrow.fill = 'rgb(0,0,0,128)'
+         State.posButton.arrow.fill = 'rgba(0,0,0,.5)'
       end
       State.posButton.viewport.acDraw()
    end

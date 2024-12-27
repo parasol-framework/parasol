@@ -13,7 +13,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 
 *********************************************************************************************************************/
 
-//#define DEBUG
+#define DEBUG
 #define PRV_SVG
 #include <unordered_map>
 #include <string>
@@ -109,6 +109,8 @@ struct svgState {
    std::string m_stroke;      // Empty by default
    std::string m_font_size;
    std::string m_font_family;
+   std::string m_display;
+   std::string m_visibility;
    DOUBLE  m_stroke_width;    // 0 if undefined
    DOUBLE  m_fill_opacity;    // -1 if undefined
    DOUBLE  m_opacity;         // -1 if undefined
@@ -129,7 +131,7 @@ struct svgState {
       Scene(pSVG->Scene) { }
 
    void applyTag(const XMLTag &) noexcept;
-   void applyAttribs(objVector *) const noexcept;
+   void applyStateToVector(objVector *) const noexcept;
 };
 
 //********************************************************************************************************************
@@ -137,6 +139,7 @@ struct svgState {
 static ERR  animation_timer(extSVG *, LARGE, LARGE);
 static void convert_styles(objXML::TAGS &);
 static ERR  set_property(extSVG *, objVector *, ULONG, XMLTag &, svgState &, std::string);
+static double read_unit(std::string_view &, LARGE * = nullptr);
 
 static ERR  init_svg(void);
 static ERR  init_rsvg(void);
@@ -163,6 +166,7 @@ static void xtag_link(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 static void xtag_morph(extSVG *, XMLTag &, OBJECTPTR);
 static ERR  xtag_set(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
 static void xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
+static void xtag_switch(extSVG*, svgState&, XMLTag&, OBJECTPTR, objVector * &);
 static void xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static ERR  xtag_style(extSVG *, XMLTag &);
 static void xtag_symbol(extSVG *, XMLTag &);

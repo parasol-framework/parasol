@@ -200,7 +200,7 @@ enum class CMP : LONG {
 enum class VLJ : LONG {
    NIL = 0,
    MITER = 0,
-   MITER_REVERT = 1,
+   MITER_SMART = 1,
    ROUND = 2,
    BEVEL = 3,
    MITER_ROUND = 4,
@@ -3580,6 +3580,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_METHOD 0x0d866146
 #define SVF_MINUS 0x0feee651
 #define SVF_MITER 0x0feefdc6
+#define SVF_MITER_CLIP 0x2f18fb1b
 #define SVF_MITER_REVERT 0x7bc9e50b
 #define SVF_MITER_ROUND 0x1349a65b
 #define SVF_MOD 0x0b889145
@@ -3941,6 +3942,9 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_BY 0x00597760
 #define SVF_YELLOW 0x297ff6e1
 #define SVF_YELLOWGREEN 0xda4a85b2
+#define SVF_REQUIREDFEATURES 0x01fd4085
+#define SVF_REQUIREDEXTENSIONS 0x0d7ab056
+#define SVF_SYSTEMLANGUAGE 0xa95fc64e
 
 namespace vec {
 inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {

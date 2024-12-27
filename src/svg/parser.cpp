@@ -119,10 +119,10 @@ static RQ shape_rendering_to_render_quality(const std::string_view Value)
 }
 
 //********************************************************************************************************************
-// Apply the current state values to a vector.  Used for applying state to child vectors.
+// Apply current state values to a new vector as its defaults.  Used for applying state to child vectors.
 // If you're adding more to this, matching code is needed in svgState::applyTag()
 
-void svgState::applyAttribs(objVector *Vector) const noexcept
+void svgState::applyStateToVector(objVector *Vector) const noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -137,10 +137,24 @@ void svgState::applyAttribs(objVector *Vector) const noexcept
    if (m_line_cap != VLC::NIL)   Vector->setLineCap(LONG(m_line_cap));
 
    if (Vector->classID() IS CLASSID::VECTORTEXT) {
-      if (!m_font_family.empty()) Vector->set(FID_Face, m_font_family);
-      if (!m_font_size.empty())   Vector->set(FID_FontSize, m_font_size);
-      if (m_font_weight) Vector->set(FID_Weight, m_font_weight);
+      if (!m_font_family.empty()) Vector->setFields(fl::Face(m_font_family));
+      if (!m_font_size.empty())   Vector->setFields(fl::FontSize(m_font_size));
+      if (m_font_weight)          Vector->setFields(fl::Weight(m_font_weight));
    }
+
+   if (!m_display.empty()) {
+      if (iequals("none", m_display))          Vector->setVisibility(VIS::HIDDEN);
+      else if (iequals("inline", m_display))   Vector->setVisibility(VIS::VISIBLE);
+      else if (iequals("inherit", m_display))  Vector->setVisibility(VIS::INHERIT);
+   }
+   
+   if (!m_visibility.empty()) {
+      if (iequals("visible", m_visibility))       Vector->setVisibility(VIS::VISIBLE);
+      else if (iequals("hidden", m_visibility))   Vector->setVisibility(VIS::HIDDEN);
+      else if (iequals("collapse", m_visibility)) Vector->setVisibility(VIS::COLLAPSE); // Same effect as hidden, kept for SVG compatibility
+      else if (iequals("inherit", m_visibility))  Vector->setVisibility(VIS::INHERIT);
+   }
+
    if (m_fill_opacity >= 0.0) Vector->set(FID_FillOpacity, m_fill_opacity);
    if (m_opacity >= 0.0) Vector->set(FID_Opacity, m_opacity);
 
@@ -151,24 +165,38 @@ void svgState::applyAttribs(objVector *Vector) const noexcept
 
 //********************************************************************************************************************
 // Copy a tag's attributes to the current state.
-// If you're adding more to this, matching code is needed in svgState::applyAttribs()
+// If you're adding more to this, matching code is needed in svgState::applyStateToVector()
 
 void svgState::applyTag(const XMLTag &Tag) noexcept
 {
-   if (Tag.Children.empty()) return; // No need to save state if the tag has no children.
-
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Total Attributes: %d", LONG(std::ssize(Tag.Attribs)));
+
+   if (Tag.Children.empty()) { 
+      // If the tag has no children then few tags are worth saving to the state. E.g.
+      // 'color' is only required for the 'currentColor' value.
+      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+         auto &val = Tag.Attribs[a].Value;
+         if (val.empty()) continue;
+
+         switch (strihash(Tag.Attribs[a].Name)) {
+            case SVF_COLOR: m_color = val; break;
+         }
+      }
+      return;
+   }
 
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
       switch (strihash(Tag.Attribs[a].Name)) {
-         case SVF_COLOR:  m_color = val; break; // Affects 'currentColor'
+         case SVF_COLOR:      m_color = val; break; // Affects 'currentColor'
          case SVF_STOP_COLOR: m_stop_color = val; break;
-         case SVF_FILL:   m_fill = val; break;
+         case SVF_FILL:       m_fill = val; break;
+         case SVF_DISPLAY:    m_display = val; break;
+         case SVF_VISIBILITY: m_visibility = val; break;
          case SVF_STROKE:
             m_stroke = val;
             if (!m_stroke_width) m_stroke_width = 1;
@@ -180,7 +208,7 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
                case SVF_ROUND:   m_line_join = VLJ::ROUND; break;
                case SVF_BEVEL:   m_line_join = VLJ::BEVEL; break;
                case SVF_INHERIT: m_line_join = VLJ::INHERIT; break;
-               case SVF_MITER_REVERT: m_line_join = VLJ::MITER_REVERT; break; // Special AGG only join type
+               case SVF_MITER_CLIP: m_line_join = VLJ::MITER_SMART; break; // Special AGG only join type
                case SVF_MITER_ROUND:  m_line_join = VLJ::MITER_ROUND; break; // Special AGG only join type
             }
             break;
@@ -223,9 +251,9 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
             }
             break;
          }
-         case SVF_FILL_OPACITY: m_fill_opacity = strtod(val.c_str(), NULL); break;
-         case SVF_OPACITY:      m_opacity = strtod(val.c_str(), NULL); break;
-         case SVF_STOP_OPACITY: m_stop_opacity = strtod(val.c_str(), NULL); break;
+         case SVF_FILL_OPACITY: m_fill_opacity = std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0); break;
+         case SVF_OPACITY:      m_opacity = std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0); break;
+         case SVF_STOP_OPACITY: m_stop_opacity = std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0); break;
          case SVF_SHAPE_RENDERING: m_path_quality = shape_rendering_to_render_quality(val); break;
       }
    }
@@ -1188,9 +1216,7 @@ static ERR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter
          }
 
          case SVF_FLOOD_OPACITY: {
-            DOUBLE opacity;
-            read_numseq(val, { &opacity });
-            error = fx->set(FID_Opacity, opacity);
+            error = fx->set(FID_Opacity, std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0));
             break;
          }
 
@@ -1510,7 +1536,7 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
             case SVF_Y:       FUNIT(FID_Y, val).set(filter); break;
             case SVF_WIDTH:   FUNIT(FID_Width, val).set(filter); break;
             case SVF_HEIGHT:  FUNIT(FID_Height, val).set(filter); break;
-            case SVF_OPACITY: FUNIT(FID_Opacity, val).set(filter); break;
+            case SVF_OPACITY: FUNIT(FID_Opacity, std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0)).set(filter); break;
 
             case SVF_FILTERRES: {
                DOUBLE x = 0, y = 0;
@@ -1736,13 +1762,13 @@ static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag
    if (auto error = NewObject(VectorID, &vector); error IS ERR::Okay) {
       SetOwner(vector, Parent);
       svgState state = State;
-      state.applyAttribs(vector);
+      state.applyStateToVector(vector);
       state.applyTag(Tag); // Apply all attribute values to the current state.
 
-      process_attrib(Self, Tag, State, vector);
+      process_attrib(Self, Tag, state, vector);
 
       if (vector->init() IS ERR::Okay) {
-         process_shape_children(Self, State, Tag, vector);
+         process_shape_children(Self, state, Tag, vector);
          Tag.Attribs.push_back(XMLAttrib { "_id", std::to_string(vector->UID) });
          Result = vector;
          return error;
@@ -1767,9 +1793,10 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
    switch(strihash(Tag.name())) {
       case SVF_USE:              xtag_use(Self, State, Tag, Parent); break;
       case SVF_A:                xtag_link(Self, State, Tag, Parent, Vector); break;
-      case SVF_SWITCH:           log.warning("<switch> not supported."); break;
+      case SVF_SWITCH:           xtag_switch(Self, State, Tag, Parent, Vector); break;
       case SVF_G:                xtag_group(Self, State, Tag, Parent, Vector); break;
       case SVF_SVG:              xtag_svg(Self, State, Tag, Parent, Vector); break;
+
       case SVF_RECT:             process_shape(Self, CLASSID::VECTORRECTANGLE, State, Tag, Parent, Vector); break;
       case SVF_ELLIPSE:          process_shape(Self, CLASSID::VECTORELLIPSE, State, Tag, Parent, Vector); break;
       case SVF_CIRCLE:           process_shape(Self, CLASSID::VECTORELLIPSE, State, Tag, Parent, Vector); break;
@@ -2065,7 +2092,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
 
    if (auto error = NewObject(CLASSID::VECTORRECTANGLE, &Vector); error IS ERR::Okay) {
       SetOwner(Vector, Parent);
-      State.applyAttribs(Vector);
+      State.applyStateToVector(Vector);
 
       // All attributes of <image> will be applied to the rectangle.
 
@@ -2564,6 +2591,67 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
 
       if ((!Self->Links.empty()) and (group->init() IS ERR::Okay)) Vector = group;
       else FreeResource(group);
+   }
+}
+
+//********************************************************************************************************************
+// For each immediate child, evaluate any requiredFeatures, requiredExtensions and systemLanguage attributes.
+// The first child where these attributes evaluate to true is rendered, the rest are ignored.
+
+static void xtag_switch(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+{
+   for (auto &child : Tag.Children) {      
+      bool render = true;
+      for (LONG a=1; a < std::ssize(child.Attribs); a++) {
+         auto &val = child.Attribs[a].Value;
+         if (val.empty()) continue;
+
+         switch(strihash(child.Attribs[a].Name)) {
+            case SVF_REQUIREDFEATURES:
+               // requiredFeatures is deprecated as of SVG2, but the following features are explicitly not supported
+               // by our SVG implementation:
+               if (val IS "http://www.w3.org/TR/SVG11/feature#SVG-dynamic") render = false;
+               else if (val IS "http://www.w3.org/TR/SVG11/feature#DocumentEventsAttribute") render = false;
+               else if (val IS "http://www.w3.org/TR/SVG11/feature#GraphicalEventsAttribute") render = false;
+               else if (val IS "http://www.w3.org/TR/SVG11/feature#Script") render = false;
+               break;
+
+            case SVF_REQUIREDEXTENSIONS: // Allows the client to check if a given customised extension is supported.
+               if (val IS "http://www.parasol.ws/TR/Parasol/1.0");
+               else render = false;
+               break;
+
+            case SVF_SYSTEMLANGUAGE: // CSV list of language codes from BCP47
+               // GetLocaleInfoEx() LOCALE_SISO639LANGNAME
+               break;
+         }
+      }
+
+      if (render) {
+         if (Tag.Attribs.size() > 1) { // The <switch> element is treated as a container type
+            pf::Log log(__FUNCTION__);
+            log.traceBranch("Tag: %d", Tag.ID);
+
+            auto state = State;
+
+            objVector *group;
+            if (NewObject(CLASSID::VECTORGROUP, &group) != ERR::Okay) return;
+            SetOwner(group, Parent);
+            state.applyTag(Tag);
+            process_attrib(Self, Tag, State, group);
+
+            if (group->init() IS ERR::Okay) {
+               Vector = group;
+               Tag.Attribs.push_back(XMLAttrib { "_id", std::to_string(group->UID) });
+
+               xtag_default(Self, State, child, Tag, group, Vector);
+            }
+            else FreeResource(group);
+         }
+         else xtag_default(Self, State, child, Tag, Parent, Vector);
+
+         return;
+      }
    }
 }
 
@@ -3409,7 +3497,7 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_APPEND_PATH: {
          // The append-path option is a Parasol attribute that requires a reference to an instantiated vector with a path.
          OBJECTPTR other = NULL;
-         if (Self->Scene->findDef(StrValue.c_str(), &other) IS ERR::Okay) Vector->set(FID_AppendPath, other);
+         if (Self->Scene->findDef(StrValue.c_str(), &other) IS ERR::Okay) Vector->setAppendPath(other);
          else log.warning("Unable to find element '%s' referenced at line %d", StrValue.c_str(), Tag.LineNo);
          break;
       }
@@ -3427,69 +3515,69 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
 
       case SVF_TRANSITION: {
          OBJECTPTR trans = NULL;
-         if (Self->Scene->findDef(StrValue.c_str(), &trans) IS ERR::Okay) Vector->set(FID_Transition, trans);
+         if (Self->Scene->findDef(StrValue.c_str(), &trans) IS ERR::Okay) Vector->setTransition(trans);
          else log.warning("Unable to find element '%s' referenced at line %d", StrValue.c_str(), Tag.LineNo);
          break;
       }
 
       case SVF_COLOUR_INTERPOLATION:
       case SVF_COLOR_INTERPOLATION:
-         if (iequals("auto", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::SRGB));
-         else if (iequals("sRGB", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::SRGB));
-         else if (iequals("linearRGB", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
-         else if (iequals("inherit", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::INHERIT));
+         if (iequals("auto", StrValue)) Vector->setColourSpace(VCS::SRGB);
+         else if (iequals("sRGB", StrValue)) Vector->setColourSpace(VCS::SRGB);
+         else if (iequals("linearRGB", StrValue)) Vector->setColourSpace(VCS::LINEAR_RGB);
+         else if (iequals("inherit", StrValue)) Vector->setColourSpace(VCS::INHERIT);
          else log.warning("Invalid color-interpolation value '%s' at line %d", StrValue.c_str(), Tag.LineNo);
          break;
 
       case SVF_STROKE_LINEJOIN:
          switch(strihash(StrValue)) {
-            case SVF_MITER: Vector->set(FID_LineJoin, LONG(VLJ::MITER)); break;
-            case SVF_ROUND: Vector->set(FID_LineJoin, LONG(VLJ::ROUND)); break;
-            case SVF_BEVEL: Vector->set(FID_LineJoin, LONG(VLJ::BEVEL)); break;
-            case SVF_INHERIT: Vector->set(FID_LineJoin, LONG(VLJ::INHERIT)); break;
-            case SVF_MITER_REVERT: Vector->set(FID_LineJoin, LONG(VLJ::MITER_REVERT)); break; // Special AGG only join type
-            case SVF_MITER_ROUND: Vector->set(FID_LineJoin, LONG(VLJ::MITER_ROUND)); break; // Special AGG only join type
+            case SVF_MITER: Vector->setLineJoin(LONG(VLJ::MITER)); break;
+            case SVF_ROUND: Vector->setLineJoin(LONG(VLJ::ROUND)); break;
+            case SVF_BEVEL: Vector->setLineJoin(LONG(VLJ::BEVEL)); break;
+            case SVF_INHERIT: Vector->setLineJoin(LONG(VLJ::INHERIT)); break;
+            case SVF_MITER_CLIP: Vector->setLineJoin(LONG(VLJ::MITER_SMART)); break; // Special AGG only join type
+            case SVF_MITER_ROUND: Vector->setLineJoin(LONG(VLJ::MITER_ROUND)); break; // Special AGG only join type
          }
          break;
 
       case SVF_STROKE_INNERJOIN: // AGG ONLY
          switch(strihash(StrValue)) {
-            case SVF_MITER:   Vector->set(FID_InnerJoin, LONG(VIJ::MITER));  break;
-            case SVF_ROUND:   Vector->set(FID_InnerJoin, LONG(VIJ::ROUND)); break;
-            case SVF_BEVEL:   Vector->set(FID_InnerJoin, LONG(VIJ::BEVEL)); break;
-            case SVF_INHERIT: Vector->set(FID_InnerJoin, LONG(VIJ::INHERIT)); break;
-            case SVF_JAG:     Vector->set(FID_InnerJoin, LONG(VIJ::JAG)); break;
+            case SVF_MITER:   Vector->setInnerJoin(LONG(VIJ::MITER));  break;
+            case SVF_ROUND:   Vector->setInnerJoin(LONG(VIJ::ROUND)); break;
+            case SVF_BEVEL:   Vector->setInnerJoin(LONG(VIJ::BEVEL)); break;
+            case SVF_INHERIT: Vector->setInnerJoin(LONG(VIJ::INHERIT)); break;
+            case SVF_JAG:     Vector->setInnerJoin(LONG(VIJ::JAG)); break;
          }
          break;
 
       case SVF_STROKE_LINECAP:
          switch(strihash(StrValue)) {
-            case SVF_BUTT:    Vector->set(FID_LineCap, LONG(VLC::BUTT)); break;
-            case SVF_SQUARE:  Vector->set(FID_LineCap, LONG(VLC::SQUARE)); break;
-            case SVF_ROUND:   Vector->set(FID_LineCap, LONG(VLC::ROUND)); break;
-            case SVF_INHERIT: Vector->set(FID_LineCap, LONG(VLC::INHERIT)); break;
+            case SVF_BUTT:    Vector->setLineCap(LONG(VLC::BUTT)); break;
+            case SVF_SQUARE:  Vector->setLineCap(LONG(VLC::SQUARE)); break;
+            case SVF_ROUND:   Vector->setLineCap(LONG(VLC::ROUND)); break;
+            case SVF_INHERIT: Vector->setLineCap(LONG(VLC::INHERIT)); break;
          }
          break;
 
       case SVF_VISIBILITY:
-         if (iequals("visible", StrValue))       Vector->set(FID_Visibility, LONG(VIS::VISIBLE));
-         else if (iequals("hidden", StrValue))   Vector->set(FID_Visibility, LONG(VIS::HIDDEN));
-         else if (iequals("collapse", StrValue)) Vector->set(FID_Visibility, LONG(VIS::COLLAPSE)); // Same effect as hidden, kept for SVG compatibility
-         else if (iequals("inherit", StrValue))  Vector->set(FID_Visibility, LONG(VIS::INHERIT));
+         if (iequals("visible", StrValue))       Vector->setVisibility(VIS::VISIBLE);
+         else if (iequals("hidden", StrValue))   Vector->setVisibility(VIS::HIDDEN);
+         else if (iequals("collapse", StrValue)) Vector->setVisibility(VIS::COLLAPSE); // Same effect as hidden, kept for SVG compatibility
+         else if (iequals("inherit", StrValue))  Vector->setVisibility(VIS::INHERIT);
          else log.warning("Unsupported visibility value '%s'", StrValue.c_str());
          break;
 
       case SVF_FILL_RULE:
-         if (iequals("nonzero", StrValue)) Vector->set(FID_FillRule, LONG(VFR::NON_ZERO));
-         else if (iequals("evenodd", StrValue)) Vector->set(FID_FillRule, LONG(VFR::EVEN_ODD));
-         else if (iequals("inherit", StrValue)) Vector->set(FID_FillRule, LONG(VFR::INHERIT));
+         if (iequals("nonzero", StrValue)) Vector->setFillRule(LONG(VFR::NON_ZERO));
+         else if (iequals("evenodd", StrValue)) Vector->setFillRule(LONG(VFR::EVEN_ODD));
+         else if (iequals("inherit", StrValue)) Vector->setFillRule(LONG(VFR::INHERIT));
          else log.warning("Unsupported fill-rule value '%s'", StrValue.c_str());
          break;
 
       case SVF_CLIP_RULE:
-         if (iequals("nonzero", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::NON_ZERO));
-         else if (iequals("evenodd", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::EVEN_ODD));
-         else if (iequals("inherit", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::INHERIT));
+         if (iequals("nonzero", StrValue)) Vector->setClipRule(LONG(VFR::NON_ZERO));
+         else if (iequals("evenodd", StrValue)) Vector->setClipRule(LONG(VFR::EVEN_ODD));
+         else if (iequals("inherit", StrValue)) Vector->setClipRule(LONG(VFR::INHERIT));
          else log.warning("Unsupported clip-rule value '%s'", StrValue.c_str());
          break;
 
@@ -3510,9 +3598,9 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
          // whitespace in document layout mode.  This has no relevance in our Vector Scene Graph, so 'display' is
          // treated as an obsolete feature and converted to visibility.
 
-         if (iequals("none", StrValue))          Vector->set(FID_Visibility, LONG(VIS::HIDDEN));
-         else if (iequals("inline", StrValue))   Vector->set(FID_Visibility, LONG(VIS::VISIBLE));
-         else if (iequals("inherit", StrValue))  Vector->set(FID_Visibility, LONG(VIS::INHERIT));
+         if (iequals("none", StrValue))          Vector->setVisibility(VIS::HIDDEN);
+         else if (iequals("inline", StrValue))   Vector->setVisibility(VIS::VISIBLE);
+         else if (iequals("inherit", StrValue))  Vector->setVisibility(VIS::INHERIT);
          break;
 
       case SVF_NUMERIC_ID: Vector->set(FID_NumericID, StrValue); break;
@@ -3526,8 +3614,8 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_MARKER_MID:   log.warning("marker-mid is not supported."); break;
       case SVF_MARKER_START: log.warning("marker-start is not supported."); break;
 
-      case SVF_FILTER:       Vector->set(FID_Filter, StrValue); break;
-      case SVF_COLOR:        Vector->set(FID_Fill, StrValue); break;
+      case SVF_FILTER:       Vector->setFilter(StrValue); break;
+      case SVF_COLOR:        Vector->setFill(StrValue); break;
 
       case SVF_STROKE:
          if (iequals("currentColor", StrValue)) {
@@ -3540,20 +3628,27 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_FILL:
          if (iequals("currentColor", StrValue)) {
             FRGB rgb;
-            if (current_colour(Self, Vector, State, rgb) IS ERR::Okay) SetArray(Vector, FID_Fill|TFLOAT, &rgb, 4);
+            if (current_colour(Self, Vector, State, rgb) IS ERR::Okay) {
+               SetArray(Vector, FID_FillColour|TFLOAT, &rgb, 4);
+            }
          }
          else set_paint_server(Self, State, Vector, FID_Fill, StrValue);
          break;
 
       case SVF_TRANSFORM: parse_transform(Vector, StrValue, MTAG_SVG_TRANSFORM); break;
 
-      case SVF_STROKE_DASHARRAY: Vector->set(FID_DashArray, StrValue); break;
-      case SVF_OPACITY:          Vector->set(FID_Opacity, StrValue); break;
-      case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, strtod(StrValue.c_str(), NULL)); break;
+      case SVF_STROKE_DASHARRAY: {
+         auto values = read_array(StrValue);
+         Vector->setDashArray(values.data(), values.size()); 
+         break;
+      }
+
+      case SVF_OPACITY:          Vector->set(FID_Opacity, std::clamp(strtod(StrValue.c_str(), NULL), 0.0, 1.0)); break;
+      case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, std::clamp(strtod(StrValue.c_str(), NULL), 0.0, 1.0)); break;
       case SVF_SHAPE_RENDERING:  Vector->set(FID_PathQuality, LONG(shape_rendering_to_render_quality(StrValue))); break;
 
       case SVF_STROKE_WIDTH:            FUNIT(FID_StrokeWidth, StrValue).set(Vector); break;
-      case SVF_STROKE_OPACITY:          Vector->set(FID_StrokeOpacity, StrValue); break;
+      case SVF_STROKE_OPACITY:          Vector->set(FID_StrokeOpacity, std::clamp(strtod(StrValue.c_str(), NULL), 0.0, 1.0)); break;
       case SVF_STROKE_MITERLIMIT:       Vector->set(FID_MiterLimit, StrValue); break;
       case SVF_STROKE_MITERLIMIT_THETA: Vector->set(FID_MiterLimitTheta, StrValue); break;
       case SVF_STROKE_INNER_MITERLIMIT: Vector->set(FID_InnerMiterLimit, StrValue); break;

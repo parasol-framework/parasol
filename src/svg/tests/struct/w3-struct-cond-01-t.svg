@@ -1,0 +1,13 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+<!-- This test evaluates a switch statement. -->
+
+  <switch>
+    <rect fill="red" x="0" y="0" width="220" height="150" requiredExtensions="http://example.org/bogus"/>
+    <rect fill="green" x="0" y="150" width="220" height="150"/>
+    <rect fill="blue" x="240" y="0" width="220" height="150"/>
+  </switch>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000000"/>
+</svg>

@@ -101,7 +101,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
       Path.remove_prefix(1);
    }
    else if (startswith("string:", Path)) {
-      Result->assign(Path);
+      if (Result) Result->assign(Path);
       return ERR::Okay;
    }
 
@@ -192,7 +192,8 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
       else {
          #ifdef _WIN32 // UNC network path check
             if (((dest[0] IS '\\') and (dest[1] IS '\\')) or ((dest[0] IS '/') and (dest[1] IS '/'))) {
-               goto resolved_path;
+               if (Result) Result->assign(dest);
+               return ERR::Okay;
             }
          #endif
 
@@ -213,9 +214,6 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
          }
       }
 
-#ifdef _WIN32
-resolved_path:
-#endif
       if (Result) {
          auto tp = true_path(dest.c_str());
          if (tp.has_value()) Result->assign(tp.value());

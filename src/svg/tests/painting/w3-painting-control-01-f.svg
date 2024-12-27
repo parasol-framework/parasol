@@ -1,0 +1,51 @@
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <rect width="48px" height="48px" fill="red" />
+  <rect width="48px" height="48px" display="inline" />
+
+  <rect x="50px" width="48px" height="48px" fill="red" />
+  <rect x="50px" width="48px" height="48px" display="block" />
+
+  <rect x="100px" width="48px" height="48px" fill="red" />
+  <rect x="100px" width="48px" height="48px" display="list-item" />
+
+  <rect x="150px" width="48px" height="48px" fill="red" />
+  <rect x="150px" width="48px" height="48px" display="run-in" />
+
+  <rect y="50px" width="48px" height="48px" fill="red" />
+  <rect y="50px" width="48px" height="48px" display="compact" />
+
+  <rect x="50px" y="50px" width="48px" height="48px" fill="red" />
+  <rect x="50px" y="50px" width="48px" height="48px" display="marker" />
+
+  <rect x="100px" y="50px" width="48px" height="48px" fill="red" />
+  <rect x="100px" y="50px" width="48px" height="48px" display="table" />
+
+  <rect x="150px" y="50px" width="48px" height="48px" fill="red" />
+  <rect x="150px" y="50px" width="48px" height="48px" display="inline-table" />
+
+  <rect y="100px" width="48px" height="48px" fill="red" />
+  <rect y="100px" width="48px" height="48px" display="table-row-group" />
+
+  <rect x="50px" y="100px" width="48px" height="48px" fill="red" />
+  <rect x="50px" y="100px" width="48px" height="48px" display="table-header-group" />
+
+  <rect x="100px" y="100px" width="48px" height="48px" fill="red" />
+  <rect x="100px" y="100px" width="48px" height="48px" display="table-footer-group" />
+
+  <rect x="150px" y="100px" width="48px" height="48px" fill="red" />
+  <rect x="150px" y="100px" width="48px" height="48px" display="table-row" />
+
+  <rect y="150px" width="48px" height="48px" fill="red" />
+  <rect y="150px" width="48px" height="48px" display="table-column-group" />
+
+  <rect x="50px" y="150px" width="48px" height="48px" fill="red" />
+  <rect x="50px" y="150px" width="48px" height="48px" display="table-column" />
+
+  <rect x="100px" y="150px" width="48px" height="48px" fill="red" />
+  <rect x="100px" y="150px" width="48px" height="48px" display="table-cell" />
+
+  <rect x="150px" y="150px" width="48px" height="48px" fill="red" />
+  <rect x="150px" y="150px" width="48px" height="48px" display="table-caption" />
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000"/>
+</svg>

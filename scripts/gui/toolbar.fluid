@@ -640,9 +640,9 @@ gui.toolbar = function(Options)
 
    self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_CROSSING), inputFeedback)
 
-   local kbfill = 'rgb(0,0,0,128)'
+   local kbfill = 'rgba(0,0,0,.5)'
    if Options.theme != 'light' then
-      kbfill = 'rgb(255,255,255,200)'
+      kbfill = 'rgba(255,255,255,.78)'
    end
 
    self.kbIcon = self.viewport.new('VectorRectangle', { -- Icon highlighter, for keyboard-based selection

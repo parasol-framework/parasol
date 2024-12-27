@@ -1,0 +1,12 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <text font-size="36" x="40" y="42">Basic paint: fill properties.</text>
+
+  <rect id="fill-01" fill="none" stroke="#000000" x="75" y="70" width="100" height="160"/>
+  <rect id="fill-02" fill="green" stroke="#000000" x="275" y="70" width="100" height="160"/>
+  <text font-size="36" x="75" y="280">fill="none"</text>
+  <text font-size="36" x="275" y="280">fill="green"</text>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000000"/>
+</svg>

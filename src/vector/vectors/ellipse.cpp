@@ -31,11 +31,20 @@ static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
    if (dmf::has(Vector->eDimensions, DMF::SCALED_CENTER_X|DMF::SCALED_CENTER_Y|DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y)) {
       auto view_width = get_parent_width(Vector);
       auto view_height = get_parent_height(Vector);
+      double diag = 0;
 
       if (dmf::hasScaledCenterX(Vector->eDimensions)) cx *= view_width;
       if (dmf::hasScaledCenterY(Vector->eDimensions)) cy *= view_height;
-      if (dmf::hasScaledRadiusX(Vector->eDimensions)) rx *= view_width;
-      if (dmf::hasScaledRadiusY(Vector->eDimensions)) ry *= view_height;
+
+      if (dmf::hasScaledRadiusX(Vector->eDimensions)) {
+         if (diag IS 0) diag = svg_diag(view_width, view_height);
+         rx *= diag;
+      }
+
+      if (dmf::hasScaledRadiusY(Vector->eDimensions)) {
+         if (diag IS 0) diag = svg_diag(view_width, view_height);
+         ry *= diag;
+      }
    }
 
 #if 0

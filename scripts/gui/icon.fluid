@@ -133,7 +133,7 @@ gui.icon = function(Options)
       lTextGroup = self.viewport.new('VectorGroup', { })
 
       lTextGroup.new('VectorRectangle', {
-         fill   = 'rgb(0,0,0,128)',
+         fill   = 'rgba(0,0,0,.5)',
          x      = 0,
          y      = math.floor(y),
          roundX = 5,
