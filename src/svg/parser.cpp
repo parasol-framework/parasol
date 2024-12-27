@@ -1793,9 +1793,10 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
    switch(strihash(Tag.name())) {
       case SVF_USE:              xtag_use(Self, State, Tag, Parent); break;
       case SVF_A:                xtag_link(Self, State, Tag, Parent, Vector); break;
-      case SVF_SWITCH:           log.warning("<switch> not supported."); break;
+      case SVF_SWITCH:           xtag_switch(Self, State, Tag, Parent, Vector); break;
       case SVF_G:                xtag_group(Self, State, Tag, Parent, Vector); break;
       case SVF_SVG:              xtag_svg(Self, State, Tag, Parent, Vector); break;
+
       case SVF_RECT:             process_shape(Self, CLASSID::VECTORRECTANGLE, State, Tag, Parent, Vector); break;
       case SVF_ELLIPSE:          process_shape(Self, CLASSID::VECTORELLIPSE, State, Tag, Parent, Vector); break;
       case SVF_CIRCLE:           process_shape(Self, CLASSID::VECTORELLIPSE, State, Tag, Parent, Vector); break;
@@ -2590,6 +2591,67 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
 
       if ((!Self->Links.empty()) and (group->init() IS ERR::Okay)) Vector = group;
       else FreeResource(group);
+   }
+}
+
+//********************************************************************************************************************
+// For each immediate child, evaluate any requiredFeatures, requiredExtensions and systemLanguage attributes.
+// The first child where these attributes evaluate to true is rendered, the rest are ignored.
+
+static void xtag_switch(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+{
+   for (auto &child : Tag.Children) {      
+      bool render = true;
+      for (LONG a=1; a < std::ssize(child.Attribs); a++) {
+         auto &val = child.Attribs[a].Value;
+         if (val.empty()) continue;
+
+         switch(strihash(child.Attribs[a].Name)) {
+            case SVF_REQUIREDFEATURES:
+               // requiredFeatures is deprecated as of SVG2, but the following features are explicitly not supported
+               // by our SVG implementation:
+               if (val IS "http://www.w3.org/TR/SVG11/feature#SVG-dynamic") render = false;
+               else if (val IS "http://www.w3.org/TR/SVG11/feature#DocumentEventsAttribute") render = false;
+               else if (val IS "http://www.w3.org/TR/SVG11/feature#GraphicalEventsAttribute") render = false;
+               else if (val IS "http://www.w3.org/TR/SVG11/feature#Script") render = false;
+               break;
+
+            case SVF_REQUIREDEXTENSIONS: // Allows the client to check if a given customised extension is supported.
+               if (val IS "http://www.parasol.ws/TR/Parasol/1.0");
+               else render = false;
+               break;
+
+            case SVF_SYSTEMLANGUAGE: // CSV list of language codes from BCP47
+               // GetLocaleInfoEx() LOCALE_SISO639LANGNAME
+               break;
+         }
+      }
+
+      if (render) {
+         if (Tag.Attribs.size() > 1) { // The <switch> element is treated as a container type
+            pf::Log log(__FUNCTION__);
+            log.traceBranch("Tag: %d", Tag.ID);
+
+            auto state = State;
+
+            objVector *group;
+            if (NewObject(CLASSID::VECTORGROUP, &group) != ERR::Okay) return;
+            SetOwner(group, Parent);
+            state.applyTag(Tag);
+            process_attrib(Self, Tag, State, group);
+
+            if (group->init() IS ERR::Okay) {
+               Vector = group;
+               Tag.Attribs.push_back(XMLAttrib { "_id", std::to_string(group->UID) });
+
+               xtag_default(Self, State, child, Tag, group, Vector);
+            }
+            else FreeResource(group);
+         }
+         else xtag_default(Self, State, child, Tag, Parent, Vector);
+
+         return;
+      }
    }
 }
 

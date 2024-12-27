@@ -316,7 +316,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VCS">VCS</type>
       <description>
-<p>By default, vectors are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour space to <code>LINEAR_RGB</code> will force the renderer to automatically convert sRGB values to linear RGB when blending on the fly.</p>
+<p>By default, vectors are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour space to <code>LINEAR_RGB</code> will tell the renderer to automatically convert sRGB values to linear RGB when blending on the fly.</p>
 <types lookup="VCS"/>
       </description>
     </field>

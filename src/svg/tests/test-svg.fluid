@@ -139,6 +139,16 @@ function testW3Painting27() hashTestSVG('painting/w3-painting-stroke-07-t.svg', 
 function testW3Painting28() hashTestSVG('painting/w3-painting-stroke-08-t.svg', 0x40da452a) end
 function testW3Painting29() hashTestSVG('painting/w3-painting-stroke-09-t.svg', 0xb153164f) end
 function testW3Painting30() hashTestSVG('painting/w3-painting-stroke-10-t.svg', 0xfe0e9883) end
+function testW3Struct01() hashTestSVG('struct/w3-struct-cond-01-t.svg', 0x901cb1fa) end
+function testW3Struct02() hashTestSVG('struct/w3-struct-cond-03-t.svg', 0x22f3c496) end
+function testW3Struct03() hashTestSVG('struct/w3-struct-defs-01-t.svg', 0xf57016f5) end
+function testW3Struct04() hashTestSVG('struct/w3-struct-frag-01-t.svg', 0xaeecf75a) end
+function testW3Struct05() hashTestSVG('struct/w3-struct-frag-02-t.svg', 0x7eb70f87) end
+function testW3Struct06() hashTestSVG('struct/w3-struct-frag-03-t.svg', 0x056ad679) end
+function testW3Struct07() hashTestSVG('struct/w3-struct-frag-06-t.svg', 0xc7022d82) end
+function testW3Struct08() hashTestSVG('struct/w3-struct-group-01-t.svg', 0xb87251f5) end
+function testW3Struct09() hashTestSVG('struct/w3-struct-group-02-b.svg', 0x38b67cdb) end
+
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
 function testComposite()          hashTestSVG('filters/composite.svg', 0x66a96a50) end
 function testConvolve()           hashTestSVG('filters/convolve.svg', 0x29d31e69) end
@@ -474,7 +484,16 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Paths17',
         'testW3Paths18',
         'testW3Paths19',
-        'testW3Paths20'
+        'testW3Paths20',
+        'testW3Struct01',
+        'testW3Struct02',
+        'testW3Struct03',
+        'testW3Struct04',
+        'testW3Struct05',
+        'testW3Struct06',
+        'testW3Struct07',
+        'testW3Struct08',
+        'testW3Struct09'
       },
       init = function(Folder)
          glSVGFolder = Folder

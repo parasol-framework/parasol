@@ -1189,7 +1189,10 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "KEYSPLINES",
     "BY",
     "YELLOW",
-    "YELLOWGREEN"
+    "YELLOWGREEN",
+    "REQUIREDFEATURES",
+    "REQUIREDEXTENSIONS",
+    "SYSTEMLANGUAGE"
     )
 
     c_insert([[

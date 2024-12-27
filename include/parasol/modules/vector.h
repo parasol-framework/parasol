@@ -3942,6 +3942,9 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_BY 0x00597760
 #define SVF_YELLOW 0x297ff6e1
 #define SVF_YELLOWGREEN 0xda4a85b2
+#define SVF_REQUIREDFEATURES 0x01fd4085
+#define SVF_REQUIREDEXTENSIONS 0x0d7ab056
+#define SVF_SYSTEMLANGUAGE 0xa95fc64e
 
 namespace vec {
 inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
