@@ -13,7 +13,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 
 *********************************************************************************************************************/
 
-#define DEBUG
+//#define DEBUG
 #define PRV_SVG
 #include <unordered_map>
 #include <string>
@@ -127,7 +127,7 @@ struct svgState {
 
    public:
    svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_family("Noto Sans"), m_stroke_width(0),
-      m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), 
+      m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO),
       m_line_join(VLJ::NIL), m_line_cap(VLC::NIL), m_inner_join(VIJ::NIL),
       Self(pSVG), Scene(pSVG->Scene) { }
 
@@ -177,6 +177,7 @@ struct svgState {
    void parse_lineargradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
    void parse_radialgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
 
+   ERR  parse_fe_blur(objVectorFilter *, XMLTag &) noexcept;
    ERR  parse_fe_colour_matrix(objVectorFilter *, XMLTag &) noexcept;
    ERR  parse_fe_component_xfer(objVectorFilter *, XMLTag &) noexcept;
    ERR  parse_fe_composite(objVectorFilter *, XMLTag &) noexcept;
@@ -185,7 +186,9 @@ struct svgState {
    ERR  parse_fe_flood(objVectorFilter *, XMLTag &) noexcept;
    ERR  parse_fe_image(objVectorFilter *, XMLTag &) noexcept;
    ERR  parse_fe_lighting(objVectorFilter *, XMLTag &, LT) noexcept;
+   ERR  parse_fe_merge(objVectorFilter *, XMLTag &) noexcept;
    ERR  parse_fe_morphology(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_offset(objVectorFilter *, XMLTag &) noexcept;
    ERR  parse_fe_source(objVectorFilter * , XMLTag &) noexcept;
    ERR  parse_fe_turbulence(objVectorFilter *, XMLTag &) noexcept;
 };

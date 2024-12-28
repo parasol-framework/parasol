@@ -493,7 +493,7 @@ void svgState::proc_mask(XMLTag &Tag) noexcept
 
 //********************************************************************************************************************
 
-static ERR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_blur(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -542,7 +542,7 @@ static ERR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_offset(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -575,7 +575,7 @@ static ERR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_merge(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1579,10 +1579,10 @@ void svgState::proc_filter(XMLTag &Tag) noexcept
             log.trace("Parsing filter element '%s'", child.name());
 
             switch(strihash(child.name())) {
-               case SVF_FEBLUR:              parse_fe_blur(Self, filter, child); break;
-               case SVF_FEGAUSSIANBLUR:      parse_fe_blur(Self, filter, child); break;
-               case SVF_FEOFFSET:            parse_fe_offset(Self, filter, child); break;
-               case SVF_FEMERGE:             parse_fe_merge(Self, filter, child); break;
+               case SVF_FEBLUR:              parse_fe_blur(filter, child); break;
+               case SVF_FEGAUSSIANBLUR:      parse_fe_blur(filter, child); break;
+               case SVF_FEOFFSET:            parse_fe_offset(filter, child); break;
+               case SVF_FEMERGE:             parse_fe_merge(filter, child); break;
                case SVF_FECOLORMATRIX:       // American spelling
                case SVF_FECOLOURMATRIX:      parse_fe_colour_matrix(filter, child); break;
                case SVF_FECONVOLVEMATRIX:    parse_fe_convolve_matrix(filter, child); break;
