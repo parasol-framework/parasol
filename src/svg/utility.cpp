@@ -605,3 +605,23 @@ static void convert_styles(objXML::TAGS &Tags)
       if (!tag.Children.empty()) convert_styles(tag.Children);
    }
 }
+
+//********************************************************************************************************************
+
+static void update_dpi(void)
+{
+   static LARGE last_update = -0x7fffffff;
+   LARGE current_time = PreciseTime();
+
+   if (current_time - last_update > 3000000LL) {
+      DISPLAYINFO *display;
+      if (gfx::GetDisplayInfo(0, &display) IS ERR::Okay) {
+         last_update = PreciseTime();
+         if ((display->VDensity >= 72) and (display->HDensity >= 72)) {
+            glDisplayVDPI = display->VDensity;
+            glDisplayHDPI = display->HDensity;
+            glDisplayDPI = (glDisplayVDPI + glDisplayHDPI) * 0.5;
+         }
+      }
+   }
+}

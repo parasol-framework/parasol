@@ -40,6 +40,7 @@ JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 
 static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL, modPicture = NULL;
+static DOUBLE glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 struct prvSVG { // Private variables for RSVG
    class objSVG *SVG;
@@ -236,6 +237,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("picture", &modPicture) IS ERR::Okay) { // RSVG has a Picture class dependency
       if (init_rsvg() != ERR::Okay) return ERR::AddClass;
    }
+
+   update_dpi();
 
    return ERR::Okay;
 }
