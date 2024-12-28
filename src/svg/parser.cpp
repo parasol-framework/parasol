@@ -2,7 +2,7 @@
 // For setting Fill and Stroke fields.  If the value is a url() then the referenced paint server will be initialised
 // if it has not been already.
 
-static ERR set_paint_server(extSVG *Self, svgState &State, objVector *Vector, FIELD Field, const std::string Value)
+ERR svgState::set_paint_server(objVector *Vector, FIELD Field, const std::string Value)
 {
    if (Value.starts_with("url(")) {
       if (Value[4] IS '#') {
@@ -16,11 +16,11 @@ static ERR set_paint_server(extSVG *Self, svgState &State, objVector *Vector, FI
                auto tag = Self->IDs[lookup];
 
                switch(strihash(tag->name())) {
-                  case SVF_CONTOURGRADIENT:  xtag_contourgradient(Self, State, *tag); break;
-                  case SVF_RADIALGRADIENT:   xtag_radialgradient(Self, State, *tag); break;
-                  case SVF_DIAMONDGRADIENT:  xtag_diamondgradient(Self, State, *tag); break;
-                  case SVF_CONICGRADIENT:    xtag_conicgradient(Self, State, *tag); break;
-                  case SVF_LINEARGRADIENT:   xtag_lineargradient(Self, State, *tag); break;
+                  case SVF_CONTOURGRADIENT:  proc_contourgradient(*tag); break;
+                  case SVF_RADIALGRADIENT:   proc_radialgradient(*tag); break;
+                  case SVF_DIAMONDGRADIENT:  proc_diamondgradient(*tag); break;
+                  case SVF_CONICGRADIENT:    proc_conicgradient(*tag); break;
+                  case SVF_LINEARGRADIENT:   proc_lineargradient(*tag); break;
                }
             }
          }
@@ -36,18 +36,17 @@ static ERR set_paint_server(extSVG *Self, svgState &State, objVector *Vector, FI
 // Use of 'inherit' is replaced with the actual state value at the time of the call.
 // Use of 'currentColor' is also replaced to a deeper level, because it plays by different rules to inherit.
 
-static void process_inherit_refs(XMLTag &Tag, svgState &State)
+void svgState::process_inherit_refs(XMLTag &Tag) noexcept
 {
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("inherit", Tag.Attribs[a].Value)) {
-         auto attrib = strihash(Tag.Attribs[a].Name);
-         switch (attrib) {
-            case SVF_STOP_COLOR: Tag.Attribs[a].Value = State.m_stop_color; break;
-            case SVF_STOP_OPACITY: Tag.Attribs[a].Value = std::to_string(State.m_stop_opacity); break;
+         switch (strihash(Tag.Attribs[a].Name)) {
+            case SVF_STOP_COLOR: Tag.Attribs[a].Value = m_stop_color; break;
+            case SVF_STOP_OPACITY: Tag.Attribs[a].Value = std::to_string(m_stop_opacity); break;
          }
       }
       else if (iequals("currentColor", Tag.Attribs[a].Value)) {
-         Tag.Attribs[a].Value = State.m_color;
+         Tag.Attribs[a].Value = m_color;
       }
    }
 
@@ -68,7 +67,7 @@ static void process_inherit_refs(XMLTag &Tag, svgState &State)
    };
 
    if (!Tag.Children.empty()) {
-      process_color(Tag.Children, State.m_color);
+      process_color(Tag.Children, m_color);
    }
 }
 
@@ -262,12 +261,12 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
 //********************************************************************************************************************
 // Process all child elements that belong to the target Tag.
 
-static void process_children(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Vector)
+void svgState::process_children(XMLTag &Tag, OBJECTPTR Vector) noexcept
 {
    objVector *sibling = NULL;
    for (auto &child : Tag.Children) {
       if (child.isTag()) {
-         xtag_default(Self, State, child, Tag, Vector, sibling);
+         process_tag(child, Tag, Vector, sibling);
       }
    }
 }
@@ -275,7 +274,7 @@ static void process_children(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTP
 //********************************************************************************************************************
 // Process a restricted set of children for shape objects.
 
-static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Vector)
+void svgState::process_shape_children(XMLTag &Tag, OBJECTPTR Vector) noexcept
 {
    pf::Log log;
 
@@ -283,12 +282,13 @@ static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, O
       if (!child.isTag()) continue;
 
       switch(strihash(child.name())) {
-         case SVF_ANIMATE:          xtag_animate(Self, State, child, Tag, Vector); break;
-         case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, State, child, Tag, Vector); break;
-         case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, child, Vector); break;
-         case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, child, Vector); break;
-         case SVF_SET:              xtag_set(Self, State, child, Tag, Vector); break;
-         case SVF_PARASOL_MORPH:    xtag_morph(Self, child, Vector); break;
+         case SVF_ANIMATE:          proc_animate(child, Tag, Vector); break;
+         case SVF_ANIMATECOLOR:     proc_animate_colour(child, Tag, Vector); break;
+         case SVF_ANIMATETRANSFORM: proc_animate_transform(child, Vector); break;
+         case SVF_ANIMATEMOTION:    proc_animate_motion(child, Vector); break;
+         case SVF_SET:              proc_set(child, Tag, Vector); break;
+         case SVF_PARASOL_MORPH:    proc_morph(child, Vector); break;
+
          case SVF_TEXTPATH:
             if (Vector->classID() IS CLASSID::VECTORTEXT) {
                if (!child.Children.empty()) {
@@ -300,9 +300,10 @@ static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, O
                   else log.msg("Failed to retrieve content for <text> @ line %d", Tag.LineNo);
                }
 
-               xtag_morph(Self, child, Vector);
+               proc_morph(child, Vector);
             }
             break;
+
          default:
             log.warning("Failed to interpret vector child element <%s/> @ line %d", child.name(), child.LineNo);
             break;
@@ -312,7 +313,7 @@ static void process_shape_children(extSVG *Self, svgState &State, XMLTag &Tag, O
 
 //********************************************************************************************************************
 
-static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
+void svgState::proc_pathtransition(XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -355,7 +356,7 @@ static void xtag_pathtransition(extSVG *Self, XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static void xtag_clippath(extSVG *Self, XMLTag &Tag)
+void svgState::proc_clippath(XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -406,7 +407,7 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
             // Commands: use, animate
 
             auto vp = clip->get<OBJECTPTR>(FID_Viewport);
-            process_children(Self, state, Tag, vp);
+            state.process_children(Tag, vp);
 
             Self->Scene->addDef(id.c_str(), clip);
             track_object(Self, clip);
@@ -423,7 +424,7 @@ static void xtag_clippath(extSVG *Self, XMLTag &Tag)
 //
 // The formula used to get the luminance out of a given RGB value is: .2126R + .7152G + .0722B
 
-static void xtag_mask(extSVG *Self, XMLTag &Tag)
+void svgState::proc_mask(XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -481,7 +482,7 @@ static void xtag_mask(extSVG *Self, XMLTag &Tag)
       if (InitObject(clip) IS ERR::Okay) {
          svgState state(Self);
          auto vp = clip->get<OBJECTPTR>(FID_Viewport);
-         process_children(Self, state, Tag, vp);
+         state.process_children(Tag, vp);
 
          Self->Scene->addDef(id.c_str(), clip);
          track_object(Self, clip);
@@ -653,7 +654,7 @@ static const std::array<DOUBLE,20> glTritanomaly = { 0.967,0.033,0,0,0, 0,0.733,
 static const std::array<DOUBLE,20> glAchromatopsia = { 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0.299,0.587,0.114,0,0, 0,0,0,1,0 };
 static const std::array<DOUBLE,20> glAchromatomaly = { 0.618,0.320,0.062,0,0, 0.163,0.775,0.062,0,0, 0.163,0.320,0.516,0,0, 0,0,0,1,0 };
 
-static ERR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_colour_matrix(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -730,7 +731,7 @@ static ERR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag 
 
 //********************************************************************************************************************
 
-static ERR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -820,7 +821,7 @@ static ERR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, XMLTa
 
 //********************************************************************************************************************
 
-static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Filter, XMLTag &Tag, LT Type)
+ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XMLTag &Tag, LT Type) noexcept
 {
    pf::Log log(__FUNCTION__);
    objLightingFX *fx;
@@ -841,7 +842,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
             VectorPainter painter;
             if (iequals("currentColor", val)) {
                FRGB rgb;
-               if (current_colour(Self, Self->Scene->Viewport, State, rgb) IS ERR::Okay) SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
+               if (current_colour(Self->Scene->Viewport, rgb) IS ERR::Okay) SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
             }
             else if (vec::ReadPainter(NULL, val.c_str(), &painter, NULL) IS ERR::Okay) SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             break;
@@ -945,7 +946,7 @@ static ERR parse_fe_lighting(extSVG *Self, svgState &State, objVectorFilter *Fil
 
 //********************************************************************************************************************
 
-static ERR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_displacement_map(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1003,7 +1004,7 @@ static ERR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, XMLT
 
 //********************************************************************************************************************
 
-static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_component_xfer(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objRemapFX *fx;
@@ -1089,7 +1090,7 @@ static ERR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, XMLTag
 
 //********************************************************************************************************************
 
-static ERR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_composite(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1190,7 +1191,7 @@ static ERR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag
 
 //********************************************************************************************************************
 
-static ERR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_flood(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1209,7 +1210,7 @@ static ERR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter
          case SVF_FLOOD_COLOUR: {
             VectorPainter painter;
             if (iequals("currentColor", val)) {
-               if (current_colour(Self, Self->Scene->Viewport, State, painter.Colour) IS ERR::Okay) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
+               if (current_colour(Self->Scene->Viewport, painter.Colour) IS ERR::Okay) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             }
             else if (vec::ReadPainter(NULL, val.c_str(), &painter, NULL) IS ERR::Okay) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             break;
@@ -1241,7 +1242,7 @@ static ERR parse_fe_flood(extSVG *Self, svgState &State, objVectorFilter *Filter
 
 //********************************************************************************************************************
 
-static ERR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_turbulence(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1299,7 +1300,7 @@ static ERR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, XMLTag &Ta
 
 //********************************************************************************************************************
 
-static ERR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_morphology(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1344,7 +1345,7 @@ static ERR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, XMLTag &Ta
 //********************************************************************************************************************
 // This code replaces feImage elements where the href refers to a resource name.
 
-static ERR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_source(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -1380,7 +1381,7 @@ static ERR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Filte
          // live reference being found.
 
          if (auto tagref = find_href_tag(Self, ref)) {
-            xtag_default(Self, State, *tagref, Tag, Self->Scene, vector);
+            process_tag(*tagref, Tag, Self->Scene, vector);
          }
          else log.warning("Element id '%s' not found.", ref.c_str());
       }
@@ -1403,7 +1404,7 @@ static ERR parse_fe_source(extSVG *Self, svgState &State, objVectorFilter *Filte
 
 //********************************************************************************************************************
 
-static ERR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filter, XMLTag &Tag)
+ERR svgState::parse_fe_image(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -1413,7 +1414,7 @@ static ERR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filter
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       if ((iequals("xlink:href", Tag.Attribs[a].Name)) or (iequals("href", Tag.Attribs[a].Name))) {
          if ((Tag.Attribs[a].Value[0] IS '#')) {
-            return parse_fe_source(Self, State, Filter, Tag);
+            return parse_fe_source(Filter, Tag);
          }
          break;
       }
@@ -1505,7 +1506,7 @@ static ERR parse_fe_image(extSVG *Self, svgState &State, objVectorFilter *Filter
 
 //********************************************************************************************************************
 
-static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
+void svgState::proc_filter(XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -1583,19 +1584,19 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
                case SVF_FEOFFSET:            parse_fe_offset(Self, filter, child); break;
                case SVF_FEMERGE:             parse_fe_merge(Self, filter, child); break;
                case SVF_FECOLORMATRIX:       // American spelling
-               case SVF_FECOLOURMATRIX:      parse_fe_colour_matrix(Self, filter, child); break;
-               case SVF_FECONVOLVEMATRIX:    parse_fe_convolve_matrix(Self, filter, child); break;
+               case SVF_FECOLOURMATRIX:      parse_fe_colour_matrix(filter, child); break;
+               case SVF_FECONVOLVEMATRIX:    parse_fe_convolve_matrix(filter, child); break;
                case SVF_FEDROPSHADOW:        log.warning("Support for feDropShadow not yet implemented."); break;
                case SVF_FEBLEND:             // Blend and composite share the same code.
-               case SVF_FECOMPOSITE:         parse_fe_composite(Self, filter, child); break;
-               case SVF_FEFLOOD:             parse_fe_flood(Self, State, filter, child); break;
-               case SVF_FETURBULENCE:        parse_fe_turbulence(Self, filter, child); break;
-               case SVF_FEMORPHOLOGY:        parse_fe_morphology(Self, filter, child); break;
-               case SVF_FEIMAGE:             parse_fe_image(Self, State, filter, child); break;
-               case SVF_FECOMPONENTTRANSFER: parse_fe_component_xfer(Self, filter, child); break;
-               case SVF_FEDIFFUSELIGHTING:   parse_fe_lighting(Self, State, filter, child, LT::DIFFUSE); break;
-               case SVF_FESPECULARLIGHTING:  parse_fe_lighting(Self, State, filter, child, LT::SPECULAR); break;
-               case SVF_FEDISPLACEMENTMAP:   parse_fe_displacement_map(Self, filter, child); break;
+               case SVF_FECOMPOSITE:         parse_fe_composite(filter, child); break;
+               case SVF_FEFLOOD:             parse_fe_flood(filter, child); break;
+               case SVF_FETURBULENCE:        parse_fe_turbulence(filter, child); break;
+               case SVF_FEMORPHOLOGY:        parse_fe_morphology(filter, child); break;
+               case SVF_FEIMAGE:             parse_fe_image(filter, child); break;
+               case SVF_FECOMPONENTTRANSFER: parse_fe_component_xfer(filter, child); break;
+               case SVF_FEDIFFUSELIGHTING:   parse_fe_lighting(filter, child, LT::DIFFUSE); break;
+               case SVF_FESPECULARLIGHTING:  parse_fe_lighting(filter, child, LT::SPECULAR); break;
+               case SVF_FEDISPLACEMENTMAP:   parse_fe_displacement_map(filter, child); break;
                case SVF_FETILE:
                   log.warning("Filter element '%s' is not currently supported.", child.name());
                   break;
@@ -1620,7 +1621,7 @@ static void xtag_filter(extSVG *Self, svgState &State, XMLTag &Tag)
 // NB: In bounding-box mode, the default view-box is 0 0 1 1, where 1 is equivalent to 100% of the target space.
 // If the client sets a custom view-box then the dimensions are fixed, and no scaling will apply.
 
-static void process_pattern(extSVG *Self, XMLTag &Tag)
+void svgState::proc_pattern(XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorPattern *pattern;
@@ -1735,7 +1736,7 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
          // Child vectors for the pattern need to be instantiated and belong to the pattern's Viewport.
          svgState state(Self);
          for (auto tag : children) {
-            process_children(Self, state, *tag, viewport);
+            state.process_children(*tag, viewport);
          }
 
          if (!Self->Cloning) {
@@ -1752,23 +1753,20 @@ static void process_pattern(extSVG *Self, XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag &Tag,
-   OBJECTPTR Parent, objVector * &Result)
+ERR svgState::proc_shape(CLASSID VectorID, XMLTag &Tag, OBJECTPTR Parent, objVector * &Result) noexcept
 {
-   pf::Log log(__FUNCTION__);
    objVector *vector;
 
    Result = NULL;
    if (auto error = NewObject(VectorID, &vector); error IS ERR::Okay) {
       SetOwner(vector, Parent);
-      svgState state = State;
+      svgState state = *this;
       state.applyStateToVector(vector);
       state.applyTag(Tag); // Apply all attribute values to the current state.
-
-      process_attrib(Self, Tag, state, vector);
+      state.process_attrib(Tag, vector);
 
       if (vector->init() IS ERR::Okay) {
-         process_shape_children(Self, state, Tag, vector);
+         state.process_shape_children(Tag, vector);
          Tag.Attribs.push_back(XMLAttrib { "_id", std::to_string(vector->UID) });
          Result = vector;
          return error;
@@ -1784,46 +1782,46 @@ static ERR process_shape(extSVG *Self, CLASSID VectorID, svgState &State, XMLTag
 //********************************************************************************************************************
 // See also process_children()
 
-static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent, objVector * &Vector)
+ERR svgState::process_tag(XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("%s", Tag.name());
 
    switch(strihash(Tag.name())) {
-      case SVF_USE:              xtag_use(Self, State, Tag, Parent); break;
-      case SVF_A:                xtag_link(Self, State, Tag, Parent, Vector); break;
-      case SVF_SWITCH:           xtag_switch(Self, State, Tag, Parent, Vector); break;
-      case SVF_G:                xtag_group(Self, State, Tag, Parent, Vector); break;
-      case SVF_SVG:              xtag_svg(Self, State, Tag, Parent, Vector); break;
+      case SVF_USE:              proc_use(Tag, Parent); break;
+      case SVF_A:                proc_link(Tag, Parent, Vector); break;
+      case SVF_SWITCH:           proc_switch(Tag, Parent, Vector); break;
+      case SVF_G:                proc_group(Tag, Parent, Vector); break;
+      case SVF_SVG:              proc_svg(Tag, Parent, Vector); break;
 
-      case SVF_RECT:             process_shape(Self, CLASSID::VECTORRECTANGLE, State, Tag, Parent, Vector); break;
-      case SVF_ELLIPSE:          process_shape(Self, CLASSID::VECTORELLIPSE, State, Tag, Parent, Vector); break;
-      case SVF_CIRCLE:           process_shape(Self, CLASSID::VECTORELLIPSE, State, Tag, Parent, Vector); break;
-      case SVF_PATH:             process_shape(Self, CLASSID::VECTORPATH, State, Tag, Parent, Vector); break;
-      case SVF_POLYGON:          process_shape(Self, CLASSID::VECTORPOLYGON, State, Tag, Parent, Vector); break;
-      case SVF_PARASOL_SPIRAL:   process_shape(Self, CLASSID::VECTORSPIRAL, State, Tag, Parent, Vector); break;
-      case SVF_PARASOL_WAVE:     process_shape(Self, CLASSID::VECTORWAVE, State, Tag, Parent, Vector); break;
-      case SVF_PARASOL_SHAPE:    process_shape(Self, CLASSID::VECTORSHAPE, State, Tag, Parent, Vector); break;
-      case SVF_IMAGE:            xtag_image(Self, State, Tag, Parent, Vector); break;
+      case SVF_RECT:             proc_shape(CLASSID::VECTORRECTANGLE, Tag, Parent, Vector); break;
+      case SVF_ELLIPSE:          proc_shape(CLASSID::VECTORELLIPSE, Tag, Parent, Vector); break;
+      case SVF_CIRCLE:           proc_shape(CLASSID::VECTORELLIPSE, Tag, Parent, Vector); break;
+      case SVF_PATH:             proc_shape(CLASSID::VECTORPATH, Tag, Parent, Vector); break;
+      case SVF_POLYGON:          proc_shape(CLASSID::VECTORPOLYGON, Tag, Parent, Vector); break;
+      case SVF_PARASOL_SPIRAL:   proc_shape(CLASSID::VECTORSPIRAL, Tag, Parent, Vector); break;
+      case SVF_PARASOL_WAVE:     proc_shape(CLASSID::VECTORWAVE, Tag, Parent, Vector); break;
+      case SVF_PARASOL_SHAPE:    proc_shape(CLASSID::VECTORSHAPE, Tag, Parent, Vector); break;
+      case SVF_IMAGE:            proc_image(Tag, Parent, Vector); break;
       // Paint servers are deferred and will only be processed if they are referenced via url()
-      case SVF_CONTOURGRADIENT:  process_inherit_refs(Tag, State); break;
-      case SVF_RADIALGRADIENT:   process_inherit_refs(Tag, State); break;
-      case SVF_DIAMONDGRADIENT:  process_inherit_refs(Tag, State); break;
-      case SVF_CONICGRADIENT:    process_inherit_refs(Tag, State); break;
-      case SVF_LINEARGRADIENT:   process_inherit_refs(Tag, State); break;
-      case SVF_SYMBOL:           xtag_symbol(Self, Tag); break;
-      case SVF_ANIMATE:          xtag_animate(Self, State, Tag, ParentTag, Parent); break;
-      case SVF_ANIMATECOLOR:     xtag_animate_colour(Self, State, Tag, ParentTag, Parent); break;
-      case SVF_ANIMATETRANSFORM: xtag_animate_transform(Self, Tag, Parent); break;
-      case SVF_ANIMATEMOTION:    xtag_animate_motion(Self, Tag, Parent); break;
-      case SVF_SET:              xtag_set(Self, State, Tag, ParentTag, Parent); break;
-      case SVF_FILTER:           xtag_filter(Self, State, Tag); break;
-      case SVF_DEFS:             xtag_defs(Self, State, Tag, Parent); break;
-      case SVF_CLIPPATH:         xtag_clippath(Self, Tag); break;
-      case SVF_MASK:             xtag_mask(Self, Tag); break;
-      case SVF_STYLE:            xtag_style(Self, Tag); break;
-      case SVF_PATTERN:          process_pattern(Self, Tag); break;
+      case SVF_CONTOURGRADIENT:  process_inherit_refs(Tag); break;
+      case SVF_RADIALGRADIENT:   process_inherit_refs(Tag); break;
+      case SVF_DIAMONDGRADIENT:  process_inherit_refs(Tag); break;
+      case SVF_CONICGRADIENT:    process_inherit_refs(Tag); break;
+      case SVF_LINEARGRADIENT:   process_inherit_refs(Tag); break;
+      case SVF_SYMBOL:           proc_symbol(Tag); break;
+      case SVF_ANIMATE:          proc_animate(Tag, ParentTag, Parent); break;
+      case SVF_ANIMATECOLOR:     proc_animate_colour(Tag, ParentTag, Parent); break;
+      case SVF_ANIMATETRANSFORM: proc_animate_transform(Tag, Parent); break;
+      case SVF_ANIMATEMOTION:    proc_animate_motion(Tag, Parent); break;
+      case SVF_SET:              proc_set(Tag, ParentTag, Parent); break;
+      case SVF_FILTER:           proc_filter(Tag); break;
+      case SVF_DEFS:             proc_defs(Tag, Parent); break;
+      case SVF_CLIPPATH:         proc_clippath(Tag); break;
+      case SVF_MASK:             proc_mask(Tag); break;
+      case SVF_STYLE:            proc_style(Tag); break;
+      case SVF_PATTERN:          proc_pattern(Tag); break;
 
       case SVF_TITLE:
          if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
@@ -1836,17 +1834,17 @@ static ERR xtag_default(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
          break;
 
       case SVF_LINE:
-         process_shape(Self, CLASSID::VECTORPOLYGON, State, Tag, Parent, Vector);
+         proc_shape(CLASSID::VECTORPOLYGON, Tag, Parent, Vector);
          Vector->set(FID_Closed, FALSE);
          break;
 
       case SVF_POLYLINE:
-         process_shape(Self, CLASSID::VECTORPOLYGON, State, Tag, Parent, Vector);
+         proc_shape(CLASSID::VECTORPOLYGON, Tag, Parent, Vector);
          Vector->set(FID_Closed, FALSE);
          break;
 
       case SVF_TEXT: {
-         if (process_shape(Self, CLASSID::VECTORTEXT, State, Tag, Parent, Vector) IS ERR::Okay) {
+         if (proc_shape(CLASSID::VECTORTEXT, Tag, Parent, Vector) IS ERR::Okay) {
             if (!Tag.Children.empty()) {
                STRING existing_str = NULL;
                Vector->get(FID_String, &existing_str);
@@ -1944,7 +1942,7 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE
 //********************************************************************************************************************
 // Definition images are stored once, allowing them to be used multiple times via Fill and Stroke references.
 
-static void def_image(extSVG *Self, XMLTag &Tag)
+void svgState::proc_def_image(XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
    objVectorImage *image;
@@ -2016,7 +2014,7 @@ static void def_image(extSVG *Self, XMLTag &Tag)
 
 //********************************************************************************************************************
 
-static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+ERR svgState::proc_image(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -2092,11 +2090,11 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
 
    if (auto error = NewObject(CLASSID::VECTORRECTANGLE, &Vector); error IS ERR::Okay) {
       SetOwner(Vector, Parent);
-      State.applyStateToVector(Vector);
+      applyStateToVector(Vector);
 
       // All attributes of <image> will be applied to the rectangle.
 
-      process_attrib(Self, Tag, State, Vector);
+      process_attrib(Tag, Vector);
 
       if (!x.empty()) x.set(Vector);
       if (!y.empty()) y.set(Vector);
@@ -2106,7 +2104,7 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
       Vector->set(FID_Fill, "url(#" + id + ")");
 
       if (Vector->init() IS ERR::Okay) {
-         process_shape_children(Self, State, Tag, Vector);
+         process_shape_children(Tag, Vector);
          Tag.Attribs.push_back(XMLAttrib { "_id", std::to_string(Vector->UID) });
          return ERR::Okay;
       }
@@ -2120,28 +2118,28 @@ static ERR xtag_image(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
 
 //********************************************************************************************************************
 
-static ERR xtag_defs(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent)
+ERR svgState::proc_defs(XMLTag &Tag, OBJECTPTR Parent) noexcept
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %d", Tag.ID);
 
-   auto state = State;
+   auto state = *this;
    state.applyTag(Tag); // Apply all attribute values to the current state.
 
    for (auto &child : Tag.Children) {
       switch (strihash(child.name())) {
-         case SVF_CONTOURGRADIENT: xtag_contourgradient(Self, State, child); break;
-         case SVF_RADIALGRADIENT:  xtag_radialgradient(Self, State, child); break;
-         case SVF_DIAMONDGRADIENT: xtag_diamondgradient(Self, State, child); break;
-         case SVF_CONICGRADIENT:   xtag_conicgradient(Self, State, child); break;
-         case SVF_LINEARGRADIENT:  xtag_lineargradient(Self, State, child); break;
-         case SVF_PATTERN:         process_pattern(Self, child); break;
-         case SVF_IMAGE:           def_image(Self, child); break;
-         case SVF_FILTER:          xtag_filter(Self, state, child); break;
-         case SVF_CLIPPATH:        xtag_clippath(Self, child); break;
-         case SVF_MASK:            xtag_mask(Self, child); break;
-         case SVF_PARASOL_TRANSITION: xtag_pathtransition(Self, child); break;
+         case SVF_CONTOURGRADIENT: state.proc_contourgradient(child); break;
+         case SVF_RADIALGRADIENT:  state.proc_radialgradient(child); break;
+         case SVF_DIAMONDGRADIENT: state.proc_diamondgradient(child); break;
+         case SVF_CONICGRADIENT:   state.proc_conicgradient(child); break;
+         case SVF_LINEARGRADIENT:  state.proc_lineargradient(child); break;
+         case SVF_PATTERN:         state.proc_pattern(child); break;
+         case SVF_IMAGE:           state.proc_def_image(child); break;
+         case SVF_FILTER:          state.proc_filter(child); break;
+         case SVF_CLIPPATH:        state.proc_clippath(child); break;
+         case SVF_MASK:            state.proc_mask(child); break;
+         case SVF_PARASOL_TRANSITION: state.proc_pathtransition(child); break;
       }
    }
 
@@ -2150,7 +2148,7 @@ static ERR xtag_defs(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
 //********************************************************************************************************************
 
-static ERR xtag_style(extSVG *Self, XMLTag &Tag)
+ERR svgState::proc_style(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    ERR error = ERR::Okay;
@@ -2211,7 +2209,7 @@ static ERR xtag_style(extSVG *Self, XMLTag &Tag)
 // When a use element is encountered, it looks for the associated symbol ID and then processes the XML child tags that
 // belong to it.
 
-static void xtag_symbol(extSVG *Self, XMLTag &Tag)
+void svgState::proc_symbol(XMLTag &Tag) noexcept
 {
    // Symbols are ignored at these stage as they will already have been parsed for their 'id' reference.
 }
@@ -2219,7 +2217,7 @@ static void xtag_symbol(extSVG *Self, XMLTag &Tag)
 //********************************************************************************************************************
 // Most vector shapes can be morphed to the path of another vector.
 
-static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+void svgState::proc_morph(XMLTag &Tag, OBJECTPTR Parent) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -2309,7 +2307,7 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
    if (class_id != CLASSID::NIL) {
       objVector *shape;
       svgState state(Self);
-      process_shape(Self, class_id, state, *tagref, Self->Scene, shape);
+      state.proc_shape(class_id, *tagref, Self->Scene, shape);
       Parent->set(FID_Morph, shape);
       if (transvector) Parent->set(FID_Transition, transvector);
       Parent->set(FID_MorphFlags, LONG(flags));
@@ -2324,7 +2322,7 @@ static void xtag_morph(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 // non-exposed DOM tree which had the 'use' element as its parent and all of the 'use' element's ancestors as its
 // higher-level ancestors.
 
-static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent)
+void svgState::proc_use(XMLTag &Tag, OBJECTPTR Parent) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -2354,7 +2352,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
    // once and can then be referenced multiple times.
 
    Self->Cloning++;
-   auto dc = deferred_call([&Self] {
+   auto dc = deferred_call([this] {
       Self->Cloning--;
    });
 
@@ -2367,7 +2365,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
       objVector *viewport = NULL;
 
-      auto state = State;
+      auto state = *this;
       state.applyTag(Tag); // Apply all attribute values to the current state.
 
       objVector *group;
@@ -2406,8 +2404,8 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
             // All other attributes are applied to the 'g' element
             default:
-               if (group) set_property(Self, group, hash, Tag, State, val);
-               else set_property(Self, viewport, hash, Tag, State, val);
+               if (group) state.set_property(group, hash, Tag, val);
+               else state.set_property(viewport, hash, Tag, val);
                break;
          }
       }
@@ -2442,7 +2440,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       state.m_opacity = 1.0;
 
       log.traceBranch("Processing all child elements within %s", ref.c_str());
-      process_children(Self, state, *tagref, viewport);
+      state.process_children(*tagref, viewport);
    }
    else {
       // W3C: In the generated content, the 'use' will be replaced by 'g', where all attributes from the 'use' element
@@ -2513,7 +2511,7 @@ static void xtag_use(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
       }
 
       objVector *new_group = NULL;
-      xtag_group(Self, State, Tag, Parent, new_group);
+      proc_group(Tag, Parent, new_group);
    }
 }
 
@@ -2552,7 +2550,7 @@ static ERR link_event(objVector *Vector, const InputEvent *Events, svgLink *Link
    return ERR::Okay;
 }
 
-static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+void svgState::proc_link(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
    auto link = std::make_unique<svgLink>();
 
@@ -2578,7 +2576,7 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
    if (NewObject(CLASSID::VECTORGROUP, &group) IS ERR::Okay) {
       SetOwner(group, Parent);
 
-      process_children(Self, State, Tag, group);
+      process_children(Tag, group);
 
       pf::vector<ChildEntry> list;
       if (ListChildren(group->UID, &list) IS ERR::Okay) {
@@ -2598,7 +2596,7 @@ static void xtag_link(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pare
 // For each immediate child, evaluate any requiredFeatures, requiredExtensions and systemLanguage attributes.
 // The first child where these attributes evaluate to true is rendered, the rest are ignored.
 
-static void xtag_switch(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+void svgState::proc_switch(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
    for (auto &child : Tag.Children) {      
       bool render = true;
@@ -2632,23 +2630,23 @@ static void xtag_switch(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
             pf::Log log(__FUNCTION__);
             log.traceBranch("Tag: %d", Tag.ID);
 
-            auto state = State;
+            auto state = *this;
 
             objVector *group;
             if (NewObject(CLASSID::VECTORGROUP, &group) != ERR::Okay) return;
             SetOwner(group, Parent);
             state.applyTag(Tag);
-            process_attrib(Self, Tag, State, group);
+            state.process_attrib(Tag, group);
 
             if (group->init() IS ERR::Okay) {
                Vector = group;
                Tag.Attribs.push_back(XMLAttrib { "_id", std::to_string(group->UID) });
 
-               xtag_default(Self, State, child, Tag, group, Vector);
+               state.process_tag(child, Tag, group, Vector);
             }
             else FreeResource(group);
          }
-         else xtag_default(Self, State, child, Tag, Parent, Vector);
+         else process_tag(child, Tag, Parent, Vector);
 
          return;
       }
@@ -2657,21 +2655,20 @@ static void xtag_switch(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Pa
 
 //********************************************************************************************************************
 
-static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+void svgState::proc_group(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Tag: %d", Tag.ID);
 
-   auto state = State;
+   auto state = *this;
 
    objVector *group;
    if (NewObject(CLASSID::VECTORGROUP, &group) != ERR::Okay) return;
    SetOwner(group, Parent);
    state.applyTag(Tag); // Apply all group attribute values to the current state.
-   process_attrib(Self, Tag, State, group);
-
-   process_children(Self, state, Tag, group);
+   state.process_attrib(Tag, group);
+   state.process_children(Tag, group);
 
    if (group->init() IS ERR::Okay) {
       Vector = group;
@@ -2684,7 +2681,7 @@ static void xtag_group(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Par
 // <svg/> tags can be embedded inside <svg/> tags - this establishes a new viewport.
 // Refer to section 7.9 of the SVG Specification for more information.
 
-static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector)
+void svgState::proc_svg(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
    pf::Log log(__FUNCTION__);
    LONG a;
@@ -2712,7 +2709,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 
    // Process <svg> attributes
 
-   auto state = State;
+   auto state = *this;
    state.applyTag(Tag); // Apply all attribute values to the current state.
 
    for (a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -2820,8 +2817,8 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
          log.traceBranch("Processing <%s/>", child.name());
 
          switch(strihash(child.name())) {
-            case SVF_DEFS: xtag_defs(Self, state, child, viewport); break;
-            default:       xtag_default(Self, state, child, Tag, viewport, sibling);  break;
+            case SVF_DEFS: state.proc_defs(child, viewport); break;
+            default:       state.process_tag(child, Tag, viewport, sibling);  break;
          }
       }
    }
@@ -2835,7 +2832,7 @@ static void xtag_svg(extSVG *Self, svgState &State, XMLTag &Tag, OBJECTPTR Paren
 // <animateTransform attributeType="XML" attributeName="transform" type="rotate" from="0,150,150" to="360,150,150"
 //   begin="0s" dur="5s" repeatCount="indefinite"/>
 
-static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+ERR svgState::proc_animate_transform(XMLTag &Tag, OBJECTPTR Parent) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -2871,7 +2868,7 @@ static ERR xtag_animate_transform(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 // The 'animate' element is used to animate a single attribute or property over time. For example, to make a
 // rectangle repeatedly fade away over 5 seconds:
 
-static ERR xtag_animate(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
+ERR svgState::proc_animate(XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -2886,14 +2883,14 @@ static ERR xtag_animate(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
       switch (hash) {
          default:
             if (value == "currentColor") {
-               set_anim_property(anim, Tag, hash, State.m_color);
+               set_anim_property(anim, Tag, hash, m_color);
             }
             else set_anim_property(anim, Tag, hash, value);
             break;
       }
    }
 
-   anim.set_orig_value(State);
+   anim.set_orig_value(*this);
 
    if (!anim.is_valid()) Self->Animations.pop_back();
    return ERR::Okay;
@@ -2902,7 +2899,7 @@ static ERR xtag_animate(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &Pare
 //********************************************************************************************************************
 // <set> is largely equivalent to <animate> but does not interpolate values.
 
-static ERR xtag_set(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
+ERR svgState::proc_set(XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent) noexcept
 {
    auto &new_anim = Self->Animations.emplace_back(anim_value { Self, Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
@@ -2915,14 +2912,14 @@ static ERR xtag_set(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTa
       switch (hash) {
          default:
             if (value == "currentColor") {
-               set_anim_property(anim, Tag, hash, State.m_color);
+               set_anim_property(anim, Tag, hash, m_color);
             }
             else set_anim_property(anim, Tag, hash, value);
             break;
       }
    }
 
-   anim.set_orig_value(State);
+   anim.set_orig_value(*this);
    anim.calc_mode = CMODE::DISCRETE; // Disables interpolation
 
    if (!anim.is_valid()) Self->Animations.pop_back();
@@ -2933,7 +2930,7 @@ static ERR xtag_set(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTa
 // The <animateColour> tag is considered deprecated because its functionality can be represented entirely by the
 // existing <animate> tag.
 
-static ERR xtag_animate_colour(extSVG *Self, svgState &State, XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent)
+ERR svgState::proc_animate_colour(XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent) noexcept
 {
    auto &new_anim = Self->Animations.emplace_back(anim_value { Self, Parent->UID, &ParentTag });
    auto &anim = std::get<anim_value>(new_anim);
@@ -2946,7 +2943,7 @@ static ERR xtag_animate_colour(extSVG *Self, svgState &State, XMLTag &Tag, XMLTa
       switch (hash) {
          default:
             if (value == "currentColor") {
-               set_anim_property(anim, Tag, hash, State.m_color);
+               set_anim_property(anim, Tag, hash, m_color);
             }
             else set_anim_property(anim, Tag, hash, value);
             break;
@@ -2960,7 +2957,7 @@ static ERR xtag_animate_colour(extSVG *Self, svgState &State, XMLTag &Tag, XMLTa
 //********************************************************************************************************************
 // <animateMotion from="0,0" to="100,100" dur="4s" fill="freeze"/>
 
-static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
+ERR svgState::proc_animate_motion(XMLTag &Tag, OBJECTPTR Parent) noexcept
 {
    auto &new_anim = Self->Animations.emplace_back(anim_motion { Self, Parent->UID });
    auto &anim = std::get<anim_motion>(new_anim);
@@ -3034,7 +3031,7 @@ static ERR xtag_animate_motion(extSVG *Self, XMLTag &Tag, OBJECTPTR Parent)
 
 //********************************************************************************************************************
 
-static void process_attrib(extSVG *Self, XMLTag &Tag, svgState &State, objVector *Vector)
+void svgState::process_attrib(XMLTag &Tag, objVector *Vector) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -3048,7 +3045,7 @@ static void process_attrib(extSVG *Self, XMLTag &Tag, svgState &State, objVector
 
       log.trace("%s = %.40s", name.c_str(), value.c_str());
 
-      if (auto error = set_property(Self, Vector, strihash(name), Tag, State, value); error != ERR::Okay) {
+      if (auto error = set_property(Vector, strihash(name), Tag, value); error != ERR::Okay) {
          if (Vector->classID() != CLASSID::VECTORGROUP) {
             log.warning("Failed to set field '%s' with '%s' in %s; Error %s",
                name.c_str(), value.c_str(), Vector->Class->ClassName, GetErrorMsg(error));
@@ -3237,7 +3234,7 @@ static void process_rule(extSVG *Self, objXML::TAGS &Tags, KatanaRule *Rule)
 
 //********************************************************************************************************************
 
-static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag, svgState &State, const std::string StrValue)
+ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std::string StrValue) noexcept  
 {
    pf::Log log(__FUNCTION__);
 
@@ -3620,19 +3617,19 @@ static ERR set_property(extSVG *Self, objVector *Vector, ULONG Hash, XMLTag &Tag
       case SVF_STROKE:
          if (iequals("currentColor", StrValue)) {
             FRGB rgb;
-            if (current_colour(Self, Vector, State, rgb) IS ERR::Okay) SetArray(Vector, FID_Stroke|TFLOAT, &rgb, 4);
+            if (current_colour(Vector, rgb) IS ERR::Okay) SetArray(Vector, FID_Stroke|TFLOAT, &rgb, 4);
          }
-         else set_paint_server(Self, State, Vector, FID_Stroke, StrValue);
+         else set_paint_server(Vector, FID_Stroke, StrValue);
          break;
 
       case SVF_FILL:
          if (iequals("currentColor", StrValue)) {
             FRGB rgb;
-            if (current_colour(Self, Vector, State, rgb) IS ERR::Okay) {
+            if (current_colour(Vector, rgb) IS ERR::Okay) {
                SetArray(Vector, FID_FillColour|TFLOAT, &rgb, 4);
             }
          }
-         else set_paint_server(Self, State, Vector, FID_Fill, StrValue);
+         else set_paint_server(Vector, FID_Fill, StrValue);
          break;
 
       case SVF_TRANSFORM: parse_transform(Vector, StrValue, MTAG_SVG_TRANSFORM); break;

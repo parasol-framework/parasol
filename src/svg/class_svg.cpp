@@ -185,7 +185,7 @@ static ERR SVG_ParseSymbol(extSVG *Self, struct svg::ParseSymbol *Args)
 
    if (auto tagref = find_href_tag(Self, Args->ID)) {
       svgState state(Self);
-      process_children(Self, state, *tagref, Args->Viewport);
+      state.process_children(*tagref, Args->Viewport);
       return ERR::Okay;
    }
    else {

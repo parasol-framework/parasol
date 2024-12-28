@@ -98,11 +98,11 @@ static FRGB hsl_to_rgb(HSV Colour)
 //********************************************************************************************************************
 // Support for the 'currentColor' colour value.  Finds the first parent with a defined fill colour and returns it.
 
-static ERR current_colour(extSVG *Self, objVector *Vector, svgState &State, FRGB &RGB)
+ERR svgState::current_colour(objVector *Vector, FRGB &RGB) noexcept
 {
-   if (!State.m_color.empty()) {
+   if (!m_color.empty()) {
       VectorPainter painter;
-      if (vec::ReadPainter(NULL, State.m_color.c_str(), &painter, NULL) IS ERR::Okay) {
+      if (vec::ReadPainter(NULL, m_color.c_str(), &painter, NULL) IS ERR::Okay) {
          RGB = painter.Colour;
          return ERR::Okay;
       }
@@ -523,8 +523,8 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
                parse_ids(Self, scan);
 
-               if (Self->Target) xtag_svg(Self, state, scan, Self->Target, sibling);
-               else xtag_svg(Self, state, scan, Self->Scene, sibling);
+               if (Self->Target) state.proc_svg(scan, Self->Target, sibling);
+               else state.proc_svg(scan, Self->Scene, sibling);
             }
          }
 

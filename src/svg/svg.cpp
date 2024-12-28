@@ -122,54 +122,89 @@ struct svgState {
    VIJ     m_inner_join;
 
    private:
+   class extSVG *Self;
    objVectorScene *Scene;
 
    public:
    svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_family("Noto Sans"), m_stroke_width(0),
       m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), 
       m_line_join(VLJ::NIL), m_line_cap(VLC::NIL), m_inner_join(VIJ::NIL),
-      Scene(pSVG->Scene) { }
+      Self(pSVG), Scene(pSVG->Scene) { }
 
    void applyTag(const XMLTag &) noexcept;
    void applyStateToVector(objVector *) const noexcept;
+   const std::vector<GradientStop> process_gradient_stops(const XMLTag &) noexcept;
+   ERR  set_property(objVector *, ULONG, XMLTag &, const std::string) noexcept;
+   ERR  process_tag(XMLTag &, XMLTag &, OBJECTPTR, objVector * &) noexcept;
+
+   ERR  proc_defs(XMLTag &, OBJECTPTR) noexcept;
+   ERR  proc_set(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
+   void proc_svg(XMLTag &, OBJECTPTR, objVector *&) noexcept;
+   ERR  proc_animate(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_colour(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_motion(XMLTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_transform(XMLTag &, OBJECTPTR) noexcept;
+   void proc_def_image(XMLTag &) noexcept;
+   void proc_filter(XMLTag &) noexcept;
+   void proc_group(XMLTag &, OBJECTPTR, objVector * &) noexcept;
+   ERR  proc_image(XMLTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_link(XMLTag &, OBJECTPTR, objVector * &Vector) noexcept;
+   void proc_mask(XMLTag &) noexcept;
+   void proc_pathtransition(XMLTag &) noexcept;
+   void proc_pattern(XMLTag &) noexcept;
+   ERR  proc_shape(CLASSID, XMLTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_switch(XMLTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_use(XMLTag &, OBJECTPTR) noexcept;
+   void proc_clippath(XMLTag &) noexcept;
+   void proc_morph(XMLTag &Tag, OBJECTPTR Parent) noexcept;
+   ERR  proc_style(XMLTag &);
+   void proc_symbol(XMLTag &Tag) noexcept;
+   ERR  proc_conicgradient(const XMLTag &) noexcept;
+   ERR  proc_contourgradient(const XMLTag &) noexcept;
+   ERR  proc_diamondgradient(const XMLTag &) noexcept;
+   ERR  proc_lineargradient(const XMLTag &) noexcept;
+   ERR  proc_radialgradient(const XMLTag &) noexcept;
+
+   void process_attrib(XMLTag &, objVector *) noexcept;
+   void process_children(XMLTag &, OBJECTPTR) noexcept;
+   void process_inherit_refs(XMLTag &) noexcept;
+   void process_shape_children(XMLTag &, OBJECTPTR) noexcept;
+   ERR  set_paint_server(objVector *, FIELD, const std::string);
+   ERR  current_colour(objVector *, FRGB &) noexcept;
+
+   void parse_contourgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_diamondgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_lineargradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_radialgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
+
+   ERR  parse_fe_colour_matrix(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_component_xfer(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_composite(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_convolve_matrix(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_displacement_map(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_flood(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_image(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_lighting(objVectorFilter *, XMLTag &, LT) noexcept;
+   ERR  parse_fe_morphology(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_source(objVectorFilter * , XMLTag &) noexcept;
+   ERR  parse_fe_turbulence(objVectorFilter *, XMLTag &) noexcept;
 };
 
 //********************************************************************************************************************
 
 static ERR  animation_timer(extSVG *, LARGE, LARGE);
 static void convert_styles(objXML::TAGS &);
-static ERR  set_property(extSVG *, objVector *, ULONG, XMLTag &, svgState &, std::string);
 static double read_unit(std::string_view &, LARGE * = nullptr);
 
 static ERR  init_svg(void);
 static ERR  init_rsvg(void);
 
-static void process_attrib(extSVG *, XMLTag &, svgState &, objVector *);
-static void process_children(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static void process_rule(extSVG *, objXML::TAGS &, KatanaRule *);
-static ERR  process_shape(extSVG *, CLASSID, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 
 static ERR  save_svg_scan(extSVG *, objXML *, objVector *, LONG);
 static ERR  save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
 static ERR  save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
 static ERR  save_svg_transform(VectorMatrix *, std::stringstream &);
-
-static ERR  xtag_animate(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
-static ERR  xtag_animate_colour(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
-static ERR  xtag_animate_motion(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_animate_transform(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_default(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR, objVector * &);
-static ERR  xtag_defs(extSVG *, svgState &, XMLTag &, OBJECTPTR);
-static void xtag_group(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static ERR  xtag_image(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static void xtag_link(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static void xtag_morph(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_set(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
-static void xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static void xtag_switch(extSVG*, svgState&, XMLTag&, OBJECTPTR, objVector * &);
-static void xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);
-static ERR  xtag_style(extSVG *, XMLTag &);
-static void xtag_symbol(extSVG *, XMLTag &);
 
 inline void track_object(extSVG *SVG, OBJECTPTR Object)
 {

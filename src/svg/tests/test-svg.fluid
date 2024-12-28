@@ -91,9 +91,10 @@ function testW3Patterns01() hashTestSVG('patterns/w3-pservers-grad-03-b.svg', 0x
 function testW3Patterns02() hashTestSVG('patterns/w3-pservers-pattern-01-b.svg', 0xa13ce714) end
 function testW3Patterns03() hashTestSVG('patterns/w3-pservers-pattern-02-f.svg', 0x1a2cce66) end
 
-function testW3Coords01() hashTestSVG('coords/w3-coords-units-01-b.svg', 0xa0448180) end
-function testW3Coords02() hashTestSVG('coords/w3-coords-units-02-b.svg', 0x1a70f9e3) end
-function testW3Coords03() hashTestSVG('coords/w3-coords-viewattr-03-b.svg', 0xdffce566) end
+function testW3Coords01() hashTestSVG('coords/w3-coords-coord-01-t.svg', 0x97d1cf74) end
+function testW3Coords02() hashTestSVG('coords/w3-coords-coord-02-t.svg', 0x97d1cf74) end
+function testW3Coords03() hashTestSVG('coords/w3-coords-units-01-b.svg', 0xa0448180) end
+function testW3Coords04() hashTestSVG('coords/w3-coords-units-02-b.svg', 0x1a70f9e3) end
 
 function testW3Gradients01() hashTestSVG('gradients/w3-pservers-grad-01-b.svg', 0xe637a6fa) end
 function testW3Gradients02() hashTestSVG('gradients/w3-pservers-grad-02-b.svg', 0x2b80ff2f) end
@@ -200,7 +201,7 @@ function testW3TransformAttr03() hashTestSVG('transforms/w3-coords-transformattr
 function testW3TransformAttr04() hashTestSVG('transforms/w3-coords-transformattr-04-f.svg', 0xa0fb4dd6) end
 function testW3TransformAttr05() hashTestSVG('transforms/w3-coords-transformattr-05-f.svg', 0x2a1d30cd) end
 
-function testCSS()                hashTestSVG('misc/css.svg', 0xefdc1bcf) end
+function testCSS()                hashTestSVG('misc/css.svg', 0x586302af) end
 function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x21e65d43) end
 function testContourGradient()    hashTestSVG('misc/contour-gradient.svg', 0x5726053f) end
 
@@ -331,6 +332,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Coords01',
         'testW3Coords02',
         'testW3Coords03',
+        'testW3Coords04',
         -- Gradients
         'testW3Gradients01',
         'testW3Gradients02',
