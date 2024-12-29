@@ -22,6 +22,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <list>
 #include <variant>
 #include <algorithm>
+#include <cfloat>
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/xml.h>
@@ -104,6 +105,57 @@ class extSVG : public objSVG {
 };
 
 struct svgState {
+   enum class DU : UBYTE {
+      NIL = 0,
+      PIXEL,  // px
+      SCALED, // %: Scale to fill empty space
+   };
+   
+   // Field Unit.  Makes it user to define field values that could be fixed or scaled.
+
+   struct FUNIT {
+      svgState *state;
+      FIELD field_id;
+      double value;
+      DU type;
+
+      constexpr FUNIT() noexcept : state(nullptr), field_id(0), value(0), type(DU::NIL) { }
+
+      // With field
+      explicit FUNIT(svgState *pState, FIELD pField, double pValue, DU pType = DU::NIL) noexcept : state(pState), field_id(pField), value(pValue), type(pType) { }
+   
+      FUNIT(svgState *pState, FIELD pField, const std::string &pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept : 
+         FUNIT(pState, pValue, pType, pMin) { field_id = pField; }
+
+      FUNIT(svgState *pState, FIELD pField, std::string_view pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept :
+         FUNIT(pState, pValue, pType, pMin) { field_id = pField; }
+
+      // Without field
+      explicit FUNIT(svgState *pState, double pValue, DU pType = DU::PIXEL) noexcept : state(pState), value(pValue), type(pType) { }
+
+      FUNIT(svgState *pState, std::string pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept : 
+         FUNIT(pState, std::string_view(pValue), pType, pMin) { }
+
+      FUNIT(svgState *pState, std::string_view pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept;
+
+   public:
+      constexpr bool empty() const noexcept { return (type == DU::NIL) || (!value); }
+      constexpr void clear() noexcept { value = 0; type = DU::PIXEL; }
+
+      operator double() const noexcept { return value; }
+      operator DU() const noexcept { return type; }
+
+      inline LARGE field() const noexcept {
+         return (type == DU::SCALED) ? (field_id | TDOUBLE | TSCALE) : field_id | TDOUBLE;
+      }
+
+      inline bool valid_size() const noexcept { // Return true if this is a valid width/height
+         return (value >= 0.001);
+      }
+
+      inline ERR set(OBJECTPTR Object) const noexcept { return SetField(Object, field(), value); }
+   };
+
    std::string m_color;       // currentColor value, initialised to SVG.Colour
    std::string m_stop_color;
    std::string m_fill;        // Defaults to rgb(0,0,0)
@@ -112,10 +164,11 @@ struct svgState {
    std::string m_font_family;
    std::string m_display;
    std::string m_visibility;
-   DOUBLE  m_stroke_width;    // 0 if undefined
-   DOUBLE  m_fill_opacity;    // -1 if undefined
-   DOUBLE  m_opacity;         // -1 if undefined
-   DOUBLE  m_stop_opacity;    // -1 if undefined
+   double  m_font_size_px;    // Converted from m_font_size
+   double  m_stroke_width;    // 0 if undefined
+   double  m_fill_opacity;    // -1 if undefined
+   double  m_opacity;         // -1 if undefined
+   double  m_stop_opacity;    // -1 if undefined
    LONG    m_font_weight;     // 0 if undefined
    RQ      m_path_quality;    // RQ::AUTO default
    VLJ     m_line_join;
@@ -125,9 +178,13 @@ struct svgState {
    private:
    class extSVG *Self;
    objVectorScene *Scene;
+   FUNIT UNIT(FIELD pField, double pValue, DU pType = DU::NIL) { return FUNIT(this, pField, pValue, pType); };
+   FUNIT UNIT(FIELD pField, const std::string &pValue, DU pType = DU::NIL) { return FUNIT(this, pField, pValue, pType); };
+   FUNIT UNIT(double pValue, DU pType = DU::PIXEL) { return FUNIT(this, pValue, pType); }
+   FUNIT UNIT(const std::string &pValue, DU pType = DU::PIXEL) { return FUNIT(this, pValue, pType); }
 
    public:
-   svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_family("Noto Sans"), m_stroke_width(0),
+   svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_size("12pt"), m_font_family("Noto Sans"), m_font_size_px(16), m_stroke_width(0),
       m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO),
       m_line_join(VLJ::NIL), m_line_cap(VLC::NIL), m_inner_join(VIJ::NIL),
       Self(pSVG), Scene(pSVG->Scene) { }

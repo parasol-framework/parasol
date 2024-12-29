@@ -95,6 +95,7 @@ function testW3Coords01() hashTestSVG('coords/w3-coords-coord-01-t.svg', 0x97d1c
 function testW3Coords02() hashTestSVG('coords/w3-coords-coord-02-t.svg', 0x97d1cf74) end
 function testW3Coords03() hashTestSVG('coords/w3-coords-units-01-b.svg', 0xa0448180) end
 function testW3Coords04() hashTestSVG('coords/w3-coords-units-02-b.svg', 0x1a70f9e3) end
+function testW3Coords05() hashTestSVG('coords/w3-coords-units-03-b.svg', 0xaeef5643) end
 
 function testW3Gradients01() hashTestSVG('gradients/w3-pservers-grad-01-b.svg', 0xe637a6fa) end
 function testW3Gradients02() hashTestSVG('gradients/w3-pservers-grad-02-b.svg', 0x2b80ff2f) end
@@ -333,6 +334,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Coords02',
         'testW3Coords03',
         'testW3Coords04',
+        'testW3Coords05',
         -- Gradients
         'testW3Gradients01',
         'testW3Gradients02',

@@ -233,7 +233,11 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
 
          case SVF_STROKE_WIDTH: m_stroke_width = strtod(val.c_str(), NULL); break;
          case SVF_FONT_FAMILY:  m_font_family = val; break;
-         case SVF_FONT_SIZE:    m_font_size = val; break;
+         case SVF_FONT_SIZE:    
+            m_font_size = val;
+            m_font_size_px = UNIT(FID_FontSize, val).value;
+            break;
+         
          case SVF_FONT_WEIGHT: {
             m_font_weight = strtod(val.c_str(), NULL);
             if (!m_font_weight) {
@@ -516,13 +520,13 @@ ERR svgState::parse_fe_blur(objVectorFilter *Filter, XMLTag &Tag) noexcept
             break;
          }
 
-         case SVF_X: FUNIT(FID_X, val).set(fx); break;
+         case SVF_X: UNIT(FID_X, val).set(fx); break;
 
-         case SVF_Y: FUNIT(FID_Y, val).set(fx); break;
+         case SVF_Y: UNIT(FID_Y, val).set(fx); break;
 
-         case SVF_WIDTH: FUNIT(FID_Width, val).set(fx); break;
+         case SVF_WIDTH: UNIT(FID_Width, val).set(fx); break;
 
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
 
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
@@ -588,10 +592,10 @@ ERR svgState::parse_fe_merge(objVectorFilter *Filter, XMLTag &Tag) noexcept
       if (val.empty()) continue;
 
       switch(strihash(Tag.Attribs[a].Name)) {
-         case SVF_X: FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y: FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH: FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X: UNIT(FID_X, val).set(fx); break;
+         case SVF_Y: UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH: UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
       }
    }
 
@@ -710,10 +714,10 @@ ERR svgState::parse_fe_colour_matrix(objVectorFilter *Filter, XMLTag &Tag) noexc
             break;
          }
 
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
          case SVF_IN:     parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: result_name = val; break;
       }
@@ -800,10 +804,10 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XMLTag &Tag) noe
             fx->set(FID_PreserveAlpha, iequals("true", val) or (std::string_view("1") IS val));
             break;
 
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
          case SVF_IN:     parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: result_name = val; break;
       }
@@ -859,14 +863,14 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XMLTag &Tag, LT Type) n
          }
 
          case SVF_SPECULARCONSTANT:
-         case SVF_DIFFUSECONSTANT:  FUNIT(FID_Constant, val).set(fx); break;
-         case SVF_SURFACESCALE:     FUNIT(FID_Scale, val).set(fx); break;
-         case SVF_SPECULAREXPONENT: FUNIT(FID_Exponent, val).set(fx); break;
+         case SVF_DIFFUSECONSTANT:  UNIT(FID_Constant, val).set(fx); break;
+         case SVF_SURFACESCALE:     UNIT(FID_Scale, val).set(fx); break;
+         case SVF_SPECULAREXPONENT: UNIT(FID_Exponent, val).set(fx); break;
 
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
          case SVF_IN:     parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: result_name = val; break;
          default:         log.warning("Unknown %s attribute %s", Tag.name(), Tag.Attribs[a].Name.c_str());
@@ -980,10 +984,10 @@ ERR svgState::parse_fe_displacement_map(objVectorFilter *Filter, XMLTag &Tag) no
 
          case SVF_SCALE: fx->set(FID_Scale, strtod(val.c_str(), NULL)); break;
 
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
 
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_IN2: parse_input(Self, fx, val, FID_MixType, FID_Mix); break;
@@ -1018,10 +1022,10 @@ ERR svgState::parse_fe_component_xfer(objVectorFilter *Filter, XMLTag &Tag) noex
       if (val.empty()) continue;
 
       switch(strihash(Tag.Attribs[a].Name)) {
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
          case SVF_IN:     parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: result_name = val; break;
       }
@@ -1169,10 +1173,10 @@ ERR svgState::parse_fe_composite(objVectorFilter *Filter, XMLTag &Tag) noexcept
             break;
          }
 
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
          case SVF_IN:     parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_IN2:    parse_input(Self, fx, val, FID_MixType, FID_Mix); break;
          case SVF_RESULT: result_name = val; break;
@@ -1221,10 +1225,10 @@ ERR svgState::parse_fe_flood(objVectorFilter *Filter, XMLTag &Tag) noexcept
             break;
          }
 
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
          case SVF_IN:     parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: result_name = val; break;
       }
@@ -1279,10 +1283,10 @@ ERR svgState::parse_fe_turbulence(objVectorFilter *Filter, XMLTag &Tag) noexcept
             else fx->set(FID_Type, 0);
             break;
 
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
          case SVF_IN:     parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: result_name = val; break;
       }
@@ -1323,10 +1327,10 @@ ERR svgState::parse_fe_morphology(objVectorFilter *Filter, XMLTag &Tag) noexcept
          }
 
          case SVF_OPERATOR: fx->set(FID_Operator, val); break;
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
          case SVF_IN:     parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: result_name = val; break;
       }
@@ -1362,10 +1366,10 @@ ERR svgState::parse_fe_source(objVectorFilter *Filter, XMLTag &Tag) noexcept
       if (val.empty()) continue;
 
       switch(strihash(Tag.Attribs[a].Name)) {
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
          case SVF_PRESERVEASPECTRATIO: fx->set(FID_AspectRatio, LONG(parse_aspect_ratio(val))); break;
          case SVF_XLINK_HREF: ref = val; break;
          case SVF_EXTERNALRESOURCESREQUIRED: required = iequals("true", val); break;
@@ -1433,10 +1437,10 @@ ERR svgState::parse_fe_image(objVectorFilter *Filter, XMLTag &Tag) noexcept
       if (val.empty()) continue;
 
       switch(strihash(Tag.Attribs[a].Name)) {
-         case SVF_X:      FUNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      FUNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  FUNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: FUNIT(FID_Height, val).set(fx); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
 
          case SVF_IMAGE_RENDERING: {
             if (iequals("optimizeSpeed", val)) fx->set(FID_ResampleMethod, LONG(VSM::BILINEAR));
@@ -1533,11 +1537,11 @@ void svgState::proc_filter(XMLTag &Tag) noexcept
 
             case SVF_ID:      id = val; break;
 
-            case SVF_X:       FUNIT(FID_X, val).set(filter); break;
-            case SVF_Y:       FUNIT(FID_Y, val).set(filter); break;
-            case SVF_WIDTH:   FUNIT(FID_Width, val).set(filter); break;
-            case SVF_HEIGHT:  FUNIT(FID_Height, val).set(filter); break;
-            case SVF_OPACITY: FUNIT(FID_Opacity, std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0)).set(filter); break;
+            case SVF_X:       UNIT(FID_X, val).set(filter); break;
+            case SVF_Y:       UNIT(FID_Y, val).set(filter); break;
+            case SVF_WIDTH:   UNIT(FID_Width, val).set(filter); break;
+            case SVF_HEIGHT:  UNIT(FID_Height, val).set(filter); break;
+            case SVF_OPACITY: UNIT(FID_Opacity, std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0)).set(filter); break;
 
             case SVF_FILTERRES: {
                DOUBLE x = 0, y = 0;
@@ -1678,7 +1682,7 @@ void svgState::proc_pattern(XMLTag &Tag) noexcept
 
                case SVF_OVERFLOW: viewport->set(FID_Overflow, val); break;
 
-               case SVF_OPACITY:  FUNIT(FID_Opacity, val).set(pattern); break;
+               case SVF_OPACITY:  UNIT(FID_Opacity, val).set(pattern); break;
                case SVF_X:        x = val; break;
                case SVF_Y:        y = val; break;
                case SVF_WIDTH:    width = val; break;
@@ -1710,21 +1714,21 @@ void svgState::proc_pattern(XMLTag &Tag) noexcept
 
       parse_pattern(parse_pattern, Tag, id);
 
-      if (!x.empty()) FUNIT(FID_X, x, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
-      if (!y.empty()) FUNIT(FID_Y, y, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
+      if (!x.empty()) UNIT(FID_X, x, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
+      if (!y.empty()) UNIT(FID_Y, y, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
 
       if (!width.empty()) {
          if (pattern->ContentUnits IS VUNIT::BOUNDING_BOX) {
-            FUNIT(FID_Width, width, DU::SCALED).set(pattern);
+            UNIT(FID_Width, width, DU::SCALED).set(pattern);
          }
-         else FUNIT(FID_Width, width, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
+         else UNIT(FID_Width, width, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
       }
 
       if (!height.empty()) {
          if (pattern->ContentUnits IS VUNIT::BOUNDING_BOX) {
-            FUNIT(FID_Height, height, DU::SCALED).set(pattern);
+            UNIT(FID_Height, height, DU::SCALED).set(pattern);
          }
-         else FUNIT(FID_Height, height, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
+         else UNIT(FID_Height, height, rel_coords ? DU::SCALED : DU::PIXEL).set(pattern);
       }
 
       if (id.empty()) {
@@ -1971,10 +1975,10 @@ void svgState::proc_def_image(XMLTag &Tag) noexcept
             // Applying (x,y) values as a texture offset here appears to be a mistake because <use> will deep-clone
             // the values also.  SVG documentation is silent on the validity of (x,y) values when an image
             // is in the <defs> area, so a W3C test may be needed to settle the matter.
-            case SVF_X:      /*FUNIT(FID_X, val).set(image);*/ break;
-            case SVF_Y:      /*FUNIT(FID_Y, val).set(image);*/ break;
-            case SVF_WIDTH:  width = FUNIT(val); break;
-            case SVF_HEIGHT: height = FUNIT(val); break;
+            case SVF_X:      /*UNIT(FID_X, val).set(image);*/ break;
+            case SVF_Y:      /*UNIT(FID_Y, val).set(image);*/ break;
+            case SVF_WIDTH:  width = UNIT(val); break;
+            case SVF_HEIGHT: height = UNIT(val); break;
             default: {
                // Check if this was a reference to some other namespace (ignorable).
                LONG i;
@@ -2032,14 +2036,14 @@ ERR svgState::proc_image(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noe
          case SVF_ID: id = value; break;
          case SVF_TRANSFORM: transform = value; break;
          case SVF_PRESERVEASPECTRATIO: ratio = parse_aspect_ratio(value); break;
-         case SVF_X: x = FUNIT(FID_X, value); break;
-         case SVF_Y: y = FUNIT(FID_Y, value); break;
+         case SVF_X: x = UNIT(FID_X, value); break;
+         case SVF_Y: y = UNIT(FID_Y, value); break;
          case SVF_WIDTH:
-            width = FUNIT(FID_Width, value);
+            width = UNIT(FID_Width, value);
             if (!width.valid_size()) return log.warning(ERR::InvalidDimension);
             break;
          case SVF_HEIGHT:
-            height = FUNIT(FID_Height, value);
+            height = UNIT(FID_Height, value);
             if (!height.valid_size()) return log.warning(ERR::InvalidDimension);
             break;
          case SVF_CROSSORIGIN: break; // Defines the value of the credentials flag for CORS requests.
@@ -2397,10 +2401,10 @@ void svgState::proc_use(XMLTag &Tag, OBJECTPTR Parent) noexcept
          auto hash = strihash(Tag.Attribs[a].Name);
          switch(hash) {
             // X,Y,Width,Height are applied to the viewport
-            case SVF_X:      FUNIT(FID_X, val).set(viewport); break;
-            case SVF_Y:      FUNIT(FID_Y, val).set(viewport); break;
-            case SVF_WIDTH:  FUNIT(FID_Width, val).set(viewport); break;
-            case SVF_HEIGHT: FUNIT(FID_Height, val).set(viewport); break;
+            case SVF_X:      UNIT(FID_X, val).set(viewport); break;
+            case SVF_Y:      UNIT(FID_Y, val).set(viewport); break;
+            case SVF_WIDTH:  UNIT(FID_Width, val).set(viewport); break;
+            case SVF_HEIGHT: UNIT(FID_Height, val).set(viewport); break;
 
             // All other attributes are applied to the 'g' element
             default:
@@ -2417,10 +2421,10 @@ void svgState::proc_use(XMLTag &Tag, OBJECTPTR Parent) noexcept
          if (val.empty()) continue;
 
          switch(strihash(tagref->Attribs[a].Name)) {
-            case SVF_X:      FUNIT(FID_X, val).set(viewport); break;
-            case SVF_Y:      FUNIT(FID_Y, val).set(viewport); break;
-            case SVF_WIDTH:  FUNIT(FID_Width, val).set(viewport); break;
-            case SVF_HEIGHT: FUNIT(FID_Height, val).set(viewport); break;
+            case SVF_X:      UNIT(FID_X, val).set(viewport); break;
+            case SVF_Y:      UNIT(FID_Y, val).set(viewport); break;
+            case SVF_WIDTH:  UNIT(FID_Width, val).set(viewport); break;
+            case SVF_HEIGHT: UNIT(FID_Height, val).set(viewport); break;
             case SVF_VIEWBOX:  {
                DOUBLE x=0, y=0, width=0, height=0;
                read_numseq(val, { &x, &y, &width, &height });
@@ -2461,8 +2465,8 @@ void svgState::proc_use(XMLTag &Tag, OBJECTPTR Parent) noexcept
          FUNIT tx, ty;
          for (LONG t=1; t < std::ssize(use_attribs); t++) {
             switch (strihash(use_attribs[t].Name)) {
-               case SVF_X: tx = FUNIT(FID_X, use_attribs[t].Value); break;
-               case SVF_Y: ty = FUNIT(FID_Y, use_attribs[t].Value); break;
+               case SVF_X: tx = UNIT(FID_X, use_attribs[t].Value); break;
+               case SVF_Y: ty = UNIT(FID_Y, use_attribs[t].Value); break;
                // SVG states that the following are not to be applied to the group...
                case SVF_WIDTH:
                case SVF_HEIGHT:
@@ -2492,8 +2496,8 @@ void svgState::proc_use(XMLTag &Tag, OBJECTPTR Parent) noexcept
          FUNIT tx, ty;
          for (LONG t=1; t < std::ssize(use_attribs); t++) {
             switch (strihash(use_attribs[t].Name)) {
-               case SVF_X: tx = FUNIT(FID_X, use_attribs[t].Value); break;
-               case SVF_Y: ty = FUNIT(FID_Y, use_attribs[t].Value); break;
+               case SVF_X: tx = UNIT(FID_X, use_attribs[t].Value); break;
+               case SVF_Y: ty = UNIT(FID_Y, use_attribs[t].Value); break;
                case SVF_WIDTH:
                case SVF_HEIGHT:
                case SVF_XLINK_HREF:
@@ -2732,19 +2736,19 @@ void svgState::proc_svg(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noex
             break;
          }
 
-         case SVF_X: FUNIT(FID_X, val).set(viewport); break;
-         case SVF_Y: FUNIT(FID_Y, val).set(viewport); break;
+         case SVF_X: UNIT(FID_X, val).set(viewport); break;
+         case SVF_Y: UNIT(FID_Y, val).set(viewport); break;
 
-         case SVF_XOFFSET: FUNIT(FID_XOffset, val).set(viewport); break;
-         case SVF_YOFFSET: FUNIT(FID_YOffset, val).set(viewport); break;
+         case SVF_XOFFSET: UNIT(FID_XOffset, val).set(viewport); break;
+         case SVF_YOFFSET: UNIT(FID_YOffset, val).set(viewport); break;
 
          case SVF_WIDTH:
-            FUNIT(FID_Width, val).set(viewport);
+            UNIT(FID_Width, val).set(viewport);
             viewport->set(FID_OverflowX, LONG(VOF::HIDDEN));
             break;
 
          case SVF_HEIGHT:
-            FUNIT(FID_Height, val).set(viewport);
+            UNIT(FID_Height, val).set(viewport);
             viewport->set(FID_OverflowY, LONG(VOF::HIDDEN));
             break;
 
@@ -3245,67 +3249,67 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
       case CLASSID::VECTORVIEWPORT:
          switch (Hash) {
             // The following 'view-*' fields are for defining the SVG view box
-            case SVF_VIEW_X:      FUNIT(FID_ViewX, StrValue).set(Vector); return ERR::Okay;
-            case SVF_VIEW_Y:      FUNIT(FID_ViewY, StrValue).set(Vector); return ERR::Okay;
-            case SVF_VIEW_WIDTH:  FUNIT(FID_ViewWidth, StrValue).set(Vector); return ERR::Okay;
-            case SVF_VIEW_HEIGHT: FUNIT(FID_ViewHeight, StrValue).set(Vector); return ERR::Okay;
+            case SVF_VIEW_X:      UNIT(FID_ViewX, StrValue).set(Vector); return ERR::Okay;
+            case SVF_VIEW_Y:      UNIT(FID_ViewY, StrValue).set(Vector); return ERR::Okay;
+            case SVF_VIEW_WIDTH:  UNIT(FID_ViewWidth, StrValue).set(Vector); return ERR::Okay;
+            case SVF_VIEW_HEIGHT: UNIT(FID_ViewHeight, StrValue).set(Vector); return ERR::Okay;
             // The following dimension fields are for defining the position and clipping of the vector display
-            case SVF_X:      FUNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
-            case SVF_Y:      FUNIT(FID_Y, StrValue).set(Vector); return ERR::Okay;
-            case SVF_WIDTH:  FUNIT(FID_Width, StrValue).set(Vector); return ERR::Okay;
-            case SVF_HEIGHT: FUNIT(FID_Height, StrValue).set(Vector); return ERR::Okay;
+            case SVF_X:      UNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
+            case SVF_Y:      UNIT(FID_Y, StrValue).set(Vector); return ERR::Okay;
+            case SVF_WIDTH:  UNIT(FID_Width, StrValue).set(Vector); return ERR::Okay;
+            case SVF_HEIGHT: UNIT(FID_Height, StrValue).set(Vector); return ERR::Okay;
          }
          break;
 
       case CLASSID::VECTORELLIPSE:
          switch (Hash) {
-            case SVF_CX: FUNIT(FID_CenterX, StrValue).set(Vector); return ERR::Okay;
-            case SVF_CY: FUNIT(FID_CenterY, StrValue).set(Vector); return ERR::Okay;
-            case SVF_R:  FUNIT(FID_Radius, StrValue).set(Vector); return ERR::Okay;
-            case SVF_RX: FUNIT(FID_RadiusX, StrValue).set(Vector); return ERR::Okay;
-            case SVF_RY: FUNIT(FID_RadiusY, StrValue).set(Vector); return ERR::Okay;
-            case SVF_VERTICES: FUNIT(FID_Vertices, StrValue).set(Vector); return ERR::Okay;
+            case SVF_CX: UNIT(FID_CenterX, StrValue).set(Vector); return ERR::Okay;
+            case SVF_CY: UNIT(FID_CenterY, StrValue).set(Vector); return ERR::Okay;
+            case SVF_R:  UNIT(FID_Radius, StrValue).set(Vector); return ERR::Okay;
+            case SVF_RX: UNIT(FID_RadiusX, StrValue).set(Vector); return ERR::Okay;
+            case SVF_RY: UNIT(FID_RadiusY, StrValue).set(Vector); return ERR::Okay;
+            case SVF_VERTICES: UNIT(FID_Vertices, StrValue).set(Vector); return ERR::Okay;
          }
          break;
 
       case CLASSID::VECTORWAVE:
          switch (Hash) {
-            case SVF_X: FUNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
-            case SVF_Y: FUNIT(FID_Y, StrValue).set(Vector); return ERR::Okay;
-            case SVF_WIDTH:  FUNIT(FID_Width, StrValue).set(Vector); return ERR::Okay;
-            case SVF_HEIGHT: FUNIT(FID_Height, StrValue).set(Vector); return ERR::Okay;
+            case SVF_X: UNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
+            case SVF_Y: UNIT(FID_Y, StrValue).set(Vector); return ERR::Okay;
+            case SVF_WIDTH:  UNIT(FID_Width, StrValue).set(Vector); return ERR::Okay;
+            case SVF_HEIGHT: UNIT(FID_Height, StrValue).set(Vector); return ERR::Okay;
             case SVF_CLOSE:  Vector->set(FID_Close, StrValue); return ERR::Okay;
-            case SVF_AMPLITUDE: FUNIT(FID_Amplitude, StrValue).set(Vector); return ERR::Okay;
-            case SVF_DECAY:     FUNIT(FID_Decay, StrValue).set(Vector); return ERR::Okay;
-            case SVF_FREQUENCY: FUNIT(FID_Frequency, StrValue).set(Vector); return ERR::Okay;
-            case SVF_THICKNESS: FUNIT(FID_Thickness, StrValue).set(Vector); return ERR::Okay;
+            case SVF_AMPLITUDE: UNIT(FID_Amplitude, StrValue).set(Vector); return ERR::Okay;
+            case SVF_DECAY:     UNIT(FID_Decay, StrValue).set(Vector); return ERR::Okay;
+            case SVF_FREQUENCY: UNIT(FID_Frequency, StrValue).set(Vector); return ERR::Okay;
+            case SVF_THICKNESS: UNIT(FID_Thickness, StrValue).set(Vector); return ERR::Okay;
          }
          break;
 
       case CLASSID::VECTORRECTANGLE:
          switch (Hash) {
             case SVF_X1:
-            case SVF_X:  FUNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
+            case SVF_X:  UNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
             case SVF_Y1:
-            case SVF_Y:  FUNIT(FID_Y, StrValue).set(Vector); return ERR::Okay;
-            case SVF_WIDTH:  FUNIT(FID_Width, StrValue).set(Vector); return ERR::Okay;
-            case SVF_HEIGHT: FUNIT(FID_Height, StrValue).set(Vector); return ERR::Okay;
-            case SVF_RX:     FUNIT(FID_RoundX, StrValue).set(Vector); return ERR::Okay;
-            case SVF_RY:     FUNIT(FID_RoundY, StrValue).set(Vector); return ERR::Okay;
+            case SVF_Y:  UNIT(FID_Y, StrValue).set(Vector); return ERR::Okay;
+            case SVF_WIDTH:  UNIT(FID_Width, StrValue).set(Vector); return ERR::Okay;
+            case SVF_HEIGHT: UNIT(FID_Height, StrValue).set(Vector); return ERR::Okay;
+            case SVF_RX:     UNIT(FID_RoundX, StrValue).set(Vector); return ERR::Okay;
+            case SVF_RY:     UNIT(FID_RoundY, StrValue).set(Vector); return ERR::Okay;
 
-            case SVF_XOFFSET: FUNIT(FID_XOffset, StrValue).set(Vector); return ERR::Okay; // Parasol only
-            case SVF_YOFFSET: FUNIT(FID_YOffset, StrValue).set(Vector); return ERR::Okay; // Parasol only
+            case SVF_XOFFSET: UNIT(FID_XOffset, StrValue).set(Vector); return ERR::Okay; // Parasol only
+            case SVF_YOFFSET: UNIT(FID_YOffset, StrValue).set(Vector); return ERR::Okay; // Parasol only
 
             case SVF_X2: {
                // Note: For the time being, VectorRectangle doesn't support X2/Y2 as a concept.  This would
                // cause problems if the client was to specify a scaled value here.
-               auto width = FUNIT(FID_Width, StrValue);
+               auto width = UNIT(FID_Width, StrValue);
                Vector->setFields(fl::Width(std::abs(width - Vector->get<DOUBLE>(FID_X))));
                return ERR::Okay;
             }
 
             case SVF_Y2: {
-               auto height = FUNIT(FID_Height, StrValue);
+               auto height = UNIT(FID_Height, StrValue);
                Vector->setFields(fl::Height(std::abs(height - Vector->get<DOUBLE>(FID_Y))));
                return ERR::Okay;
             }
@@ -3316,17 +3320,17 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
       case CLASSID::VECTORPOLYGON:
          switch (Hash) {
             case SVF_POINTS: Vector->set(FID_Points, StrValue); return ERR::Okay;
-            case SVF_X1: FUNIT(FID_X1, StrValue).set(Vector); return ERR::Okay;
-            case SVF_Y1: FUNIT(FID_Y1, StrValue).set(Vector); return ERR::Okay;
-            case SVF_X2: FUNIT(FID_X2, StrValue).set(Vector); return ERR::Okay;
-            case SVF_Y2: FUNIT(FID_Y2, StrValue).set(Vector); return ERR::Okay;
+            case SVF_X1: UNIT(FID_X1, StrValue).set(Vector); return ERR::Okay;
+            case SVF_Y1: UNIT(FID_Y1, StrValue).set(Vector); return ERR::Okay;
+            case SVF_X2: UNIT(FID_X2, StrValue).set(Vector); return ERR::Okay;
+            case SVF_Y2: UNIT(FID_Y2, StrValue).set(Vector); return ERR::Okay;
          }
          break;
 
       case CLASSID::VECTORTEXT:
          switch (Hash) {
-            case SVF_X: FUNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
-            case SVF_Y: FUNIT(FID_Y, StrValue).set(Vector); return ERR::Okay;
+            case SVF_X: UNIT(FID_X, StrValue).set(Vector); return ERR::Okay;
+            case SVF_Y: UNIT(FID_Y, StrValue).set(Vector); return ERR::Okay;
 
             case SVF_DX: Vector->set(FID_DX, StrValue); return ERR::Okay;
             case SVF_DY: Vector->set(FID_DY, StrValue); return ERR::Okay;
@@ -3444,33 +3448,33 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
       case CLASSID::VECTORSPIRAL:
          switch (Hash) {
             case SVF_PATHLENGTH: Vector->set(FID_PathLength, StrValue); return ERR::Okay;
-            case SVF_CX:       FUNIT(FID_CenterX, StrValue).set(Vector); return ERR::Okay;
-            case SVF_CY:       FUNIT(FID_CenterY, StrValue).set(Vector); return ERR::Okay;
-            case SVF_R:        FUNIT(FID_Radius, StrValue).set(Vector); return ERR::Okay;
-            case SVF_OFFSET:   FUNIT(FID_Offset, StrValue).set(Vector); return ERR::Okay;
-            case SVF_STEP:     FUNIT(FID_Step, StrValue).set(Vector); return ERR::Okay;
-            case SVF_VERTICES: FUNIT(FID_Vertices, StrValue).set(Vector); return ERR::Okay;
-            case SVF_SPACING:  FUNIT(FID_Spacing, StrValue).set(Vector); return ERR::Okay;
-            case SVF_LOOP_LIMIT: FUNIT(FID_LoopLimit, StrValue).set(Vector); return ERR::Okay;
+            case SVF_CX:       UNIT(FID_CenterX, StrValue).set(Vector); return ERR::Okay;
+            case SVF_CY:       UNIT(FID_CenterY, StrValue).set(Vector); return ERR::Okay;
+            case SVF_R:        UNIT(FID_Radius, StrValue).set(Vector); return ERR::Okay;
+            case SVF_OFFSET:   UNIT(FID_Offset, StrValue).set(Vector); return ERR::Okay;
+            case SVF_STEP:     UNIT(FID_Step, StrValue).set(Vector); return ERR::Okay;
+            case SVF_VERTICES: UNIT(FID_Vertices, StrValue).set(Vector); return ERR::Okay;
+            case SVF_SPACING:  UNIT(FID_Spacing, StrValue).set(Vector); return ERR::Okay;
+            case SVF_LOOP_LIMIT: UNIT(FID_LoopLimit, StrValue).set(Vector); return ERR::Okay;
          }
          break;
 
       case CLASSID::VECTORSHAPE:
          switch (Hash) {
-            case SVF_CX:   FUNIT(FID_CenterX, StrValue).set(Vector); return ERR::Okay;
-            case SVF_CY:   FUNIT(FID_CenterY, StrValue).set(Vector); return ERR::Okay;
-            case SVF_R:    FUNIT(FID_Radius, StrValue).set(Vector); return ERR::Okay;
-            case SVF_N1:   FUNIT(FID_N1, StrValue).set(Vector); return ERR::Okay;
-            case SVF_N2:   FUNIT(FID_N2, StrValue).set(Vector); return ERR::Okay;
-            case SVF_N3:   FUNIT(FID_N3, StrValue).set(Vector); return ERR::Okay;
-            case SVF_M:    FUNIT(FID_M, StrValue).set(Vector); return ERR::Okay;
-            case SVF_A:    FUNIT(FID_A, StrValue).set(Vector); return ERR::Okay;
-            case SVF_B:    FUNIT(FID_B, StrValue).set(Vector); return ERR::Okay;
-            case SVF_PHI:  FUNIT(FID_Phi, StrValue).set(Vector); return ERR::Okay;
-            case SVF_VERTICES: FUNIT(FID_Vertices, StrValue).set(Vector); return ERR::Okay;
-            case SVF_MOD:      FUNIT(FID_Mod, StrValue).set(Vector); return ERR::Okay;
-            case SVF_SPIRAL:   FUNIT(FID_Spiral, StrValue).set(Vector); return ERR::Okay;
-            case SVF_REPEAT:   FUNIT(FID_Repeat, StrValue).set(Vector); return ERR::Okay;
+            case SVF_CX:   UNIT(FID_CenterX, StrValue).set(Vector); return ERR::Okay;
+            case SVF_CY:   UNIT(FID_CenterY, StrValue).set(Vector); return ERR::Okay;
+            case SVF_R:    UNIT(FID_Radius, StrValue).set(Vector); return ERR::Okay;
+            case SVF_N1:   UNIT(FID_N1, StrValue).set(Vector); return ERR::Okay;
+            case SVF_N2:   UNIT(FID_N2, StrValue).set(Vector); return ERR::Okay;
+            case SVF_N3:   UNIT(FID_N3, StrValue).set(Vector); return ERR::Okay;
+            case SVF_M:    UNIT(FID_M, StrValue).set(Vector); return ERR::Okay;
+            case SVF_A:    UNIT(FID_A, StrValue).set(Vector); return ERR::Okay;
+            case SVF_B:    UNIT(FID_B, StrValue).set(Vector); return ERR::Okay;
+            case SVF_PHI:  UNIT(FID_Phi, StrValue).set(Vector); return ERR::Okay;
+            case SVF_VERTICES: UNIT(FID_Vertices, StrValue).set(Vector); return ERR::Okay;
+            case SVF_MOD:      UNIT(FID_Mod, StrValue).set(Vector); return ERR::Okay;
+            case SVF_SPIRAL:   UNIT(FID_Spiral, StrValue).set(Vector); return ERR::Okay;
+            case SVF_REPEAT:   UNIT(FID_Repeat, StrValue).set(Vector); return ERR::Okay;
             case SVF_CLOSE:
                if ((iequals("true", StrValue)) or (iequals("1", StrValue))) Vector->set(FID_Close, TRUE);
                else Vector->set(FID_Close, FALSE);
@@ -3644,12 +3648,12 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
       case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, std::clamp(strtod(StrValue.c_str(), NULL), 0.0, 1.0)); break;
       case SVF_SHAPE_RENDERING:  Vector->set(FID_PathQuality, LONG(shape_rendering_to_render_quality(StrValue))); break;
 
-      case SVF_STROKE_WIDTH:            FUNIT(FID_StrokeWidth, StrValue).set(Vector); break;
+      case SVF_STROKE_WIDTH:            UNIT(FID_StrokeWidth, StrValue).set(Vector); break;
       case SVF_STROKE_OPACITY:          Vector->set(FID_StrokeOpacity, std::clamp(strtod(StrValue.c_str(), NULL), 0.0, 1.0)); break;
       case SVF_STROKE_MITERLIMIT:       Vector->set(FID_MiterLimit, StrValue); break;
       case SVF_STROKE_MITERLIMIT_THETA: Vector->set(FID_MiterLimitTheta, StrValue); break;
       case SVF_STROKE_INNER_MITERLIMIT: Vector->set(FID_InnerMiterLimit, StrValue); break;
-      case SVF_STROKE_DASHOFFSET:       FUNIT(FID_DashOffset, StrValue).set(Vector); break;
+      case SVF_STROKE_DASHOFFSET:       UNIT(FID_DashOffset, StrValue).set(Vector); break;
 
       case SVF_MASK: {
          OBJECTPTR clip;
