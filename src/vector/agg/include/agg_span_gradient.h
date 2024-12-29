@@ -164,12 +164,10 @@ namespace agg
 
     private:
         void update_values() {
-            // Calculate the invariant values. In case the focal center
-            // lies exactly on the gradient circle the divisor degenerates
-            // into zero. In this case we just move the focal center by
-            // one subpixel unit possibly in the direction to the origin (0,0)
+            // Calculate the invariant values. In case the focal center lies exactly on the gradient circle the divisor degenerates
+            // into zero. In this case we just move the focal center by one subpixel unit possibly in the direction to the origin (0,0)
             // and calculate the values again.
-            //-------------------------
+
             m_r2  = double(m_r)  * double(m_r);
             m_fx2 = double(m_fx) * double(m_fx);
             m_fy2 = double(m_fy) * double(m_fy);

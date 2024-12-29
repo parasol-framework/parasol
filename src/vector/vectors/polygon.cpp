@@ -38,7 +38,7 @@ static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
       auto max = p;
       auto last = p;
 
-      for (LONG i=1; i < Vector->Points.size(); i++) {
+      for (unsigned i=1; i < Vector->Points.size(); i++) {
          p.x = Vector->Points[i].X;
          p.y = Vector->Points[i].Y;
          if (Vector->Points[i].XScaled) p.x *= view_width;
@@ -121,11 +121,11 @@ static ERR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
    if (!Args) return log.warning(ERR::NullArgs);
 
    // If any of the polygon's points are relative then we have to cancel the move.
-   for (LONG i=0; i < Self->Points.size(); i++) {
+   for (unsigned i=0; i < Self->Points.size(); i++) {
       if ((Self->Points[i].XScaled) or (Self->Points[i].YScaled)) return ERR::InvalidValue;
    }
 
-   for (LONG i=0; i < Self->Points.size(); i++) {
+   for (unsigned i=0; i < Self->Points.size(); i++) {
       Self->Points[i].X += Args->DeltaX;
       Self->Points[i].Y += Args->DeltaY;
    }
@@ -155,10 +155,8 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   LONG i;
-
    // Check if any of the polygon's points are relative, in which case we have to cancel the move.
-   for (i=0; i < Self->Points.size(); i++) {
+   for (unsigned i=0; i < Self->Points.size(); i++) {
       if ((Self->Points[i].XScaled) or (Self->Points[i].YScaled)) return ERR::InvalidValue;
    }
 
@@ -166,21 +164,21 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 
    if ((Args->Flags & MTF::X) != MTF::NIL) {
       DOUBLE center_x = Self->Bounds.width() * 0.5;
-      DOUBLE xchange = Args->X - center_x;
-      for (i=0; i < Self->Points.size(); i++) {
-         Self->Points[i].X += xchange;
+      DOUBLE x_change = Args->X - center_x;
+      for (unsigned i=0; i < Self->Points.size(); i++) {
+         Self->Points[i].X += x_change;
          Self->Points[i].XScaled = ((Args->Flags & MTF::RELATIVE) != MTF::NIL);
       }
-      Self->Bounds.left += xchange;
-      Self->Bounds.right += xchange;
+      Self->Bounds.left += x_change;
+      Self->Bounds.right += x_change;
    }
 
    if ((Args->Flags & MTF::Y) != MTF::NIL) {
       DOUBLE center_y = Self->Bounds.height() * 0.5;
-      DOUBLE ychange = Args->Y - center_y;
-      for (i=0; i < Self->Points.size(); i++) Self->Points[i].Y += ychange;
-      Self->Bounds.top += ychange;
-      Self->Bounds.bottom += ychange;
+      DOUBLE y_change = Args->Y - center_y;
+      for (unsigned i=0; i < Self->Points.size(); i++) Self->Points[i].Y += y_change;
+      Self->Bounds.top += y_change;
+      Self->Bounds.bottom += y_change;
    }
 
    reset_path(Self);
@@ -221,7 +219,7 @@ static ERR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
    double xratio = (Args->Width > 0) ? (current_width / Args->Width) : current_width;
    double yratio = (Args->Height > 0) ? (current_height / Args->Height) : current_height;
 
-   for (LONG i=0; i < Self->Points.size(); i++) {
+   for (unsigned i=0; i < Self->Points.size(); i++) {
       Self->Points[i].X = Self->Points[i].X * xratio;
       Self->Points[i].Y = Self->Points[i].Y * yratio;
    }
