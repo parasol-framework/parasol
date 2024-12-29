@@ -1138,7 +1138,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "WIDTH",
     "WORD-SPACING")
 
-   hash("SVF", "0x%s",
+  hash("SVF", "0x%s",
     "APPEND-PATH",
     "JOIN-PATH",
     "AZIMUTH",
@@ -1193,7 +1193,38 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "REQUIREDFEATURES",
     "REQUIREDEXTENSIONS",
     "SYSTEMLANGUAGE"
-    )
+  )
+
+  hash("SVF", "0x%s",
+    "ActiveBorder",
+    "ActiveCaption",
+    "AppWorkspace",
+    "Background",
+    "ButtonFace",
+    "ButtonHighlight",
+    "ButtonShadow",
+    "ButtonText",
+    "CaptionText",
+    "GrayText",
+    "Highlight",
+    "HighlightText",
+    "InactiveBorder",
+    "InactiveCaption",
+    "InactiveCaptionText",
+    "InfoBackground",
+    "InfoText",
+    "Menu",
+    "MenuText",
+    "Scrollbar",
+    "ThreeDDarkShadow",
+    "ThreeDFace",
+    "ThreeDHighlight",
+    "ThreeDLightShadow",
+    "ThreeDShadow",
+    "Window",
+    "WindowFrame",
+    "WindowText"
+  )
 
     c_insert([[
 namespace vec {

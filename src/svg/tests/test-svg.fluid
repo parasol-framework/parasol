@@ -134,7 +134,6 @@ function testW3Gradients01() hashTestSVG('gradients/w3-pservers-grad-01-b.svg', 
 function testW3Gradients02() hashTestSVG('gradients/w3-pservers-grad-02-b.svg', 0x2b80ff2f) end
 function testW3Gradients04() hashTestSVG('gradients/w3-pservers-grad-04-b.svg', 0x30e19fc3) end
 function testW3Gradients05() hashTestSVG('gradients/w3-pservers-grad-05-b.svg', 0x80b6a37d) end
--- Test 6 pattern not scaling
 function testW3Gradients06() hashTestSVG('gradients/w3-pservers-grad-06-b.svg', 0x9c5db4aa) end
 function testW3Gradients07() hashTestSVG('gradients/w3-pservers-grad-07-b.svg', 0xfb7be5fe) end
 function testW3Gradients08() hashTestSVG('gradients/w3-pservers-grad-08-b.svg', 0x97f7b810) end
@@ -152,6 +151,10 @@ function testW3Gradients20() hashTestSVG('gradients/w3-pservers-grad-20-b.svg', 
 function testW3Gradients21() hashTestSVG('gradients/w3-pservers-grad-21-b.svg', 0x57eb4dd7) end
 function testW3Gradients22() hashTestSVG('gradients/w3-pservers-grad-22-b.svg', 0x5477019b) end
 
+function testW3ColourProp01() hashTestSVG('painting/w3-color-prop-01-b.svg', 0x294dc6f5) end
+function testW3ColourProp02() hashTestSVG('painting/w3-color-prop-02-f.svg', 0xd5bbbf29) end
+function testW3ColourProp03() hashTestSVG('painting/w3-color-prop-03-t.svg', 0x2a24c1a3) end
+function testW3ColourProp04() hashTestSVG('painting/w3-color-prop-04-t.svg', 0x639abf9c) end
 function testW3Painting01() hashTestSVG('painting/w3-painting-control-01-f.svg', 0x130f9677) end
 function testW3Painting02() hashTestSVG('painting/w3-painting-control-02-f.svg', 0x7fc07377) end
 function testW3Painting03() hashTestSVG('painting/w3-painting-control-03-f.svg', 0x2235bed0) end
@@ -561,7 +564,11 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Struct06',
         'testW3Struct07',
         'testW3Struct08',
-        'testW3Struct09'
+        'testW3Struct09',
+        'testW3ColourProp01',
+        'testW3ColourProp02',
+        'testW3ColourProp03',
+        'testW3ColourProp04'
       },
       init = function(Folder)
          glSVGFolder = Folder

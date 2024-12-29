@@ -41,7 +41,9 @@ void svgState::process_inherit_refs(XMLTag &Tag) noexcept
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("inherit", Tag.Attribs[a].Value)) {
          switch (strihash(Tag.Attribs[a].Name)) {
-            case SVF_STOP_COLOR: Tag.Attribs[a].Value = m_stop_color; break;
+            case SVF_STOP_COLOR: 
+               Tag.Attribs[a].Value = m_stop_color; 
+               break;
             case SVF_STOP_OPACITY: Tag.Attribs[a].Value = std::to_string(m_stop_opacity); break;
          }
       }
@@ -180,7 +182,10 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
          if (val.empty()) continue;
 
          switch (strihash(Tag.Attribs[a].Name)) {
-            case SVF_COLOR: m_color = val; break;
+            case SVF_COLOR: 
+               if ("inherit" IS val) break;
+               m_color = val; 
+               break;
          }
       }
       return;
@@ -191,15 +196,27 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
       if (val.empty()) continue;
 
       switch (strihash(Tag.Attribs[a].Name)) {
-         case SVF_COLOR:      m_color = val; break; // Affects 'currentColor'
-         case SVF_STOP_COLOR: m_stop_color = val; break;
-         case SVF_FILL:       m_fill = val; break;
-         case SVF_DISPLAY:    m_display = val; break;
-         case SVF_VISIBILITY: m_visibility = val; break;
+         case SVF_COLOR: // Affects 'currentColor'     
+            if ("inherit" IS val) break;
+            m_color = val; 
+            break;
+
+         case SVF_FILL:
+            if ("inherit" IS val);
+            else if ("currentColor" IS val) m_fill = m_color;
+            else m_fill = val; 
+            break;
+
          case SVF_STROKE:
-            m_stroke = val;
+            if ("inherit" IS val);
+            else if ("currentColor" IS val) m_stroke = m_color;
+            else m_stroke = val;
             if (!m_stroke_width) m_stroke_width = 1;
             break;
+            
+         case SVF_STOP_COLOR: m_stop_color = val; break;
+         case SVF_DISPLAY:    m_display = val; break;
+         case SVF_VISIBILITY: m_visibility = val; break;
 
          case SVF_STROKE_LINEJOIN:
             switch(strihash(val)) {
@@ -3616,12 +3633,17 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
       case SVF_MARKER_START: log.warning("marker-start is not supported."); break;
 
       case SVF_FILTER:       Vector->setFilter(StrValue); break;
-      case SVF_COLOR:        Vector->setFill(StrValue); break;
+
+      case SVF_COLOR:
+         if (StrValue != "inherit") Vector->setFill(StrValue); 
+         break;
 
       case SVF_STROKE:
          if (iequals("currentColor", StrValue)) {
             FRGB rgb;
-            if (current_colour(Vector, rgb) IS ERR::Okay) SetArray(Vector, FID_Stroke|TFLOAT, &rgb, 4);
+            if (current_colour(Vector, rgb) IS ERR::Okay) {
+               SetArray(Vector, FID_StrokeColour|TFLOAT, &rgb, 4);
+            }
          }
          else set_paint_server(Vector, FID_Stroke, StrValue);
          break;

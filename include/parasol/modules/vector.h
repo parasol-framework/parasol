@@ -3946,6 +3946,35 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_REQUIREDEXTENSIONS 0x0d7ab056
 #define SVF_SYSTEMLANGUAGE 0xa95fc64e
 
+#define SVF_ActiveBorder 0x454bda3f
+#define SVF_ActiveCaption 0x1afdcc2f
+#define SVF_AppWorkspace 0xe1d2e595
+#define SVF_Background 0x677e1785
+#define SVF_ButtonFace 0xf8bdce70
+#define SVF_ButtonHighlight 0x109df899
+#define SVF_ButtonShadow 0x3e3bd7e7
+#define SVF_ButtonText 0xf8c58f86
+#define SVF_CaptionText 0xa8222dd8
+#define SVF_GrayText 0xbcb251fd
+#define SVF_Highlight 0x1ecf649d
+#define SVF_HighlightText 0x0b3bc4a2
+#define SVF_InactiveBorder 0x613cc7f6
+#define SVF_InactiveCaption 0xb50c70c6
+#define SVF_InactiveCaptionText 0x5404bd4b
+#define SVF_InfoBackground 0xfa8db651
+#define SVF_InfoText 0x6c41ded6
+#define SVF_Menu 0x7c9a911a
+#define SVF_MenuText 0x7b92e79f
+#define SVF_Scrollbar 0xf5b38a09
+#define SVF_ThreeDDarkShadow 0xe33a1e69
+#define SVF_ThreeDFace 0xe3f48150
+#define SVF_ThreeDHighlight 0xae577779
+#define SVF_ThreeDLightShadow 0x36b9979f
+#define SVF_ThreeDShadow 0xd1eac2c7
+#define SVF_Window 0x251efe5d
+#define SVF_WindowFrame 0x66937228
+#define SVF_WindowText 0x7f423e62
+
 namespace vec {
 inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {
    struct SubscribeInput args = { Mask, &Callback };

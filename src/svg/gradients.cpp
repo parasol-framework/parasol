@@ -10,6 +10,7 @@ static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG At
          return ERR::Okay;
 
       // Ignored attributes (sometimes defined to propagate to child tags)
+      case SVF_COLOR:
       case SVF_STOP_COLOR:
       case SVF_STOP_OPACITY:
          return ERR::Okay;
