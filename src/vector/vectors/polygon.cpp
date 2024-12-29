@@ -28,7 +28,7 @@ static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
    auto view_width = get_parent_width(Vector);
    auto view_height = get_parent_height(Vector);
 
-   if ((Vector->Points) and (Vector->TotalPoints >= 2)) {
+   if (Vector->Points.size() >= 2) {
       pf::POINT<double> p = { Vector->Points[0].X, Vector->Points[0].Y };
       if (Vector->Points[0].XScaled) p.x *= view_width;
       if (Vector->Points[0].YScaled) p.y *= view_height;
@@ -38,7 +38,7 @@ static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
       auto max = p;
       auto last = p;
 
-      for (LONG i=1; i < Vector->TotalPoints; i++) {
+      for (LONG i=1; i < Vector->Points.size(); i++) {
          p.x = Vector->Points[i].X;
          p.y = Vector->Points[i].Y;
          if (Vector->Points[i].XScaled) p.x *= view_width;
@@ -62,7 +62,7 @@ static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
          last = p;
       }
 
-      if ((Vector->TotalPoints > 2) and (Vector->Closed)) Path.close_polygon();
+      if ((Vector->Points.size() > 2) and (Vector->Closed)) Path.close_polygon();
 
       Vector->Bounds = { min.x, min.y, max.x, max.y };
    }
@@ -72,60 +72,39 @@ static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
 //********************************************************************************************************************
 // Converts a string of paired coordinates into a VectorPoint array.
 
-static ERR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCount, CSTRING Value)
+static ERR read_points(extVectorPoly *Self, std::string_view Value)
 {
-   pf::Log log(__FUNCTION__);
+   Self->Points.clear();
 
-   // Count the number of values (note that a point consists of 2 values)
+   double x = 0, y = 0;
+   bool expect_x = true;
+   while (!Value.empty()) {
+      if (std::isdigit(Value.front()) or (Value.front() == '-')) {
+         auto [ptr, error] = std::from_chars(Value.data(), Value.data() + Value.size(), expect_x ? x : y);
+         if (error != std::errc()) break;
+         Value.remove_prefix(ptr - Value.data());
 
-   LONG count = 0;
-   for (LONG pos=0; Value[pos];) {
-      if ((Value[pos] >= '0') and (Value[pos] <= '9')) {
-         count++;
-         // Consume all characters up to the next comma or whitespace.
-         while (Value[pos]) { if ((Value[pos] IS ',') or (Value[pos] <= 0x20)) break; pos++; }
-      }
-      else pos++;
+         if (!expect_x) Self->Points.emplace_back(VectorPoint{x, y});
+
+         expect_x = !expect_x;
+      } 
+      else Value.remove_prefix(1);
    }
 
-   if (count >= MAX_POINTS) return ERR::InvalidValue;
-
-   if (count >= 2) {
-      LONG points = count>>1; // A point consists of 2 values.
-      if (PointCount) *PointCount = points;
-      if (AllocMemory(sizeof(VectorPoint) * count, MEM::DATA, Array) IS ERR::Okay) {
-         LONG point = 0;
-         LONG index = 0;
-         for (LONG pos=0; (Value[pos]) and (point < points);) {
-            if (((Value[pos] >= '0') and (Value[pos] <= '9')) or (Value[pos] IS '-') or (Value[pos] IS '+')) {
-               if (!(index & 0x1)) {
-                  Array[0][point].X = strtod(Value + pos, NULL);
-               }
-               else {
-                  Array[0][point].Y = strtod(Value + pos, NULL);
-                  point++;
-               }
-               index++;
-               while (Value[pos]) { if ((Value[pos] IS ',') or (Value[pos] <= 0x20)) break; pos++; }
-            }
-            else pos++;
-         }
-
-         return ERR::Okay;
-      }
-      else return ERR::AllocMemory;
-   }
-   else {
+   if (Self->Points.size() < 2) {
+      pf::Log log(__FUNCTION__);
       log.traceWarning("List of points requires a minimum of 2 number pairs.");
+      Self->Points.clear();
       return log.warning(ERR::InvalidValue);
    }
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
 static ERR POLYGON_Free(extVectorPoly *Self)
 {
-   if (Self->Points) { FreeResource(Self->Points); Self->Points = NULL; }
+   Self->Points.~vector<VectorPoint>();
    return ERR::Okay;
 }
 
@@ -142,11 +121,11 @@ static ERR POLYGON_Move(extVectorPoly *Self, struct acMove *Args)
    if (!Args) return log.warning(ERR::NullArgs);
 
    // If any of the polygon's points are relative then we have to cancel the move.
-   for (LONG i=0; i < Self->TotalPoints; i++) {
+   for (LONG i=0; i < Self->Points.size(); i++) {
       if ((Self->Points[i].XScaled) or (Self->Points[i].YScaled)) return ERR::InvalidValue;
    }
 
-   for (LONG i=0; i < Self->TotalPoints; i++) {
+   for (LONG i=0; i < Self->Points.size(); i++) {
       Self->Points[i].X += Args->DeltaX;
       Self->Points[i].Y += Args->DeltaY;
    }
@@ -179,7 +158,7 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
    LONG i;
 
    // Check if any of the polygon's points are relative, in which case we have to cancel the move.
-   for (i=0; i < Self->TotalPoints; i++) {
+   for (i=0; i < Self->Points.size(); i++) {
       if ((Self->Points[i].XScaled) or (Self->Points[i].YScaled)) return ERR::InvalidValue;
    }
 
@@ -188,7 +167,7 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
    if ((Args->Flags & MTF::X) != MTF::NIL) {
       DOUBLE center_x = Self->Bounds.width() * 0.5;
       DOUBLE xchange = Args->X - center_x;
-      for (i=0; i < Self->TotalPoints; i++) {
+      for (i=0; i < Self->Points.size(); i++) {
          Self->Points[i].X += xchange;
          Self->Points[i].XScaled = ((Args->Flags & MTF::RELATIVE) != MTF::NIL);
       }
@@ -199,7 +178,7 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
    if ((Args->Flags & MTF::Y) != MTF::NIL) {
       DOUBLE center_y = Self->Bounds.height() * 0.5;
       DOUBLE ychange = Args->Y - center_y;
-      for (i=0; i < Self->TotalPoints; i++) Self->Points[i].Y += ychange;
+      for (i=0; i < Self->Points.size(); i++) Self->Points[i].Y += ychange;
       Self->Bounds.top += ychange;
       Self->Bounds.bottom += ychange;
    }
@@ -212,10 +191,11 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
 
 static ERR POLYGON_NewObject(extVectorPoly *Self)
 {
+   new (&Self->Points) std::vector<VectorPoint>;
    Self->GeneratePath = (void (*)(extVector *, agg::path_storage &))&generate_polygon;
-   Self->Closed       = TRUE;
-   Self->TotalPoints  = 2;
-   if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM::DATA, &Self->Points) != ERR::Okay) return ERR::AllocMemory;
+   Self->Closed       = true;
+   Self->Points.push_back({ 0, 0 }); // Two blank points are needed on construction in order to satisfy polyline requirements.
+   Self->Points.push_back({ 0, 0 });
    return ERR::Okay;
 }
 
@@ -236,12 +216,12 @@ static ERR POLYGON_Resize(extVectorPoly *Self, struct acResize *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   DOUBLE current_width = Self->Bounds.width();
-   DOUBLE current_height = Self->Bounds.height();
-   DOUBLE xratio = (Args->Width > 0) ? (current_width / Args->Width) : current_width;
-   DOUBLE yratio = (Args->Height > 0) ? (current_height / Args->Height) : current_height;
+   double current_width = Self->Bounds.width();
+   double current_height = Self->Bounds.height();
+   double xratio = (Args->Width > 0) ? (current_width / Args->Width) : current_width;
+   double yratio = (Args->Height > 0) ? (current_height / Args->Height) : current_height;
 
-   for (LONG i=0; i < Self->TotalPoints; i++) {
+   for (LONG i=0; i < Self->Points.size(); i++) {
       Self->Points[i].X = Self->Points[i].X * xratio;
       Self->Points[i].Y = Self->Points[i].Y * yratio;
    }
@@ -313,23 +293,18 @@ points is required for the shape to be valid.  The !VectorPoint structure consis
 
 static ERR POLY_GET_PointsArray(extVectorPoly *Self, VectorPoint **Value, LONG *Elements)
 {
-   *Value = Self->Points;
-   *Elements = Self->TotalPoints;
+   *Value = Self->Points.data();
+   *Elements = Self->Points.size();
    return ERR::Okay;
 }
 
 static ERR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG Elements)
 {
    if (Elements >= 2) {
-      VectorPoint *points;
-      if (AllocMemory(sizeof(VectorPoint) * Elements, MEM::DATA|MEM::NO_CLEAR, &points) IS ERR::Okay) {
-         copymem(Value, points, sizeof(VectorPoint) * Elements);
-         Self->Points = points;
-         Self->TotalPoints = Elements;
-         reset_path(Self);
-         return ERR::Okay;
-      }
-      else return ERR::AllocMemory;
+      Self->Points.clear();
+      Self->Points.insert(Self->Points.end(), &Value[0], &Value[Elements]);
+      reset_path(Self);
+      return ERR::Okay;
    }
    else return ERR::InvalidValue;
 }
@@ -346,16 +321,11 @@ a comma.
 
 static ERR POLY_SET_Points(extVectorPoly *Self, CSTRING Value)
 {
-   ERR error;
-   VectorPoint *points;
-   LONG total;
-   if ((error = read_points(Self, &points, &total, Value)) IS ERR::Okay) {
-      if (Self->Points) FreeResource(Self->Points);
-      Self->Points = points;
-      Self->TotalPoints = total;
+   if (auto error = read_points(Self, Value); error IS ERR::Okay) {
       reset_path(Self);
+      return ERR::Okay;
    }
-   return error;
+   else return error;
 }
 
 /*********************************************************************************************************************
@@ -369,7 +339,7 @@ TotalPoints is a read-only field value that reflects the total number of coordin
 
 static ERR POLY_GET_TotalPoints(extVectorPoly *Self, LONG *Value)
 {
-   *Value = Self->TotalPoints;
+   *Value = Self->Points.size();
    return ERR::Okay;
 }
 
