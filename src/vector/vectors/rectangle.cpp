@@ -100,45 +100,54 @@ static void generate_rectangle(extVectorRectangle *Vector, agg::path_storage &Pa
 
       Path.close_polygon();
    }
-   else if (Vector->rRound[0].x > 0) {
+   else if ((Vector->rDimensions & (DMF::FIXED_RADIUS_X|DMF::FIXED_RADIUS_Y|DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y)) != DMF::NIL) {
       // SVG rules that RX will also apply to RY unless RY != 0.
-      // An RX of zero disables rounding (contrary to SVG).
       // If RX is greater than width/2, set RX to width/2.  Same for RY on the vertical axis.
+      // If RX or RY is explicitly defined as zero by the client, the corners are square.
 
       DOUBLE rx = Vector->rRound[0].x, ry = Vector->rRound[0].y;
+      bool x_defined = dmf::hasScaledRadiusX(Vector->rDimensions) or dmf::hasRadiusX(Vector->rDimensions);
+      bool y_defined = dmf::hasScaledRadiusY(Vector->rDimensions) or dmf::hasRadiusY(Vector->rDimensions);
 
       if (dmf::hasScaledRadiusX(Vector->rDimensions)) {
          rx *= sqrt((width * width) + (height * height)) * INV_SQRT2;
       }
 
-      if (rx > width * 0.5) rx = width * 0.5; // SVG rule
-      if (rx > height * 0.5) rx = height * 0.5;
-
-      if ((rx != ry) and (ry)) {
-         if (dmf::hasScaledRadiusY(Vector->rDimensions)) {
-            ry *= sqrt((width * width) + (height * height)) * INV_SQRT2;
-         }
-         if (ry > height * 0.5) ry = height * 0.5;
+      if (dmf::hasScaledRadiusY(Vector->rDimensions)) {
+         ry *= sqrt((width * width) + (height * height)) * INV_SQRT2;
       }
-      else ry = rx;
 
-      // Top left -> Top right
-      Path.move_to(x+rx, y);
-      Path.line_to(x+width-rx, y);
-      Path.arc_to(rx, ry, 0 /* angle */, 0 /* large */, 1 /* sweep */, x+width, y+ry);
+      if (!x_defined) { rx = ry; x_defined = true; }
+      if (!y_defined) { ry = rx; y_defined = true; }
 
-      // Top right -> Bottom right
-      Path.line_to(x+width, y+height-ry);
-      Path.arc_to(rx, ry, 0, 0, 1, x+width-rx, y+height);
+      rx = std::clamp(rx, 0.0, width * 0.5);
+      ry = std::clamp(ry, 0.0, height * 0.5);
 
-      // Bottom right -> Bottom left
-      Path.line_to(x+rx, y+height);
-      Path.arc_to(rx, ry, 0, 0, 1, x, y+height-ry);
+      if ((rx IS 0) or (ry IS 0)) {
+         Path.move_to(x, y);
+         Path.line_to(x+width, y);
+         Path.line_to(x+width, y+height);
+         Path.line_to(x, y+height);
+         Path.close_polygon();
+      }
+      else {
+         // Top left -> Top right
+         Path.move_to(x+rx, y);
+         Path.line_to(x+width-rx, y);
+         Path.arc_to(rx, ry, 0 /* angle */, 0 /* large */, 1 /* sweep */, x+width, y+ry);
 
-      // Bottom left -> Top left
-      Path.line_to(x, y+ry);
-      Path.arc_to(rx, ry, 0, 0, 1, x+rx, y);
+         // Top right -> Bottom right
+         Path.line_to(x+width, y+height-ry);
+         Path.arc_to(rx, ry, 0, 0, 1, x+width-rx, y+height);
 
+         // Bottom right -> Bottom left
+         Path.line_to(x+rx, y+height);
+         Path.arc_to(rx, ry, 0, 0, 1, x, y+height-ry);
+
+         // Bottom left -> Top left
+         Path.line_to(x, y+ry);
+         Path.arc_to(rx, ry, 0, 0, 1, x+rx, y);
+      }
       Path.close_polygon();
    }
    else {

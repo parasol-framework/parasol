@@ -151,3 +151,34 @@ static const std::map<ULONG, RGB8> glNamedColours = { // For vecReadPainter()
   { SVF_YELLOW,               { 255,255,0, 255 } },
   { SVF_YELLOWGREEN,          { 154,205,50, 255 } }
 };
+
+static const std::map<ULONG, RGB8> glAppColours = { // For vecReadPainter()
+  { SVF_ActiveBorder,         { 0x20, 0x60, 0xf9, 255 } },
+  { SVF_ActiveCaption,        { 0x29, 0x80, 0xb9, 255 } },
+  { SVF_AppWorkspace,         { 120, 150, 150, 255 } },
+  { SVF_Background,           { 40, 40, 50, 255 } },
+  { SVF_ButtonFace,           { 230, 230, 230, 255 } },
+  { SVF_ButtonHighlight,      { 255, 255, 255, 128 } },
+  { SVF_ButtonShadow,         { 0, 0, 0, 128 } },
+  { SVF_ButtonText,           { 0, 0, 0, 255 } },
+  { SVF_CaptionText,          { 255, 255, 255, 255 } },
+  { SVF_GrayText,             { 90, 90, 90, 255 } },
+  { SVF_Highlight,            { 0x34, 0x98, 0xdb, 255 } },
+  { SVF_HighlightText,        { 255, 255, 255, 255 } },
+  { SVF_InactiveBorder,       { 0, 0, 0, 255 } },
+  { SVF_InactiveCaption,      { 0, 0, 0, 255 } },
+  { SVF_InactiveCaptionText,  { 0, 0, 0, 255 } },
+  { SVF_InfoBackground,       { 220, 220, 220, 255 } },
+  { SVF_InfoText,             { 0, 0, 0, 255 } },
+  { SVF_Menu,                 { 220, 220, 220, 255 } },
+  { SVF_MenuText,             { 0, 0, 0, 255 } },
+  { SVF_Scrollbar,            { 0, 0, 0, 255 } },
+  { SVF_ThreeDDarkShadow,     { 64, 64, 64, 255 } },
+  { SVF_ThreeDFace,           { 230, 230, 230, 255 } },
+  { SVF_ThreeDHighlight,      { 255, 255, 255, 255 } },
+  { SVF_ThreeDLightShadow,    { 64, 64, 64, 255 } },
+  { SVF_ThreeDShadow,         { 64, 64, 64, 255 } },
+  { SVF_Window,               { 220, 220, 220, 255 } },
+  { SVF_WindowFrame,          { 0x10, 0x40, 0xa0, 255 } },
+  { SVF_WindowText,           { 0, 0, 0, 255 } }
+};

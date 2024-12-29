@@ -26,6 +26,12 @@ void split(InType Input, OutIt Output, char Sep = ',') noexcept
    *Output++ = std::string(current, begin);
 }
 
+inline void ltrim(std::string_view &String, const std::string &Whitespace = " \n\r\t") noexcept
+{
+   const auto start = String.find_first_not_of(Whitespace);
+   if (start != std::string::npos) String.remove_prefix(start);
+}
+
 inline void ltrim(std::string &String, const std::string &Whitespace = " \n\r\t") noexcept
 {
    const auto start = String.find_first_not_of(Whitespace);

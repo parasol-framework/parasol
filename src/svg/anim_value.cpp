@@ -42,10 +42,10 @@ void anim_value::set_value(objVector &Vector)
       case CLASSID::VECTORWAVE:
          switch (hash) {
             case SVF_CLOSE:     Vector.set(FID_Close, get_string()); return;
-            case SVF_AMPLITUDE: FUNIT(FID_Amplitude, get_numeric_value(Vector, FID_Amplitude)).set(&Vector); return;
-            case SVF_DECAY:     FUNIT(FID_Decay, get_numeric_value(Vector, FID_Decay)).set(&Vector); return;
-            case SVF_FREQUENCY: FUNIT(FID_Frequency, get_numeric_value(Vector, FID_Frequency)).set(&Vector); return;
-            case SVF_THICKNESS: FUNIT(FID_Thickness, get_numeric_value(Vector, FID_Thickness)).set(&Vector); return;
+            case SVF_AMPLITUDE: Vector.set(FID_Amplitude, get_numeric_value(Vector, FID_Amplitude)); return;
+            case SVF_DECAY:     Vector.set(FID_Decay, get_numeric_value(Vector, FID_Decay)); return;
+            case SVF_FREQUENCY: Vector.set(FID_Frequency, get_numeric_value(Vector, FID_Frequency)); return;
+            case SVF_THICKNESS: Vector.set(FID_Thickness, get_numeric_value(Vector, FID_Thickness)); return;
          }
          break;
 
@@ -168,7 +168,7 @@ void anim_value::set_value(objVector &Vector)
 
       case SVF_STROKE_DASHARRAY: Vector.set(FID_DashArray, get_string()); return;
 
-      case SVF_STROKE_DASHOFFSET: FUNIT(FID_DashOffset, get_string()).set(&Vector); return;
+      case SVF_STROKE_DASHOFFSET: Vector.set(FID_DashOffset, get_string()); return;
 
       case SVF_OPACITY:
          Vector.set(FID_Opacity, get_numeric_value(Vector, FID_Opacity));

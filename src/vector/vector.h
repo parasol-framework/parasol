@@ -495,8 +495,7 @@ class extVectorPoly : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorPolygon";
    using create = pf::Create<extVectorPoly>;
 
-   struct VectorPoint *Points;
-   LONG TotalPoints;
+   std::vector<VectorPoint> Points;
    bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
 };
 

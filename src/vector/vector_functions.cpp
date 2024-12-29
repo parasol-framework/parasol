@@ -1208,7 +1208,22 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       else return ERR::Syntax;
    }
    else {
-      if (auto it = glNamedColours.find(strihash(IRI)); it != glNamedColours.end()) {
+      auto hash = strihash(IRI);
+      if (auto it = glNamedColours.find(hash); it != glNamedColours.end()) {
+         auto &src = it->second;
+         auto &rgb = Painter->Colour;
+         rgb.Red   = (float)src.Red   * (1.0 / 255.0);
+         rgb.Green = (float)src.Green * (1.0 / 255.0);
+         rgb.Blue  = (float)src.Blue  * (1.0 / 255.0);
+         rgb.Alpha = (float)src.Alpha * (1.0 / 255.0);
+         if (Result) {
+            while ((*IRI) and (*IRI != ';')) IRI++;
+            *Result = IRI[0] ? IRI : NULL;
+         }
+         return ERR::Okay;
+      }
+
+      if (auto it = glAppColours.find(hash); it != glAppColours.end()) {
          auto &src = it->second;
          auto &rgb = Painter->Colour;
          rgb.Red   = (float)src.Red   * (1.0 / 255.0);

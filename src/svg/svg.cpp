@@ -13,7 +13,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 
 *********************************************************************************************************************/
 
-#define DEBUG
+//#define DEBUG
 #define PRV_SVG
 #include <unordered_map>
 #include <string>
@@ -22,6 +22,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <list>
 #include <variant>
 #include <algorithm>
+#include <cfloat>
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/xml.h>
@@ -40,6 +41,7 @@ JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 
 static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL, modPicture = NULL;
+static DOUBLE glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 struct prvSVG { // Private variables for RSVG
    class objSVG *SVG;
@@ -103,6 +105,56 @@ class extSVG : public objSVG {
 };
 
 struct svgState {
+   enum class DU : UBYTE {
+      NIL = 0,
+      PIXEL,  // px
+      SCALED, // %: Scale to fill empty space
+   };
+   
+   // Field Unit.  Makes it user to define field values that could be fixed or scaled.
+
+   struct FUNIT {
+      svgState *state;
+      FIELD field_id;
+      double value;
+      DU type;
+
+      constexpr FUNIT() noexcept : state(nullptr), field_id(0), value(0), type(DU::NIL) { }
+
+      // With field
+      explicit FUNIT(svgState *pState, FIELD pField, double pValue, DU pType = DU::NIL) noexcept : state(pState), field_id(pField), value(pValue), type(pType) { }
+   
+      FUNIT(svgState *pState, FIELD pField, const std::string &pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept : 
+         FUNIT(pState, pValue, pType, pMin) { field_id = pField; }
+
+      FUNIT(svgState *pState, FIELD pField, std::string_view pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept :
+         FUNIT(pState, pValue, pType, pMin) { field_id = pField; }
+
+      // Without field
+      explicit FUNIT(svgState *pState, double pValue, DU pType = DU::PIXEL) noexcept : state(pState), value(pValue), type(pType) { }
+
+      FUNIT(svgState *pState, std::string pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept : 
+         FUNIT(pState, std::string_view(pValue), pType, pMin) { }
+
+      FUNIT(svgState *pState, std::string_view pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept;
+
+      constexpr bool empty() const noexcept { return (type == DU::NIL) || (!value); }
+      constexpr void clear() noexcept { value = 0; type = DU::PIXEL; }
+
+      operator double() const noexcept { return value; }
+      operator DU() const noexcept { return type; }
+
+      inline LARGE field() const noexcept {
+         return (type == DU::SCALED) ? (field_id | TDOUBLE | TSCALE) : field_id | TDOUBLE;
+      }
+
+      inline bool valid_size() const noexcept { // Return true if this is a valid width/height
+         return (value >= 0.001);
+      }
+
+      inline ERR set(OBJECTPTR Object) const noexcept { return SetField(Object, field(), value); }
+   };
+
    std::string m_color;       // currentColor value, initialised to SVG.Colour
    std::string m_stop_color;
    std::string m_fill;        // Defaults to rgb(0,0,0)
@@ -111,65 +163,111 @@ struct svgState {
    std::string m_font_family;
    std::string m_display;
    std::string m_visibility;
-   DOUBLE  m_stroke_width;    // 0 if undefined
-   DOUBLE  m_fill_opacity;    // -1 if undefined
-   DOUBLE  m_opacity;         // -1 if undefined
-   DOUBLE  m_stop_opacity;    // -1 if undefined
+   double  m_font_size_px;    // Converted from m_font_size
+   double  m_stroke_width;    // 0 if undefined
+   double  m_fill_opacity;    // -1 if undefined
+   double  m_opacity;         // -1 if undefined
+   double  m_stop_opacity;    // -1 if undefined
    LONG    m_font_weight;     // 0 if undefined
    RQ      m_path_quality;    // RQ::AUTO default
    VLJ     m_line_join;
    VLC     m_line_cap;
    VIJ     m_inner_join;
 
-   private:
+private:
+   class extSVG *Self;
    objVectorScene *Scene;
 
-   public:
-   svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_family("Noto Sans"), m_stroke_width(0),
-      m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO), 
-      m_line_join(VLJ::NIL), m_line_cap(VLC::NIL), m_inner_join(VIJ::NIL),
-      Scene(pSVG->Scene) { }
+   inline FUNIT UNIT(FIELD pField, double pValue, DU pType = DU::NIL) { return FUNIT(this, pField, pValue, pType); };
+   inline FUNIT UNIT(FIELD pField, const std::string &pValue, DU pType = DU::NIL) { return FUNIT(this, pField, pValue, pType); };
+   inline FUNIT UNIT(double pValue, DU pType = DU::PIXEL) { return FUNIT(this, pValue, pType); }
+   inline FUNIT UNIT(const std::string &pValue, DU pType = DU::PIXEL) { return FUNIT(this, pValue, pType); }
 
+public:
+   svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_size("12pt"), m_font_family("Noto Sans"), m_font_size_px(16), m_stroke_width(0),
+      m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO),
+      m_line_join(VLJ::NIL), m_line_cap(VLC::NIL), m_inner_join(VIJ::NIL),
+      Self(pSVG), Scene(pSVG->Scene) { }
+
+   void process_children(XMLTag &, OBJECTPTR) noexcept;
+   void proc_svg(XMLTag &, OBJECTPTR, objVector *&) noexcept;
+
+private:
    void applyTag(const XMLTag &) noexcept;
    void applyStateToVector(objVector *) const noexcept;
+   const std::vector<GradientStop> process_gradient_stops(const XMLTag &) noexcept;
+   ERR  set_property(objVector *, ULONG, XMLTag &, const std::string) noexcept;
+   ERR  process_tag(XMLTag &, XMLTag &, OBJECTPTR, objVector * &) noexcept;
+
+   ERR  proc_defs(XMLTag &, OBJECTPTR) noexcept;
+   ERR  proc_set(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_colour(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_motion(XMLTag &, OBJECTPTR) noexcept;
+   ERR  proc_animate_transform(XMLTag &, OBJECTPTR) noexcept;
+   void proc_def_image(XMLTag &) noexcept;
+   void proc_filter(XMLTag &) noexcept;
+   void proc_group(XMLTag &, OBJECTPTR, objVector * &) noexcept;
+   ERR  proc_image(XMLTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_link(XMLTag &, OBJECTPTR, objVector * &Vector) noexcept;
+   void proc_mask(XMLTag &) noexcept;
+   void proc_pathtransition(XMLTag &) noexcept;
+   void proc_pattern(XMLTag &) noexcept;
+   ERR  proc_shape(CLASSID, XMLTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_switch(XMLTag &, OBJECTPTR, objVector * &) noexcept;
+   void proc_use(XMLTag &, OBJECTPTR) noexcept;
+   void proc_clippath(XMLTag &) noexcept;
+   void proc_morph(XMLTag &Tag, OBJECTPTR Parent) noexcept;
+   ERR  proc_style(XMLTag &);
+   void proc_symbol(XMLTag &Tag) noexcept;
+   ERR  proc_conicgradient(const XMLTag &) noexcept;
+   ERR  proc_contourgradient(const XMLTag &) noexcept;
+   ERR  proc_diamondgradient(const XMLTag &) noexcept;
+   ERR  proc_lineargradient(const XMLTag &) noexcept;
+   ERR  proc_radialgradient(const XMLTag &) noexcept;
+
+   void process_attrib(XMLTag &, objVector *) noexcept;
+   void process_inherit_refs(XMLTag &) noexcept;
+   void process_shape_children(XMLTag &, OBJECTPTR) noexcept;
+   ERR  set_paint_server(objVector *, FIELD, const std::string);
+   ERR  current_colour(objVector *, FRGB &) noexcept;
+
+   void parse_contourgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_diamondgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_lineargradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_radialgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
+
+   ERR  parse_fe_blur(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_colour_matrix(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_component_xfer(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_composite(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_convolve_matrix(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_displacement_map(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_flood(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_image(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_lighting(objVectorFilter *, XMLTag &, LT) noexcept;
+   ERR  parse_fe_merge(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_morphology(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_offset(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_source(objVectorFilter * , XMLTag &) noexcept;
+   ERR  parse_fe_turbulence(objVectorFilter *, XMLTag &) noexcept;
 };
 
 //********************************************************************************************************************
 
 static ERR  animation_timer(extSVG *, LARGE, LARGE);
 static void convert_styles(objXML::TAGS &);
-static ERR  set_property(extSVG *, objVector *, ULONG, XMLTag &, svgState &, std::string);
 static double read_unit(std::string_view &, LARGE * = nullptr);
 
 static ERR  init_svg(void);
 static ERR  init_rsvg(void);
 
-static void process_attrib(extSVG *, XMLTag &, svgState &, objVector *);
-static void process_children(extSVG *, svgState &, XMLTag &, OBJECTPTR);
 static void process_rule(extSVG *, objXML::TAGS &, KatanaRule *);
-static ERR  process_shape(extSVG *, CLASSID, svgState &, XMLTag &, OBJECTPTR, objVector * &);
 
 static ERR  save_svg_scan(extSVG *, objXML *, objVector *, LONG);
 static ERR  save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
 static ERR  save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
 static ERR  save_svg_transform(VectorMatrix *, std::stringstream &);
-
-static ERR  xtag_animate(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
-static ERR  xtag_animate_colour(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
-static ERR  xtag_animate_motion(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_animate_transform(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_default(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR, objVector * &);
-static ERR  xtag_defs(extSVG *, svgState &, XMLTag &, OBJECTPTR);
-static void xtag_group(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static ERR  xtag_image(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static void xtag_link(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static void xtag_morph(extSVG *, XMLTag &, OBJECTPTR);
-static ERR  xtag_set(extSVG *, svgState &, XMLTag &, XMLTag &, OBJECTPTR);
-static void xtag_svg(extSVG *, svgState &, XMLTag &, OBJECTPTR, objVector * &);
-static void xtag_switch(extSVG*, svgState&, XMLTag&, OBJECTPTR, objVector * &);
-static void xtag_use(extSVG *, svgState &, XMLTag &, OBJECTPTR);
-static ERR  xtag_style(extSVG *, XMLTag &);
-static void xtag_symbol(extSVG *, XMLTag &);
 
 inline void track_object(extSVG *SVG, OBJECTPTR Object)
 {
@@ -198,6 +296,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("picture", &modPicture) IS ERR::Okay) { // RSVG has a Picture class dependency
       if (init_rsvg() != ERR::Okay) return ERR::AddClass;
    }
+
+   update_dpi();
 
    return ERR::Okay;
 }
