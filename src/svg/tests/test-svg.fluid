@@ -45,6 +45,37 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function testBasics01() hashTestSVG('basics/w3-render-elems-01-t.svg', 0xd7a0db36) end
+function testBasics02() hashTestSVG('basics/w3-render-elems-02-t.svg', 0xaf4e66e2) end
+function testBasics03() hashTestSVG('basics/w3-render-elems-03-t.svg', 0) end
+function testBasics04() hashTestSVG('basics/w3-render-elems-06-t.svg', 0x060c27a6) end
+function testBasics05() hashTestSVG('basics/w3-render-elems-07-t.svg', 0x6dac7dc6) end
+function testBasics06() hashTestSVG('basics/w3-render-elems-08-t.svg', 0x44e5fef2) end
+function testBasics07() hashTestSVG('basics/w3-render-groups-01-b.svg', 0) end
+function testBasics08() hashTestSVG('basics/w3-render-groups-03-t.svg', 0xa91a598e) end
+function testBasics09() hashTestSVG('basics/w3-shapes-circle-01-t.svg', 0xf14921dc) end
+function testBasics10() hashTestSVG('basics/w3-shapes-circle-02-t.svg', 0xa704706b) end
+function testBasics11() hashTestSVG('basics/w3-shapes-ellipse-01-t.svg', 0x83c87b6e) end
+function testBasics12() hashTestSVG('basics/w3-shapes-ellipse-02-t.svg', 0xdc7531e0) end
+function testBasics13() hashTestSVG('basics/w3-shapes-ellipse-03-f.svg', 0xcb68ad18) end
+function testBasics14() hashTestSVG('basics/w3-shapes-grammar-01-f.svg', 0) end
+function testBasics15() hashTestSVG('basics/w3-shapes-intro-01-t.svg', 0x5984c974) end
+function testBasics16() hashTestSVG('basics/w3-shapes-intro-02-f.svg', 0x515dbc57) end
+function testBasics17() hashTestSVG('basics/w3-shapes-line-01-t.svg', 0xc2016fcf) end
+function testBasics18() hashTestSVG('basics/w3-shapes-line-02-f.svg', 0x2f01499a) end
+function testBasics19() hashTestSVG('basics/w3-shapes-polygon-01-t.svg', 0x2c5043b7) end
+function testBasics20() hashTestSVG('basics/w3-shapes-polygon-02-t.svg', 0x7ce04330) end
+function testBasics21() hashTestSVG('basics/w3-shapes-polygon-03-t.svg', 0x3951d1f7) end
+function testBasics22() hashTestSVG('basics/w3-shapes-polyline-01-t.svg', 0x8e200957) end
+function testBasics23() hashTestSVG('basics/w3-shapes-polyline-02-t.svg', 0x784bc11e) end
+function testBasics24() hashTestSVG('basics/w3-shapes-rect-01-t.svg', 0xe3f02e87) end
+function testBasics25() hashTestSVG('basics/w3-shapes-rect-02-t.svg', 0x8a1ad9d6) end
+function testBasics26() hashTestSVG('basics/w3-shapes-rect-03-t.svg', 0x1bd93a0a) end
+function testBasics27() hashTestSVG('basics/w3-shapes-rect-04-f.svg', 0x795c03de) end
+function testBasics28() hashTestSVG('basics/w3-shapes-rect-05-f.svg', 0xf709f5b6) end
+function testBasics29() hashTestSVG('basics/w3-shapes-rect-06-f.svg', 0x33e02ba5) end
+function testBasics30() hashTestSVG('basics/w3-shapes-rect-07-f.svg', 0xd2051e3a) end
+
 function testCircles()         hashTestSVG('paths/circles.svg', 0xc2063c38) end
 function testMorph()           hashTestSVG('paths/morph.svg', 0x4f9e9c4f) end
 function testEllipseVertices() hashTestSVG('paths/ellipse_vertices.svg', 0x00d2264b) end
@@ -96,6 +127,7 @@ function testW3Coords02() hashTestSVG('coords/w3-coords-coord-02-t.svg', 0x97d1c
 function testW3Coords03() hashTestSVG('coords/w3-coords-units-01-b.svg', 0xa0448180) end
 function testW3Coords04() hashTestSVG('coords/w3-coords-units-02-b.svg', 0x1a70f9e3) end
 function testW3Coords05() hashTestSVG('coords/w3-coords-units-03-b.svg', 0xaeef5643) end
+function testW3Coords08() hashTestSVG('coords/w3-coords-viewattr-03-b.svg', 0xdffce566) end
 
 function testW3Gradients01() hashTestSVG('gradients/w3-pservers-grad-01-b.svg', 0xe637a6fa) end
 function testW3Gradients02() hashTestSVG('gradients/w3-pservers-grad-02-b.svg', 0x2b80ff2f) end
@@ -306,6 +338,28 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
 
    return {
       tests = {
+        'testBasics01',
+        'testBasics02',
+        'testBasics04',
+        'testBasics05',
+        'testBasics06',
+        'testBasics09',
+        'testBasics10',
+        'testBasics11',
+        'testBasics12',
+        'testBasics13',
+        'testBasics15',
+        'testBasics16',
+        'testBasics17',
+        'testBasics18',
+        'testBasics19',
+        'testBasics20',
+        'testBasics21',
+        'testBasics22',
+        'testBasics23',
+        'testBasics24',
+        'testBasics25',
+        'testBasics28',
         -- Text
         'testW3TextAlign7',
         -- Masks

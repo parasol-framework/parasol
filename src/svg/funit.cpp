@@ -1,6 +1,4 @@
 
-#include <cfloat>
-
 svgState::FUNIT::FUNIT(svgState *pState, std::string_view pValue, DU pType, double pMin) noexcept
 {   
    state = pState;

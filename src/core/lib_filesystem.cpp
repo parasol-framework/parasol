@@ -2383,7 +2383,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
 
 #else
    BYTE dir;
-   LONG i, len;
+   LONG i;
 
    Info->Flags = RDF::NIL;
    if (!winFileInfo(Path.data(), &Info->Size, &Info->Modified, &dir)) return ERR::File;

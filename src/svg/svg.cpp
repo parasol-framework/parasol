@@ -138,7 +138,6 @@ struct svgState {
 
       FUNIT(svgState *pState, std::string_view pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept;
 
-   public:
       constexpr bool empty() const noexcept { return (type == DU::NIL) || (!value); }
       constexpr void clear() noexcept { value = 0; type = DU::PIXEL; }
 
@@ -175,20 +174,25 @@ struct svgState {
    VLC     m_line_cap;
    VIJ     m_inner_join;
 
-   private:
+private:
    class extSVG *Self;
    objVectorScene *Scene;
-   FUNIT UNIT(FIELD pField, double pValue, DU pType = DU::NIL) { return FUNIT(this, pField, pValue, pType); };
-   FUNIT UNIT(FIELD pField, const std::string &pValue, DU pType = DU::NIL) { return FUNIT(this, pField, pValue, pType); };
-   FUNIT UNIT(double pValue, DU pType = DU::PIXEL) { return FUNIT(this, pValue, pType); }
-   FUNIT UNIT(const std::string &pValue, DU pType = DU::PIXEL) { return FUNIT(this, pValue, pType); }
 
-   public:
+   inline FUNIT UNIT(FIELD pField, double pValue, DU pType = DU::NIL) { return FUNIT(this, pField, pValue, pType); };
+   inline FUNIT UNIT(FIELD pField, const std::string &pValue, DU pType = DU::NIL) { return FUNIT(this, pField, pValue, pType); };
+   inline FUNIT UNIT(double pValue, DU pType = DU::PIXEL) { return FUNIT(this, pValue, pType); }
+   inline FUNIT UNIT(const std::string &pValue, DU pType = DU::PIXEL) { return FUNIT(this, pValue, pType); }
+
+public:
    svgState(class extSVG *pSVG) : m_color(pSVG->Colour), m_fill("rgb(0,0,0)"), m_font_size("12pt"), m_font_family("Noto Sans"), m_font_size_px(16), m_stroke_width(0),
       m_fill_opacity(-1), m_opacity(-1), m_stop_opacity(-1), m_font_weight(0), m_path_quality(RQ::AUTO),
       m_line_join(VLJ::NIL), m_line_cap(VLC::NIL), m_inner_join(VIJ::NIL),
       Self(pSVG), Scene(pSVG->Scene) { }
 
+   void process_children(XMLTag &, OBJECTPTR) noexcept;
+   void proc_svg(XMLTag &, OBJECTPTR, objVector *&) noexcept;
+
+private:
    void applyTag(const XMLTag &) noexcept;
    void applyStateToVector(objVector *) const noexcept;
    const std::vector<GradientStop> process_gradient_stops(const XMLTag &) noexcept;
@@ -197,7 +201,6 @@ struct svgState {
 
    ERR  proc_defs(XMLTag &, OBJECTPTR) noexcept;
    ERR  proc_set(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
-   void proc_svg(XMLTag &, OBJECTPTR, objVector *&) noexcept;
    ERR  proc_animate(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
    ERR  proc_animate_colour(XMLTag &, XMLTag &, OBJECTPTR) noexcept;
    ERR  proc_animate_motion(XMLTag &, OBJECTPTR) noexcept;
@@ -224,7 +227,6 @@ struct svgState {
    ERR  proc_radialgradient(const XMLTag &) noexcept;
 
    void process_attrib(XMLTag &, objVector *) noexcept;
-   void process_children(XMLTag &, OBJECTPTR) noexcept;
    void process_inherit_refs(XMLTag &) noexcept;
    void process_shape_children(XMLTag &, OBJECTPTR) noexcept;
    ERR  set_paint_server(objVector *, FIELD, const std::string);
