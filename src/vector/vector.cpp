@@ -16,7 +16,6 @@ JUMPTABLE_DISPLAY
 JUMPTABLE_CORE
 JUMPTABLE_FONT
 
-OBJECTPTR clSourceFX = NULL, clRemapFX = NULL, clLightingFX = NULL, clDisplacementFX = NULL;
 OBJECTPTR clVectorScene = nullptr, clVectorViewport = nullptr, clVectorGroup = nullptr, clVectorColour = nullptr;
 OBJECTPTR clVectorEllipse = nullptr, clVectorRectangle = nullptr, clVectorPath = nullptr, clVectorWave = nullptr;
 OBJECTPTR clVectorFilter = nullptr, clVectorPolygon = nullptr, clVectorText = nullptr, clVectorClip = nullptr;
@@ -24,6 +23,7 @@ OBJECTPTR clVectorGradient = nullptr, clVectorImage = nullptr, clVectorPattern =
 OBJECTPTR clVectorSpiral = nullptr, clVectorShape = nullptr, clVectorTransition = nullptr, clImageFX = nullptr;
 OBJECTPTR clBlurFX = nullptr, clColourFX = nullptr, clCompositeFX = nullptr, clConvolveFX = nullptr, clFilterEffect = nullptr;
 OBJECTPTR clFloodFX = nullptr, clMergeFX = nullptr, clMorphologyFX = nullptr, clOffsetFX = nullptr, clTurbulenceFX = nullptr;
+OBJECTPTR clSourceFX = nullptr, clRemapFX = nullptr, clLightingFX = nullptr, clDisplacementFX = nullptr, clWaveFunctionFX = nullptr;
 
 static OBJECTPTR modDisplay = nullptr;
 static OBJECTPTR modFont = nullptr;
@@ -105,6 +105,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if ((error = init_remapfx()) != ERR::Okay) return error;
    if ((error = init_lightingfx()) != ERR::Okay) return error;
    if ((error = init_displacementfx()) != ERR::Okay) return error;
+   if ((error = init_wavefunctionfx()) != ERR::Okay) return error;
 
    update_dpi();
    return error;
@@ -155,6 +156,7 @@ static ERR MODExpunge(void)
    if (clRemapFX)          { FreeResource(clRemapFX);          clRemapFX = nullptr; }
    if (clLightingFX)       { FreeResource(clLightingFX);       clLightingFX = nullptr; }
    if (clDisplacementFX)   { FreeResource(clDisplacementFX);   clDisplacementFX = nullptr; }
+   if (clWaveFunctionFX)   { FreeResource(clWaveFunctionFX);   clWaveFunctionFX = nullptr; }
 
    // Base-classes
 

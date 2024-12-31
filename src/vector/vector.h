@@ -66,7 +66,7 @@ extern OBJECTPTR clVectorScene, clVectorViewport, clVectorGroup, clVectorColour;
 extern OBJECTPTR clVectorEllipse, clVectorRectangle, clVectorPath, clVectorWave;
 extern OBJECTPTR clVectorFilter, clVectorPolygon, clVectorText, clVectorClip;
 extern OBJECTPTR clVectorGradient, clVectorImage, clVectorPattern, clVector;
-extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX, clSourceFX;
+extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX, clSourceFX, clWaveFunctionFX;
 extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffect, clDisplacementFX;
 extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX, clRemapFX, clLightingFX;
 extern OBJECTPTR glVectorModule;
@@ -575,6 +575,7 @@ extern ERR init_sourcefx(void);
 extern ERR init_transition(void);
 extern ERR init_turbulencefx(void);
 extern ERR init_vectorscene(void);
+extern ERR init_wavefunctionfx(void);
 
 extern void apply_parent_transforms(extVector *, agg::trans_affine &);
 extern void apply_transition(extVectorTransition *, double, agg::trans_affine &);

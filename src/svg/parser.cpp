@@ -1025,6 +1025,45 @@ ERR svgState::parse_fe_displacement_map(objVectorFilter *Filter, XMLTag &Tag) no
 
 //********************************************************************************************************************
 
+ERR svgState::parse_fe_wavefunction(objVectorFilter *Filter, XMLTag &Tag) noexcept
+{
+   pf::Log log(__FUNCTION__);
+   objFilterEffect *fx;
+
+   if (NewObject(CLASSID::WAVEFUNCTIONFX, &fx) != ERR::Okay) return ERR::NewObject;
+   SetOwner(fx, Filter);
+
+   std::string result_name;
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &val = Tag.Attribs[a].Value;
+      if (val.empty()) continue;
+
+      switch(strihash(Tag.Attribs[a].Name)) {
+         case SVF_SCALE:  fx->set(FID_Scale, strtod(val.c_str(), NULL)); break;
+         case SVF_N:      fx->set(FID_N, strtod(val.c_str(), NULL)); break;
+         case SVF_L:      fx->set(FID_L, strtod(val.c_str(), NULL)); break;
+         case SVF_M:      fx->set(FID_M, strtod(val.c_str(), NULL)); break;
+         case SVF_X:      UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
+
+         case SVF_RESULT: result_name = val; break;
+      }
+   }
+
+   if (fx->init() IS ERR::Okay) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR::Okay;
+   }
+   else {
+      FreeResource(fx);
+      return ERR::Init;
+   }
+}
+
+//********************************************************************************************************************
+
 ERR svgState::parse_fe_component_xfer(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
    pf::Log log(__FUNCTION__);
@@ -1618,6 +1657,7 @@ void svgState::proc_filter(XMLTag &Tag) noexcept
                case SVF_FEDIFFUSELIGHTING:   parse_fe_lighting(filter, child, LT::DIFFUSE); break;
                case SVF_FESPECULARLIGHTING:  parse_fe_lighting(filter, child, LT::SPECULAR); break;
                case SVF_FEDISPLACEMENTMAP:   parse_fe_displacement_map(filter, child); break;
+               case SVF_FEWAVEFUNCTION:      parse_fe_wavefunction(filter, child); break;
                case SVF_FETILE:
                   log.warning("Filter element '%s' is not currently supported.", child.name());
                   break;

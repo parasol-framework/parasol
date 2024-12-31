@@ -251,6 +251,7 @@ private:
    ERR  parse_fe_offset(objVectorFilter *, XMLTag &) noexcept;
    ERR  parse_fe_source(objVectorFilter * , XMLTag &) noexcept;
    ERR  parse_fe_turbulence(objVectorFilter *, XMLTag &) noexcept;
+   ERR  parse_fe_wavefunction(objVectorFilter *, XMLTag &) noexcept;
 };
 
 //********************************************************************************************************************
