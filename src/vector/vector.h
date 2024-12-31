@@ -1033,7 +1033,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
    if (Vector.LineCap)   Stroke.line_cap(Vector.LineCap); // butt, square, round
    if (Vector.InnerJoin) Stroke.inner_join(Vector.InnerJoin); // miter, round, bevel, jag
 
-   // It has been noted that there may be issues between miter_join, miter_join_revert and line-caps that 
+   // It has been noted that there may be issues between miter_join, miter_join_revert and line-caps that
    // need further investigation.  This section experiments with adjusting the line-cap according to the selected
    // line-join.
 

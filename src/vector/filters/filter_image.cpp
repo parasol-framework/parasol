@@ -66,17 +66,17 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
       if (dmf::hasAnyHeight(Self->Dimensions)) p_height = Self->Height * filter->BoundHeight;
    }
    else {
-      if (dmf::hasScaledX(Self->Dimensions))   p_x = filter->TargetX + (Self->X * filter->TargetWidth);
-      else if (dmf::hasX(Self->Dimensions)) p_x = Self->X;
+      if (dmf::hasScaledX(Self->Dimensions)) p_x = filter->TargetX + (Self->X * filter->TargetWidth);
+      else if (dmf::hasX(Self->Dimensions))  p_x = Self->X;
 
-      if (dmf::hasScaledY(Self->Dimensions))   p_y = filter->TargetY + (Self->Y * filter->TargetHeight);
-      else if (dmf::hasY(Self->Dimensions)) p_y = Self->Y;
+      if (dmf::hasScaledY(Self->Dimensions)) p_y = filter->TargetY + (Self->Y * filter->TargetHeight);
+      else if (dmf::hasY(Self->Dimensions))  p_y = Self->Y;
 
-      if (dmf::hasScaledWidth(Self->Dimensions))   p_width = filter->TargetWidth * Self->Width;
-      else if (dmf::hasWidth(Self->Dimensions)) p_width = Self->Width;
+      if (dmf::hasScaledWidth(Self->Dimensions)) p_width = filter->TargetWidth * Self->Width;
+      else if (dmf::hasWidth(Self->Dimensions))  p_width = Self->Width;
 
-      if (dmf::hasScaledHeight(Self->Dimensions))   p_height = filter->TargetHeight * Self->Height;
-      else if (dmf::hasHeight(Self->Dimensions)) p_height = Self->Height;
+      if (dmf::hasScaledHeight(Self->Dimensions)) p_height = filter->TargetHeight * Self->Height;
+      else if (dmf::hasHeight(Self->Dimensions))  p_height = Self->Height;
    }
 
    DOUBLE xScale = 1, yScale = 1, align_x = 0, align_y = 0;

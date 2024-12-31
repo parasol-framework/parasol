@@ -248,9 +248,9 @@ static ERR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Unit &Value)
 -FIELD-
 Colour: The default background colour to use when clipping is enabled.
 
-The colour value in this field is applicable only when a gradient is in clip-mode - by specifying the `VSPREAD::CLIP` 
-flag in #SpreadMethod.  By default, this field has an alpha value of 0 to ensure that nothing is drawn 
-outside the initial bounds of the gradient.  Setting any other colour value here will otherwise 
+The colour value in this field is applicable only when a gradient is in clip-mode - by specifying the `VSPREAD::CLIP`
+flag in #SpreadMethod.  By default, this field has an alpha value of 0 to ensure that nothing is drawn
+outside the initial bounds of the gradient.  Setting any other colour value here will otherwise
 fill-in those areas.
 
 The Colour value is defined in floating-point RGBA format, using a range of 0 - 1.0 per component.
@@ -334,7 +334,7 @@ static ERR VECTORGRADIENT_SET_FocalRadius(extVectorGradient *Self, Unit &Value)
 -FIELD-
 FocalX: The horizontal focal point for radial gradients.
 
-The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point 
+The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point
 will match the center of the gradient.
 
 *********************************************************************************************************************/
@@ -359,7 +359,7 @@ static ERR VECTORGRADIENT_SET_FocalX(extVectorGradient *Self, Unit &Value)
 -FIELD-
 FocalY: The vertical focal point for radial gradients.
 
-The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point 
+The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point
 will match the center of the gradient.
 
 *********************************************************************************************************************/

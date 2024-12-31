@@ -16,19 +16,19 @@ JUMPTABLE_DISPLAY
 JUMPTABLE_CORE
 JUMPTABLE_FONT
 
-OBJECTPTR clVectorScene = NULL, clVectorViewport = NULL, clVectorGroup = NULL, clVectorColour = NULL;
-OBJECTPTR clVectorEllipse = NULL, clVectorRectangle = NULL, clVectorPath = NULL, clVectorWave = NULL;
-OBJECTPTR clVectorFilter = NULL, clVectorPolygon = NULL, clVectorText = NULL, clVectorClip = NULL;
-OBJECTPTR clVectorGradient = NULL, clVectorImage = NULL, clVectorPattern = NULL, clVector = NULL;
-OBJECTPTR clVectorSpiral = NULL, clVectorShape = NULL, clVectorTransition = NULL, clImageFX = NULL;
-OBJECTPTR clBlurFX = NULL, clColourFX = NULL, clCompositeFX = NULL, clConvolveFX = NULL, clFilterEffect = NULL;
-OBJECTPTR clFloodFX = NULL, clMergeFX = NULL, clMorphologyFX = NULL, clOffsetFX = NULL, clTurbulenceFX = NULL;
 OBJECTPTR clSourceFX = NULL, clRemapFX = NULL, clLightingFX = NULL, clDisplacementFX = NULL;
+OBJECTPTR clVectorScene = nullptr, clVectorViewport = nullptr, clVectorGroup = nullptr, clVectorColour = nullptr;
+OBJECTPTR clVectorEllipse = nullptr, clVectorRectangle = nullptr, clVectorPath = nullptr, clVectorWave = nullptr;
+OBJECTPTR clVectorFilter = nullptr, clVectorPolygon = nullptr, clVectorText = nullptr, clVectorClip = nullptr;
+OBJECTPTR clVectorGradient = nullptr, clVectorImage = nullptr, clVectorPattern = nullptr, clVector = nullptr;
+OBJECTPTR clVectorSpiral = nullptr, clVectorShape = nullptr, clVectorTransition = nullptr, clImageFX = nullptr;
+OBJECTPTR clBlurFX = nullptr, clColourFX = nullptr, clCompositeFX = nullptr, clConvolveFX = nullptr, clFilterEffect = nullptr;
+OBJECTPTR clFloodFX = nullptr, clMergeFX = nullptr, clMorphologyFX = nullptr, clOffsetFX = nullptr, clTurbulenceFX = nullptr;
 
-static OBJECTPTR modDisplay = NULL;
-static OBJECTPTR modFont = NULL;
-OBJECTPTR glVectorModule = NULL;
-FT_Library glFTLibrary = NULL;
+static OBJECTPTR modDisplay = nullptr;
+static OBJECTPTR modFont = nullptr;
+OBJECTPTR glVectorModule = nullptr;
+FT_Library glFTLibrary = nullptr;
 
 std::recursive_mutex glVectorFocusLock;
 std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
@@ -115,51 +115,51 @@ static ERR MODExpunge(void)
    glBitmapFonts.clear();
    glFreetypeFonts.clear();
 
-   if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
+   if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = nullptr; }
 
-   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
-   if (modFont)    { FreeResource(modFont); modFont = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = nullptr; }
+   if (modFont)    { FreeResource(modFont); modFont = nullptr; }
 
    // Sub-classes
 
-   if (clVectorShape)      { FreeResource(clVectorShape);      clVectorShape = NULL; }
-   if (clVectorSpiral)     { FreeResource(clVectorSpiral);     clVectorSpiral = NULL; }
-   if (clVectorScene)      { FreeResource(clVectorScene);      clVectorScene = NULL; }
-   if (clVectorClip)       { FreeResource(clVectorClip);       clVectorClip = NULL; }
-   if (clVectorColour)     { FreeResource(clVectorColour);     clVectorColour = NULL; }
-   if (clVectorRectangle)  { FreeResource(clVectorRectangle);  clVectorRectangle = NULL; }
-   if (clVectorEllipse)    { FreeResource(clVectorEllipse);    clVectorEllipse = NULL; }
-   if (clVectorPath)       { FreeResource(clVectorPath);       clVectorPath = NULL; }
-   if (clVectorPolygon)    { FreeResource(clVectorPolygon);    clVectorPolygon = NULL; }
-   if (clVectorText)       { FreeResource(clVectorText);       clVectorText = NULL; }
-   if (clVectorGradient)   { FreeResource(clVectorGradient);   clVectorGradient = NULL; }
-   if (clVectorGroup)      { FreeResource(clVectorGroup);      clVectorGroup = NULL; }
-   if (clVectorViewport)   { FreeResource(clVectorViewport);   clVectorViewport = NULL; }
-   if (clVectorPattern)    { FreeResource(clVectorPattern);    clVectorPattern = NULL; }
-   if (clVectorFilter)     { FreeResource(clVectorFilter);     clVectorFilter = NULL; }
-   if (clVectorImage)      { FreeResource(clVectorImage);      clVectorImage = NULL; }
-   if (clVectorWave)       { FreeResource(clVectorWave);       clVectorWave = NULL; }
-   if (clVectorTransition) { FreeResource(clVectorTransition); clVectorTransition = NULL; }
+   if (clVectorShape)      { FreeResource(clVectorShape);      clVectorShape = nullptr; }
+   if (clVectorSpiral)     { FreeResource(clVectorSpiral);     clVectorSpiral = nullptr; }
+   if (clVectorScene)      { FreeResource(clVectorScene);      clVectorScene = nullptr; }
+   if (clVectorClip)       { FreeResource(clVectorClip);       clVectorClip = nullptr; }
+   if (clVectorColour)     { FreeResource(clVectorColour);     clVectorColour = nullptr; }
+   if (clVectorRectangle)  { FreeResource(clVectorRectangle);  clVectorRectangle = nullptr; }
+   if (clVectorEllipse)    { FreeResource(clVectorEllipse);    clVectorEllipse = nullptr; }
+   if (clVectorPath)       { FreeResource(clVectorPath);       clVectorPath = nullptr; }
+   if (clVectorPolygon)    { FreeResource(clVectorPolygon);    clVectorPolygon = nullptr; }
+   if (clVectorText)       { FreeResource(clVectorText);       clVectorText = nullptr; }
+   if (clVectorGradient)   { FreeResource(clVectorGradient);   clVectorGradient = nullptr; }
+   if (clVectorGroup)      { FreeResource(clVectorGroup);      clVectorGroup = nullptr; }
+   if (clVectorViewport)   { FreeResource(clVectorViewport);   clVectorViewport = nullptr; }
+   if (clVectorPattern)    { FreeResource(clVectorPattern);    clVectorPattern = nullptr; }
+   if (clVectorFilter)     { FreeResource(clVectorFilter);     clVectorFilter = nullptr; }
+   if (clVectorImage)      { FreeResource(clVectorImage);      clVectorImage = nullptr; }
+   if (clVectorWave)       { FreeResource(clVectorWave);       clVectorWave = nullptr; }
+   if (clVectorTransition) { FreeResource(clVectorTransition); clVectorTransition = nullptr; }
 
-   if (clImageFX)          { FreeResource(clImageFX);          clImageFX = NULL; }
-   if (clSourceFX)         { FreeResource(clSourceFX);         clSourceFX = NULL; }
-   if (clBlurFX)           { FreeResource(clBlurFX);           clBlurFX = NULL; }
-   if (clColourFX)         { FreeResource(clColourFX);         clColourFX = NULL; }
-   if (clCompositeFX)      { FreeResource(clCompositeFX);      clCompositeFX = NULL; }
-   if (clConvolveFX)       { FreeResource(clConvolveFX);       clConvolveFX = NULL; }
-   if (clFloodFX)          { FreeResource(clFloodFX);          clFloodFX = NULL; }
-   if (clMergeFX)          { FreeResource(clMergeFX);          clMergeFX = NULL; }
-   if (clMorphologyFX)     { FreeResource(clMorphologyFX);     clMorphologyFX = NULL; }
-   if (clOffsetFX)         { FreeResource(clOffsetFX);         clOffsetFX = NULL; }
-   if (clTurbulenceFX)     { FreeResource(clTurbulenceFX);     clTurbulenceFX = NULL; }
-   if (clRemapFX)          { FreeResource(clRemapFX);          clRemapFX = NULL; }
-   if (clLightingFX)       { FreeResource(clLightingFX);       clLightingFX = NULL; }
-   if (clDisplacementFX)   { FreeResource(clDisplacementFX);   clDisplacementFX = NULL; }
+   if (clImageFX)          { FreeResource(clImageFX);          clImageFX = nullptr; }
+   if (clSourceFX)         { FreeResource(clSourceFX);         clSourceFX = nullptr; }
+   if (clBlurFX)           { FreeResource(clBlurFX);           clBlurFX = nullptr; }
+   if (clColourFX)         { FreeResource(clColourFX);         clColourFX = nullptr; }
+   if (clCompositeFX)      { FreeResource(clCompositeFX);      clCompositeFX = nullptr; }
+   if (clConvolveFX)       { FreeResource(clConvolveFX);       clConvolveFX = nullptr; }
+   if (clFloodFX)          { FreeResource(clFloodFX);          clFloodFX = nullptr; }
+   if (clMergeFX)          { FreeResource(clMergeFX);          clMergeFX = nullptr; }
+   if (clMorphologyFX)     { FreeResource(clMorphologyFX);     clMorphologyFX = nullptr; }
+   if (clOffsetFX)         { FreeResource(clOffsetFX);         clOffsetFX = nullptr; }
+   if (clTurbulenceFX)     { FreeResource(clTurbulenceFX);     clTurbulenceFX = nullptr; }
+   if (clRemapFX)          { FreeResource(clRemapFX);          clRemapFX = nullptr; }
+   if (clLightingFX)       { FreeResource(clLightingFX);       clLightingFX = nullptr; }
+   if (clDisplacementFX)   { FreeResource(clDisplacementFX);   clDisplacementFX = nullptr; }
 
    // Base-classes
 
-   if (clFilterEffect)     { FreeResource(clFilterEffect);     clFilterEffect = NULL; }
-   if (clVector)           { FreeResource(clVector);           clVector = NULL; }
+   if (clFilterEffect)     { FreeResource(clFilterEffect);     clFilterEffect = nullptr; }
+   if (clVector)           { FreeResource(clVector);           clVector = nullptr; }
 
    return ERR::Okay;
 }
@@ -194,5 +194,5 @@ static STRUCTS glStructures = {
    { "VectorPoint",  sizeof(VectorPoint) }
 };
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_vector_module() { return &ModHeader; }

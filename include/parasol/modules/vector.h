@@ -3920,6 +3920,9 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_INTERCEPT 0x12b3db33
 #define SVF_INVERT 0x04d5a7bd
 #define SVF_IDENTITY 0x68144eaf
+#define SVF_L 0x0002b611
+#define SVF_M 0x0002b612
+#define SVF_N 0x0002b613
 #define SVF_LINEAR 0x0b7641e0
 #define SVF_TABLE 0x1068fa8d
 #define SVF_GAMMA 0x0f7deae8
