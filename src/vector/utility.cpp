@@ -8,40 +8,6 @@ static void read_numseq_zero(CSTRING &, std::initializer_list<DOUBLE *>);
 
 //********************************************************************************************************************
 
-static CSTRING get_effect_name(UBYTE Effect) __attribute__ ((unused));
-static CSTRING get_effect_name(UBYTE Effect)
-{
-   static const CSTRING effects[] = {
-      "Null",
-      "Blend",
-      "ColourMatrix",
-      "ComponentTransfer",
-      "Composite",
-      "ConvolveMatrix",
-      "DiffuseLighting",
-      "DisplacementMap",
-      "Flood",
-      "Blur",
-      "Image",
-      "Merge",
-      "Morphology",
-      "Offset",
-      "SpecularLighting",
-      "Tile",
-      "Turbulence",
-      "DistantLight",
-      "PointLight",
-      "Spotlight"
-   };
-
-   if ((Effect >= 0) and (Effect < std::ssize(effects))) {
-      return effects[Effect];
-   }
-   else return "Unknown";
-}
-
-//********************************************************************************************************************
-
 const FieldDef clAspectRatio[] = {
    { "XMin",  ARF::X_MIN },
    { "XMid",  ARF::X_MID },

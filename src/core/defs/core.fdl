@@ -753,6 +753,7 @@ struct FieldValue {
    constexpr FieldValue(ULONG pFID, CSTRING pValue)   : FieldID(pFID), Type(FD_STRING), String(pValue) { };
    constexpr FieldValue(ULONG pFID, LONG pValue)      : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)     : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
+   constexpr FieldValue(ULONG pFID, size_t pValue)    : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
    constexpr FieldValue(ULONG pFID, DOUBLE pValue)    : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
    constexpr FieldValue(ULONG pFID, SCALE pValue)     : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
    constexpr FieldValue(ULONG pFID, const FUNCTION &pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(&pValue) { };
