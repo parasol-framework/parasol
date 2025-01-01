@@ -1,0 +1,290 @@
+/*********************************************************************************************************************
+
+-CLASS-
+WaveFunctionFX: A filter effect that plots the probability distribution of a quantum wave function.
+
+This filter effect uses a quantum wave function algorithm to generate a plot of electron probability density.  In
+spite of its scientific value, the formula can also be exploited for its aesthetics.  In particular it can be used as
+an alternative to the radial gradient for generating more interesting shapes.
+
+The rendering of the wave function is controlled by its parameters #N, #L and #M.  A #Scale is also provided to deal
+with situations where the generated plot would otherwise be too large for its bounds.
+
+The parameter values are clamped according to the rules `N >= 1`, `0 <= L < N`, `-L <= M <= L`.
+
+-END-
+
+*********************************************************************************************************************/
+
+#include <complex>
+
+constexpr double BOHR_RADIUS = 5.29177210903e-11 * 1e+12; // in picometers
+
+class extWaveFunctionFX : public extFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::WAVEFUNCTIONFX;
+   static constexpr CSTRING CLASS_NAME = "WaveFunctionFX";
+   using create = pf::Create<extWaveFunctionFX>;
+
+   std::vector<std::vector<double>> psi;
+   double Scale;
+   double N, L, M, Max;
+   bool Dirty;
+
+   void compute_wavefunction(LONG);
+};
+
+//********************************************************************************************************************
+// Wave function generator.  Note that only the top-left quadrant is generated for max efficiency.
+
+inline double gen_laguerre(LONG n, LONG alpha, double x) {
+   return std::exp(-x * 0.5) * std::pow(x, alpha) * std::assoc_laguerre(n, alpha, x);
+}
+
+inline LONG plot(LONG X, LONG W) { return -W + (X<<1); }
+
+void extWaveFunctionFX::compute_wavefunction(LONG Resolution)
+{
+   Max = 0;
+   Dirty = false;
+   psi = std::vector<std::vector<double>>(Resolution/2, std::vector<double>(Resolution/2));
+
+   for (int dy = 0; dy < Resolution>>1; ++dy) {
+      for (int dx = 0; dx < Resolution>>1; ++dx) {
+         // Compute the radius value
+
+         const double r = std::sqrt(plot(dy, Resolution) * plot(dy, Resolution) + plot(dx, Resolution) * plot(dx, Resolution));
+         const double p = 2.0 * r / (N * (Scale * BOHR_RADIUS));
+         const double constant_factor = std::sqrt(
+            std::pow(2.0 / (N * (Scale * BOHR_RADIUS)), 3) * tgamma(N - L) / (2.0 * N * tgamma(N + L + 1))
+         );
+         const double laguerre = gen_laguerre(N - L - 1, 2.0 * L + 1, p);
+         const double rv = constant_factor * std::exp(-p * 0.5) * std::pow(p, L) * laguerre;
+
+         // Angular function
+
+         const double theta = std::atan2(plot(dy, Resolution), plot(dx, Resolution)); // Polar angle
+         const double af_constant_factor = std::pow(-1, M) * std::sqrt(
+            (2 * L + 1) * tgamma(L - std::abs(M) + 1) / (4 * agg::pi * tgamma(L + std::abs(M) + 1))
+         );
+
+         psi[dy][dx] = std::abs(rv * af_constant_factor * std::assoc_legendre(L, M, std::cos(theta)));
+         if (psi[dy][dx] > Max) Max = psi[dy][dx];
+      }
+   }
+}
+
+/*********************************************************************************************************************
+-ACTION-
+Draw: Render the effect to the target bitmap.
+-END-
+*********************************************************************************************************************/
+
+static ERR WAVEFUNCTIONFX_Draw(extWaveFunctionFX *Self, struct acDraw *Args)
+{
+   if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
+
+   const LONG t_width = Self->Target->Clip.Right - Self->Target->Clip.Left;
+   const LONG t_height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+
+   unsigned resolution = std::min(t_width, t_height);
+   const LONG q_width = resolution>>1;
+   const LONG q_height = resolution>>1;
+
+   if (Self->N < 1.0) Self->N = 1.0;
+   Self->L = std::clamp(Self->L, 0.0, Self->N - 1.0);
+   Self->M = std::clamp(Self->M, -Self->L, Self->L);
+
+   // The wave function is symmetrical on all four corners, so the top-left quadrant is duplicated to the others.
+   
+   if (Self->Dirty) Self->compute_wavefunction(resolution);
+
+   auto max = Self->Max;
+   auto data = (UBYTE *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
+   for (unsigned y = 0; y < q_height; ++y) {
+      ULONG *top          = (ULONG *)(data + (Self->Target->LineWidth * y));
+      ULONG *bottom       = (ULONG *)(data + (((q_height<<1) - y - 1) * Self->Target->LineWidth));
+      ULONG *top_right    = (ULONG *)(top + (((q_width<<1) - 1)));
+      ULONG *bottom_right = (ULONG *)(bottom + (((q_width<<1) - 1)));
+
+      for (unsigned x = 0; x < q_width; ++x, top++, bottom++, top_right--, bottom_right--) {
+         UBYTE grey = F2T(Self->psi[x][y] / max * 255.0);
+         ULONG col = Self->Target->packPixel(grey, grey, grey, 255);
+         top[0] = col;
+         bottom[0] = col;
+         top_right[0] = col;
+         bottom_right[0] = col;
+      }
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR WAVEFUNCTIONFX_Free(extWaveFunctionFX *Self)
+{
+   Self->psi.~vector<std::vector<double>>();
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR WAVEFUNCTIONFX_Init(extWaveFunctionFX *Self)
+{
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR WAVEFUNCTIONFX_NewObject(extWaveFunctionFX *Self)
+{
+   new (&Self->psi) std::vector<std::vector<double>>;
+   Self->N = 1;
+   Self->L = 0;
+   Self->M = 1;
+   Self->Scale = 1.0;
+   Self->Dirty = true;
+   Self->SourceType = VSF::NONE;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+L: Azimuthal quantum number.
+
+*********************************************************************************************************************/
+
+static ERR WAVEFUNCTIONFX_GET_L(extWaveFunctionFX *Self, LONG *Value)
+{
+   *Value = Self->L;
+   return ERR::Okay;
+}
+
+static ERR WAVEFUNCTIONFX_SET_L(extWaveFunctionFX *Self, LONG Value)
+{
+   if (Value >= 0) {
+      Self->L = Value;
+      Self->Dirty = true;
+      return ERR::Okay;
+   }
+   else return ERR::InvalidValue;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+M: Magnetic quantum number.
+
+*********************************************************************************************************************/
+
+static ERR WAVEFUNCTIONFX_GET_M(extWaveFunctionFX *Self, LONG *Value)
+{
+   *Value = Self->M;
+   return ERR::Okay;
+}
+
+static ERR WAVEFUNCTIONFX_SET_M(extWaveFunctionFX *Self, LONG Value)
+{
+   if (Value >= 0) {
+      Self->M = Value;
+      Self->Dirty = true;
+      return ERR::Okay;
+   }
+   else return ERR::InvalidValue;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+N: Principal quantum number.
+
+*********************************************************************************************************************/
+
+static ERR WAVEFUNCTIONFX_GET_N(extWaveFunctionFX *Self, LONG *Value)
+{
+   *Value = Self->N;
+   return ERR::Okay;
+}
+
+static ERR WAVEFUNCTIONFX_SET_N(extWaveFunctionFX *Self, LONG Value)
+{
+   if (Value >= 0) {
+      Self->N = Value;
+      Self->Dirty = true;
+      return ERR::Okay;
+   }
+   else return ERR::InvalidValue;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Scale: Multiplier that affects the scale of the plot.
+
+*********************************************************************************************************************/
+
+static ERR WAVEFUNCTIONFX_GET_Scale(extWaveFunctionFX *Self, double *Value)
+{
+   *Value = Self->Scale;
+   return ERR::Okay;
+}
+
+static ERR WAVEFUNCTIONFX_SET_Scale(extWaveFunctionFX *Self, double Value)
+{
+   if (Value >= 0) {
+      Self->Scale = Value;
+      Self->Dirty = true;
+      return ERR::Okay;
+   }
+   else return ERR::InvalidValue;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+XMLDef: Returns an SVG compliant XML string that describes the effect.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR WAVEFUNCTIONFX_GET_XMLDef(extWaveFunctionFX *Self, STRING *Value)
+{
+   std::stringstream stream;
+
+   stream << "feWaveFunction";
+
+   *Value = strclone(stream.str());
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+#include "filter_wavefunction_def.c"
+
+static const FieldArray clWaveFunctionFXFields[] = {
+   { "N",       FDF_VIRTUAL|FDF_LONG|FDF_RW,            WAVEFUNCTIONFX_GET_N,       WAVEFUNCTIONFX_SET_N },
+   { "L",       FDF_VIRTUAL|FDF_LONG|FDF_RW,            WAVEFUNCTIONFX_GET_L,       WAVEFUNCTIONFX_SET_L },
+   { "M",       FDF_VIRTUAL|FDF_LONG|FDF_RW,            WAVEFUNCTIONFX_GET_M,       WAVEFUNCTIONFX_SET_M },
+   { "Scale",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          WAVEFUNCTIONFX_GET_Scale,   WAVEFUNCTIONFX_SET_Scale },
+   { "XMLDef",  FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, WAVEFUNCTIONFX_GET_XMLDef,  NULL },
+   END_FIELD
+};
+
+//********************************************************************************************************************
+
+ERR init_wavefunctionfx(void)
+{
+   clWaveFunctionFX = objMetaClass::create::global(
+      fl::BaseClassID(CLASSID::FILTEREFFECT),
+      fl::ClassID(CLASSID::WAVEFUNCTIONFX),
+      fl::Name("WaveFunctionFX"),
+      fl::Category(CCF::GRAPHICS),
+      fl::Actions(clWaveFunctionFXActions),
+      fl::Fields(clWaveFunctionFXFields),
+      fl::Size(sizeof(extWaveFunctionFX)),
+      fl::Path(MOD_PATH));
+
+   return clWaveFunctionFX ? ERR::Okay : ERR::AddClass;
+}
