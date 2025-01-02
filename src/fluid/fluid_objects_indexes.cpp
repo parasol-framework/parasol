@@ -70,8 +70,7 @@ static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG
             // Array structs can be set if the Lua table consists of Fluid.struct types.
 
             auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-            auto def = prv->Structs.find(struct_name(std::string((CSTRING)Field->Arg)));
-            if (def != prv->Structs.end()) {
+            if (auto def = prv->Structs.find(std::string_view((CSTRING)Field->Arg)); def != prv->Structs.end()) {
                LONG aligned_size = ALIGN64(def->second.Size);
                auto structbuf = std::make_unique<UBYTE[]>(total * aligned_size);
 
@@ -85,8 +84,8 @@ static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG
                         return ERR::SetValueNotArray;
                      }
                      else if (type IS LUA_TUSERDATA) {
-                        if (auto fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
-                           copymem(fstruct->Data, sti, fstruct->StructSize);
+                        if (auto fs = (fstruct *)get_meta(Lua, -1, "Fluid.struct")) {
+                           copymem(fs->Data, sti, fs->StructSize);
                         }
                      }
                      else {
@@ -444,7 +443,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
                   // Array structs can be set if the Lua table consists of Fluid.struct types.
 
                   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-                  auto def = prv->Structs.find(struct_name(std::string((CSTRING)field->Arg)));
+                  auto def = prv->Structs.find(std::string_view((CSTRING)field->Arg));
                   if (def != prv->Structs.end()) {
                      LONG aligned_size = ALIGN64(def->second.Size);
                      auto structbuf = std::make_unique<UBYTE[]>(total * aligned_size);

@@ -59,7 +59,7 @@ static const LONG MAX_STRUCT_DEF = 2048; // Struct definitions are typically 100
 //
 // NOTE: In the event of an error code being returned, no value is pushed to the stack.
 
-ERR named_struct_to_table(lua_State *Lua, const std::string StructName, CPTR Address)
+ERR named_struct_to_table(lua_State *Lua, std::string_view StructName, CPTR Address)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
@@ -76,7 +76,7 @@ ERR named_struct_to_table(lua_State *Lua, const std::string StructName, CPTR Add
    }
    else {
       pf::Log log(__FUNCTION__);
-      log.warning("Unknown struct name '%s'", StructName.c_str());
+      log.warning("Unknown struct name '%s'", StructName.data());
       return ERR::Search;
    }
 }
@@ -142,7 +142,7 @@ ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_rec
          if (type & FD_CPP) {
             auto vector = (pf::vector<int> *)(address);
             if (type & FD_STRUCT) {
-               if (prv->Structs.contains(field.StructRef)) {
+               if (prv->Structs.contains(std::string_view(field.StructRef))) {
                   make_any_table(Lua, type, field.StructRef.c_str(), vector->size(), vector->data());
                }
                else lua_pushnil(Lua);
@@ -151,7 +151,7 @@ ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_rec
          }
          else if (field.ArraySize IS -1) { // Pointer to a null-terminated array.
             if (type & FD_STRUCT) {
-               if (prv->Structs.contains(field.StructRef)) {
+               if (prv->Structs.contains(std::string_view(field.StructRef))) {
                   if (((CPTR *)address)[0]) make_any_table(Lua, type, field.StructRef.c_str(), -1, address);
                   else lua_pushnil(Lua);
                }
@@ -161,7 +161,7 @@ ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_rec
          }
          else { // It's an embedded array of fixed size.
             if (type & FD_STRUCT) {
-               if (prv->Structs.contains(field.StructRef)) {
+               if (prv->Structs.contains(std::string_view(field.StructRef))) {
                   make_any_table(Lua, type, field.StructRef.c_str(), field.ArraySize, address);
                }
                else lua_pushnil(Lua);
@@ -170,7 +170,7 @@ ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_rec
          }
       }
       else if (type & FD_STRUCT) {
-         auto def = prv->Structs.find(field.StructRef);
+         auto def = prv->Structs.find(std::string_view(field.StructRef));
          if (def != prv->Structs.end()) {
             if (type & FD_PTR) {
                if (((APTR *)address)[0]) {
@@ -207,11 +207,11 @@ ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_rec
 //********************************************************************************************************************
 // Use this for creating a struct on the Lua stack.
 
-struct fstruct * push_struct(objScript *Self, APTR Address, const std::string &StructName, bool Deallocate, bool AllowEmpty)
+struct fstruct * push_struct(objScript *Self, APTR Address, std::string_view StructName, bool Deallocate, bool AllowEmpty)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("Struct: %s, Address: %p, Deallocate: %d", StructName.c_str(), Address, Deallocate);
+   log.traceBranch("Struct: %s, Address: %p, Deallocate: %d", StructName.data(), Address, Deallocate);
 
    auto prv = (prvFluid *)Self->ChildPrivate;
    auto def = prv->Structs.find(StructName);
@@ -228,7 +228,7 @@ struct fstruct * push_struct(objScript *Self, APTR Address, const std::string &S
    }
    else {
       if (Deallocate) FreeResource(Address);
-      luaL_error(prv->Lua, "Unrecognised struct '%s'", StructName.c_str());
+      luaL_error(prv->Lua, "Unrecognised struct '%s'", StructName.data());
       return NULL;
    }
 }
@@ -348,7 +348,7 @@ static ERR generate_structdef(objScript *Self, const std::string_view StructName
                if (end IS std::string::npos) end = Sequence.size();
                auto name = Sequence.substr(sep, end-sep);
 
-               auto def = prv->Structs.find(name);
+               auto def = prv->Structs.find(std::string_view(name));
                if (def != prv->Structs.end()) {
                   field_size = def->second.Size;
                   break;
@@ -444,7 +444,7 @@ static ERR generate_structdef(objScript *Self, const std::string_view StructName
 //********************************************************************************************************************
 // Parse a struct definition and permanently store it in the Structs dictionary.
 
-ERR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequence)
+ERR make_struct(lua_State *Lua, std::string_view StructName, CSTRING Sequence)
 {
    if (!Sequence) {
       luaL_error(Lua, "Missing struct name and/or definition.");
@@ -454,12 +454,12 @@ ERR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequence)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    if (prv->Structs.contains(StructName)) {
-      luaL_error(Lua, "Structure '%s' is already registered.", StructName.c_str());
+      luaL_error(Lua, "Structure '%s' is already registered.", StructName.data());
       return ERR::Exists;
    }
 
    pf::Log log(__FUNCTION__);
-   log.traceBranch("%s, %.50s", StructName.c_str(), Sequence);
+   log.traceBranch("%s, %.50s", StructName.data(), Sequence);
 
    prv->Structs[StructName] = struct_record(StructName);
 
@@ -467,11 +467,11 @@ ERR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequence)
    if (auto error = generate_structdef(Lua->Script, StructName, Sequence, prv->Structs[StructName], &computed_size); error != ERR::Okay) {
       if (error IS ERR::BufferOverflow) luaL_argerror(Lua, 1, "String too long - buffer overflow");
       else if (error IS ERR::Syntax) luaL_error(Lua, "Unsupported struct character in definition: %s", Sequence);
-      else luaL_error(Lua, "Failed to make struct for %s, error: %s", StructName.c_str(), GetErrorMsg(error));
+      else luaL_error(Lua, "Failed to make struct for %s, error: %s", StructName.data(), GetErrorMsg(error));
       return error;
    }
 
-   if (glStructSizes.contains(StructName)) prv->Structs[StructName].Size = glStructSizes[StructName];
+   if (glStructSizes.contains(std::string(StructName))) prv->Structs[StructName].Size = glStructSizes[std::string(StructName)];
    else prv->Structs[StructName].Size = computed_size;
 
    return ERR::Okay;
