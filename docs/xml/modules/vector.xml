@@ -42,6 +42,7 @@
       <class>VectorTransition</class>
       <class>VectorViewport</class>
       <class>VectorWave</class>
+      <class>WaveFunctionFX</class>
     </classes>
   </info>
 

@@ -213,6 +213,7 @@ function testW3Lighting5()        hashTestSVG('filters/w3-filters-light-05-f.svg
 function testW3LightingSpecular() hashTestSVG('filters/w3-filters-specular-01-f.svg', 0x8eec27e1) end
 function testW3LightingDiffuse()  hashTestSVG('filters/w3-filters-diffuse-01-f.svg', 0x36fb1cac) end
 function testMoonSurface()        hashTestSVG('filters/moon-surface.svg', 0x8fafd05c) end
+function testWaveFunction()       hashTestSVG('filters/wavefunction.svg', 0xdcbc2df6) end
 
 function testTransformations()   hashTestSVG('transforms/transformations.svg', 0xaa7e064f) end
 function testW3AspectRatio()     hashTestSVG('transforms/w3-aspectratio.svg', 0x4a65034c) end
@@ -463,6 +464,7 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testW3Morphology',
         'testW3Offset',
         'testW3Turbulence',
+        'testWaveFunction',
         -- Transforms
         'testTransformations',
         'testW3AspectRatio',

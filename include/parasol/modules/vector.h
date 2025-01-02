@@ -32,6 +32,7 @@ class objMorphologyFX;
 class objOffsetFX;
 class objRemapFX;
 class objTurbulenceFX;
+class objWaveFunctionFX;
 class objVectorClip;
 class objVectorFilter;
 class objVector;
@@ -1899,6 +1900,60 @@ class objTurbulenceFX : public objFilterEffect {
 
 };
 
+// WaveFunctionFX class definition
+
+#define VER_WAVEFUNCTIONFX (1.000000)
+
+class objWaveFunctionFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::WAVEFUNCTIONFX;
+   static constexpr CSTRING CLASS_NAME = "WaveFunctionFX";
+
+   using create = pf::Create<objWaveFunctionFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC::Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setN(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setL(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setM(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setScale(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setStops(const APTR Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, 0x00001318, Value, Elements);
+   }
+
+};
+
 // VectorClip class definition
 
 #define VER_VECTORCLIP (1.000000)
@@ -3517,6 +3572,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_FESPOTLIGHT 0xce2d968e
 #define SVF_FETILE 0xfd3248be
 #define SVF_FETURBULENCE 0x4eba1da9
+#define SVF_FEWAVEFUNCTION 0x6c252e69
 #define SVF_FILL 0x7c96cb2c
 #define SVF_FILL_OPACITY 0x59fd2152
 #define SVF_FILL_RULE 0xbb9f7891

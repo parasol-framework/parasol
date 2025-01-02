@@ -56,6 +56,7 @@ static ERR get_source_bitmap(extVectorFilter *, objBitmap **, VSF, objFilterEffe
 #include "filter_remap.cpp"
 #include "filter_source.cpp"
 #include "filter_turbulence.cpp"
+#include "filter_wavefunction.cpp"
 
 //********************************************************************************************************************
 // Compute the Target* and Bound* values, which are used by filter effect algorithms to determine placement.  They
