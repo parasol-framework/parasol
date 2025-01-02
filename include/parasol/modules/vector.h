@@ -1922,18 +1922,6 @@ class objWaveFunctionFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setRX(const DOUBLE Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[3];
-      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
-   }
-
-   inline ERR setRY(const DOUBLE Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[4];
-      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
-   }
-
    inline ERR setN(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
@@ -1952,10 +1940,16 @@ class objWaveFunctionFX : public objFilterEffect {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setScale(const LONG Value) noexcept {
+   inline ERR setScale(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setStops(const APTR Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, 0x00001318, Value, Elements);
    }
 
 };

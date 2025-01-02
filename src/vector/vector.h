@@ -317,14 +317,13 @@ class extVectorGradient : public objVectorGradient {
    public:
    using create = pf::Create<extVectorGradient>;
 
-   struct GradientStop *Stops;  // An array of gradient stop colours.
+   std::vector<GradientStop> Stops;  // An array of gradient stop colours.
    struct VectorMatrix *Matrices;
    class GradientColours *Colours;
    FRGB   Colour;
    RGB8   ColourRGB; // A cached conversion of the FRGB value
    STRING ID;
    LONG NumericID;
-   WORD ChangeCounter;
    double Angle;
    double Length;
    bool CalcAngle; // True if the Angle/Length values require recalculation.
@@ -525,7 +524,7 @@ class extVectorRectangle : public extVector {
 
 class GradientColours {
    public:
-      GradientColours(extVectorGradient *, double);
+      GradientColours(std::vector<GradientStop> &, VCS, double);
       GRADIENT_TABLE table;
 };
 

@@ -1027,7 +1027,6 @@ ERR svgState::parse_fe_displacement_map(objVectorFilter *Filter, XMLTag &Tag) no
 
 ERR svgState::parse_fe_wavefunction(objVectorFilter *Filter, XMLTag &Tag) noexcept
 {
-   pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
 
    if (NewObject(CLASSID::WAVEFUNCTIONFX, &fx) != ERR::Okay) return ERR::NewObject;
@@ -1054,6 +1053,12 @@ ERR svgState::parse_fe_wavefunction(objVectorFilter *Filter, XMLTag &Tag) noexce
 
    if (fx->init() IS ERR::Okay) {
       if (!result_name.empty()) parse_result(Self, fx, result_name);
+
+      if (Tag.hasChildTags()) {
+         auto stops = process_gradient_stops(Tag);
+         if (stops.size() >= 2) SetArray(fx, FID_Stops, stops);
+      }
+
       return ERR::Okay;
    }
    else {

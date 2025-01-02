@@ -98,22 +98,21 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 // Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
 // Stops array.
 
-GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
+GradientColours::GradientColours(std::vector<GradientStop> &Stops, VCS ColourSpace, DOUBLE Alpha)
 {
    LONG stop, i1, i2, i;
-   GradientStop *stops = Gradient->Stops;
 
-   for (stop=0; stop < Gradient->TotalStops-1; stop++) {
-      i1 = F2T(255.0 * stops[stop].Offset);
+   for (stop=0; stop < std::ssize(Stops)-1; stop++) {
+      i1 = F2T(255.0 * Stops[stop].Offset);
       if (i1 < 0) i1 = 0;
       else if (i1 > 255) i1 = 255;
 
-      i2 = F2T(255.0 * stops[stop+1].Offset);
+      i2 = F2T(255.0 * Stops[stop+1].Offset);
       if (i2 < 0) i2 = 0;
       else if (i2 > 255) i2 = 255;
 
-      agg::rgba8 begin(stops[stop].RGB.Red*255, stops[stop].RGB.Green*255, stops[stop].RGB.Blue*255, stops[stop].RGB.Alpha * Alpha * 255);
-      agg::rgba8 end(stops[stop+1].RGB.Red*255, stops[stop+1].RGB.Green*255, stops[stop+1].RGB.Blue*255, stops[stop+1].RGB.Alpha * Alpha * 255);
+      agg::rgba8 begin(Stops[stop].RGB.Red*255, Stops[stop].RGB.Green*255, Stops[stop].RGB.Blue*255, Stops[stop].RGB.Alpha * Alpha * 255);
+      agg::rgba8 end(Stops[stop+1].RGB.Red*255, Stops[stop+1].RGB.Green*255, Stops[stop+1].RGB.Blue*255, Stops[stop+1].RGB.Alpha * Alpha * 255);
 
       if ((stop IS 0) and (i1 > 0)) {
          for (i=0; i < i1; i++) table[i] = begin;
@@ -122,14 +121,14 @@ GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
       if (i1 <= i2) {
          for (i=i1; i <= i2; i++) {
             DOUBLE j = (DOUBLE)(i - i1) / (DOUBLE)(i2-i1);
-            if (Gradient->ColourSpace IS VCS::LINEAR_RGB) {
+            if (ColourSpace IS VCS::LINEAR_RGB) {
                table[i] = begin.linear_gradient(end, j);
             }
             else table[i] = begin.gradient(end, j);
          }
       }
 
-      if ((stop IS Gradient->TotalStops-2) and (i2 < 255)) {
+      if ((stop IS std::ssize(Stops)-2) and (i2 < 255)) {
          for (i=i2; i <= 255; i++) table[i] = end;
       }
    }
@@ -140,7 +139,7 @@ GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
 static ERR VECTORGRADIENT_Free(extVectorGradient *Self)
 {
    if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
-   if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
+   Self->Stops.~vector<GradientStop>();
    if (Self->Colours) { delete Self->Colours; Self->Colours = NULL; }
 
    VectorMatrix *next;
@@ -181,6 +180,7 @@ static ERR VECTORGRADIENT_Init(extVectorGradient *Self)
 
 static ERR VECTORGRADIENT_NewObject(extVectorGradient *Self)
 {
+   new (&Self->Stops) std::vector<GradientStop>;
    Self->SpreadMethod = VSPREAD::PAD;
    Self->Type    = VGT::LINEAR;
    Self->Units   = VUNIT::BOUNDING_BOX;
@@ -533,26 +533,21 @@ to define a start and end point for interpolating the gradient colours.
 
 static ERR VECTORGRADIENT_GET_Stops(extVectorGradient *Self, GradientStop **Value, LONG *Elements)
 {
-   *Value    = Self->Stops;
-   *Elements = Self->TotalStops;
+   *Value    = Self->Stops.data();
+   *Elements = Self->Stops.size();
    return ERR::Okay;
 }
 
 static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, LONG Elements)
 {
-   if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
+   Self->Stops.clear();
 
    if (Elements >= 2) {
-      if (AllocMemory(sizeof(GradientStop) * Elements, MEM::DATA|MEM::NO_CLEAR, &Self->Stops) IS ERR::Okay) {
-         Self->TotalStops = Elements;
-         copymem(Value, Self->Stops, Elements * sizeof(GradientStop));
-         if (Self->Colours) delete Self->Colours;
-         Self->Colours = new (std::nothrow) GradientColours(Self, 1.0);
-         if (!Self->Colours) return ERR::AllocMemory;
-         Self->ChangeCounter++;
-         return ERR::Okay;
-      }
-      else return ERR::AllocMemory;
+      Self->Stops.insert(Self->Stops.end(), &Value[0], &Value[Elements]);
+      if (Self->Colours) delete Self->Colours;
+      Self->Colours = new (std::nothrow) GradientColours(Self->Stops, Self->ColourSpace, 1.0);
+      if (!Self->Colours) return ERR::AllocMemory;
+      return ERR::Okay;
    }
    else {
       pf::Log log;

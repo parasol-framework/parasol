@@ -3,22 +3,21 @@
 -CLASS-
 WaveFunctionFX: A filter effect that plots the probability distribution of a quantum wave function.
 
-This filter effect uses a quantum wave function algorithm to generate a plot of electron probability density.  In
-spite of its scientific value, the formula can also be exploited for its aesthetics.  In particular it can be used as
-an alternative to the radial gradient for generating more interesting shapes.
+This filter effect uses a quantum wave function algorithm to generate a plot of electron probability density.
+Ignoring its scientific value, the formula can be exploited for its aesthetic qualities.  It can be 
+used as an alternative to the radial gradient for generating more interesting shapes for example.
 
 The rendering of the wave function is controlled by its parameters #N, #L and #M.  A #Scale is also provided to deal
 with situations where the generated plot would otherwise be too large for its bounds.
 
-The parameter values are clamped according to the rules `N >= 1`, `0 <= L < N`, `-L <= M <= L`.
+The parameter values are clamped according to the rules `N &gt;= 1`, `0 &lt;= L &lt; N`, `-L &lt;= M &lt;= L`.  
+Check that the values are assigned and clamped correctly if the wave function is not rendering as expected.
 
 -END-
 
 *********************************************************************************************************************/
 
 #include <complex>
-
-constexpr double BOHR_RADIUS = 5.29177210903e-11 * 1e+12; // in picometers
 
 class extWaveFunctionFX : public extFilterEffect {
    public:
@@ -27,6 +26,8 @@ class extWaveFunctionFX : public extFilterEffect {
    using create = pf::Create<extWaveFunctionFX>;
 
    std::vector<std::vector<double>> psi;
+   std::vector<GradientStop> Stops;
+   GradientColours *Colours;
    double Scale;
    double N, L, M, Max;
    bool Dirty;
@@ -37,14 +38,12 @@ class extWaveFunctionFX : public extFilterEffect {
 //********************************************************************************************************************
 // Wave function generator.  Note that only the top-left quadrant is generated for max efficiency.
 
-inline double gen_laguerre(LONG n, LONG alpha, double x) {
-   return std::exp(-x * 0.5) * std::pow(x, alpha) * std::assoc_laguerre(n, alpha, x);
-}
-
 inline LONG plot(LONG X, LONG W) { return -W + (X<<1); }
 
 void extWaveFunctionFX::compute_wavefunction(LONG Resolution)
 {
+   constexpr double BOHR_RADIUS = 5.29177210903e-11 * 1e+12; // in picometers
+
    Max = 0;
    Dirty = false;
    psi = std::vector<std::vector<double>>(Resolution/2, std::vector<double>(Resolution/2));
@@ -58,7 +57,7 @@ void extWaveFunctionFX::compute_wavefunction(LONG Resolution)
          const double constant_factor = std::sqrt(
             std::pow(2.0 / (N * (Scale * BOHR_RADIUS)), 3) * tgamma(N - L) / (2.0 * N * tgamma(N + L + 1))
          );
-         const double laguerre = gen_laguerre(N - L - 1, 2.0 * L + 1, p);
+         const double laguerre = std::assoc_laguerre(N - L - 1, 2.0 * L + 1.0, p);
          const double rv = constant_factor * std::exp(-p * 0.5) * std::pow(p, L) * laguerre;
 
          // Angular function
@@ -97,19 +96,25 @@ static ERR WAVEFUNCTIONFX_Draw(extWaveFunctionFX *Self, struct acDraw *Args)
 
    // The wave function is symmetrical on all four corners, so the top-left quadrant is duplicated to the others.
    
-   if (Self->Dirty) Self->compute_wavefunction(resolution);
+   if ((Self->Dirty) or (resolution/2 != Self->psi.size())) Self->compute_wavefunction(resolution);
 
    auto max = Self->Max;
    auto data = (UBYTE *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
-   for (unsigned y = 0; y < q_height; ++y) {
+   for (LONG y = 0; y < q_height; ++y) {
       ULONG *top          = (ULONG *)(data + (Self->Target->LineWidth * y));
       ULONG *bottom       = (ULONG *)(data + (((q_height<<1) - y - 1) * Self->Target->LineWidth));
       ULONG *top_right    = (ULONG *)(top + (((q_width<<1) - 1)));
       ULONG *bottom_right = (ULONG *)(bottom + (((q_width<<1) - 1)));
 
-      for (unsigned x = 0; x < q_width; ++x, top++, bottom++, top_right--, bottom_right--) {
+      for (LONG x = 0; x < q_width; ++x, top++, bottom++, top_right--, bottom_right--) {
          UBYTE grey = F2T(Self->psi[x][y] / max * 255.0);
-         ULONG col = Self->Target->packPixel(grey, grey, grey, 255);
+         ULONG col;
+         if (Self->Colours) {
+            auto &rgb = Self->Colours->table[grey];
+            col = Self->Target->packPixel(rgb.r, rgb.g, rgb.b, rgb.a);
+         }
+         else col = Self->Target->packPixel(grey, grey, grey, 255);
+
          top[0] = col;
          bottom[0] = col;
          top_right[0] = col;
@@ -125,6 +130,8 @@ static ERR WAVEFUNCTIONFX_Draw(extWaveFunctionFX *Self, struct acDraw *Args)
 static ERR WAVEFUNCTIONFX_Free(extWaveFunctionFX *Self)
 {
    Self->psi.~vector<std::vector<double>>();
+   Self->Stops.~vector<GradientStop>();
+   if (Self->Colours) { delete Self->Colours; Self->Colours = NULL; }
    return ERR::Okay;
 }
 
@@ -140,6 +147,7 @@ static ERR WAVEFUNCTIONFX_Init(extWaveFunctionFX *Self)
 static ERR WAVEFUNCTIONFX_NewObject(extWaveFunctionFX *Self)
 {
    new (&Self->psi) std::vector<std::vector<double>>;
+   new (&Self->Stops) std::vector<GradientStop>;
    Self->N = 1;
    Self->L = 0;
    Self->M = 1;
@@ -244,6 +252,43 @@ static ERR WAVEFUNCTIONFX_SET_Scale(extWaveFunctionFX *Self, double Value)
 /*********************************************************************************************************************
 
 -FIELD-
+Stops: Defines the colours to use for the wave function.
+
+The colours that will be used for drawing a wave function can be defined by the Stops array.  At least two stops are 
+required to define a start and end point for interpolating the gradient colours.
+
+If no stops are defined, the wave function will be drawn in greyscale.
+-END-
+*********************************************************************************************************************/
+
+static ERR WAVEFUNCTIONFX_GET_Stops(extWaveFunctionFX *Self, GradientStop **Value, LONG *Elements)
+{
+   *Value    = Self->Stops.data();
+   *Elements = Self->Stops.size();
+   return ERR::Okay;
+}
+
+static ERR WAVEFUNCTIONFX_SET_Stops(extWaveFunctionFX *Self, GradientStop *Value, LONG Elements)
+{
+   Self->Stops.clear();
+
+   if (Elements >= 2) {
+      Self->Stops.insert(Self->Stops.end(), &Value[0], &Value[Elements]);
+      if (Self->Colours) delete Self->Colours;
+      Self->Colours = new (std::nothrow) GradientColours(Self->Stops, /*Self->Filter->ColourSpace*/ VCS::SRGB, 1.0);
+      if (!Self->Colours) return ERR::AllocMemory;
+      return ERR::Okay;
+   }
+   else {
+      pf::Log log;
+      log.warning("Array size %d < 2", Elements);
+      return ERR::InvalidValue;
+   }
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 XMLDef: Returns an SVG compliant XML string that describes the effect.
 -END-
 
@@ -264,11 +309,12 @@ static ERR WAVEFUNCTIONFX_GET_XMLDef(extWaveFunctionFX *Self, STRING *Value)
 #include "filter_wavefunction_def.c"
 
 static const FieldArray clWaveFunctionFXFields[] = {
-   { "N",       FDF_VIRTUAL|FDF_LONG|FDF_RW,            WAVEFUNCTIONFX_GET_N,       WAVEFUNCTIONFX_SET_N },
-   { "L",       FDF_VIRTUAL|FDF_LONG|FDF_RW,            WAVEFUNCTIONFX_GET_L,       WAVEFUNCTIONFX_SET_L },
-   { "M",       FDF_VIRTUAL|FDF_LONG|FDF_RW,            WAVEFUNCTIONFX_GET_M,       WAVEFUNCTIONFX_SET_M },
-   { "Scale",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          WAVEFUNCTIONFX_GET_Scale,   WAVEFUNCTIONFX_SET_Scale },
-   { "XMLDef",  FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, WAVEFUNCTIONFX_GET_XMLDef,  NULL },
+   { "N",       FDF_VIRTUAL|FDF_LONG|FDF_RW,             WAVEFUNCTIONFX_GET_N,       WAVEFUNCTIONFX_SET_N },
+   { "L",       FDF_VIRTUAL|FDF_LONG|FDF_RW,             WAVEFUNCTIONFX_GET_L,       WAVEFUNCTIONFX_SET_L },
+   { "M",       FDF_VIRTUAL|FDF_LONG|FDF_RW,             WAVEFUNCTIONFX_GET_M,       WAVEFUNCTIONFX_SET_M },
+   { "Scale",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           WAVEFUNCTIONFX_GET_Scale,   WAVEFUNCTIONFX_SET_Scale },
+   { "Stops",   FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, WAVEFUNCTIONFX_GET_Stops, WAVEFUNCTIONFX_SET_Stops, "GradientStop" },
+   { "XMLDef",  FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R,  WAVEFUNCTIONFX_GET_XMLDef,  NULL },
    END_FIELD
 };
 

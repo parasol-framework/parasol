@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 960 960" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <pattern id="checkerPattern" patternUnits="userSpaceOnUse" x="0" y="0" width="20" height="20" viewBox="0 0 10 10" >
+      <rect fill="white" width="100%" height="100%"/>
+      <line x1="0" y1="0" x2="10" y2="0" stroke="lightblue" fill="none" stroke-dasharray="2,2"/>
+      <line x1="0" y1="0" x2="0" y2="10" stroke="lightblue" fill="none" stroke-dasharray="2,2"/>
+    </pattern>
+
+    <filter id="wf01" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
+      <feWaveFunction n="3" l="2" m="1" scale="0.2">
+        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
+        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
+        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
+        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
+        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
+      </feWaveFunction>
+    </filter>
+
+    <filter id="wf02" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
+      <feWaveFunction n="20" l="10" m="5" scale="0.005">
+        <stop stop-color="rgb(11.48503425,3.7799772,5.33517885)" offset="0"/>
+        <stop stop-color="rgb(61.9298457, 51.8813871, 105.276342)" offset="0.25"/>
+        <stop stop-color="rgb(52.9219758, 120.67703385, 162.20886855)" offset="0.5"/>
+        <stop stop-color="rgb(73.261908, 193.08043335, 173.1428682)" offset="0.75"/>
+        <stop stop-color="rgb(222.40837095, 244.6998054, 228.7997292)" offset="1"/>
+      </feWaveFunction>
+    </filter>
+
+    <filter id="wf03" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
+      <feWaveFunction n="4" l="3" m="0" scale="0.15">
+        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
+        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
+        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
+        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
+        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
+      </feWaveFunction>
+    </filter>
+
+    <filter id="wf04" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
+      <feWaveFunction n="4" l="1" m="1" scale="0.15">
+        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
+        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
+        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
+        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
+        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
+      </feWaveFunction>
+    </filter>
+
+    <filter id="wf05" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
+      <feWaveFunction n="2" l="1" m="0" scale="0.5">
+        <stop stop-color="rgb(11.48503425,3.7799772,5.33517885)" offset="0"/>
+        <stop stop-color="rgb(61.9298457, 51.8813871, 105.276342)" offset="0.25"/>
+        <stop stop-color="rgb(52.9219758, 120.67703385, 162.20886855)" offset="0.5"/>
+        <stop stop-color="rgb(73.261908, 193.08043335, 173.1428682)" offset="0.75"/>
+        <stop stop-color="rgb(222.40837095, 244.6998054, 228.7997292)" offset="1"/>
+      </feWaveFunction>
+    </filter>
+
+    <filter id="wf06" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
+      <feWaveFunction n="9" l="6" m="1" scale="0.025">
+        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
+        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
+        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
+        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
+        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
+      </feWaveFunction>
+    </filter>
+
+    <filter id="wf07" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
+      <feWaveFunction n="4" l="3" m="3" scale="0.15">
+        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
+        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
+        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
+        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
+        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
+      </feWaveFunction>
+    </filter>
+
+    <filter id="wf08" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
+      <feWaveFunction n="8" l="2" m="1" scale="0.1">
+        <stop stop-color="rgb(11.48503425,3.7799772,5.33517885)" offset="0"/>
+        <stop stop-color="rgb(61.9298457, 51.8813871, 105.276342)" offset="0.25"/>
+        <stop stop-color="rgb(52.9219758, 120.67703385, 162.20886855)" offset="0.5"/>
+        <stop stop-color="rgb(73.261908, 193.08043335, 173.1428682)" offset="0.75"/>
+        <stop stop-color="rgb(222.40837095, 244.6998054, 228.7997292)" offset="1"/>
+      </feWaveFunction>
+    </filter>
+
+    <filter id="wf09" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
+      <feWaveFunction n="4" l="0" m="0" scale="0.25">
+        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
+        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
+        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
+        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
+        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
+      </feWaveFunction>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="100%" height="100%" fill="url(#checkerPattern)"/>
+
+  <g transform="translate(40 40)">
+    <g filter="url(#wf01)"></g>
+  </g>
+
+  <g transform="translate(340 40)">
+    <g filter="url(#wf02)"></g>
+  </g>
+
+  <g transform="translate(640 40)">
+    <g filter="url(#wf03)"></g>
+  </g>
+
+
+  <g transform="translate(40,340)">
+    <g filter="url(#wf04)"></g>
+  </g>
+
+  <g transform="translate(340,340)">
+    <g filter="url(#wf05)"></g>
+  </g>
+
+  <g transform="translate(640,340)">
+    <g filter="url(#wf06)"></g>
+  </g>
+
+
+  <g transform="translate(40,640)">
+    <g filter="url(#wf07)"></g>
+  </g>
+
+  <g transform="translate(340,640)">
+    <g filter="url(#wf08)"></g>
+  </g>
+
+  <g transform="translate(640,640)">
+    <g filter="url(#wf09)"></g>
+  </g>
+</svg>

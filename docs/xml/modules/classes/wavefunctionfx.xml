@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>WaveFunctionFX</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>A filter effect that plots the probability distribution of a quantum wave function.</comment>
+    <version>1</version>
+    <id>1069903c</id>
+    <idstring>ID_WAVEFUNCTIONFX</idstring>
+    <category>Graphics</category>
+    <include>modules/wavefunctionfx.h</include>
+    <copyright>Paul Manias © 2010-2024</copyright>
+    <description>
+<p>This filter effect uses a quantum wave function algorithm to generate a plot of electron probability density. Ignoring its scientific value, the formula can be exploited for its aesthetic qualities.  It can be used as an alternative to the radial gradient for generating more interesting shapes for example.</p>
+<p>The rendering of the wave function is controlled by its parameters <fl>N</fl>, <fl>L</fl> and <fl>M</fl>.  A <fl>Scale</fl> is also provided to deal with situations where the generated plot would otherwise be too large for its bounds.</p>
+<p>The parameter values are clamped according to the rules <code>N &gt;= 1</code>, <code>0 &lt;= L &lt; N</code>, <code>-L &lt;= M &lt;= L</code>. Check that the values are assigned and clamped correctly if the wave function is not rendering as expected.</p></description>
+    <source>
+      <file path="filters/">filter_wavefunction.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Draw</name>
+      <comment>Render the effect to the target bitmap.</comment>
+      <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
+      <input>
+        <param type="LONG" name="X">The X position of the region to be drawn.</param>
+        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
+        <param type="LONG" name="Width">The width of the region to be drawn.</param>
+        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+      </input>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>L</name>
+      <comment>Azimuthal quantum number.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>M</name>
+      <comment>Magnetic quantum number.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>N</name>
+      <comment>Principal quantum number.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Scale</name>
+      <comment>Multiplier that affects the scale of the plot.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>Stops</name>
+      <comment>Defines the colours to use for the wave function.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRUCT []</type>
+      <description>
+<p>The colours that will be used for drawing a wave function can be defined by the Stops array.  At least two stops are required to define a start and end point for interpolating the gradient colours.</p>
+<p>If no stops are defined, the wave function will be drawn in greyscale.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>XMLDef</name>
+      <comment>Returns an SVG compliant XML string that describes the effect.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+    </field>
+
+  </fields>
+  <structs>
+  </structs>
+</book>
