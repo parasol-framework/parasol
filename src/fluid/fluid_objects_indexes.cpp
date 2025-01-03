@@ -33,6 +33,68 @@ static int object_newindex(lua_State *Lua)
    return 0;
 }
 
+//********************************************************************************************************************
+
+static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values, LONG total)
+{
+   if (Field->Flags & FD_LONG) {
+      pf::vector<LONG> values((size_t)total);
+      for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
+         LONG index = lua_tointeger(Lua, -2) - 1;
+         if ((index >= 0) and (index < total)) {
+            values[index] = lua_tointeger(Lua, -1);
+         }
+      }
+      return SetArray(Object, Field->FieldID|TLONG, values);
+   }
+   else if (Field->Flags & FD_STRING) {
+      pf::vector<CSTRING> values((size_t)total);
+      for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
+         LONG index = lua_tointeger(Lua, -2) - 1;
+         if ((index >= 0) and (index < total)) {
+            values[index] = lua_tostring(Lua, -1);
+         }
+      }
+      return SetArray(Object, Field->FieldID|TSTR, values);
+   }
+   else if (Field->Flags & FD_STRUCT) {
+      // Array structs can be set if the Lua table consists of Fluid.struct types.
+
+      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      if (auto def = prv->Structs.find(std::string_view((CSTRING)Field->Arg)); def != prv->Structs.end()) {
+         LONG aligned_size = ALIGN64(def->second.Size);
+         auto structbuf = std::make_unique<UBYTE[]>(total * aligned_size);
+
+         for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
+            LONG index = lua_tointeger(Lua, -2) - 1;
+            if ((index >= 0) and (index < total)) {
+               APTR sti = structbuf.get() + (aligned_size * index);
+               LONG type = lua_type(Lua, -1);
+               if (type IS LUA_TTABLE) {
+                  lua_pop(Lua, 2);
+                  return ERR::SetValueNotArray;
+               }
+               else if (type IS LUA_TUSERDATA) {
+                  if (auto fs = (fstruct *)get_meta(Lua, -1, "Fluid.struct")) {
+                     copymem(fs->Data, sti, fs->StructSize);
+                  }
+               }
+               else {
+                  lua_pop(Lua, 2);
+                  return ERR::SetValueNotArray;
+               }
+            }
+         }
+
+         return SetArray(Object, Field->FieldID, structbuf.get(), total);
+      }
+      else return ERR::SetValueNotArray;
+   }
+   else return ERR::SetValueNotArray;
+}
+
+//********************************************************************************************************************
+
 static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
 {
    LONG type = lua_type(Lua, ValueIndex);
@@ -46,61 +108,7 @@ static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG
       LONG total = lua_objlen(Lua, t);
 
       if (total < 1024) {
-         if (Field->Flags & FD_LONG) {
-            pf::vector<LONG> values((size_t)total);
-            for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
-               LONG index = lua_tointeger(Lua, -2) - 1;
-               if ((index >= 0) and (index < total)) {
-                  values[index] = lua_tointeger(Lua, -1);
-               }
-            }
-            return SetArray(Object, Field->FieldID|TLONG, values);
-         }
-         else if (Field->Flags & FD_STRING) {
-            pf::vector<CSTRING> values((size_t)total);
-            for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
-               LONG index = lua_tointeger(Lua, -2) - 1;
-               if ((index >= 0) and (index < total)) {
-                  values[index] = lua_tostring(Lua, -1);
-               }
-            }
-            return SetArray(Object, Field->FieldID|TSTR, values);
-         }
-         else if (Field->Flags & FD_STRUCT) {
-            // Array structs can be set if the Lua table consists of Fluid.struct types.
-
-            auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-            auto def = prv->Structs.find(struct_name(std::string((CSTRING)Field->Arg)));
-            if (def != prv->Structs.end()) {
-               LONG aligned_size = ALIGN64(def->second.Size);
-               auto structbuf = std::make_unique<UBYTE[]>(total * aligned_size);
-
-               for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
-                  LONG index = lua_tointeger(Lua, -2) - 1;
-                  if ((index >= 0) and (index < total)) {
-                     APTR sti = structbuf.get() + (aligned_size * index);
-                     LONG type = lua_type(Lua, -1);
-                     if (type IS LUA_TTABLE) {
-                        lua_pop(Lua, 2);
-                        return ERR::SetValueNotArray;
-                     }
-                     else if (type IS LUA_TUSERDATA) {
-                        if (auto fstruct = (struct fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
-                           copymem(fstruct->Data, sti, fstruct->StructSize);
-                        }
-                     }
-                     else {
-                        lua_pop(Lua, 2);
-                        return ERR::SetValueNotArray;
-                     }
-                  }
-               }
-
-               return SetArray(Object, Field->FieldID, structbuf.get(), total);
-            }
-            else return ERR::SetValueNotArray;
-         }
-         else return ERR::SetValueNotArray;
+         return set_array(Lua, Object, Field, t, total);
       }
       else return ERR::BufferOverflow;
    }
@@ -420,61 +428,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
             LONG total = lua_objlen(Lua, t);
 
             if (total < 1024) {
-               if (field->Flags & FD_LONG) {
-                  pf::vector<LONG> values((size_t)total);
-                  for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
-                     LONG index = lua_tointeger(Lua, -2) - 1;
-                     if ((index >= 0) and (index < total)) {
-                        values[index] = lua_tointeger(Lua, -1);
-                     }
-                  }
-                  return SetArray(target, field->FieldID|TLONG, values);
-               }
-               else if (field->Flags & FD_STRING) {
-                  pf::vector<CSTRING> values((size_t)total);
-                  for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
-                     LONG index = lua_tointeger(Lua, -2) - 1;
-                     if ((index >= 0) and (index < total)) {
-                        values[index] = lua_tostring(Lua, -1);
-                     }
-                  }
-                  return SetArray(target, field->FieldID|TSTR, values);
-               }
-               else if (field->Flags & FD_STRUCT) {
-                  // Array structs can be set if the Lua table consists of Fluid.struct types.
-
-                  auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-                  auto def = prv->Structs.find(struct_name(std::string((CSTRING)field->Arg)));
-                  if (def != prv->Structs.end()) {
-                     LONG aligned_size = ALIGN64(def->second.Size);
-                     auto structbuf = std::make_unique<UBYTE[]>(total * aligned_size);
-
-                     for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
-                        LONG index = lua_tointeger(Lua, -2) - 1;
-                        if ((index >= 0) and (index < total)) {
-                           APTR sti = structbuf.get() + (aligned_size * index);
-                           LONG type = lua_type(Lua, -1);
-                           if (type IS LUA_TTABLE) {
-                              lua_pop(Lua, 2);
-                              return ERR::SetValueNotArray;
-                           }
-                           else if (type IS LUA_TUSERDATA) {
-                              if (auto fs = (fstruct *)get_meta(Lua, ValueIndex, "Fluid.struct")) {
-                                 copymem(fs->Data, sti, fs->StructSize);
-                              }
-                           }
-                           else {
-                              lua_pop(Lua, 2);
-                              return ERR::SetValueNotArray;
-                           }
-                        }
-                     }
-
-                     return SetArray(target, field->FieldID, structbuf.get(), total);
-                  }
-                  else return ERR::SetValueNotArray;
-               }
-               else return ERR::SetValueNotArray;
+               return set_array(Lua, target, field, t, total);
             }
             else return ERR::BufferOverflow;
          }
