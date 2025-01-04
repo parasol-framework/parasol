@@ -41,21 +41,21 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
    if (Painter.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
       fill_image(State, Vector.Bounds, Vector.BasePath, Vector.Scene->SampleMethod, 
          build_fill_transform(Vector, Painter.Image->Units IS VUNIT::USERSPACE, State),
-         view_width(), view_height(), *Painter.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
+         mView->vpFixedWidth, mView->vpFixedHeight, *Painter.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
    }
 
    if (Painter.Gradient) {
       if (auto table = get_fill_gradient_table(Painter, State.mOpacity * Vector.FillOpacity)) {
          fill_gradient(State, Vector.Bounds, &Vector.BasePath, 
             build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster);
+            mView->vpFixedWidth, mView->vpFixedHeight, *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster);
       }
    }
 
    if (Painter.Pattern) {
       fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod, 
          build_fill_transform(Vector, Painter.Pattern->Units IS VUNIT::USERSPACE, State),
-         view_width(), view_height(), *((extVectorPattern *)Painter.Pattern), mRenderBase, Raster);
+         mView->vpFixedWidth, mView->vpFixedHeight, *((extVectorPattern *)Painter.Pattern), mRenderBase, Raster);
    }
 }
 
@@ -419,16 +419,14 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
       render_gradient(gradient_func, radial_col_span);
    }
-   else if (Gradient.Type IS VGT::CONTOUR) { // NOTE: Contouring requires a bounding box and is thus incompatible with UserSpaceOnUse
-      if (Gradient.Units != VUNIT::BOUNDING_BOX) return;
-
-      auto x1 = (Gradient.X1 >= 0) ? Gradient.X1 : 0;
-      auto x2 = (Gradient.X2 <= 512) ? Gradient.X2 : 512;
+   else if (Gradient.Type IS VGT::CONTOUR) {
+      auto x2 = std::clamp(Gradient.X2, 3.0, 512.0);
+      auto x1 = std::clamp(Gradient.X1, 0.0, x2);
 
       agg::gradient_contour gradient_func;
-      gradient_func.frame(0); // This value offsets the gradient, e.g. 10 adds an x,y offset of (10,10)
-      gradient_func.d1(x1);   // x1 and x2 alter the coverage of the gradient colours
-      gradient_func.d2(x2);   // Low values for x2 will increase the amount of repetition seen in the gradient.
+      gradient_func.frame(0); // This value offsets the gradient from the path, e.g. 10 adds an x,y offset of (10,10)
+      gradient_func.d1(x1);   // x1 and x2 alter the sampling rate and initial offset of the gradient colours
+      gradient_func.d2(x2);
       gradient_func.contour_create(Path);
 
       transform.translate(x_offset, y_offset);
