@@ -115,10 +115,10 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 #ifdef _WIN32
    if ((Path.size() >= 2) and (std::tolower(Path[0]) >= 'a') and (std::tolower(Path[0]) <= 'z') and (Path[1] IS ':')) {
       resolved = true;
-      if ((Path.size() >= 3) and (Path[2] != '/') and (Path[2] != '\\')) {
+      if ((Path.size() IS 2) or ((Path[2] != '/') and (Path[2] != '\\'))) {
          // Ensure that the path is correctly formed in order to pass test_path()
          src = { Path[0], ':', '\\' };
-         src.append(Path, 2, std::string::npos);
+         if (Path.size() >= 3) src.append(Path, 2, std::string::npos);
          Path = std::string_view(src);
       }
    }
