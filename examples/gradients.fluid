@@ -1,14 +1,12 @@
 --[[
 Gradient Demonstration
-
-This is a replica of an AGG demo that was originally built to test focal gradient capabilities.
 --]]
 
    require 'gui/window'
    require 'gui/combobox'
 
-   local win, viewport, gradient, gradientVP
-   local adjust = 'focal', focal_ellipse
+   local win, viewport, gradient, gradientVP, rect
+   local focalEllipse, contourShape, uiEvent
 
    local colours = {
      greyscale = { { offset=0, r=0, g=0, b=0 }, { offset=1.0, r=255, g=255, b=255 } },
@@ -35,6 +33,97 @@ function buildStops(Theme)
    return stops
 end
 
+----------------------------------------------------------------------------------------------------------------------
+
+function selectGradient(Text)
+   contourShape.visibility = 'hidden'
+   focalEllipse.visibility = 'hidden'
+   rect.visibility = 'visible'
+
+   if Text == 'Radial' then
+      gradient.type = 'radial'
+      focalEllipse.visibility = 'visible'
+      uiEvent = function(ev)
+         gradient.fX = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.fY = (ev.y / gradientVP.height * 100) .. '%'
+      end
+      gradient.cX = '50%'
+      gradient.cY = '50%'
+   elseif Text == 'Conic' then
+      gradient.type = 'conic'
+      uiEvent = function(ev)
+         gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+         gradient.x2 = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.y2 = (ev.y / gradientVP.height * 100) .. '%'
+      end
+   elseif Text == 'Diamond' then
+      gradient.type = 'diamond'
+      uiEvent = function(ev)
+         gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+         gradient.x2 = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.y2 = (ev.y / gradientVP.height * 100) .. '%'
+      end
+   elseif Text == 'Contour' then
+      gradient.type = 'contour'
+      gradient.x1 = 0
+      gradient.x2 = 512
+      uiEvent = function(ev)
+         local x = math.abs(ev.x - (gradientVP.width * 0.5))
+         local y = math.abs(ev.y - (gradientVP.height * 0.5))
+         if x > y then
+            gradient.x1 = x
+         else
+            gradient.x1 = y
+         end
+      end
+   elseif Text == 'Contour Low-Res' then
+      gradient.type = 'contour'
+      gradient.x1 = 0
+      gradient.x2 = LORES_COUNT
+      uiEvent = function(ev)
+         local xscale = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
+         local yscale = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
+         if xscale > yscale then
+            gradient.x1 = xscale * LORES_COUNT
+         else
+            gradient.x1 = yscale * LORES_COUNT
+         end
+         gradient.x2 = LORES_COUNT
+      end
+   elseif Text == 'Contour Shape' then
+      contourShape.visibility = 'visible'
+      gradient.type = 'contour'
+      rect.visibility = 'hidden'
+      gradient.x1 = 211
+      gradient.x2 = 256
+      uiEvent = function(ev)
+         local xscale = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
+         local yscale = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
+         if xscale > yscale then
+            gradient.x1 = xscale*256
+         else
+            gradient.x1 = yscale*256
+         end
+      end
+   elseif Text == 'Linear' then
+      gradient.type = 'linear'
+      uiEvent = function(ev)
+         gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
+         gradient.x2 = (ev.x / gradientVP.width * 100) .. '%'
+         gradient.y2 = (ev.y / gradientVP.height * 100) .. '%'
+      end               gradient.x1 = '50%'
+      gradient.y1 = '50%'
+      gradient.x2 = '100%'
+      gradient.y2 = '100%'
+   end
+   gradientVP.scene.surface.mtScheduleRedraw()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 function buildScene()
    gradient = viewport.scene.new('VectorGradient', {
       name = 'gradient', type = 'radial', stops = buildStops('magma'),
@@ -46,10 +135,16 @@ function buildScene()
 
    viewport.scene.mtAddDef('gradient', gradient)
 
-   gradientVP = viewport.new('VectorViewport', { name='vp_gradient', x = 0, y = 20, xOffset = 0, yOffset=0 })
-   local rect = gradientVP.new('VectorRectangle', { name='rect_gradient', x = 0, y = 0, width='100%', height='100%', fill='url(#gradient)' })
-   focal_ellipse = gradientVP.new('VectorEllipse', {
-      name='focal_ellipse', cx ='50%', cy='50%', radius=100, stroke='rgb(255,255,255)', strokeWidth=1
+   gradientVP = viewport.new('VectorViewport', { name='vp_gradient', x = 0, y = 20, xOffset = 0, yOffset=0, overflow='hidden' })
+   rect = gradientVP.new('VectorRectangle', { name='rect_gradient', x = 0, y = 0, width='100%', height='100%', fill='url(#gradient)' })
+
+   focalEllipse = gradientVP.new('VectorEllipse', {
+      name='focalEllipse', cx ='50%', cy='50%', radius=100, stroke='rgb(255,255,255)', strokeWidth=1
+   })
+
+   contourShape = gradientVP.new('VectorSpiral', {
+      name='spiral', centerX='50%', centerY='50%',
+      fill='url(#gradient)', spacing=140, loopLimit=6, visibility='hidden'
    })
 
    local cmbGradient = gui.combobox({
@@ -69,48 +164,7 @@ function buildScene()
       },
       events = {
          activate = function(Widget, Text)
-            if Text == 'Radial' then
-               gradient.type = 'radial'
-               focal_ellipse.visibility = 'visible'
-               adjust = 'focal'
-               gradient.cX = '50%'
-               gradient.cY = '50%'
-            elseif Text == 'Conic' then
-               focal_ellipse.visibility = 'hidden'
-               gradient.type = 'conic'
-               adjust = 'center'
-            elseif Text == 'Diamond' then
-               focal_ellipse.visibility = 'hidden'
-               gradient.type = 'diamond'
-               adjust = 'center'
-            elseif Text == 'Contour' then
-               focal_ellipse.visibility = 'hidden'
-               gradient.type = 'contour'
-               adjust = 'contour'
-               gradient.x1 = '0'
-               gradient.x2 = '512'
-            elseif Text == 'Contour Low-Res' then
-               focal_ellipse.visibility = 'hidden'
-               gradient.type = 'contour'
-               adjust = 'contour-lores'
-               gradient.x1 = '0'
-               gradient.x2 = LORES_COUNT
-            elseif Text == 'Contour Shape' then
-               focal_ellipse.visibility = 'hidden'
-               gradient.type = 'contour'
-               adjust = 'contour'
-               gradient.x1 = '0'
-               gradient.x2 = '512'
-            elseif Text == 'Linear' then
-               focal_ellipse.visibility = 'hidden'
-               gradient.type = 'linear'
-               adjust = 'center'
-               gradient.x1 = '50%'
-               gradient.y1 = '50%'
-               gradient.x2 = '100%'
-               gradient.y2 = '100%'
-            end
-            gradientVP.scene.surface.mtScheduleRedraw()
+            selectGradient(Text)
          end
       }
    })
@@ -157,42 +211,8 @@ function buildScene()
    })
 
    gradientVP.y = cmbGradient.viewport.y + cmbGradient.viewport.height + 12
-end
 
-----------------------------------------------------------------------------------------------------------------------
-
-function gradientInteraction(ev)
-   if adjust == 'focal' then
-      gradient.fX = (ev.x / gradientVP.width * 100) .. '%'
-      gradient.fY = (ev.y / gradientVP.height * 100) .. '%'
-   elseif adjust == 'radius' then
-      a = math.abs(ev.x - (gradientVP.width * 0.5))
-      b = math.abs(ev.y - (gradientVP.height * 0.5))
-      gradient.radius = math.sqrt((a * a) + (b * b))
-   elseif adjust == 'contour' then
-      local x = math.abs(ev.x - (gradientVP.width * 0.5))
-      local y = math.abs(ev.y - (gradientVP.height * 0.5))
-      if x > y then
-         gradient.x1 = x
-      else
-         gradient.x1 = y
-      end
-      gradient.x2 = 512
-   elseif adjust == 'contour-lores' then
-      local xscale = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
-      local yscale = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
-      if xscale > yscale then
-         gradient.x1 = xscale * LORES_COUNT
-      else
-         gradient.x1 = yscale * LORES_COUNT
-      end
-      gradient.x2 = LORES_COUNT
-   else
-      gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
-      gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
-      gradient.x2 = (ev.x / gradientVP.width * 100) .. '%'
-      gradient.y2 = (ev.y / gradientVP.height * 100) .. '%'
-   end
+   selectGradient('Radial')
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -210,12 +230,12 @@ end
       while ev do
          if (ev.type == JET_ABS_XY) then
             if button_held == 1 then
-               gradientInteraction(ev)
+               uiEvent(ev)
                gradientVP.scene.surface.mtScheduleRedraw()
             end
          elseif (ev.type == JET_BUTTON_1) then -- LMB
             button_held = ev.value
-            gradientInteraction(ev)
+            uiEvent(ev)
             gradientVP.scene.surface.mtScheduleRedraw()
          end
          ev = ev.next

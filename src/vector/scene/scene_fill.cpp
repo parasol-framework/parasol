@@ -420,7 +420,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       render_gradient(gradient_func, radial_col_span);
    }
    else if (Gradient.Type IS VGT::CONTOUR) {
-      auto x2 = std::clamp(Gradient.X2, 3.0, 512.0);
+      auto x2 = std::clamp(Gradient.X2, 3.0, 1024.0);
       auto x1 = std::clamp(Gradient.X1, 0.0, x2);
 
       agg::gradient_contour gradient_func;
@@ -429,7 +429,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       gradient_func.d2(x2);
       gradient_func.contour_create(Path);
 
-      transform.translate(x_offset, y_offset);
+      transform.translate(Bounds.left, Bounds.top);
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();
