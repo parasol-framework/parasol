@@ -107,6 +107,9 @@ local function getFileIcon(Path)
       elseif not icon then
          icon = 'folders/folder'
       end
+   end,
+   function()
+      icon = 'items/question'
    end)
    return icon
 end
@@ -206,14 +209,16 @@ end
 local function getFilters(self)
    if self._filters then return self._filters end
    self._filters = { }
-   for _, filter in ipairs(self.filterList) do
-      if filter.selected then
-         if type(filter.pattern) == 'table' then
-            for _, pattern in pairs(filter.pattern) do
-               table.insert(self._filters, pattern)
+   if self.filterList then
+      for _, filter in ipairs(self.filterList) do
+         if filter.selected then
+            if type(filter.pattern) == 'table' then
+               for _, pattern in pairs(filter.pattern) do
+                  table.insert(self._filters, pattern)
+               end
+            else
+               table.insert(self._filters, filter.pattern)
             end
-         else
-            table.insert(self._filters, filter.pattern)
          end
       end
    end

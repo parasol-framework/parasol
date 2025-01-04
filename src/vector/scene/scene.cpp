@@ -787,7 +787,8 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
    // Report lost focus events, starting from the foreground.
 
    if (!glVectorFocusList.empty()) { // Check required to avoid crashing on empty std::vector :-/
-      for (auto const fv : glVectorFocusList) {
+      auto copy = glVectorFocusList; // Take a copy of the list in case it gets modified on feedback.
+      for (auto const fv : copy) {
          if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
             pf::ScopedObjectLock<extVector> vec(fv, 1000);
             if (vec.granted()) send_feedback(fv, FM::LOST_FOCUS, Vector);
