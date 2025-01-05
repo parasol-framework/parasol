@@ -80,6 +80,8 @@ class extFilterEffect;
 class extVectorViewport;
 class extVectorClip;
 
+extern std::unordered_map<std::string, std::array<FRGB, 256>> glColourMaps;
+
 //********************************************************************************************************************
 
 template<class T = double> struct TClipRectangle {
@@ -320,6 +322,7 @@ class extVectorGradient : public objVectorGradient {
    std::vector<GradientStop> Stops;  // An array of gradient stop colours.
    struct VectorMatrix *Matrices;
    class GradientColours *Colours;
+   std::string ColourMap;
    FRGB   Colour;
    RGB8   ColourRGB; // A cached conversion of the FRGB value
    STRING ID;
@@ -524,7 +527,8 @@ class extVectorRectangle : public extVector {
 
 class GradientColours {
    public:
-      GradientColours(std::vector<GradientStop> &, VCS, double);
+      GradientColours(const std::vector<GradientStop> &, VCS, double);
+      GradientColours(const std::array<FRGB, 256> &);
       GRADIENT_TABLE table;
 };
 

@@ -27,6 +27,7 @@ class extWaveFunctionFX : public extFilterEffect {
 
    std::vector<std::vector<double>> psi;
    std::vector<GradientStop> Stops;
+   std::string ColourMap;
    GradientColours *Colours;
    double Scale;
    double N, L, M, Max;
@@ -131,6 +132,7 @@ static ERR WAVEFUNCTIONFX_Free(extWaveFunctionFX *Self)
 {
    Self->psi.~vector<std::vector<double>>();
    Self->Stops.~vector<GradientStop>();
+   Self->ColourMap.~basic_string();
    if (Self->Colours) { delete Self->Colours; Self->Colours = NULL; }
    return ERR::Okay;
 }
@@ -148,6 +150,7 @@ static ERR WAVEFUNCTIONFX_NewObject(extWaveFunctionFX *Self)
 {
    new (&Self->psi) std::vector<std::vector<double>>;
    new (&Self->Stops) std::vector<GradientStop>;
+   new (&Self->ColourMap) std::string;
    Self->N = 1;
    Self->L = 0;
    Self->M = 1;
@@ -155,6 +158,44 @@ static ERR WAVEFUNCTIONFX_NewObject(extWaveFunctionFX *Self)
    Self->Dirty = true;
    Self->SourceType = VSF::NONE;
    return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+ColourMap: Assigns a pre-defined colourmap to the wave function.
+
+An alternative to defining colour #Stops in a wave function is available in the form of named colourmaps.
+Declaring a colourmap in this field will automatically populate the wave function's gradient with the colours defined 
+in the map.
+
+We currently support the following established colourmaps from the matplotlib and seaborn projects: `cmap:crest`,
+`cmap:flare`, `cmap:icefire`, `cmap:inferno`, `cmap:magma`, `cmap:mako`, `cmap:plasma`, `cmap:rocket`,
+`cmap:viridis`.
+
+The use of colourmaps and custom stops are mutually exclusive.
+
+*********************************************************************************************************************/
+
+static ERR WAVEFUNCTIONFX_GET_ColourMap(extWaveFunctionFX *Self, CSTRING *Value)
+{
+   if (Self->ColourMap.empty()) *Value = NULL;
+   else *Value = Self->ColourMap.c_str();
+   return ERR::Okay;
+}
+
+static ERR WAVEFUNCTIONFX_SET_ColourMap(extWaveFunctionFX *Self, CSTRING Value)
+{
+   if (!Value) return ERR::NoData;
+
+   if (glColourMaps.contains(Value)) {
+      if (Self->Colours) delete Self->Colours;
+      Self->Colours = new (std::nothrow) GradientColours(glColourMaps[Value]);
+      if (!Self->Colours) return ERR::AllocMemory;
+      Self->ColourMap = Value;
+      return ERR::Okay;
+   }
+   else return ERR::NotFound;
 }
 
 /*********************************************************************************************************************
@@ -309,12 +350,13 @@ static ERR WAVEFUNCTIONFX_GET_XMLDef(extWaveFunctionFX *Self, STRING *Value)
 #include "filter_wavefunction_def.c"
 
 static const FieldArray clWaveFunctionFXFields[] = {
-   { "N",       FDF_VIRTUAL|FDF_LONG|FDF_RW,             WAVEFUNCTIONFX_GET_N,       WAVEFUNCTIONFX_SET_N },
-   { "L",       FDF_VIRTUAL|FDF_LONG|FDF_RW,             WAVEFUNCTIONFX_GET_L,       WAVEFUNCTIONFX_SET_L },
-   { "M",       FDF_VIRTUAL|FDF_LONG|FDF_RW,             WAVEFUNCTIONFX_GET_M,       WAVEFUNCTIONFX_SET_M },
-   { "Scale",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           WAVEFUNCTIONFX_GET_Scale,   WAVEFUNCTIONFX_SET_Scale },
-   { "Stops",   FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, WAVEFUNCTIONFX_GET_Stops, WAVEFUNCTIONFX_SET_Stops, "GradientStop" },
-   { "XMLDef",  FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R,  WAVEFUNCTIONFX_GET_XMLDef,  NULL },
+   { "ColourMap", FDF_VIRTUAL|FDF_STRING|FDF_RW,           WAVEFUNCTIONFX_GET_ColourMap, WAVEFUNCTIONFX_SET_ColourMap },
+   { "N",         FDF_VIRTUAL|FDF_LONG|FDF_RW,             WAVEFUNCTIONFX_GET_N,       WAVEFUNCTIONFX_SET_N },
+   { "L",         FDF_VIRTUAL|FDF_LONG|FDF_RW,             WAVEFUNCTIONFX_GET_L,       WAVEFUNCTIONFX_SET_L },
+   { "M",         FDF_VIRTUAL|FDF_LONG|FDF_RW,             WAVEFUNCTIONFX_GET_M,       WAVEFUNCTIONFX_SET_M },
+   { "Scale",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,           WAVEFUNCTIONFX_GET_Scale,   WAVEFUNCTIONFX_SET_Scale },
+   { "Stops",     FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, WAVEFUNCTIONFX_GET_Stops, WAVEFUNCTIONFX_SET_Stops, "GradientStop" },
+   { "XMLDef",    FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R,  WAVEFUNCTIONFX_GET_XMLDef,  NULL },
    END_FIELD
 };
 

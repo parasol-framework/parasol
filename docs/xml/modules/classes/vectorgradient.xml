@@ -12,7 +12,7 @@
     <idstring>ID_VECTORGRADIENT</idstring>
     <category>Graphics</category>
     <include>modules/vectorgradient.h</include>
-    <copyright>Paul Manias © 2010-2024</copyright>
+    <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The VectorGradient class is used by Vector painting algorithms to fill and stroke vectors with gradients.  This is achieved by initialising a VectorGradient object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" method="AddDef">VectorScene.AddDef()</class> method.</p>
 <p>Any vector within the target scene will be able to utilise the gradient for filling or stroking by referencing its name through the <class name="Vector" field="Fill">Vector.Fill</class> and <class name="Vector" field="Stroke">Vector.Stroke</class> fields.  For instance 'url(#redgradient)'.</p>
@@ -54,6 +54,18 @@
       <description>
 <p>The colour value in this field is applicable only when a gradient is in clip-mode - by specifying the <code>VSPREAD::CLIP</code> flag in <fl>SpreadMethod</fl>.  By default, this field has an alpha value of 0 to ensure that nothing is drawn outside the initial bounds of the gradient.  Setting any other colour value here will otherwise fill-in those areas.</p>
 <p>The Colour value is defined in floating-point RGBA format, using a range of 0 - 1.0 per component.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ColourMap</name>
+      <comment>Assigns a pre-defined colourmap to the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>An alternative to defining colour <fl>Stops</fl> in a gradient is available in the form of named colourmaps. Declaring a colourmap in this field will automatically populate the gradient with the colours defined in the map.</p>
+<p>We currently support the following established colourmaps from the matplotlib and seaborn projects: <code>cmap:crest</code>, <code>cmap:flare</code>, <code>cmap:icefire</code>, <code>cmap:inferno</code>, <code>cmap:magma</code>, <code>cmap:mako</code>, <code>cmap:plasma</code>, <code>cmap:rocket</code>, <code>cmap:viridis</code>.</p>
+<p>The use of colourmaps and custom stops are mutually exclusive.</p>
       </description>
     </field>
 

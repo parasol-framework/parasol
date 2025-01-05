@@ -12,7 +12,7 @@
     <idstring>ID_FILTEREFFECT</idstring>
     <category>Graphics</category>
     <include>modules/filtereffect.h</include>
-    <copyright>Paul Manias © 2010-2024</copyright>
+    <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The FilterEffect class provides base-class functionality for effect classes.  FilterEffect objects mut not be instantiated directly by the client.</p>
 <p>The documented fields and actions here are integral to all effects that utilise this class.</p></description>

@@ -12,7 +12,7 @@
     <idstring>ID_COMPOSITEFX</idstring>
     <category>Graphics</category>
     <include>modules/compositefx.h</include>
-    <copyright>Paul Manias © 2010-2024</copyright>
+    <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>This filter combines the <class name="FilterEffect" field="Input">FilterEffect.Input</class> and <class name="FilterEffect" field="Mix">FilterEffect.Mix</class> sources using either one of the Porter-Duff compositing operations, or a colour blending algorithm.  The Input has priority and will be placed in the foreground for ordered operations such as <code>ATOP</code> and <code>OVER</code>.</p></description>
     <source>

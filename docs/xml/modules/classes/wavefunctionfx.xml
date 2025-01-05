@@ -12,7 +12,7 @@
     <idstring>ID_WAVEFUNCTIONFX</idstring>
     <category>Graphics</category>
     <include>modules/wavefunctionfx.h</include>
-    <copyright>Paul Manias © 2010-2024</copyright>
+    <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>This filter effect uses a quantum wave function algorithm to generate a plot of electron probability density. Ignoring its scientific value, the formula can be exploited for its aesthetic qualities.  It can be used as an alternative to the radial gradient for generating more interesting shapes for example.</p>
 <p>The rendering of the wave function is controlled by its parameters <fl>N</fl>, <fl>L</fl> and <fl>M</fl>.  A <fl>Scale</fl> is also provided to deal with situations where the generated plot would otherwise be too large for its bounds.</p>
@@ -38,6 +38,18 @@
   </actions>
 
   <fields>
+    <field>
+      <name>ColourMap</name>
+      <comment>Assigns a pre-defined colourmap to the wave function.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>An alternative to defining colour <fl>Stops</fl> in a wave function is available in the form of named colourmaps. Declaring a colourmap in this field will automatically populate the wave function's gradient with the colours defined in the map.</p>
+<p>We currently support the following established colourmaps from the matplotlib and seaborn projects: <code>cmap:crest</code>, <code>cmap:flare</code>, <code>cmap:icefire</code>, <code>cmap:inferno</code>, <code>cmap:magma</code>, <code>cmap:mako</code>, <code>cmap:plasma</code>, <code>cmap:rocket</code>, <code>cmap:viridis</code>.</p>
+<p>The use of colourmaps and custom stops are mutually exclusive.</p>
+      </description>
+    </field>
+
     <field>
       <name>L</name>
       <comment>Azimuthal quantum number.</comment>

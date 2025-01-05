@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      vector.h
-// Copyright: Paul Manias © 2010-2024
+// Copyright: Paul Manias © 2010-2025
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -1006,14 +1006,14 @@ class objVectorGradient : public Object {
 
    inline ERR setFocalX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[29];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setFocalY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[29];
+      auto field = &this->Class->Dictionary[30];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
@@ -1061,8 +1061,14 @@ class objVectorGradient : public Object {
 
    inline ERR setColour(const FLOAT * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[27];
+      auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
+   }
+
+   template <class T> inline ERR setColourMap(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
    }
 
    inline ERR setMatrices(APTR Value) noexcept {
@@ -1921,6 +1927,12 @@ class objWaveFunctionFX : public objFilterEffect {
    inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
+
+   template <class T> inline ERR setColourMap(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   }
 
    inline ERR setN(const LONG Value) noexcept {
       auto target = this;
@@ -3523,6 +3535,8 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_CLOSE 0x0f3b9a5b
 #define SVF_COLOR 0x0f3d3244
 #define SVF_COLOUR 0xf6e37b99
+#define SVF_COLORMAP 0x3daf1862
+#define SVF_COLOURMAP 0xf3cb5d97
 #define SVF_COLOR_INTERPOLATION 0x6f2c0659
 #define SVF_COLOUR_INTERPOLATION 0x5655806e
 #define SVF_COLOR_INTERPOLATION_FILTERS 0x752d48ff
@@ -3656,13 +3670,6 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_OVER 0x7c9bf101
 #define SVF_OVERFLOW 0x5b785259
 #define SVF_OVERLAY 0x7ee4b5c7
-#define SVF_PARASOL_MORPH 0x6b51bb77
-#define SVF_PARASOL_PATHTRANSITION 0x9d3c64a9
-#define SVF_PARASOL_SHAPE 0x6bba2f82
-#define SVF_PARASOL_SPIRAL 0xe3954f3c
-#define SVF_PARASOL_TRANSITION 0xc0f6617c
-#define SVF_PARASOL_WAVE 0xbd7455e4
-#define SVF_PATH 0x7c9c25f2
 #define SVF_PATH 0x7c9c25f2
 #define SVF_PATHLENGTH 0x74403974
 #define SVF_PATTERN 0x9bf30a03
@@ -3965,6 +3972,12 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_LOOP_LIMIT 0xfaf3e6cb
 #define SVF_MASKCONTENTUNITS 0x3fe629df
 #define SVF_MASKUNITS 0xa68eea04
+#define SVF_PARASOL_MORPH 0x6b51bb77
+#define SVF_PARASOL_PATHTRANSITION 0x9d3c64a9
+#define SVF_PARASOL_SHAPE 0x6bba2f82
+#define SVF_PARASOL_SPIRAL 0xe3954f3c
+#define SVF_PARASOL_TRANSITION 0xc0f6617c
+#define SVF_PARASOL_WAVE 0xbd7455e4
 #define SVF_POINTSATX 0xf4c77f0f
 #define SVF_POINTSATY 0xf4c77f10
 #define SVF_POINTSATZ 0xf4c77f11

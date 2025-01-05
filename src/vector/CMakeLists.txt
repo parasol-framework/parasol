@@ -28,6 +28,7 @@ target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/filters/filter.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/scene/scene.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/defs/defs.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/colourmaps.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_arc.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_arrowhead.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/agg/src/agg_bezier_arc.cpp"

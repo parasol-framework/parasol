@@ -98,7 +98,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 // Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
 // Stops array.
 
-GradientColours::GradientColours(std::vector<GradientStop> &Stops, VCS ColourSpace, DOUBLE Alpha)
+GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS ColourSpace, DOUBLE Alpha)
 {
    LONG stop, i1, i2, i;
 
@@ -134,13 +134,21 @@ GradientColours::GradientColours(std::vector<GradientStop> &Stops, VCS ColourSpa
    }
 }
 
+GradientColours::GradientColours(const std::array<FRGB, 256> &Map)
+{
+   for (LONG i=0; i < std::ssize(Map); i++) {
+      table[i] = agg::rgba8(Map[i]);
+   }
+}
+
 //********************************************************************************************************************
 
 static ERR VECTORGRADIENT_Free(extVectorGradient *Self)
 {
    if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
-   Self->Stops.~vector<GradientStop>();
    if (Self->Colours) { delete Self->Colours; Self->Colours = NULL; }
+   Self->Stops.~vector<GradientStop>();
+   Self->ColourMap.~basic_string();
 
    VectorMatrix *next;
    for (auto node=Self->Matrices; node; node=next) {
@@ -181,6 +189,7 @@ static ERR VECTORGRADIENT_Init(extVectorGradient *Self)
 static ERR VECTORGRADIENT_NewObject(extVectorGradient *Self)
 {
    new (&Self->Stops) std::vector<GradientStop>;
+   new (&Self->ColourMap) std::string;
    Self->SpreadMethod = VSPREAD::PAD;
    Self->Type    = VGT::LINEAR;
    Self->Units   = VUNIT::BOUNDING_BOX;
@@ -283,6 +292,42 @@ static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, FLOAT *Value, LONG
    }
    else Self->Colour.Alpha = 0;
    return ERR::Okay;
+}
+/*********************************************************************************************************************
+
+-FIELD-
+ColourMap: Assigns a pre-defined colourmap to the gradient.
+
+An alternative to defining colour #Stops in a gradient is available in the form of named colourmaps.
+Declaring a colourmap in this field will automatically populate the gradient with the colours defined in the map.
+
+We currently support the following established colourmaps from the matplotlib and seaborn projects: `cmap:crest`,
+`cmap:flare`, `cmap:icefire`, `cmap:inferno`, `cmap:magma`, `cmap:mako`, `cmap:plasma`, `cmap:rocket`,
+`cmap:viridis`.
+
+The use of colourmaps and custom stops are mutually exclusive.
+
+*********************************************************************************************************************/
+
+static ERR VECTORGRADIENT_GET_ColourMap(extVectorGradient *Self, CSTRING *Value)
+{
+   if (!Self->ColourMap.empty()) *Value = Self->ColourMap.c_str();
+   else *Value = NULL;
+   return ERR::Okay;
+}
+
+static ERR VECTORGRADIENT_SET_ColourMap(extVectorGradient *Self, CSTRING Value)
+{
+   if (!Value) return ERR::NoData;
+
+   if (glColourMaps.contains(Value)) {
+      if (Self->Colours) delete Self->Colours;
+      Self->Colours = new (std::nothrow) GradientColours(glColourMaps[Value]);
+      if (!Self->Colours) return ERR::AllocMemory;
+      Self->ColourMap = Value;
+      return ERR::Okay;
+   }
+   else return ERR::NotFound;
 }
 
 /*********************************************************************************************************************
@@ -739,6 +784,7 @@ static const FieldArray clGradientFields[] = {
    { "TotalStops",   FDF_LONG|FDF_R },
    // Virtual fields
    { "Colour",       FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW, VECTORGRADIENT_GET_Colour, VECTORGRADIENT_SET_Colour },
+   { "ColourMap",    FDF_VIRTUAL|FDF_STRING|FDF_W, VECTORGRADIENT_GET_ColourMap, VECTORGRADIENT_SET_ColourMap },
    { "CX",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterX, VECTORGRADIENT_SET_CenterX },
    { "CY",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterY, VECTORGRADIENT_SET_CenterY },
    { "FX",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalX, VECTORGRADIENT_SET_FocalX },

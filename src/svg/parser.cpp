@@ -1038,16 +1038,16 @@ ERR svgState::parse_fe_wavefunction(objVectorFilter *Filter, XMLTag &Tag) noexce
       if (val.empty()) continue;
 
       switch(strihash(Tag.Attribs[a].Name)) {
-         case SVF_SCALE:  fx->set(FID_Scale, strtod(val.c_str(), NULL)); break;
-         case SVF_N:      fx->set(FID_N, strtod(val.c_str(), NULL)); break;
-         case SVF_L:      fx->set(FID_L, strtod(val.c_str(), NULL)); break;
-         case SVF_M:      fx->set(FID_M, strtod(val.c_str(), NULL)); break;
-         case SVF_X:      UNIT(FID_X, val).set(fx); break;
-         case SVF_Y:      UNIT(FID_Y, val).set(fx); break;
-         case SVF_WIDTH:  UNIT(FID_Width, val).set(fx); break;
-         case SVF_HEIGHT: UNIT(FID_Height, val).set(fx); break;
-
-         case SVF_RESULT: result_name = val; break;
+         case SVF_SCALE:    fx->set(FID_Scale, strtod(val.c_str(), NULL)); break;
+         case SVF_N:        fx->set(FID_N, strtod(val.c_str(), NULL)); break;
+         case SVF_L:        fx->set(FID_L, strtod(val.c_str(), NULL)); break;
+         case SVF_M:        fx->set(FID_M, strtod(val.c_str(), NULL)); break;
+         case SVF_X:        UNIT(FID_X, val).set(fx); break;
+         case SVF_Y:        UNIT(FID_Y, val).set(fx); break;
+         case SVF_WIDTH:    UNIT(FID_Width, val).set(fx); break;
+         case SVF_HEIGHT:   UNIT(FID_Height, val).set(fx); break;
+         case SVF_COLORMAP: fx->set(FID_ColourMap, val); break;
+         case SVF_RESULT:   result_name = val; break;
       }
    }
 

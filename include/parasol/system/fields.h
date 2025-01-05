@@ -922,6 +922,7 @@
 #define FID_AppendPath 0x778f85caLL
 #define FID_Bias 0x7c949844LL
 #define FID_ClipFlags 0x4959653aLL
+#define FID_ColourMap 0xf3cb5d97LL
 #define FID_Constant 0x42a2b30fLL
 #define FID_Def 0x0b8869b4LL
 #define FID_Dictionary 0xccb60b7bLL

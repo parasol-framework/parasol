@@ -18,83 +18,35 @@
     </filter>
 
     <filter id="wf02" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
-      <feWaveFunction n="20" l="10" m="5" scale="0.005">
-        <stop stop-color="rgb(11.48503425,3.7799772,5.33517885)" offset="0"/>
-        <stop stop-color="rgb(61.9298457, 51.8813871, 105.276342)" offset="0.25"/>
-        <stop stop-color="rgb(52.9219758, 120.67703385, 162.20886855)" offset="0.5"/>
-        <stop stop-color="rgb(73.261908, 193.08043335, 173.1428682)" offset="0.75"/>
-        <stop stop-color="rgb(222.40837095, 244.6998054, 228.7997292)" offset="1"/>
-      </feWaveFunction>
+      <feWaveFunction n="20" l="10" m="5" scale="0.005" colormap="cmap:rocket"/>
     </filter>
 
     <filter id="wf03" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
-      <feWaveFunction n="4" l="3" m="0" scale="0.15">
-        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
-        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
-        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
-        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
-        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
-      </feWaveFunction>
+      <feWaveFunction n="4" l="3" m="0" scale="0.15" colormap="cmap:viridis"/>
     </filter>
 
     <filter id="wf04" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
-      <feWaveFunction n="4" l="1" m="1" scale="0.15">
-        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
-        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
-        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
-        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
-        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
-      </feWaveFunction>
+      <feWaveFunction n="4" l="1" m="1" scale="0.15" colormap="cmap:plasma"/>
     </filter>
 
     <filter id="wf05" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
-      <feWaveFunction n="2" l="1" m="0" scale="0.5">
-        <stop stop-color="rgb(11.48503425,3.7799772,5.33517885)" offset="0"/>
-        <stop stop-color="rgb(61.9298457, 51.8813871, 105.276342)" offset="0.25"/>
-        <stop stop-color="rgb(52.9219758, 120.67703385, 162.20886855)" offset="0.5"/>
-        <stop stop-color="rgb(73.261908, 193.08043335, 173.1428682)" offset="0.75"/>
-        <stop stop-color="rgb(222.40837095, 244.6998054, 228.7997292)" offset="1"/>
-      </feWaveFunction>
+      <feWaveFunction n="2" l="1" m="0" scale="0.5" colormap="cmap:inferno"/>
     </filter>
 
     <filter id="wf06" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
-      <feWaveFunction n="9" l="6" m="1" scale="0.025">
-        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
-        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
-        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
-        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
-        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
-      </feWaveFunction>
+      <feWaveFunction n="9" l="6" m="1" scale="0.025" colormap="cmap:magma"/>
     </filter>
 
     <filter id="wf07" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
-      <feWaveFunction n="4" l="3" m="3" scale="0.15">
-        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
-        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
-        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
-        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
-        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
-      </feWaveFunction>
+      <feWaveFunction n="4" l="3" m="3" scale="0.15" colormap="cmap:icefire"/>
     </filter>
 
     <filter id="wf08" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
-      <feWaveFunction n="8" l="2" m="1" scale="0.1">
-        <stop stop-color="rgb(11.48503425,3.7799772,5.33517885)" offset="0"/>
-        <stop stop-color="rgb(61.9298457, 51.8813871, 105.276342)" offset="0.25"/>
-        <stop stop-color="rgb(52.9219758, 120.67703385, 162.20886855)" offset="0.5"/>
-        <stop stop-color="rgb(73.261908, 193.08043335, 173.1428682)" offset="0.75"/>
-        <stop stop-color="rgb(222.40837095, 244.6998054, 228.7997292)" offset="1"/>
-      </feWaveFunction>
+      <feWaveFunction n="8" l="2" m="1" scale="0.1" colormap="cmap:mako"/>
     </filter>
 
     <filter id="wf09" x="0" y="0" width="280" height="280" filterUnits="userSpaceOnUse">
-      <feWaveFunction n="4" l="0" m="0" scale="0.25">
-        <stop stop-color="rgb(0.37281,0.11883,3.53583)" offset="0"/>
-        <stop stop-color="rgb(79.14741, 17.77401, 123.21243)" offset="0.25"/>
-        <stop stop-color="rgb(179.40066, 53.71269, 122.157495)" offset="0.5"/>
-        <stop stop-color="rgb(251.07861, 132.781815, 96.05799)" offset="0.75"/>
-        <stop stop-color="rgb(251.698515, 252.81669, 191.12352)" offset="1"/>
-      </feWaveFunction>
+      <feWaveFunction n="4" l="0" m="0" scale="0.25" colormap="cmap:flare"/>
     </filter>
   </defs>
 

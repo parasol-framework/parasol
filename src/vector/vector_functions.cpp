@@ -21,7 +21,7 @@ functions for creating paths and rendering them to bitmaps.
 
 inline char read_nibble(CSTRING Str)
 {
-   if ((*Str >= '0') and (*Str <= '9')) return (*Str - '0');
+   if (std::isdigit(*Str)) return (*Str - '0');
    else if ((*Str >= 'A') and (*Str <= 'F')) return ((*Str - 'A')+10);
    else if ((*Str >= 'a') and (*Str <= 'f')) return ((*Str - 'a')+10);
    else return char(0xff);
@@ -958,9 +958,14 @@ Colours can be referenced using one of three methods.  Colour names such as `ora
 RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is supported as `rgb(r,g,b,a)` whereby the
 component values range between `0.0` and `255.0`.
 
-A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has
+A Gradient, Image or Pattern can be referenced using the `url(#name)` format, where the 'name' is a definition that has
 been registered with the provided `Scene` object.  If `Scene` is `NULL` then it will not be possible to find the
 reference.  Any failure to lookup a reference will be silently discarded.
+
+To access one of the pre-defined colourmaps, use the format `url(#cmap:name)`.  The colourmap will be accessible as
+a linear gradient that belongs to the `Scene`.  Valid colourmap names are `cmap:crest`,
+`cmap:flare`, `cmap:icefire`, `cmap:inferno`, `cmap:magma`, `cmap:mako`, `cmap:plasma`, `cmap:rocket`,
+`cmap:viridis`.
 
 A !VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
 that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An
@@ -1009,6 +1014,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          std::string lookup;
          lookup.assign(IRI, 5, i-5);
 
+         bool found = false;
          if (((extVectorScene *)Scene)->Defs.contains(lookup)) {
             auto def = ((extVectorScene *)Scene)->Defs[lookup];
             if (def->classID() IS CLASSID::VECTORGRADIENT) {
@@ -1021,7 +1027,36 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
                Painter->Pattern = (objVectorPattern *)def;
             }
             else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), ULONG(def->classID()));
+            found = true;
+         }
+         else if (glColourMaps.contains(lookup)) {
+            // Referencing a pre-defined colour map results in it being added to the Scene's definitions as a linear gradient.
+            // It is then accessible permanently under that name.
 
+            extVectorGradient *gradient;
+            if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
+               SetOwner(gradient, Scene);
+               gradient->setFields(
+                  fl::Name(lookup),
+                  fl::Type(VGT::LINEAR),
+                  fl::Units(VUNIT::BOUNDING_BOX),
+                  fl::X1(0.0),
+                  fl::Y1(0.0),
+                  fl::X2(SCALE(1.0)),
+                  fl::Y2(0.0));
+      
+               if (gradient->Colours) delete gradient->Colours;
+               gradient->Colours = new (std::nothrow) GradientColours(glColourMaps[lookup]);
+
+               if (InitObject(gradient) IS ERR::Okay) {
+                  Scene->addDef(lookup.c_str(), gradient);
+                  Painter->Gradient = gradient;
+               }
+            }
+            found = true;
+         }
+
+         if (found) {
             IRI += i;
             if (*IRI IS ')') {
                IRI++;
