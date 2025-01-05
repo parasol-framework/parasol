@@ -8,30 +8,7 @@ Gradient Demonstration
    local win, viewport, gradient, gradientVP, rect
    local focalEllipse, contourShape, uiEvent
 
-   local colours = {
-     greyscale = { { offset=0, r=0, g=0, b=0 }, { offset=1.0, r=255, g=255, b=255 } },
-     magma     = { { offset=0, r=0.37281, g=0.11883, b=3.53583 }, { offset=0.25, r=79.14741, g=17.77401, b=123.21243 }, { offset=0.5, r=179.40066, g=53.71269, b=122.157495 }, { offset=0.75, r=251.07861, g=132.781815, b=96.05799 }, { offset=1, r=251.698515, g=252.81669, b=191.12352 } },
-     mako      = { { offset=0, r=11.48503425, g=3.7799772, b=5.33517885 }, { offset=0.25, r=61.9298457, g=51.8813871, b=105.276342 }, { offset=0.5, r=52.9219758, g=120.67703385, b=162.20886855 }, { offset=0.75, r=73.261908, g=193.08043335, b=173.1428682 }, { offset=1, r=222.40837095, g=244.6998054, b=228.7997292 } }
-   }
-
    local LORES_COUNT = 10
-
-----------------------------------------------------------------------------------------------------------------------
-
-function buildStops(Theme)
-   local stops = { }
-   for _, col in pairs(colours[Theme]) do
-      local vc = struct.new('GradientStop')
-      vc.offset    = col.offset
-      vc.rgb.red   = col.r / 255
-      vc.rgb.green = col.g / 255
-      vc.rgb.blue  = col.b / 255
-      vc.rgb.alpha = 1.0
-      table.insert(stops, vc)
-   end
-
-   return stops
-end
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -126,7 +103,7 @@ end
 
 function buildScene()
    gradient = viewport.scene.new('VectorGradient', {
-      name = 'gradient', type = 'radial', stops = buildStops('magma'),
+      name = 'gradient', type = 'radial', colourMap = 'cmap:magma',
       cX = '50%', cY = '50%',
       fX = '50%', fY = '50%', focalRadius = 100,
       units = 'userSpace', radius = 100,
@@ -198,14 +175,13 @@ function buildScene()
       text   = 'Magma',
       x      = cmbSpread.viewport.x + cmbSpread.viewport.width + 10,
       y      = 10,
-      items  = { { item='Magma' }, { item='Mako' }, { item='Greyscale' } },
+      items  = {
+         { item='Magma' }, { item='Rocket' }, { item='Mako' }, { item='IceFire' },
+         { item='Flare' }, { item='Crest' }, { item='Viridis' }, { item='Plasma' }, { item='Inferno' } },
       events = {
          activate = function(Widget, Text)
-            local stops = buildStops(Text:lower())
-            if nz(stops) then
-               gradient.stops = stops
-               gradientVP.scene.surface.mtScheduleRedraw()
-            end
+            gradient.colourMap = 'cmap:' .. Text:lower()
+            gradientVP.scene.surface.mtScheduleRedraw()
          end
       }
    })
@@ -225,7 +201,7 @@ end
    buildScene()
 
    local button_held = false
-   check(gradientVP.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_REPEATED), function(Viewport, Events)
+   check(gradientVP.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
       local ev = Events
       while ev do
          if (ev.type == JET_ABS_XY) then
@@ -235,8 +211,10 @@ end
             end
          elseif (ev.type == JET_BUTTON_1) then -- LMB
             button_held = ev.value
-            uiEvent(ev)
-            gradientVP.scene.surface.mtScheduleRedraw()
+            if button_held == 1 then
+               uiEvent(ev)
+               gradientVP.scene.surface.mtScheduleRedraw()
+            end
          end
          ev = ev.next
       end

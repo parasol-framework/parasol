@@ -58,6 +58,18 @@
     </field>
 
     <field>
+      <name>ColourMap</name>
+      <comment>Assigns a pre-defined colourmap to the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>An alternative to defining colour <fl>Stops</fl> in a gradient is available in the form of named colourmaps. Declaring a colourmap in this field will automatically populate the gradient with the colours defined in the map.</p>
+<p>We currently support the following established colourmaps from the matplotlib and seaborn projects: <code>cmap:crest</code>, <code>cmap:flare</code>, <code>cmap:icefire</code>, <code>cmap:inferno</code>, <code>cmap:magma</code>, <code>cmap:mako</code>, <code>cmap:plasma</code>, <code>cmap:rocket</code>, <code>cmap:viridis</code>.</p>
+<p>The use of colourmaps and custom stops are mutually exclusive.</p>
+      </description>
+    </field>
+
+    <field>
       <name>ColourSpace</name>
       <comment>Defines the colour space to use when interpolating gradient colours.</comment>
       <access read="R" write="I">Read/Init</access>

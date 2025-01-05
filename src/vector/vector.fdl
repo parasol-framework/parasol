@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, timestamp=20240611 }, function()
+module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, timestamp=20240611 }, function()
   c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")
 
   restrict(function()
@@ -716,6 +716,8 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "CLOSE",
     "COLOR",
     "COLOUR",
+    "COLORMAP",
+    "COLOURMAP",
     "COLOR-INTERPOLATION",
     "COLOUR-INTERPOLATION",
     "COLOR-INTERPOLATION-FILTERS",
@@ -849,13 +851,6 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "OVER",
     "OVERFLOW",
     "OVERLAY",
-    "PARASOL:MORPH",
-    "PARASOL:PATHTRANSITION",
-    "PARASOL:SHAPE",
-    "PARASOL:SPIRAL",
-    "PARASOL:TRANSITION",
-    "PARASOL:WAVE",
-    "PATH",
     "PATH",
     "PATHLENGTH",
     "PATTERN",
@@ -1160,6 +1155,12 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "LOOP-LIMIT",
     "MASKCONTENTUNITS",
     "MASKUNITS",
+    "PARASOL:MORPH",
+    "PARASOL:PATHTRANSITION",
+    "PARASOL:SHAPE",
+    "PARASOL:SPIRAL",
+    "PARASOL:TRANSITION",
+    "PARASOL:WAVE",
     "POINTSATX",
     "POINTSATY",
     "POINTSATZ",

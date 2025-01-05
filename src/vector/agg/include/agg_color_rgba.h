@@ -238,19 +238,25 @@ namespace agg {
 
         rgba8() {}
 
-        rgba8(RGB8 &RGB) :
+        rgba8(const RGB8 &RGB) :
             r(value_type(RGB.Red)),
             g(value_type(RGB.Green)),
             b(value_type(RGB.Blue)),
             a(value_type(RGB.Alpha)) {}
 
-        rgba8(RGB8 &RGB, UBYTE Alpha) :
+        rgba8(const RGB8 &RGB, UBYTE Alpha) :
             r(value_type(RGB.Red)),
             g(value_type(RGB.Green)),
             b(value_type(RGB.Blue)),
             a(value_type(Alpha)) {}
+        
+        rgba8(const FRGB &RGB) :
+            r((value_type)uround(RGB.Red * double(base_mask))),
+            g((value_type)uround(RGB.Green * double(base_mask))),
+            b((value_type)uround(RGB.Blue * double(base_mask))),
+            a((value_type)uround(RGB.Alpha * double(base_mask))) {}
 
-        rgba8(FRGB &RGB, FLOAT Alpha) :
+        rgba8(const FRGB &RGB, FLOAT Alpha) :
             r((value_type)uround(RGB.Red * double(base_mask))),
             g((value_type)uround(RGB.Green * double(base_mask))),
             b((value_type)uround(RGB.Blue * double(base_mask))),
