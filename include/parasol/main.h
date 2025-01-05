@@ -535,6 +535,7 @@ constexpr FieldValue ClientData(CPTR Value) { return FieldValue(FID_ClientData, 
 constexpr FieldValue Version(double Value) { return FieldValue(FID_Version, Value); }
 constexpr FieldValue Viewport(OBJECTID Value) { return FieldValue(FID_Viewport, Value); }
 constexpr FieldValue Viewport(OBJECTPTR Value) { return FieldValue(FID_Viewport, Value); }
+constexpr FieldValue Weight(LONG Value) { return FieldValue(FID_Weight, Value); }
 constexpr FieldValue WheelSpeed(double Value) { return FieldValue(FID_WheelSpeed, Value); }
 constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }

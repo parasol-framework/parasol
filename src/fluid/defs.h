@@ -140,7 +140,7 @@ struct struct_record {
    std::string Name;
    std::vector<struct_field> Fields;
    LONG Size = 0; // Total byte size of the structure
-   struct_record(const std::string pName) : Name(pName) { }
+   struct_record(std::string_view pName) : Name(pName) { }
    struct_record() = default;
 };
 
@@ -149,11 +149,15 @@ struct struct_record {
 
 struct struct_name {
    std::string name;
-   struct_name(const std::string pName) {
+   struct_name(const std::string_view pName) {
       auto colon = pName.find(':');
 
       if (colon IS std::string::npos) name = pName;
       else name = pName.substr(0, colon);
+   }
+   
+   bool operator==(const std::string_view &other) const {
+      return (name == other);
    }
 
    bool operator==(const struct_name &other) const {
@@ -165,6 +169,18 @@ struct struct_hash {
    std::size_t operator()(const struct_name &k) const {
       ULONG hash = 5381;
       for (auto c : k.name) {
+         if ((c >= 'A') and (c <= 'Z'));
+         else if ((c >= 'a') and (c <= 'z'));
+         else if ((c >= '0') and (c <= '9'));
+         else break;
+         hash = ((hash<<5) + hash) + UBYTE(c);
+      }
+      return hash;
+   }
+
+   std::size_t operator()(const std::string_view k) const {
+      ULONG hash = 5381;
+      for (auto c : k) {
          if ((c >= 'A') and (c <= 'Z'));
          else if ((c >= 'a') and (c <= 'z'));
          else if ((c >= '0') and (c <= '9'));
@@ -365,8 +381,8 @@ int MAKESTRUCT(lua_State *);
 void make_any_table(lua_State *, LONG, CSTRING, LONG, CPTR ) __attribute__((unused));
 void make_array(lua_State *, LONG, CSTRING, APTR *, LONG, bool);
 void make_table(lua_State *, LONG, LONG, CPTR ) __attribute__((unused));
-ERR make_struct(lua_State *, const std::string &, CSTRING) __attribute__((unused));
-ERR named_struct_to_table(lua_State *, const std::string, CPTR);
+ERR make_struct(lua_State *, std::string_view, CSTRING) __attribute__((unused));
+ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
 void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
 void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
 CSTRING next_line(CSTRING String);
@@ -374,7 +390,7 @@ void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);
 void process_error(objScript *, CSTRING);
 struct object * push_object(lua_State *, OBJECTPTR Object);
 ERR push_object_id(lua_State *, OBJECTID ObjectID);
-struct fstruct * push_struct(objScript *, APTR, const std::string &, bool, bool);
+struct fstruct * push_struct(objScript *, APTR, std::string_view, bool, bool);
 struct fstruct * push_struct_def(lua_State *, APTR, struct struct_record &, bool);
 extern void register_array_class(lua_State *);
 extern void register_input_class(lua_State *);

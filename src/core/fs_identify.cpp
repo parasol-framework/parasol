@@ -18,6 +18,7 @@ The `ERR::Search` code is returned if a suitable class does not match the target
 
 -INPUT-
 cstr Path:     The location of the object data.
+cid Filter:    Restrict the search to classes in this subset, or use `CLASSID::NIL` to search all classes.
 &cid Class:    Must refer to a `CLASSID` variable that will store the resulting class ID.
 &cid SubClass: Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).
 
@@ -31,7 +32,7 @@ Read
 
 *********************************************************************************************************************/
 
-ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
+ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *ClassID, CLASSID *SubClassID)
 {
    pf::Log log(__FUNCTION__);
    LONG i, bytes_read;
@@ -99,9 +100,10 @@ ERR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
       if (*ClassID IS CLASSID::NIL) {
          if (auto sep = res_path.find_last_of("."); sep != std::string::npos) {
             auto ext = res_path.substr(sep + 1, std::string::npos);
-            if (auto ext_class_id = lookup_class_by_ext(ext); ext_class_id != CLASSID::NIL) {
+            if (auto ext_class_id = lookup_class_by_ext(Filter, ext); ext_class_id != CLASSID::NIL) {
                auto &rec = glClassDB[ext_class_id];
-               if (rec.ParentID != CLASSID::NIL) {
+
+               if (rec.ParentID != CLASSID::NIL) { // Confirm if ext_class_id is a sub-class
                   *ClassID = rec.ParentID;
                   if (SubClassID) *SubClassID = rec.ClassID;
                }

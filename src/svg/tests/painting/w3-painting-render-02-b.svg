@@ -1,0 +1,41 @@
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+This tests that the 'color-interpolation' property is honored when alpha compositing is performed.
+
+The test slide consists of seven rectangular regions, each of which is filled with either a dark or light
+shade of gray.  The 'color-interpolation' property is used on the rectangles to control whether a
+dark or light shade of gray appears.  Text inside each rectangular region indicates whether the shade of gray
+should be dark or light.  The top two rectangular regions are references against which the remaining five are to
+be compared.
+-->
+  <g transform='translate(90,10)'>
+    <rect y='100' width='300' height='200'/> <!-- Background for all rectangles -->
+    <g stroke='black' stroke-width='2'>
+      <!-- Two reference rectangles in sRGB -->
+      <rect width='150' height='100' fill='#7F7F7F'/>
+      <rect x='150' width='150' height='100' fill='#BBBBBB'/>
+      <g fill='white' fill-opacity='0.5'>
+        <rect y='100' width='100' height='100'/> <!-- Mid Left (dark) -->
+        <g color-interpolation='linearRGB'>
+          <rect x='100' y='100' width='100' height='100' color-interpolation='linearRGB'/> <!-- Mid Center (light) -->
+          <rect x='200' y='100' width='100' height='100' color-interpolation='sRGB'/> <!-- Mid Right (dark) -->
+          <rect y='200' width='150' height='100' color-interpolation='auto'/> <!-- Bottom Left (either) -->
+          <rect x='150' y='200' width='150' height='100' color-interpolation='inherit'/> <!-- Bottom Right (light) -->
+        </g>
+      </g>
+    </g>
+
+    <g text-anchor='middle' transform='translate(0,5)'>
+      <text x='75' y='50'>dark</text>
+      <text x='225' y='50'>light</text>
+      <text x='50' y='150'>dark</text>
+      <text x='150' y='150'>light</text>
+      <text x='250' y='150'>dark</text>
+      <text x='75' y='250'>dark or light</text>
+      <text x='225' y='250'>light</text>
+    </g>
+  </g>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000"/>
+</svg>

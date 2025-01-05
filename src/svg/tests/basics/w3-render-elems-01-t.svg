@@ -1,0 +1,13 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <g transform="translate(30, 80)">
+    <g fill="green">
+      <path d="M60,0 l60,0 l60,60 l0,60 l-60,60 l-60,0 l-60,-60 l0,-60 z"/>
+    </g>
+    <g fill="black" transform="translate(200, 0)">
+      <path d="M60,0 l60,0 l60,60 l0,60 l-60,60 l-60,0 l-60,-60 l0,-60 z"/>
+    </g>
+    <text x="130" y="-30" font-size="28">Shape fill</text>
+  </g>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000000"/>
+</svg>

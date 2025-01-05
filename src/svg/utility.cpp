@@ -98,11 +98,11 @@ static FRGB hsl_to_rgb(HSV Colour)
 //********************************************************************************************************************
 // Support for the 'currentColor' colour value.  Finds the first parent with a defined fill colour and returns it.
 
-static ERR current_colour(extSVG *Self, objVector *Vector, svgState &State, FRGB &RGB)
+ERR svgState::current_colour(objVector *Vector, FRGB &RGB) noexcept
 {
-   if (!State.m_color.empty()) {
+   if (!m_color.empty()) {
       VectorPainter painter;
-      if (vec::ReadPainter(NULL, State.m_color.c_str(), &painter, NULL) IS ERR::Okay) {
+      if (vec::ReadPainter(NULL, m_color.c_str(), &painter, NULL) IS ERR::Okay) {
          RGB = painter.Colour;
          return ERR::Okay;
       }
@@ -200,24 +200,6 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 }
 
 //********************************************************************************************************************
-// Save an id reference for an SVG element.  The element can be then be found at any time with find_href_tag().  We store
-// a copy of the tag data as pointer references are too high a risk.
-
-inline bool add_id(extSVG *Self, const XMLTag &Tag, const std::string_view Name)
-{
-   if (Self->IDs.contains(std::string(Name))) return false;
-   Self->IDs.emplace(Name, Tag);
-   return true;
-}
-
-inline bool add_id(extSVG *Self, const XMLTag &Tag, const std::string Name)
-{
-   if (Self->IDs.contains(Name)) return false;
-   Self->IDs.emplace(Name, Tag);
-   return true;
-}
-
-//********************************************************************************************************************
 
 static CSTRING folder(extSVG *Self)
 {
@@ -281,7 +263,7 @@ static XMLTag * find_href_tag(extSVG *Self, std::string Ref)
 {
    auto ref = uri_name(Ref);
    if ((!ref.empty()) and (Self->IDs.contains(ref))) {
-      return &Self->IDs[ref];
+      return Self->IDs[ref];
    }
    return NULL;
 }
@@ -339,7 +321,7 @@ static double read_time(const std::string_view Value)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static double read_unit(const std::string_view Value, LARGE *FieldID)
+static double read_unit(std::string_view &Value, LARGE *FieldID)
 {
    if (FieldID) *FieldID |= TDOUBLE;
 
@@ -347,25 +329,32 @@ static double read_unit(const std::string_view Value, LARGE *FieldID)
 
    std::size_t i = 0;
    while ((i < Value.size()) and (unsigned(Value[i]) <= 0x20)) i++;
+   if (i > 0) Value.remove_prefix(i);
 
    double fv;
-   auto [ ptr, error ] = std::from_chars(Value.data() + i, Value.data() + Value.size(), fv);
+   auto [ ptr, error ] = std::from_chars(Value.data(), Value.data() + Value.size(), fv);
 
    if (error IS std::errc()) {
-      if (ptr[0] IS '%') {
+      Value.remove_prefix(ptr - Value.data());
+
+      if (Value.starts_with('%')) {
+         Value.remove_prefix(1);
          if (FieldID) *FieldID |= TSCALE;
          return fv * 0.01;
       }
-      else if ((ptr[0] IS 'e') and (ptr[1] IS 'm')) return fv * 12.0 * (4.0 / 3.0); // Multiply the current font's pixel height by the provided em value
-      else if ((ptr[0] IS 'e') and (ptr[1] IS 'x')) return fv * 6.0 * (4.0 / 3.0); // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
-      else if ((ptr[0] IS 'i') and (ptr[1] IS 'n')) return fv * dpi; // Inches
-      else if ((ptr[0] IS 'c') and (ptr[1] IS 'm')) return fv * (1.0 / 2.56) * dpi; // Centimetres
-      else if ((ptr[0] IS 'm') and (ptr[1] IS 'm')) return fv * (1.0 / 20.56) * dpi; // Millimetres
-      else if ((ptr[0] IS 'p') and (ptr[1] IS 't')) return fv * (4.0 / 3.0); // Points.  A point is 4/3 of a pixel
-      else if ((ptr[0] IS 'p') and (ptr[1] IS 'c')) return fv * (4.0 / 3.0) * 12.0; // Pica.  1 Pica is equal to 12 Points
-      else return fv; // Default to 'px' / pixel
+      else if (Value.starts_with("em")) { Value.remove_prefix(2); return fv * 12.0 * (4.0 / 3.0); } // Multiply the current font's pixel height by the provided em value
+      else if (Value.starts_with("ex")) { Value.remove_prefix(2); return fv * 6.0 * (4.0 / 3.0); } // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
+      else if (Value.starts_with("in")) { Value.remove_prefix(2); return fv * dpi; } // Inches
+      else if (Value.starts_with("cm")) { Value.remove_prefix(2); return fv * (1.0 / 2.56) * dpi; } // Centimetres
+      else if (Value.starts_with("mm")) { Value.remove_prefix(2); return fv * (1.0 / 20.56) * dpi; } // Millimetres
+      else if (Value.starts_with("pt")) { Value.remove_prefix(2); return fv * (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
+      else if (Value.starts_with("pc")) { Value.remove_prefix(2); return fv * (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
+      else if (Value.starts_with("px")) { Value.remove_prefix(2); return fv; } // Pixel
+
+      return fv; // Default to 'px' / pixel
    }
-   else return 0;
+   Value = std::string_view();
+   return DBL_MIN;
 }
 
 //********************************************************************************************************************
@@ -377,7 +366,8 @@ static double read_unit(const std::string_view Value, LARGE *FieldID)
 inline void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string_view Value, VUNIT Units)
 {
    auto field = FieldID;
-   double num = read_unit(Value, &field);
+   auto v = Value;
+   double num = read_unit(v, &field);
    if (Units IS VUNIT::BOUNDING_BOX) field |= TSCALE;
    SetField(Object, field, num);
 }
@@ -411,40 +401,50 @@ template <class T = double> std::string_view read_numseq(std::string_view String
 }
 
 //********************************************************************************************************************
+// Read a sequence of doubles from a string.  Commas, parenthesis and whitespace is ignored.
 
 template<class T = double> std::vector<T> read_array(const std::string Value, LONG Limit = 0x7fffffff)
 {
    std::vector<T> result;
 
-   CSTRING v = Value.c_str();
-   while ((*v) and (LONG(result.size()) < Limit)) {
-      while ((*v) and ((*v <= 0x20) or (*v IS ',') or (*v IS '(') or (*v IS ')'))) v++;
-      if (!*v) return result;
+   if (iequals("none", Value)) return result;
 
-      STRING next = NULL;
-      double num = strtod(v, &next);
-      if ((!num) and (!next)) return result;
+   auto v = std::string_view(Value);
+   while ((!v.empty()) and (std::ssize(result) < Limit)) {
+      while ((!v.empty()) and ((v[0] <= 0x20) or (v[0] IS ',') or (v[0] IS '(') or (v[0] IS ')'))) v.remove_prefix(1);
+      if (v.empty()) return result;
+
+      auto num = read_unit(v);
+      if (num IS DBL_MIN) return result;
+
       result.push_back(num);
-      v = next;
    }
 
    return result;
 }
 
 //********************************************************************************************************************
-// Currently used by gradient functions.
+// This function is called before fully parsing the document so that we can extract all tags making use of the
+// 'id' attribute.
 
-static void add_inherit(extSVG *Self, OBJECTPTR Object, const std::string ID)
+static void parse_ids(extSVG *Self, XMLTag &Tag)
 {
-   pf::Log log(__FUNCTION__);
-   log.trace("Object: %d, ID: %s", Object->UID, ID.c_str());
+   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      auto &name = Tag.Attribs[a].Name;
+      if ((name.size() IS 2) and (name[0] IS 'i') and (name[1] IS 'd')) {
+         if (Tag.Attribs[a].Value.empty()) continue;
 
-   auto &inherit = Self->Inherit.emplace_back();
-   inherit.Object = Object;
+         if (Self->IDs.contains(Tag.Attribs[a].Value)) break;
+         Self->IDs.emplace(Tag.Attribs[a].Value, &Tag);
+         break;
+      }
+   }
 
-   auto hash = ID.find('#');
-   if (hash IS std::string::npos) inherit.ID = ID;
-   else inherit.ID = ID.substr(hash);
+   for (auto &child : Tag.Children) {
+      if (child.isTag()) {
+         parse_ids(Self, child);
+      }
+   }
 }
 
 //********************************************************************************************************************
@@ -517,8 +517,14 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          for (auto &scan : xml->Tags) {
             if (iequals("svg", scan.name())) {
                svgState state(Self);
-               if (Self->Target) xtag_svg(Self, state, scan, Self->Target, sibling);
-               else xtag_svg(Self, state, scan, Self->Scene, sibling);
+
+               // Parse all tags with an 'id' reference so that href's can target them even when
+               // are out-of-order.
+
+               parse_ids(Self, scan);
+
+               if (Self->Target) state.proc_svg(scan, Self->Target, sibling);
+               else state.proc_svg(scan, Self->Scene, sibling);
             }
          }
 
@@ -597,5 +603,25 @@ static void convert_styles(objXML::TAGS &Tags)
       }
 
       if (!tag.Children.empty()) convert_styles(tag.Children);
+   }
+}
+
+//********************************************************************************************************************
+
+static void update_dpi(void)
+{
+   static LARGE last_update = -0x7fffffff;
+   LARGE current_time = PreciseTime();
+
+   if (current_time - last_update > 3000000LL) {
+      DISPLAYINFO *display;
+      if (gfx::GetDisplayInfo(0, &display) IS ERR::Okay) {
+         last_update = PreciseTime();
+         if ((display->VDensity >= 72) and (display->HDensity >= 72)) {
+            glDisplayVDPI = display->VDensity;
+            glDisplayHDPI = display->HDensity;
+            glDisplayDPI = (glDisplayVDPI + glDisplayHDPI) * 0.5;
+         }
+      }
    }
 }

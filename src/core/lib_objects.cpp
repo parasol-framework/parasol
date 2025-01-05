@@ -1085,11 +1085,14 @@ ERR InitObject(OBJECTPTR Object)
       //   that in the first case we can only support classes that are already in memory.  The second part of this
       //   routine supports checking of sub-classes that aren't loaded yet.
       //
-      // ERR::UseSubClass: Similar to ERR::NoSupport, but avoids scanning of sub-classes that aren't loaded in memory.
+      // ERR::UseSubClass: Can be returned by the base-class.  Similar to ERR::NoSupport, but avoids scanning of 
+      // sub-classes that aren't loaded in memory.
 
-      std::unordered_map<CLASSID, extMetaClass *>::const_iterator subindex = glClassMap.begin();
+      auto &subclasses = Object->ExtClass->SubClasses;
+      auto subindex = subclasses.begin();
+      bool stop = false;
 
-      while (subindex != glClassMap.end()) {
+      while (!stop) {
          if (Object->ExtClass->ActionTable[LONG(AC::Init)].PerformAction) {
             error = Object->ExtClass->ActionTable[LONG(AC::Init)].PerformAction(Object, NULL);
          }
@@ -1098,8 +1101,8 @@ ERR InitObject(OBJECTPTR Object)
          if (error IS ERR::Okay) {
             Object->Flags |= NF::INITIALISED;
 
-            if (Object->ExtClass != cl) {
-               // Due to the sub-class switch, increase the open count of the sub-class (see NewObject() for details on object
+            if (Object->isSubClass()) {
+               // Increase the open count of the sub-class (see NewObject() for details on object
                // reference counting).
 
                log.msg("Object class switched to sub-class \"%s\".", Object->className());
@@ -1110,8 +1113,7 @@ ERR InitObject(OBJECTPTR Object)
 
             return ERR::Okay;
          }
-
-         if (error IS ERR::UseSubClass) {
+         else if (error IS ERR::UseSubClass) {
             log.trace("Requested to use registered sub-class.");
             use_subclass = true;
          }
@@ -1119,15 +1121,11 @@ ERR InitObject(OBJECTPTR Object)
 
          // Attempt to initialise with the next known sub-class.
 
-         while (subindex != glClassMap.end()) {
-            if (Object->Class IS subindex->second);
-            else if ((Object->Class->BaseClassID IS subindex->second->BaseClassID) and (subindex->second->ClassID != subindex->second->BaseClassID)) {
-               Object->Class = subindex->second;
-               log.trace("Attempting initialisation with sub-class '%s'", Object->className());
-               break;
-            }
+         if (subindex != subclasses.end()) {
+            Object->ExtClass = *subindex;
             subindex++;
          }
+         else stop = true;
       }
    }
 
@@ -1145,7 +1143,7 @@ ERR InitObject(OBJECTPTR Object)
    }
    else if ((error IS ERR::NoSupport) and (GetField(Object, FID_Path|TSTR, &path) IS ERR::Okay) and (path)) {
       CLASSID class_id, subclass_id;
-      if (IdentifyFile(path, &class_id, &subclass_id) IS ERR::Okay) {
+      if (IdentifyFile(path, cl->BaseClassID, &class_id, &subclass_id) IS ERR::Okay) {
          if ((class_id IS Object->classID()) and (subclass_id != CLASSID::NIL)) {
             log.msg("Searching for subclass $%.8x", ULONG(subclass_id));
             if ((Object->ExtClass = (extMetaClass *)FindClass(subclass_id))) {
@@ -1666,11 +1664,11 @@ ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 /*********************************************************************************************************************
 
 -FUNCTION-
-SetContext: Alters the nominated owner of newly created objects.
+SetContext: Sets the nominated owner of new resources.
 
 This function defines the object that has control of the current thread.  Once called, all further resource
 allocations are assigned to that object.  This is significant for the automatic collection of memory and object
-allocations.  For example:
+resources.  For example:
 
 <pre>
 InitObject(display);

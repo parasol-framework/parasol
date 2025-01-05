@@ -212,73 +212,45 @@ ERR SetField(OBJECTPTR Object, FIELD FieldID, ...)
 
 static LONG write_array(CSTRING String, LONG Flags, WORD ArraySize, APTR Dest)
 {
-   WORD i;
-   UBYTE byte;
-
    if (!ArraySize) ArraySize = 0x7fff; // If no ArraySize is specified then there is no imposed limit.
 
    if ((String[0] IS '#') or ((String[0] IS '0') and (String[1] IS 'x'))) {
       // Array is a sequence of hexadecimal bytes
-      String++;
-      for (i=0; i < ArraySize; i++) {
-         if (*String) {
-            if ((*String >= '0') and (*String <= '9')) byte = (*String - '0')<<4;
-            else if ((*String >= 'A') and (*String <= 'F')) byte = ((*String - 'A')+10)<<4;
-            else if ((*String >= 'a') and (*String <= 'f')) byte = ((*String - 'a')+10)<<4;
-            else byte = 0;
-            String++;
+      String += (String[0] IS '#') ? 1 : 2;
+      LONG i = 0;
+      while ((i < ArraySize) and (*String)) {
+         UBYTE byte = 0;
+         for (int shift=4; shift >= 0; shift -= 4) {
             if (*String) {
-               if ((*String >= '0') and (*String <= '9')) byte += (*String - '0');
-               else if ((*String >= 'A') and (*String <= 'F')) byte += ((*String - 'A')+10);
-               else if ((*String >= 'a') and (*String <= 'f')) byte += ((*String - 'a')+10);
+               if (std::isdigit(*String)) byte |= (*String - '0') << shift;
+               else if (*String >= 'A' and (*String <= 'F')) byte |= (*String - 'A' + 10) << shift;
+               else if (*String >= 'a' and (*String <= 'f')) byte |= (*String - 'a' + 10) << shift;
                String++;
-
-               if (Flags & FD_LONG)        ((LONG *)Dest)[i]   = byte;
-               else if (Flags & FD_BYTE)   ((BYTE *)Dest)[i]   = byte;
-               else if (Flags & FD_FLOAT)  ((FLOAT *)Dest)[i]  = byte;
-               else if (Flags & FD_DOUBLE) ((DOUBLE *)Dest)[i] = byte;
             }
          }
+         
+         if (Flags & FD_LONG)        ((LONG *)Dest)[i]   = byte;
+         else if (Flags & FD_BYTE)   ((BYTE *)Dest)[i]   = byte;
+         else if (Flags & FD_FLOAT)  ((FLOAT *)Dest)[i]  = byte;
+         else if (Flags & FD_DOUBLE) ((DOUBLE *)Dest)[i] = byte;
+         i++;
       }
       return i;
    }
    else {
       // Assume String is in CSV format
-      if (Flags & FD_LONG) {
-         for (i=0; (i < ArraySize) and (*String); i++) {
-            ((LONG *)Dest)[i] = strtol(String, NULL, 0);
-            while ((*String > 0x20) and (*String != ',')) String++;
-            if (*String) String++;
-         }
-         return i;
+      char *end;
+      LONG i;
+      for (i=0; (i < ArraySize) and (*String); i++) {
+          if (Flags & FD_LONG)        ((LONG *)Dest)[i]   = strtol(String, &end, 0);
+          else if (Flags & FD_BYTE)   ((UBYTE *)Dest)[i]  = strtol(String, &end, 0);
+          else if (Flags & FD_FLOAT)  ((FLOAT *)Dest)[i]  = strtod(String, &end);
+          else if (Flags & FD_DOUBLE) ((DOUBLE *)Dest)[i] = strtod(String, &end);
+          String = end;
+          while ((*String) and (!std::isdigit(*String)) and (*String != '-')) String++;
       }
-      else if (Flags & FD_BYTE) {
-         for (i=0; (i < ArraySize) and (*String); i++) {
-            ((UBYTE *)Dest)[i] = strtol(String, NULL, 0);
-            while ((*String > 0x20) and (*String != ',')) String++;
-            if (*String) String++;
-         }
-         return i;
-      }
-      else if (Flags & FD_FLOAT) {
-         for (i=0; (i < ArraySize) and (*String); i++) {
-            ((FLOAT *)Dest)[i] = strtod(String, NULL);
-            while ((*String > 0x20) and (*String != ',')) String++;
-            if (*String) String++;
-         }
-         return i;
-      }
-      else if (Flags & FD_DOUBLE) {
-         for (i=0; (i < ArraySize) and (*String); i++) {
-            ((DOUBLE *)Dest)[i] = strtod(String, NULL);
-            while ((*String > 0x20) and (*String != ',')) String++;
-            if (*String) String++;
-         }
-         return i;
-      }
+      return i;
    }
-
-   return 0;
 }
 
 //********************************************************************************************************************

@@ -49,9 +49,10 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
 //********************************************************************************************************************
 // Fast lookup for matching file extensions with a valid class handler.
 
-CLASSID lookup_class_by_ext(std::string_view Ext)
+CLASSID lookup_class_by_ext(CLASSID Filter, std::string_view Ext)
 {
    if (glWildClassMapTotal != std::ssize(glClassDB)) {
+      // Build a lookup map based on file extensions
       for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
          if (auto &rec = it->second; !rec.Match.empty()) {
             std::vector<std::string> list;
@@ -68,8 +69,20 @@ CLASSID lookup_class_by_ext(std::string_view Ext)
    }
 
    auto hash = pf::strihash(Ext);
-   if (glWildClassMap.contains(hash)) {
-      return glWildClassMap[hash];
+
+   if (Filter IS CLASSID::NIL) {
+      if (auto search = glWildClassMap.find(hash); search != glWildClassMap.end()) {
+         return search->second;
+      }
+   }
+   else {
+      auto range = glWildClassMap.equal_range(hash);
+      for (auto it = range.first; it != range.second; ++it) {
+         CLASSID class_id = it->second;
+         if (auto rec = glClassDB.find(class_id); rec != glClassDB.end()) {
+            if ((rec->second.ParentID IS Filter) or (rec->second.ClassID IS Filter)) return class_id;
+         }
+      }
    }
 
    return CLASSID::NIL;

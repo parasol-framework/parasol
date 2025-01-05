@@ -17,19 +17,17 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 
 ### Features
 
-* Multi-functional: Integrate your C++ code with our API, or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
-* Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.  Our UI code is script driven, making customisation easy.
-* Load SVG files into vector scene graphs, interact with them live via our API and changes will appear on the display automatically.
-* SVG animation (SMIL) is supported.
-* SVG support is tested against W3C's official SVG test suite, currently passing over 140 tests and counting.
-* Use RIPL, a text layout engine modeled on HTML, SVG and word processing methodologies.
-* Our multi-platform networking API provides coverage for TCP/IP sockets, HTTP and SSL.
-* Integrated data handling APIs for XML, JSON, ZIP, PNG, JPEG, SVG.
-* Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
-* Multi-channel audio playback supporting WAV and MP3 files.
-* Hundreds of standardised scalable icons are included for application building.  Fonts are also standardised for cross-platform consistency.
-* Parasol can be used as an enhanced Lua framework by Lua developers in need of broad UI features and full system integration.
-* WIP: Extensive text editing widget implemented with scintilla.org.
+* **Versatility:** Integrate your C++ code with our API, or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
+* **Scalable User Interfaces:** Create fully scalable UI's using our vector-based widgets, including windows, checkboxes, buttons, dialogs and text.  The script-driven architecture makes customization simple and flexible.
+* **Live Vector Management:** Load SVG files into vector scene graphs and interact with the graph's properties in real-time via our API. 
+* **Animation:** Support for SVG animation (SMIL) is included, as well as off-the-shelf visual FX in our VFX API.
+* **W3C-Validated SVG Compliance:** We test against the W3C SVG test suite to maximise compatibility with the SVG standard.
+* **Advanced Text Layout Engine:** Leverage RIPL, our powerful text layout engine inspired by HTML, SVG, and word-processing standards, for flexible document rendering that doesn't come excessive overheads.
+* **Comprehensive Networking API:** Multi-platform networking support for TCP/IP sockets, HTTP, and SSL ensures secure and seamless connectivity.
+* **Integrated Data Handling:** Built-in APIs for efficient handling of XML, JSON, ZIP, PNG, JPEG, and SVG file formats.
+* **Cross-Platform System Abstraction:** Full system abstraction for platform-agnostic development, including file I/O, clipboard management, threading, and object management.
+* **Multi-Channel Audio Playback:** Supports high-quality audio playback for WAV and MP3 files, enabling rich multimedia experiences.
+* **Enhanced Lua Framework:** Ideal for Lua developers seeking robust UI features and comprehensive system integration. Parasol serves as an enhanced Lua framework for modern application development.
 
 ### Application Example
 
@@ -73,7 +71,7 @@ This is an example of a simple client application written in Fluid.  It loads an
 
 ## 2. Checkout
 
-Release builds can be [downloaded directly](https://github.com/parasol-framework/parasol/releases/latest) from GitHub so that you don't need to compile the framework yourself.  If you're happy with downloading an archive then you can skip the rest of this readme and head to the [main website](https://www.parasol.ws) for further information on usage.
+Release builds can be [downloaded directly](https://github.com/parasol-framework/parasol/releases/latest) from GitHub so that you don't need to compile the framework yourself.  If you're happy with using a release build then you can skip the rest of this readme and head to the [main website](https://www.parasol.ws) for further information on usage.
 
 To build your own framework, checkout the source code from the `release` branch of our GitHub repository:
 

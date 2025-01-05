@@ -56,17 +56,17 @@ using namespace pf;
 #include <inttypes.h>
 #include <float.h>
 
-static const DOUBLE DISPLAY_DPI = 96.0;          // Freetype measurements are based on this DPI.
-static const DOUBLE DEG2RAD     = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
-static const DOUBLE RAD2DEG     = 57.295779513082320876798154814105;
-static const DOUBLE SQRT2       = 1.41421356237; // sqrt(2)
-static const DOUBLE INV_SQRT2   = 1.0 / SQRT2;
+static const double DISPLAY_DPI = 96.0;          // Freetype measurements are based on this DPI.
+static const double DEG2RAD     = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
+static const double RAD2DEG     = 57.295779513082320876798154814105;
+static const double SQRT2       = 1.41421356237; // sqrt(2)
+static const double INV_SQRT2   = 1.0 / SQRT2;
 
 extern OBJECTPTR clVectorScene, clVectorViewport, clVectorGroup, clVectorColour;
 extern OBJECTPTR clVectorEllipse, clVectorRectangle, clVectorPath, clVectorWave;
 extern OBJECTPTR clVectorFilter, clVectorPolygon, clVectorText, clVectorClip;
 extern OBJECTPTR clVectorGradient, clVectorImage, clVectorPattern, clVector;
-extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX, clSourceFX;
+extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX, clSourceFX, clWaveFunctionFX;
 extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffect, clDisplacementFX;
 extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX, clRemapFX, clLightingFX;
 extern OBJECTPTR glVectorModule;
@@ -79,6 +79,8 @@ class extVectorScene;
 class extFilterEffect;
 class extVectorViewport;
 class extVectorClip;
+
+extern std::unordered_map<std::string, std::array<FRGB, 256>> glColourMaps;
 
 //********************************************************************************************************************
 
@@ -166,18 +168,18 @@ template<class T = double> struct TClipRectangle {
    }
 };
 
-static const TClipRectangle<DOUBLE> TCR_EXPANDING(DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX);
-static const TClipRectangle<DOUBLE> TCR_SHRINKING(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
+static const TClipRectangle<double> TCR_EXPANDING(DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX);
+static const TClipRectangle<double> TCR_SHRINKING(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
 
 class InputBoundary {
 public:
    OBJECTID vector_id;
    PTC cursor; // This value buffers the Vector.Cursor field for optimisation purposes.
-   TClipRectangle<DOUBLE> bounds; // Collision boundary
-   DOUBLE x, y; // Absolute X,Y without collision
+   TClipRectangle<double> bounds; // Collision boundary
+   double x, y; // Absolute X,Y without collision
    bool pass_through; // True if input events should be passed through (the cursor will still apply)
 
-   InputBoundary(OBJECTID pV, PTC pC, TClipRectangle<DOUBLE> &pBounds, DOUBLE p5, DOUBLE p6, bool pPass = false) :
+   InputBoundary(OBJECTID pV, PTC pC, TClipRectangle<double> &pBounds, double p5, double p6, bool pPass = false) :
       vector_id(pV), cursor(pC), bounds(pBounds), x(p5), y(p6), pass_through(pPass) {};
 };
 
@@ -200,7 +202,7 @@ class DashedStroke {
 public:
    agg::conv_dash<agg::path_storage> path;
    agg::conv_stroke<agg::conv_dash<agg::path_storage>> stroke;
-   std::vector<DOUBLE> values;
+   std::vector<double> values;
 
    DashedStroke(agg::path_storage &pPath, LONG Elements=2) : path(pPath), stroke(path), values(Elements) { }
 };
@@ -284,7 +286,7 @@ public:
 
 };
 
-#define TB_NOISE 1
+constexpr LONG TB_NOISE = 1;
 
 #include <parasol/modules/vector.h>
 
@@ -297,10 +299,10 @@ public:
 
 //********************************************************************************************************************
 
-#define MAX_TRANSITION_STOPS 10
+constexpr LONG MAX_TRANSITION_STOPS = 10;
 
 struct TransitionStop { // Passed to the Stops field.
-   DOUBLE Offset;
+   double Offset;
    struct VectorMatrix Matrix;
    agg::trans_affine *AGGTransform;
 };
@@ -317,14 +319,16 @@ class extVectorGradient : public objVectorGradient {
    public:
    using create = pf::Create<extVectorGradient>;
 
-   struct GradientStop *Stops;  // An array of gradient stop colours.
+   std::vector<GradientStop> Stops;  // An array of gradient stop colours.
    struct VectorMatrix *Matrices;
    class GradientColours *Colours;
+   std::string ColourMap;
+   FRGB   Colour;
+   RGB8   ColourRGB; // A cached conversion of the FRGB value
    STRING ID;
    LONG NumericID;
-   WORD ChangeCounter;
-   DOUBLE Angle;
-   DOUBLE Length;
+   double Angle;
+   double Length;
    bool CalcAngle; // True if the Angle/Length values require recalculation.
 };
 
@@ -353,8 +357,8 @@ class extVectorFilter : public objVectorFilter {
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
    TClipRectangle<LONG> VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
    UBYTE BankIndex;
-   DOUBLE BoundWidth, BoundHeight; // Filter boundary, computed on acDraw()
-   DOUBLE TargetX, TargetY, TargetWidth, TargetHeight; // Target boundary, computed on acDraw()
+   double BoundWidth, BoundHeight; // Filter boundary, computed on acDraw()
+   double TargetX, TargetY, TargetWidth, TargetHeight; // Target boundary, computed on acDraw()
    bool Rendered;
    bool Disabled;
 };
@@ -370,7 +374,7 @@ class extFilterEffect : public objFilterEffect {
 class extPainter : public VectorPainter {
 public:
    GRADIENT_TABLE *GradientTable;
-   DOUBLE GradientAlpha;
+   double GradientAlpha;
    RGB8   RGB;
 };
 
@@ -379,9 +383,9 @@ class extVector : public objVector {
    using create = pf::Create<extVector>;
 
    extPainter Fill[2], Stroke;
-   DOUBLE FinalX, FinalY;         // Used by Viewport to define the target X,Y; also VectorText to position the text' final position.
-   TClipRectangle<DOUBLE> Bounds; // Must be calculated by GeneratePath() and called from calc_full_boundary()
-   DOUBLE StrokeWidth;
+   double FinalX, FinalY;         // Used by Viewport to define the target X,Y; also VectorText to position the text' final position.
+   TClipRectangle<double> Bounds; // Must be calculated by GeneratePath() and called from calc_full_boundary()
+   double StrokeWidth;
    agg::path_storage BasePath;
    agg::trans_affine Transform;   // Final transform.  Accumulated from the Matrix list during path generation.
    CSTRING FilterString, StrokeString, FillString;
@@ -422,7 +426,7 @@ class extVector : public objVector {
 
    // Methods
 
-   DOUBLE fixed_stroke_width();
+   double fixed_stroke_width();
 
    inline bool dirty() { return Dirty != RC::NIL; }
 
@@ -446,7 +450,7 @@ class extVectorScene : public objVectorScene {
    public:
    using create = pf::Create<extVectorScene>;
 
-   DOUBLE ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
+   double ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
    APTR KeyHandle; // Keyboard subscription
    std::unordered_map<std::string, OBJECTPTR> Defs;
@@ -472,12 +476,12 @@ class extVectorViewport : public extVector {
    using create = pf::Create<extVectorViewport>;
 
    FUNCTION vpDragCallback;
-   DOUBLE vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
-   DOUBLE vpTargetX, vpTargetY, vpTargetXO, vpTargetYO, vpTargetWidth, vpTargetHeight; // Target dimensions
-   DOUBLE vpXScale, vpYScale; // Internal scaling for ViewN -to-> TargetN; takes the AspectRatio into consideration.
-   DOUBLE vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
-   TClipRectangle<DOUBLE> vpBounds; // Bounding box coordinates relative to (0,0), used for clipping
-   DOUBLE vpAlignX, vpAlignY;
+   double vpViewX, vpViewY, vpViewWidth, vpViewHeight;     // Viewbox values determine the area of the SVG content that is being sourced.  These values are always fixed pixel units.
+   double vpTargetX, vpTargetY, vpTargetXO, vpTargetYO, vpTargetWidth, vpTargetHeight; // Target dimensions
+   double vpXScale, vpYScale; // Internal scaling for ViewN -to-> TargetN; takes the AspectRatio into consideration.
+   double vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
+   TClipRectangle<double> vpBounds; // Bounding box coordinates relative to (0,0), used for clipping
+   double vpAlignX, vpAlignY;
    bool  vpClip; // Viewport requires non-rectangular clipping, e.g. because it is rotated or sheared.
    DMF   vpDimensions;
    ARF   vpAspectRatio;
@@ -493,8 +497,7 @@ class extVectorPoly : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorPolygon";
    using create = pf::Create<extVectorPoly>;
 
-   struct VectorPoint *Points;
-   LONG TotalPoints;
+   std::vector<VectorPoint> Points;
    bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
 };
 
@@ -513,8 +516,8 @@ class extVectorRectangle : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorRectangle";
    using create = pf::Create<extVectorRectangle>;
 
-   struct coord { DOUBLE x, y; };
-   DOUBLE rX, rY, rWidth, rHeight, rXOffset, rYOffset;
+   struct coord { double x, y; };
+   double rX, rY, rWidth, rHeight, rXOffset, rYOffset;
    std::array<coord, 4> rRound;
    DMF    rDimensions;
    bool   rFullControl;
@@ -524,7 +527,8 @@ class extVectorRectangle : public extVector {
 
 class GradientColours {
    public:
-      GradientColours(extVectorGradient *, DOUBLE);
+      GradientColours(const std::vector<GradientStop> &, VCS, double);
+      GradientColours(const std::array<FRGB, 256> &);
       GRADIENT_TABLE table;
 };
 
@@ -536,7 +540,7 @@ class extVectorClip : public objVectorClip {
    static constexpr CSTRING CLASS_NAME = "VectorClip";
    using create = pf::Create<extVectorClip>;
 
-   TClipRectangle<DOUBLE> Bounds;
+   TClipRectangle<double> Bounds;
    OBJECTID ViewportID;
 };
 
@@ -550,9 +554,8 @@ template <class T> void next_value(T &Value)
 //********************************************************************************************************************
 
 extern CSTRING get_name(OBJECTPTR);
-extern void read_numseq(CSTRING &, std::initializer_list<DOUBLE *>);
-extern void read_numseq_zero(CSTRING &, std::initializer_list<DOUBLE *>);
-extern DOUBLE read_unit(CSTRING &, bool &);
+extern ERR read_numseq(CSTRING &, std::initializer_list<double *>);
+extern double read_unit(CSTRING &, bool &);
 extern ERR init_blurfx(void);
 extern ERR init_colour(void);
 extern ERR init_colourfx(void);
@@ -575,17 +578,18 @@ extern ERR init_sourcefx(void);
 extern ERR init_transition(void);
 extern ERR init_turbulencefx(void);
 extern ERR init_vectorscene(void);
+extern ERR init_wavefunctionfx(void);
 
 extern void apply_parent_transforms(extVector *, agg::trans_affine &);
-extern void apply_transition(extVectorTransition *, DOUBLE, agg::trans_affine &);
-extern void apply_transition_xy(extVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
-extern void calc_aspectratio(CSTRING, ARF, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
-extern void calc_full_boundary(extVector *, TClipRectangle<DOUBLE> &, bool IncludeSiblings = true, bool IncludeTransforms = true, bool IncludeStrokes = false);
+extern void apply_transition(extVectorTransition *, double, agg::trans_affine &);
+extern void apply_transition_xy(extVectorTransition *, double, double *, double *);
+extern void calc_aspectratio(CSTRING, ARF, double, double, double, double, double *X, double *Y, double *, double *);
+extern void calc_full_boundary(extVector *, TClipRectangle<double> &, bool IncludeSiblings = true, bool IncludeTransforms = true, bool IncludeStrokes = false);
 extern void convert_to_aggpath(extVectorPath *, std::vector<PathCommand> &, agg::path_storage &);
 extern void debug_tree(extVector *, LONG &);
 extern void gen_vector_path(extVector *);
 extern void gen_vector_tree(extVector *);
-extern GRADIENT_TABLE * get_fill_gradient_table(extPainter &, DOUBLE);
+extern GRADIENT_TABLE * get_fill_gradient_table(extPainter &, double);
 extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
 extern objBitmap * get_source_graphic(extVectorFilter *);
 extern ERR read_path(std::vector<PathCommand> &, CSTRING);
@@ -601,7 +605,7 @@ extern std::vector<extVector *> glVectorFocusList; // The first reference is the
 
 //********************************************************************************************************************
 
-template<class VertexSource, class T = DOUBLE>
+template<class VertexSource, class T = double>
 TClipRectangle<T> get_bounds(VertexSource &vs, const unsigned path_id = 0)
 {
    TClipRectangle<T> rect;
@@ -634,7 +638,7 @@ inline static bool check_branch_dirty(extVector *Vector)
 
 //********************************************************************************************************************
 
-inline static agg::path_storage basic_path(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
+inline static agg::path_storage basic_path(double X1, double Y1, double X2, double Y2)
 {
    agg::path_storage path;
    path.move_to(X1, Y1);
@@ -689,11 +693,11 @@ namespace agg {
 template <class T, class U> static void drawBitmapRender(U &Input,
    agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster,
-   T &spangen, DOUBLE Opacity = 1.0)
+   T &spangen, double Opacity = 1.0)
 {
    class spanconv_image {
       public:
-         spanconv_image(DOUBLE Alpha) : alpha(Alpha) { }
+         spanconv_image(double Alpha) : alpha(Alpha) { }
 
          void prepare() { }
 
@@ -705,7 +709,7 @@ template <class T, class U> static void drawBitmapRender(U &Input,
          }
 
       private:
-         DOUBLE alpha;
+         double alpha;
    };
 
    agg::span_allocator<agg::rgba8> spanalloc;
@@ -723,11 +727,11 @@ template <class T, class U> static void drawBitmapRender(U &Input,
 //********************************************************************************************************************
 
 template <class T> static void renderSolidBitmap(agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster, T &spangen, DOUBLE Opacity = 1.0)
+   agg::rasterizer_scanline_aa<> &Raster, T &spangen, double Opacity = 1.0)
 {
    class spanconv_image {
       public:
-         spanconv_image(DOUBLE Alpha) : alpha(Alpha) { }
+         spanconv_image(double Alpha) : alpha(Alpha) { }
 
          void prepare() { }
 
@@ -739,7 +743,7 @@ template <class T> static void renderSolidBitmap(agg::renderer_base<agg::pixfmt_
          }
 
       private:
-         DOUBLE alpha;
+         double alpha;
    };
 
    agg::span_allocator<agg::rgba8> spanalloc;
@@ -842,7 +846,7 @@ public:
    SimpleVector() { }
 
    // Refer to scene_draw.cpp for DrawPath()
-   void DrawPath(objBitmap *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+   void DrawPath(objBitmap *, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
 };
 
 //********************************************************************************************************************
@@ -852,7 +856,7 @@ public:
 // These functions expect to be called during path generation via gen_vector_path().  If this is not the case, ensure
 // that Dirty field markers are cleared beforehand.
 
-inline static DOUBLE get_parent_width(const objVector *Vector)
+inline static double get_parent_width(const objVector *Vector)
 {
    auto eVector = (const extVector *)Vector;
    if (auto view = (extVectorViewport *)eVector->ParentView) {
@@ -867,7 +871,7 @@ inline static DOUBLE get_parent_width(const objVector *Vector)
    else return 0;
 }
 
-inline static DOUBLE get_parent_height(const objVector *Vector)
+inline static double get_parent_height(const objVector *Vector)
 {
    auto eVector = (const extVector *)Vector;
    if (auto view = (extVectorViewport *)eVector->ParentView) {
@@ -882,22 +886,30 @@ inline static DOUBLE get_parent_height(const objVector *Vector)
    else return 0;
 }
 
-template <class T> inline static DOUBLE get_parent_diagonal(T *Vector)
+template <class T> inline static double get_parent_diagonal(T *Vector)
 {
-   DOUBLE a = std::abs(get_parent_width(Vector));
-   DOUBLE b = std::abs(get_parent_height(Vector));
+   double a = std::abs(get_parent_width(Vector));
+   double b = std::abs(get_parent_height(Vector));
    if (a > b) std::swap(a, b);
    return b + 0.428 * a * a / b; // Error level of ~1.04%
    //return std::sqrt((a * a) + (b * b)); // Full accuracy
 }
 
-inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
+inline static double dist(double X1, double Y1, double X2, double Y2)
 {
-   DOUBLE a = std::abs(X2 - X1);
-   DOUBLE b = std::abs(Y2 - Y1);
+   double a = std::abs(X2 - X1);
+   double b = std::abs(Y2 - Y1);
    if (a > b) std::swap(a, b);
    return b + 0.428 * a * a / b; // Error level of ~1.04%
    //return std::sqrt((a * a) + (b * b)); // Full accuracy
+}
+
+// This SVG formula returns the multiplier that is used for computing relative length values within a viewport.
+// Typically needed when computing things like radius values.
+
+inline static double svg_diag(double Width, double Height)
+{
+   return sqrt((Width * Width) + (Height * Height)) / SQRT2;
 }
 
 //********************************************************************************************************************
@@ -906,8 +918,8 @@ enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
 
 //********************************************************************************************************************
 
-static constexpr DOUBLE int26p6_to_dbl(LONG p) { return DOUBLE(p) * (1.0 / 64.0); }
-static constexpr LONG dbl_to_int26p6(DOUBLE p) { return LONG(p * 64.0); }
+static constexpr double int26p6_to_dbl(LONG p) { return double(p) * (1.0 / 64.0); }
+static constexpr LONG dbl_to_int26p6(double p) { return LONG(p * 64.0); }
 
 //********************************************************************************************************************
 
@@ -976,7 +988,7 @@ inline static extVector * get_parent(const extVector *Vector)
 
 inline bool point_in_rectangle(const agg::vertex_d &X, const agg::vertex_d &Y, const agg::vertex_d &Z, const agg::vertex_d &W, const agg::vertex_d &P)
 {
-   auto is_left = [](agg::vertex_d A, agg::vertex_d B, agg::vertex_d C) -> DOUBLE {
+   auto is_left = [](agg::vertex_d A, agg::vertex_d B, agg::vertex_d C) -> double {
       return ((B.x - A.x) * (C.y - A.y) - (C.x - A.x) * (B.y - A.y));
    };
 
@@ -1025,12 +1037,11 @@ void configure_stroke(extVector &Vector, T &Stroke)
    if (Vector.LineCap)   Stroke.line_cap(Vector.LineCap); // butt, square, round
    if (Vector.InnerJoin) Stroke.inner_join(Vector.InnerJoin); // miter, round, bevel, jag
 
-   // TODO: AGG seems to have issues with using the correct cap at the end of closed polygons.  For the moment
-   // this hack is being used, but it can result in dashed lines being switched to the wrong line cap.  For illustration, use:
-   //
-   //   <polygon points="100,50 140,50 120,15.36" stroke="darkslategray" stroke-width="5" stroke-dasharray="20 20"
-   //     stroke-dashoffset="10" fill="lightslategray" stroke-linejoin="round" />
+   // It has been noted that there may be issues between miter_join, miter_join_revert and line-caps that
+   // need further investigation.  This section experiments with adjusting the line-cap according to the selected
+   // line-join.
 
+   /*
    if (Vector.LineJoin) {
       if (Vector.classID() IS CLASSID::VECTORPOLYGON) {
          if (((extVectorPoly &)Vector).Closed) {
@@ -1045,7 +1056,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
          }
       }
    }
-
+   */
    if (Vector.MiterLimit > 0) Stroke.miter_limit(Vector.MiterLimit);
    if (Vector.InnerMiterLimit > 0) Stroke.inner_miter_limit(Vector.InnerMiterLimit);
 }
@@ -1104,42 +1115,42 @@ static LONG get_utf8(const std::string_view &Value, ULONG &Unicode, std::size_t 
 //********************************************************************************************************************
 
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
-extern DOUBLE glDisplayVDPI, glDisplayHDPI, glDisplayDPI;
+extern double glDisplayVDPI, glDisplayHDPI, glDisplayDPI;
 
 extern void set_text_final_xy(extVectorText *);
 
 namespace vec {
-extern ERR DrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern ERR GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path);
+extern ERR DrawPath(objBitmap * Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+extern ERR GenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices, APTR *Path);
 extern ERR GeneratePath(CSTRING Sequence, APTR *Path);
-extern ERR GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path);
+extern ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path);
 extern ERR ReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result);
-extern void TranslatePath(APTR Path, DOUBLE X, DOUBLE Y);
-extern void MoveTo(APTR Path, DOUBLE X, DOUBLE Y);
-extern void LineTo(APTR Path, DOUBLE X, DOUBLE Y);
-extern void ArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
-extern void Curve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
-extern void Smooth3(APTR Path, DOUBLE X, DOUBLE Y);
-extern void Curve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
-extern void Smooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern void TranslatePath(APTR Path, double X, double Y);
+extern void MoveTo(APTR Path, double X, double Y);
+extern void LineTo(APTR Path, double X, double Y);
+extern void ArcTo(APTR Path, double RX, double RY, double Angle, double X, double Y, ARC Flags);
+extern void Curve3(APTR Path, double CtrlX, double CtrlY, double X, double Y);
+extern void Smooth3(APTR Path, double X, double Y);
+extern void Curve4(APTR Path, double CtrlX1, double CtrlY1, double CtrlX2, double CtrlY2, double X, double Y);
+extern void Smooth4(APTR Path, double CtrlX, double CtrlY, double X, double Y);
 extern void ClosePath(APTR Path);
 extern void RewindPath(APTR Path);
-extern LONG GetVertex(APTR Path, DOUBLE * X, DOUBLE * Y);
+extern LONG GetVertex(APTR Path, double * X, double * Y);
 extern ERR ApplyPath(APTR Path, objVectorPath * VectorPath);
-extern ERR Rotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
-extern ERR Translate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
-extern ERR Skew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
-extern ERR Multiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY);
+extern ERR Rotate(struct VectorMatrix * Matrix, double Angle, double CenterX, double CenterY);
+extern ERR Translate(struct VectorMatrix * Matrix, double X, double Y);
+extern ERR Skew(struct VectorMatrix * Matrix, double X, double Y);
+extern ERR Multiply(struct VectorMatrix * Matrix, double ScaleX, double ShearY, double ShearX, double ScaleY, double TranslateX, double TranslateY);
 extern ERR MultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source);
-extern ERR Scale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+extern ERR Scale(struct VectorMatrix * Matrix, double X, double Y);
 extern ERR ParseTransform(struct VectorMatrix * Matrix, CSTRING Transform);
 extern ERR ResetMatrix(struct VectorMatrix * Matrix);
 extern ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle);
 extern ERR GetFontMetrics(APTR Handle, struct FontMetrics * Info);
-extern DOUBLE CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning);
-extern DOUBLE StringWidth(APTR FontHandle, CSTRING String, LONG Chars);
+extern double CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, double * Kerning);
+extern double StringWidth(APTR FontHandle, CSTRING String, LONG Chars);
 extern ERR FlushMatrix(struct VectorMatrix * Matrix);
-extern ERR TracePath(APTR Path, FUNCTION *Callback, DOUBLE Scale);
+extern ERR TracePath(APTR Path, FUNCTION *Callback, double Scale);
 }
 
 template <class T> TClipRectangle<T>::TClipRectangle(const extVector *pVector) {

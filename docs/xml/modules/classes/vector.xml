@@ -12,7 +12,7 @@
     <idstring>ID_VECTOR</idstring>
     <category>Graphics</category>
     <include>modules/vector.h</include>
-    <copyright>Paul Manias © 2010-2024</copyright>
+    <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>Vector is an abstract class that is used as a blueprint for other vector classes that provide specific functionality for a vector scene.  At this time the classes are <class name="VectorClip">VectorClip</class>, <class name="VectorEllipse">VectorEllipse</class>, <class name="VectorGroup">VectorGroup</class>, <class name="VectorPath">VectorPath</class>, <class name="VectorPolygon">VectorPolygon</class>, <class name="VectorRectangle">VectorRectangle</class>, <class name="VectorSpiral">VectorSpiral</class>, <class name="VectorText">VectorText</class>, <class name="VectorViewport">VectorViewport</class> and <class name="VectorWave">VectorWave</class>.</p>
 <p>The majority of sub-classes support all of the functionality provided by Vector.  The general exception is that graphics functions will not be supported by non-graphical classes, for instance <class name="VectorGroup">VectorGroup</class> and <class name="VectorViewport">VectorViewport</class> do not produce a vector path and therefore cannot be rendered.</p>
@@ -316,7 +316,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VCS">VCS</type>
       <description>
-<p>By default, vectors are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour space to <code>LINEAR_RGB</code> will force the renderer to automatically convert sRGB values to linear RGB when blending on the fly.</p>
+<p>By default, vectors are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour space to <code>LINEAR_RGB</code> will tell the renderer to automatically convert sRGB values to linear RGB when blending on the fly.</p>
 <types lookup="VCS"/>
       </description>
     </field>
@@ -791,9 +791,9 @@ Z: Close Path
     <constants lookup="VLJ" comment="Options for the look of line joins.">
       <const name="BEVEL">The join is blunted, eliminating overly sharp edges.</const>
       <const name="INHERIT">Inherit the join option from the parent.</const>
-      <const name="MITER">The default.  The join will form a pointed edge.</const>
-      <const name="MITER_REVERT"/>
+      <const name="MITER">The default.  A sharp corner is used to join path segments.  The corner is formed by extending the outer edges of the stroke at the tangents of the path segments until they intersect. If the ‘stroke-miterlimit’ is exceeded, the line join falls back to BEVEL.</const>
       <const name="MITER_ROUND">Default to <code>MITER</code>, but switch to <code>ROUND</code> if the miter limit is exceeded.</const>
+      <const name="MITER_SMART">An alternative form of MITER that extends beyond the intersection point, similarly to the miter-clip SVG rules.</const>
       <const name="ROUND">The join is rounded.</const>
     </constants>
 

@@ -1,0 +1,21 @@
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+Setting the 'visibility' property to 'hidden' on a 'g' tag will affect its children, unless the children of the 'g' tag override the parent setting.
+
+Have a 'g' tag with an red filled shape as a child. Set 'visibility: hidden' on the 'g' tag.  Verify no red is on the page.
+Also, have a 'g' tag with a green filled shape as a child. Set 'visibility: hidden' on the 'g' tag. Set 'visibility: visible' on
+the child tag. Verify that the green 'rect' renders on the page.
+-->
+
+  <rect x="96" y="96" width="96" height="96" fill="lime" />
+  <g visibility="hidden">
+    <rect x="96" y="96" width="96" height="96" fill="red" />
+  </g>
+
+  <rect x="196.5" y="196.5" width="95" height="95" fill="red"/>
+  <g visibility="hidden">
+    <rect x="196" y="196" width="96" height="96" fill="lime" visibility="visible" />
+  </g>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000"/>
+</svg>

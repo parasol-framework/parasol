@@ -101,7 +101,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
       Path.remove_prefix(1);
    }
    else if (startswith("string:", Path)) {
-      Result->assign(Path);
+      if (Result) Result->assign(Path);
       return ERR::Okay;
    }
 
@@ -113,12 +113,12 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 
    bool resolved = false;
 #ifdef _WIN32
-   if ((std::tolower(Path[0]) >= 'a') and (std::tolower(Path[0]) <= 'z') and (Path[1] IS ':')) {
-      resolved = true; // Windows drive letter reference discovered
-      if ((Path[2] != '/') and (Path[2] != '\\')) {
+   if ((Path.size() >= 2) and (std::tolower(Path[0]) >= 'a') and (std::tolower(Path[0]) <= 'z') and (Path[1] IS ':')) {
+      resolved = true;
+      if ((Path.size() IS 2) or ((Path[2] != '/') and (Path[2] != '\\'))) {
          // Ensure that the path is correctly formed in order to pass test_path()
          src = { Path[0], ':', '\\' };
-         src.append(Path, 2, std::string::npos);
+         if (Path.size() >= 3) src.append(Path, 2, std::string::npos);
          Path = std::string_view(src);
       }
    }
@@ -192,7 +192,8 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
       else {
          #ifdef _WIN32 // UNC network path check
             if (((dest[0] IS '\\') and (dest[1] IS '\\')) or ((dest[0] IS '/') and (dest[1] IS '/'))) {
-               goto resolved_path;
+               if (Result) Result->assign(dest);
+               return ERR::Okay;
             }
          #endif
 
@@ -213,9 +214,6 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
          }
       }
 
-#ifdef _WIN32
-resolved_path:
-#endif
       if (Result) {
          auto tp = true_path(dest.c_str());
          if (tp.has_value()) Result->assign(tp.value());

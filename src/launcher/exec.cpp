@@ -10,7 +10,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
    log.msg("Identifying file '%s'", TargetFile);
 
    CLASSID class_id, subclass;
-   if ((error = IdentifyFile(TargetFile, &class_id, &subclass)) != ERR::Okay) {
+   if ((error = IdentifyFile(TargetFile, CLASSID::NIL, &class_id, &subclass)) != ERR::Okay) {
       printf("Failed to identify the type of file for path '%s', error: %s.  Assuming CLASSID::SCRIPT.\n", TargetFile, GetErrorMsg(error));
       subclass = CLASSID::SCRIPT;
       class_id = CLASSID::SCRIPT;

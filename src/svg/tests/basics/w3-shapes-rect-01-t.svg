@@ -1,0 +1,18 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <!-- First of all draw two simple rectangles. One stroked , one filled. -->
+  <rect id="Simple-rect-no-fill" fill="none" stroke="#000000" x="30" y="46" width="50" height="80"/>
+  <rect id="Simple-rect-filled" fill="fuchsia" x="130" y="46" width="50" height="80"/>
+  <!-- Second set of rectangles this time with rounded corners. -->
+  <rect id="Simple-round-rect-no-fill" fill="none" stroke="#000000" x="250" y="46" width="50" height="80" rx="30"/>
+  <rect id="Simple-round-rect-filled" fill="fuchsia" x="350" y="46" width="50" height="80" rx="30"/>
+  <!-- Third set of rectangles. -->
+  <rect id="rect-03" fill="none" stroke="#0000FF" stroke-width="8" x="30" y="196" width="50" height="80"/>
+  <rect id="rect-04" fill="#00FF00" stroke="#0000FF" stroke-width="8" x="130" y="196" width="50" height="80"/>
+  <!-- Fourth set of rectangles. -->
+  <rect id="rect-05" fill="none" stroke="#0000FF" stroke-width="8" x="250" y="196" width="50" height="80" rx="30" ry="50"/>
+  <rect id="rect-06" fill="#00FF00" x="350" y="196" width="50" height="80" rx="30" ry="50"/>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000000"/>
+</svg>

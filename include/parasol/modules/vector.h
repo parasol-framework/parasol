@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      vector.h
-// Copyright: Paul Manias © 2010-2024
+// Copyright: Paul Manias © 2010-2025
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -32,6 +32,7 @@ class objMorphologyFX;
 class objOffsetFX;
 class objRemapFX;
 class objTurbulenceFX;
+class objWaveFunctionFX;
 class objVectorClip;
 class objVectorFilter;
 class objVector;
@@ -200,7 +201,7 @@ enum class CMP : LONG {
 enum class VLJ : LONG {
    NIL = 0,
    MITER = 0,
-   MITER_REVERT = 1,
+   MITER_SMART = 1,
    ROUND = 2,
    BEVEL = 3,
    MITER_ROUND = 4,
@@ -412,6 +413,7 @@ enum class VGF : ULONG {
    FIXED_FY = 0x00020000,
    FIXED_RADIUS = 0x00040000,
    FIXED_FOCAL_RADIUS = 0x00080000,
+   CONTAIN_FOCAL = 0x00100000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(VGF)
@@ -937,23 +939,22 @@ class objVectorGradient : public Object {
 
    using create = pf::Create<objVectorGradient>;
 
-   DOUBLE  X1;                     // Initial X coordinate for the gradient.
-   DOUBLE  Y1;                     // Initial Y coordinate for the gradient.
-   DOUBLE  X2;                     // Final X coordinate for the gradient.
-   DOUBLE  Y2;                     // Final Y coordinate for the gradient.
-   DOUBLE  CenterX;                // The horizontal center point of the gradient.
-   DOUBLE  CenterY;                // The vertical center point of the gradient.
-   DOUBLE  FocalX;                 // The horizontal focal point for radial gradients.
-   DOUBLE  FocalY;                 // The vertical focal point for radial gradients.
-   DOUBLE  Radius;                 // The radius of the gradient.
-   DOUBLE  FocalRadius;            // The size of the focal radius for radial gradients.
-   objVectorGradient * Inherit;    // Inherit attributes from the VectorGradient referenced here.
-   VSPREAD SpreadMethod;           // The behaviour to use when the gradient bounds do not match the vector path.
-   VUNIT   Units;                  // Defines the coordinate system for X1, Y1, X2 and Y2.
-   VGT     Type;                   // Specifies the type of gradient (e.g. RADIAL, LINEAR)
-   VGF     Flags;                  // Dimension flags are stored here.
-   VCS     ColourSpace;            // Defines the colour space to use when interpolating gradient colours.
-   LONG    TotalStops;             // Total number of stops defined in the Stops array.
+   DOUBLE  X1;            // Initial X coordinate for the gradient.
+   DOUBLE  Y1;            // Initial Y coordinate for the gradient.
+   DOUBLE  X2;            // Final X coordinate for the gradient.
+   DOUBLE  Y2;            // Final Y coordinate for the gradient.
+   DOUBLE  CenterX;       // The horizontal center point of the gradient.
+   DOUBLE  CenterY;       // The vertical center point of the gradient.
+   DOUBLE  FocalX;        // The horizontal focal point for radial gradients.
+   DOUBLE  FocalY;        // The vertical focal point for radial gradients.
+   DOUBLE  Radius;        // The radius of the gradient.
+   DOUBLE  FocalRadius;   // The size of the focal radius for radial gradients.
+   VSPREAD SpreadMethod;  // The behaviour to use when the gradient bounds do not match the vector path.
+   VUNIT   Units;         // Defines the coordinate system for X1, Y1, X2 and Y2.
+   VGT     Type;          // Specifies the type of gradient (e.g. RADIAL, LINEAR)
+   VGF     Flags;         // Dimension flags are stored here.
+   VCS     ColourSpace;   // Defines the colour space to use when interpolating gradient colours.
+   LONG    TotalStops;    // Total number of stops defined in the Stops array.
 
    // Action stubs
 
@@ -991,28 +992,28 @@ class objVectorGradient : public Object {
 
    inline ERR setCenterX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[22];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[23];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setFocalX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[29];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setFocalY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[29];
+      auto field = &this->Class->Dictionary[30];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
@@ -1026,15 +1027,9 @@ class objVectorGradient : public Object {
 
    inline ERR setFocalRadius(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[27];
+      auto field = &this->Class->Dictionary[26];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
-   }
-
-   inline ERR setInherit(objVectorGradient * Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[21];
-      return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
@@ -1049,7 +1044,6 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setType(const VGT Value) noexcept {
-      if (this->initialised()) return ERR::NoFieldAccess;
       this->Type = Value;
       return ERR::Okay;
    }
@@ -1065,6 +1059,18 @@ class objVectorGradient : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setColour(const FLOAT * Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[28];
+      return field->WriteValue(target, field, 0x10001308, Value, Elements);
+   }
+
+   template <class T> inline ERR setColourMap(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
+   }
+
    inline ERR setMatrices(APTR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
@@ -1073,7 +1079,7 @@ class objVectorGradient : public Object {
 
    inline ERR setNumeric(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1896,6 +1902,66 @@ class objTurbulenceFX : public objFilterEffect {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+};
+
+// WaveFunctionFX class definition
+
+#define VER_WAVEFUNCTIONFX (1.000000)
+
+class objWaveFunctionFX : public objFilterEffect {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::WAVEFUNCTIONFX;
+   static constexpr CSTRING CLASS_NAME = "WaveFunctionFX";
+
+   using create = pf::Create<objWaveFunctionFX>;
+
+   // Action stubs
+
+   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+      struct acDraw args = { X, Y, Width, Height };
+      return Action(AC::Draw, this, &args);
+   }
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   template <class T> inline ERR setColourMap(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   }
+
+   inline ERR setN(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setL(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setM(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setScale(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERR setStops(const APTR Value, LONG Elements) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, 0x00001318, Value, Elements);
    }
 
 };
@@ -3469,6 +3535,8 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_CLOSE 0x0f3b9a5b
 #define SVF_COLOR 0x0f3d3244
 #define SVF_COLOUR 0xf6e37b99
+#define SVF_COLORMAP 0x3daf1862
+#define SVF_COLOURMAP 0xf3cb5d97
 #define SVF_COLOR_INTERPOLATION 0x6f2c0659
 #define SVF_COLOUR_INTERPOLATION 0x5655806e
 #define SVF_COLOR_INTERPOLATION_FILTERS 0x752d48ff
@@ -3518,6 +3586,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_FESPOTLIGHT 0xce2d968e
 #define SVF_FETILE 0xfd3248be
 #define SVF_FETURBULENCE 0x4eba1da9
+#define SVF_FEWAVEFUNCTION 0x6c252e69
 #define SVF_FILL 0x7c96cb2c
 #define SVF_FILL_OPACITY 0x59fd2152
 #define SVF_FILL_RULE 0xbb9f7891
@@ -3581,6 +3650,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_METHOD 0x0d866146
 #define SVF_MINUS 0x0feee651
 #define SVF_MITER 0x0feefdc6
+#define SVF_MITER_CLIP 0x2f18fb1b
 #define SVF_MITER_REVERT 0x7bc9e50b
 #define SVF_MITER_ROUND 0x1349a65b
 #define SVF_MOD 0x0b889145
@@ -3600,13 +3670,6 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_OVER 0x7c9bf101
 #define SVF_OVERFLOW 0x5b785259
 #define SVF_OVERLAY 0x7ee4b5c7
-#define SVF_PARASOL_MORPH 0x6b51bb77
-#define SVF_PARASOL_PATHTRANSITION 0x9d3c64a9
-#define SVF_PARASOL_SHAPE 0x6bba2f82
-#define SVF_PARASOL_SPIRAL 0xe3954f3c
-#define SVF_PARASOL_TRANSITION 0xc0f6617c
-#define SVF_PARASOL_WAVE 0xbd7455e4
-#define SVF_PATH 0x7c9c25f2
 #define SVF_PATH 0x7c9c25f2
 #define SVF_PATHLENGTH 0x74403974
 #define SVF_PATTERN 0x9bf30a03
@@ -3844,6 +3907,8 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_SPRINGGREEN 0x6a6ae329
 #define SVF_START 0x106149d3
 #define SVF_STEELBLUE 0xa604b22a
+#define SVF_STOP_COLOR 0x5d0c7df7
+#define SVF_STOP_OPACITY 0x6f662071
 #define SVF_STROKE 0x1c93c91d
 #define SVF_STROKE_DASHARRAY 0x5faa6be9
 #define SVF_STROKE_DASHOFFSET 0x74c0b1b1
@@ -3907,6 +3972,12 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_LOOP_LIMIT 0xfaf3e6cb
 #define SVF_MASKCONTENTUNITS 0x3fe629df
 #define SVF_MASKUNITS 0xa68eea04
+#define SVF_PARASOL_MORPH 0x6b51bb77
+#define SVF_PARASOL_PATHTRANSITION 0x9d3c64a9
+#define SVF_PARASOL_SHAPE 0x6bba2f82
+#define SVF_PARASOL_SPIRAL 0xe3954f3c
+#define SVF_PARASOL_TRANSITION 0xc0f6617c
+#define SVF_PARASOL_WAVE 0xbd7455e4
 #define SVF_POINTSATX 0xf4c77f0f
 #define SVF_POINTSATY 0xf4c77f10
 #define SVF_POINTSATZ 0xf4c77f11
@@ -3918,6 +3989,9 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_INTERCEPT 0x12b3db33
 #define SVF_INVERT 0x04d5a7bd
 #define SVF_IDENTITY 0x68144eaf
+#define SVF_L 0x0002b611
+#define SVF_M 0x0002b612
+#define SVF_N 0x0002b613
 #define SVF_LINEAR 0x0b7641e0
 #define SVF_TABLE 0x1068fa8d
 #define SVF_GAMMA 0x0f7deae8
@@ -3940,6 +4014,38 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_BY 0x00597760
 #define SVF_YELLOW 0x297ff6e1
 #define SVF_YELLOWGREEN 0xda4a85b2
+#define SVF_REQUIREDFEATURES 0x01fd4085
+#define SVF_REQUIREDEXTENSIONS 0x0d7ab056
+#define SVF_SYSTEMLANGUAGE 0xa95fc64e
+
+#define SVF_ActiveBorder 0x454bda3f
+#define SVF_ActiveCaption 0x1afdcc2f
+#define SVF_AppWorkspace 0xe1d2e595
+#define SVF_Background 0x677e1785
+#define SVF_ButtonFace 0xf8bdce70
+#define SVF_ButtonHighlight 0x109df899
+#define SVF_ButtonShadow 0x3e3bd7e7
+#define SVF_ButtonText 0xf8c58f86
+#define SVF_CaptionText 0xa8222dd8
+#define SVF_GrayText 0xbcb251fd
+#define SVF_Highlight 0x1ecf649d
+#define SVF_HighlightText 0x0b3bc4a2
+#define SVF_InactiveBorder 0x613cc7f6
+#define SVF_InactiveCaption 0xb50c70c6
+#define SVF_InactiveCaptionText 0x5404bd4b
+#define SVF_InfoBackground 0xfa8db651
+#define SVF_InfoText 0x6c41ded6
+#define SVF_Menu 0x7c9a911a
+#define SVF_MenuText 0x7b92e79f
+#define SVF_Scrollbar 0xf5b38a09
+#define SVF_ThreeDDarkShadow 0xe33a1e69
+#define SVF_ThreeDFace 0xe3f48150
+#define SVF_ThreeDHighlight 0xae577779
+#define SVF_ThreeDLightShadow 0x36b9979f
+#define SVF_ThreeDShadow 0xd1eac2c7
+#define SVF_Window 0x251efe5d
+#define SVF_WindowFrame 0x66937228
+#define SVF_WindowText 0x7f423e62
 
 namespace vec {
 inline ERR SubscribeInput(APTR Ob, JTYPE Mask, FUNCTION Callback) {

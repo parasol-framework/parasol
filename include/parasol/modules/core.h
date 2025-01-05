@@ -20,8 +20,10 @@
 #include <array>
 #endif
 
-#if defined(_DEBUG) && defined(__linux__)
- #include <signal.h>
+#if defined(_DEBUG)
+ #ifndef _MSC_VER
+  #include <signal.h>
+ #endif
 #endif
 
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
@@ -1349,7 +1351,7 @@ struct FRGB {
    FLOAT Blue;   // Blue component value
    FLOAT Alpha;  // Alpha component value
    FRGB() { };
-   FRGB(FLOAT R, FLOAT G, FLOAT B, FLOAT A) : Red(R), Green(G), Blue(B), Alpha(A) { };
+   FRGB(float R, float G, float B, float A = 1.0) : Red(R), Green(G), Blue(B), Alpha(A) { };
 };
 
 typedef struct RGB8 {
@@ -1519,8 +1521,10 @@ template <class T> T roundup(T Num, LONG Alignment) {
 #ifdef _DEBUG
  #ifdef _MSC_VER
   #define DEBUG_BREAK __debugbreak();
- #else
+ #elif __linux__
   #define DEBUG_BREAK raise(SIGTRAP);
+ #else
+  #define DEBUG_BREAK
  #endif
 #else
  #define DEBUG_BREAK
@@ -1692,6 +1696,7 @@ struct FieldValue {
    constexpr FieldValue(ULONG pFID, CSTRING pValue)   : FieldID(pFID), Type(FD_STRING), String(pValue) { };
    constexpr FieldValue(ULONG pFID, LONG pValue)      : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)     : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
+   constexpr FieldValue(ULONG pFID, size_t pValue)    : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
    constexpr FieldValue(ULONG pFID, DOUBLE pValue)    : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
    constexpr FieldValue(ULONG pFID, SCALE pValue)     : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
    constexpr FieldValue(ULONG pFID, const FUNCTION &pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(&pValue) { };
@@ -1727,6 +1732,8 @@ inline bool hasWidth(DMF Value) { return (Value & DMF::FIXED_WIDTH) != DMF::NIL;
 inline bool hasHeight(DMF Value) { return (Value & DMF::FIXED_HEIGHT) != DMF::NIL; }
 inline bool hasXOffset(DMF Value) { return (Value & DMF::FIXED_X_OFFSET) != DMF::NIL; }
 inline bool hasYOffset(DMF Value) { return (Value & DMF::FIXED_Y_OFFSET) != DMF::NIL; }
+inline bool hasRadiusX(DMF Value) { return (Value & DMF::FIXED_RADIUS_X) != DMF::NIL; }
+inline bool hasRadiusY(DMF Value) { return (Value & DMF::FIXED_RADIUS_Y) != DMF::NIL; }
 inline bool hasScaledX(DMF Value) { return (Value & DMF::SCALED_X) != DMF::NIL; }
 inline bool hasScaledY(DMF Value) { return (Value & DMF::SCALED_Y) != DMF::NIL; }
 inline bool hasScaledWidth(DMF Value) { return (Value & DMF::SCALED_WIDTH) != DMF::NIL; }
@@ -2051,7 +2058,7 @@ struct CoreBase {
    void (*_NotifySubscribers)(OBJECTPTR Object, AC Action, APTR Args, ERR Error);
    ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
    ERR (*_ProcessMessages)(PMF Flags, LONG TimeOut);
-   ERR (*_IdentifyFile)(CSTRING Path, CLASSID *Class, CLASSID *SubClass);
+   ERR (*_IdentifyFile)(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
    ERR (*_ReallocMemory)(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID);
    ERR (*_GetMessage)(LONG Type, MSF Flags, APTR Buffer, LONG Size);
    ERR (*_ReleaseMemory)(MEMORYID MemoryID);
@@ -2150,7 +2157,7 @@ inline ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object) { return Core
 inline void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERR ProcessMessages(PMF Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
-inline ERR IdentifyFile(CSTRING Path, CLASSID *Class, CLASSID *SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
+inline ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass) { return CoreBase->_IdentifyFile(Path,Filter,Class,SubClass); }
 inline ERR ReallocMemory(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
 inline ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Type,Flags,Buffer,Size); }
 inline ERR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
@@ -2243,7 +2250,7 @@ extern "C" ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object);
 extern "C" void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error);
 extern "C" ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR ProcessMessages(PMF Flags, LONG TimeOut);
-extern "C" ERR IdentifyFile(CSTRING Path, CLASSID *Class, CLASSID *SubClass);
+extern "C" ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
 extern "C" ERR ReallocMemory(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID);
 extern "C" ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size);
 extern "C" ERR ReleaseMemory(MEMORYID MemoryID);

@@ -69,7 +69,7 @@ function testCompressFolder()
       end
    } )
 
-   local err = cmp.mtCompressFile('system:scripts/dev/', 'scripts')
+   local err = cmp.mtCompressFile('scripts:gui/', 'scripts')
    assert(err == ERR_Okay, 'CompressFile() failed: ' .. mSys.GetErrorMsg(err))
 
    print('Compressed ' .. file_count .. ' files.')
@@ -136,19 +136,19 @@ end
 
 function testArchiveVolume()
    local cmp = obj.new('compression', { path='temp:cmp_test_scripts.zip', archiveName='test' } )
-   local file = obj.new('file', { path='system:scripts/dev/flute.fluid' } )
+   local file = obj.new('file', { path='scripts:gui/button.fluid' } )
    local file_size = file.size
 
    local cmpbuffer = array.new(file_size, 'byte')
    local cmpsrc = array.new(file_size, 'byte')
 
-   local err = mSys.ReadFileToBuffer('system:scripts/dev/flute.fluid', cmpsrc)
+   local err = mSys.ReadFileToBuffer('scripts:gui/button.fluid', cmpsrc)
    assert(err == ERR_Okay, 'Failed to read original source file for comparison: ' .. mSys.GetErrorMsg(err))
    local cmpstr = tostring(cmpsrc)
 
    -- Big buffer test
 
-   local cmpfile = obj.new('file', { src='archive:test/scripts/flute.fluid', flags='!READ' })
+   local cmpfile = obj.new('file', { src='archive:test/scripts/button.fluid', flags='!READ' })
    local err, len = cmpfile.acRead(cmpbuffer)
    assert(err == ERR_Okay, 'Failed to read decompressed data from file archive: ' .. mSys.GetErrorMsg(err))
    assert(tostring(cmpbuffer) == cmpstr, "The decompressed data does not match the original file.")

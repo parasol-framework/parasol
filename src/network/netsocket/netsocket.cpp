@@ -1344,7 +1344,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
 
    #ifdef _DEBUG
    static const CSTRING msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
-   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
+   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], LONG(Error), Socket->InUse, Socket->WinRecursion);
    #endif
 
    pf::SwitchContext context(Socket);

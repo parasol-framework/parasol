@@ -21,7 +21,7 @@ functions for creating paths and rendering them to bitmaps.
 
 inline char read_nibble(CSTRING Str)
 {
-   if ((*Str >= '0') and (*Str <= '9')) return (*Str - '0');
+   if (std::isdigit(*Str)) return (*Str - '0');
    else if ((*Str >= 'A') and (*Str <= 'F')) return ((*Str - 'A')+10);
    else if ((*Str >= 'a') and (*Str <= 'f')) return ((*Str - 'a')+10);
    else return char(0xff);
@@ -958,9 +958,14 @@ Colours can be referenced using one of three methods.  Colour names such as `ora
 RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is supported as `rgb(r,g,b,a)` whereby the
 component values range between `0.0` and `255.0`.
 
-A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has
+A Gradient, Image or Pattern can be referenced using the `url(#name)` format, where the 'name' is a definition that has
 been registered with the provided `Scene` object.  If `Scene` is `NULL` then it will not be possible to find the
 reference.  Any failure to lookup a reference will be silently discarded.
+
+To access one of the pre-defined colourmaps, use the format `url(#cmap:name)`.  The colourmap will be accessible as
+a linear gradient that belongs to the `Scene`.  Valid colourmap names are `cmap:crest`,
+`cmap:flare`, `cmap:icefire`, `cmap:inferno`, `cmap:magma`, `cmap:mako`, `cmap:plasma`, `cmap:rocket`,
+`cmap:viridis`.
 
 A !VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
 that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An
@@ -970,7 +975,7 @@ optional `Result` string can store a reference to the character up to which the 
 obj(VectorScene) Scene: Optional.  Required if `url()` references are to be resolved.
 cstr IRI: The IRI string to be translated.
 struct(*VectorPainter) Painter: This !VectorPainter structure will store the deserialised result.
-&cstr Result: Optional pointer for storing the end of the parsed IRI string.  `NULL` is returned if there is no further content to parse.
+&cstr Result: Optional pointer for storing the end of the parsed IRI string.  `NULL` is returned if there is no further content to parse or an error occurred.
 
 -ERRORS-
 Okay:
@@ -984,13 +989,13 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
    pf::Log log(__FUNCTION__);
    ULONG i;
 
+   if (Result) *Result = NULL;
    if ((!IRI) or (!Painter)) return ERR::NullArgs;
 
    Painter->reset();
 
    log.trace("IRI: %s", IRI);
 
-next:
    if (*IRI IS ';') IRI++;
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
@@ -1009,6 +1014,7 @@ next:
          std::string lookup;
          lookup.assign(IRI, 5, i-5);
 
+         bool found = false;
          if (((extVectorScene *)Scene)->Defs.contains(lookup)) {
             auto def = ((extVectorScene *)Scene)->Defs[lookup];
             if (def->classID() IS CLASSID::VECTORGRADIENT) {
@@ -1021,13 +1027,40 @@ next:
                Painter->Pattern = (objVectorPattern *)def;
             }
             else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), ULONG(def->classID()));
+            found = true;
+         }
+         else if (glColourMaps.contains(lookup)) {
+            // Referencing a pre-defined colour map results in it being added to the Scene's definitions as a linear gradient.
+            // It is then accessible permanently under that name.
 
-            // Check for combinations like url(#this)+url(#that)
+            extVectorGradient *gradient;
+            if (NewObject(CLASSID::VECTORGRADIENT, &gradient) IS ERR::Okay) {
+               SetOwner(gradient, Scene);
+               gradient->setFields(
+                  fl::Name(lookup),
+                  fl::Type(VGT::LINEAR),
+                  fl::Units(VUNIT::BOUNDING_BOX),
+                  fl::X1(0.0),
+                  fl::Y1(0.0),
+                  fl::X2(SCALE(1.0)),
+                  fl::Y2(0.0));
+      
+               if (gradient->Colours) delete gradient->Colours;
+               gradient->Colours = new (std::nothrow) GradientColours(glColourMaps[lookup]);
 
+               if (InitObject(gradient) IS ERR::Okay) {
+                  Scene->addDef(lookup.c_str(), gradient);
+                  Painter->Gradient = gradient;
+               }
+            }
+            found = true;
+         }
+
+         if (found) {
             IRI += i;
             if (*IRI IS ')') {
-               while ((*IRI) and (*IRI <= 0x20)) IRI++;
-               if (*IRI++ IS '+') goto next;
+               IRI++;
+               while ((*IRI) and (*IRI <= 0x20)) IRI++; // Skip whitespace
             }
 
             if (Result) *Result = IRI[0] ? IRI : NULL;
@@ -1042,47 +1075,31 @@ next:
          return ERR::Syntax;
       }
    }
-   else if (startswith("rgb(", IRI)) {
+   else if ((startswith("rgb(", IRI)) or (startswith("rgba(", IRI))) {
       auto &rgb = Painter->Colour;
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
+      // The rgba() format is a CSS3 convention that is not supported prior to SVG2.
       IRI += 4;
-      rgb.Red = strtod(IRI, NULL) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') rgb.Red = rgb.Red * (255.0 / 100.0);
+      if (*IRI IS '(') IRI++;
+      rgb.Red = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
+      if (*IRI IS '%') { rgb.Red *= (255.0 / 100.0); IRI++; }
+      if (*IRI IS ',') IRI++;
+      rgb.Green = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
+      if (*IRI IS '%') { rgb.Green *= (255.0 / 100.0); IRI++; }
+      if (*IRI IS ',') IRI++;
+      rgb.Blue = strtod(IRI, (STRING *)&IRI) * (1.0 / 255.0);
+      if (*IRI IS '%') { rgb.Blue *= (255.0 / 100.0); IRI++; }
+      if (*IRI IS ',') {
          IRI++;
-      }
-      if (*IRI) IRI++;
-      rgb.Green = strtod(IRI, NULL) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') rgb.Green = rgb.Green * (255.0 / 100.0);
-         IRI++;
-      }
-      if (*IRI) IRI++;
-      rgb.Blue = strtod(IRI, NULL) * (1.0 / 255.0);
-      while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') rgb.Blue = rgb.Blue * (255.0 / 100.0);
-         IRI++;
-      }
-      if (*IRI) {
-         IRI++;
-         rgb.Alpha = strtod(IRI, NULL) * (1.0 / 255.0);
-         while (*IRI) {
-            if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
-            IRI++;
-         }
-         if (rgb.Alpha > 1) rgb.Alpha = 1;
-         else if (rgb.Alpha < 0) rgb.Alpha = 0;
+         rgb.Alpha = strtod(IRI, (STRING *)&IRI); // CSS3 dictates the alpha range is 0 - 1.0 by default
+         if (*IRI IS '%') { rgb.Alpha *= (255.0 / 100.0); IRI++; } // A % value is also valid
+         rgb.Alpha = std::clamp(rgb.Alpha, 0.0f, 1.0f);
       }
       else rgb.Alpha = 1.0;
 
-      if (rgb.Red > 1) rgb.Red = 1;
-      else if (rgb.Red < 0) rgb.Red = 0;
-
-      if (rgb.Green > 1) rgb.Green = 1;
-      else if (rgb.Green < 0) rgb.Green = 0;
-
-      if (rgb.Blue > 1) rgb.Blue = 1;
-      else if (rgb.Blue < 0) rgb.Blue = 0;
+      rgb.Red   = std::clamp(rgb.Red, 0.0f, 1.0f);
+      rgb.Green = std::clamp(rgb.Green, 0.0f, 1.0f);
+      rgb.Blue  = std::clamp(rgb.Blue, 0.0f, 1.0f);
 
       if (Result) {
          while ((*IRI) and (*IRI != ';')) IRI++;
@@ -1226,13 +1243,28 @@ next:
       else return ERR::Syntax;
    }
    else {
-      if (auto it = glNamedColours.find(strihash(IRI)); it != glNamedColours.end()) {
+      auto hash = strihash(IRI);
+      if (auto it = glNamedColours.find(hash); it != glNamedColours.end()) {
          auto &src = it->second;
          auto &rgb = Painter->Colour;
-         rgb.Red   = (FLOAT)src.Red   * (1.0 / 255.0);
-         rgb.Green = (FLOAT)src.Green * (1.0 / 255.0);
-         rgb.Blue  = (FLOAT)src.Blue  * (1.0 / 255.0);
-         rgb.Alpha = (FLOAT)src.Alpha * (1.0 / 255.0);
+         rgb.Red   = (float)src.Red   * (1.0 / 255.0);
+         rgb.Green = (float)src.Green * (1.0 / 255.0);
+         rgb.Blue  = (float)src.Blue  * (1.0 / 255.0);
+         rgb.Alpha = (float)src.Alpha * (1.0 / 255.0);
+         if (Result) {
+            while ((*IRI) and (*IRI != ';')) IRI++;
+            *Result = IRI[0] ? IRI : NULL;
+         }
+         return ERR::Okay;
+      }
+
+      if (auto it = glAppColours.find(hash); it != glAppColours.end()) {
+         auto &src = it->second;
+         auto &rgb = Painter->Colour;
+         rgb.Red   = (float)src.Red   * (1.0 / 255.0);
+         rgb.Green = (float)src.Green * (1.0 / 255.0);
+         rgb.Blue  = (float)src.Blue  * (1.0 / 255.0);
+         rgb.Alpha = (float)src.Alpha * (1.0 / 255.0);
          if (Result) {
             while ((*IRI) and (*IRI != ';')) IRI++;
             *Result = IRI[0] ? IRI : NULL;

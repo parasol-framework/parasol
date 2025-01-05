@@ -21,13 +21,20 @@ static void generate_path(extVectorPath *Vector, agg::path_storage &Path)
 
 void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, agg::path_storage &BasePath)
 {
-   PathCommand dummy = { PE::NIL, 0, 0, 0, 0, 0 };
-   PathCommand &lp = dummy;
-
    bool lp_curved = false;
+   bool poly_started = false;
+   agg::point_d lp = { 0, 0 }; // Previous point in the path
+   agg::point_d start = { 0, 0 }; // Starting point of the current polygon
+
+   // check_point() Checks for equality between lines and adjusts according to SVG rules.  A zero length subpath with 
+   // 'stroke-linecap' set to 'square' or 'round' is stroked, but not stroked when 'stroke-linecap' is set to 'butt'.
+
+   auto check_point = [&lp, &Vector](PathCommand &Cmd) {
+      if ((Cmd.AbsX IS lp.x) and (Cmd.AbsY IS lp.y) and (Vector->LineCap != agg::line_cap_e::butt_cap)) Cmd.AbsX += 1.0e-10;
+   };
 
    for (size_t i=0; i < Paths.size(); i++) {
-      auto path = Paths[i];
+      auto &path = Paths[i];
       switch (path.Type) {
          case PE::Move:
             path.AbsX = path.X;
@@ -37,138 +44,172 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
             break;
 
          case PE::MoveRel:
-            path.AbsX = path.X + lp.AbsX;
-            path.AbsY = path.Y + lp.AbsY;
+            path.AbsX = path.X + lp.x;
+            path.AbsY = path.Y + lp.y;
             BasePath.move_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::Line:
+            if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::LineRel:
-            path.AbsX = path.X + lp.AbsX;
-            path.AbsY = path.Y + lp.AbsY;
+            if (!poly_started) { poly_started = true; start = lp; };
+            path.AbsX = path.X + lp.x;
+            path.AbsY = path.Y + lp.y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::HLine:
+            if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
-            path.AbsY = lp.AbsY;
+            path.AbsY = lp.y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::HLineRel:
-            path.AbsX = path.X + lp.AbsX;
-            path.AbsY = lp.AbsY;
+            if (!poly_started) { poly_started = true; start = lp; };
+            path.AbsX = path.X + lp.x;
+            path.AbsY = lp.y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::VLine:
-            path.AbsX = lp.AbsX;
+            if (!poly_started) { poly_started = true; start = lp; };
+            path.AbsX = lp.x;
             path.AbsY = path.Y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::VLineRel:
-            path.AbsX = lp.AbsX;
-            path.AbsY = path.Y + lp.AbsY;
+            if (!poly_started) { poly_started = true; start = lp; };
+            path.AbsX = lp.x;
+            path.AbsY = path.Y + lp.y;
+            check_point(path);
             BasePath.line_to(path.AbsX, path.AbsY);
             lp_curved = false;
             break;
 
          case PE::Curve: // curve4()
+            if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
+            check_point(path);
             BasePath.curve4(path.X2, path.Y2, path.X3, path.Y3, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::CurveRel:
-            path.AbsX = lp.AbsX + path.X;
-            path.AbsY = lp.AbsY + path.Y;
-            BasePath.curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.X3+lp.AbsX, path.Y3+lp.AbsY, path.AbsX, path.AbsY);
+            if (!poly_started) { poly_started = true; start = lp; };
+            path.AbsX = lp.x + path.X;
+            path.AbsY = lp.y + path.Y;
+            check_point(path);
+            BasePath.curve4(path.X2+lp.x, path.Y2+lp.y, path.X3+lp.x, path.Y3+lp.y, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::Smooth:
             // Simplified curve3/4 with one control inherited from the previous vertex
+            if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
+            check_point(path);
             if (!lp_curved) BasePath.curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
             else BasePath.curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::SmoothRel:
-            path.AbsX = lp.AbsX + path.X;
-            path.AbsY = lp.AbsY + path.Y;
-            if (!lp_curved) BasePath.curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
-            else BasePath.curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            if (!poly_started) { poly_started = true; start = lp; };
+            path.AbsX = lp.x + path.X;
+            path.AbsY = lp.y + path.Y;
+            check_point(path);
+            if (!lp_curved) BasePath.curve3(path.X2+lp.x, path.Y2+lp.y, path.AbsX, path.AbsY);
+            else BasePath.curve4(path.X2+lp.x, path.Y2+lp.y, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::QuadCurve:
+            if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
+            check_point(path);
             BasePath.curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::QuadCurveRel:
-            path.AbsX = lp.AbsX + path.X;
-            path.AbsY = lp.AbsY + path.Y;
-            BasePath.curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            if (!poly_started) { poly_started = true; start = lp; };
+            path.AbsX = lp.x + path.X;
+            path.AbsY = lp.y + path.Y;
+            check_point(path);
+            BasePath.curve3(path.X2+lp.x, path.Y2+lp.y, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
-         case PE::QuadSmooth: // Inherits a control from previous vertex
+         case PE::QuadSmooth: // Inherits a control from previous vertex 'T'
+            if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            BasePath.curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
+            check_point(path);
+            BasePath.curve3(path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
-         case PE::QuadSmoothRel: // Inherits a control from previous vertex
-            path.AbsX = lp.AbsX + path.X;
-            path.AbsY = lp.AbsY + path.Y;
-            BasePath.curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+         case PE::QuadSmoothRel: // Inherits a control from previous vertex 't'
+            if (!poly_started) { poly_started = true; start = lp; };
+            path.AbsX = lp.x + path.X;
+            path.AbsY = lp.y + path.Y;
+            check_point(path);
+            BasePath.curve3(path.X+lp.x, path.Y+lp.y);
             lp_curved = true;
             break;
 
          case PE::Arc:
+            if (!poly_started) { poly_started = true; start = lp; };
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            BasePath.arc_to(path.X2, path.Y2, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
+            check_point(path);
+            BasePath.arc_to(path.X2, path.Y2, path.Angle * DEG2RAD, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
          case PE::ArcRel:
-            path.AbsX = lp.AbsX + path.X;
-            path.AbsY = lp.AbsY + path.Y;
-            BasePath.arc_to(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
+            if (!poly_started) { poly_started = true; start = lp; };
+            path.AbsX = lp.x + path.X;
+            path.AbsY = lp.y + path.Y;
+            check_point(path);
+            BasePath.arc_to(path.X2, path.Y2, path.Angle * DEG2RAD, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
             lp_curved = true;
             break;
 
-         case PE::ClosePath:
-            path.AbsX = lp.AbsX; // Inherit the previous AbsX/Y values
-            path.AbsY = lp.AbsY;
+         case PE::ClosePath: {
+            path.AbsX = start.x;
+            path.AbsY = start.y;
             BasePath.close_polygon();
+            poly_started = false;
             break;
+         }
 
          default:
             break;
       }
 
-      lp = path;
+      lp = { path.AbsX, path.AbsY };
    }
 }
 
@@ -287,7 +328,7 @@ static ERR VECTORPATH_GetCommand(extVectorPath *Self, struct vp::GetCommand *Arg
 -METHOD-
 RemoveCommand: Remove at least one command from the path sequence.
 
-This method will remove a series of commands from the current path, starting at the given `Index`.  The total number 
+This method will remove a series of commands from the current path, starting at the given `Index`.  The total number
 of commands to remove is indicated by the `Total` parameter.
 
 -INPUT-
@@ -359,7 +400,7 @@ static ERR VECTORPATH_SetCommand(extVectorPath *Self, struct vp::SetCommand *Arg
 -METHOD-
 SetCommandList: The fastest available mechanism for setting a series of path instructions.
 
-Use SetCommandList() to copy a series of path commands to a @VectorPath object.  All existing commands will be 
+Use SetCommandList() to copy a series of path commands to a @VectorPath object.  All existing commands will be
 cleared as a result of this process.
 
 NOTE: This method is not compatible with Fluid calls.

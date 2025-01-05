@@ -363,10 +363,15 @@ endif ()
 if (MSVC)
    # Turn off ugly warnings
    add_compile_definitions ("_CRT_SECURE_NO_WARNINGS")
-   set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
-   # These options override sub-projects linking to incorrect standard libraries.
+   # Use NODEFAULTLIB to override sub-projects linking to incorrect standard libraries.
    # https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-6.0/aa267384(v=vs.60)?redirectedfrom=MSDN
-   add_link_options ("/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrtd.lib")
+   if (PARASOL_VLOG)
+      set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebugDLL")
+      add_link_options ("/NODEFAULTLIB:libc.lib" "/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libc.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrt.lib")
+   else ()
+      set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+      add_link_options ("/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrtd.lib")
+   endif ()
    # add_link_options ("/VERBOSE:LIB")
    if (ENABLE_ANALYSIS)
       # Note that this option is not compatible with /ZI (edit-and-continue).  To rectify complaints about the asan DLL, you may also need a line like this one added to each entry in launch.vs.json:
@@ -583,8 +588,8 @@ if (PARASOL_INSTALL)
 
    if (NOT PARASOL_STATIC)
       install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\")")
-      install (CODE "MESSAGE(STATUS \"${PARASOL_CMD_TARGET} --log-warning --verify\")")
-      install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --verify WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+      install (CODE "MESSAGE(STATUS \"${PARASOL_CMD_TARGET} --log-warning --gfx-driver=headless --verify\")")
+      install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --gfx-driver=headless --verify WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
    endif ()
 
    if (RUN_ANYWHERE)

@@ -287,6 +287,8 @@ double anim_base::get_dimension(objVector &Vector, FIELD Field)
          // keyTiming is not permitted in PACED mode.
       }
       else if (calc_mode IS CMODE::SPLINE) {
+         if (spline_paths.empty()) return 0;
+
          i = 0;
          if (timing.size() IS spline_paths.size()) {
             for (i=0; (i < std::ssize(timing)-1) and (timing[i+1] < seek); i++);

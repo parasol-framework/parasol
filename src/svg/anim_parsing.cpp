@@ -40,7 +40,6 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
    switch (Hash) {
       case SVF_ID:
          Anim.id = Value;
-         add_id(Anim.svg, Tag, Value);
          break;
 
       case SVF_HREF:
@@ -103,13 +102,12 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
 
          if ("indefinite" IS Value) {
             Anim.begin_offset = std::numeric_limits<double>::max();
-            break;
          }
          else if (Value.find(';') != std::string::npos) {
             // A series of numbers has likely been provided, but '.begin' and '.end' references are possible also.
 
             for (unsigned v=0; v < Value.size(); ) {
-                while ((Value[v]) and (Value[v] <= 0x20)) v++;
+                while (v < std::ssize(Value) and (Value[v] <= 0x20)) v++;
                 auto v_end = Value.find(';', v);
                 if (v_end IS std::string::npos) v_end = Value.size();
 
@@ -177,11 +175,11 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
          Anim.values.clear();
          LONG s, v = 0;
          while (v < std::ssize(Value)) {
-            while ((Value[v]) and (Value[v] <= 0x20)) v++;
-            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            while ((v < std::ssize(Value)) and (Value[v] <= 0x20)) v++;
+            for (s=v; (s < std::ssize(Value)) and (Value[s] != ';'); s++);
             Anim.values.push_back(std::string(Value.substr(v, s-v)));
             v = s;
-            if (Value[v] IS ';') v++;
+            if ((v < std::ssize(Value)) and (Value[v] IS ';')) v++;
          }
          break;
       }
@@ -195,8 +193,8 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
          Anim.key_points.clear();
          LONG s, v = 0;
          while (v < std::ssize(Value)) {
-            while ((Value[v]) and (Value[v] <= 0x20)) v++;
-            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            while (v < std::ssize(Value) and (Value[v] <= 0x20)) v++;
+            for (s=v; s < std::ssize(Value) and (Value[s] != ';'); s++);
             std::string_view val = Value.substr(v, s-v);
             double fv;
             auto [ ptr, error ] = std::from_chars(val.data(), val.data() + val.size(), fv);
@@ -225,8 +223,8 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
          LONG s, v = 0;
          double last_val = 0.0;
          while (v < std::ssize(Value)) {
-            while ((Value[v]) and (Value[v] <= 0x20)) v++;
-            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            while (v < std::ssize(Value) and (Value[v] <= 0x20)) v++;
+            for (s=v; s < std::ssize(Value) and (Value[s] != ';'); s++);
             std::string_view val = Value.substr(v, s-v);
             double fv;
             auto [ ptr, error ] = std::from_chars(val.data(), val.data() + val.size(), fv);
@@ -234,7 +232,7 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
             Anim.timing.push_back(fv);
             last_val = fv;
             v = s;
-            if (Value[v] IS ';') v++;
+            if ((v < std::ssize(Value)) and (Value[v] IS ';')) v++;
          }
          break;
       }
@@ -255,8 +253,8 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
          Anim.splines.clear();
          LONG s, v = 0;
          while (v < std::ssize(Value)) {
-            while ((Value[v]) and (Value[v] <= 0x20)) v++;
-            for (s=v; (Value[s]) and (Value[s] != ';'); s++);
+            while (v < std::ssize(Value) and (Value[v] <= 0x20)) v++;
+            for (s=v; s < std::ssize(Value) and (Value[s] != ';'); s++);
             auto quad = std::string_view(Value.substr(v, s-v));
 
             POINT<double> a, b;
@@ -268,7 +266,7 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std
             Anim.splines.push_back(std::make_pair(a, b));
 
             v = s;
-            if (Value[v] IS ';') v++;
+            if ((v < std::ssize(Value)) and (Value[v] IS ';')) v++;
          }
 
          if (Anim.splines.size() < 2) Anim.splines.clear();

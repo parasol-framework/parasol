@@ -6,7 +6,7 @@
     <name>Vector</name>
     <type>module</type>
     <version>1</version>
-    <copyright>Paul Manias © 2010-2024</copyright>
+    <copyright>Paul Manias © 2010-2025</copyright>
     <classes>
       <class>BlurFX</class>
       <class>ColourFX</class>
@@ -42,6 +42,7 @@
       <class>VectorTransition</class>
       <class>VectorViewport</class>
       <class>VectorWave</class>
+      <class>WaveFunctionFX</class>
     </classes>
   </info>
 
@@ -408,12 +409,13 @@ Z: Close Path
       <param type="objVectorScene *" name="Scene">Optional.  Required if <code>url()</code> references are to be resolved.</param>
       <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
       <param type="struct VectorPainter *" name="Painter">This <st>VectorPainter</st> structure will store the deserialised result.</param>
-      <param type="CSTRING *" name="Result">Optional pointer for storing the end of the parsed IRI string.  <code>NULL</code> is returned if there is no further content to parse.</param>
+      <param type="CSTRING *" name="Result">Optional pointer for storing the end of the parsed IRI string.  <code>NULL</code> is returned if there is no further content to parse or an error occurred.</param>
     </input>
     <description>
 <p>This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
 <p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between <code>0.0</code> and <code>255.0</code>.</p>
-<p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the provided <code>Scene</code> object.  If <code>Scene</code> is <code>NULL</code> then it will not be possible to find the reference.  Any failure to lookup a reference will be silently discarded.</p>
+<p>A Gradient, Image or Pattern can be referenced using the <code>url(#name)</code> format, where the 'name' is a definition that has been registered with the provided <code>Scene</code> object.  If <code>Scene</code> is <code>NULL</code> then it will not be possible to find the reference.  Any failure to lookup a reference will be silently discarded.</p>
+<p>To access one of the pre-defined colourmaps, use the format <code>url(#cmap:name)</code>.  The colourmap will be accessible as a linear gradient that belongs to the <code>Scene</code>.  Valid colourmap names are <code>cmap:crest</code>, <code>cmap:flare</code>, <code>cmap:icefire</code>, <code>cmap:inferno</code>, <code>cmap:magma</code>, <code>cmap:mako</code>, <code>cmap:plasma</code>, <code>cmap:rocket</code>, <code>cmap:viridis</code>.</p>
 <p>A <st>VectorPainter</st> structure must be provided by the client and will be used to store the final result.  All pointers that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An optional <code>Result</code> string can store a reference to the character up to which the IRI was parsed.</p>
     </description>
     <result type="ERR">
@@ -808,6 +810,7 @@ Z: Close Path
     </constants>
 
     <constants lookup="VGF" comment="Gradient flags">
+      <const name="CONTAIN_FOCAL">Contain the FX,FY point to the base radius.</const>
       <const name="FIXED_CX">CX is fixed</const>
       <const name="FIXED_CY">CY is fixed</const>
       <const name="FIXED_FOCAL_RADIUS">Focal radius is fixed</const>
@@ -863,9 +866,9 @@ Z: Close Path
     <constants lookup="VLJ" comment="Options for the look of line joins.">
       <const name="BEVEL">The join is blunted, eliminating overly sharp edges.</const>
       <const name="INHERIT">Inherit the join option from the parent.</const>
-      <const name="MITER">The default.  The join will form a pointed edge.</const>
-      <const name="MITER_REVERT"/>
+      <const name="MITER">The default.  A sharp corner is used to join path segments.  The corner is formed by extending the outer edges of the stroke at the tangents of the path segments until they intersect. If the ‘stroke-miterlimit’ is exceeded, the line join falls back to BEVEL.</const>
       <const name="MITER_ROUND">Default to <code>MITER</code>, but switch to <code>ROUND</code> if the miter limit is exceeded.</const>
+      <const name="MITER_SMART">An alternative form of MITER that extends beyond the intersection point, similarly to the miter-clip SVG rules.</const>
       <const name="ROUND">The join is rounded.</const>
     </constants>
 

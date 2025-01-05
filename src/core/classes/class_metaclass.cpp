@@ -235,6 +235,20 @@ ERR CLASS_Free(extMetaClass *Self)
 {
    if (Self->ClassID != CLASSID::NIL) glClassMap.erase(Self->ClassID);
    if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
+
+#ifndef PARASOL_STATIC
+   if (!Self->SubClasses.empty()) {
+      // Sanity check - if a base has sub-classes present then there is an issue that requires resolution.
+      // Note that for static builds there is no way to control termination order, so these controls are disabled.
+      pf::Log log;
+      log.warning("Out-of-order termination: Base-class %s has active sub-classes.", Self->Name);
+   }
+
+   if (Self->Base) {
+      std::erase_if(Self->Base->SubClasses, [Self](extMetaClass *Cmp) { return Cmp IS Self; });
+   }
+#endif
+
    Self->~extMetaClass();
    return ERR::Okay;
 }
@@ -270,7 +284,7 @@ ERR CLASS_Init(extMetaClass *Self)
       // user's system.
 
       if (auto base = (extMetaClass *)FindClass(Self->BaseClassID)) {
-         log.trace("Using baseclass $%.8x (%s) for %s", Self->BaseClassID, base->ClassName, Self->ClassName);
+         log.trace("Using base class $%.8x (%s) for %s", Self->BaseClassID, base->ClassName, Self->ClassName);
          if (!Self->FileDescription) Self->FileDescription = base->FileDescription;
          if (!Self->FileExtension)   Self->FileExtension   = base->FileExtension;
          if (!Self->ClassVersion)    Self->ClassVersion    = base->ClassVersion;
@@ -302,6 +316,8 @@ ERR CLASS_Init(extMetaClass *Self)
             Self->Methods[i].Size = base->Methods[i].Size;
             if (!Self->Methods[i].Routine) Self->Methods[i].Routine = base->Methods[i].Routine;
          }
+
+         base->SubClasses.push_back(Self);
       }
       else {
          log.warning("A base for class $%.8x is not present!", ULONG(Self->BaseClassID));
@@ -598,7 +614,7 @@ Flags: Optional flag settings.
 -FIELD-
 Icon: Associates an icon with the file data for this class.
 
-Files that belong to a class can be associated with an icon that is declared in this field.  The icon string format is 
+Files that belong to a class can be associated with an icon that is declared in this field.  The icon string format is
 `folder/icon`.  Valid icons are available in the icon database.
 
 -FIELD-
@@ -1110,8 +1126,8 @@ void scan_classes(void)
    DeleteFile(glClassBinPath, NULL);
 
    DirInfo *dir;
+   LONG total = 0;
    if (OpenDir("modules:", RDF::QUALIFY, &dir) IS ERR::Okay) {
-      LONG total = 0;
       while (ScanDir(dir) IS ERR::Okay) {
          FileInfo *list = dir->Info;
 
@@ -1140,7 +1156,7 @@ void scan_classes(void)
       FreeResource(dir);
    }
 
-   log.msg("Class scan complete.");
+   log.msg("Class scan complete - processed %d modules.", total);
 }
 #endif
 

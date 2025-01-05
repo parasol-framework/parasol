@@ -1,0 +1,35 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+Verifies implicit rendering order (paragraph 3.3) and grouping mechanism (paragraphs 3.4).
+It also validates basic Shape, Image and text rendering.
+
+This test renders 3  elements: a text string "SVG", then
+a shape, then an image. Because of their definition order and coordinates, the image
+should be on top of the rectangle and the rectangle on top of the text. None
+of the "SVG" text string should show through the
+rectangle and none of the rectangle should show through the image.
+-->
+  <!--  3 overlapping elements in a group with opacity    -->
+  <g transform="scale(1.8, 1.8)">
+    <!-- Background pattern -->
+    <rect x="20" y="10" width="230" height="155" fill="rgb(192, 192, 192)"/>
+    <line x1="40" y1="10" x2="40" y2="175" stroke="white" stroke-width="15"/>
+    <line x1="70" y1="10" x2="70" y2="175" stroke="white" stroke-width="15"/>
+    <line x1="100" y1="10" x2="100" y2="175" stroke="white" stroke-width="15"/>
+    <line x1="130" y1="10" x2="130" y2="175" stroke="white" stroke-width="15"/>
+    <line x1="160" y1="10" x2="160" y2="175" stroke="white" stroke-width="15"/>
+    <line x1="190" y1="10" x2="190" y2="175" stroke="white" stroke-width="15"/>
+    <line x1="220" y1="10" x2="220" y2="175" stroke="white" stroke-width="15"/>
+    <line x1="250" y1="10" x2="250" y2="175" stroke="white" stroke-width="15"/>
+    <rect x="20" y="10" width="230" height="155" fill="none" stroke="black"/>
+    <!-- The following text, rectangle and image are drawn, fully opaque, in -->
+    <!-- the order they are defined. Therefore, none of the 'A' under the    -->
+    <!-- rectangle should show. Neither should any of the rectangle under    -->
+    <!-- the image.                                                          -->
+    <text font-family="s-larabie-anglepoise, anglepoise" font-size="120" x="30" y="90">SVG</text>
+    <rect x="70" y="55" width="130" height="70" fill="rgb(130, 0, 50)"/>
+    <image x="162" y="75" width="80" height="80" xlink:href="sign.png"/>
+  </g>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000000"/>
+</svg>

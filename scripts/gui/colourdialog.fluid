@@ -142,7 +142,7 @@ local function buildLayout(self, Options)
       x        = dx,
       y        = dy + gui.getFontHeight(gui.fonts.widget),
       string   = 'Basic colours',
-      fill     = 'rgb(0,0,0,255)',
+      fill     = 'rgba(0,0,0,1)',
       face     = gui.fonts.widget.face,
       fontSize = string.format('%.2fpt', gui.fonts.widget.size),
       align    = 'left'
@@ -192,7 +192,7 @@ local function buildLayout(self, Options)
       x        = dx,
       y        = dy + gui.getFontHeight(gui.fonts.widget),
       string   = 'Personal colours',
-      fill     = 'rgb(0,0,0,255)',
+      fill     = 'rgba(0,0,0,1)',
       face     = gui.fonts.widget.face,
       fontSize = string.format('%.2fpt', gui.fonts.widget.size),
       align    = 'left'
@@ -299,7 +299,7 @@ local function buildLayout(self, Options)
       x        = dx,
       y        = dy + gui.getFontHeight(gui.fonts.widget),
       string   = 'Rainbow palette',
-      fill     = 'rgb(0,0,0,255)',
+      fill     = 'rgba(0,0,0,1)',
       face     = gui.fonts.widget.face,
       fontSize = string.format('%.2fpt', gui.fonts.widget.size),
       align    = 'left'
@@ -419,7 +419,7 @@ local function arrangePicker(self)
       self.vecPicker.cX = self._rainbowX + self._picker.x
       self.vecPicker.cY = self._rainbowY + self._picker.y
 
-      self.vecPicker.stroke   = 'rgb(' .. val .. ',' .. val .. ',' .. val .. ',255)'
+      self.vecPicker.stroke   = 'rgba(' .. val .. ',' .. val .. ',' .. val .. ',1)'
       self.vecPicker.visibility = VIS_VISIBLE
    else
       self.vecPicker.visibility = VIS_HIDDEN

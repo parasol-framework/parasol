@@ -1,0 +1,27 @@
+<svg version="1.1" width="100%" height="100%" viewBox="0 0 480 360"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+<!-- Test x, y, width, height, rx and ry default/lacuna values on a rect element. -->
+
+  <g fill="green" stroke="#000000">
+    <!-- Set x coordinate to default. -->
+    <rect y="46" width="50" height="80"/>
+
+    <!-- Set y coordinate to default. -->
+    <rect x="130" width="50" height="80"/>
+
+    <!-- Set width to default. -->
+    <rect x="250" y="46" height="80" width="0"/>
+
+    <!-- Set height to default. -->
+    <rect x="350" y="46" height="0" width="50"/>
+
+    <!-- Set rx to default. -->
+    <rect x="30" y="196" width="50" height="80" ry="20"/>
+
+    <!-- Set ry to default. -->
+    <rect x="130" y="196" width="50" height="80" rx="20"/>
+  </g>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000000"/>
+</svg>

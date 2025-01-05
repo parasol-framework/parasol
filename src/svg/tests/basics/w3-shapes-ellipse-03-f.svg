@@ -1,0 +1,17 @@
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <g transform="translate(150,150)">
+    <line x1="0" y1="-100" x2="0" y2="100" stroke="black" />
+    <line x1="-100" y1="0" x2="100" y2="0" stroke="black" />
+    <ellipse  cx="0" cy="0" rx="80" ry="50" fill="none" stroke="black" />
+  </g>
+
+  <g transform="translate(350,150) rotate(-30)">
+    <line x1="0" y1="-100" x2="0" y2="100" stroke="black" />
+    <line x1="-100" y1="0" x2="100" y2="0" stroke="black" />
+    <ellipse  cx="0" cy="0" rx="80" ry="50" fill="none" stroke="black" />
+  </g>
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000"/>
+</svg>

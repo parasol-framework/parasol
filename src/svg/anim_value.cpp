@@ -42,10 +42,10 @@ void anim_value::set_value(objVector &Vector)
       case CLASSID::VECTORWAVE:
          switch (hash) {
             case SVF_CLOSE:     Vector.set(FID_Close, get_string()); return;
-            case SVF_AMPLITUDE: FUNIT(FID_Amplitude, get_numeric_value(Vector, FID_Amplitude)).set(&Vector); return;
-            case SVF_DECAY:     FUNIT(FID_Decay, get_numeric_value(Vector, FID_Decay)).set(&Vector); return;
-            case SVF_FREQUENCY: FUNIT(FID_Frequency, get_numeric_value(Vector, FID_Frequency)).set(&Vector); return;
-            case SVF_THICKNESS: FUNIT(FID_Thickness, get_numeric_value(Vector, FID_Thickness)).set(&Vector); return;
+            case SVF_AMPLITUDE: Vector.set(FID_Amplitude, get_numeric_value(Vector, FID_Amplitude)); return;
+            case SVF_DECAY:     Vector.set(FID_Decay, get_numeric_value(Vector, FID_Decay)); return;
+            case SVF_FREQUENCY: Vector.set(FID_Frequency, get_numeric_value(Vector, FID_Frequency)); return;
+            case SVF_THICKNESS: Vector.set(FID_Thickness, get_numeric_value(Vector, FID_Thickness)); return;
          }
          break;
 
@@ -132,12 +132,12 @@ void anim_value::set_value(objVector &Vector)
 
       case SVF_STROKE_LINEJOIN:
          switch(strihash(get_string())) {
-            case SVF_MITER: Vector.set(FID_LineJoin, LONG(VLJ::MITER)); return;
-            case SVF_ROUND: Vector.set(FID_LineJoin, LONG(VLJ::ROUND)); return;
-            case SVF_BEVEL: Vector.set(FID_LineJoin, LONG(VLJ::BEVEL)); return;
-            case SVF_INHERIT: Vector.set(FID_LineJoin, LONG(VLJ::INHERIT)); return;
-            case SVF_MITER_REVERT: Vector.set(FID_LineJoin, LONG(VLJ::MITER_REVERT)); return; // Special AGG only join type
-            case SVF_MITER_ROUND: Vector.set(FID_LineJoin, LONG(VLJ::MITER_ROUND)); return; // Special AGG only join type
+            case SVF_MITER: Vector.setLineJoin(LONG(VLJ::MITER)); return;
+            case SVF_ROUND: Vector.setLineJoin(LONG(VLJ::ROUND)); return;
+            case SVF_BEVEL: Vector.setLineJoin(LONG(VLJ::BEVEL)); return;
+            case SVF_INHERIT: Vector.setLineJoin(LONG(VLJ::INHERIT)); return;
+            case SVF_MITER_CLIP: Vector.setLineJoin(LONG(VLJ::MITER_SMART)); return; // Special AGG only join type
+            case SVF_MITER_ROUND: Vector.setLineJoin(LONG(VLJ::MITER_ROUND)); return; // Special AGG only join type
          }
          return;
 
@@ -168,7 +168,7 @@ void anim_value::set_value(objVector &Vector)
 
       case SVF_STROKE_DASHARRAY: Vector.set(FID_DashArray, get_string()); return;
 
-      case SVF_STROKE_DASHOFFSET: FUNIT(FID_DashOffset, get_string()).set(&Vector); return;
+      case SVF_STROKE_DASHOFFSET: Vector.set(FID_DashOffset, get_string()); return;
 
       case SVF_OPACITY:
          Vector.set(FID_Opacity, get_numeric_value(Vector, FID_Opacity));

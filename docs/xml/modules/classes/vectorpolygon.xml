@@ -12,7 +12,7 @@
     <idstring>ID_VECTORPOLYGON</idstring>
     <category>Graphics</category>
     <include>modules/vectorpolygon.h</include>
-    <copyright>Paul Manias © 2010-2024</copyright>
+    <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The VectorPolygon class provides support for three different types of vector:</p>
 <list type="sorted">

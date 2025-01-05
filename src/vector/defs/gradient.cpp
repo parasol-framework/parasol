@@ -28,11 +28,8 @@ GRADIENT_TABLE * get_fill_gradient_table(extPainter &Painter, DOUBLE Opacity)
 
    GradientColours *cols = ((extVectorGradient *)Painter.Gradient)->Colours;
    if (!cols) {
-      if (Painter.Gradient->Inherit) cols = ((extVectorGradient *)Painter.Gradient->Inherit)->Colours;
-      if (!cols) {
-         log.warning("No colour table referenced in fill gradient %p.", Painter.Gradient);
-         return NULL;
-      }
+      log.warning("No colour table in gradient %p.", Painter.Gradient);
+      return NULL;
    }
 
    if (Opacity >= 1.0) { // Return the original gradient table if no translucency is applicable.
@@ -67,7 +64,6 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 
    GradientColours *cols = ((extVectorGradient *)Vector.Stroke.Gradient)->Colours;
    if (!cols) {
-      if (Vector.Stroke.Gradient->Inherit) cols = ((extVectorGradient *)Vector.Stroke.Gradient->Inherit)->Colours;
       if (!cols) {
          log.warning("No colour table referenced in stroke gradient %p for vector #%d.", Vector.Stroke.Gradient, Vector.UID);
          return NULL;
@@ -102,22 +98,21 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 // Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
 // Stops array.
 
-GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
+GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS ColourSpace, DOUBLE Alpha)
 {
    LONG stop, i1, i2, i;
-   GradientStop *stops = Gradient->Stops;
 
-   for (stop=0; stop < Gradient->TotalStops-1; stop++) {
-      i1 = F2T(255.0 * stops[stop].Offset);
+   for (stop=0; stop < std::ssize(Stops)-1; stop++) {
+      i1 = F2T(255.0 * Stops[stop].Offset);
       if (i1 < 0) i1 = 0;
       else if (i1 > 255) i1 = 255;
 
-      i2 = F2T(255.0 * stops[stop+1].Offset);
+      i2 = F2T(255.0 * Stops[stop+1].Offset);
       if (i2 < 0) i2 = 0;
       else if (i2 > 255) i2 = 255;
 
-      agg::rgba8 begin(stops[stop].RGB.Red*255, stops[stop].RGB.Green*255, stops[stop].RGB.Blue*255, stops[stop].RGB.Alpha * Alpha * 255);
-      agg::rgba8 end(stops[stop+1].RGB.Red*255, stops[stop+1].RGB.Green*255, stops[stop+1].RGB.Blue*255, stops[stop+1].RGB.Alpha * Alpha * 255);
+      agg::rgba8 begin(Stops[stop].RGB.Red*255, Stops[stop].RGB.Green*255, Stops[stop].RGB.Blue*255, Stops[stop].RGB.Alpha * Alpha * 255);
+      agg::rgba8 end(Stops[stop+1].RGB.Red*255, Stops[stop+1].RGB.Green*255, Stops[stop+1].RGB.Blue*255, Stops[stop+1].RGB.Alpha * Alpha * 255);
 
       if ((stop IS 0) and (i1 > 0)) {
          for (i=0; i < i1; i++) table[i] = begin;
@@ -126,13 +121,23 @@ GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
       if (i1 <= i2) {
          for (i=i1; i <= i2; i++) {
             DOUBLE j = (DOUBLE)(i - i1) / (DOUBLE)(i2-i1);
-            table[i] = begin.gradient(end, j);
+            if (ColourSpace IS VCS::LINEAR_RGB) {
+               table[i] = begin.linear_gradient(end, j);
+            }
+            else table[i] = begin.gradient(end, j);
          }
       }
 
-      if ((stop IS Gradient->TotalStops-2) and (i2 < 255)) {
+      if ((stop IS std::ssize(Stops)-2) and (i2 < 255)) {
          for (i=i2; i <= 255; i++) table[i] = end;
       }
+   }
+}
+
+GradientColours::GradientColours(const std::array<FRGB, 256> &Map)
+{
+   for (LONG i=0; i < std::ssize(Map); i++) {
+      table[i] = agg::rgba8(Map[i]);
    }
 }
 
@@ -141,8 +146,9 @@ GradientColours::GradientColours(extVectorGradient *Gradient, DOUBLE Alpha)
 static ERR VECTORGRADIENT_Free(extVectorGradient *Self)
 {
    if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
-   if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
    if (Self->Colours) { delete Self->Colours; Self->Colours = NULL; }
+   Self->Stops.~vector<GradientStop>();
+   Self->ColourMap.~basic_string();
 
    VectorMatrix *next;
    for (auto node=Self->Matrices; node; node=next) {
@@ -182,6 +188,8 @@ static ERR VECTORGRADIENT_Init(extVectorGradient *Self)
 
 static ERR VECTORGRADIENT_NewObject(extVectorGradient *Self)
 {
+   new (&Self->Stops) std::vector<GradientStop>;
+   new (&Self->ColourMap) std::string;
    Self->SpreadMethod = VSPREAD::PAD;
    Self->Type    = VGT::LINEAR;
    Self->Units   = VUNIT::BOUNDING_BOX;
@@ -247,6 +255,84 @@ static ERR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Unit &Value)
 /*********************************************************************************************************************
 
 -FIELD-
+Colour: The default background colour to use when clipping is enabled.
+
+The colour value in this field is applicable only when a gradient is in clip-mode - by specifying the `VSPREAD::CLIP`
+flag in #SpreadMethod.  By default, this field has an alpha value of 0 to ensure that nothing is drawn
+outside the initial bounds of the gradient.  Setting any other colour value here will otherwise
+fill-in those areas.
+
+The Colour value is defined in floating-point RGBA format, using a range of 0 - 1.0 per component.
+
+*********************************************************************************************************************/
+
+static ERR VECTORGRADIENT_GET_Colour(extVectorGradient *Self, FLOAT **Value, LONG *Elements)
+{
+   *Value = (FLOAT *)&Self->Colour;
+   *Elements = 4;
+   return ERR::Okay;
+}
+
+static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, FLOAT *Value, LONG Elements)
+{
+   pf::Log log;
+   if (Value) {
+      if (Elements >= 3) {
+         Self->Colour.Red   = Value[0];
+         Self->Colour.Green = Value[1];
+         Self->Colour.Blue  = Value[2];
+         Self->Colour.Alpha = (Elements >= 4) ? Value[3] : 1.0;
+
+         Self->ColourRGB.Red   = F2T(Self->Colour.Red * 255.0);
+         Self->ColourRGB.Green = F2T(Self->Colour.Green * 255.0);
+         Self->ColourRGB.Blue  = F2T(Self->Colour.Blue * 255.0);
+         Self->ColourRGB.Alpha = F2T(Self->Colour.Alpha * 255.0);
+      }
+      else return log.warning(ERR::InvalidValue);
+   }
+   else Self->Colour.Alpha = 0;
+   return ERR::Okay;
+}
+/*********************************************************************************************************************
+
+-FIELD-
+ColourMap: Assigns a pre-defined colourmap to the gradient.
+
+An alternative to defining colour #Stops in a gradient is available in the form of named colourmaps.
+Declaring a colourmap in this field will automatically populate the gradient with the colours defined in the map.
+
+We currently support the following established colourmaps from the matplotlib and seaborn projects: `cmap:crest`,
+`cmap:flare`, `cmap:icefire`, `cmap:inferno`, `cmap:magma`, `cmap:mako`, `cmap:plasma`, `cmap:rocket`,
+`cmap:viridis`.
+
+The use of colourmaps and custom stops are mutually exclusive.
+
+*********************************************************************************************************************/
+
+static ERR VECTORGRADIENT_GET_ColourMap(extVectorGradient *Self, CSTRING *Value)
+{
+   if (!Self->ColourMap.empty()) *Value = Self->ColourMap.c_str();
+   else *Value = NULL;
+   return ERR::Okay;
+}
+
+static ERR VECTORGRADIENT_SET_ColourMap(extVectorGradient *Self, CSTRING Value)
+{
+   if (!Value) return ERR::NoData;
+
+   if (glColourMaps.contains(Value)) {
+      if (Self->Colours) delete Self->Colours;
+      Self->Colours = new (std::nothrow) GradientColours(glColourMaps[Value]);
+      if (!Self->Colours) return ERR::AllocMemory;
+      Self->ColourMap = Value;
+      return ERR::Okay;
+   }
+   else return ERR::NotFound;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 ColourSpace: Defines the colour space to use when interpolating gradient colours.
 Lookup: VCS
 
@@ -293,7 +379,7 @@ static ERR VECTORGRADIENT_SET_FocalRadius(extVectorGradient *Self, Unit &Value)
 -FIELD-
 FocalX: The horizontal focal point for radial gradients.
 
-The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point 
+The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point
 will match the center of the gradient.
 
 *********************************************************************************************************************/
@@ -318,7 +404,7 @@ static ERR VECTORGRADIENT_SET_FocalX(extVectorGradient *Self, Unit &Value)
 -FIELD-
 FocalY: The vertical focal point for radial gradients.
 
-The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point 
+The `(FocalX, FocalY)` coordinates define the focal point for radial gradients.  If left undefined, the focal point
 will match the center of the gradient.
 
 *********************************************************************************************************************/
@@ -365,26 +451,6 @@ static ERR VECTORGRADIENT_SET_ID(extVectorGradient *Self, CSTRING Value)
       Self->ID = NULL;
       Self->NumericID = 0;
    }
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-Inherit: Inherit attributes from the VectorGradient referenced here.
-
-Attributes can be inherited from another gradient by referencing that gradient in this field.  This feature is provided
-primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance penalty.
-
-*********************************************************************************************************************/
-
-static ERR VECTORGRADIENT_SET_Inherit(extVectorGradient *Self, extVectorGradient *Value)
-{
-   if (Value) {
-      if (Value->classID() IS CLASSID::VECTORGRADIENT) Self->Inherit = Value;
-      else return ERR::InvalidValue;
-   }
-   else Self->Inherit = NULL;
    return ERR::Okay;
 }
 
@@ -500,7 +566,7 @@ static ERR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Unit &Value)
 SpreadMethod: The behaviour to use when the gradient bounds do not match the vector path.
 
 Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is
-`VSPREAD::PAD`.  Other valid options for gradients are `REFLECT` and `REPEAT`.
+`VSPREAD::PAD`.  Other valid options for gradients are `REFLECT`, `REPEAT` and `CLIP`.
 
 -FIELD-
 Stops: Defines the colours to use for the gradient.
@@ -512,26 +578,21 @@ to define a start and end point for interpolating the gradient colours.
 
 static ERR VECTORGRADIENT_GET_Stops(extVectorGradient *Self, GradientStop **Value, LONG *Elements)
 {
-   *Value    = Self->Stops;
-   *Elements = Self->TotalStops;
+   *Value    = Self->Stops.data();
+   *Elements = Self->Stops.size();
    return ERR::Okay;
 }
 
 static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, LONG Elements)
 {
-   if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
+   Self->Stops.clear();
 
    if (Elements >= 2) {
-      if (AllocMemory(sizeof(GradientStop) * Elements, MEM::DATA|MEM::NO_CLEAR, &Self->Stops) IS ERR::Okay) {
-         Self->TotalStops = Elements;
-         copymem(Value, Self->Stops, Elements * sizeof(GradientStop));
-         if (Self->Colours) delete Self->Colours;
-         Self->Colours = new (std::nothrow) GradientColours(Self, 1.0);
-         if (!Self->Colours) return ERR::AllocMemory;
-         Self->ChangeCounter++;
-         return ERR::Okay;
-      }
-      else return ERR::AllocMemory;
+      Self->Stops.insert(Self->Stops.end(), &Value[0], &Value[Elements]);
+      if (Self->Colours) delete Self->Colours;
+      Self->Colours = new (std::nothrow) GradientColours(Self->Stops, Self->ColourSpace, 1.0);
+      if (!Self->Colours) return ERR::AllocMemory;
+      return ERR::Okay;
    }
    else {
       pf::Log log;
@@ -715,7 +776,6 @@ static const FieldArray clGradientFields[] = {
    { "FocalY",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalY, VECTORGRADIENT_SET_FocalY },
    { "Radius",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Radius, VECTORGRADIENT_SET_Radius },
    { "FocalRadius",  FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalRadius, VECTORGRADIENT_SET_FocalRadius },
-   { "Inherit",      FDF_OBJECT|FDF_RW, NULL, VECTORGRADIENT_SET_Inherit },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientSpreadMethod },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &clVectorGradientUnits },
    { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientType },
@@ -723,6 +783,8 @@ static const FieldArray clGradientFields[] = {
    { "ColourSpace",  FDF_LONG|FDF_RI, NULL, NULL, &clVectorGradientColourSpace },
    { "TotalStops",   FDF_LONG|FDF_R },
    // Virtual fields
+   { "Colour",       FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW, VECTORGRADIENT_GET_Colour, VECTORGRADIENT_SET_Colour },
+   { "ColourMap",    FDF_VIRTUAL|FDF_STRING|FDF_W, VECTORGRADIENT_GET_ColourMap, VECTORGRADIENT_SET_ColourMap },
    { "CX",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterX, VECTORGRADIENT_SET_CenterX },
    { "CY",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_CenterY, VECTORGRADIENT_SET_CenterY },
    { "FX",           FDF_VIRTUAL|FDF_SYNONYM|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalX, VECTORGRADIENT_SET_FocalX },

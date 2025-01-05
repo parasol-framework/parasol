@@ -320,7 +320,7 @@ static ERR insert_text(extDocument *Self, RSTREAM *Stream, stream_char &Index, c
       auto ws = Self->NoWhitespace; // Retrieve previous whitespace state
       for (unsigned i=0; i < Text.size(); ) {
          if (unsigned(Text[i]) <= 0x20) { // Whitespace encountered
-            for (++i; (unsigned(Text[i]) <= 0x20) and (i < Text.size()); i++);
+            for (++i; (i < Text.size()) and (unsigned(Text[i]) <= 0x20); i++);
             if (!ws) et.text += ' ';
             ws = true;
          }
@@ -414,11 +414,11 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    Self->Highlight = glHighlight;
 
-   Self->CursorStroke   = "rgb(102,102,204,255)";
+   Self->CursorStroke   = "rgba(102,102,204,1.0)";
    Self->FontFill       = "rgb(0,0,0)";
    Self->LinkFill       = "rgb(0,0,255)";
    Self->LinkSelectFill = "rgb(255,0,0)";
-   Self->Background     = "rgb(255,255,255,255)";
+   Self->Background     = "rgba(255,255,255,1.0)";
 
    Self->LeftMargin    = 10;
    Self->RightMargin   = 10;
@@ -969,7 +969,7 @@ void ui_link::exec(extDocument *Self)
 
             auto lk = path + origin.ref;
             auto end = lk.find_first_of("?#&");
-            if (IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id) IS ERR::Okay) {
+            if (IdentifyFile(lk.substr(0, end).c_str(), CLASSID::NIL, &class_id, &subclass_id) IS ERR::Okay) {
                if (class_id IS CLASSID::DOCUMENT) {
                   Self->set(FID_Path, lk);
 

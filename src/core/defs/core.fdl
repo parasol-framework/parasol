@@ -11,8 +11,10 @@ module({ name="Core", copyright="Paul Manias 1996-2024", timestamp=20241015 }, f
   privateNames({ "ScriptArg", "CoreBase", "RootModule" })
 
   priority([[
-#if defined(_DEBUG) && defined(__linux__)
- #include <signal.h>
+#if defined(_DEBUG)
+ #ifndef _MSC_VER
+  #include <signal.h>
+ #endif
 #endif
 
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
@@ -576,8 +578,10 @@ template <class T> T roundup(T Num, LONG Alignment) {
 #ifdef _DEBUG
  #ifdef _MSC_VER
   #define DEBUG_BREAK __debugbreak();
- #else
+ #elif __linux__
   #define DEBUG_BREAK raise(SIGTRAP);
+ #else
+  #define DEBUG_BREAK
  #endif
 #else
  #define DEBUG_BREAK
@@ -749,6 +753,7 @@ struct FieldValue {
    constexpr FieldValue(ULONG pFID, CSTRING pValue)   : FieldID(pFID), Type(FD_STRING), String(pValue) { };
    constexpr FieldValue(ULONG pFID, LONG pValue)      : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)     : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
+   constexpr FieldValue(ULONG pFID, size_t pValue)    : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
    constexpr FieldValue(ULONG pFID, DOUBLE pValue)    : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
    constexpr FieldValue(ULONG pFID, SCALE pValue)     : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
    constexpr FieldValue(ULONG pFID, const FUNCTION &pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(&pValue) { };
@@ -784,6 +789,8 @@ inline bool hasWidth(DMF Value) { return (Value & DMF::FIXED_WIDTH) != DMF::NIL;
 inline bool hasHeight(DMF Value) { return (Value & DMF::FIXED_HEIGHT) != DMF::NIL; }
 inline bool hasXOffset(DMF Value) { return (Value & DMF::FIXED_X_OFFSET) != DMF::NIL; }
 inline bool hasYOffset(DMF Value) { return (Value & DMF::FIXED_Y_OFFSET) != DMF::NIL; }
+inline bool hasRadiusX(DMF Value) { return (Value & DMF::FIXED_RADIUS_X) != DMF::NIL; }
+inline bool hasRadiusY(DMF Value) { return (Value & DMF::FIXED_RADIUS_Y) != DMF::NIL; }
 inline bool hasScaledX(DMF Value) { return (Value & DMF::SCALED_X) != DMF::NIL; }
 inline bool hasScaledY(DMF Value) { return (Value & DMF::SCALED_Y) != DMF::NIL; }
 inline bool hasScaledWidth(DMF Value) { return (Value & DMF::SCALED_WIDTH) != DMF::NIL; }

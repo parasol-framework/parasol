@@ -1066,6 +1066,12 @@ static ERR run_script(objScript *Self)
       return ERR::Okay;
    }
    else {
+      // LuaJIT catches C++ exceptions, but we would prefer that crashes occur normally so that they can be traced in 
+      // the debugger.  As we don't have a solution to this design issue yet, the following context check will suffice
+      // to prevent unwanted behaviour.
+
+      if (CurrentContext() != Self) abort(); // A C++ exception was caught by Lua - the software stack is unstable so we must abort.
+
       process_error(Self, Self->Procedure ? Self->Procedure : "run_script");
       return Self->Error;
    }

@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, timestamp=20240611 }, function()
+module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, timestamp=20240611 }, function()
   c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")
 
   restrict(function()
@@ -87,8 +87,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, times
     "ALPHA: The alpha channel.")
 
   enum("VLJ", { type="int", start=0, comment="Options for the look of line joins." }, // Match to agg::line_join_e
-    "MITER: The default.  The join will form a pointed edge.",
-    "MITER_REVERT",
+    "MITER: The default.  A sharp corner is used to join path segments.  The corner is formed by extending the outer edges of the stroke at the tangents of the path segments until they intersect. If the ‘stroke-miterlimit’ is exceeded, the line join falls back to BEVEL.",
+    "MITER_SMART: An alternative form of MITER that extends beyond the intersection point, similarly to the miter-clip SVG rules.",
     "ROUND: The join is rounded.",
     "BEVEL: The join is blunted, eliminating overly sharp edges.",
     "MITER_ROUND: Default to `MITER`, but switch to `ROUND` if the miter limit is exceeded.",
@@ -236,7 +236,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, times
     "FIXED_FX: FX is fixed",
     "FIXED_FY: FY is fixed",
     "FIXED_RADIUS: Radius is fixed",
-    "FIXED_FOCAL_RADIUS: Focal radius is fixed")
+    "FIXED_FOCAL_RADIUS: Focal radius is fixed",
+    "CONTAIN_FOCAL: Contain the FX,FY point to the base radius.")
 
   flags("VPF", { comment="Optional flags for the VectorScene object." },
     "BITMAP_SIZED: Automatically adjust the @VectorScene.PageWidth and @VectorScene.PageHeight to match the target @Bitmap.Width and @Bitmap.Height.",
@@ -450,7 +451,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, times
     double FocalY                # Focal Y coordinate for radial gradient shapes.
     double Radius                # The radius size for radial gradients.
     double FocalRadius           # The size of the focal radius for radial gradients.
-    obj(VectorGradient) Inherit  # Reference to another gradient from which to inherit attributes.
     int(VSPREAD) SpreadMethod    # Defines the spread method to use for gradient fills.
     int(VUNIT) Units             # Defines the coordinate system for `(X1, Y1), (X2, Y2)`
     int(VGT) Type
@@ -525,6 +525,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0, times
   class("RemapFX",        { base='FilterEffect', src="filters/filter_remap.cpp", output="filters/filter_remap_def.c", comment="Remap filter support class." })
 
   class("TurbulenceFX",   { base='FilterEffect', src="filters/filter_turbulence.cpp", output="filters/filter_turbulence_def.c", comment="Turbulence filter support class." })
+
+  class("WaveFunctionFX",   { base='FilterEffect', src="filters/filter_wavefunction.cpp", output="filters/filter_wavefunction_def.c", comment="WaveFunction filter support class." })
 
   class('VectorClip', { src='vectors/clip.cpp', output='vectors/clip_def.cpp' }, [[
     obj(VectorViewport) Viewport # Hosts the Vector objects that will contribute to the clip path.
@@ -714,6 +716,8 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "CLOSE",
     "COLOR",
     "COLOUR",
+    "COLORMAP",
+    "COLOURMAP",
     "COLOR-INTERPOLATION",
     "COLOUR-INTERPOLATION",
     "COLOR-INTERPOLATION-FILTERS",
@@ -763,6 +767,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "FESPOTLIGHT",
     "FETILE",
     "FETURBULENCE",
+    "FEWAVEFUNCTION",
     "FILL",
     "FILL-OPACITY",
     "FILL-RULE",
@@ -826,6 +831,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "METHOD",
     "MINUS",
     "MITER",
+    "MITER-CLIP",
     "MITER-REVERT",
     "MITER-ROUND",
     "MOD",
@@ -845,13 +851,6 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "OVER",
     "OVERFLOW",
     "OVERLAY",
-    "PARASOL:MORPH",
-    "PARASOL:PATHTRANSITION",
-    "PARASOL:SHAPE",
-    "PARASOL:SPIRAL",
-    "PARASOL:TRANSITION",
-    "PARASOL:WAVE",
-    "PATH",
     "PATH",
     "PATHLENGTH",
     "PATTERN",
@@ -1090,6 +1089,8 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "SPRINGGREEN",
     "START",
     "STEELBLUE",
+    "STOP-COLOR",
+    "STOP-OPACITY",
     "STROKE",
     "STROKE-DASHARRAY",
     "STROKE-DASHOFFSET",
@@ -1135,7 +1136,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "WIDTH",
     "WORD-SPACING")
 
-   hash("SVF", "0x%s",
+  hash("SVF", "0x%s",
     "APPEND-PATH",
     "JOIN-PATH",
     "AZIMUTH",
@@ -1154,6 +1155,12 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "LOOP-LIMIT",
     "MASKCONTENTUNITS",
     "MASKUNITS",
+    "PARASOL:MORPH",
+    "PARASOL:PATHTRANSITION",
+    "PARASOL:SHAPE",
+    "PARASOL:SPIRAL",
+    "PARASOL:TRANSITION",
+    "PARASOL:WAVE",
     "POINTSATX",
     "POINTSATY",
     "POINTSATZ",
@@ -1165,6 +1172,9 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "INTERCEPT",
     "INVERT",
     "IDENTITY",
+    "L",
+    "M",
+    "N",
     "LINEAR",
     "TABLE",
     "GAMMA",
@@ -1186,8 +1196,42 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "KEYSPLINES",
     "BY",
     "YELLOW",
-    "YELLOWGREEN"
-    )
+    "YELLOWGREEN",
+    "REQUIREDFEATURES",
+    "REQUIREDEXTENSIONS",
+    "SYSTEMLANGUAGE"
+  )
+
+  hash("SVF", "0x%s",
+    "ActiveBorder",
+    "ActiveCaption",
+    "AppWorkspace",
+    "Background",
+    "ButtonFace",
+    "ButtonHighlight",
+    "ButtonShadow",
+    "ButtonText",
+    "CaptionText",
+    "GrayText",
+    "Highlight",
+    "HighlightText",
+    "InactiveBorder",
+    "InactiveCaption",
+    "InactiveCaptionText",
+    "InfoBackground",
+    "InfoText",
+    "Menu",
+    "MenuText",
+    "Scrollbar",
+    "ThreeDDarkShadow",
+    "ThreeDFace",
+    "ThreeDHighlight",
+    "ThreeDLightShadow",
+    "ThreeDShadow",
+    "Window",
+    "WindowFrame",
+    "WindowText"
+  )
 
     c_insert([[
 namespace vec {

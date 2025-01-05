@@ -47,14 +47,20 @@ end
 
 function testParallel()
    glPicsProcessed = 0
+   local count = 0
 
    for k, v in ipairs(glPictures) do
-      thread.action(v.pic, 'Activate', picProcessed, k)
+      if v.pic then
+         thread.action(v.pic, 'Activate', picProcessed, k)
+         count = count + 1
+      end
    end
 
    -- Wait for threads to complete
 
-   err = proc.sleep()
+   if count > 0 then
+      err = proc.sleep()
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------

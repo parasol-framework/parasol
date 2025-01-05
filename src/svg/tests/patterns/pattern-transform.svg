@@ -1,0 +1,12 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Apply a transform on the tile -->
+  <pattern id="p1" patternUnits="userSpaceOnUse" width="20" height="20"
+    patternTransform="rotate(20) skewX(30) scale(1 0.5)">
+    <circle cx="10" cy="10" r="10" />
+  </pattern>
+
+  <rect width="100%" height="100%" stroke="black" stroke-width="1" fill="none"/>
+
+  <!-- In this test the pattern should be fixed to 0,0 and not moved to the 10,10 offset of this rectangle -->
+  <rect x="10" y="10" width="80" height="80" fill="url(#p1)" />
+</svg>

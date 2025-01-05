@@ -343,7 +343,7 @@ static ERR MODULE_Init(extModule *Self)
       name.remove_suffix(name.size() - sep);
    }
 
-   log.trace("Finding module %s (%s)", Self->Name, name.data());
+   log.trace("Finding module %s (%s)", Self->Name.c_str(), name.data());
 
    RootModule *master;
    struct ModHeader *table = NULL;

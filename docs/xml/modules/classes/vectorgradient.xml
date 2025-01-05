@@ -12,7 +12,7 @@
     <idstring>ID_VECTORGRADIENT</idstring>
     <category>Graphics</category>
     <include>modules/vectorgradient.h</include>
-    <copyright>Paul Manias © 2010-2024</copyright>
+    <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The VectorGradient class is used by Vector painting algorithms to fill and stroke vectors with gradients.  This is achieved by initialising a VectorGradient object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" method="AddDef">VectorScene.AddDef()</class> method.</p>
 <p>Any vector within the target scene will be able to utilise the gradient for filling or stroking by referencing its name through the <class name="Vector" field="Fill">Vector.Fill</class> and <class name="Vector" field="Stroke">Vector.Stroke</class> fields.  For instance 'url(#redgradient)'.</p>
@@ -43,6 +43,29 @@
       <type>DOUBLE</type>
       <description>
 <p>The <code>(CenterX, CenterY)</code> coordinates define the center point of the gradient.  The center point will only be used if the gradient type requires it (such as the radial type).  By default, the center point is set to <code>50%</code>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Colour</name>
+      <comment>The default background colour to use when clipping is enabled.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FLOAT []</type>
+      <description>
+<p>The colour value in this field is applicable only when a gradient is in clip-mode - by specifying the <code>VSPREAD::CLIP</code> flag in <fl>SpreadMethod</fl>.  By default, this field has an alpha value of 0 to ensure that nothing is drawn outside the initial bounds of the gradient.  Setting any other colour value here will otherwise fill-in those areas.</p>
+<p>The Colour value is defined in floating-point RGBA format, using a range of 0 - 1.0 per component.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ColourMap</name>
+      <comment>Assigns a pre-defined colourmap to the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>An alternative to defining colour <fl>Stops</fl> in a gradient is available in the form of named colourmaps. Declaring a colourmap in this field will automatically populate the gradient with the colours defined in the map.</p>
+<p>We currently support the following established colourmaps from the matplotlib and seaborn projects: <code>cmap:crest</code>, <code>cmap:flare</code>, <code>cmap:icefire</code>, <code>cmap:inferno</code>, <code>cmap:magma</code>, <code>cmap:mako</code>, <code>cmap:plasma</code>, <code>cmap:rocket</code>, <code>cmap:viridis</code>.</p>
+<p>The use of colourmaps and custom stops are mutually exclusive.</p>
       </description>
     </field>
 
@@ -85,7 +108,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The <code>(FX, FY)</code> coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
+<p>The <code>(FocalX, FocalY)</code> coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
       </description>
     </field>
 
@@ -95,7 +118,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The <code>(FX, FY)</code> coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
+<p>The <code>(FocalX, FocalY)</code> coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
       </description>
     </field>
 
@@ -106,16 +129,6 @@
       <type>STRING</type>
       <description>
 <p>The ID field is provided for the purpose of SVG support.  Where possible, we recommend that you use the existing object name and automatically assigned ID's for identifiers.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Inherit</name>
-      <comment>Inherit attributes from the VectorGradient referenced here.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type class="VectorGradient">*VectorGradient</type>
-      <description>
-<p>Attributes can be inherited from another gradient by referencing that gradient in this field.  This feature is provided primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance penalty.</p>
       </description>
     </field>
 
@@ -158,7 +171,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VSPREAD">VSPREAD</type>
       <description>
-<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD::PAD</code>.  Other valid options for gradients are <code>REFLECT</code> and <code>REPEAT</code>.</p>
+<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD::PAD</code>.  Other valid options for gradients are <code>REFLECT</code>, <code>REPEAT</code> and <code>CLIP</code>.</p>
 <types lookup="VSPREAD"/>
       </description>
     </field>
@@ -196,7 +209,7 @@
     <field>
       <name>Type</name>
       <comment>Specifies the type of gradient (e.g. <code>RADIAL</code>, <code>LINEAR</code>)</comment>
-      <access read="R" write="I">Read/Init</access>
+      <access read="R" write="W">Read/Write</access>
       <type lookup="VGT">VGT</type>
       <description>
 <p>The type of the gradient to be drawn is specified here.</p>
@@ -268,6 +281,7 @@
     </constants>
 
     <constants lookup="VGF" comment="Gradient flags">
+      <const name="CONTAIN_FOCAL">Contain the FX,FY point to the base radius.</const>
       <const name="FIXED_CX">CX is fixed</const>
       <const name="FIXED_CY">CY is fixed</const>
       <const name="FIXED_FOCAL_RADIUS">Focal radius is fixed</const>

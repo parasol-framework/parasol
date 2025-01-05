@@ -21,7 +21,7 @@ class extFloodFX : public extFilterEffect {
    using create = pf::Create<extFloodFX>;
 
    FRGB   Colour;
-   RGB8   ColourRGB;
+   RGB8   ColourRGB; // A cached conversion of the FRGB value
    DOUBLE Opacity;
 };
 

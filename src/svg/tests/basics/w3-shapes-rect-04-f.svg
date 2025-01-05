@@ -1,0 +1,17 @@
+<svg id="svg-root" width="100%" height="100%" viewBox="0 0 480 360" xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+<!--
+'Rect' elements with unspecified 'rx' and 'ry' attributes will use the specified 'rx' and 'ry' value if the other one is specified; if neither is specified, the 'rect' has square edges.
+
+Creates one 'rect' element with an unspecified 'ry'. Places it over a red 'rect' element with both 'rx' and 'ry' specified.  Repeat with unspecified 'rx'. Finally creates a 'rect' element that has neither 'rx' or
+'ry' specified.
+-->
+
+  <rect x="25" y="25" width="200" height="100" rx="50" ry="50" fill="red" />
+  <rect x="25" y="25" width="200" height="100" rx="50" fill="black" />
+  <rect x="275" y="25" width="200" height="100" rx="50" ry="50" fill="red" />
+  <rect x="275" y="25" width="200" height="100" ry="50" fill="black" />
+  <rect x="150" y="135" width="200" height="100" fill="black" />
+
+  <rect id="test-frame" x="1" y="1" width="478" height="358" fill="none" stroke="#000"/>
+</svg>

@@ -922,6 +922,7 @@
 #define FID_AppendPath 0x778f85caLL
 #define FID_Bias 0x7c949844LL
 #define FID_ClipFlags 0x4959653aLL
+#define FID_ColourMap 0xf3cb5d97LL
 #define FID_Constant 0x42a2b30fLL
 #define FID_Def 0x0b8869b4LL
 #define FID_Dictionary 0xccb60b7bLL
@@ -930,10 +931,12 @@
 #define FID_EventCallback 0xfc356c74LL
 #define FID_EventMask 0x354f38b3LL
 #define FID_Exponent 0xd4513596LL
+#define FID_L 0x0002b611LL
 #define FID_LoopLimit 0xf4c76a9eLL
 #define FID_MatrixRows 0x64419145LL
 #define FID_MatrixColumns 0x54dc215bLL
 #define FID_Matrix 0x0d3e291aLL
+#define FID_N 0x0002b613LL
 #define FID_OnChange 0xee446f88LL
 #define FID_PathTimestamp 0x2efda9a6LL
 #define FID_PreserveAlpha 0xf9b49d57LL
