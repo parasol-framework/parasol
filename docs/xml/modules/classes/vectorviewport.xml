@@ -12,7 +12,7 @@
     <idstring>ID_VECTORVIEWPORT</idstring>
     <category>Graphics</category>
     <include>modules/vectorviewport.h</include>
-    <copyright>Paul Manias © 2010-2024</copyright>
+    <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>This class is used to declare a viewport within a vector scene graph.  A master viewport is required as the first object in a <class name="VectorScene">VectorScene</class> and it must contain all vector graphics content.</p>
 <p>The size of the viewport is initially set to <code>(0,0,100%,100%)</code> so as to be all inclusive.  Setting the <fl>X</fl>, <fl>Y</fl>, <fl>Width</fl> and <fl>Height</fl> fields will determine the position and clipping of the displayed content (the 'target area').  The <fl>ViewX</fl>, <fl>ViewY</fl>, <fl>ViewWidth</fl> and <fl>ViewHeight</fl> fields declare the viewbox ('source area') that will be sampled for the target.</p>

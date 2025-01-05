@@ -1928,6 +1928,12 @@ class objWaveFunctionFX : public objFilterEffect {
 
    // Customised field setting
 
+   template <class T> inline ERR setColourMap(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   }
+
    inline ERR setN(const LONG Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
