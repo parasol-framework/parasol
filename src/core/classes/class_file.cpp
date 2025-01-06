@@ -701,9 +701,11 @@ retrydir:
 #ifdef __unix__
    // Establishing whether or not the path is a link is required on initialisation.
    struct stat64 info;
-   if (Self->prvResolvedPath.ends_with('/')) Self->prvResolvedPath.pop_back(); // For lstat64() symlink we need to remove the slash
-   if (lstat64(Self->prvResolvedPath.c_str(), &info) != -1) { // Prefer to get a stat on the link rather than the file it refers to
-      if (S_ISLNK(info.st_mode)) Self->Flags |= FL::LINK;
+   if (Self->prvResolvedPath != "/") {
+      if (Self->prvResolvedPath.ends_with('/')) Self->prvResolvedPath.pop_back(); // For lstat64() symlink we need to remove the slash
+      if (lstat64(Self->prvResolvedPath.c_str(), &info) != -1) { // Prefer to get a stat on the link rather than the file it refers to
+         if (S_ISLNK(info.st_mode)) Self->Flags |= FL::LINK;
+      }
    }
 #endif
 
