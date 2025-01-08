@@ -144,9 +144,8 @@
       <head>
         <xsl:call-template name="addGoogleTracking"/>
         <meta charset="utf-8"/>
-        <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+        <!-- The above 2 meta tags *must* come first in the head; any other head content must come *after* these tags -->
         <meta name="description" content="Parasol Framework documentation, machine generated from source"/>
         <meta name="author" content="Paul Manias"/>
         <link rel="icon" href="/favicon.ico"/>
@@ -155,39 +154,28 @@
         <link href="../css/bootstrap.min.css" rel="stylesheet"/>
         <!-- Custom styles for this template -->
         <link href="../css/module-template.css" rel="stylesheet"/>
-
-        <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
-        <!--[if lt IE 9]>
-          <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
-          <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-        <![endif]-->
       </head>
 
       <body>
-        <nav class="navbar navbar-inverse navbar-fixed-top">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
           <div class="container">
             <div class="navbar-header">
-              <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-                <span class="sr-only">Toggle navigation</span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-              </button>
               <a class="navbar-brand" href="../index.html">Parasol Framework</a>
             </div>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
-                <li class="active"><a href="core.html">Modules</a></li>
-                <li><a href="classes/module.html">Classes</a></li>
-                <li><a href="https://github.com/parasol-framework/parasol/wiki">Wiki</a></li>
+                <li class="nav-item"><a class="nav-link active" href="core.html">Modules</a></li>
+                <li class="nav-item"><a class="nav-link" href="classes/module.html">Classes</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol/wiki">Wiki</a></li>
               </ul>
-            </div> <!-- nav-collapse -->
+            </div>
           </div>
         </nav>
 
         <div class="container"> <!-- Use container-fluid if you want full width -->
           <div class="row">
             <div class="col-sm-9">
+              <!-- DEFAULT BODY -->
               <div class="docs-content" style="display:none;" id="default-page">
                 <h1>Base Modules</h1>
                 <p>The following modules are included in the standard distribution and can be loaded at run-time with <samp>mod.load()</samp> in Fluid or <samp>LoadModule()</samp> in C/C++.</p>
@@ -204,23 +192,23 @@
                 </ul>
               </div>
 
-              <!-- FUNCTIONS -->
+              <!-- FUNCTION BODY -->
               <xsl:for-each select="function">
                 <div class="docs-content" style="display:none;">
                   <xsl:attribute name="id"><xsl:value-of select="name"/></xsl:attribute>
 
-                  <h1><xsl:value-of select="name"/>()</h1>
+                  <h2><xsl:value-of select="name"/>()</h2>
                   <p class="lead"><xsl:value-of select="comment"/></p>
-                  <div class="panel panel-info">
-                    <div class="panel-heading"><samp><xsl:value-of select="prototype"/></samp></div>
+                  <div class="card card-info">
+                    <div class="card-header"><samp><xsl:value-of select="prototype"/></samp></div>
 
                     <xsl:choose>
                       <xsl:when test="input/param">
-                        <div class="panel-body">
-                          <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
-                          <thead>
-                            <tr><th class="col-md-1">Parameter</th><th>Description</th></tr>
-                          </thead>
+                        <div class="card-body" style="padding:0px">
+                          <table class="table mb-3 thead-light">
+                            <thead>
+                              <tr><th class="col-md-1">Parameter</th><th>Description</th></tr>
+                            </thead>
                             <tbody>
                               <xsl:for-each select="input/param">
                                 <xsl:choose>
@@ -271,7 +259,7 @@
                   <xsl:attribute name="id"><xsl:value-of select="@lookup"/></xsl:attribute>
                   <h1><xsl:value-of select="@lookup"/> Type</h1>
                   <p class="lead"><xsl:apply-templates select="@comment"/></p>
-                  <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
+                  <table class="table">
                     <thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead>
                     <tbody>
                       <xsl:for-each select="const">
@@ -289,7 +277,7 @@
                   <xsl:attribute name="id">struct-<xsl:value-of select="@name"/></xsl:attribute>
                   <h1><xsl:value-of select="@name"/> Structure</h1>
                   <p class="lead"><xsl:apply-templates select="@comment"/></p>
-                  <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
+                  <table class="table">
                     <thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead>
                     <tbody>
                       <xsl:for-each select="field">
@@ -310,96 +298,95 @@
             <!-- SIDEBAR -->
             <div class="col-sm-3">
               <div id="nav-tree">
-                <h3><xsl:value-of select="info/name"/> Module</h3>
-
-                <div class="panel-group" id="accordion">
-                  <div class="panel panel-info">
-                    <div class="panel-heading">
-                      <h4 class="panel-title"><span class="badge" style="display:inline-block; width:30px; background-color:#fff; color:#666"><xsl:value-of select="count(info/classes/class)"/></span>&#160;&#160;<a data-toggle="collapse" data-parent="#accordion" href="#classes">Classes</a></h4>
-                      <!--<h4 class="panel-title"><a data-toggle="collapse" data-parent="#accordion" href="#classes">Classes</a></h4>-->
+                <h4><xsl:value-of select="info/name"/> Module</h4>
+                  <!-- Classes -->
+                  <div class="card mb-1">
+                    <div class="card-header nav-classes">
+                      <span class="badge rounded-pill"><xsl:value-of select="count(info/classes/class)"/></span>&#160;&#160;<a data-bs-toggle="collapse" data-parent="#accordion" href="#classes">Classes</a>
                     </div>
-                    <div id="classes" class="panel-collapse collapse">
-                      <div class="panel-body">
+                    <div id="classes" class="collapse">
+                      <div class="card-body">
                         <ul class="list-unstyled">
-                          <xsl:for-each select="info/classes/class"><xsl:variable name="class_name"><xsl:value-of select="."/></xsl:variable><xsl:variable name="lower" select="translate($class_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/><li><a><xsl:attribute name="href">classes/<xsl:value-of select="$lower"/>.html</xsl:attribute><xsl:value-of select="."/></a></li></xsl:for-each>
+                          <xsl:for-each select="info/classes/class"><xsl:variable name="class_name"><xsl:value-of select="."/></xsl:variable><xsl:variable name="lower" select="translate($class_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/><li><a class="card-link" role="button"><xsl:attribute name="href">classes/<xsl:value-of select="$lower"/>.html</xsl:attribute><xsl:value-of select="."/></a></li></xsl:for-each>
                         </ul>
                       </div>
                     </div>
                   </div>
 
+                  <!-- Non-categorised functions -->
                   <xsl:if test="count(/book/*/category) = 0">
-                    <div class="panel panel-primary">
-                      <div class="panel-heading">
-                        <h4 class="panel-title"><span class="badge" style="display:inline-block; width:30px"><xsl:value-of select="count(/book/function[not(category)])"/></span>&#160;&#160;<a data-toggle="collapse" data-parent="#accordion" href="#Functions">Functions</a></h4>
+                    <div class="card mb-1">
+                      <div class="card-header nav-functions">
+                        <span class="badge rounded-pill"><xsl:value-of select="count(/book/function[not(category)])"/></span>&#160;&#160;<a data-bs-toggle="collapse" data-parent="#accordion" href="#Functions">Functions</a>
                       </div>
 
-                      <div id="Functions" class="panel-collapse collapse">
-                        <div class="panel-body">
+                      <div id="Functions" class="collapse">
+                        <div class="card-body">
                           <ul class="list-unstyled">
-                            <xsl:for-each select="/book/function[not(category)]"><li><a><xsl:attribute name="onclick">showPage('<xsl:value-of select="name"/>');</xsl:attribute><xsl:value-of select="name"/></a></li></xsl:for-each>
+                            <xsl:for-each select="/book/function[not(category)]"><li><a class="card-link" role="button"><xsl:attribute name="onclick">showPage('<xsl:value-of select="name"/>');</xsl:attribute><xsl:value-of select="name"/></a></li></xsl:for-each>
                           </ul>
                         </div>
                       </div>
                     </div>
                   </xsl:if>
 
+                  <!-- Categorised functions -->
                   <xsl:for-each select="info/categories/category">
                     <xsl:variable name="category"><xsl:value-of select="."/></xsl:variable>
                     <xsl:variable name="id-category" select="translate($category,' ','_')"/>
-                    <div class="panel panel-primary">
-                      <div class="panel-heading">
-                        <h4 class="panel-title"><span class="badge" style="display:inline-block; width:30px"><xsl:value-of select="count(/book/function[category=$category])"/></span>&#160;&#160;<a data-toggle="collapse" data-parent="#accordion" href="#{$id-category}"><xsl:value-of select="."/></a></h4>
-                        <!--<h4 class="panel-title"><a data-toggle="collapse" data-parent="#accordion" href="#{$id-category}"><xsl:value-of select="."/></a></h4>-->
+                    <div class="card mb-1">
+                      <div class="card-header nav-functions">
+                        <span class="badge rounded-pill"><xsl:value-of select="count(/book/function[category=$category])"/></span>&#160;&#160;<a data-bs-toggle="collapse" data-parent="#accordion" href="#{$id-category}"><xsl:value-of select="."/></a>
                       </div>
 
-                      <div id="{$id-category}" class="panel-collapse collapse">
-                        <div class="panel-body">
+                      <div id="{$id-category}" class="collapse">
+                        <div class="card-body">
                           <ul class="list-unstyled">
-                            <xsl:for-each select="/book/function[category=$category]"><li><a><xsl:attribute name="onclick">showPage('<xsl:value-of select="name"/>');</xsl:attribute><xsl:value-of select="name"/></a></li></xsl:for-each>
+                            <xsl:for-each select="/book/function[category=$category]"><li><a class="card-link" role="button"><xsl:attribute name="onclick">showPage('<xsl:value-of select="name"/>');</xsl:attribute><xsl:value-of select="name"/></a></li></xsl:for-each>
                           </ul>
                         </div>
                       </div>
                     </div>
                   </xsl:for-each>
 
-                  <div class="panel panel-success">
-                    <div class="panel-heading">
-                      <h4 class="panel-title"><a data-toggle="collapse" data-parent="#accordion" href="#constants">Constants</a></h4>
+                  <div class="card mb-1">
+                    <div class="card-header nav-constants">
+                      <a class="text-success" data-bs-toggle="collapse" data-parent="#accordion" href="#constants">Constants</a>
                     </div>
-                    <div id="constants" class="panel-collapse collapse">
-                      <div class="panel-body">
+                    <div id="constants" class="collapse">
+                      <div class="card-body">
                         <ul class="list-unstyled">
-                          <xsl:for-each select="types/constants"><xsl:sort select="@lookup"/><li><a><xsl:attribute name="onclick">showPage('<xsl:value-of select="@lookup"/>');</xsl:attribute><xsl:value-of select="@lookup"/></a></li></xsl:for-each>
+                          <xsl:for-each select="types/constants"><xsl:sort select="@lookup"/><li><a class="card-link" role="button"><xsl:attribute name="onclick">showPage('<xsl:value-of select="@lookup"/>');</xsl:attribute><xsl:value-of select="@lookup"/></a></li></xsl:for-each>
                         </ul>
                       </div>
                     </div>
                   </div>
 
-                  <div class="panel panel-success">
-                    <div class="panel-heading">
-                      <h4 class="panel-title"><a data-toggle="collapse" data-parent="#accordion" href="#structures">Structures</a></h4>
+                  <div class="card mb-1">
+                    <div class="card-header nav-constants">
+                      <a class="text-success" data-bs-toggle="collapse" data-parent="#accordion" href="#structures">Structures</a>
                     </div>
-                    <div id="structures" class="panel-collapse collapse">
-                      <div class="panel-body">
+                    <div id="structures" class="collapse">
+                      <div class="card-body">
                         <ul class="list-unstyled">
-                          <xsl:for-each select="structs/struct"><xsl:sort select="@name"/><li><a><xsl:attribute name="onclick">showPage('struct-<xsl:value-of select="@name"/>');</xsl:attribute><xsl:value-of select="@name"/></a></li></xsl:for-each>
+                          <xsl:for-each select="structs/struct"><xsl:sort select="@name"/><li><a class="card-link" role="button"><xsl:attribute name="onclick">showPage('struct-<xsl:value-of select="@name"/>');</xsl:attribute><xsl:value-of select="@name"/></a></li></xsl:for-each>
                         </ul>
                       </div>
                     </div>
                   </div>
-                </div>
               </div>
             </div>
           </div> <!-- row -->
         </div> <!-- container -->
 
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-        <script src="../js/bootstrap.min.js"></script>
+        <script src="../js/bootstrap.bundle.min.js"></script>
         <script src="../js/base.js"></script>
         <script type="text/javascript">
 var glCurrentMethod;
 
-$(document).ready(function() {
+const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);
+
+ready(function(){
    glCurrentMethod = document.getElementById("Introduction");
 
    var page = glParameters["page"];
@@ -431,8 +418,6 @@ function popState(event) {
 
 function showPage(Name, NoHistory)
 {
-   console.log('showPage() ' + Name);
-
    var div = document.getElementById(Name);
    if (div) {
       if (glCurrentMethod) glCurrentMethod.style.display = "none"; // Hide previous method.
@@ -442,6 +427,7 @@ function showPage(Name, NoHistory)
       if (!NoHistory) {
          history.pushState({ page: Name }, null, "?page=" + Name);
       }
+      window.scrollTo(0, 0)
    }
    else console.log("Div for '" + Name + "' not found.");
 }

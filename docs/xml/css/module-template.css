@@ -1,3 +1,4 @@
+@import url('bootstrap-icons.min.css');
 body {
   padding-top: 4em;
 }
@@ -12,6 +13,13 @@ body {
   font-size: 16px;
 }
 .docs-content > h3 { # Styling for Description, Results etc
+    padding-bottom: .25em;
+    margin: 1em 0 0.5em;
+    border-bottom: 2px solid #d0d0d0;
+}
+.sub-header { # Styling for Action and Method internal headers
+    font-size: 1.2em;
+    font-weight: 500;
     padding-bottom: .25em;
     margin: 1em 0 0.5em;
     border-bottom: 2px solid #d0d0d0;
@@ -43,6 +51,19 @@ body {
 .nav-constants {
    color: #00ff00;
    background-color: #DFF0D8;
+}
+.action-header {
+   color: #ffffff;
+   background-color: #505050;
+}
+.class-list {
+  padding-left: 1em;
+}
+.class-list > li {
+  list-style-type: none;
+}
+.class-list > li > a {
+  text-decoration:none;
 }
 .lead {
   margin-bottom: 30px;
