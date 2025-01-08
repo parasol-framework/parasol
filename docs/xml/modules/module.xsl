@@ -164,7 +164,17 @@
             </div>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
-                <li class="nav-item"><a class="nav-link active" href="core.html">Modules</a></li>
+                <li class="nav-item dropdown active"><a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" href="core.html">Modules</a>
+                  <ul class="dropdown-menu dropdown-menu-dark">
+                    <li><a class="dropdown-item" href="audio.html">Audio</a></li>
+                    <li><a class="dropdown-item" href="core.html">Core</a></li>
+                    <li><a class="dropdown-item" href="display.html">Display</a></li>
+                    <li><a class="dropdown-item" href="fluid.html">Fluid</a></li>
+                    <li><a class="dropdown-item" href="font.html">Font</a></li>
+                    <li><a class="dropdown-item" href="network.html">Network</a></li>
+                    <li><a class="dropdown-item" href="vector.html">Vector</a></li>
+                  </ul>
+                </li>
                 <li class="nav-item"><a class="nav-link" href="classes/module.html">Classes</a></li>
                 <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol/wiki">Wiki</a></li>
               </ul>
@@ -178,9 +188,9 @@
               <!-- DEFAULT BODY -->
               <div class="docs-content" style="display:none;" id="default-page">
                 <h1>Base Modules</h1>
-                <p>The following modules are included in the standard distribution and can be loaded at run-time with <samp>mod.load()</samp> in Fluid or <samp>LoadModule()</samp> in C/C++.</p>
+                <p>The following modules are included in the standard distribution and can be loaded at run-time with <code>mod.load()</code> in Fluid or <code>LoadModule()</code> in C/C++.</p>
                 <p>Use the navigation bar on the right to peruse the available functionality of the selected module.</p>
-                <p>Beginners should start with the Core module, which includes the bulk of Parasol's functionality.</p>
+                <p>Beginners should start with the <a href="core.html">Core</a> module, which includes the bulk of Parasol's functionality.</p>
                 <ul>
                   <li><a href="audio.html">Audio</a></li>
                   <li><a href="core.html">Core</a></li>
