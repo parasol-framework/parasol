@@ -13,7 +13,7 @@
     <id>0b88bfd6</id>
     <idstring>XML</idstring>
     <category>Data</category>
-    <copyright>Paul Manias © 2001-2024</copyright>
+    <copyright>Paul Manias © 2001-2025</copyright>
     <description>
 <p>The XML class provides functionality to create and maintain XML data files.  It is capable of parsing and validating XML files with or without correct structure, and can perform optional parsing behaviours such as stripping comments during processing.</p>
 <p>Data can be loaded into an XML object either by specifying a file <fl>Path</fl> or by giving it an XML <fl>Statement</fl>.  If multiple XML statements need to be processed then reset the Path or Statement field after initialisation and the XML object will rebuild itself.  This saves on allocating multiple XML objects for batch processing.</p>

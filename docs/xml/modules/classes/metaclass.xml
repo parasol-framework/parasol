@@ -11,7 +11,7 @@
     <id>8bf5f002</id>
     <idstring>METACLASS</idstring>
     <category>System</category>
-    <copyright>Paul Manias 1996-2024</copyright>
+    <copyright>Paul Manias 1996-2025</copyright>
     <description>
 <p>The MetaClass is responsible for managing the construction of new classes.  Each MetaClass object remains active for the lifetime of the running program, and provides the benefit of run-time introspection so that detailed class information can be retrieved at any time.  This enables scripting languages such as Fluid to interact with all class types without needing active knowledge of their capabilities.</p>
 <p>A number of additional functions are available in the Core for the purpose of class management and introspection. <function>FindClass</function> allows all registered classes to be scanned.  <function>CheckAction</function> verifies if a specific action is supported by a class.  <function>FindField</function> confirms if a specific field is declared in the class specification.</p>

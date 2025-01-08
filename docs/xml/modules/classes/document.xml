@@ -12,7 +12,7 @@
     <id>155c3464</id>
     <idstring>DOCUMENT</idstring>
     <category>GUI</category>
-    <copyright>Paul Manias © 2005-2024</copyright>
+    <copyright>Paul Manias © 2005-2025</copyright>
     <description>
 <p>The Document class offers a complete page layout engine, providing rich text display features for creating complex documents and text-based interfaces.  Internally, document data is maintained as a serial byte stream and all object model information from the source is discarded.  This simplification of the data makes it possible to edit the document in-place, much the same as any word processor.  Alternatively it can be used for presentation purposes only, similarly to PDF or HTML formats.  Presentation is achieved by building a vector scene graph in conjunction with the <class name="Vector">Vector</class> module.  This means that the output is compatible with SVG and can be manipulated in detail with our existing vector API.  Consequently, document formatting is closely integrated with SVG concepts and seamlessly inherits SVG functionality such as filling and stroking commands.</p>
 <p>The native document format in Parasol is RIPL.  Documentation for RIPL is available in the Parasol Wiki.  Other document formats may be supported as sub-classes, but bear in mind that document parsing is a one-way trip and stateful information such as the HTML DOM is not supported.</p>

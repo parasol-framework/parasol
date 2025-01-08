@@ -11,7 +11,7 @@
     <id>2b439bb5</id>
     <idstring>NETSOCKET</idstring>
     <category>Network</category>
-    <copyright>Paul Manias © 2005-2024</copyright>
+    <copyright>Paul Manias © 2005-2025</copyright>
     <description>
 <p>The NetSocket class provides a simple way of managing TCP/IP socket communications.  Connections from a single client to the server and from the server to multiple clients are supported.  SSL functionality is also integrated.</p>
 <p>The design of the NetSocket class caters to asynchronous (non-blocking) communication.  This is achieved primarily through callback fields - connection alerts are managed by <fl>Feedback</fl>, incoming data is received through <fl>Incoming</fl> and readiness for outgoing data is supported by <fl>Outgoing</fl>.</p>

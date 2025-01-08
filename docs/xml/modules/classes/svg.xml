@@ -13,7 +13,7 @@
     <id>0b88abb5</id>
     <idstring>SVG</idstring>
     <category>GUI</category>
-    <copyright>Paul Manias © 2010-2024</copyright>
+    <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The SVG class provides support for parsing SVG statements into a scene graph that consists of <class name="Vector">Vector</class> objects and related constructs.  The generated scene graph is accessible via the <fl>Scene</fl> and <fl>Viewport</fl> fields.</p>
 <p>It is possible to parse SVG documents directly to the UI.  Set the <fl>Target</fl> field with a vector to contain the SVG content and it will be structured in the existing scene graph.</p>

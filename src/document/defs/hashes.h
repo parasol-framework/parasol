@@ -1,6 +1,6 @@
 #pragma once
 
-// Copyright: Paul Manias © 2023-2024
+// Copyright: Paul Manias © 2023-2025
 // Generator: idl-c
 
 #define HASH_a 0x0002b606UL

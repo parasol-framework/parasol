@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status="stable", prefix="gfx", timestamp=20240611 }, function()
+module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status="stable", prefix="gfx", timestamp=20240611 }, function()
 
   restrict(function()
     loadFile(glPath .. 'common.fdl')
