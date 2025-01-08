@@ -9,9 +9,8 @@
     <comment>Provides support for the filling and stroking of vectors with patterns.</comment>
     <version>1</version>
     <id>09eaa136</id>
-    <idstring>ID_VECTORPATTERN</idstring>
+    <idstring>VECTORPATTERN</idstring>
     <category>Graphics</category>
-    <include>modules/vectorpattern.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The VectorPattern class is used by Vector painting algorithms to fill and stroke vectors with pre-rendered patterns. It is the most efficient way of rendering a common set of graphics multiple times.</p>

@@ -9,9 +9,8 @@
     <comment>A filter effect that plots the probability distribution of a quantum wave function.</comment>
     <version>1</version>
     <id>1069903c</id>
-    <idstring>ID_WAVEFUNCTIONFX</idstring>
+    <idstring>WAVEFUNCTIONFX</idstring>
     <category>Graphics</category>
-    <include>modules/wavefunctionfx.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>This filter effect uses a quantum wave function algorithm to generate a plot of electron probability density. Ignoring its scientific value, the formula can be exploited for its aesthetic qualities.  It can be used as an alternative to the radial gradient for generating more interesting shapes for example.</p>

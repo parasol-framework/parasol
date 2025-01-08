@@ -9,9 +9,8 @@
     <comment>Extends the Vector class with support for generating polygons.</comment>
     <version>1</version>
     <id>2a04dc00</id>
-    <idstring>ID_VECTORPOLYGON</idstring>
+    <idstring>VECTORPOLYGON</idstring>
     <category>Graphics</category>
-    <include>modules/vectorpolygon.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The VectorPolygon class provides support for three different types of vector:</p>

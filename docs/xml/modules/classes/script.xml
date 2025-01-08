@@ -9,9 +9,8 @@
     <comment>The Script class defines a common interface for script execution.</comment>
     <version>1</version>
     <id>1b600fba</id>
-    <idstring>ID_SCRIPT</idstring>
+    <idstring>SCRIPT</idstring>
     <category>Data</category>
-    <include>modules/script.h</include>
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Script class defines a common interface for the purpose of executing scripts, such as Fluid.  The base class does not include a default parser or execution process of any kind.</p>

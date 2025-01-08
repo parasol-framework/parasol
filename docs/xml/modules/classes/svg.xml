@@ -11,9 +11,8 @@
     <fileDescription>Scalable Vector Graphics (SVG)</fileDescription>
     <version>1</version>
     <id>0b88abb5</id>
-    <idstring>ID_SVG</idstring>
+    <idstring>SVG</idstring>
     <category>GUI</category>
-    <include>modules/svg.h</include>
     <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The SVG class provides support for parsing SVG statements into a scene graph that consists of <class name="Vector">Vector</class> objects and related constructs.  The generated scene graph is accessible via the <fl>Scene</fl> and <fl>Viewport</fl> fields.</p>

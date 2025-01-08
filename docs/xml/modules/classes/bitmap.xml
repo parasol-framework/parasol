@@ -9,9 +9,8 @@
     <comment>Manages bitmap graphics and provides drawing functionality.</comment>
     <version>2</version>
     <id>f42617e2</id>
-    <idstring>ID_BITMAP</idstring>
+    <idstring>BITMAP</idstring>
     <category>Graphics</category>
-    <include>modules/bitmap.h</include>
     <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>The Bitmap class provides a way of describing an area of memory that an application can draw to, and/or display if the data is held in video memory.  Bitmaps are used in the handling of <class name="Display">Display</class> and <class name="Picture">Picture</class> objects, and form the backbone of Parasol's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and alpha blending features.</p>

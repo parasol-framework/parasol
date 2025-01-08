@@ -9,9 +9,8 @@
     <comment>Extends the Vector class with support for generating rectangles.</comment>
     <version>1</version>
     <id>ac2f506d</id>
-    <idstring>ID_VECTORRECTANGLE</idstring>
+    <idstring>VECTORRECTANGLE</idstring>
     <category>Graphics</category>
-    <include>modules/vectorrectangle.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>VectorRectangle extends the <class name="Vector">Vector</class> class with the ability to generate rectangular paths.</p></description>

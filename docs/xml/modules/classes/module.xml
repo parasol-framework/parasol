@@ -11,9 +11,8 @@
     <fileDescription>System Module</fileDescription>
     <version>1</version>
     <id>0e32c72b</id>
-    <idstring>ID_MODULE</idstring>
+    <idstring>MODULE</idstring>
     <category>System</category>
-    <include>modules/module.h</include>
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Module class is used to load and maintain the modules that are installed on the user's system.  A number of modules are available in the core platform as standard, which you can use in the development of your programs.  Examples of existing modules can be found in both the <code>modules:</code> folder.</p>

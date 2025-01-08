@@ -11,9 +11,8 @@
     <fileDescription>ZIP File</fileDescription>
     <version>1</version>
     <id>700c0197</id>
-    <idstring>ID_COMPRESSION</idstring>
+    <idstring>COMPRESSION</idstring>
     <category>Data</category>
-    <include>modules/compression.h</include>
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Compression class provides an interface to compress and decompress data.  It provides support for file based compression as well as memory based compression routines.  The base class uses zip algorithms to support pkzip files, while other forms of compressed data can be supported by installing additional compression sub-classes.</p>

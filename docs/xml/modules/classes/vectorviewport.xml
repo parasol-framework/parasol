@@ -9,9 +9,8 @@
     <comment>Provides support for viewport definitions within a vector tree.</comment>
     <version>1</version>
     <id>15da8fb8</id>
-    <idstring>ID_VECTORVIEWPORT</idstring>
+    <idstring>VECTORVIEWPORT</idstring>
     <category>Graphics</category>
-    <include>modules/vectorviewport.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>This class is used to declare a viewport within a vector scene graph.  A master viewport is required as the first object in a <class name="VectorScene">VectorScene</class> and it must contain all vector graphics content.</p>

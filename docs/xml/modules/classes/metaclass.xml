@@ -9,9 +9,8 @@
     <comment>The MetaClass is used to manage all classes supported by the system core.</comment>
     <version>1</version>
     <id>8bf5f002</id>
-    <idstring>ID_METACLASS</idstring>
+    <idstring>METACLASS</idstring>
     <category>System</category>
-    <include>modules/metaclass.h</include>
     <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The MetaClass is responsible for managing the construction of new classes.  Each MetaClass object remains active for the lifetime of the running program, and provides the benefit of run-time introspection so that detailed class information can be retrieved at any time.  This enables scripting languages such as Fluid to interact with all class types without needing active knowledge of their capabilities.</p>

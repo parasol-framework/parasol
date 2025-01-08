@@ -9,9 +9,8 @@
     <comment>Clips are used to define complex clipping regions for vectors.</comment>
     <version>1</version>
     <id>51b1de80</id>
-    <idstring>ID_VECTORCLIP</idstring>
+    <idstring>VECTORCLIP</idstring>
     <category>Graphics</category>
-    <include>modules/vectorclip.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The VectorClip defines a clipping path that can be used by other vectors as a mask.  The clipping path is defined by creating Vector shapes that are initialised to the VectorClip's <fl>Viewport</fl> as child objects.</p>

@@ -9,9 +9,8 @@
     <comment>Manages user settings for proxy servers.</comment>
     <version>1</version>
     <id>102a23e7</id>
-    <idstring>ID_PROXY</idstring>
+    <idstring>PROXY</idstring>
     <category>Network</category>
-    <include>modules/proxy.h</include>
     <copyright>Paul Manias © 2005-2024</copyright>
     <description>
 <p>The proxy server class provides a global management service for a user's proxy servers.  You can alter proxy settings manually or present the user with a dialog box to edit and create new proxies.  Scanning functions are also provided with filtering, allowing you to scan for proxies that should be used with the user's network connection.</p>

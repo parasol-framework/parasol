@@ -9,9 +9,8 @@
     <comment>Interface for mouse cursor support.</comment>
     <version>1</version>
     <id>bbd12926</id>
-    <idstring>ID_POINTER</idstring>
+    <idstring>POINTER</idstring>
     <category>Graphics</category>
-    <include>modules/pointer.h</include>
     <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>The Pointer class provides the user with a means of interacting with the graphical interface.  On a host system such as Windows, the pointer functionality will hook into the host's capabilities.  If the display is native then the pointer service will manage its own cursor exclusively.</p>

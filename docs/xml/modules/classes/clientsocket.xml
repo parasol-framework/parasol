@@ -9,9 +9,8 @@
     <comment>Represents a single socket connection to a client IP address.</comment>
     <version>1</version>
     <id>a14972ed</id>
-    <idstring>ID_CLIENTSOCKET</idstring>
+    <idstring>CLIENTSOCKET</idstring>
     <category>Network</category>
-    <include>modules/clientsocket.h</include>
     <copyright>Paul Manias © 2005-2024</copyright>
     <description>
 <p>If a <class name="Netsocket">Netsocket</class> is running in server mode then it will create a new ClientSocket object every time that a new connection is opened by a client.  This is a very simple class that assists in the management of I/O between the client and server.</p></description>

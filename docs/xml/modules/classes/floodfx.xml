@@ -9,9 +9,8 @@
     <comment>Applies the flood filter effect.</comment>
     <version>1</version>
     <id>b3782b37</id>
-    <idstring>ID_FLOODFX</idstring>
+    <idstring>FLOODFX</idstring>
     <category>Graphics</category>
-    <include>modules/floodfx.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The FloodFX class is an output-only effect that fills its target area with a single colour value.</p></description>

@@ -9,9 +9,8 @@
     <comment>The Clipboard class manages cut, copy and paste between applications.</comment>
     <version>1</version>
     <id>4912a9b5</id>
-    <idstring>ID_CLIPBOARD</idstring>
+    <idstring>CLIPBOARD</idstring>
     <category>IO</category>
-    <include>modules/clipboard.h</include>
     <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>The Clipboard class manages data transfer between applications on behalf of the user.  Depending on the host system, behaviour between platforms can vary.</p>

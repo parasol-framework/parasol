@@ -9,9 +9,8 @@
     <comment>Renders a bitmap image in the effect pipeline.</comment>
     <version>1</version>
     <id>9bba5446</id>
-    <idstring>ID_IMAGEFX</idstring>
+    <idstring>IMAGEFX</idstring>
     <category>Graphics</category>
-    <include>modules/imagefx.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The ImageFX class will render a source image into a given rectangle within the current user coordinate system.  The client has the option of providing a pre-allocated <class name="Bitmap">Bitmap</class> or the path to a <class name="Picture">Picture</class> file as the source.</p>

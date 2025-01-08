@@ -9,9 +9,8 @@
     <comment>Transitions are used to gradually apply transforms over distance.</comment>
     <version>1</version>
     <id>a7c89dc3</id>
-    <idstring>ID_VECTORTRANSITION</idstring>
+    <idstring>VECTORTRANSITION</idstring>
     <category>Graphics</category>
-    <include>modules/vectortransition.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The VectorTransition class is used to gradually transform vector shapes over the length of a path.  This feature is not SVG compliant, though it can be utilised from SVG files via the 'parasol:' name space.</p>

@@ -9,9 +9,8 @@
     <comment>Supports a machine's audio hardware and provides a client-server audio management service.</comment>
     <version>1</version>
     <id>0f1c28b7</id>
-    <idstring>ID_AUDIO</idstring>
+    <idstring>AUDIO</idstring>
     <category>Audio</category>
-    <include>modules/audio.h</include>
     <copyright>Paul Manias © 2002-2024</copyright>
     <description>
 <p>The Audio class provides a common audio service that works across multiple platforms and follows a client-server design model.</p>

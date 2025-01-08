@@ -9,9 +9,8 @@
     <comment>Provides support for reading state-based game controllers.</comment>
     <version>1</version>
     <id>bf67c809</id>
-    <idstring>ID_CONTROLLER</idstring>
+    <idstring>CONTROLLER</idstring>
     <category>IO</category>
-    <include>modules/controller.h</include>
     <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>Use the Controller class to read the state of game controllers that are recognised by the operating system.</p>

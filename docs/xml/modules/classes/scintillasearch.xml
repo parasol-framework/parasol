@@ -9,9 +9,8 @@
     <comment>Provides search functionality for use on Scintilla objects.</comment>
     <version>1</version>
     <id>97a9057e</id>
-    <idstring>ID_SCINTILLASEARCH</idstring>
+    <idstring>SCINTILLASEARCH</idstring>
     <category>Tool</category>
-    <include>modules/scintillasearch.h</include>
     <copyright>Paul Manias © 2005-2024</copyright>
     <source>
       <file>class_scintilla_search.cxx</file>

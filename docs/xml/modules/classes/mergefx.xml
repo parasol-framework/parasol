@@ -9,9 +9,8 @@
     <comment>Combines multiple effects in sequence.</comment>
     <version>1</version>
     <id>be2da2d3</id>
-    <idstring>ID_MERGEFX</idstring>
+    <idstring>MERGEFX</idstring>
     <category>Graphics</category>
-    <include>modules/mergefx.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>Use MergeFX to composite multiple input sources so that they are rendered on top of each other in a predefined sequence.</p>

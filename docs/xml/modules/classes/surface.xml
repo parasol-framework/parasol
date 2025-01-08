@@ -9,9 +9,8 @@
     <comment>Manages the display and positioning of 2-Dimensional rendered graphics.</comment>
     <version>1</version>
     <id>b15cfb8e</id>
-    <idstring>ID_SURFACE</idstring>
+    <idstring>SURFACE</idstring>
     <category>GUI</category>
-    <include>modules/surface.h</include>
     <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>The Surface class is used to manage the positioning, drawing and interaction with layered display interfaces.  It works in conjunction with the <class name="Bitmap">Bitmap</class> class for rendering graphics, and the <class name="Pointer">Pointer</class> class for user interaction.</p>

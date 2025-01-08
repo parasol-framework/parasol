@@ -11,9 +11,8 @@
     <fileDescription>Extendable Markup Language (XML)</fileDescription>
     <version>1</version>
     <id>0b88bfd6</id>
-    <idstring>ID_XML</idstring>
+    <idstring>XML</idstring>
     <category>Data</category>
-    <include>modules/xml.h</include>
     <copyright>Paul Manias © 2001-2024</copyright>
     <description>
 <p>The XML class provides functionality to create and maintain XML data files.  It is capable of parsing and validating XML files with or without correct structure, and can perform optional parsing behaviours such as stripping comments during processing.</p>
