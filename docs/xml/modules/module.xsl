@@ -150,9 +150,7 @@
         <meta name="author" content="Paul Manias"/>
         <link rel="icon" href="/favicon.ico"/>
         <title>Parasol Framework Manual</title>
-        <!-- Bootstrap core CSS -->
         <link href="../css/bootstrap.min.css" rel="stylesheet"/>
-        <!-- Custom styles for this template -->
         <link href="../css/module-template.css" rel="stylesheet"/>
       </head>
 
@@ -209,7 +207,7 @@
 
                   <h2><xsl:value-of select="name"/>()</h2>
                   <p class="lead"><xsl:value-of select="comment"/></p>
-                  <div class="card card-info">
+                  <div class="card card-info mb-3">
                     <div class="card-header"><samp><xsl:value-of select="prototype"/></samp></div>
 
                     <xsl:choose>
@@ -237,7 +235,6 @@
                     </xsl:choose>
                   </div>
 
-                  <h3>Description</h3>
                   <xsl:for-each select="description">
                     <xsl:apply-templates/>
                   </xsl:for-each>
