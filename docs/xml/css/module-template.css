@@ -11,12 +11,12 @@ body {
 .docs-content {
   padding-top: 1em;
 }
-.docs-content > h3 { # Styling for Description, Results etc
+.docs-content > h3 { /* Styling for Description, Results etc */
   padding-bottom: .25em;
   margin: 1em 0 0.5em;
   border-bottom: 2px solid #d0d0d0;
 }
-.func-header { # Styling for function headers
+.func-header { /* Styling for function headers */
   font-size: 30px;
   font-weight: 600;
   padding-bottom: .25em;
