@@ -376,16 +376,15 @@
   </fields>
   <types>
     <constants lookup="TSF" comment="Task flags">
-      <const name="ATTACHED">Forces new task to be attached to the parent (child will close when parent closes).</const>
-      <const name="DETACHED">Forces new task to be detached from the parent.</const>
-      <const name="FOREIGN">Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.</const>
-      <const name="LOG_ALL">Additional debug messages will be printed during normal usage of the task class when this flag is set.</const>
+      <const name="ATTACHED">Forces the new process to be attached to the parent (child will close when parent closes).</const>
+      <const name="DETACHED">Forces the new process to be detached from the parent.</const>
       <const name="PIPE">Enable the output pipe to the launched process so that it can read data.</const>
-      <const name="PRIVILEGED">During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.</const>
-      <const name="QUIET">Setting this flag will divert all process output to <code>/dev/null</code> or the nearest equivalent for non-Unix systems.</const>
-      <const name="RESET_PATH">If set, the executed process will start in its own folder rather than the folder of the parent process.</const>
+      <const name="PRIVILEGED">The child process will inherit the system privileges of its parent.</const>
+      <const name="QUIET">Divert all process output to <code>/dev/null</code> or the nearest equivalent for non-Unix systems.</const>
+      <const name="RESET_PATH">The new process will start in its own folder and not the folder of the parent process.</const>
       <const name="SHELL">Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.</const>
-      <const name="WAIT">This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.</const>
+      <const name="VERBOSE">Enable verbose logging.</const>
+      <const name="WAIT">The parent process will halt when the task is running.  Control is returned to the parent process once the child process terminates.</const>
     </constants>
 
   </types>

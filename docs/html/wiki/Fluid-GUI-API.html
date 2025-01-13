@@ -1,0 +1,403 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
+<html xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-8254DG7MT6"> </script><script>
+	   window.dataLayer = window.dataLayer || [];
+	   function gtag(){dataLayer.push(arguments);}
+	   gtag('js', new Date());
+      gtag('config', 'G-8254DG7MT6');</script><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Parasol Framework documentation, machine generated from source">
+<meta name="author" content="Paul Manias">
+<link rel="icon" href="/favicon.ico">
+<title>Parasol Wiki - Fluid GUI API</title>
+<link href="../css/bootstrap.min.css" rel="stylesheet">
+<link href="../css/module-template.css" rel="stylesheet">
+<link href="../css/github-markdown.css" rel="stylesheet">
+</head>
+
+<body>
+<nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+  <div class="container-fluid">
+    <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+    <div id="navbar" class="collapse navbar-collapse">
+      <ul class="nav navbar-nav"><li class="nav-item">
+        <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
+        <li class="nav-item"><a class="nav-link" href="../modules/core.html">API</a></li>
+        <li class="nav-item"><a class="nav-link" href="Home.html">Wiki</a></li>
+        <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid">
+<div class="row">
+<div class="col-sm-3" style="max-width: 250px;"><div class="flex-shrink-1 pt-2 sticky-top overflow-auto vh-100 b-shadow">
+
+<ul class="list-unstyled">
+  <li>
+    <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#wiki-collapse" aria-expanded="true">Wiki</button>
+    <div class="collapse show" id="wiki-collapse">
+      <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 ps-3">
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#bp-collapse" aria-expanded="false">Build Process</button>
+         <div class="collapse" id="bp-collapse">
+            <ul class="btn-toggle-nav list-unstyled pb-1">
+              <li class="api-ref"><a class="rounded" href="Linux-Builds.html">Linux Builds</a></li>
+              <li class="api-ref"><a class="rounded" href="Windows-Builds.html">Windows Builds</a></li>
+              <li class="api-ref"><a class="rounded" href="Customising-Your-Build.html">Customising Your Build</a></li>
+            </ul>
+         </div></li>
+
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tm-collapse" aria-expanded="false">Technical Manuals</button>
+         <div class="collapse" id="tm-collapse">
+            <ul class="btn-toggle-nav list-unstyled pb-1">
+             <li class="api-ref"><a class="rounded" href="Parasol-Objects.html">Parasol Objects</a></li>
+             <li class="api-ref"><a class="rounded" href="Parasol-In-Depth.html">Parasol In Depth</a></li>
+           </ul>
+         </div></li>
+
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#fg-collapse" aria-expanded="false">Fluid</button>
+         <div class="collapse" id="fg-collapse">
+            <ul class="btn-toggle-nav list-unstyled pb-1">
+            <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-FileSearch-API.html">FileSearch API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
+            <li class="api-ref"><a class="rounded" href="Widgets.html">Widgets</a></li>
+           </ul>
+         </div></li>
+
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#rrm-collapse" aria-expanded="false">RIPL</button>
+         <div class="collapse" id="rrm-collapse">
+            <ul class="btn-toggle-nav list-unstyled pb-1">
+              <li class="api-ref"><a class="rounded" href="RIPL-Reference-Manual.html">RIPL Reference Manual</a></li>
+           </ul>
+         </div></li>
+
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#tools-collapse" aria-expanded="false">Tools</button>
+         <div class="collapse" id="tools-collapse">
+            <ul class="btn-toggle-nav list-unstyled pb-1">
+              <li class="api-ref"><a class="rounded" href="Parasol-Cmd-Tool.html">Parasol Cmd Tool</a></li>
+              <li class="api-ref"><a class="rounded" href="Unit-Testing.html">Flute / Unit Testing</a></li>
+           </ul>
+         </div></li>
+
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#doc-collapse" aria-expanded="false">Doc Generation</button>
+         <div class="collapse" id="doc-collapse">
+            <ul class="btn-toggle-nav list-unstyled pb-1">
+              <li class="api-ref"><a class="rounded" href="Embedded-Document-Formatting.html">Embedded Document Format</a></li>
+              <li class="api-ref"><a class="rounded" href="FDL-Reference-Manual.html">FDL Reference Manual</a></li>
+              <li class="api-ref"><a class="rounded" href="FDL-Tools.html">FDL Tools</a></li>
+           </ul>
+         </div></li>
+
+         <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#app-collapse" aria-expanded="false">Appendix</button>
+         <div class="collapse" id="app-collapse">
+            <ul class="btn-toggle-nav list-unstyled pb-1">
+             <li class="api-ref"><a class="rounded" href="Action-Reference-Manual.html">Action Reference Manual</a></li>
+             <li class="api-ref"><a class="rounded" href="System-Error-Codes.html">System Error Codes</a></li>
+           </ul>
+         </div></li>
+      </ul>
+    </div>
+  </li>
+</ul>
+
+<ul class="list-unstyled">
+  <li class="border-top my-3"></li>
+  <li>
+    <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#mod-collapse" aria-expanded="false">Modules</button>
+    <div class="collapse" id="mod-collapse">
+      <ul class="btn-toggle-nav list-unstyled fw-normal">
+      <li class="api-ref"><a href="../modules/audio.html" class="rounded">Audio</a></li>
+      <li class="api-ref"><a href="../modules/core.html" class="rounded">Core</a></li>
+      <li class="api-ref"><a href="../modules/display.html" class="rounded">Display</a></li>
+      <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
+      <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
+      <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
+      <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
+      </ul>
+    </div>
+  </li>
+</ul>
+
+<ul class="list-unstyled">
+  <li class="border-top my-3"></li>
+  <li>
+    <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#class-collapse" aria-expanded="false">Classes</button>
+    <div class="collapse" id="class-collapse">
+      <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 ps-3">
+        <li>
+          <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#audio-collapse" aria-expanded="false">Audio</button>
+          <div class="collapse" id="audio-collapse">
+            <ul class="btn-toggle-nav list-unstyled fw-normal pb-1">
+            <li><a href="../modules/classes/audio.html" class="rounded">Audio</a></li>
+            <li><a href="../modules/classes/sound.html" class="rounded">Sound</a></li>
+            </ul>
+          </div>
+        </li>
+        <li>
+        <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#core-collapse" aria-expanded="false">Core</button><div class="collapse" id="core-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
+        <li><a href="../modules/classes/file.html" class="rounded">File</a></li>
+        <li><a href="../modules/classes/metaclass.html" class="rounded">MetaClass</a></li>
+        <li><a href="../modules/classes/module.html" class="rounded">Module</a></li>
+        <li><a href="../modules/classes/storagedevice.html" class="rounded">StorageDevice</a></li>
+        <li><a href="../modules/classes/task.html" class="rounded">Task</a></li>
+        <li><a href="../modules/classes/thread.html" class="rounded">Thread</a></li>
+        <li><a href="../modules/classes/time.html" class="rounded">Time</a></li>
+        </ul></div>
+        </li>
+        <li>
+        <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#data-collapse" aria-expanded="false">Data</button><div class="collapse" id="data-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
+        <li><a href="../modules/classes/compression.html" class="rounded">Compression</a></li>
+        <li><a href="../modules/classes/config.html" class="rounded">Config</a></li>
+        <li><a href="../modules/classes/script.html" class="rounded">Script</a></li>
+        <li><a href="../modules/classes/xml.html" class="rounded">XML</a></li>
+        </ul></div>
+        </li>
+        <li>
+        <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#devices-collapse" aria-expanded="false">Devices</button><div class="collapse" id="devices-collapse"><ul class="btn-toggle-nav list-unstyled pb-1"><li><a href="../modules/classes/controller.html" class="rounded">Controller</a></li></ul></div>
+        </li>
+        <li>
+        <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#effects-collapse" aria-expanded="false">Effects</button><div class="collapse" id="effects-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
+        <li><a class="rounded" href="../modules/classes/blurfx.html">BlurFX</a></li>
+        <li><a class="rounded" href="../modules/classes/colourfx.html">ColourFX</a></li>
+        <li><a class="rounded" href="../modules/classes/compositefx.html">CompositeFX</a></li>
+        <li><a class="rounded" href="../modules/classes/convolvefx.html">ConvolveFX</a></li>
+        <li><a class="rounded" href="../modules/classes/displacementfx.html">DisplacementFX</a></li>
+        <li><a class="rounded" href="../modules/classes/filtereffect.html">FilterEffect</a></li>
+        <li><a class="rounded" href="../modules/classes/floodfx.html">FloodFX</a></li>
+        <li><a class="rounded" href="../modules/classes/imagefx.html">ImageFX</a></li>
+        <li><a class="rounded" href="../modules/classes/lightingfx.html">LightingFX</a></li>
+        <li><a class="rounded" href="../modules/classes/mergefx.html">MergeFX</a></li>
+        <li><a class="rounded" href="../modules/classes/morphologyfx.html">MorphologyFX</a></li>
+        <li><a class="rounded" href="../modules/classes/offsetfx.html">OffsetFX</a></li>
+        <li><a class="rounded" href="../modules/classes/remapfx.html">RemapFX</a></li>
+        <li><a class="rounded" href="../modules/classes/sourcefx.html">SourceFX</a></li>
+        <li><a class="rounded" href="../modules/classes/turbulencefx.html">TurbulenceFX</a></li>
+        <li><a class="rounded" href="../modules/classes/wavefunctionfx.html">WaveFunctionFX</a></li>
+        </ul></div>
+        </li>
+        <li>
+        <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#ext-collapse" aria-expanded="false">Extensions</button><div class="collapse" id="ext-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
+        <li><a class="rounded" href="../modules/classes/scintilla.html">Scintilla</a></li>
+        <li><a class="rounded" href="../modules/classes/scintillasearch.html">ScintillaSearch</a></li>
+        </ul></div>
+        </li>
+        <li>
+        <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#gfx-collapse" aria-expanded="false">Graphics</button><div class="collapse" id="gfx-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
+        <li><a class="rounded" href="../modules/classes/bitmap.html">Bitmap</a></li>
+        <li><a class="rounded" href="../modules/classes/clipboard.html">Clipboard</a></li>
+        <li><a class="rounded" href="../modules/classes/display.html">Display</a></li>
+        <li><a class="rounded" href="../modules/classes/document.html">Document</a></li>
+        <li><a class="rounded" href="../modules/classes/font.html">Font</a></li>
+        <li><a class="rounded" href="../modules/classes/picture.html">Picture</a></li>
+        <li><a class="rounded" href="../modules/classes/pointer.html">Pointer</a></li>
+        <li><a class="rounded" href="../modules/classes/surface.html">Surface</a></li>
+        <li><a class="rounded" href="../modules/classes/svg.html">SVG</a></li>
+        </ul></div>
+        </li>
+        <li>
+        <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#net-collapse" aria-expanded="false">Network</button><div class="collapse" id="net-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
+        <li><a class="rounded" href="../modules/classes/clientsocket.html">ClientSocket</a></li>
+        <li><a class="rounded" href="../modules/classes/http.html">HTTP</a></li>
+        <li><a class="rounded" href="../modules/classes/netsocket.html">NetSocket</a></li>
+        <li><a class="rounded" href="../modules/classes/proxy.html">Proxy</a></li>
+        </ul></div>
+        </li>
+        <li>
+        <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#vectors-collapse" aria-expanded="false">Vectors</button><div class="collapse" id="vectors-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
+        <li><a class="rounded" href="../modules/classes/vector.html">Vector</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorclip.html">VectorClip</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorcolour.html">VectorColour</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorellipse.html">VectorEllipse</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorfilter.html">VectorFilter</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorgradient.html">VectorGradient</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorgroup.html">VectorGroup</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorimage.html">VectorImage</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorpath.html">VectorPath</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorpattern.html">VectorPattern</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorpolygon.html">VectorPolygon</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorrectangle.html">VectorRectangle</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorscene.html">VectorScene</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorshape.html">VectorShape</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorspiral.html">VectorSpiral</a></li>
+        <li><a class="rounded" href="../modules/classes/vectortext.html">VectorText</a></li>
+        <li><a class="rounded" href="../modules/classes/vectortransition.html">VectorTransition</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorviewport.html">VectorViewport</a></li>
+        <li><a class="rounded" href="../modules/classes/vectorwave.html">VectorWave</a></li>
+        </ul></div>
+        </li>
+      </ul>
+    </div>
+  </li>
+</ul>
+
+</div>
+</div>
+
+<div class="col-sm-9" style="max-width: 1200px;">
+<div class="docs-content" style="display:none;" id="default-page">
+<h1>Fluid GUI API</h1>
+<p>The GUI API provides a number of functions to perform common tasks like colour conversion and simplifying interaction with the scene graph.</p>
+<p>It can be loaded with the line:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span> <span class="st">&#39;gui&#39;</span></span></code></pre></div>
+<h2 id="constants">Constants</h2>
+<p>When the GUI API is initialised for the first time, it will construct a set of constants that are particular to the user&#39;s environment. Some values may be adjustable by the user directly, while others may be inherited by the user&#39;s choice of theme.</p>
+<p>To give you a direct insight into the variables in the gui table, the following is cut straight from the API code:</p>
+<pre><code>gui.fonts = {
+  -- Use percentages for scalable sizes, where 100% is equivalent to the value of gui.interface.fontSize
+  default  = { face=&#39;Noto Sans,Source Sans Pro&#39;, size=&#39;100%&#39; },
+  window   = { face=&#39;Noto Sans,Source Sans Pro&#39;, size=&#39;100%&#39; }, -- For text that is not inside a widget
+  button   = { face=&#39;Noto Sans,Source Sans Pro&#39;, size=&#39;100%&#39; }, -- Text inside buttons
+  icon     = { face=&#39;Noto Sans,Source Sans Pro&#39;, size=&#39;100%&#39; }, -- Text at the bottom of icons
+  menu     = { face=&#39;Noto Sans,Source Sans Pro&#39;, size=&#39;100%&#39; }, -- Menu item text
+  titlebar = { face=&#39;Noto Sans&#39;, size=&#39;100%&#39; }, -- Window titlebar text
+  small    = { face=&#39;Tiny&#39;, size=&#39;60%&#39; }, -- Recommended text for small sizes
+  large    = { face=&#39;Noto Sans,Source Sans Pro&#39;, size=&#39;130%&#39; }, -- Recommended text for headers
+  widget   = { face=&#39;Noto Sans,Source Sans Pro&#39;, size=&#39;100%&#39; }, -- Text inside widgets (e.g. combobox)
+  label    = { face=&#39;Noto Sans,Source Sans Pro::bold&#39;, size=&#39;100%&#39; } -- Text for labels and outside widgets
+}
+
+gui.style = {
+  -- All colour values are fills, so gradient and pattern references are also permitted for &#39;colours&#39;.
+  page = {
+    bkgd        = gui.palette.bkgd,     -- Background for hosting text &amp; paper-based layouts
+    stroke      = gui.palette.prime,    -- Border stroke for any area surrounding &#39;bkgd&#39;
+    strokeFocus = gui.palette.contrast, -- Stroke to use when &#39;border&#39; has the user&#39;s focus
+    strokeWidth = 2,
+    text        = gui.palette.text,   -- Default colour for text drawn over &#39;bkgd&#39;
+    icon        = nil,                -- Default icon theme for icons drawn over &#39;bkgd&#39;
+    textHighlight     = gui.palette.altText,  -- Colour for &#39;text&#39; during user hover
+    textHighlightBkgd = gui.palette.prime,    -- Background fill for &#39;text&#39; during user hover
+    iconHighlight     = nil,                  -- Recommended icon theme when highlighted
+    textSelect        = gui.palette.altText,  -- Colour for &#39;text&#39; when selected
+    textSelectBkgd    = gui.palette.contrast, -- Background fill for &#39;text&#39; when selected
+    iconSelect        = nil                   -- Recommended icon theme when selected
+  },
+  widget = {
+    text   = gui.palette.altText,
+    bkgd   = gui.palette.prime,
+    stroke = &#39;rgb(255,255,255,60)&#39;,
+    strokeFocus    = &#39;rgb(255,255,255,160)&#39;,
+    strokeDisabled = &#39;rgb(255,255,255,60)&#39;,
+    strokeWidth = 2,
+    width  = 160, -- Default width for common widgets (px)
+    gap    = 6,   -- Recommended gap between widgets (px)
+    margin = 6    -- Recommended internal margin for widgets (px)
+  },
+  window = {
+    bkgd = gui.palette.neutral,
+    text = &#39;rgb(0,0,0)&#39;        -- Colour for text that is drawn directly to the window
+  },
+  button = {
+    bkgd = gui.palette.invBkgd,       -- Default background
+    bkgdActive = gui.palette.contrast -- Background when temporarily clicked (depressed)
+  },
+  menubar = {
+    bkgd = gui.palette.invBkgd,
+    text = gui.palette.altText,
+    highlight = gui.palette.contrast
+  },
+  menu = {
+    bkgd   = gui.palette.bkgd,
+    border = &#39;rgb(200,200,200)&#39;  -- Stroke for menu border
+  },
+  desktop = {
+    bkgd = &#39;rgb(160,160,160)&#39;
+  }
+}
+
+gui.iconThemes = {
+  default = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+  carbon  = { first={ r=90,g=90,b=90 }, last={ r=70,g=70,b=110 } },
+  yellow  = { first={ r=0xec,g=0xef,b=0x9e }, last={ r=0xd6,g=0x87,b=0x10 }, stroke={ r=60, g=30, b=30, a=90 } },
+  orange  = { first={ r=0xFD,g=0xC8,b=0x30 }, last={ r=0xF3,g=0x73,b=0x35 } },
+  blue    = { first={ r=0x4b,g=0x6c,b=0xb7 }, last={ r=0x18,g=0x28,b=0x48 } },
+  ocean   = { first={ r=0xA8,g=0xC0,b=0xFF }, last={ r=0x3F,g=0x2B,b=0x96 } },
+  green   = { first={ r=0x7e,g=0x9d,b=0x13 }, last={ r=0x00,g=0x65,b=0x32 } },
+  red     = { first={ r=0xf5,g=0xaf,b=0x19 }, last={ r=0xf1,g=0x27,b=0x11 } },
+  indigo  = { first={ r=0xad,g=0x53,b=0x89 }, last={ r=0x3c,g=0x10,b=0x53 } },
+  rose    = { first={ r=0xff,g=0xc3,b=0xa0 }, last={ r=0xFF,g=0xAF,b=0xBD } },
+  pink    = { first={ r=0xff,g=0xdd,b=0xe1 }, last={ r=0xee,g=0x9c,b=0xa7 } },
+  grey    = { first={ r=100,g=100,b=100 }, last={ r=70,g=70,b=70 } },
+  pearl   = { first={ r=250,g=249,b=248 }, last={ r=210,g=211,b=212 } }
+}</code></pre>
+<h2 id="functions">Functions</h2>
+<h3 id="guiapplyfill">gui.applyFill()</h3>
+<p><code>gui.applyFill(Vector, Fill)</code></p>
+<p>Apply <code>Fill</code> to every fill attribute for <code>Vector</code>, its siblings and children, except in cases where the fill is already set to <code>none</code>. If a vector has a stroke defined, that is also changed to match <code>Fill</code>.</p>
+<h3 id="guicreateicon">gui.createIcon()</h3>
+<p><code>Info = gui.createIcon(Scene, Path, Size, Theme, [Name])</code></p>
+<p>Build an icon sourced from <code>Path</code>, styled with the given <code>Theme</code>, and register it as a VectorPattern under <code>Name</code>. The <code>Size</code> is applied to the VectorPattern&#39;s PageWidth and PageHeight values, and affects the size of the pre-rendered bitmap cache. If <code>Name</code> is not given, the <code>Path</code> is used to name the pattern.</p>
+<p>The generated pattern can be used as a fill, i.e. <code>url(#Name)</code>. The pattern can be used in two ways: As a fill in a VectorRectangle, which is akin to a cached bitmap (fast); or applied to a VectorViewport for live rendering (higher quality transforms).</p>
+<p>If the function succeeds, a table is returned that contains values for <code>name</code>, <code>theme</code>, <code>size</code>, <code>path</code> and <code>fill</code>. Use <code>fill</code> to set the <code>Fill</code> vector field wherever the icon is to be used.</p>
+<p>This function is designed to throw an exception if an error occurs.</p>
+<h3 id="guiforvector">gui.forVector()</h3>
+<p><code>gui.forVector(Vector, Function)</code></p>
+<p>Call <code>Function</code> for each vector in a tree under the provided <code>Vector</code>.</p>
+<p>The synopsis for <code>Function</code> is <code>Function(Vector)</code> where <code>Vector</code> is a direct <code>obj</code> reference to the new vector that has been discovered.</p>
+<h3 id="guigetfontheight">gui.getFontHeight()</h3>
+<p><code>LineSpacing, Height = gui.getFontHeight({ face=&#39;Face&#39;, size=PointSize })</code></p>
+<p>Returns the line spacing and height values for a given font, which is identified by <code>face</code> and <code>size</code> values.</p>
+<h3 id="guipixel">gui.pixel()</h3>
+<p><code>gui.pixel(Value)</code></p>
+<p>Reads a style value such as <code>60pt</code> and returns it as a number of pixel units. Supported units are <code>px</code>, <code>in</code>, <code>mm</code>, <code>pt</code> and <code>dp</code>.</p>
+<h3 id="guisimplegradient">gui.simpleGradient()</h3>
+<p><code>gui.simpleGradient(Scene, Name, Colours, X1, Y1, X2, Y2, [Units], [IgnoreClashes])</code></p>
+<p>Generate a simple linear gradient fill for vectors belonging to <code>Scene</code>. The fill will start at <code>(X1,Y1)</code> and stop at <code>(X2,Y2)</code>. The <code>Units</code> will default to <code>boundingbox</code> if not set to <code>userspace</code>. The resulting fill can be referenced as <code>url(#Name)</code>.</p>
+<p>The <code>Colours</code> table must consist of at least two RGB table entries, for instance <code>{ { r=176,g=178,b=183,a=255 }, { r=212,g=211,b=215,a=255 } }</code>. The colour stops will be evenly distributed through the gradient if there are more than two.</p>
+<h2 id="colour-management">Colour Management</h2>
+<h3 id="guihsvtorgb">gui.hsvToRGB()</h3>
+<p><code>RGB = gui.hsvToRGB(HSV)</code></p>
+<p>Convert an HSV table to RGB.</p>
+<h3 id="guiinterpolatergb">gui.interpolateRGB()</h3>
+<p><code>RGB = gui.interpolateRGB(RGB1, RGB2, [Ratio])</code></p>
+<p>Interpolate two RGB colours, returning a new RGB table. <code>Ratio</code> is a value between 0.0 and 1.0 that determines the strength of <code>RGB2</code> over <code>RGB1</code>.</p>
+<h3 id="guiinterpolatehsv">gui.interpolateHSV()</h3>
+<p><code>HSV = gui.interpolateHSV(HSV1, HSV2, [Ratio])</code></p>
+<p>Interpolate two HSV colours, returning a new HSV table. <code>Ratio</code> is a value between 0.0 and 1.0 that determines the strength of <code>RGB2</code> over <code>RGB1</code>.</p>
+<h3 id="guirgbtosvg">gui.rgbToSVG()</h3>
+<p><code>svgColour = gui.rgbToSVG(RGB)</code></p>
+<p>Convert an RGB table to a SVG colour string in the format <code>rgb(r,g,b,a)</code>.</p>
+<h3 id="guistrtorgb">gui.strToRGB()</h3>
+<p><code>gui.strToRGB(Value)</code></p>
+<p>Convert an RGB string to an RGB table. <code>Value</code> can be in the format <code>#RRGGBBAA</code></p>
+<h3 id="guirgbvalue">gui.rgbValue()</h3>
+<p><code>V = gui.rgbValue(RGB)</code></p>
+<p>Returns the light value of an RGB colour (i.e. the V in HSV)</p>
+<h3 id="guirgbtohsv">gui.rgbToHSV()</h3>
+<p><code>HSV = gui.rgbToHSV(RGB)</code></p>
+<p>Convert an RGB table to HSV table.</p>
+</div></div></div></div>
+
+<script src="../js/bootstrap.bundle.min.js"></script>
+<script src="../js/base.js"></script>
+<script type="text/javascript">
+
+   // Auto-open the relevant sidebar branch
+
+   var url = window.location.pathname;
+   var filename = url.substring(url.lastIndexOf('/')+1);
+   var el = document.querySelector('li[class="api-ref"] > a[href="' + filename + '"]');
+   if (el) {
+      var parent = getParentNode(el, '[class="collapse"]');
+      if (parent) new bootstrap.Collapse(parent, { show: true }); // Causes animation
+
+      el.style.backgroundColor = '#d2f4ea';
+   }
+
+   var page = glParameters["page"];
+   if (isEmpty(page)) page = glParameters["function"];
+   var div = document.getElementById(page);
+   if (!div) div = document.getElementById("default-page");
+   if (div) div.style.display = "block";
+
+   cancelAnimations();
+    </script>
+  </body>
+</html>

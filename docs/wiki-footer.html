@@ -1,0 +1,28 @@
+</div></div></div></div>
+
+<script src="../js/bootstrap.bundle.min.js"></script>
+<script src="../js/base.js"></script>
+<script type="text/javascript">
+
+   // Auto-open the relevant sidebar branch
+
+   var url = window.location.pathname;
+   var filename = url.substring(url.lastIndexOf('/')+1);
+   var el = document.querySelector('li[class="api-ref"] > a[href="' + filename + '"]');
+   if (el) {
+      var parent = getParentNode(el, '[class="collapse"]');
+      if (parent) new bootstrap.Collapse(parent, { show: true }); // Causes animation
+
+      el.style.backgroundColor = '#d2f4ea';
+   }
+
+   var page = glParameters["page"];
+   if (isEmpty(page)) page = glParameters["function"];
+   var div = document.getElementById(page);
+   if (!div) div = document.getElementById("default-page");
+   if (div) div.style.display = "block";
+
+   cancelAnimations();
+    </script>
+  </body>
+</html>
