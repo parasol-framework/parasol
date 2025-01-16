@@ -427,9 +427,9 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       gradient_func.frame(0); // This value offsets the gradient from the path, e.g. 10 adds an x,y offset of (10,10)
       gradient_func.d1(x1);   // x1 and x2 alter the sampling rate and initial offset of the gradient colours
       gradient_func.d2(x2);
-      gradient_func.contour_create(Path);
+      gradient_func.contour_create(*Path);
 
-      transform.translate(Bounds.left, Bounds.top);
+      transform.translate(Bounds.left + Bounds.width(), Bounds.top + Bounds.height());
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();

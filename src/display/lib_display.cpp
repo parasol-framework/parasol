@@ -278,12 +278,11 @@ ERR SetHostOption(HOST Option, LARGE Value)
 -FUNCTION-
 ScaleToDPI: Scales a value to the active display's DPI.
 
-ScaleToDPI() is a convenience function for scaling any value to the active display's current DPI setting.  The value
-that you provide must be fixed in relation to the system wide default of 96 DPI.  If the display's DPI varies differs
-to that, your value will be scaled to match.  For instance, an 8 point font at 96 DPI would be scaled to 20 points if
-the display was 240 DPI.
+ScaleToDPI() is a convenience function for scaling a value to the display's current DPI setting.  The provided value
+must be relative to the system wide default of 96 DPI.  If the display's DPI is not equal to 96, the value will be
+scaled to match.  For instance, an 8 point font at 96 DPI would be scaled to 20 points if the display was 240 DPI.
 
-If the DPI of the display is unknown, your value will be returned unscaled.
+If the DPI of the display is unknown, the value will be returned unscaled.
 
 -INPUT-
 double Value: The number to be scaled.

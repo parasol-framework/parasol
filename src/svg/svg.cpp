@@ -235,7 +235,7 @@ private:
    void parse_contourgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
    void parse_diamondgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
    void parse_lineargradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
-   void parse_radialgradient(const XMLTag &, objVectorGradient *, std::string &) noexcept;
+   void parse_radialgradient(const XMLTag &, objVectorGradient &, std::string &) noexcept;
 
    ERR  parse_fe_blur(objVectorFilter *, XMLTag &) noexcept;
    ERR  parse_fe_colour_matrix(objVectorFilter *, XMLTag &) noexcept;

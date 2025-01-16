@@ -954,7 +954,6 @@ class objVectorGradient : public Object {
    VGT     Type;          // Specifies the type of gradient (e.g. RADIAL, LINEAR)
    VGF     Flags;         // Dimension flags are stored here.
    VCS     ColourSpace;   // Defines the colour space to use when interpolating gradient colours.
-   LONG    TotalStops;    // Total number of stops defined in the Stops array.
 
    // Action stubs
 
@@ -3966,6 +3965,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_FEFUNCG 0xa284a6a3
 #define SVF_FEFUNCB 0xa284a69e
 #define SVF_FEFUNCA 0xa284a69d
+#define SVF_FOCALPOINT 0xe03591b4
 #define SVF_LIGHTING_COLOR 0x020fc127
 #define SVF_LIGHTING_COLOUR 0x4407e6dc
 #define SVF_LIMITINGCONEANGLE 0xbb90036e

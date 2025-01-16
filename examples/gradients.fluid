@@ -26,16 +26,8 @@ function selectGradient(Text)
       end
       gradient.cX = '50%'
       gradient.cY = '50%'
-   elseif Text == 'Conic' then
-      gradient.type = 'conic'
-      uiEvent = function(ev)
-         gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
-         gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
-         gradient.x2 = (ev.x / gradientVP.width * 100) .. '%'
-         gradient.y2 = (ev.y / gradientVP.height * 100) .. '%'
-      end
-   elseif Text == 'Diamond' then
-      gradient.type = 'diamond'
+   elseif (Text == 'Conic') or (Text == 'Diamond') then
+      gradient.type = Text
       uiEvent = function(ev)
          gradient.cX = (ev.x / gradientVP.width * 100) .. '%'
          gradient.cY = (ev.y / gradientVP.height * 100) .. '%'

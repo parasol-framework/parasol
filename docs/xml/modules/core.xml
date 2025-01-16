@@ -3062,7 +3062,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="Bottom" type="LONG">Bottom coordinate</field>
     </struct>
 
-    <struct name="FRGB" comment="64-bit floating point RGB colour value.">
+    <struct name="FRGB" comment="32-bit floating point RGB colour components.">
       <field name="Red" type="FLOAT">Red component value</field>
       <field name="Green" type="FLOAT">Green component value</field>
       <field name="Blue" type="FLOAT">Blue component value</field>
