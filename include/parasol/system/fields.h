@@ -976,4 +976,5 @@
 #define FID_ResizeEvent 0xc404ebf9LL
 #define FID_TabOrder 0xa10b2cb8LL
 #define FID_TextFlags 0x1bce45f7LL
+#define FID_TotalStops 0xc961c5a2LL
 

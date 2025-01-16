@@ -108,7 +108,7 @@ struct("HSV", { comment="Colour structure for Hue, Saturation and Value/Light co
   double Alpha      # Alpha blending value from 0 to 1.0.
 ]])
 
-struct("FRGB", { comment="64-bit floating point RGB colour value." }, [[
+struct("FRGB", { comment="32-bit floating point RGB colour components." }, [[
   float Red   # Red component value
   float Green # Green component value
   float Blue  # Blue component value

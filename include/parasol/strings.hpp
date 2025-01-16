@@ -126,6 +126,7 @@ inline void camelcase(std::string &s) noexcept {
       else if ((Wildcard[w] IS '|') and (w + 1 < Wildcard.size())) {
          w++;
          String = Original; // Restart the comparison
+         s = 0;
       }
       else {
          if (Case) {
@@ -146,6 +147,7 @@ inline void camelcase(std::string &s) noexcept {
 
          w = or_index + 1;
          String = Original;
+         s = 0;
       }
    }
 

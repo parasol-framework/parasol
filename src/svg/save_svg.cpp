@@ -113,7 +113,7 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
                }
             }
 
-            if (gradient->TotalStops > 0) {
+            if (gradient->get<LONG>(FID_TotalStops) > 0) {
                GradientStop *stops;
                LONG total_stops, stop_index;
                if (GetFieldArray(gradient, FID_Stops, (APTR *)&stops, &total_stops) IS ERR::Okay) {

@@ -109,12 +109,11 @@ static ERR TASK_Expunge(extTask *);
 static ERR TASK_Quit(extTask *);
 
 static const FieldDef clFlags[] = {
-   { "Foreign",    TSF::FOREIGN },
    { "Wait",       TSF::WAIT },
    { "Shell",      TSF::SHELL },
    { "ResetPath",  TSF::RESET_PATH },
    { "Privileged", TSF::PRIVILEGED },
-   { "LogAll",     TSF::LOG_ALL },
+   { "LogAll",     TSF::VERBOSE },
    { "Quiet",      TSF::QUIET },
    { "Attached",   TSF::ATTACHED },
    { "Detached",   TSF::DETACHED },
@@ -625,8 +624,6 @@ static ERR TASK_Activate(extTask *Self)
 
    Self->ReturnCodeSet = false;
 
-   if ((Self->Flags & TSF::FOREIGN) != TSF::NIL) Self->Flags |= TSF::SHELL;
-
    if (!Self->Location) return log.warning(ERR::MissingPath);
 
    if (!glJanitorActive) {
@@ -855,7 +852,7 @@ static ERR TASK_Activate(extTask *Self)
       }
       argslist[i+1] = NULL;
 
-      if ((Self->Flags & TSF::LOG_ALL) != TSF::NIL) {
+      if ((Self->Flags & TSF::VERBOSE) != TSF::NIL) {
          for (i=1; argslist[i]; i++) {
             log.msg("Arg %d: %s", i, argslist[i]);
          }
@@ -1407,7 +1404,6 @@ static ERR TASK_Init(extTask *Self)
       log.msg("Process Path: %s", Self->ProcessPath);
       log.msg("Working Path: %s", Self->Path);
    }
-   else if (Self->ProcessID) Self->Flags |= TSF::FOREIGN;
 
    return ERR::Okay;
 }
@@ -1762,7 +1758,7 @@ static ERR SET_ExitCallback(extTask *Self, FUNCTION *Value)
 -FIELD-
 InputCallback: This callback returns incoming data from STDIN.
 
-The InputCallback field is available for use only when the task object represents the current process.
+The InputCallback field is available to the active task object only (i.e. the current process).
 The referenced function will be called when process receives data from STDIN.  The callback must follow the
 prototype `Function(*Task, APTR Data, LONG Size, ERR Status)`
 

@@ -602,12 +602,20 @@ static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value
 }
 
 /*********************************************************************************************************************
-
 -FIELD-
 TotalStops: Total number of stops defined in the Stops array.
 
 This read-only field indicates the total number of stops that have been defined in the #Stops array.
 
+*********************************************************************************************************************/
+
+static ERR VECTORGRADIENT_GET_TotalStops(extVectorGradient *Self, LONG *Value)
+{
+   *Value = Self->Stops.size();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
 -FIELD-
 Transform: Applies a transform to the gradient.
 
@@ -781,7 +789,6 @@ static const FieldArray clGradientFields[] = {
    { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientType },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clVectorGradientFlags },
    { "ColourSpace",  FDF_LONG|FDF_RI, NULL, NULL, &clVectorGradientColourSpace },
-   { "TotalStops",   FDF_LONG|FDF_R },
    // Virtual fields
    { "Colour",       FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW, VECTORGRADIENT_GET_Colour, VECTORGRADIENT_SET_Colour },
    { "ColourMap",    FDF_VIRTUAL|FDF_STRING|FDF_W, VECTORGRADIENT_GET_ColourMap, VECTORGRADIENT_SET_ColourMap },
@@ -793,6 +800,7 @@ static const FieldArray clGradientFields[] = {
    { "NumericID",    FDF_VIRTUAL|FDF_LONG|FDF_RW, VECTORGRADIENT_GET_NumericID, VECTORGRADIENT_SET_NumericID },
    { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW, VECTORGRADIENT_GET_ID, VECTORGRADIENT_SET_ID },
    { "Stops",        FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, VECTORGRADIENT_GET_Stops, VECTORGRADIENT_SET_Stops, "GradientStop" },
+   { "TotalStops",   FDF_LONG|FDF_R, VECTORGRADIENT_GET_TotalStops },
    { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, NULL, VECTORGRADIENT_SET_Transform },
    END_FIELD
 };

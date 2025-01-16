@@ -174,13 +174,13 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
             else return ERR::Okay;
          }
          else {
-            printf("Script failed during processing.  Use the --log-error option to examine the failure.\n");
-            return ERR::Failed;
+            printf("Script failed during processing: %s\nUse --log-warning or --log-api to examine the failure.\n", GetErrorMsg(error));
+            return error;
          }
       }
       else {
-         printf("Failed to load / initialise the script.\n");
-         return ERR::Failed;
+         printf("Failed to load / initialise the script: %s\n", GetErrorMsg(error));
+         return error;
       }
    }
    else {
