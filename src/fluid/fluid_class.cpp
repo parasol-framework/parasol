@@ -653,7 +653,7 @@ static ERR FLUID_Init(objScript *Self)
 
    if (Self->Path) {
       if (!wildcmp("*.fluid|*.fb|*.lua", Self->Path)) {
-         log.trace("No support for path '%s'", Self->Path);
+         log.warning("No support for path '%s'", Self->Path);
          return ERR::NoSupport;
       }
    }

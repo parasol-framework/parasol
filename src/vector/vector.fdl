@@ -456,7 +456,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
     int(VGT) Type
     int(VGF) Flags               # Optional flags.
     int(VCS) ColourSpace         # The colour space or method to use for interpolating the gradient colours.
-    int TotalStops               # The total number of records in the Stops array.
   ]])
 
   class("FilterEffect", { src="filters/filter_effect.cpp", output="filters/filter_effect_def.c", references={ 'VSF' } }, [[
@@ -1149,6 +1148,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "FEFUNCG",
     "FEFUNCB",
     "FEFUNCA",
+    "FOCALPOINT",
     "LIGHTING-COLOR",
     "LIGHTING-COLOUR",
     "LIMITINGCONEANGLE",
