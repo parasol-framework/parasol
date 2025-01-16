@@ -8,6 +8,9 @@ body {
 .borderless td, .borderless th {
   border: none !important;
 }
+.introduction {
+  padding-top: 0em;
+}
 .docs-content {
   padding-top: 1em;
 }

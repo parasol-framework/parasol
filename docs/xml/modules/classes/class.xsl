@@ -627,7 +627,7 @@
 
         <script src="../../js/bootstrap.bundle.min.js"></script>
         <script src="../../js/base.js"></script>
-        <script type="text/javascript">
+        <script>
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);
 
    var xslt = false;

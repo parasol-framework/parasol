@@ -22,6 +22,12 @@
   <link href="css/bootstrap.min.css" rel="stylesheet"/>
   <!-- Custom styles for this template -->
   <link href="css/module-template.css" rel="stylesheet"/>
+  <style>
+.wrapper {
+  margin: 0 auto;
+  width: 100%;
+}
+    </style>
 </head>
 
 <body>
@@ -34,17 +40,38 @@
           <li class="nav-item"><a class="nav-link" href="modules/core.html">API</a></li>
           <li class="nav-item"><a class="nav-link" href="wiki/Home.html">Wiki</a></li>
           <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
+<!--          <li class="nav-item"><a class="nav-link" href="?">Donate</a></li>-->
         </ul>
-      </div> <!-- nav-collapse -->
+      </div>
     </div>
   </nav>
 
   <div class="container pb-5"> <!-- Use container-fluid if you want full width -->
     <div class="row">
       <div class="col-sm-12">
-        <div class="docs-content" id="default-page">
+        <div class="introduction">
 
-<p align="center"><img src="images/parasol.svg" width="200" height="200" style="padding: 10px 10px 10px 10px" alt="Parasol Framework"/></p>
+
+<div class="wrapper">
+  <div id="carousel-slider" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="2000">
+    <div class="carousel-inner" role="listbox">
+      <div class="carousel-item active">
+        <img class="d-block w-100" src="gallery/intro-1.png" alt="Intro">
+      </div>
+      <div class="carousel-item">
+        <img class="d-block w-100" src="gallery/intro-1.png" alt="Third slide">
+      </div>
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#carousel-slider" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#carousel-slider" data-bs-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Next</span>
+    </button>
+  </div>
+</div>
 
 <p>&nbsp;</p>
 <p>Parasol is a FOSS vector engine and application sandbox for Windows and Linux.</p>
@@ -56,25 +83,18 @@
 <h2 style="margin-top:1.2em;">Features</h2>
 
 <ul>
-<li>C++ library code with fully integrated Lua scripting for rapid app development.</li>
-<li>Load and save SVG files.  Manipulate or create new vector scene graphs from scratch using our API that also includes feature enhancements not available in SVG.</li>
-<li>Platform independent networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.</li>
-<li>Scalable widgets for UI development (windows, checkboxes, buttons, dialogs, text and a great deal more...).</li>
-<li>Data handling APIs (XML, JSON, ZIP, PNG, JPEG, SVG)</li>
-<li>Full system abstraction for multi-platform support (file I/O, clipboards, threads, object management)</li>
-<li>Multi-channel audio playback</li>
+<li><strong>Versatility:</strong> Integrate your C++ code with our API, or write programs in Fluid, our integrated Lua-based scripting language. Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.</li>
+<li><strong>Scalable User Interfaces:</strong> Create fully scalable UI's using our vector-based widgets, including windows, checkboxes, buttons, dialogs and text. The script-driven architecture makes customization simple and flexible.</li>
+<li><strong>Live Vector Management:</strong> Load SVG files into vector scene graphs and interact with the graph's properties in real-time via our API.</li>
+<li><strong>Animation:</strong> Support for SVG animation (SMIL) is included, as well as off-the-shelf visual FX in our VFX API.</li>
+<li><strong>W3C-Validated SVG Compliance:</strong> We test against the W3C SVG test suite to maximise compatibility with the SVG standard.</li>
+<li><strong>Advanced Text Layout Engine:</strong> Leverage RIPL, our powerful text layout engine inspired by HTML, SVG, and word-processing standards, for flexible document rendering that doesn't come excessive overheads.</li>
+<li><strong>Comprehensive Networking API:</strong> Multi-platform networking support for TCP/IP sockets, HTTP, and SSL ensures secure and seamless connectivity.</li>
+<li><strong>Integrated Data Handling:</strong> Built-in APIs for efficient handling of XML, JSON, ZIP, PNG, JPEG, and SVG file formats.</li>
+<li><strong>Cross-Platform System Abstraction:</strong> Full system abstraction for platform-agnostic development, including file I/O, clipboard management, threading, and object management.</li>
+<li><strong>Multi-Channel Audio Playback:</strong> Supports high-quality audio playback for WAV and MP3 files, enabling rich multimedia experiences.</li>
+<li><strong>Enhanced Lua Framework:</strong> Ideal for Lua developers seeking robust UI features and comprehensive system integration. Parasol serves as an enhanced Lua framework for modern application development.</li>
 </ul>
-
-<h2 style="margin-top:1.2em;">Hello World!</h2>
-
-<p>Here's a straight-forward example of a working Hello World script:</p>
-
-<pre><code>win = obj.new('window', { title='Example Window', insideWidth=400, insideHeight=200 })
-win.new('text', { string='Hello World', face='Open Sans:40', align='center' })
-win.acShow()
-processing.sleep() // Sleep until the window is closed</code></pre>
-
-<p>More sophisticated examples are available in the 'examples' folder of the main distribution.</p>
 
 <h2 style="margin-top:1.2em;">Developer References</h2>
 <ul class="list-group col-sm-6">
@@ -88,5 +108,14 @@ processing.sleep() // Sleep until the window is closed</code></pre>
   </div> <!-- container -->
 
 <script src="js/bootstrap.bundle.min.js"></script>
+<script>
+const ca = document.querySelector('#carousel-slider')
+
+const carousel = new bootstrap.Carousel(ca, {
+  interval: 2000,
+  touch: false
+})
+carousel.cycle();
+</script>
 </body>
 </html>

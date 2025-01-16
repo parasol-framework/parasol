@@ -19,8 +19,8 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 
 * **Versatility:** Integrate your C++ code with our API, or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
 * **Scalable User Interfaces:** Create fully scalable UI's using our vector-based widgets, including windows, checkboxes, buttons, dialogs and text.  The script-driven architecture makes customization simple and flexible.
-* **Live Vector Management:** Load SVG files into vector scene graphs and interact with the graph's properties in real-time via our API. 
-* **Animation:** Support for SVG animation (SMIL) is included, as well as off-the-shelf visual FX in our VFX API.
+* **Live Vector Management:** Load SVG files into vector scene graphs and interact with the graph's properties in real-time via our API.
+* **Animation:** Support for SVG animation (SMIL) is included, or use pre-canned visual effects from our VFX API.
 * **W3C-Validated SVG Compliance:** We test against the W3C SVG test suite to maximise compatibility with the SVG standard.
 * **Advanced Text Layout Engine:** Leverage RIPL, our powerful text layout engine inspired by HTML, SVG, and word-processing standards, for flexible document rendering that doesn't come excessive overheads.
 * **Comprehensive Networking API:** Multi-platform networking support for TCP/IP sockets, HTTP, and SSL ensures secure and seamless connectivity.
