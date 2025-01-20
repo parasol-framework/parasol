@@ -367,7 +367,7 @@ void svgState::parse_contourgradient(const XMLTag &Tag, objVectorGradient *Gradi
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
-      log.trace("Processing contour gradient attribute %s =  %s", Tag.Attribs[a].Name, val);
+      log.trace("Processing contour gradient attribute %s = %s", Tag.Attribs[a].Name, val);
 
       auto attrib = strihash(Tag.Attribs[a].Name);
       switch(attrib) {

@@ -37,43 +37,45 @@ function selectGradient(Text)
    elseif Text == 'Contour' then
       gradient.type = 'contour'
       gradient.x1 = 0
-      gradient.x2 = 512
+      gradient.x2 = 2.0
       uiEvent = function(ev)
-         local x = math.abs(ev.x - (gradientVP.width * 0.5))
-         local y = math.abs(ev.y - (gradientVP.height * 0.5))
+         local x = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
+         local y = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
+
          if x > y then
-            gradient.x1 = x
+            gradient.x1 = x * gradient.x2
          else
-            gradient.x1 = y
+            gradient.x1 = y * gradient.x2
          end
       end
    elseif Text == 'Contour Low-Res' then
       gradient.type = 'contour'
       gradient.x1 = 0
-      gradient.x2 = LORES_COUNT
+      gradient.x2 = LORES_COUNT/256
       uiEvent = function(ev)
          local xscale = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
          local yscale = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
          if xscale > yscale then
-            gradient.x1 = xscale * LORES_COUNT
+            gradient.x1 = xscale * LORES_COUNT/256
          else
-            gradient.x1 = yscale * LORES_COUNT
+            gradient.x1 = yscale * LORES_COUNT/256
          end
-         gradient.x2 = LORES_COUNT
+         gradient.x2 = LORES_COUNT/256
       end
    elseif Text == 'Contour Shape' then
       contourShape.visibility = 'visible'
       gradient.type = 'contour'
       rect.visibility = 'hidden'
-      gradient.x1 = 211
-      gradient.x2 = 256
+      gradient.x1 = 0.9
+      gradient.x2 = 1.0
       uiEvent = function(ev)
          local xscale = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
          local yscale = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
+
          if xscale > yscale then
-            gradient.x1 = xscale*256
+            gradient.x1 = xscale
          else
-            gradient.x1 = yscale*256
+            gradient.x1 = yscale
          end
       end
    elseif Text == 'Linear' then
@@ -83,7 +85,8 @@ function selectGradient(Text)
          gradient.cY = (ev.y / gradientVP.height * 100) .. '%'
          gradient.x2 = (ev.x / gradientVP.width * 100) .. '%'
          gradient.y2 = (ev.y / gradientVP.height * 100) .. '%'
-      end               gradient.x1 = '50%'
+      end
+      gradient.x1 = '50%'
       gradient.y1 = '50%'
       gradient.x2 = '100%'
       gradient.y2 = '100%'

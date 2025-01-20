@@ -198,7 +198,7 @@ static ERR VECTORGRADIENT_NewObject(extVectorGradient *Self)
    Self->CenterY = 0.5;
    Self->Radius  = 0.5;
    Self->X1      = 0;
-   Self->X2      = 100; // For an effective contoured gradient, this needs to default to 100
+   Self->X2      = 100.0/256.0; // For an effective contoured gradient, this needs to default to 100
    Self->Flags  |= VGF::SCALED_CX|VGF::SCALED_CY|VGF::SCALED_RADIUS;
    return ERR::Okay;
 }
@@ -669,10 +669,12 @@ references it.  The alternative is `USERSPACE`, which positions the gradient sca
 -FIELD-
 X1: Initial X coordinate for the gradient.
 
-The `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore
-these values.  The gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.
+For linear gradients, the `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  The 
+gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.  Coordinate values can be expressed as units that are
+scaled to the target space.
 
-Coordinate values can be expressed as percentages that are scaled to the target space.
+For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.  
+`X1` has a range of `0 < X1 < X2` and `X2` has a range of `.01 < X2 < 4`.
 
 *********************************************************************************************************************/
 
@@ -695,10 +697,12 @@ static ERR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Unit &Value)
 -FIELD-
 X2: Final X coordinate for the gradient.
 
-The `(X2, Y2)` field values define the end coordinate for mapping linear gradients.  Other gradient types ignore
-these values.  The gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.
+For linear gradients, the `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  The 
+gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.  Coordinate values can be expressed as units that are
+scaled to the target space.
 
-Coordinate values can be expressed as percentages that are scaled to the target space.
+For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.  
+`X1` has a range of `0 < X1 < X2` and `X2` has a range of `.01 < X2 < 4`.
 
 *********************************************************************************************************************/
 
@@ -724,7 +728,7 @@ Y1: Initial Y coordinate for the gradient.
 The `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore
 these values.  The gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.
 
-Coordinate values can be expressed as percentages that are scaled to the target space.
+Coordinate values can also be expressed as units that are scaled to the target space.
 
 *********************************************************************************************************************/
 
@@ -750,7 +754,7 @@ Y2: Final Y coordinate for the gradient.
 The `(X2, Y2)` field values define the end coordinate for mapping linear gradients.  Other gradient types ignore
 these values.  The gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.
 
-Coordinate values can be expressed as percentages that are scaled to the target space.
+Coordinate values can also be expressed as units that are scaled to the target space.
 -END-
 *********************************************************************************************************************/
 
