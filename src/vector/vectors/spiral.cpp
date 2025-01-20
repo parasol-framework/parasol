@@ -16,12 +16,12 @@ class extVectorSpiral : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorSpiral";
    using create = pf::Create<extVectorSpiral>;
 
-   DOUBLE Spacing;
-   DOUBLE Offset;
-   DOUBLE Radius;
-   DOUBLE CX, CY;
-   DOUBLE Step;
-   DOUBLE LoopLimit;
+   double Spacing;
+   double Offset;
+   double Radius;
+   double CX, CY;
+   double Step;
+   double LoopLimit;
    DMF Dimensions;
 };
 
@@ -29,26 +29,23 @@ class extVectorSpiral : public extVector {
 
 static void generate_spiral(extVectorSpiral *Vector, agg::path_storage &Path)
 {
-   const DOUBLE cx = dmf::hasScaledCenterX(Vector->Dimensions) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
-   const DOUBLE cy = dmf::hasScaledCenterY(Vector->Dimensions) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
+   const double cx = dmf::hasScaledCenterX(Vector->Dimensions) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
+   const double cy = dmf::hasScaledCenterY(Vector->Dimensions) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
 
-   DOUBLE min_x = DBL_MAX, max_x = -DBL_MAX, min_y = DBL_MAX, max_y = -DBL_MAX;
-   DOUBLE angle  = 0;
-   DOUBLE radius = Vector->Offset;
-   DOUBLE limit  = Vector->LoopLimit * 360.0;
-   DOUBLE max_radius = Vector->Radius ? Vector->Radius : DBL_MAX;
-   DOUBLE lx = -DBL_MAX, ly = -DBL_MAX;
-   DOUBLE step = Vector->Step;
-
-   if (step > 180) step = 180;
-   else if (step < 0.1) step = 0.1;
+   double min_x = DBL_MAX, max_x = -DBL_MAX, min_y = DBL_MAX, max_y = -DBL_MAX;
+   double angle  = 0;
+   double radius = Vector->Offset;
+   double limit  = Vector->LoopLimit * 360.0;
+   double max_radius = Vector->Radius ? Vector->Radius : DBL_MAX;
+   double lx = -DBL_MAX, ly = -DBL_MAX;
+   double step = std::clamp(Vector->Step, 0.1, 180.0);
 
    if ((max_radius IS DBL_MAX) and (limit <= 0.01)) limit = 360;
    else if (limit < 0.001) limit = DBL_MAX; // Ignore the loop limit in favour of radius limit
 
    for (int v=0; (v < MAX_SPIRAL_VERTICES) and (angle < limit) and (radius < max_radius); v++) {
-      DOUBLE x = radius * cos(angle * DEG2RAD);
-      DOUBLE y = radius * sin(angle * DEG2RAD);
+      double x = radius * cos(angle * DEG2RAD);
+      double y = radius * sin(angle * DEG2RAD);
 
       x += cx;
       y += cy;
@@ -145,13 +142,13 @@ If the LoopLimit is not set, the #Radius will take precedence.
 
 *********************************************************************************************************************/
 
-static ERR SPIRAL_GET_LoopLimit(extVectorSpiral *Self, DOUBLE *Value)
+static ERR SPIRAL_GET_LoopLimit(extVectorSpiral *Self, double *Value)
 {
    *Value = Self->LoopLimit;
    return ERR::Okay;
 }
 
-static ERR SPIRAL_SET_LoopLimit(extVectorSpiral *Self, DOUBLE Value)
+static ERR SPIRAL_SET_LoopLimit(extVectorSpiral *Self, double Value)
 {
    if (Value >= 0) {
       Self->LoopLimit = Value;
@@ -172,13 +169,13 @@ If Spacing is undeclared, the spiral expands at an incremental rate of `Step * 0
 
 *********************************************************************************************************************/
 
-static ERR SPIRAL_GET_Spacing(extVectorSpiral *Self, DOUBLE *Value)
+static ERR SPIRAL_GET_Spacing(extVectorSpiral *Self, double *Value)
 {
    *Value = Self->Spacing;
    return ERR::Okay;
 }
 
-static ERR SPIRAL_SET_Spacing(extVectorSpiral *Self, DOUBLE Value)
+static ERR SPIRAL_SET_Spacing(extVectorSpiral *Self, double Value)
 {
    if (Value >= 0.0) {
       Self->Spacing = Value;
@@ -218,13 +215,13 @@ Offset is set to zero.
 
 *********************************************************************************************************************/
 
-static ERR SPIRAL_GET_Offset(extVectorSpiral *Self, DOUBLE *Value)
+static ERR SPIRAL_GET_Offset(extVectorSpiral *Self, double *Value)
 {
    *Value = Self->Offset;
    return ERR::Okay;
 }
 
-static ERR SPIRAL_SET_Offset(extVectorSpiral *Self, DOUBLE Value)
+static ERR SPIRAL_SET_Offset(extVectorSpiral *Self, double Value)
 {
    if (Value >= 0.0) {
       Self->Offset = Value;
@@ -294,13 +291,13 @@ is `1.0`.  Using larger values will create a spiral with jagged corners due to t
 
 *********************************************************************************************************************/
 
-static ERR SPIRAL_GET_Step(extVectorSpiral *Self, DOUBLE *Value)
+static ERR SPIRAL_GET_Step(extVectorSpiral *Self, double *Value)
 {
    *Value = Self->Step;
    return ERR::Okay;
 }
 
-static ERR SPIRAL_SET_Step(extVectorSpiral *Self, DOUBLE Value)
+static ERR SPIRAL_SET_Step(extVectorSpiral *Self, double Value)
 {
    if (Value != 0.0) {
       Self->Step = Value;

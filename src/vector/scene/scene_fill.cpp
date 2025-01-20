@@ -125,11 +125,11 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
    Path->approximation_scale(Transform.scale());
 
-   auto render_gradient = [&]<typename Method>(Method SpreadMethod, double Span) {
+   auto render_gradient = [&]<typename Method>(Method SpreadMethod, double SpanA, double SpanB) {
       typedef agg::span_gradient<agg::rgba8, interpolator_type, Method, color_array_type> span_gradient_type;
       typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
 
-      span_gradient_type  span_gradient(span_interpolator, SpreadMethod, *Table, 0, Span);
+      span_gradient_type  span_gradient(span_interpolator, SpreadMethod, *Table, SpanA, SpanB);
       renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
 
       if (State.mClipStack->empty()) {
@@ -201,17 +201,17 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
       if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
          agg::gradient_reflect_adaptor<agg::gradient_x> spread_method(gradient_func);
-         render_gradient(spread_method, span);
+         render_gradient(spread_method, 0, span);
       }
       else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
          agg::gradient_repeat_adaptor<agg::gradient_x> spread_method(gradient_func);
-         render_gradient(spread_method, span);
+         render_gradient(spread_method, 0, span);
       }
       else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
          agg::gradient_clip_adaptor<agg::gradient_x> spread_method(gradient_func);
-         render_gradient(spread_method, span);
+         render_gradient(spread_method, 0, span);
       }
-      else render_gradient(gradient_func, span);
+      else render_gradient(gradient_func, 0, span);
    }
    else if (Gradient.Type IS VGT::RADIAL) {
       agg::point_d c, f;
@@ -282,17 +282,17 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
          if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
             agg::gradient_reflect_adaptor<agg::gradient_radial> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
          else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
             agg::gradient_repeat_adaptor<agg::gradient_radial> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
          else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
             agg::gradient_clip_adaptor<agg::gradient_radial> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
-         else render_gradient(gradient_func, radial_col_span);
+         else render_gradient(gradient_func, 0, radial_col_span);
       }
       else {
          // Radial gradient with a displaced focal point (uses agg::gradient_radial_focus).
@@ -317,17 +317,17 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
          if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
             agg::gradient_reflect_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
          else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
             agg::gradient_repeat_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
          else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
             agg::gradient_clip_adaptor<agg::gradient_radial_focus> spread_method(gradient_func);
-            render_gradient(spread_method, radial_col_span);
+            render_gradient(spread_method, 0, radial_col_span);
          }
-         else render_gradient(gradient_func, radial_col_span);
+         else render_gradient(gradient_func, 0, radial_col_span);
       }
    }
    else if (Gradient.Type IS VGT::DIAMOND) {
@@ -369,17 +369,17 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
       if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
          agg::gradient_reflect_adaptor<agg::gradient_diamond> spread_method(gradient_func);
-         render_gradient(spread_method, radial_col_span);
+         render_gradient(spread_method, 0, radial_col_span);
       }
       else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
          agg::gradient_repeat_adaptor<agg::gradient_diamond> spread_method(gradient_func);
-         render_gradient(spread_method, radial_col_span);
+         render_gradient(spread_method, 0, radial_col_span);
       }
       else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
          agg::gradient_clip_adaptor<agg::gradient_diamond> spread_method(gradient_func);
-         render_gradient(spread_method, radial_col_span);
+         render_gradient(spread_method, 0, radial_col_span);
       }
-      else render_gradient(gradient_func, radial_col_span);
+      else render_gradient(gradient_func, 0, radial_col_span);
    }
    else if (Gradient.Type IS VGT::CONIC) {
       agg::point_d c;
@@ -417,37 +417,43 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       transform *= Transform;
       transform.invert();
 
-      render_gradient(gradient_func, radial_col_span);
+      render_gradient(gradient_func, 0, radial_col_span);
    }
    else if (Gradient.Type IS VGT::CONTOUR) {
-      auto x2 = std::clamp(Gradient.X2, 3.0, 1024.0);
+      // TODO: The creation of the contour gradient is expensive, but it can be cached as long as the
+      // path hasn't been modified.
+
+      auto x2 = std::clamp(Gradient.X2, 0.01, 4.0);
       auto x1 = std::clamp(Gradient.X1, 0.0, x2);
 
       agg::gradient_contour gradient_func;
-      gradient_func.frame(0); // This value offsets the gradient from the path, e.g. 10 adds an x,y offset of (10,10)
-      gradient_func.d1(x1);   // x1 and x2 alter the sampling rate and initial offset of the gradient colours
-      gradient_func.d2(x2);
+      gradient_func.d1(x1 * 256.0);  // d1 is added to the DT base values
+      gradient_func.d2(x2);  // d2 is a multiplier of the base DT value
       gradient_func.contour_create(*Path);
 
-      transform.translate(Bounds.left + Bounds.width(), Bounds.top + Bounds.height());
+      transform.translate(Bounds.left, Bounds.top);
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();
+      
+      // Regarding the repeatable spread methods, bear in mind that the nature of the contour gradient
+      // means that it is always masked by the target path.  To achieve repetition, the span must be
+      // reduced by dividing by the number of desired steps.  E.g. x2 * 0.5 results in the contour being
+      // drawn twice.
 
-      typedef agg::span_gradient<agg::rgba8, interpolator_type, agg::gradient_contour, color_array_type> span_gradient_type;
-      typedef agg::renderer_scanline_aa<RENDERER_BASE_TYPE, span_allocator_type, span_gradient_type> renderer_gradient_type;
-      span_gradient_type  span_gradient(span_interpolator, gradient_func, *Table, x1, x2);
-      renderer_gradient_type solidrender_gradient(RenderBase, span_allocator, span_gradient);
-
-      if (State.mClipStack->empty()) {
-         agg::scanline_u8 scanline;
-         agg::render_scanlines(Raster, scanline, solidrender_gradient);
+      if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
+         agg::gradient_reflect_adaptor<agg::gradient_contour> spread_method(gradient_func);
+         render_gradient(spread_method, x1 * 256.0, x2 * 256.0);
       }
-      else { // Masked gradient
-         agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
-         agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
-         agg::render_scanlines(Raster, masked_scanline, solidrender_gradient);
+      else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
+         agg::gradient_repeat_adaptor<agg::gradient_contour> spread_method(gradient_func);
+         render_gradient(spread_method, x1 * 256.0, x2 * 256.0);
       }
+      else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
+         agg::gradient_clip_adaptor<agg::gradient_contour> spread_method(gradient_func);
+         render_gradient(spread_method, x1 * 256.0, x2 * 256.0);
+      }
+      else render_gradient(gradient_func, x1 * 256.0, x2 * 256.0);
    }
 }
 

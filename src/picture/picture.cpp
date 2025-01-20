@@ -612,7 +612,13 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
    }
    else {
       png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_PALETTE, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-      png_set_PLTE(write_ptr, info_ptr, (png_colorp)bmp->Palette->Col, bmp->AmtColours);
+
+      std::vector<png_color> p(bmp->Palette->AmtColours);
+      for (LONG i=0; i < bmp->Palette->AmtColours; i++) {
+         p[i] = { bmp->Palette->Col[i].Red, bmp->Palette->Col[i].Green, bmp->Palette->Col[i].Blue };
+      }
+
+      png_set_PLTE(write_ptr, info_ptr, p.data(), bmp->AmtColours);
    }
 
    // On Intel CPU's the pixel format is BGR

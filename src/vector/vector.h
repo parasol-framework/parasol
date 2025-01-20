@@ -951,17 +951,24 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
       fl::Width(Width),
       fl::Height(Height),
       fl::BitsPerPixel(BPP),
-      fl::Flags(PCF::FORCE_ALPHA_32|PCF::NEW),
+      fl::Flags((BPP IS 32 ? PCF::FORCE_ALPHA_32 : PCF::NIL)|PCF::NEW),
       fl::Path(path)
    };
 
    if (pic.ok()) {
-      const LONG byte_width = Width * pic->Bitmap->BytesPerPixel;
-      UBYTE *out = pic->Bitmap->Data;
+      auto &bmp = pic->Bitmap;
+      if (BPP IS 8) {
+         for (ULONG i=0; i < bmp->Palette->AmtColours; i++) {
+            bmp->Palette->Col[i] = { .Red = UBYTE(i), .Green = UBYTE(i), .Blue = UBYTE(i), .Alpha = 255 };
+         }
+      }
+
+      const LONG byte_width = Width * bmp->BytesPerPixel;
+      UBYTE *out = bmp->Data;
       for (LONG y=0; y < Height; y++) {
          copymem(Data, out, byte_width);
-         out  += pic->Bitmap->LineWidth;
-         Data += Width * pic->Bitmap->BytesPerPixel;
+         out  += bmp->LineWidth;
+         Data += Width * bmp->BytesPerPixel;
       }
       pic->saveImage(NULL);
    }
