@@ -234,8 +234,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
-<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
+<p>For linear gradients, the <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.  Coordinate values can be expressed as units that are scaled to the target space.</p>
+<p>For contour gradients, <code>X1</code> is used as the floor for the gradient colour values and <code>X2</code> acts as a multiplier. <code>X1</code> has a range of <code>0 &lt; X1 &lt; X2</code> and <code>X2</code> has a range of <code>.01 &lt; X2 &lt; 4</code>.</p>
       </description>
     </field>
 
@@ -245,8 +245,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The <code>(X2, Y2)</code> field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
-<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
+<p>For linear gradients, the <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.  Coordinate values can be expressed as units that are scaled to the target space.</p>
+<p>For contour gradients, <code>X1</code> is used as the floor for the gradient colour values and <code>X2</code> acts as a multiplier. <code>X1</code> has a range of <code>0 &lt; X1 &lt; X2</code> and <code>X2</code> has a range of <code>.01 &lt; X2 &lt; 4</code>.</p>
       </description>
     </field>
 
@@ -257,7 +257,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
-<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
+<p>Coordinate values can also be expressed as units that are scaled to the target space.</p>
       </description>
     </field>
 
@@ -268,7 +268,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The <code>(X2, Y2)</code> field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.</p>
-<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
+<p>Coordinate values can also be expressed as units that are scaled to the target space.</p>
       </description>
     </field>
 
