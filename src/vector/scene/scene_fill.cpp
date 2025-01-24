@@ -423,7 +423,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       // TODO: The creation of the contour gradient is expensive, but it can be cached as long as the
       // path hasn't been modified.
 
-      auto x2 = std::clamp(Gradient.X2, 0.01, 4.0);
+      auto x2 = std::clamp(Gradient.X2, 0.01, 10.0);
       auto x1 = std::clamp(Gradient.X1, 0.0, x2);
 
       agg::gradient_contour gradient_func;
@@ -436,24 +436,23 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       transform *= Transform;
       transform.invert();
       
-      // Regarding the repeatable spread methods, bear in mind that the nature of the contour gradient
-      // means that it is always masked by the target path.  To achieve repetition, the span must be
-      // reduced by dividing by the number of desired steps.  E.g. x2 * 0.5 results in the contour being
-      // drawn twice.
+      // Regarding repeatable spread methods, bear in mind that the nature of the contour gradient
+      // means that it is always masked by the target path.  To achieve repetition, the client can
+      // use an x2 value > 1.0 to specify the number of colour cycles.
 
       if (Gradient.SpreadMethod IS VSPREAD::REFLECT) {
          agg::gradient_reflect_adaptor<agg::gradient_contour> spread_method(gradient_func);
-         render_gradient(spread_method, x1 * 256.0, x2 * 256.0);
+         render_gradient(spread_method, 0, 256.0);
       }
       else if (Gradient.SpreadMethod IS VSPREAD::REPEAT) {
          agg::gradient_repeat_adaptor<agg::gradient_contour> spread_method(gradient_func);
-         render_gradient(spread_method, x1 * 256.0, x2 * 256.0);
+         render_gradient(spread_method, 0, 256.0);
       }
       else if (Gradient.SpreadMethod IS VSPREAD::CLIP) {
          agg::gradient_clip_adaptor<agg::gradient_contour> spread_method(gradient_func);
-         render_gradient(spread_method, x1 * 256.0, x2 * 256.0);
+         render_gradient(spread_method, 0, 256.0);
       }
-      else render_gradient(gradient_func, x1 * 256.0, x2 * 256.0);
+      else render_gradient(gradient_func, 0, 256.0);
    }
 }
 

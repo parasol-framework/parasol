@@ -98,7 +98,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 // Constructor for the GradientColours class.  This expects to be called whenever the Gradient class updates the
 // Stops array.
 
-GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS ColourSpace, DOUBLE Alpha)
+GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS ColourSpace, double Alpha, double Resolution)
 {
    LONG stop, i1, i2, i;
 
@@ -120,7 +120,7 @@ GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS Col
 
       if (i1 <= i2) {
          for (i=i1; i <= i2; i++) {
-            DOUBLE j = (DOUBLE)(i - i1) / (DOUBLE)(i2-i1);
+            double j = (double)(i - i1) / (double)(i2-i1);
             if (ColourSpace IS VCS::LINEAR_RGB) {
                table[i] = begin.linear_gradient(end, j);
             }
@@ -132,12 +132,26 @@ GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS Col
          for (i=i2; i <= 255; i++) table[i] = end;
       }
    }
+
+   if (Resolution > 0) apply_resolution(Resolution);
 }
 
-GradientColours::GradientColours(const std::array<FRGB, 256> &Map)
+GradientColours::GradientColours(const std::array<FRGB, 256> &Map, double Resolution)
 {
-   for (LONG i=0; i < std::ssize(Map); i++) {
-      table[i] = agg::rgba8(Map[i]);
+   resolution = Resolution;
+
+   if (resolution > 0) {  // Select every nth colour from the map.
+      auto current = agg::rgba8(Map[0]);
+      LONG in = F2T(resolution * 255.0);
+      for (LONG i = 0; i < std::ssize(Map); i++, in--) {
+         if ((!in) and (i != std::ssize(Map)-1)) { current = agg::rgba8(Map[i]); in = F2T(resolution * 255.0); }
+         table[i] = current;
+      }
+   }
+   else {
+      for (LONG i=0; i < std::ssize(Map); i++) {
+         table[i] = agg::rgba8(Map[i]);
+      }
    }
 }
 
@@ -198,8 +212,9 @@ static ERR VECTORGRADIENT_NewObject(extVectorGradient *Self)
    Self->CenterY = 0.5;
    Self->Radius  = 0.5;
    Self->X1      = 0;
-   Self->X2      = 100.0/256.0; // For an effective contoured gradient, this needs to default to 100
+   Self->X2      = 1.0; // Set for contoured gradients.
    Self->Flags  |= VGF::SCALED_CX|VGF::SCALED_CY|VGF::SCALED_RADIUS;
+   Self->Resolution = 0;
    return ERR::Okay;
 }
 
@@ -322,7 +337,7 @@ static ERR VECTORGRADIENT_SET_ColourMap(extVectorGradient *Self, CSTRING Value)
 
    if (glColourMaps.contains(Value)) {
       if (Self->Colours) delete Self->Colours;
-      Self->Colours = new (std::nothrow) GradientColours(glColourMaps[Value]);
+      Self->Colours = new (std::nothrow) GradientColours(glColourMaps[Value], Self->Resolution);
       if (!Self->Colours) return ERR::AllocMemory;
       Self->ColourMap = Value;
       return ERR::Okay;
@@ -561,6 +576,31 @@ static ERR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Unit &Value)
 }
 
 /*********************************************************************************************************************
+-FIELD-
+Resolution: Affects the rate of change for colours in the gradient.
+
+By default, the colours generated for a gradient will be spaced for a smooth transition between stops to maximise
+resolution.  The resolution can be reduced by setting the Resolution value to a fraction between 0 and 1.0.
+This results in the colour values being sampled at every nth step only, where n is the value `1 / Resolution`.
+
+Resolution is at its maximum when this value is set to zero (the default).
+
+*********************************************************************************************************************/
+
+static ERR VECTORGRADIENT_SET_Resolution(extVectorGradient *Self, double Value)
+{
+   if ((Value < 0) or (Value > 1.0)) return ERR::OutOfRange;
+
+   Self->Resolution = Value;
+
+   if ((Self->Colours) and (Self->Colours->resolution != Value)) {
+      Self->Colours->apply_resolution(Value);
+   }
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 SpreadMethod: The behaviour to use when the gradient bounds do not match the vector path.
@@ -590,7 +630,7 @@ static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value
    if (Elements >= 2) {
       Self->Stops.insert(Self->Stops.end(), &Value[0], &Value[Elements]);
       if (Self->Colours) delete Self->Colours;
-      Self->Colours = new (std::nothrow) GradientColours(Self->Stops, Self->ColourSpace, 1.0);
+      Self->Colours = new (std::nothrow) GradientColours(Self->Stops, Self->ColourSpace, 1.0, Self->Resolution);
       if (!Self->Colours) return ERR::AllocMemory;
       return ERR::Okay;
    }
@@ -674,7 +714,7 @@ gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.  Coordinate values can be 
 scaled to the target space.
 
 For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.  
-`X1` has a range of `0 < X1 < X2` and `X2` has a range of `.01 < X2 < 4`.
+`X1` has a range of `0 < X1 < X2` and `X2` has a range of `.01 < X2 < 10`.
 
 *********************************************************************************************************************/
 
@@ -702,7 +742,7 @@ gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.  Coordinate values can be 
 scaled to the target space.
 
 For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.  
-`X1` has a range of `0 < X1 < X2` and `X2` has a range of `.01 < X2 < 4`.
+`X1` has a range of `0 < X1 < X2` and `X2` has a range of `.01 < X2 < 10`.
 
 *********************************************************************************************************************/
 
@@ -788,6 +828,7 @@ static const FieldArray clGradientFields[] = {
    { "FocalY",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalY, VECTORGRADIENT_SET_FocalY },
    { "Radius",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_Radius, VECTORGRADIENT_SET_Radius },
    { "FocalRadius",  FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORGRADIENT_GET_FocalRadius, VECTORGRADIENT_SET_FocalRadius },
+   { "Resolution",   FDF_DOUBLE|FDF_RW, NULL, VECTORGRADIENT_SET_Resolution },
    { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientSpreadMethod },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &clVectorGradientUnits },
    { "Type",         FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorGradientType },

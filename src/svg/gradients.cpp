@@ -1,10 +1,15 @@
-// Parasol specific SVG features: 
+// Parasol SVG extensions: 
 //   It is possible to reference in-built colourmaps via 'href'
 //   The fx,fy values can be placed outside of the radial gradient if 'focal="unbound"' is used
+//   The resolution value can be defined to lower the rate of colour sampling.
 
 static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG Attrib, const std::string Value)
 {
    switch (Attrib) {
+      case SVF_RESOLUTION:
+         Gradient->setResolution(strtod(Value.c_str(), NULL));
+         return ERR::Okay;
+
       case SVF_COLOR_INTERPOLATION:
          if (iequals("auto", Value)) Gradient->setColourSpace(VCS::LINEAR_RGB);
          else if (iequals("sRGB", Value)) Gradient->setColourSpace(VCS::SRGB);

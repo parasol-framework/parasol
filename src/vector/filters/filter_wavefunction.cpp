@@ -190,7 +190,7 @@ static ERR WAVEFUNCTIONFX_SET_ColourMap(extWaveFunctionFX *Self, CSTRING Value)
 
    if (glColourMaps.contains(Value)) {
       if (Self->Colours) delete Self->Colours;
-      Self->Colours = new (std::nothrow) GradientColours(glColourMaps[Value]);
+      Self->Colours = new (std::nothrow) GradientColours(glColourMaps[Value], 0);
       if (!Self->Colours) return ERR::AllocMemory;
       Self->ColourMap = Value;
       return ERR::Okay;
@@ -316,7 +316,7 @@ static ERR WAVEFUNCTIONFX_SET_Stops(extWaveFunctionFX *Self, GradientStop *Value
    if (Elements >= 2) {
       Self->Stops.insert(Self->Stops.end(), &Value[0], &Value[Elements]);
       if (Self->Colours) delete Self->Colours;
-      Self->Colours = new (std::nothrow) GradientColours(Self->Stops, /*Self->Filter->ColourSpace*/ VCS::SRGB, 1.0);
+      Self->Colours = new (std::nothrow) GradientColours(Self->Stops, /*Self->Filter->ColourSpace*/ VCS::SRGB, 1.0, 0);
       if (!Self->Colours) return ERR::AllocMemory;
       return ERR::Okay;
    }

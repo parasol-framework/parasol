@@ -4,33 +4,34 @@
 <svg width="1024px" height="800px" viewBox="0 0 1024 800"  version="1.1" xmlns="http://www.w3.org/2000/svg"
    xmlns:parasol="http://www.parasol.ws/namespaces/parasol">
   <defs>
-    <contourGradient id="contour">
+    <contourGradient id="halfcontour" x1="0" x2="0.5">
       <stop offset="0%" stop-color="green" />
       <stop offset="50%" stop-color="red" />
       <stop offset="100%" stop-color="#442222" />
     </contourGradient>
 
-    <contourGradient id="contour1" href="url(#cmap:magma)" spreadMethod="reflect" x1=".7" x2="1"/>
-    <contourGradient id="contour2" href="url(#cmap:viridis)" spreadMethod="reflect" x1=".4" x2="0.7"/>
+    <contourGradient id="contour1" href="url(#cmap:magma)" spreadMethod="reflect" x1="0" x2="1.0" resolution="0.1"/>
+
+    <contourGradient id="contour2" href="url(#cmap:viridis)" spreadMethod="reflect" x1="0" x2="1.6"/>
   </defs>
 
   <rect fill="#ffffff" width="1900" height="1024"/>
 
   <g transform="translate(150,500)" >
     <g transform="scale(0.5,0.5) skewX(10)">
-      <circle fill="url(#contour)" cx="0" cy="0" r="100" />
+      <circle fill="url(#halfcontour)" cx="0" cy="0" r="100" />
     </g>
   </g>
 
-  <ellipse cx="70%" cy="50%" rx="5%" ry="5%" stroke-width="3" stroke="black" fill="url(#contour)" fill-opacity="0.5"/>
+  <ellipse cx="70%" cy="50%" rx="5%" ry="5%" stroke-width="3" stroke="black" fill="url(#halfcontour)" fill-opacity="0.5"/>
 
   <rect x="70" y="410" width="100" height="100" rx="50" ry="30" stroke-width="3" stroke="rgb(0,0,0)"
-    transform="skewX(30)"  fill="url(#contour)"/>
+    transform="skewX(30)"  fill="url(#contour1)"/>
 
-  <parasol:spiral id="Spiral" transform="translate(500,650)" stroke="none" stroke-width="4" fill="url(#contour)"
+  <parasol:spiral id="Spiral" transform="translate(500,650)" stroke="none" stroke-width="4" fill="url(#halfcontour)"
     spacing="30" loop-limit="3"/>
 
-  <rect x="400" y="500" width="200" height="100" fill="url(#contour)" stroke="pink" stroke-width="2" transform="rotate(40,100,100)"/>
+  <rect x="400" y="500" width="200" height="100" fill="url(#halfcontour)" stroke="pink" stroke-width="2" transform="rotate(40,100,100)"/>
 
   <parasol:shape id="starfish" cx="500" cy="200" r="200" stroke="black" stroke-width="3" fill="url(#contour1)"/>
 
