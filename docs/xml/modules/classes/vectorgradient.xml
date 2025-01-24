@@ -166,6 +166,17 @@
     </field>
 
     <field>
+      <name>Resolution</name>
+      <comment>Affects the rate of change for colours in the gradient.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>By default, the colours generated for a gradient will be spaced for a smooth transition between stops to maximise resolution.  The resolution can be reduced by setting the Resolution value to a fraction between 0 and 1.0. This results in the colour values being sampled at every nth step only, where n is the value <code>1 / Resolution</code>.</p>
+<p>Resolution is at its maximum when this value is set to zero (the default).</p>
+      </description>
+    </field>
+
+    <field>
       <name>SpreadMethod</name>
       <comment>The behaviour to use when the gradient bounds do not match the vector path.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -235,7 +246,7 @@
       <type>DOUBLE</type>
       <description>
 <p>For linear gradients, the <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.  Coordinate values can be expressed as units that are scaled to the target space.</p>
-<p>For contour gradients, <code>X1</code> is used as the floor for the gradient colour values and <code>X2</code> acts as a multiplier. <code>X1</code> has a range of <code>0 &lt; X1 &lt; X2</code> and <code>X2</code> has a range of <code>.01 &lt; X2 &lt; 4</code>.</p>
+<p>For contour gradients, <code>X1</code> is used as the floor for the gradient colour values and <code>X2</code> acts as a multiplier. <code>X1</code> has a range of <code>0 &lt; X1 &lt; X2</code> and <code>X2</code> has a range of <code>.01 &lt; X2 &lt; 10</code>.</p>
       </description>
     </field>
 
@@ -246,7 +257,7 @@
       <type>DOUBLE</type>
       <description>
 <p>For linear gradients, the <code>(X1, Y1)</code> field values define the starting coordinate for mapping linear gradients.  The gradient will be drawn from <code>(X1, Y1)</code> to <code>(X2, Y2)</code>.  Coordinate values can be expressed as units that are scaled to the target space.</p>
-<p>For contour gradients, <code>X1</code> is used as the floor for the gradient colour values and <code>X2</code> acts as a multiplier. <code>X1</code> has a range of <code>0 &lt; X1 &lt; X2</code> and <code>X2</code> has a range of <code>.01 &lt; X2 &lt; 4</code>.</p>
+<p>For contour gradients, <code>X1</code> is used as the floor for the gradient colour values and <code>X2</code> acts as a multiplier. <code>X1</code> has a range of <code>0 &lt; X1 &lt; X2</code> and <code>X2</code> has a range of <code>.01 &lt; X2 &lt; 10</code>.</p>
       </description>
     </field>
 

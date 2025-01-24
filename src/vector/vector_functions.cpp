@@ -1046,7 +1046,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
                   fl::Y2(0.0));
       
                if (gradient->Colours) delete gradient->Colours;
-               gradient->Colours = new (std::nothrow) GradientColours(glColourMaps[lookup]);
+               gradient->Colours = new (std::nothrow) GradientColours(glColourMaps[lookup], 0);
 
                if (InitObject(gradient) IS ERR::Okay) {
                   Scene->addDef(lookup.c_str(), gradient);

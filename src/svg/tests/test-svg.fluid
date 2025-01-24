@@ -241,7 +241,7 @@ function testW3TransformAttr05() hashTestSVG('transforms/w3-coords-transformattr
 
 function testCSS()                hashTestSVG('misc/css.svg', 0x586302af) end
 function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x21e65d43) end
-function testContourGradient()    hashTestSVG('gradients/contour-gradient.svg', 0xab4dcff7) end
+function testContourGradient()    hashTestSVG('gradients/contour-gradient.svg', 0x4bed1851) end
 
 function testBottleTree()         hashTestSVG('images/bottletree.svg', 0xd7fb84ff) end
 function testButton()             hashTestSVG('images/button.svg', 0x0e8f5a31) end
