@@ -48,20 +48,6 @@ function selectGradient(Text)
             gradient.x1 = y * gradient.x2
          end
       end
-   elseif Text == 'Contour Low-Res' then
-      gradient.type = 'contour'
-      gradient.x1 = 0
-      gradient.x2 = LORES_COUNT/256
-      uiEvent = function(ev)
-         local xscale = math.abs(ev.x - (gradientVP.width * 0.5)) / gradientVP.width * 2
-         local yscale = math.abs(ev.y - (gradientVP.height * 0.5)) / gradientVP.height * 2
-         if xscale > yscale then
-            gradient.x1 = xscale * LORES_COUNT/256
-         else
-            gradient.x1 = yscale * LORES_COUNT/256
-         end
-         gradient.x2 = LORES_COUNT/256
-      end
    elseif Text == 'Contour Shape' then
       contourShape.visibility = 'visible'
       gradient.type = 'contour'

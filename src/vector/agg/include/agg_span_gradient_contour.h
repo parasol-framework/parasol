@@ -30,172 +30,177 @@ constexpr double infinity = 1E20;
 
 namespace agg
 {
-	class gradient_contour {
-	private:
-		std::vector<int8u> m_buffer;
-		int m_width, m_height;
-		double m_d1; // Ranges from 0 to 254
-		double m_d2; // Ranges from 0.001 to 1.0
+   class gradient_contour {
+   private:
+      std::vector<int8u> m_buffer;
+      int m_width, m_height;
+      double m_d1; // Ranges from 0 to 254
+      double m_d2; // Ranges from 0.001 to 1.0
 
-	public:
-		gradient_contour() : m_width(0), m_height(0), m_d1(0), m_d2(1.0) { }
-		gradient_contour(double d1, double d2) : m_width(0), m_height(0), m_d2(d2) { 
-			m_d1 = (d1 > 254) ? 254 : d1;
-		}
+   public:
+      gradient_contour() : m_width(0), m_height(0), m_d1(0), m_d2(1.0) { }
+      gradient_contour(double d1, double d2) : m_width(0), m_height(0), m_d2(d2) {
+         m_d1 = (d1 > 254) ? 254 : d1;
+      }
 
-		int8u* contour_create(path_storage &ps);
+      int8u* contour_create(path_storage &ps);
 
-		int    contour_width() { return m_width; }
-		int    contour_height() { return m_height; }
+      int    contour_width() { return m_width; }
+      int    contour_height() { return m_height; }
 
-		void   d1(double d) { m_d1 = d; }
-		void   d2(double d) { m_d2 = d; }
+      void   d1(double d) { m_d1 = d; }
+      void   d2(double d) { m_d2 = d; }
 
-		int calculate(int x, int y, int d) const {
-			if (!m_buffer.empty()) {
-				int px = (x >> agg::gradient_subpixel_shift) % m_width;
-				int py = (y >> agg::gradient_subpixel_shift) % m_height;
+      int calculate(int x, int y, int d) const {
+         if (!m_buffer.empty()) {
+            int px = (x >> agg::gradient_subpixel_shift) % m_width;
+            int py = (y >> agg::gradient_subpixel_shift) % m_height;
 
-				if (px < 0) px += m_width;
-				if (py < 0) py += m_height;
-				return iround((m_buffer[(py * m_width) + px] * m_d2) + m_d1) << gradient_subpixel_shift;
-			}
-			else return 0;
-		}
-	};
+            if (px < 0) px += m_width;
+            if (py < 0) py += m_height;
+            return iround((m_buffer[(py * m_width) + px] * m_d2) + m_d1) << gradient_subpixel_shift;
+         }
+         else return 0;
+      }
+   };
 
-	static constexpr int square(int x) { return x * x; }
+   static constexpr int square(int x) { return x * x; }
 
-	// Distance transform algorithm by: Pedro Felzenszwalb
-	void dt(std::vector<double> &spanf, std::vector<double> &spang, std::vector<double> &spanr, std::vector<int> &spann, int length)
-	{
-		spann[0] = 0;
-		spang[0] = -infinity;
-		spang[1] = +infinity;
+   // Distance transform algorithm by: Pedro Felzenszwalb
+   void dt(std::vector<double> &spanf, std::vector<double> &spang, std::vector<double> &spanr, std::vector<int> &spann, int length)
+   {
+      spann[0] = 0;
+      spang[0] = -infinity;
+      spang[1] = +infinity;
 
-		int k = 0;
-		for (int q = 1; q <= length - 1; q++) {
-			double s = ((spanf[q ] + square(q)) - (spanf[spann[k]] + square(spann[k]))) / (2 * q - 2 * spann[k]);
+      int k = 0;
+      for (int q = 1; q <= length - 1; q++) {
+         double s = ((spanf[q ] + square(q)) - (spanf[spann[k]] + square(spann[k]))) / (2 * q - 2 * spann[k]);
 
-			while (s <= spang[k ]) {
-				k--;
-				s = ((spanf[q] + square(q)) - (spanf[spann[k]] + square(spann[k]))) / (2 * q - 2 * spann[k]);
-			}
+         while (s <= spang[k ]) {
+            k--;
+            s = ((spanf[q] + square(q)) - (spanf[spann[k]] + square(spann[k]))) / (2 * q - 2 * spann[k]);
+         }
 
-			k++;
-			spann[k] = q;
-			spang[k] = s;
-			spang[k + 1] = +infinity;
-		}
+         k++;
+         spann[k] = q;
+         spang[k] = s;
+         spang[k + 1] = +infinity;
+      }
 
-		int j = 0;
-		for (int q = 0; q <= length - 1; q++) {
-			while (spang[j + 1] < q) j++;
-			spanr[q] = square(q - spann[j]) + spanf[spann[j]];
-		}
-	}
+      int j = 0;
+      for (int q = 0; q <= length - 1; q++) {
+         while (spang[j + 1] < q) j++;
+         spanr[q] = square(q - spann[j]) + spanf[spann[j]];
+      }
+   }
 
-	// Distance transform algorithm by: Pedro Felzenszwalb
-	int8u* gradient_contour::contour_create(path_storage &ps) {
-		// I. Render Black And White NonAA Stroke of the Path
-		// Path Bounding Box + Some Frame Space Around [configurable]
-		agg::conv_curve<agg::path_storage> conv(ps);
+   // Distance transform algorithm by Pedro Felzenszwalb
 
-		double x1, y1, x2, y2;
-		if (agg::bounding_rect_single(conv, 0, &x1, &y1, &x2, &y2)) {
-			// Create BW Rendering Surface
-			auto width  = int(ceil(x2 - x1)) + 1;
-			auto height = int(ceil(y2 - y1)) + 1;
+   int8u * gradient_contour::contour_create(path_storage &ps) {
+      // Render the path as a single pixel stroke to a greyscale buffer
 
-			m_buffer.resize(width * height);
-         std::fill(m_buffer.begin(), m_buffer.end(), 255);
+      agg::conv_curve<agg::path_storage> conv(ps);
 
-			// Setup VG Engine & Render
-			agg::rendering_buffer rb;
-			rb.attach(m_buffer.data(), width, height, width);
+      double x1, y1, x2, y2;
+      if (!agg::bounding_rect_single(conv, 0, &x1, &y1, &x2, &y2)) return nullptr;
 
-			agg::pixfmt_gray8 pf(rb);
-			agg::renderer_base<agg::pixfmt_gray8> renb(pf);
-			agg::renderer_primitives<agg::renderer_base<agg::pixfmt_gray8>> prim(renb);
-			agg::rasterizer_outline<renderer_primitives<agg::renderer_base<agg::pixfmt_gray8>>> ras(prim);
+      const auto width  = F2T(ceil(x2 - x1)) + 1;
+      const auto height = F2T(ceil(y2 - y1)) + 1;
+      m_buffer.resize(width * height);
+      std::fill(m_buffer.begin(), m_buffer.end(), 255);
 
-			agg::trans_affine mtx;
-			mtx.translate(-x1, -y1);
+      agg::rendering_buffer rb(m_buffer.data(), width, height, width);
 
-			agg::conv_transform<agg::conv_curve<agg::path_storage>> trans(conv, mtx);
+      agg::pixfmt_gray8 pf(rb);
+      agg::renderer_base<agg::pixfmt_gray8> renb(pf);
+      agg::renderer_primitives<agg::renderer_base<agg::pixfmt_gray8>> prim(renb);
+      agg::rasterizer_outline<renderer_primitives<agg::renderer_base<agg::pixfmt_gray8>>> ras(prim);
 
-			prim.line_color(agg::rgba8(0,0,0,255));
-			ras.add_path(trans);
+      agg::trans_affine mtx;
+      mtx.translate(-x1, -y1);
 
-			// II. Distance Transform
-			// Create Float Buffer + 0 vs infinity (1e20) assignment
-			std::vector<double> image(width * height);
+      agg::conv_transform<agg::conv_curve<agg::path_storage>> trans(conv, mtx);
 
-			for (int y=0, l=0; y < height; y++) {
-				for (int x=0; x < width; x++, l++) {
-					if (m_buffer[l] == 0) image[l] = 0.0;
-					else image[l] = infinity;
-				}
-			}
+      // Render a filled version of the path to create a mask defined by 0x01
 
-			// DT of 2d
-			// SubBuff<double> max width,height
-			int length = width;
+      agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_gray8>> solid(renb);
+      agg::rasterizer_scanline_aa<> rasterizer;
+      agg::scanline32_p8 sl;
+      rasterizer.reset();
+      rasterizer.add_path(trans);
+      solid.color(agg::gray8(0x01, 0xff));
+      agg::render_scanlines(rasterizer, sl, solid);
 
-			if (height > length) length = height;
+      // Render the path as a stroke with colour index 0x00
 
-			std::vector<double> spanf(length);
-			std::vector<double> spang(length + 1);
-			std::vector<double> spanr(length);
-			std::vector<int> spann(length);
+      prim.line_color(agg::gray8(0x00, 0xff));
+      ras.add_path(trans);
 
-			// Transform along columns
-			for (int x = 0; x < width; x++) {
-				for (int y = 0; y < height; y++) spanf[y] = image[y * width + x];
+      // Distance Transform
+      // Create float buffer; 0 = POI, Infinity = Undefined
+      std::vector<double> image(width * height);
 
-				// DT of 1d
-				dt(spanf, spang, spanr, spann, height);
+      for (int y=0, l=0; y < height; y++) {
+         for (int x=0; x < width; x++, l++) {
+            image[l] = (m_buffer[l] == 0) ? 0.0 : infinity;
+         }
+      }
 
-				for (int y=0; y < height; y++) image[y * width + x] = spanr[y];
-			}
+      // DT of 2d
+      // SubBuff<double> max width,height
+      int length = width;
 
-			// Transform along rows
-			for (int y=0; y < height; y++) {
-				for (int x=0; x < width; x++) spanf[x] = image[y * width + x];
+      if (height > length) length = height;
 
-				// DT of 1d
-				dt(spanf, spang, spanr, spann, width);
+      std::vector<double> spanf(length), spang(length + 1), spanr(length);
+      std::vector<int> spann(length);
 
-				for (int x=0; x < width; x++) image[y * width + x] = spanr[x];
-			}
+      // Transform along columns
+      for (int x=0; x < width; x++) {
+         for (int y=0; y < height; y++) spanf[y] = image[y * width + x];
+         dt(spanf, spang, spanr, spann, height); // Distance transform
+         for (int y=0; y < height; y++) image[y * width + x] = spanr[y];
+      }
 
-			// Take Square Roots, Min & Max
-			double min = sqrt(image[0]);
-			double max = min;
+      // Transform along rows
+      for (int y=0; y < height; y++) {
+         for (int x=0; x < width; x++) spanf[x] = image[y * width + x];
+         dt(spanf, spang, spanr, spann, width);
+         for (int x=0; x < width; x++) image[y * width + x] = spanr[x];
+      }
 
-			for (int y=0, l=0; y < height; y++) {
-				for (int x=0; x < width; x++, l++) {
-					image[l] = sqrt(image[l]);
-					if (min > image[l]) min = image[l];
-					if (max < image[l]) max = image[l];
-				}
-			}
+      // Take square roots, min & max.  Pixel values will only contribute to min/max if
+      // they are unmasked.
 
-			// III. Convert To Grayscale
-			if (min == max) m_buffer.clear();
-         else {
-				double scale = 255.0 / (max - min);
-				for (int y=0, l=0; y < height; y++) {
-					for (int x=0; x < width; x++, l++) m_buffer[l] = int8u(int((image[l] - min) * scale));
-				}
-			}
+      double min = std::numeric_limits<double>::max();
+      double max = std::numeric_limits<double>::min();
 
-			m_width  = width;
-			m_height = height;
-		}
+      for (int y=0, l=0; y < height; y++) {
+         for (int x=0; x < width; x++, l++) {
+            if (m_buffer[l] <= 0x01) {
+               image[l] = sqrt(image[l]);
+               if (min > image[l]) min = image[l];
+               if (max < image[l]) max = image[l];
+            }
+            else image[l] = sqrt(image[l]); // OOB: Ideally we'd set to zero but anti-aliasing at the edges doesn't like that
+         }
+      }
 
-		return m_buffer.data();
-	}
+      // Convert to greyscale
+      if (min == max) m_buffer.clear();
+      else {
+         double scale = 255.0 / (max - min);
+         for (int y=0, l=0; y < height; y++) {
+            for (int x=0; x < width; x++, l++) m_buffer[l] = int8u(F2T((image[l] - min) * scale));
+         }
+      }
+
+      m_width  = width;
+      m_height = height;
+
+      return m_buffer.data();
+   }
 }
 
 #endif

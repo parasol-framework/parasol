@@ -949,6 +949,7 @@ class objVectorGradient : public Object {
    DOUBLE  FocalY;        // The vertical focal point for radial gradients.
    DOUBLE  Radius;        // The radius of the gradient.
    DOUBLE  FocalRadius;   // The size of the focal radius for radial gradients.
+   DOUBLE  Resolution;    // Affects the rate of change for colours in the gradient.
    VSPREAD SpreadMethod;  // The behaviour to use when the gradient bounds do not match the vector path.
    VUNIT   Units;         // Defines the coordinate system for X1, Y1, X2 and Y2.
    VGT     Type;          // Specifies the type of gradient (e.g. RADIAL, LINEAR)
@@ -991,28 +992,28 @@ class objVectorGradient : public Object {
 
    inline ERR setCenterX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[23];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setCenterY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[24];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setFocalX(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[29];
+      auto field = &this->Class->Dictionary[30];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setFocalY(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[30];
+      auto field = &this->Class->Dictionary[31];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
@@ -1026,9 +1027,15 @@ class objVectorGradient : public Object {
 
    inline ERR setFocalRadius(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[27];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
+   }
+
+   inline ERR setResolution(const DOUBLE Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
@@ -1060,13 +1067,13 @@ class objVectorGradient : public Object {
 
    inline ERR setColour(const FLOAT * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
    }
 
    template <class T> inline ERR setColourMap(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[27];
+      auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
    }
 
@@ -1078,7 +1085,7 @@ class objVectorGradient : public Object {
 
    inline ERR setNumeric(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -3997,6 +4004,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_GAMMA 0x0f7deae8
 #define SVF_DISCRETE 0x6b8e5778
 #define SVF_DIFFUSECONSTANT 0x4f5eb9d5
+#define SVF_RESOLUTION 0x7e01ce59
 #define SVF_SURFACESCALE 0xbd475ab6
 #define SVF_SWITCH 0x1cc53777
 #define SVF_XCHANNELSELECTOR 0x57175337

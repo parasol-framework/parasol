@@ -527,9 +527,20 @@ class extVectorRectangle : public extVector {
 
 class GradientColours {
    public:
-      GradientColours(const std::vector<GradientStop> &, VCS, double);
-      GradientColours(const std::array<FRGB, 256> &);
+      GradientColours(const std::vector<GradientStop> &, VCS, double, double);
+      GradientColours(const std::array<FRGB, 256> &, double);
       GRADIENT_TABLE table;
+      double resolution;
+
+      void apply_resolution(double Resolution) {
+         resolution = Resolution;
+         auto current = table[0];
+         LONG in = F2T(resolution * 255.0);
+         for (LONG i = 0; i < 256; i++, in--) {
+            if ((!in) and (i != 255)) { current = table[i]; in = F2T(resolution * 255.0); }
+            table[i] = current;
+         }
+      }
 };
 
 //********************************************************************************************************************
