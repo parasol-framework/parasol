@@ -1,0 +1,148 @@
+--[[
+Documentation is available in the Parasol Wiki.
+--]]
+
+   require 'common'
+   require 'gui'
+
+local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+local BOX_HEIGHT    = math.floor(FONT_MAX_HEIGHT * 1.35) + 1
+local MARGIN        = math.floor(FONT_HEIGHT * 0.5) + 1
+
+   local lStyle
+   if (mSys.AnalysePath('style:slider.fluid') == ERR_Okay) then
+      lStyle = loadFile('style:slider.fluid')
+   else
+      lStyle = loadFile('styles:default/slider.fluid')
+   end
+
+gui.slider = function(Options)
+   local self = { -- Public variables
+      min    = nz(Options.min, 0),
+      max    = nz(Options.max, 1),
+      value  = nz(Options.value, Options.min + ((Options.max - Options.min) * 0.5)),
+      label  = Options.label,
+      events = nz(Options.events, { }),
+   }
+   local lTarget   = Options.target
+
+   local function createSlider(Direction)
+      local bar
+
+      if (Direction == 'V') then
+         local vp = lTarget.new('VectorViewport', { x = Options.x, y = Options.y, height = nz(Options.height, 100), width = BOX_HEIGHT, overflow = VOF_HIDDEN })
+
+         bar = vp.state()
+         bar.viewport  = vp
+         bar.direction = Direction
+
+         bar.sliderHostVP = vp.new('VectorViewport', { y = 0, width = '100%', yOffset = 0, overflow = VOF_HIDDEN })
+         lStyle.background(self, bar, bar.sliderHostVP)
+
+         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = BOX_HEIGHT, height = bar.sliderHostVP.height, overflow = VOF_HIDDEN })
+
+         bar.sliderVP.dragCallback = function(Viewport, X, Y)
+            local slider_height = Viewport.height
+            local host_height   = self.bar.sliderHostVP.height
+            if (Y < 0) then Y = 0 end
+            if (Y + slider_height > host_height) then Y = host_height - slider_height end
+            if (Viewport.y == Y) then return end
+
+            if (Y != self.bar.slider.offset) or (slider_height != self.bar.slider.size) then
+               local pos = Y / (host_height - slider_height)
+               self.value = self.min + (self.max - self.min) * pos
+               lTarget.acDraw()
+            end
+         end
+
+         bar.sliderVP.y = (self.value - self.min) / ((self.max - self.min) / (bar.sliderHostVP.height - BOX_HEIGHT))
+      else
+         local vp = lTarget.new('VectorViewport', { x = Options.x, y = Options.y, width = nz(Options.width, 100), height = BOX_HEIGHT })
+
+         bar = vp.state()
+         bar.viewport  = vp
+         bar.direction = Direction
+
+         if self.label then
+            self.labelText = vp.new('VectorText', {
+               name     = 'Label',
+               x        = 0,
+               y        = FONT_HEIGHT + math.floor((BOX_HEIGHT - FONT_HEIGHT) * 0.5),
+               face     = gui.fonts.widget.face,
+               fontSize = string.format('%.2fpt', gui.fonts.widget.size),
+               fill     = gui.style.window.text,
+               string   = self.label,
+               lineLimit = 1
+            })
+
+            self.labelSize = self.labelText.textWidth + MARGIN
+            vp.width = vp.width + self.labelSize
+         else
+            self.labelSize = 0
+         end
+
+         bar.sliderHostVP = vp.new('VectorViewport', { x = self.labelSize, height = '100%', xOffset = 0, overflow = VOF_HIDDEN })
+         lStyle.background(self, bar, bar.sliderHostVP)
+
+         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = bar.sliderHostVP.height, height = BOX_HEIGHT, overflow = VOF_HIDDEN })
+
+         bar.sliderVP.dragCallback = function(Viewport, X, Y)
+            local slider_width = Viewport.width
+            local host_width   = self.bar.sliderHostVP.width
+            if (X < 0) then X = 0 end
+            if (X + slider_width > host_width) then X = host_width - slider_width end
+            if (Viewport.x == X) then return end
+
+            if (X != self.bar.slider.offset) then
+               local pos = X / (host_width - slider_width)
+               self.value = self.min + (self.max - self.min) * pos
+               bar.sliderVP.x = X
+               self.bar.slider.offset = X
+               lTarget.acDraw()
+               if self.events.activate then self.events.activate(self, self.value) end
+            end
+         end
+
+         bar.sliderVP.x = (self.value - self.min) / ((self.max - self.min) / (bar.sliderHostVP.width - BOX_HEIGHT))
+      end
+
+      lStyle.slider(self, bar, bar.sliderVP)
+
+      bar.sliderHostVP.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_REPEATED),
+         function(Viewport, Msg)
+            repeat
+               if (Msg.type == JET_LMB) and (Msg.value > 0) then
+                  if (bar.direction == 'V') then
+                     self.value = self.min + ((Msg.y - bar.sliderVP.y) * (self.max - self.min))
+                  else
+                     self.value = self.min + ((Msg.x - bar.sliderVP.x) * (self.max - self.min))
+                  end
+               end
+               Msg = Msg.next
+            until Msg == nil
+         end)
+
+      return bar
+   end
+
+   self.setRange = function(Min, Max)
+      if (Max <= Min) then error('The min/max values are invalid.') end
+      self.min = Min
+      self.max = Max
+   end
+
+   -- Main entry point
+
+   if (not lTarget) then error('A target viewport is required.') end
+   if (self.max <= self.min) then error('The min/max values are invalid.') end
+
+   if (Options.direction == 'vertical') then
+      self.bar = createSlider('V')
+   else
+      self.bar = createSlider('H')
+   end
+
+   if self.events.show then self.events.show(self) end
+
+   return self
+end
