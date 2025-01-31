@@ -31,31 +31,33 @@ gui.slider = function(Options)
       if self.events.activate then self.events.activate(self, Value) end
    end
 
-   local function createSlider(Direction)
+   local function createSlider(Orientation)
       local bar
 
-      if (Direction == 'V') then
+      if (Orientation == 'V') then
          local vp = lTarget.new('VectorViewport', { x = Options.x, y = Options.y, height = nz(Options.size, 100), width = BOX_HEIGHT, overflow = VOF_HIDDEN })
 
          bar = vp.state()
          bar.viewport  = vp
-         bar.direction = Direction
+         bar.orientation = Orientation
 
          bar.sliderHostVP = vp.new('VectorViewport', { y = 0, width = '100%', yOffset = 0, overflow = VOF_HIDDEN })
          lStyle.background(self, bar, bar.sliderHostVP)
 
-         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = BOX_HEIGHT, height = bar.sliderHostVP.height, overflow = VOF_HIDDEN })
+         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = BOX_HEIGHT, height = BOX_HEIGHT, overflow = VOF_HIDDEN })
 
          bar.sliderVP.dragCallback = function(Viewport, X, Y)
-            local slider_height = Viewport.height
-            local host_height   = self.bar.sliderHostVP.height
+            local slider_size = Viewport.height
+            local host_height = self.bar.sliderHostVP.height
             if (Y < 0) then Y = 0 end
-            if (Y + slider_height > host_height) then Y = host_height - slider_height end
+            if (Y + slider_size > host_height) then Y = host_height - slider_size end
             if (Viewport.y == Y) then return end
 
-            if (Y != self.bar.slider.offset) or (slider_height != self.bar.slider.size) then
-               local pos = Y / (host_height - slider_height)
-               self.value = self.min + (self.max - self.min) * pos
+            if (Y != self.bar.slider.offset) or (slider_size != self.bar.slider.size) then
+               local pos = Y / (host_height - slider_size)
+               bar.sliderVP.y = Y
+               self.bar.slider.offset = Y
+               setValue(self.min + (self.max - self.min) * pos)
                lTarget.acDraw()
             end
          end
@@ -66,7 +68,7 @@ gui.slider = function(Options)
 
          bar = vp.state()
          bar.viewport  = vp
-         bar.direction = Direction
+         bar.orientation = Orientation
 
          if self.label then
             self.labelText = vp.new('VectorText', {
@@ -89,17 +91,17 @@ gui.slider = function(Options)
          bar.sliderHostVP = vp.new('VectorViewport', { x = self.labelSize, height = '100%', xOffset = 0, overflow = VOF_HIDDEN })
          lStyle.background(self, bar, bar.sliderHostVP)
 
-         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = bar.sliderHostVP.height, height = BOX_HEIGHT, overflow = VOF_HIDDEN })
+         bar.sliderVP = bar.sliderHostVP.new('VectorViewport', { width = BOX_HEIGHT, height = BOX_HEIGHT, overflow = VOF_HIDDEN })
 
          bar.sliderVP.dragCallback = function(Viewport, X, Y)
-            local slider_width = Viewport.width
-            local host_width   = self.bar.sliderHostVP.width
+            local slider_size = Viewport.width
+            local host_width  = self.bar.sliderHostVP.width
             if (X < 0) then X = 0 end
-            if (X + slider_width > host_width) then X = host_width - slider_width end
+            if (X + slider_size > host_width) then X = host_width - slider_size end
             if (Viewport.x == X) then return end
 
             if (X != self.bar.slider.offset) then
-               local pos = X / (host_width - slider_width)
+               local pos = X / (host_width - slider_size)
                bar.sliderVP.x = X
                self.bar.slider.offset = X
                setValue(self.min + (self.max - self.min) * pos)
@@ -116,7 +118,7 @@ gui.slider = function(Options)
          function(Viewport, Msg)
             repeat
                if (Msg.type == JET_LMB) and (Msg.value > 0) then
-                  if (bar.direction == 'V') then
+                  if (bar.orientation == 'V') then
                      setValue(self.min + ((Msg.y - bar.sliderVP.y) * (self.max - self.min)))
                   else
                      setValue(self.min + ((Msg.x - bar.sliderVP.x) * (self.max - self.min)))
@@ -142,7 +144,7 @@ gui.slider = function(Options)
    if (not lTarget) then error('A target viewport is required.') end
    if (self.max <= self.min) then error('The min/max values are invalid.') end
 
-   if (Options.direction == 'vertical') then
+   if (Options.orientation == 'vertical') then
       self.bar = createSlider('V')
    else
       self.bar = createSlider('H')
