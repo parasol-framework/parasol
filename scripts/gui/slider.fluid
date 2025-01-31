@@ -24,13 +24,18 @@ gui.slider = function(Options)
       label  = Options.label,
       events = nz(Options.events, { }),
    }
-   local lTarget   = Options.target
+   local lTarget = Options.target
+
+   local function setValue(Value)
+      self.value = Value
+      if self.events.activate then self.events.activate(self, Value) end
+   end
 
    local function createSlider(Direction)
       local bar
 
       if (Direction == 'V') then
-         local vp = lTarget.new('VectorViewport', { x = Options.x, y = Options.y, height = nz(Options.height, 100), width = BOX_HEIGHT, overflow = VOF_HIDDEN })
+         local vp = lTarget.new('VectorViewport', { x = Options.x, y = Options.y, height = nz(Options.size, 100), width = BOX_HEIGHT, overflow = VOF_HIDDEN })
 
          bar = vp.state()
          bar.viewport  = vp
@@ -57,7 +62,7 @@ gui.slider = function(Options)
 
          bar.sliderVP.y = (self.value - self.min) / ((self.max - self.min) / (bar.sliderHostVP.height - BOX_HEIGHT))
       else
-         local vp = lTarget.new('VectorViewport', { x = Options.x, y = Options.y, width = nz(Options.width, 100), height = BOX_HEIGHT })
+         local vp = lTarget.new('VectorViewport', { x = Options.x, y = Options.y, width = nz(Options.size, 100), height = BOX_HEIGHT })
 
          bar = vp.state()
          bar.viewport  = vp
@@ -95,11 +100,10 @@ gui.slider = function(Options)
 
             if (X != self.bar.slider.offset) then
                local pos = X / (host_width - slider_width)
-               self.value = self.min + (self.max - self.min) * pos
                bar.sliderVP.x = X
                self.bar.slider.offset = X
+               setValue(self.min + (self.max - self.min) * pos)
                lTarget.acDraw()
-               if self.events.activate then self.events.activate(self, self.value) end
             end
          end
 
@@ -113,9 +117,9 @@ gui.slider = function(Options)
             repeat
                if (Msg.type == JET_LMB) and (Msg.value > 0) then
                   if (bar.direction == 'V') then
-                     self.value = self.min + ((Msg.y - bar.sliderVP.y) * (self.max - self.min))
+                     setValue(self.min + ((Msg.y - bar.sliderVP.y) * (self.max - self.min)))
                   else
-                     self.value = self.min + ((Msg.x - bar.sliderVP.x) * (self.max - self.min))
+                     setValue(self.min + ((Msg.x - bar.sliderVP.x) * (self.max - self.min)))
                   end
                end
                Msg = Msg.next
@@ -129,6 +133,8 @@ gui.slider = function(Options)
       if (Max <= Min) then error('The min/max values are invalid.') end
       self.min = Min
       self.max = Max
+      if (self.value < self.min) then setValue(self.min) end
+      if (self.value > self.max) then setValue(self.max) end
    end
 
    -- Main entry point
