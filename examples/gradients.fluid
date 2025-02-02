@@ -4,6 +4,7 @@ Gradient Demonstration
 
    require 'gui/window'
    require 'gui/combobox'
+   require 'gui/slider'
 
    local win, viewport, gradient, gradientVP, rect
    local focalEllipse, contourShape, uiEvent
@@ -117,7 +118,6 @@ function buildScene()
          { item='Diamond' },
          { item='Linear' },
          { item='Contour' },
-         { item='Contour Low-Res' },
          { item='Contour Shape' }
       },
       events = {
@@ -162,6 +162,22 @@ function buildScene()
       events = {
          activate = function(Widget, Text)
             gradient.colourMap = 'cmap:' .. Text:lower()
+            gradientVP.scene.surface.mtScheduleRedraw()
+         end
+      }
+   })
+
+   local slResolution = gui.slider({
+      target = viewport,
+      label  = 'Resolution:',
+      value  = 1,
+      min    = 0.5,
+      max    = 1,
+      x      = cmbColours.viewport.x + cmbColours.viewport.width + 10,
+      y      = 10,
+      events = {
+         activate = function(Widget, Value)
+            gradient.resolution = 1 - Value
             gradientVP.scene.surface.mtScheduleRedraw()
          end
       }

@@ -19,6 +19,8 @@ definition.  This will ensure that the VectorGradient is de-allocated when the s
 
 *********************************************************************************************************************/
 
+static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, LONG Elements);
+
 // Return a gradient table for a vector with its opacity multiplier applied.  The table is cached with the vector so
 // that it does not need to be recalculated when required again.
 
@@ -579,7 +581,7 @@ static ERR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Unit &Value)
 -FIELD-
 Resolution: Affects the rate of change for colours in the gradient.
 
-By default, the colours generated for a gradient will be spaced for a smooth transition between stops to maximise
+By default, the colours generated for a gradient will be spaced for a smooth transition between stops that maximise
 resolution.  The resolution can be reduced by setting the Resolution value to a fraction between 0 and 1.0.
 This results in the colour values being sampled at every nth step only, where n is the value `1 / Resolution`.
 
@@ -594,7 +596,16 @@ static ERR VECTORGRADIENT_SET_Resolution(extVectorGradient *Self, double Value)
    Self->Resolution = Value;
 
    if ((Self->Colours) and (Self->Colours->resolution != Value)) {
-      Self->Colours->apply_resolution(Value);
+      if (Self->initialised()) {
+         if (!Self->Stops.empty()) {
+            auto copy = Self->Stops;
+            VECTORGRADIENT_SET_Stops(Self, copy.data(), copy.size());
+         }
+         else if (!Self->ColourMap.empty()) {
+            VECTORGRADIENT_SET_ColourMap(Self, Self->ColourMap.c_str());
+         }
+      }
+      else Self->Colours->apply_resolution(Value);
    }
 
    return ERR::Okay;

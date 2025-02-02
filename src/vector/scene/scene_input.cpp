@@ -194,7 +194,8 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
 
       // Focus management - clicking with the LMB can result in a change of focus.
 
-      if (((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (input->Type IS JET::LMB) and (input->Value)) {
+      if (((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (not ((input->Flags & JTYPE::REPEATED) != JTYPE::NIL)) and
+          (input->Type IS JET::LMB) and (input->Value)) {
          apply_focus(Self, (extVector *)get_viewport_at_xy(Self, input->X, input->Y));
       }
 
