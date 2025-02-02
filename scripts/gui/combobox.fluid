@@ -33,10 +33,10 @@ end
 local function toggleMenu(self)
    local err, bx, by, bw, bh = self.viewport.mtGetBoundary(0)
 
-   self.menu.x = bx + self.labelWidth
+   self.menu.x = bx + self.labelSize
    self.menu.y = by + BOX_HEIGHT
    if not self.unlockMenuWidth then
-      self.menu.surface.width = self.viewport.width - self.labelWidth
+      self.menu.surface.width = self.viewport.width - self.labelSize
    end
 
    self.menu.toggle()
@@ -101,7 +101,7 @@ gui.combobox = function(Options)
       width = self.viewport.width,
       yOffset = 0,
       resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
-         local new_width = Width - self.labelWidth
+         local new_width = Width - self.labelSize
          if (Vector.width != new_width) then
             Vector.width = new_width
          end
@@ -124,11 +124,11 @@ gui.combobox = function(Options)
          lineLimit = 1
       })
 
-      self.labelWidth = self.labelText.textWidth + MARGIN
-      self.inputViewport.x = self.labelText.x + self.labelWidth
-      self.inputViewport.width = self.viewport.width - self.labelWidth
+      self.labelSize = self.labelText.textWidth + MARGIN
+      self.inputViewport.x = self.labelText.x + self.labelSize
+      self.inputViewport.width = self.viewport.width - self.labelSize
    else
-      self.labelWidth = 0
+      self.labelSize = 0
    end
 
    self.bkgd = self.inputViewport.new('VectorRectangle', {
@@ -240,7 +240,7 @@ gui.combobox = function(Options)
    })
 
    if self.unlockMenuWidth then -- Set combobox size to the width of the menu
-      self.viewport.width = self.menu.surface.width + self.labelWidth
+      self.viewport.width = self.menu.surface.width + self.labelSize
    end
 
    if self.events.show then self.events.show(self) end
