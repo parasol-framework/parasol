@@ -534,11 +534,25 @@ class GradientColours {
 
       void apply_resolution(double Resolution) {
          resolution = Resolution;
-         auto current = table[0];
-         LONG in = F2T(resolution * 255.0);
-         for (LONG i = 0; i < 256; i++, in--) {
-            if ((!in) and (i != 255)) { current = table[i]; in = F2T(resolution * 255.0); }
-            table[i] = current;
+
+         // For a given block of colours, compute the average colour and apply it to the entire block.
+
+         LONG block_size = F2T(resolution * table.size());
+         for (LONG i = 0; i < table.size(); i += block_size) {
+
+            LONG red = 0, green = 0, blue = 0, alpha = 0, total = 0;
+            for (LONG b=i; (b < i + block_size) and (b < table.size()); b++, total++) {
+               red   += table[b].r * table[b].r;
+               green += table[b].g * table[b].g;
+               blue  += table[b].b * table[b].b;
+               alpha += table[b].a * table[b].a;
+            }
+
+            auto col = agg::rgba8{ 
+               UBYTE(sqrt(red/total)), UBYTE(sqrt(green/total)), UBYTE(sqrt(blue/total)), UBYTE(sqrt(alpha/total)) 
+            };
+
+            for (LONG b = i; (b < i + block_size) and (b < table.size()); b++) table[b] = col;
          }
       }
 };

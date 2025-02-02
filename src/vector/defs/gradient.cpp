@@ -142,19 +142,10 @@ GradientColours::GradientColours(const std::array<FRGB, 256> &Map, double Resolu
 {
    resolution = Resolution;
 
-   if (resolution > 0) {  // Select every nth colour from the map.
-      auto current = agg::rgba8(Map[0]);
-      LONG in = F2T(resolution * 255.0);
-      for (LONG i = 0; i < std::ssize(Map); i++, in--) {
-         if ((!in) and (i != std::ssize(Map)-1)) { current = agg::rgba8(Map[i]); in = F2T(resolution * 255.0); }
-         table[i] = current;
-      }
+   for (LONG i=0; i < std::ssize(Map); i++) {
+      table[i] = agg::rgba8(Map[i]);
    }
-   else {
-      for (LONG i=0; i < std::ssize(Map); i++) {
-         table[i] = agg::rgba8(Map[i]);
-      }
-   }
+   if (Resolution > 0) apply_resolution(Resolution);
 }
 
 //********************************************************************************************************************
