@@ -135,7 +135,7 @@ GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS Col
       }
    }
 
-   if (Resolution > 0) apply_resolution(Resolution);
+   if (Resolution < 1) apply_resolution(Resolution);
 }
 
 GradientColours::GradientColours(const std::array<FRGB, 256> &Map, double Resolution)
@@ -145,7 +145,8 @@ GradientColours::GradientColours(const std::array<FRGB, 256> &Map, double Resolu
    for (LONG i=0; i < std::ssize(Map); i++) {
       table[i] = agg::rgba8(Map[i]);
    }
-   if (Resolution > 0) apply_resolution(Resolution);
+
+   if (Resolution < 1) apply_resolution(Resolution);
 }
 
 //********************************************************************************************************************
@@ -207,7 +208,7 @@ static ERR VECTORGRADIENT_NewObject(extVectorGradient *Self)
    Self->X1      = 0;
    Self->X2      = 1.0; // Set for contoured gradients.
    Self->Flags  |= VGF::SCALED_CX|VGF::SCALED_CY|VGF::SCALED_RADIUS;
-   Self->Resolution = 0;
+   Self->Resolution = 1;
    return ERR::Okay;
 }
 
@@ -574,9 +575,11 @@ Resolution: Affects the rate of change for colours in the gradient.
 
 By default, the colours generated for a gradient will be spaced for a smooth transition between stops that maximise
 resolution.  The resolution can be reduced by setting the Resolution value to a fraction between 0 and 1.0.
-This results in the colour values being sampled at every nth step only, where n is the value `1 / Resolution`.
 
-Resolution is at its maximum when this value is set to zero (the default).
+This results in the colour values being averaged to a single value for every block of n colours, where n is the value 
+`1 / (1 - Resolution)`.
+
+Resolution is at its maximum when this value is set to 1 (the default).
 
 *********************************************************************************************************************/
 
