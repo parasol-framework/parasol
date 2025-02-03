@@ -67,7 +67,7 @@ namespace agg
    static constexpr int square(int x) { return x * x; }
 
    // Distance transform algorithm by: Pedro Felzenszwalb
-   void dt(std::vector<double> &spanf, std::vector<double> &spang, std::vector<double> &spanr, std::vector<int> &spann, int length)
+   static void dt(std::vector<double> &spanf, std::vector<double> &spang, std::vector<double> &spanr, std::vector<int> &spann, int length)
    {
       spann[0] = 0;
       spang[0] = -infinity;

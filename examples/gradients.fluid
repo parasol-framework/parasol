@@ -177,7 +177,7 @@ function buildScene()
       y      = 10,
       events = {
          activate = function(Widget, Value)
-            gradient.resolution = 1 - Value
+            gradient.resolution = Value
             gradientVP.scene.surface.mtScheduleRedraw()
          end
       }

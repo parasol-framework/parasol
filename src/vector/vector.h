@@ -533,7 +533,7 @@ class GradientColours {
       double resolution;
 
       void apply_resolution(double Resolution) {
-         resolution = Resolution;
+         resolution = 1.0 - Resolution;
 
          // For a given block of colours, compute the average colour and apply it to the entire block.
 

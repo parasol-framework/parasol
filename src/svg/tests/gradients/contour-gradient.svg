@@ -10,7 +10,7 @@
       <stop offset="100%" stop-color="#442222" />
     </contourGradient>
 
-    <contourGradient id="contour1" href="url(#cmap:magma)" spreadMethod="reflect" x1="0" x2="1.0" resolution="0.1"/>
+    <contourGradient id="contour1" href="url(#cmap:magma)" spreadMethod="reflect" x1="0" x2="1.0" resolution="0.9"/>
 
     <contourGradient id="contour2" href="url(#cmap:viridis)" spreadMethod="reflect" x1="0" x2="1.6"/>
   </defs>
