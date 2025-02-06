@@ -624,6 +624,8 @@ extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
 extern void set_raster_clip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, VSM);
 
+extern void render_scene_from_viewport(extVectorScene *, objBitmap *, objVectorViewport *);
+
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glVectorFocusLock;
 extern std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus

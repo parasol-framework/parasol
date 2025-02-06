@@ -99,14 +99,11 @@ static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds,
 }
 
 //********************************************************************************************************************
-// Gradient fills
-// The Raster must contain the shape's path.
-// TODO: Support gradient_xy (rounded corner), gradient_sqrt_xy
+// Gradient fills.  // The Raster must contain the shape's path.
 
 static void fill_gradient(VectorState &State, const TClipRectangle<double> &Bounds, agg::path_storage *Path,
    const agg::trans_affine &Transform, double ViewWidth, double ViewHeight, extVectorGradient &Gradient,
-   GRADIENT_TABLE *Table, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
-   agg::rasterizer_scanline_aa<> &Raster)
+   GRADIENT_TABLE *Table, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster)
 {
    constexpr LONG MAX_SPAN = 256;
    typedef agg::span_interpolator_linear<> interpolator_type;
