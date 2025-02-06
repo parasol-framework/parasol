@@ -1020,10 +1020,6 @@ the surface area first).</li>
       <const name="SECONDARY">Indicates to the receiver of this message that it is not the primary/original recipient</const>
     </constants>
 
-    <constants lookup="LVF" comment="drwLockBitmap() result flags">
-      <const name="EXPOSE_CHANGES"/>
-    </constants>
-
     <constants lookup="PTC" comment="Predefined cursor styles">
       <const name="CROSSHAIR">The cross hair is used for targeting specific pixel points (common in paint programs).</const>
       <const name="CUSTOM">Works in conjunction with the SetCustomCursor() function to represent a program defined bitmap.</const>

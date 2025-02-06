@@ -619,7 +619,6 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "GetSurfaceInfo",
     "GetUserFocus",
     "GetVisibleArea",
-    "LockBitmap",
     "LockCursor",
     "ReadPixel",
     "ReadRGBPixel",
@@ -636,7 +635,6 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "StartCursorDrag",
     "SubscribeInput",
     "Sync",
-    "UnlockBitmap",
     "UnlockCursor",
     "UnsubscribeInput",
     "WindowHook")

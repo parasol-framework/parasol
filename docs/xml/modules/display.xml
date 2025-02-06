@@ -470,26 +470,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   </function>
 
   <function>
-    <name>LockBitmap</name>
-    <category>Surfaces</category>
-    <comment>Returns a bitmap that represents the video area covered by the surface object.</comment>
-    <prototype>ERR gfx::LockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info)</prototype>
-    <input>
-      <param type="OBJECTID" name="Surface">Object ID of the surface object that you want to lock.</param>
-      <param type="objBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
-      <param type="LVF *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If <code>EXPOSE_CHANGES</code> is returned, any changes must be exposed in order for them to be displayed to the user.</param>
-    </input>
-    <description>
-<p>Use the LockBitmap() function to gain direct access to the bitmap information of a surface object. Because the layering buffer will be inaccessible to the UI whilst you retain the lock, you must keep your access time to an absolute minimum or desktop performance may suffer.</p>
-<p>Repeated calls to this function will nest.  To release a surface bitmap, call the <function>UnlockBitmap</function> function.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-    </result>
-  </function>
-
-  <function>
     <name>LockCursor</name>
     <category>Cursor</category>
     <comment>Anchors the cursor so that it cannot move without explicit movement signals.</comment>
@@ -818,24 +798,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <description>
 <p>The Sync() function will wait for all current video operations to complete before it returns.  This ensures that it is safe to write to video memory with the CPU, preventing any possibility of clashes with the onboard graphics chip.</p>
     </description>
-  </function>
-
-  <function>
-    <name>UnlockBitmap</name>
-    <category>Surfaces</category>
-    <comment>Unlocks any earlier call to gfx::LockBitmap().</comment>
-    <prototype>ERR gfx::UnlockBitmap(OBJECTID Surface, objBitmap * Bitmap)</prototype>
-    <input>
-      <param type="OBJECTID" name="Surface">The ID of the surface object that you are releasing.</param>
-      <param type="objBitmap *" name="Bitmap">Pointer to the bitmap structure returned earlier by LockBitmap().</param>
-    </input>
-    <description>
-<p>Call the UnlockBitmap() function to release a surface object from earlier calls to <function>LockBitmap</function>.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">The bitmap has been unlocked successfully.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
   </function>
 
   <function>
