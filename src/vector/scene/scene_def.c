@@ -42,6 +42,7 @@ static const struct MethodEntry clVectorSceneMethods[] = {
 
 static const struct ActionArray clVectorSceneActions[] = {
    { AC::Draw, VECTORSCENE_Draw },
+   { AC::Flush, VECTORSCENE_Flush },
    { AC::Free, VECTORSCENE_Free },
    { AC::Init, VECTORSCENE_Init },
    { AC::NewObject, VECTORSCENE_NewObject },

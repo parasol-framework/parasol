@@ -66,7 +66,7 @@ public:
    extVectorScene *Scene; // The top-level VectorScene performing the draw.
 
    SceneRenderer(extVectorScene *pScene) : Scene(pScene) { }
-   void draw(objBitmap *Bitmap);
+   void draw(objBitmap *, objVectorViewport *);
 };
 
 //********************************************************************************************************************
@@ -234,15 +234,15 @@ private:
 
 //********************************************************************************************************************
 
-class span_repeat_rkl
+class span_repeat_pf
 {
 private:
-   span_repeat_rkl();
+   span_repeat_pf();
 public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_repeat_rkl(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
+   span_repeat_pf(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
        m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
        m_offset_x(offset_x), m_offset_y(offset_y) {
       m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
@@ -399,8 +399,8 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REPEAT) {
-         agg::span_repeat_rkl source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_repeat_rkl, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_repeat_pf source(pixels, XOffset, YOffset);
+         agg::span_image_filter_rgba<agg::span_repeat_pf, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else { // VSPREAD::PAD and VSPREAD::CLIP modes.
@@ -426,7 +426,7 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REPEAT) {
-         agg::span_repeat_rkl source(pixels, XOffset, YOffset);
+         agg::span_repeat_pf source(pixels, XOffset, YOffset);
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else { // VSPREAD::PAD and VSPREAD::CLIP modes.
@@ -580,7 +580,7 @@ static void stroke_brush(VectorState &State, const objVectorImage &Image, agg::r
 
 //********************************************************************************************************************
 
-void SceneRenderer::draw(objBitmap *Bitmap)
+void SceneRenderer::draw(objBitmap *Bitmap, objVectorViewport *Viewport)
 {
    pf::Log log;
 
@@ -592,7 +592,7 @@ void SceneRenderer::draw(objBitmap *Bitmap)
       return;
    }
 
-   if (Scene->Viewport) {
+   if (Viewport) {
       mBitmap = Bitmap;
       mFormat.setBitmap(*Bitmap);
       mRenderBase.attach(mFormat);
@@ -603,7 +603,7 @@ void SceneRenderer::draw(objBitmap *Bitmap)
       Scene->InputBoundaries.clear();
 
       VectorState state;
-      draw_vectors((extVector *)Scene->Viewport, state);
+      draw_vectors((extVector *)Viewport, state);
    }
 }
 
@@ -684,7 +684,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       pf::Log log(__FUNCTION__);
       VectorState state = VectorState(ParentState);
 
-      if (shape->Class->BaseClassID != CLASSID::VECTOR) {
+      if (shape->baseClassID() != CLASSID::VECTOR) {
          log.trace("Non-Vector discovered in the vector tree.");
          continue;
       }
@@ -1008,7 +1008,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          }
          FreeResource(bmpBkgd);
       }
-   }
+   } // for loop
 }
 
 //********************************************************************************************************************

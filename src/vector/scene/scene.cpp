@@ -67,6 +67,8 @@ void apply_focus(extVectorScene *, extVector *);
 static void scene_key_event(evKey *, LONG, extVectorScene *);
 static void process_resize_msgs(extVectorScene *);
 
+//********************************************************************************************************************
+
 static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    Self->Bitmap = Bitmap;
@@ -78,6 +80,25 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
    acDraw(Self);
 
    Self->Bitmap = NULL;
+}
+
+//********************************************************************************************************************
+
+void render_scene_from_viewport(extVectorScene *Self, objBitmap *Bitmap, objVectorViewport *Viewport)
+{
+   SceneRenderer renderer(Self);
+
+   if ((Self->Flags & VPF::RENDER_TIME) != VPF::NIL) { // Client wants to know how long the rendering takes to complete
+      auto time = PreciseTime();
+      renderer.draw(Bitmap, Viewport);
+      if ((Self->RenderTime = PreciseTime() - time) < 1) Self->RenderTime = 1;
+   }
+   else renderer.draw(Bitmap, Viewport);
+
+// For debugging purposes, draw a boundary around the target area.
+//   static RGB8 highlightA = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 255 };
+//   ULONG highlight = PackPixelRGBA(bmp, &highlightA);
+//   gfx::DrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, BAF::NIL);
 }
 
 //********************************************************************************************************************
@@ -273,57 +294,14 @@ FieldNotSet: The Bitmap field is NULL.
 
 static ERR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 {
-   pf::Log log;
-   objBitmap *bmp;
-
-   if (!(bmp = Self->Bitmap)) return log.warning(ERR::FieldNotSet);
-
-   // Any pending resize messages for viewports must be processed prior to drawing.
-
-   process_resize_msgs(Self);
-
-   // Send a dummy input event to the mouse cursor to ensure that the movement of underlying
-   // vectors generates the necessary crossing events.
-
-   if ((Self->SurfaceID) and (Self->RefreshCursor)) {
-      DOUBLE abs_x, abs_y;
-      LONG s_x, s_y;
-
-      Self->RefreshCursor = false;
-      gfx::GetSurfaceCoords(Self->SurfaceID, NULL, NULL, &s_x, &s_y, NULL, NULL);
-      gfx::GetCursorPos(&abs_x, &abs_y);
-
-      const InputEvent event = {
-         .Next        = NULL,
-         .Value       = 0,
-         .Timestamp   = 0,
-         .RecipientID = Self->SurfaceID,
-         .OverID      = Self->SurfaceID,
-         .AbsX        = abs_x,
-         .AbsY        = abs_y,
-         .X           = abs_x - s_x,
-         .Y           = abs_y - s_y,
-         .DeviceID    = 0,
-         .Type        = JET::ABS_XY,
-         .Flags       = JTYPE::MOVEMENT,
-         .Mask        = JTYPE::MOVEMENT
-      };
-      scene_input_events(&event, 0);
+   if (!Self->Bitmap) {
+      pf::Log log;
+      return log.warning(ERR::FieldNotSet);
    }
 
-   SceneRenderer renderer(Self);
+   acFlush(Self);
 
-   if ((Self->Flags & VPF::RENDER_TIME) != VPF::NIL) { // Client wants to know how long the rendering takes to complete
-      auto time = PreciseTime();
-      renderer.draw(bmp);
-      if ((Self->RenderTime = PreciseTime() - time) < 1) Self->RenderTime = 1;
-   }
-   else renderer.draw(bmp);
-
-// For debugging purposes, draw a boundary around the target area.
-//   static RGB8 highlightA = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 255 };
-//   ULONG highlight = PackPixelRGBA(bmp, &highlightA);
-//   gfx::DrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, BAF::NIL);
+   render_scene_from_viewport(Self, Self->Bitmap, Self->Viewport);
 
    return ERR::Okay;
 }
@@ -384,6 +362,54 @@ static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct sc::FindDef *Args)
 }
 
 //********************************************************************************************************************
+// Flush pending activity messages.  This should always be performed prior to drawing.
+
+static ERR VECTORSCENE_Flush(extVectorScene *Self)
+{
+   // Protect against recursion from client callbacks.
+
+   static bool recurse = false;
+   if (recurse) return ERR::Recursion;
+   recurse = true;
+
+   // Any pending resize messages for viewports must be processed prior to drawing.
+
+   process_resize_msgs(Self);
+
+   // Send a dummy input event to the mouse cursor to ensure that the movement of underlying
+   // vectors generates the necessary crossing events.
+
+   if ((Self->SurfaceID) and (Self->RefreshCursor)) {
+      DOUBLE abs_x, abs_y;
+      LONG s_x, s_y;
+
+      Self->RefreshCursor = false;
+      gfx::GetSurfaceCoords(Self->SurfaceID, NULL, NULL, &s_x, &s_y, NULL, NULL);
+      gfx::GetCursorPos(&abs_x, &abs_y);
+
+      const InputEvent event = {
+         .Next        = NULL,
+         .Value       = 0,
+         .Timestamp   = 0,
+         .RecipientID = Self->SurfaceID,
+         .OverID      = Self->SurfaceID,
+         .AbsX        = abs_x,
+         .AbsY        = abs_y,
+         .X           = abs_x - s_x,
+         .Y           = abs_y - s_y,
+         .DeviceID    = 0,
+         .Type        = JET::ABS_XY,
+         .Flags       = JTYPE::MOVEMENT,
+         .Mask        = JTYPE::MOVEMENT
+      };
+      scene_input_events(&event, 0);
+   }
+
+   recurse = false;
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
 
 static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 {
@@ -408,6 +434,8 @@ static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
 
 static ERR VECTORSCENE_Init(extVectorScene *Self)
 {
+   Self->Cursor = PTC::DEFAULT;
+
    // Setting the SurfaceID is optional and enables auto-rendering to the display.  The
    // alternative for the client is to set the Bitmap field and manage rendering manually.
    //
@@ -440,8 +468,6 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
          return ERR::Function;
       }
    }
-
-   Self->Cursor = PTC::DEFAULT;
 
    return ERR::Okay;
 }
