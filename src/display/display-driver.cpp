@@ -184,7 +184,6 @@ OBJECTPTR glModule = NULL;
 OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL, clController = NULL;
 OBJECTID glPointerID = 0;
 DISPLAYINFO glDisplayInfo;
-APTR glDither = NULL;
 bool glSixBitDisplay = false;
 TIMER glRefreshPointerTimer = 0;
 extBitmap *glComposite = NULL;
@@ -1167,7 +1166,6 @@ static ERR MODExpunge(void)
    clean_clipboard();
 
    glClips.clear();
-   if (glDither)              { FreeResource(glDither); glDither = NULL; }
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
    if (glComposite)           { FreeResource(glComposite); glComposite = NULL; }
    if (glCompress)            { FreeResource(glCompress); glCompress = NULL; }

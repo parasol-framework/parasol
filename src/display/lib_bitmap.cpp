@@ -12,52 +12,24 @@ Name: Bitmap
 using namespace display;
 #endif
 
-static size_t glDitherSize = 0;
-
 //********************************************************************************************************************
 // NOTE: Please ensure that the Width and Height are already clipped to meet the restrictions of BOTH the source and
 // destination bitmaps.
 
-#define DITHER_ERROR(c)                  /* Dither one colour component */ \
-   dif = (buf1[x].c>>3) - (brgb.c<<3);   /* An eighth of the error */ \
-   if (dif) {                            \
-      val3 = buf2[x+1].c + (dif<<1);     /* 1/4 down & right */ \
-      dif = dif + dif + dif;             \
-      val1 = buf1[x+1].c + dif;          /* 3/8 to the right */ \
-      val2 = buf2[x].c + dif;            /* 3/8 to the next row */ \
-      if (dif > 0) {                     /* Check for overflow */ \
-         buf1[x+1].c = std::min(16383, val1); \
-         buf2[x].c   = std::min(16383, val2); \
-         buf2[x+1].c = std::min(16383, val3); \
-      }                                  \
-      else if (dif < 0) {                \
-         buf1[x+1].c = std::max(0, val1);     \
-         buf2[x].c   = std::max(0, val2);     \
-         buf2[x+1].c = std::max(0, val3);     \
-      }                                  \
-   }
-
 static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
    LONG SrcX, LONG SrcY, LONG DestX, LONG DestY)
 {
-   pf::Log log(__FUNCTION__);
    RGB16 *buf1, *buf2, *buffer;
    RGB8 brgb;
    UBYTE *srcdata, *destdata, *data;
-   LONG dif, val1, val2, val3;
    LONG x, y;
-   ULONG colour;
    WORD index;
-   UBYTE rmask, gmask, bmask;
 
    if ((Width < 1) or (Height < 1)) return ERR::Okay;
 
-   // Punch the developer for making stupid mistakes
+   // Punch the developer for stupid mistakes
 
-   if ((Dest->BitsPerPixel >= 24) and (!Format)) {
-      log.warning("Dithering attempted to a %dbpp bitmap.", Dest->BitsPerPixel);
-      return ERR::Failed;
-   }
+   if ((Dest->BitsPerPixel >= 24) and (!Format)) return ERR::InvalidData;
 
    // Do a straight copy if the bitmap is too small for dithering
 
@@ -71,18 +43,29 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
       return ERR::Okay;
    }
 
-   // Allocate buffer for dithering
-
-   if (Width * sizeof(RGB16) * 2 > glDitherSize) {
-      if (glDither) { FreeResource(glDither); glDither = NULL; }
-
-      if (AllocMemory(Width * sizeof(RGB16) * 2, MEM::NO_CLEAR|MEM::UNTRACKED, &glDither) != ERR::Okay) {
-         return ERR::AllocMemory;
+   auto DITHER_ERROR = [&]<typename T>(UBYTE Src, T RGB16::*Comp, LONG x, LONG y) {
+      // Dither one colour component
+      if (LONG dif = (buf1[x].*Comp>>3) - (Src<<3)) { // An eighth of the error
+         LONG val3 = buf2[x+1].*Comp + (dif<<1);     // 1/4 down & right
+         dif = dif + dif + dif;
+         LONG val1 = buf1[x+1].*Comp + dif;          // 3/8 to the right
+         LONG val2 = buf2[x].*Comp + dif;            // 3/8 to the next row
+         if (dif > 0) {                              // Check for overflow
+            buf1[x+1].*Comp = std::min(16383, val1);
+            buf2[x].*Comp   = std::min(16383, val2);
+            buf2[x+1].*Comp = std::min(16383, val3);
+         }
+         else if (dif < 0) {
+            buf1[x+1].*Comp = std::max(0, val1);
+            buf2[x].*Comp   = std::max(0, val2);
+            buf2[x+1].*Comp = std::max(0, val3);
+         }
       }
-      glDitherSize = Width * sizeof(RGB16) * 2;
-   }
+   };
+   
+   std::vector<RGB16> calc_buffer(Width * sizeof(RGB16) * 2);
 
-   buf1 = (RGB16 *)glDither;
+   buf1 = calc_buffer.data();
    buf2 = buf1 + Width;
 
    // Prime buf2, which will be copied to buf1 at the start of the loop.  We work with six binary "decimal places" to reduce roundoff errors.
@@ -99,16 +82,12 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
 
    srcdata = Bitmap->Data + ((SrcY+1) * Bitmap->LineWidth);
    destdata = Dest->Data + (DestY * Dest->LineWidth);
-   rmask = Format->RedMask   << Format->RedShift;
-   gmask = Format->GreenMask << Format->GreenShift;
-   bmask = Format->BlueMask  << Format->BlueShift;
+   UBYTE rmask = Format->RedMask   << Format->RedShift;
+   UBYTE gmask = Format->GreenMask << Format->GreenShift;
+   UBYTE bmask = Format->BlueMask  << Format->BlueShift;
 
    for (y=0; y < Height - 1; y++) {
-      // Move line 2 to line 1, line 2 then is empty for reading the next row
-
-      buffer = buf2;
-      buf2 = buf1;
-      buf1 = buffer;
+      std::swap(buf1, buf2); // Move line 2 to line 1, line 2 then is empty for reading the next row
 
       // Read the next source line
 
@@ -116,7 +95,7 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
          buffer = buf2;
          data = srcdata+(SrcX<<2);
          for (x=0; x < Width; x++, data+=4, buffer++) {
-            colour = ((ULONG *)data)[0];
+            auto colour = ((ULONG *)data)[0];
             buffer->Red   = ((UBYTE)(colour >> Bitmap->prvColourFormat.RedPos))<<6;
             buffer->Green = ((UBYTE)(colour >> Bitmap->prvColourFormat.GreenPos))<<6;
             buffer->Blue  = ((UBYTE)(colour >> Bitmap->prvColourFormat.BluePos))<<6;
@@ -127,7 +106,7 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
          buffer = buf2;
          data = srcdata+(SrcX<<1);
          for (x=0; x < Width; x++, data+=2, buffer++) {
-            colour = ((UWORD *)data)[0];
+            auto colour = ((UWORD *)data)[0];
             buffer->Red   = Bitmap->unpackRed(colour)<<6;
             buffer->Green = Bitmap->unpackGreen(colour)<<6;
             buffer->Blue  = Bitmap->unpackBlue(colour)<<6;
@@ -156,9 +135,9 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
             ((UWORD *)data)[0] = ((brgb.Red>>Dest->prvColourFormat.RedShift) << Dest->prvColourFormat.RedPos) |
                                  ((brgb.Green>>Dest->prvColourFormat.GreenShift) << Dest->prvColourFormat.GreenPos) |
                                  ((brgb.Blue>>Dest->prvColourFormat.BlueShift) << Dest->prvColourFormat.BluePos);
-            DITHER_ERROR(Red);
-            DITHER_ERROR(Green);
-            DITHER_ERROR(Blue);
+            DITHER_ERROR(brgb.Red, &RGB16::Red, x, y);
+            DITHER_ERROR(brgb.Green, &RGB16::Green, x, y);
+            DITHER_ERROR(brgb.Blue, &RGB16::Blue, x, y);
          }
       }
       else if (Dest->BytesPerPixel IS 4) {
@@ -167,9 +146,9 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
             brgb.Green = (buffer->Green>>6) & gmask;
             brgb.Blue  = (buffer->Blue>>6) & bmask;
             ((ULONG *)data)[0] = Dest->packPixelWB(brgb.Red, brgb.Green, brgb.Blue, buffer->Alpha);
-            DITHER_ERROR(Red);
-            DITHER_ERROR(Green);
-            DITHER_ERROR(Blue);
+            DITHER_ERROR(brgb.Red, &RGB16::Red, x, y);
+            DITHER_ERROR(brgb.Green, &RGB16::Green, x, y);
+            DITHER_ERROR(brgb.Blue, &RGB16::Blue, x, y);
          }
       }
       else {
@@ -178,9 +157,9 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
             brgb.Green = (buffer->Green>>6) & gmask;
             brgb.Blue  = (buffer->Blue>>6) & bmask;
             Dest->DrawUCRIndex(Dest, data, &brgb);
-            DITHER_ERROR(Red);
-            DITHER_ERROR(Green);
-            DITHER_ERROR(Blue);
+            DITHER_ERROR(brgb.Red, &RGB16::Red, x, y);
+            DITHER_ERROR(brgb.Green, &RGB16::Green, x, y);
+            DITHER_ERROR(brgb.Blue, &RGB16::Blue, x, y);
          }
       }
 
@@ -2073,7 +2052,7 @@ regions - for instance, if you set regions 0, 1, 2 and 3, then skip 4 and set 5,
 If you have specified multiple clip regions and want to lower the count or reset the list, set the number of the last
 region that you want in your list and set the `Terminate` parameter to `true` to kill the regions specified beyond it.
 
-The `ClipLeft`, `ClipTop`, `ClipRight` and `ClipBottom` fields in the target `Bitmap` will be updated to reflect 
+The `ClipLeft`, `ClipTop`, `ClipRight` and `ClipBottom` fields in the target `Bitmap` will be updated to reflect
 the overall area that is covered by the clipping regions that have been set.
 
 -INPUT-
