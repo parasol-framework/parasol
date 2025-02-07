@@ -301,23 +301,6 @@
     </method>
 
     <method>
-      <name>Flip</name>
-      <comment>Flips a bitmap around the horizontal or vertical axis.</comment>
-      <prototype>ERR bmp::Flip(OBJECTPTR Object, FLIP Orientation)</prototype>
-      <input>
-        <param type="FLIP" name="Orientation" lookup="FLIP">Set to either <code>HORIZONTAL</code> or <code>VERTICAL</code>.</param>
-      </input>
-      <description>
-<p>This method is used to flip bitmap images on their horizontal or vertical axis.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
-    <method>
       <name>GetColour</name>
       <comment>Converts Red, Green, Blue components into a single colour value.</comment>
       <prototype>ERR bmp::GetColour(OBJECTPTR Object, LONG Red, LONG Green, LONG Blue, LONG Alpha, ULONG * Colour)</prototype>
@@ -796,11 +779,6 @@ unpackAlpha(Colour)
       <const name="CIE_LCH">Polar L*CHab colour space defined by CIE 15.</const>
       <const name="LINEAR_RGB">Linear RGB is used to improve colour balance in blending operations.</const>
       <const name="SRGB">The default colour-space is sRGB.</const>
-    </constants>
-
-    <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
-      <const name="HORIZONTAL">Flip the bitmap from top to bottom.</const>
-      <const name="VERTICAL">Flip the bitmap from left to right.</const>
     </constants>
 
   </types>

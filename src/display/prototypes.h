@@ -10,7 +10,6 @@ extern void DrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
 extern void DrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
 extern void DrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
 extern ERR ExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
-extern void FlipBitmap(objBitmap * Bitmap, FLIP Orientation);
 extern void GetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
 extern ERR GetCursorInfo(struct CursorInfo * Info, LONG Size);
 extern ERR GetCursorPos(DOUBLE * X, DOUBLE * Y);

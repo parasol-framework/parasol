@@ -64,7 +64,6 @@ static const struct FieldDef clBitmapColourSpace[] = {
 FDEF maCopyArea[] = { { "DestBitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
 FDEF maCompress[] = { { "Level", FD_LONG }, { 0, 0 } };
 FDEF maDecompress[] = { { "RetainData", FD_LONG }, { 0, 0 } };
-FDEF maFlip[] = { { "Orientation", FD_LONG }, { 0, 0 } };
 FDEF maDrawRectangle[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maSetClipRegion[] = { { "Number", FD_LONG }, { "Left", FD_LONG }, { "Top", FD_LONG }, { "Right", FD_LONG }, { "Bottom", FD_LONG }, { "Terminate", FD_LONG }, { 0, 0 } };
 FDEF maGetColour[] = { { "Red", FD_LONG }, { "Green", FD_LONG }, { "Blue", FD_LONG }, { "Alpha", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
@@ -73,14 +72,13 @@ static const struct MethodEntry clBitmapMethods[] = {
    { AC(-1), (APTR)BITMAP_CopyArea, "CopyArea", maCopyArea, sizeof(struct bmp::CopyArea) },
    { AC(-2), (APTR)BITMAP_Compress, "Compress", maCompress, sizeof(struct bmp::Compress) },
    { AC(-3), (APTR)BITMAP_Decompress, "Decompress", maDecompress, sizeof(struct bmp::Decompress) },
-   { AC(-4), (APTR)BITMAP_Flip, "Flip", maFlip, sizeof(struct bmp::Flip) },
-   { AC(-6), (APTR)BITMAP_DrawRectangle, "DrawRectangle", maDrawRectangle, sizeof(struct bmp::DrawRectangle) },
-   { AC(-7), (APTR)BITMAP_SetClipRegion, "SetClipRegion", maSetClipRegion, sizeof(struct bmp::SetClipRegion) },
-   { AC(-8), (APTR)BITMAP_GetColour, "GetColour", maGetColour, sizeof(struct bmp::GetColour) },
-   { AC(-10), (APTR)BITMAP_Premultiply, "Premultiply", 0, 0 },
-   { AC(-11), (APTR)BITMAP_Demultiply, "Demultiply", 0, 0 },
-   { AC(-12), (APTR)BITMAP_ConvertToLinear, "ConvertToLinear", 0, 0 },
-   { AC(-13), (APTR)BITMAP_ConvertToRGB, "ConvertToRGB", 0, 0 },
+   { AC(-4), (APTR)BITMAP_DrawRectangle, "DrawRectangle", maDrawRectangle, sizeof(struct bmp::DrawRectangle) },
+   { AC(-5), (APTR)BITMAP_SetClipRegion, "SetClipRegion", maSetClipRegion, sizeof(struct bmp::SetClipRegion) },
+   { AC(-6), (APTR)BITMAP_GetColour, "GetColour", maGetColour, sizeof(struct bmp::GetColour) },
+   { AC(-7), (APTR)BITMAP_Premultiply, "Premultiply", 0, 0 },
+   { AC(-8), (APTR)BITMAP_Demultiply, "Demultiply", 0, 0 },
+   { AC(-9), (APTR)BITMAP_ConvertToLinear, "ConvertToLinear", 0, 0 },
+   { AC(-10), (APTR)BITMAP_ConvertToRGB, "ConvertToRGB", 0, 0 },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

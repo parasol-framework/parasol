@@ -156,10 +156,6 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "PREMUL: The RGB values are premultiplied (32-bit only)."
   )
 
-  enum("FLIP", { type="int", start=1, comment="Flags for the bitmap Flip method." },
-    "HORIZONTAL: Flip the bitmap from top to bottom.",
-    "VERTICAL: Flip the bitmap from left to right.")
-
   flags("SCR", { comment="Display flags." },
     "VISIBLE: Set if the screen is on display.",
     "AUTO_SAVE: Saves settings to the global display state when the object is freed.",
@@ -327,14 +323,13 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     { id=1, name="CopyArea" },
     { id=2, name="Compress" },
     { id=3, name="Decompress" },
-    { id=4, name="Flip" },
-    { id=6, name="DrawRectangle" },
-    { id=7, name="SetClipRegion" },
-    { id=8, name="GetColour" },
-    { id=10, name="Premultiply" },
-    { id=11, name="Demultiply" },
-    { id=12, name="ConvertToLinear" },
-    { id=13, name="ConvertToRGB" }
+    { id=4, name="DrawRectangle" },
+    { id=5, name="SetClipRegion" },
+    { id=6, name="GetColour" },
+    { id=7, name="Premultiply" },
+    { id=8, name="Demultiply" },
+    { id=9, name="ConvertToLinear" },
+    { id=10, name="ConvertToRGB" }
   })
 
   class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c", references={ "ColourFormat" } }, [[
@@ -609,7 +604,6 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     "DrawRGBPixel",
     "DrawRectangle",
     "ExposeSurface",
-    "FlipBitmap",
     "GetColourFormat",
     "GetCursorInfo",
     "GetCursorPos",

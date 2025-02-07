@@ -25,7 +25,7 @@ memory (this is the default type).  If the `TEXTURE` or `VIDEO` flags are specif
 CPU cannot access this memory, unless you specifically request it.  To do this, use the #Lock() and #Unlock() actions
 to temporarily gain read/write access to a bitmap.
 
-If you require complex drawing functionality that is not available in the Bitmap class, consider using the 
+If you require complex drawing functionality that is not available in the Bitmap class, consider using the
 functionality provided by the Vector module.
 
 To save the image of a bitmap, either copy its image to a @Picture object, or use the SaveImage()
@@ -462,7 +462,7 @@ static ERR BITMAP_Clear(extBitmap *Self)
 -METHOD-
 Compress: Compresses bitmap data to save memory.
 
-A bitmap can be compressed with the CompressBitmap() method to save memory when the bitmap is not in use.  This is 
+A bitmap can be compressed with the CompressBitmap() method to save memory when the bitmap is not in use.  This is
 useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.
 
 Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely
@@ -948,68 +948,10 @@ static ERR BITMAP_DrawRectangle(extBitmap *Self, struct bmp::DrawRectangle *Args
 
 /*********************************************************************************************************************
 
--METHOD-
-Flip: Flips a bitmap around the horizontal or vertical axis.
-
-This method is used to flip bitmap images on their horizontal or vertical axis.
-
--INPUT-
-int(FLIP) Orientation: Set to either `HORIZONTAL` or `VERTICAL`.
-
--ERRORS-
-Okay
-Args
-NullArgs
-
-*********************************************************************************************************************/
-
-static ERR BITMAP_Flip(extBitmap *Self, struct bmp::Flip *Args)
-{
-   pf::Log log;
-
-   if (!Args) return log.warning(ERR::NullArgs);
-
-   // NB: A faster way to flip a Bitmap would be to use CopyArea() to do the transfer in strips, but would require a
-   // temporary memory area to hold the information.
-
-   if (Args->Orientation IS FLIP::HORIZONTAL) {
-      if (lock_surface(Self, SURFACE_READWRITE) IS ERR::Okay) {
-         for (LONG y=0; y < Self->Height/2; y++) {
-            for (LONG x=0; x < Self->Width; x++) {
-               LONG c1 = Self->ReadUCPixel(Self, x, Self->Height - y - 1);
-               LONG c2 = Self->ReadUCPixel(Self, x, y);
-               Self->DrawUCPixel(Self, x, y, c1);
-               Self->DrawUCPixel(Self, x, Self->Height - y - 1, c2);
-            }
-         }
-         unlock_surface(Self);
-      }
-   }
-   else if (Args->Orientation IS FLIP::VERTICAL) {
-      if (lock_surface(Self, SURFACE_READWRITE) IS ERR::Okay) {
-         // Palette based Bitmap
-         for (LONG x=0; x < Self->Width/2; x++) {
-            for (LONG y=0; y < Self->Height; y++) {
-               LONG c1 = Self->ReadUCPixel(Self, Self->Width - x - 1, y); // Right pixel
-               LONG c2 = Self->ReadUCPixel(Self, x, y); // Left pixel
-               Self->DrawUCPixel(Self, Self->Width - x - 1, y, c2);
-               Self->DrawUCPixel(Self, x, y, c1);
-            }
-         }
-         unlock_surface(Self);
-      }
-   }
-   else return log.warning(ERR::Args);
-
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
 -ACTION-
 Flush: Flushes pending graphics operations and returns when the accelerator is idle.
 
-The Flush() action ensures that client graphics operations are synchronised with the graphics accelerator.  
+The Flush() action ensures that client graphics operations are synchronised with the graphics accelerator.
 Synchronisation is essential prior to drawing to the bitmap with the CPU.  Failure to synchronise may
 result in corruption in the bitmap's graphics display.
 
@@ -2593,7 +2535,7 @@ ERR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
 -FIELD-
 PlaneMod: The differential between each bitmap plane.
 
-This field specifies the distance (in bytes) between each bitplane.  For non-planar types like `CHUNKY`, this field 
+This field specifies the distance (in bytes) between each bitplane.  For non-planar types like `CHUNKY`, this field
 will reflect the total size of the bitmap.  The calculation used for `PLANAR` types is `ByteWidth * Height`.
 
 -FIELD-

@@ -1882,26 +1882,6 @@ void DrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 /*********************************************************************************************************************
 
 -FUNCTION-
-FlipBitmap: Flips a bitmap around its horizontal or vertical axis.
-
-The FlipBitmap() function is used to flip bitmap images on their horizontal or vertical axis.  The amount of time
-required to flip a bitmap is dependent on the area of the bitmap you are trying to flip over and its total number of
-colours.
-
--INPUT-
-obj(Bitmap) Bitmap: Pointer to a bitmap object.
-int(FLIP) Orientation: Set to either `HORIZONTAL` or `VERTICAL`.  If set to neither, the function does nothing.
-
-*********************************************************************************************************************/
-
-void FlipBitmap(objBitmap *Bitmap, FLIP Orientation)
-{
-   Bitmap->flip(Orientation);
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 GetColourFormat: Generates the values for a !ColourFormat structure for a given bit depth.
 
 This function will generate the values for a !ColourFormat structure, for either a given bit depth or

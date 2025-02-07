@@ -13,7 +13,6 @@ FDEF argsDrawPixel[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X",
 FDEF argsDrawRGBPixel[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "RGB8:RGB", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsDrawRectangle[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsExposeSurface[] = { { "Error", FD_LONG|FD_ERROR }, { "Surface", FD_OBJECTID }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsFlipBitmap[] = { { "Void", FD_VOID }, { "Bitmap", FD_OBJECTPTR }, { "Orientation", FD_LONG }, { 0, 0 } };
 FDEF argsGetColourFormat[] = { { "Void", FD_VOID }, { "ColourFormat:Format", FD_PTR|FD_STRUCT }, { "BitsPerPixel", FD_LONG }, { "RedMask", FD_LONG }, { "GreenMask", FD_LONG }, { "BlueMask", FD_LONG }, { "AlphaMask", FD_LONG }, { 0, 0 } };
 FDEF argsGetCursorInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "CursorInfo:Info", FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetCursorPos[] = { { "Error", FD_LONG|FD_ERROR }, { "X", FD_DOUBLE|FD_RESULT }, { "Y", FD_DOUBLE|FD_RESULT }, { 0, 0 } };
@@ -57,7 +56,6 @@ const struct Function glFunctions[] = {
    { (APTR)gfx::DrawRGBPixel, "DrawRGBPixel", argsDrawRGBPixel },
    { (APTR)gfx::DrawRectangle, "DrawRectangle", argsDrawRectangle },
    { (APTR)gfx::ExposeSurface, "ExposeSurface", argsExposeSurface },
-   { (APTR)gfx::FlipBitmap, "FlipBitmap", argsFlipBitmap },
    { (APTR)gfx::GetColourFormat, "GetColourFormat", argsGetColourFormat },
    { (APTR)gfx::GetCursorInfo, "GetCursorInfo", argsGetCursorInfo },
    { (APTR)gfx::GetCursorPos, "GetCursorPos", argsGetCursorPos },
