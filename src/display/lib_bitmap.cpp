@@ -261,33 +261,31 @@ UBYTE validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
    pf::Log log(Header);
 
 #ifdef _DEBUG // Force break if clipping is wrong (use gdb)
-   if (((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) or
-       ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) or
-       ((Bitmap->XOffset + Bitmap->Clip.Left) < 0) or
+   if (((Bitmap->Clip.Right) > Bitmap->Width) or
+       ((Bitmap->Clip.Bottom) > Bitmap->Height) or
+       ((Bitmap->Clip.Left) < 0) or
        (Bitmap->Clip.Left >= Bitmap->Clip.Right) or
        (Bitmap->Clip.Top >= Bitmap->Clip.Bottom)) {
       DEBUG_BREAK
    }
 #else
-   if ((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) {
-      log.warning("#%d %s: Invalid right-clip of %d (offset %d), limited to width of %d.", Bitmap->UID, Name, Bitmap->Clip.Right, Bitmap->XOffset, Bitmap->Width);
-      Bitmap->Clip.Right = Bitmap->Width - Bitmap->XOffset;
+   if ((Bitmap->Clip.Right) > Bitmap->Width) {
+      log.warning("#%d %s: Invalid right-clip of %d, limited to width of %d.", Bitmap->UID, Name, Bitmap->Clip.Right, Bitmap->Width);
+      Bitmap->Clip.Right = Bitmap->Width;
    }
 
-   if ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) {
-      log.warning("#%d %s: Invalid bottom-clip of %d (offset %d), limited to height of %d.", Bitmap->UID, Name, Bitmap->Clip.Bottom, Bitmap->YOffset, Bitmap->Height);
-      Bitmap->Clip.Bottom = Bitmap->Height - Bitmap->YOffset;
+   if ((Bitmap->Clip.Bottom) > Bitmap->Height) {
+      log.warning("#%d %s: Invalid bottom-clip of %d, limited to height of %d.", Bitmap->UID, Name, Bitmap->Clip.Bottom, Bitmap->Height);
+      Bitmap->Clip.Bottom = Bitmap->Height;
    }
 
-   if ((Bitmap->XOffset + Bitmap->Clip.Left) < 0) {
-      log.warning("#%d %s: Invalid left-clip of %d (offset %d).", Bitmap->UID, Name, Bitmap->Clip.Left, Bitmap->XOffset);
-      Bitmap->XOffset = 0;
+   if ((Bitmap->Clip.Left) < 0) {
+      log.warning("#%d %s: Invalid left-clip of %d.", Bitmap->UID, Name, Bitmap->Clip.Left);
       Bitmap->Clip.Left = 0;
    }
 
-   if ((Bitmap->YOffset + Bitmap->Clip.Top) < 0) {
-      log.warning("#%d %s: Invalid top-clip of %d (offset %d).", Bitmap->UID, Name, Bitmap->Clip.Top, Bitmap->YOffset);
-      Bitmap->YOffset = 0;
+   if ((Bitmap->Clip.Top) < 0) {
+      log.warning("#%d %s: Invalid top-clip of %d.", Bitmap->UID, Name, Bitmap->Clip.Top);
       Bitmap->Clip.Top = 0;
    }
 
@@ -324,7 +322,7 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG
    auto dest = (extBitmap *)Dest;
    if (!src->initialised()) return log.warning(ERR::NotInitialised);
 
-   //log.trace("%dx%d,%dx%d to %dx%d, Offset: %dx%d to %dx%d", X, Y, Width, Height, DestX, DestY, src->XOffset, src->YOffset, Dest->XOffset, Dest->YOffset);
+   //log.trace("%dx%d,%dx%d to %dx%d", X, Y, Width, Height, DestX, DestY);
 
    if (validate_clip(__FUNCTION__, "Source", src)) return ERR::Okay;
 
@@ -438,13 +436,6 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG
    if (Width < 1) return ERR::Okay;
    if (Height < 1) return ERR::Okay;
 
-   // Adjust coordinates by offset values
-
-   X += src->XOffset;
-   Y += src->YOffset;
-   DestX  += Dest->XOffset;
-   DestY  += Dest->YOffset;
-
 #ifdef _WIN32
    if (dest->win.Drawable) { // Destination is a window
 
@@ -535,10 +526,10 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG
       if (!src->x11.drawable) {
          if (((Flags & BAF::BLEND) != BAF::NIL) and (src->BitsPerPixel IS 32) and ((src->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
             auto save_clip = dest->Clip;
-            Dest->Clip.Left   = DestX - dest->XOffset;
-            Dest->Clip.Right  = DestX + Width - dest->XOffset;
-            Dest->Clip.Top    = DestY - dest->YOffset;
-            Dest->Clip.Bottom = DestY + Height - dest->YOffset;
+            Dest->Clip.Left   = DestX;
+            Dest->Clip.Right  = DestX + Width;
+            Dest->Clip.Top    = DestY;
+            Dest->Clip.Bottom = DestY + Height;
             if (lock_surface(dest, SURFACE_READ|SURFACE_WRITE) IS ERR::Okay) {
                auto srcdata = (ULONG *)(src->Data + (Y * src->LineWidth) + (X<<2));
 
@@ -1274,9 +1265,6 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap,
       Y += Surface->YOffset;
    }
 
-   XDest += Bitmap->XOffset;
-   YDest += Bitmap->YOffset;
-
    if ((Flags & CSRF::DEFAULT_FORMAT) != CSRF::NIL) gfx::GetColourFormat(&Surface->Format, Surface->BitsPerPixel, 0, 0, 0, 0);;
 
    switch(Surface->BytesPerPixel) {
@@ -1621,26 +1609,23 @@ void DrawRectangle(objBitmap *Target, LONG X, LONG Y, LONG Width, LONG Height, U
 
    if (!Bitmap->initialised()) { log.warning(ERR::NotInitialised); return; }
 
-   X += Bitmap->XOffset;
-   Y += Bitmap->YOffset;
+   if (X >= Bitmap->Clip.Right) return;
+   if (Y >= Bitmap->Clip.Bottom) return;
+   if (X + Width <= Bitmap->Clip.Left) return;
+   if (Y + Height <= Bitmap->Clip.Top) return;
 
-   if (X >= Bitmap->Clip.Right + Bitmap->XOffset) return;
-   if (Y >= Bitmap->Clip.Bottom + Bitmap->YOffset) return;
-   if (X + Width <= Bitmap->Clip.Left + Bitmap->XOffset) return;
-   if (Y + Height <= Bitmap->Clip.Top + Bitmap->YOffset) return;
-
-   if (X < Bitmap->Clip.Left + Bitmap->XOffset) {
-      Width -= Bitmap->Clip.Left + Bitmap->XOffset - X;
-      X = Bitmap->Clip.Left + Bitmap->XOffset;
+   if (X < Bitmap->Clip.Left) {
+      Width -= Bitmap->Clip.Left - X;
+      X = Bitmap->Clip.Left;
    }
 
-   if (Y < Bitmap->Clip.Top + Bitmap->YOffset) {
-      Height -= Bitmap->Clip.Top + Bitmap->YOffset - Y;
-      Y = Bitmap->Clip.Top + Bitmap->YOffset;
+   if (Y < Bitmap->Clip.Top) {
+      Height -= Bitmap->Clip.Top - Y;
+      Y = Bitmap->Clip.Top;
    }
 
-   if ((X + Width) >= Bitmap->Clip.Right + Bitmap->XOffset)   Width = Bitmap->Clip.Right + Bitmap->XOffset - X;
-   if ((Y + Height) >= Bitmap->Clip.Bottom + Bitmap->YOffset) Height = Bitmap->Clip.Bottom + Bitmap->YOffset - Y;
+   if ((X + Width) >= Bitmap->Clip.Right)   Width = Bitmap->Clip.Right - X;
+   if ((Y + Height) >= Bitmap->Clip.Bottom) Height = Bitmap->Clip.Bottom - Y;
 
    UWORD red   = Bitmap->unpackRed(Colour);
    UWORD green = Bitmap->unpackGreen(Colour);
@@ -1868,7 +1853,7 @@ void DrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *Pixel)
 {
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
    if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
-   Bitmap->DrawUCRPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Pixel);
+   Bitmap->DrawUCRPixel(Bitmap, X, Y, Pixel);
 }
 
 /*********************************************************************************************************************
@@ -1891,7 +1876,7 @@ void DrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 {
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
    if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
-   Bitmap->DrawUCPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Colour);
+   Bitmap->DrawUCPixel(Bitmap, X, Y, Colour);
 }
 
 /*********************************************************************************************************************
@@ -2033,7 +2018,7 @@ void ReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 **Pixel)
    }
    else {
       pixel.Alpha = 255;
-      Bitmap->ReadUCRPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, &pixel);
+      Bitmap->ReadUCRPixel(Bitmap, X, Y, &pixel);
    }
    *Pixel = &pixel;
 }

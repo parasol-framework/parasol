@@ -362,8 +362,6 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
     int   BytesPerPixel         # 1, 2, 3, 4
     int   BitsPerPixel          # 1, 8, 15, 16, 24, 32
     int   Position              # Current byte position for reading and writing
-    int   XOffset               # Horizontal offset to apply to graphics coordinates
-    int   YOffset               # Vertical offset to apply to graphics coordinates
     int   Opacity               # Opacity setting to use in drawing operations
     struct(RGB8) TransColour    # The transparent colour of the bitmap.
     struct(RGB8) Bkgd           # Background colour (for clearing, resizing)
@@ -427,6 +425,12 @@ module({ name="Display", copyright="Paul Manias 2003-2024", version=1.0, status=
 
    inline ULONG packPixelWB(struct RGB8 &RGB, UBYTE Alpha) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
+   }
+
+   inline UBYTE * offset(LONG X, LONG Y) {
+      auto r_data = Data;
+      Data += (X * BytesPerPixel) + (Y * LineWidth);
+      return r_data;
    }
 
    // Colour unpacking routines

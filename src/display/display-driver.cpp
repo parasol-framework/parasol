@@ -1514,11 +1514,6 @@ ERR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Wid
 
    // Adjust coordinates by offset values
 
-   x += Bitmap->XOffset;
-   y += Bitmap->YOffset;
-   xdest += dest->XOffset;
-   ydest += dest->YOffset;
-
    APTR drawable;
    dest->getPtr(FID_Handle, &drawable);
 
