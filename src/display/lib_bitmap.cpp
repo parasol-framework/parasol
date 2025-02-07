@@ -21,7 +21,7 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
 {
    RGB16 *buf1, *buf2, *buffer;
    RGB8 brgb;
-   UBYTE *srcdata, *destdata, *data;
+   UBYTE *data;
    LONG x, y;
    WORD index;
 
@@ -80,8 +80,8 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
 
    if (!Format) Format = &Dest->prvColourFormat;
 
-   srcdata = Bitmap->Data + ((SrcY+1) * Bitmap->LineWidth);
-   destdata = Dest->Data + (DestY * Dest->LineWidth);
+   auto srcdata = Bitmap->Data + ((SrcY+1) * Bitmap->LineWidth);
+   auto destdata = Dest->Data + (DestY * Dest->LineWidth);
    UBYTE rmask = Format->RedMask   << Format->RedShift;
    UBYTE gmask = Format->GreenMask << Format->GreenShift;
    UBYTE bmask = Format->BlueMask  << Format->BlueShift;
@@ -165,10 +165,7 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
 
       // Draw the last pixel in the row - no downward propagation
 
-      brgb.Red   = buf1[Width-1].Red>>6;
-      brgb.Green = buf1[Width-1].Green>>6;
-      brgb.Blue  = buf1[Width-1].Blue>>6;
-      brgb.Alpha = buf1[Width-1].Alpha;
+      brgb = { UBYTE(buf1[Width-1].Red>>6), UBYTE(buf1[Width-1].Green>>6), UBYTE(buf1[Width-1].Blue>>6), UBYTE(buf1[Width-1].Alpha) };
       Dest->DrawUCRIndex(Dest, destdata + ((Width - 1) * Dest->BytesPerPixel), &brgb);
 
       srcdata += Bitmap->LineWidth;
@@ -179,10 +176,7 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
 
    if (Bitmap != Dest) {
       for (x=0,index=0; x < Width; x++,index+=Dest->BytesPerPixel) {
-         brgb.Red   = buf2[x].Red>>6;
-         brgb.Green = buf2[x].Green>>6;
-         brgb.Blue  = buf2[x].Blue>>6;
-         brgb.Alpha = buf2[x].Alpha;
+         brgb = { UBYTE(buf2[x].Red>>6), UBYTE(buf2[x].Green>>6), UBYTE(buf2[x].Blue>>6), UBYTE(buf2[x].Alpha) };
          Dest->DrawUCRIndex(Dest, destdata+index, &brgb);
       }
    }
