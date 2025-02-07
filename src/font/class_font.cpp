@@ -913,13 +913,6 @@ static ERR draw_bitmap_font(extFont *Self)
                      sy = bitmap->Clip.Top;
                   }
 
-                  sx += bitmap->XOffset;
-                  sy += bitmap->YOffset;
-                  dx += bitmap->XOffset;
-                  dy += bitmap->YOffset;
-                  ex += bitmap->XOffset;
-                  ey += bitmap->YOffset;
-
                   if (Self->Outline.Alpha < 255) {
                      alpha = 255 - Self->Outline.Alpha;
                      for (dy=sy; dy < ey; dy++) {
@@ -979,13 +972,6 @@ static ERR draw_bitmap_font(extFont *Self)
                data += bytewidth * (bitmap->Clip.Top - sy);
                sy = bitmap->Clip.Top;
             }
-
-            sx += bitmap->XOffset; // Add offsets only after clipping adjustments
-            sy += bitmap->YOffset;
-            dx += bitmap->XOffset;
-            dy += bitmap->YOffset;
-            ex += bitmap->XOffset;
-            ey += bitmap->YOffset;
 
             if (Self->Colour.Alpha < 255) {
                alpha = 255 - Self->Colour.Alpha;

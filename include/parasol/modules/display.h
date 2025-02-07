@@ -536,8 +536,6 @@ class objBitmap : public Object {
    LONG    BytesPerPixel;                                            // The number of bytes per pixel.
    LONG    BitsPerPixel;                                             // The number of bits per pixel
    LONG    Position;                                                 // The current read/write data position.
-   LONG    XOffset;                                                  // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
-   LONG    YOffset;                                                  // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
    LONG    Opacity;                                                  // Determines the translucency setting to use in drawing operations.
    struct RGB8 TransColour;                                          // The transparent colour of the bitmap, in RGB format.
    struct RGB8 Bkgd;                                                 // The bitmap's background colour is defined here in RGB format.
@@ -599,6 +597,12 @@ class objBitmap : public Object {
 
    inline ULONG packPixelWB(struct RGB8 &RGB, UBYTE Alpha) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
+   }
+
+   inline UBYTE * offset(LONG X, LONG Y) {
+      auto r_data = Data;
+      Data += (X * BytesPerPixel) + (Y * LineWidth);
+      return r_data;
    }
 
    // Colour unpacking routines
@@ -731,13 +735,13 @@ class objBitmap : public Object {
 
    inline ERR setPalette(struct RGBPalette * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[32];
+      auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, 0x08000300, Value, 1);
    }
 
    inline ERR setData(UBYTE * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
@@ -761,7 +765,7 @@ class objBitmap : public Object {
 
    inline ERR setClip(struct ClipRectangle * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
@@ -785,7 +789,7 @@ class objBitmap : public Object {
 
    inline ERR setTransIndex(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[31];
+      auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -801,16 +805,6 @@ class objBitmap : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setXOffset(const LONG Value) noexcept {
-      this->XOffset = Value;
-      return ERR::Okay;
-   }
-
-   inline ERR setYOffset(const LONG Value) noexcept {
-      this->YOffset = Value;
-      return ERR::Okay;
-   }
-
    inline ERR setOpacity(const LONG Value) noexcept {
       this->Opacity = Value;
       return ERR::Okay;
@@ -818,19 +812,19 @@ class objBitmap : public Object {
 
    inline ERR setTransColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
    inline ERR setBkgd(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
    inline ERR setBkgdIndex(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -841,25 +835,25 @@ class objBitmap : public Object {
 
    inline ERR setClipLeft(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setClipRight(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setClipBottom(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setClipTop(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[38];
+      auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 

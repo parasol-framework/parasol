@@ -621,7 +621,7 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
 
    // Regarding this validation check, SVG requires that stroked vectors have a size > 0 when a paint server is used
    // as a stroker.  If the size is zero, the paint server is ignored and the solid colour can be used as a stroker
-   // if the client has specified one.  Ref: W3C SVG Coordinate chapter, last paragraph of 7.11 
+   // if the client has specified one.  Ref: W3C SVG Coordinate chapter, last paragraph of 7.11
 
    if (Vector.Bounds.valid()) {
       if (Vector.Stroke.Gradient) {
@@ -650,9 +650,9 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
          return;
       }
    }
-   
+
    // Solid colour
-   
+
    if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
       agg::renderer_scanline_bin_solid renderer(mRenderBase);
       renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
@@ -1092,8 +1092,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 
 void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, bool Linear)
 {
-   auto data = Bitmap.Data + (Bitmap.XOffset * Bitmap.BytesPerPixel) + (Bitmap.YOffset * Bitmap.LineWidth);
-   rawBitmap(data, Bitmap.Clip.Right, Bitmap.Clip.Bottom, Bitmap.LineWidth, Bitmap.BitsPerPixel, *Bitmap.ColourFormat, Linear);
+   rawBitmap(Bitmap.Data, Bitmap.Clip.Right, Bitmap.Clip.Bottom, Bitmap.LineWidth, Bitmap.BitsPerPixel, *Bitmap.ColourFormat, Linear);
 }
 
 void agg::pixfmt_psl::rawBitmap(UBYTE *Data, LONG Width, LONG Height, LONG Stride, LONG BitsPerPixel, ColourFormat &ColourFormat, bool Linear)

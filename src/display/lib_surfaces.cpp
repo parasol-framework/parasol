@@ -386,32 +386,30 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, C
 
    // Prepare the buffer so that it matches the exposed area
 
+   UBYTE *data;
+   LONG xo = 0, yo = 0;
    if (Self->BitmapOwnerID != Self->UID) {
       for (i=Index; (i > 0) and (list[i].SurfaceID != Self->BitmapOwnerID); i--);
-      DestBitmap->XOffset = list[Index].Left - list[i].Left; // Offset is relative to the bitmap owner
-      DestBitmap->YOffset = list[Index].Top - list[i].Top;
-
+      xo = list[Index].Left - list[i].Left;
+      yo = list[Index].Top - list[i].Top;
+      data = DestBitmap->offset(xo, yo);
    }
-   else {
-      // Set the clipping so that we only draw the area that has been exposed
-      DestBitmap->XOffset = 0;
-      DestBitmap->YOffset = 0;
-   }
+   else data = DestBitmap->Data;
 
-   DestBitmap->Clip.Left   = Area.Left - list[Index].Left;
-   DestBitmap->Clip.Top    = Area.Top - list[Index].Top;
-   DestBitmap->Clip.Right  = Area.Right - list[Index].Left;
-   DestBitmap->Clip.Bottom = Area.Bottom - list[Index].Top;
+   DestBitmap->Clip.Left   = Area.Left - list[Index].Left - xo; // Untested
+   DestBitmap->Clip.Top    = Area.Top - list[Index].Top - yo;
+   DestBitmap->Clip.Right  = Area.Right - list[Index].Left - xo;
+   DestBitmap->Clip.Bottom = Area.Bottom - list[Index].Top - yo;
 
    // THIS SHOULD NOT BE NEEDED - but occasionally it detects surface problems (bugs in other areas of the surface code?)
 
-   if (((DestBitmap->XOffset + DestBitmap->Clip.Left) < 0) or ((DestBitmap->YOffset + DestBitmap->Clip.Top) < 0) or
-       ((DestBitmap->XOffset + DestBitmap->Clip.Right) > DestBitmap->Width) or ((DestBitmap->YOffset + DestBitmap->Clip.Bottom) > DestBitmap->Height)) {
+   if (((DestBitmap->Clip.Left) < 0) or ((DestBitmap->Clip.Top) < 0) or
+       ((DestBitmap->Clip.Right) > DestBitmap->Width) or ((DestBitmap->Clip.Bottom) > DestBitmap->Height)) {
       log.warning("Invalid coordinates detected (outside of the surface area).  CODE FIX REQUIRED!");
-      if ((DestBitmap->XOffset + DestBitmap->Clip.Left) < 0) DestBitmap->Clip.Left = 0;
-      if ((DestBitmap->YOffset + DestBitmap->Clip.Top) < 0)  DestBitmap->Clip.Top = 0;
-      DestBitmap->Clip.Right = DestBitmap->Width - DestBitmap->XOffset;
-      DestBitmap->Clip.Bottom = DestBitmap->Height - DestBitmap->YOffset;
+      if ((DestBitmap->Clip.Left) < 0) DestBitmap->Clip.Left = 0;
+      if ((DestBitmap->Clip.Top) < 0)  DestBitmap->Clip.Top = 0;
+      DestBitmap->Clip.Right = DestBitmap->Width;
+      DestBitmap->Clip.Bottom = DestBitmap->Height;
    }
 
    // Clear the background
@@ -456,6 +454,8 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, C
          }
       }
    }
+
+   DestBitmap->Data = data;
 }
 
 //********************************************************************************************************************
@@ -1069,9 +1069,9 @@ ERR CopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, BDF Flags,
 
          if (((Flags & BDF::DITHER) != BDF::NIL) or (!list_root.Data)) {
             if (ScopedObjectLock<extBitmap> src(list_root.BitmapID, 4000); src.granted()) {
-               src->XOffset     = list_i.Left - list_root.Left;
-               src->YOffset     = list_i.Top - list_root.Top;
-               src->Clip.Left   = 0;
+               auto data = src->offset(list_i.Left - list_root.Left, list_i.Top - list_root.Top);
+
+               src->Clip.Left   = 0; // ???
                src->Clip.Top    = 0;
                src->Clip.Right  = list_i.Width;
                src->Clip.Bottom = list_i.Height;
@@ -1080,6 +1080,8 @@ ERR CopySurface(OBJECTID SurfaceID, objBitmap *Bitmap, BDF Flags,
                   gfx::CopyArea(*src, Bitmap, BAF::BLEND|(((Flags & BDF::DITHER) != BDF::NIL) ? BAF::DITHER : BAF::NIL), X, Y, Width, Height, XDest, YDest);
                }
                else gfx::CopyArea(*src, Bitmap, ((Flags & BDF::DITHER) != BDF::NIL) ? BAF::DITHER : BAF::NIL, X, Y, Width, Height, XDest, YDest);
+
+               src->Data = data;
                return ERR::Okay;
             }
             else return log.warning(ERR::AccessObject);

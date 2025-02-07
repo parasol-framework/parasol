@@ -211,10 +211,10 @@ ERR lock_surface(extBitmap *Bitmap, WORD Access)
       if (Bitmap->x11.readable) {
          if ((Bitmap->x11.readable->width >= Bitmap->Width) and (Bitmap->x11.readable->height >= Bitmap->Height)) {
             if (Access & SURFACE_READ) {
-               XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
-                  Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
+               XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->Clip.Left,
+                  Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
                   Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
-                  Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
+                  Bitmap->Clip.Left, Bitmap->Clip.Top);
             }
             return ERR::Okay;
          }
@@ -237,10 +237,10 @@ ERR lock_surface(extBitmap *Bitmap, WORD Access)
       if ((Bitmap->x11.readable = XCreateImage(XDisplay, CopyFromParent, Bitmap->BitsPerPixel,
            ZPixmap, 0, (char *)Bitmap->Data, Bitmap->Width, Bitmap->Height, alignment, Bitmap->LineWidth))) {
          if (Access & SURFACE_READ) {
-            XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
-               Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
+            XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->Clip.Left,
+               Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
                Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
-               Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
+               Bitmap->Clip.Left, Bitmap->Clip.Top);
          }
          return ERR::Okay;
       }
@@ -1386,10 +1386,10 @@ static ERR BITMAP_Lock(extBitmap *Self)
 
       if (Self->x11.readable) {
          if ((Self->x11.readable->width >= Self->Width) and (Self->x11.readable->height >= Self->Height)) {
-            XGetSubImage(XDisplay, Self->x11.drawable, Self->XOffset + Self->Clip.Left,
-               Self->YOffset + Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
+            XGetSubImage(XDisplay, Self->x11.drawable, Self->Clip.Left,
+               Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
                Self->Clip.Bottom - Self->Clip.Top, 0xffffffff, ZPixmap, Self->x11.readable,
-               Self->XOffset + Self->Clip.Left, Self->YOffset + Self->Clip.Top);
+               Self->Clip.Left, Self->Clip.Top);
             return ERR::Okay;
          }
          else XDestroyImage(Self->x11.readable);
@@ -1412,10 +1412,10 @@ static ERR BITMAP_Lock(extBitmap *Self)
 
       if ((Self->x11.readable = XCreateImage(XDisplay, CopyFromParent, bpp,
            ZPixmap, 0, (char *)Self->Data, Self->Width, Self->Height, alignment, Self->ByteWidth))) {
-         XGetSubImage(XDisplay, Self->x11.drawable, Self->XOffset + Self->Clip.Left,
-            Self->YOffset + Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
+         XGetSubImage(XDisplay, Self->x11.drawable, Self->Clip.Left,
+            Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
             Self->Clip.Bottom - Self->Clip.Top, 0xffffffff, ZPixmap, Self->x11.readable,
-            Self->XOffset + Self->Clip.Left, Self->YOffset + Self->Clip.Top);
+            Self->Clip.Left, Self->Clip.Top);
       }
       else return ERR::Failed;
    }
@@ -2704,13 +2704,6 @@ This field defines the graphics data type - either `PLANAR` (required for 1-bit 
 -FIELD-
 Width: The width of the bitmap, in pixels.
 
--FIELD-
-XOffset: Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
-
--FIELD-
-YOffset: Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
--END-
-
 *********************************************************************************************************************/
 
 //********************************************************************************************************************
@@ -2895,8 +2888,6 @@ static const FieldArray clBitmapFields[] = {
    { "BytesPerPixel", FDF_LONG|FDF_RI },
    { "BitsPerPixel",  FDF_LONG|FDF_RI },
    { "Position",      FDF_LONG|FDF_R },
-   { "XOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW },
-   { "YOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW },
    { "Opacity",       FDF_LONG|FDF_RW },
    { "DataID",        FDF_LONG|FDF_SYSTEM|FDF_R },
    { "TransColour",   FDF_RGB|FDF_RW, NULL, SET_Trans },
