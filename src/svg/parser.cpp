@@ -2825,7 +2825,7 @@ void svgState::proc_svg(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noex
 
          case SVF_ENABLE_BACKGROUND: // Deprecated in favour of 'isolated'
             log.warning("enable-background is deprecated in favour of the isolated attribute.");
-            if ((iequals("true", val)) or (iequals("1", val))) viewport->setFlags(Vector->Flags | VF::ISOLATED);
+            if (iequals("new", val)) viewport->setFlags(Vector->Flags | VF::ISOLATED);
             break;
 
          case SVF_ISOLATION_MODE:
@@ -3651,7 +3651,7 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
          
       case SVF_ENABLE_BACKGROUND: // Deprecated in favour of 'isolated'
          log.warning("enable-background is deprecated in favour of the isolated attribute.");
-         if ((iequals("true", StrValue)) or (iequals("1", StrValue))) Vector->setFlags(Vector->Flags | VF::ISOLATED);
+         if (iequals("new", StrValue)) Vector->setFlags(Vector->Flags | VF::ISOLATED);
          break;
 
       case SVF_ISOLATION_MODE:
