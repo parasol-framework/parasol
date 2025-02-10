@@ -74,6 +74,7 @@ enum class VF : ULONG {
    DISABLED = 0x00000001,
    HAS_FOCUS = 0x00000002,
    JOIN_PATHS = 0x00000004,
+   ISOLATED = 0x00000008,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(VF)
@@ -2239,7 +2240,7 @@ class objVector : public Object {
 
    inline ERR setFillOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[43];
+      auto field = &this->Class->Dictionary[42];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -2279,7 +2280,7 @@ class objVector : public Object {
 
    inline ERR setCursor(const PTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[44];
+      auto field = &this->Class->Dictionary[43];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -2372,12 +2373,6 @@ class objVector : public Object {
       return field->WriteValue(target, field, 0x08000309, Value, 1);
    }
 
-   inline ERR setEnableBkgd(const LONG Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[41];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
    template <class T> inline ERR setFill(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
@@ -2398,7 +2393,7 @@ class objVector : public Object {
 
    template <class T> inline ERR setFilter(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[45];
+      auto field = &this->Class->Dictionary[44];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
@@ -4044,6 +4039,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_InactiveCaptionText 0x5404bd4b
 #define SVF_InfoBackground 0xfa8db651
 #define SVF_InfoText 0x6c41ded6
+#define SVF_ISOLATION_MODE 0x19f91ec9
 #define SVF_Menu 0x7c9a911a
 #define SVF_MenuText 0x7b92e79f
 #define SVF_Scrollbar 0xf5b38a09

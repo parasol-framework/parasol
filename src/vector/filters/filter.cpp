@@ -434,7 +434,7 @@ ERR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVector 
 
    Self->ClientViewport = Viewport;
    Self->ClientVector   = Vector;
-   Self->BkgdBitmap     = BkgdBitmap;
+   Self->BkgdBitmap     = BkgdBitmap; // For VSF::BKGD and VSF::BKGD_ALPHA
    Self->Rendered       = false; // Set to true when SourceGraphic is rendered
    Self->BankIndex      = 0;
 

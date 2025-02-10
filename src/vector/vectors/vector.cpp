@@ -1344,33 +1344,6 @@ static ERR VECTOR_GET_DisplayScale(extVector *Self, DOUBLE *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-EnableBkgd: If true, allows filters to use BackgroundImage and BackgroundAlpha source types.
-
-The EnableBkgd option must be set to true if a section of the vector tree uses filters that have `BackgroundImage` or
-`BackgroundAlpha` as a source.  If it is not set, then filters using `BackgroundImage` and `BackgroundAlpha` references
-will not produce the expected behaviour.
-
-The EnableBkgd option can be enabled on Vector sub-classes @VectorGroup, @VectorPattern and @VectorViewport.  All other
-sub-classes will ignore the option if used.
-
-*********************************************************************************************************************/
-
-static ERR VECTOR_GET_EnableBkgd(extVector *Self, LONG *Value)
-{
-   *Value = Self->EnableBkgd;
-   return ERR::Okay;
-}
-
-static ERR VECTOR_SET_EnableBkgd(extVector *Self, LONG Value)
-{
-   if (Value) Self->EnableBkgd = TRUE;
-   else Self->EnableBkgd = FALSE;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Fill: Defines the fill painter using SVG's IRI format.
 
 The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The
@@ -2526,7 +2499,6 @@ static const FieldArray clVectorFields[] = {
    { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   VECTOR_GET_StrokeColour, VECTOR_SET_StrokeColour },
    { "StrokeWidth",  FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTOR_GET_StrokeWidth, VECTOR_SET_StrokeWidth },
    { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Transition, VECTOR_SET_Transition },
-   { "EnableBkgd",   FDF_VIRTUAL|FDF_LONG|FDF_RW,            VECTOR_GET_EnableBkgd, VECTOR_SET_EnableBkgd },
    { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Fill, VECTOR_SET_Fill },
    { "FillColour",   FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FDF_RW,  VECTOR_GET_FillColour, VECTOR_SET_FillColour },
    { "FillRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VECTOR_GET_FillRule, VECTOR_SET_FillRule, &clFillRule },

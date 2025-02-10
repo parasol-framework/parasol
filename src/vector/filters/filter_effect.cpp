@@ -53,6 +53,11 @@ static ERR FILTEREFFECT_Init(extFilterEffect *Self)
       }
    }
 
+   if ((Self->SourceType IS VSF::BKGD) or (Self->SourceType IS VSF::BKGD_ALPHA) or
+       (Self->MixType IS VSF::BKGD) or (Self->MixType IS VSF::BKGD_ALPHA)) {
+      Self->Filter->ReqBkgd = true;
+   }
+
    return ERR::Okay;
 }
 
