@@ -323,6 +323,27 @@ static ERR writeval_array(OBJECTPTR Object, Field *Field, LONG SrcType, CPTR Sou
    return ERR::Failed;
 }
 
+[[nodiscard]] inline bool flag_match(const std::string_view CamelFlag, const std::string_view ClientFlag) noexcept
+{
+   std::size_t i = 0, j = 0;
+   while (i < CamelFlag.size() and j < ClientFlag.size()) {
+      if (ClientFlag[j] == '_') {
+          j++;
+          continue;
+      }
+
+      auto ca = std::tolower(static_cast<unsigned char>(CamelFlag[i]));
+      auto cb = std::tolower(static_cast<unsigned char>(ClientFlag[j]));
+
+      if (ca != cb) return false;
+
+      i++;
+      j++;
+   }
+
+   return ((i == CamelFlag.size()) and (j == ClientFlag.size()));
+}
+
 static ERR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data, LONG Elements)
 {
    pf::Log log("WriteField");
@@ -352,16 +373,15 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
                   for (j=0; (str[j]) and (str[j] != '|'); j++);
 
                   if (j > 0) {
-                     FieldDef *lk = (FieldDef *)Field->Arg;
                      std::string_view sv(str, j);
-                     while (lk->Name) {
-                        if (iequals(lk->Name, sv)) {
+                     for (auto lk = (FieldDef *)Field->Arg; lk->Name; lk++) {
+                        if (flag_match(lk->Name, sv)) {
                            int64 |= lk->Value;
                            break;
                         }
-                        lk++;
                      }
                   }
+
                   str += j;
                   while (*str IS '|') str++;
                }
@@ -373,10 +393,10 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Data,
 
             if (op != OP_OVERWRITE) {
                ERR error;
-               LONG currentflags;
-               if ((error = copy_field_to_buffer(Object, Field, FT_LONG, &currentflags, NULL, NULL)) IS ERR::Okay) {
-                  if (op IS OP_OR) int64 = currentflags | int64;
-                  else if (op IS OP_AND) int64 = currentflags & int64;
+               LONG current_flags;
+               if ((error = copy_field_to_buffer(Object, Field, FT_LONG, &current_flags, NULL, NULL)) IS ERR::Okay) {
+                  if (op IS OP_OR) int64 = current_flags | int64;
+                  else if (op IS OP_AND) int64 = current_flags & int64;
                }
                else return error;
             }

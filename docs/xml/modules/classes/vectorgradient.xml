@@ -171,8 +171,8 @@
       <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>By default, the colours generated for a gradient will be spaced for a smooth transition between stops to maximise resolution.  The resolution can be reduced by setting the Resolution value to a fraction between 0 and 1.0. This results in the colour values being sampled at every nth step only, where n is the value <code>1 / Resolution</code>.</p>
-<p>Resolution is at its maximum when this value is set to zero (the default).</p>
+<p>By default, the colours generated for a gradient will be spaced for a smooth transition between stops that maximise resolution.  The resolution can be reduced by setting the Resolution value to a fraction between 0 and 1.0. This results in the colour values being averaged to a single value for every block of n colours, where n is the value <code>1 / (1 - Resolution)</code>.</p>
+<p>Resolution is at its maximum when this value is set to 1 (the default).</p>
       </description>
     </field>
 
