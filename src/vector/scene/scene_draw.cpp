@@ -87,7 +87,7 @@ public:
    VIS    mVisible;
    VOF    mOverflowX, mOverflowY;
    bool   mLinearRGB;
-   bool   mBackgroundActive;
+   bool   mIsolated;
    bool   mDirty;
 
    VectorState() :
@@ -100,7 +100,7 @@ public:
       mVisible(VIS::VISIBLE),
       mOverflowX(VOF::VISIBLE), mOverflowY(VOF::VISIBLE),
       mLinearRGB(false),
-      mBackgroundActive(false),
+      mIsolated(false),
       mDirty(false)
       { }
 };
@@ -717,7 +717,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       if (shape->LineCap   != agg::inherit_cap)   state.mLineCap   = shape->LineCap;
       state.mOpacity = shape->Opacity * state.mOpacity;
 
-      // Support for enable-background="new".  This requires the bitmap to have an alpha channel so that
+      // Support for isolated vectors.  A vector will be isolated if it has children using a filter that uses BackgroundImage
+      // or BackgroundAlpha as an input.  This feature requires the bitmap to have an alpha channel so that
       // blending will work correctly, and the bitmap will be cleared to accept fresh content.  It acts as
       // a placeholder over the existing target bitmap, and the new content will be rendered to the target
       // after processing the current branch.  The background is then discarded.
@@ -725,11 +726,11 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       // TODO: The allocation of this bitmap during rendering isn't optimal.  Perhaps we could allocate it as a permanent
       // dummy bitmap to be retained with the Vector, and the Data would be allocated dynamically during rendering.
       //
-      // TODO: The clipping area of the bitmap should be declared so that unnecessary pixel scanning is avoided.
+      // TODO: The clipping area of the bitmap should be declared so that unnecessary pixel interaction is avoided.
 
       objBitmap *bmpBkgd = NULL;
       objBitmap *bmpSave = NULL;
-      if (shape->EnableBkgd) {
+      if ((shape->Flags & VF::ISOLATED) != VF::NIL) {
          if ((bmpBkgd = objBitmap::create::local(fl::Name("scene_temp_bkgd"),
                fl::Width(mBitmap->Width),
                fl::Height(mBitmap->Height),
@@ -740,7 +741,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             mBitmap = bmpBkgd;
             mFormat.setBitmap(*bmpBkgd);
             clearmem(bmpBkgd->Data, bmpBkgd->LineWidth * bmpBkgd->Height);
-            state.mBackgroundActive = true;
+            state.mIsolated = true;
          }
       }
 

@@ -361,6 +361,7 @@ class extVectorFilter : public objVectorFilter {
    double TargetX, TargetY, TargetWidth, TargetHeight; // Target boundary, computed on acDraw()
    bool Rendered;
    bool Disabled;
+   bool ReqBkgd; // True if the filter requires a background bitmap for one or more effects.
 };
 
 class extFilterEffect : public objFilterEffect {
@@ -411,7 +412,7 @@ class extVector : public objVector {
    VFR    ClipRule;
    RC     Dirty;
    UWORD  TabOrder;
-   UWORD  EnableBkgd:1;
+   UWORD  Isolated:1;
    UWORD  DisableFillColour:1;  // Bitmap fonts set this to true in order to disable colour fills
    UWORD  ButtonLock:1;
    UWORD  ScaledStrokeWidth:1;
