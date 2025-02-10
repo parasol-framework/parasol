@@ -112,6 +112,8 @@ static ERR VECTORVIEWPORT_Free(extVectorViewport *Self)
       Self->subscribeInput(JTYPE::NIL, C_FUNCTION(drag_callback));
    }
 
+   if (Self->vpBuffer) { FreeResource(Self->vpBuffer); Self->vpBuffer = NULL; }
+
    return ERR::Okay;
 }
 
@@ -286,6 +288,46 @@ static ERR VIEW_GET_AspectRatio(extVectorViewport *Self, ARF &Value)
 static ERR VIEW_SET_AspectRatio(extVectorViewport *Self, ARF Value)
 {
    Self->vpAspectRatio = Value;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+-FIELD-
+Buffer: Returns the bitmap buffer that the viewport is using.
+
+*********************************************************************************************************************/
+
+static ERR VIEW_GET_Buffer(extVectorViewport* Self, objBitmap * &Value)
+{
+   Value = Self->vpBuffer;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+-FIELD-
+Buffered: Set to true if the viewport should buffer its content.
+
+Viewport buffering is enabled by setting this field to `true` prior to initialisation.  A @Bitmap buffer will be
+created after the first drawing operation, and is available for the client to read from the #Buffer field.
+
+Potential reasons for enabling viewport buffering include: The client can read the rendered graphics directly from
+the #Buffer; On-screen rendering can be more efficient if the content of the viewport rarely changes.
+
+Buffering comes at a cost of using extra memory, and rendering may be less efficient if the buffered content
+changes frequently.  Buffering also enforces overflow restrictions (i.e. content is clipped), equivalent to #Overflow
+being set to `HIDDEN`.
+
+*********************************************************************************************************************/
+
+static ERR VIEW_GET_Buffered(extVectorViewport *Self, LONG &Value)
+{
+   Value = Self->vpBuffered;
+   return ERR::Okay;
+}
+
+static ERR VIEW_SET_Buffered(extVectorViewport *Self, LONG Value)
+{
+   Self->vpBuffered = Value;
    return ERR::Okay;
 }
 
@@ -854,6 +896,8 @@ static const FieldArray clViewFields[] = {
    { "AbsX",         FDF_VIRTUAL|FDF_LONG|FDF_R, VIEW_GET_AbsX },
    { "AbsY",         FDF_VIRTUAL|FDF_LONG|FDF_R, VIEW_GET_AbsY },
    { "AspectRatio",  FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, VIEW_GET_AspectRatio, VIEW_SET_AspectRatio, &clAspectRatio },
+   { "Buffer",       FDF_VIRTUAL|FDF_OBJECT|FDF_R, VIEW_GET_Buffer },
+   { "Buffered",     FDF_VIRTUAL|FDF_LONG|FDF_RI, VIEW_GET_Buffered, VIEW_SET_Buffered },
    { "Dimensions",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_R, VIEW_GET_Dimensions, VIEW_SET_Dimensions, &clViewDimensions },
    { "DragCallback", FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, VIEW_GET_DragCallback, VIEW_SET_DragCallback },
    { "Overflow",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_Overflow, VIEW_SET_Overflow, &clVectorViewportVOF },

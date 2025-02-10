@@ -432,7 +432,8 @@ Clearing a bitmap wipes away its graphical contents by drawing a blank area over
 the blank area is determined by the #BkgdIndex field.  To clear a bitmap to a different colour, use the #DrawRectangle()
 method instead.
 
-If the bitmap supports alpha blending, the alpha blend bits will be reset to 'clear' status.
+If the bitmap supports alpha blending and a transparent result is desired, setting #BkgdIndex to zero is 
+an efficient way to achieve this outcome.
 
 *********************************************************************************************************************/
 
@@ -450,7 +451,7 @@ static ERR BITMAP_Clear(extBitmap *Self)
    }
 #endif
 
-   LONG opacity = Self->Opacity;
+   auto opacity = Self->Opacity;
    Self->Opacity = 255;
    gfx::DrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
    Self->Opacity = opacity;
@@ -1299,14 +1300,6 @@ static ERR BITMAP_Init(extBitmap *Self)
    // Sanitise the Flags field
 
    if (Self->BitsPerPixel < 32) Self->Flags &= ~BMF::ALPHA_CHANNEL;
-
-   //log.msg("Red: %.2x/%d/%d , Green: %.2x/%d/%d",
-   //   Self->prvColourFormat.RedMask,   Self->prvColourFormat.RedShift,   Self->prvColourFormat.RedPos,
-   //   Self->prvColourFormat.GreenMask, Self->prvColourFormat.GreenShift, Self->prvColourFormat.GreenPos);
-
-   //log.msg("Blue: %.2x/%d/%d , Alpha: %.2x/%d/%d",
-   //   Self->prvColourFormat.BlueMask,  Self->prvColourFormat.BlueShift,  Self->prvColourFormat.BluePos,
-   //   Self->prvColourFormat.AlphaMask, Self->prvColourFormat.AlphaShift, Self->prvColourFormat.AlphaPos);
 
    return ERR::Okay;
 }

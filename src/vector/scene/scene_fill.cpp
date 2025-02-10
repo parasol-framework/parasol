@@ -555,7 +555,6 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
    agg::trans_affine transform;
 
-
    if (Pattern.Matrices) {
       auto &m = *Pattern.Matrices;
       transform.load_all(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX + dx, m.TranslateY + dy);
@@ -568,8 +567,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    }
 
    transform *= Transform;
-
-   transform.invert(); // Required
+   transform.invert();
 
    if (!State.mClipStack->empty()) {
       agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);

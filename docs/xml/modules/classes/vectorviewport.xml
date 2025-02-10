@@ -112,6 +112,25 @@
     </field>
 
     <field>
+      <name>Buffer</name>
+      <comment>Returns the bitmap buffer that the viewport is using.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
+    </field>
+
+    <field>
+      <name>Buffered</name>
+      <comment>Set to true if the viewport should buffer its content.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>Viewport buffering is enabled by setting this field to <code>true</code> prior to initialisation.  A <class name="Bitmap">Bitmap</class> buffer will be created after the first drawing operation, and is available for the client to read from the <fl>Buffer</fl> field.</p>
+<p>Potential reasons for enabling viewport buffering include: The client can read the rendered graphics directly from the <fl>Buffer</fl>; On-screen rendering can be more efficient if the content of the viewport rarely changes.</p>
+<p>Buffering comes at a cost of using extra memory, and rendering may be less efficient if the buffered content changes frequently.  Buffering also enforces overflow restrictions (i.e. content is clipped), equivalent to <fl>Overflow</fl> being set to <code>HIDDEN</code>.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Dimensions</name>
       <comment>Dimension flags define whether individual dimension fields contain fixed or scaled values.</comment>
       <access read="G" write="S">Get/Set</access>

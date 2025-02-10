@@ -482,11 +482,14 @@ class extVectorViewport : public extVector {
    double vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
    TClipRectangle<double> vpBounds; // Bounding box coordinates relative to (0,0), used for clipping
    double vpAlignX, vpAlignY;
+   objBitmap *vpBuffer;
    bool  vpClip; // Viewport requires non-rectangular clipping, e.g. because it is rotated or sheared.
    DMF   vpDimensions;
    ARF   vpAspectRatio;
    VOF   vpOverflowX, vpOverflowY;
    UBYTE vpDragging:1;
+   UBYTE vpBuffered:1; // True if the client requested that the viewport is buffered.
+   UBYTE vpRefreshBuffer:1;
 };
 
 //********************************************************************************************************************
@@ -621,7 +624,6 @@ extern ERR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
 extern ERR scene_input_events(const InputEvent *, LONG);
 extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
-extern void set_raster_clip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, VSM);
 
 extern void render_scene_from_viewport(extVectorScene *, objBitmap *, objVectorViewport *);
@@ -629,6 +631,25 @@ extern void render_scene_from_viewport(extVectorScene *, objBitmap *, objVectorV
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glVectorFocusLock;
 extern std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
+
+//********************************************************************************************************************
+// Generic function for setting the clip region of an AGG rasterizer
+
+template<class T = LONG> void set_raster_rect_path(agg::rasterizer_scanline_aa<> &Raster, T X, T Y, T Width, T Height)
+{
+   if (Width < 0) Width = 0;
+   if (Height < 0) Height = 0;
+
+   agg::path_storage clip;
+   clip.move_to(X, Y);
+   clip.line_to(X+Width, Y);
+   clip.line_to(X+Width, Y+Height);
+   clip.line_to(X, Y+Height);
+   clip.close_polygon();
+
+   Raster.reset();
+   Raster.add_path(clip);
+}
 
 //********************************************************************************************************************
 
@@ -950,7 +971,7 @@ static constexpr LONG dbl_to_int26p6(double p) { return LONG(p * 64.0); }
 
 //********************************************************************************************************************
 
-inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
+inline static void save_bitmap(objBitmap *Bitmap, const std::string Name)
 {
    std::string path = "temp:bmp_" + Name + ".png";
 

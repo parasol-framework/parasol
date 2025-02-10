@@ -56,7 +56,6 @@ where large glyphs were oriented around sharp corners.  The process would look s
 + The final character position is moved to the mid-point rather than start_x,start_y
 */
 
-#include "agg_gsv_text.h"
 #include "agg_path_length.h"
 
 const LONG DEFAULT_WEIGHT = 400;
