@@ -2823,8 +2823,13 @@ void svgState::proc_svg(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noex
             SetName(viewport, val.c_str());
             break;
 
-         case SVF_ENABLE_BACKGROUND:
-            if ((iequals("true", val)) or (iequals("1", val))) viewport->set(FID_EnableBkgd, TRUE);
+         case SVF_ENABLE_BACKGROUND: // Deprecated in favour of 'isolated'
+            log.warning("enable-background is deprecated in favour of the isolated attribute.");
+            if (iequals("new", val)) viewport->setFlags(Vector->Flags | VF::ISOLATED);
+            break;
+
+         case SVF_ISOLATION_MODE:
+            if (iequals("isolated", val)) viewport->setFlags(Vector->Flags | VF::ISOLATED);
             break;
 
          case SVF_ZOOMANDPAN:
@@ -3643,9 +3648,14 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
          else if (iequals("inherit", StrValue)) Vector->setClipRule(LONG(VFR::INHERIT));
          else log.warning("Unsupported clip-rule value '%s'", StrValue.c_str());
          break;
+         
+      case SVF_ENABLE_BACKGROUND: // Deprecated in favour of 'isolated'
+         log.warning("enable-background is deprecated in favour of the isolated attribute.");
+         if (iequals("new", StrValue)) Vector->setFlags(Vector->Flags | VF::ISOLATED);
+         break;
 
-      case SVF_ENABLE_BACKGROUND:
-         if (iequals("new", StrValue)) Vector->set(FID_EnableBkgd, TRUE);
+      case SVF_ISOLATION_MODE:
+         if (iequals("isolated", StrValue)) Vector->setFlags(Vector->Flags | VF::ISOLATED);
          break;
 
       case SVF_ID:

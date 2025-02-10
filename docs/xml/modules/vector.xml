@@ -795,6 +795,7 @@ Z: Close Path
     <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">
       <const name="DISABLED">The vector is disabled and user input should be ignored.</const>
       <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
+      <const name="ISOLATED">Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.</const>
       <const name="JOIN_PATHS">When appending a new path, use a join operation to connect the tail end to the head.</const>
     </constants>
 
