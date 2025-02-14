@@ -19,7 +19,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
   flags("VF", { comment="Optional flags and indicators for the Vector class." },
      "DISABLED: The vector is disabled and user input should be ignored.",
      "HAS_FOCUS: The vector holds the user's input focus.",
-     "JOIN_PATHS: When appending a new path, use a join operation to connect the tail end to the head.")
+     "JOIN_PATHS: When appending a new path, use a join operation to connect the tail end to the head.",
+     "ISOLATED: Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.")
 
   enum("VFA", { type="int", comment="Define the aspect ratio for VectorFilter unit scaling." },
      "MEET: Scale X/Y values independently and in relation to the width/height of the parent viewport.",
@@ -278,7 +279,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
     "FINAL_PATH: The final path will need to be recalculated, so as to take transforms and/or scaled coordinates into account.",
     "BASE_PATH: The base path (shape of the vector) must be recalculated.",
     "TRANSFORM: The transform matrix must be recalculated.  This includes movement, e.g. changing the `CX, CY` of an ellipse.",
-    { ALL = "FINAL_PATH|BASE_PATH|TRANSFORM" })
+    { ALL = "FINAL_PATH|BASE_PATH|TRANSFORM" },
+    { DIRTY = "FINAL_PATH|BASE_PATH|TRANSFORM" })
 
   flags("ARF", { comment="Aspect ratios control alignment, scaling and clipping." },
     "X_MIN: Align to the left.",
@@ -1222,6 +1224,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "InactiveCaptionText",
     "InfoBackground",
     "InfoText",
+    "ISOLATION-MODE",
     "Menu",
     "MenuText",
     "Scrollbar",

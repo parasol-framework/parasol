@@ -2130,7 +2130,7 @@ static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *B
    if (!Self->Visible) return;
    if (!Self->initialised()) return;
 
-   log.traceBranch("Surface: %d, Bitmap: %d. Clip: %dx%d,%dx%d, Offset: %dx%d", Surface->UID, Bitmap->UID, Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left, Bitmap->Clip.Bottom - Bitmap->Clip.Top, Bitmap->XOffset, Bitmap->YOffset);
+   log.traceBranch("Surface: %d, Bitmap: %d. Clip: %dx%d,%dx%d", Surface->UID, Bitmap->UID, Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left, Bitmap->Clip.Bottom - Bitmap->Clip.Top);
 
    glBitmap = Bitmap;
 

@@ -44,6 +44,12 @@
     </action>
 
     <action>
+      <name>Flush</name>
+      <comment>Flush buffered data from an object.</comment>
+      <prototype>ERR acFlush(*Object)</prototype>
+    </action>
+
+    <action>
       <name>Redimension</name>
       <comment>Redefines the size of the page.</comment>
       <prototype>ERR acRedimension(*Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth)</prototype>

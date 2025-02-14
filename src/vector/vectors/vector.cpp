@@ -492,7 +492,10 @@ Hide: Changes the vector's visibility setting to hidden.
 
 static ERR VECTOR_Hide(extVector *Self)
 {
-   Self->Visibility = VIS::HIDDEN;
+   if (Self->Visibility != VIS::HIDDEN) {
+      Self->Visibility = VIS::HIDDEN;
+      mark_buffers_for_refresh(Self);
+   }
    return ERR::Okay;
 }
 
@@ -534,6 +537,8 @@ static ERR VECTOR_Init(extVector *Self)
          glResizeSubscriptions.erase(Self);
       }
    }
+
+   mark_buffers_for_refresh(Self);
 
    return ERR::Okay;
 }
@@ -579,7 +584,7 @@ static ERR VECTOR_NewPlacement(extVector *Self)
    Self->Visibility    = VIS::VISIBLE;
    Self->FillRule      = VFR::NON_ZERO;
    Self->ClipRule      = VFR::NON_ZERO;
-   Self->Dirty         = RC::ALL;
+   Self->Dirty         = RC::DIRTY;
    Self->TabOrder      = 255;
    Self->ColourSpace   = VCS::INHERIT;
    Self->ValidState    = true;
@@ -815,7 +820,10 @@ Show: Changes the vector's visibility setting to visible.
 
 static ERR VECTOR_Show(extVector *Self)
 {
-   Self->Visibility = VIS::VISIBLE;
+   if (Self->Visibility != VIS::VISIBLE) {
+      Self->Visibility = VIS::VISIBLE;
+      mark_buffers_for_refresh(Self);
+   }
    return ERR::Okay;
 }
 
@@ -1338,33 +1346,6 @@ static ERR VECTOR_GET_DisplayScale(extVector *Self, DOUBLE *Value)
    if (!Self->initialised()) return ERR::NotInitialised;
    gen_vector_tree(Self);
    *Value = Self->Transform.scale();
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-EnableBkgd: If true, allows filters to use BackgroundImage and BackgroundAlpha source types.
-
-The EnableBkgd option must be set to true if a section of the vector tree uses filters that have `BackgroundImage` or
-`BackgroundAlpha` as a source.  If it is not set, then filters using `BackgroundImage` and `BackgroundAlpha` references
-will not produce the expected behaviour.
-
-The EnableBkgd option can be enabled on Vector sub-classes @VectorGroup, @VectorPattern and @VectorViewport.  All other
-sub-classes will ignore the option if used.
-
-*********************************************************************************************************************/
-
-static ERR VECTOR_GET_EnableBkgd(extVector *Self, LONG *Value)
-{
-   *Value = Self->EnableBkgd;
-   return ERR::Okay;
-}
-
-static ERR VECTOR_SET_EnableBkgd(extVector *Self, LONG Value)
-{
-   if (Value) Self->EnableBkgd = TRUE;
-   else Self->EnableBkgd = FALSE;
    return ERR::Okay;
 }
 
@@ -2394,6 +2375,15 @@ Visibility: Controls the visibility of a vector and its children.
 
 *********************************************************************************************************************/
 
+static ERR VECTOR_SET_Visibility(extVector *Self, VIS Value)
+{
+   if (Self->Visibility != Value) {
+      Self->Visibility = Value;
+      mark_buffers_for_refresh(Self);
+   }
+   return ERR::Okay;
+}
+
 //********************************************************************************************************************
 // For sending events to the client
 
@@ -2504,7 +2494,7 @@ static const FieldArray clVectorFields[] = {
    { "MiterLimit",      FDF_DOUBLE|FD_RW, NULL, VECTOR_SET_MiterLimit },
    { "InnerMiterLimit", FDF_DOUBLE|FD_RW },
    { "DashOffset",      FDF_DOUBLE|FD_RW, NULL, VECTOR_SET_DashOffset },
-   { "Visibility",      FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorVisibility },
+   { "Visibility",      FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, VECTOR_SET_Visibility, &clVectorVisibility },
    { "Flags",           FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clVectorFlags },
    { "Cursor",          FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, VECTOR_SET_Cursor, &clVectorCursor },
    { "PathQuality",     FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorPathQuality },
@@ -2526,7 +2516,6 @@ static const FieldArray clVectorFields[] = {
    { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   VECTOR_GET_StrokeColour, VECTOR_SET_StrokeColour },
    { "StrokeWidth",  FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTOR_GET_StrokeWidth, VECTOR_SET_StrokeWidth },
    { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Transition, VECTOR_SET_Transition },
-   { "EnableBkgd",   FDF_VIRTUAL|FDF_LONG|FDF_RW,            VECTOR_GET_EnableBkgd, VECTOR_SET_EnableBkgd },
    { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Fill, VECTOR_SET_Fill },
    { "FillColour",   FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FDF_RW,  VECTOR_GET_FillColour, VECTOR_SET_FillColour },
    { "FillRule",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VECTOR_GET_FillRule, VECTOR_SET_FillRule, &clFillRule },

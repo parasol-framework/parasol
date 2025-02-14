@@ -56,7 +56,6 @@ where large glyphs were oriented around sharp corners.  The process would look s
 + The final character position is moved to the mid-point rather than start_x,start_y
 */
 
-#include "agg_gsv_text.h"
 #include "agg_path_length.h"
 
 const LONG DEFAULT_WEIGHT = 400;
@@ -1455,7 +1454,7 @@ static ERR reset_font(extVectorText *Vector, bool Force)
          Vector->txBitmapFont = ((bmp_font *)Vector->txHandle)->font;
          Vector->txFontSize = std::trunc(DOUBLE(Vector->txBitmapFont->Height) * (DISPLAY_DPI / 72.0));
       }
-      mark_dirty(Vector, RC::ALL);
+      mark_dirty(Vector, RC::DIRTY);
       return ERR::Okay;
    }
    else return log.warning(error);

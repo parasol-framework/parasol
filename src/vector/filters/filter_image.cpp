@@ -12,12 +12,12 @@ The ImageFX class will render a source image into a given rectangle within the c
 client has the option of providing a pre-allocated @Bitmap or the path to a @Picture file as the source.
 
 If a pre-allocated @Bitmap is to be used, it must be created under the ownership of the ImageFX object, and this must
-be configured prior to initialisation.  It is required that the bitmap uses 32 bits per pixel and that the alpha 
+be configured prior to initialisation.  It is required that the bitmap uses 32 bits per pixel and that the alpha
 channel is enabled.
 
 If a source picture file is referenced, it will be upscaled to meet the requirements automatically as needed.
 
-Technically the ImageFX object is represented by a new viewport, the bounds of which are defined by attributes `X`, 
+Technically the ImageFX object is represented by a new viewport, the bounds of which are defined by attributes `X`,
 `Y`, `Width` and `Height`.  The placement and scaling of the referenced image is controlled by the #AspectRatio field.
 
 -END-
@@ -94,18 +94,8 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
    agg::pixfmt_psl pixDest(*Self->Target);
    agg::pixfmt_psl pixSource(*Self->Bitmap);
 
-   agg::path_storage path;
-   path.move_to(filter->TargetX, filter->TargetY);
-   path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY);
-   path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY + filter->TargetHeight);
-   path.line_to(filter->TargetX, filter->TargetY + filter->TargetHeight);
-   path.close_polygon();
-
    renderBase.attach(pixDest);
    renderBase.clip_box(Self->Target->Clip.Left, Self->Target->Clip.Top, Self->Target->Clip.Right-1, Self->Target->Clip.Bottom-1);
-
-   agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(path, filter->ClientVector->Transform);
-   raster.add_path(final_path);
 
    agg::trans_affine img_transform;
    img_transform.scale(xScale, yScale);
@@ -122,13 +112,23 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
       agg::span_once<agg::pixfmt_psl> source(pixSource, 0, 0);
       agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
 
-      set_raster_clip(raster, Self->Target->Clip.Left, Self->Target->Clip.Top,
+      set_raster_rect_path(raster, Self->Target->Clip.Left, Self->Target->Clip.Top,
          Self->Target->Clip.Right - Self->Target->Clip.Left,
          Self->Target->Clip.Bottom - Self->Target->Clip.Top);
 
       renderSolidBitmap(renderBase, raster, spangen); // Solid render without blending.
    }
    else {
+      agg::path_storage path;
+      path.move_to(filter->TargetX, filter->TargetY);
+      path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY);
+      path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY + filter->TargetHeight);
+      path.line_to(filter->TargetX, filter->TargetY + filter->TargetHeight);
+      path.close_polygon();
+
+      agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(path, filter->ClientVector->Transform);
+      raster.add_path(final_path);
+
       gfx::CopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, img_transform.tx, img_transform.ty);
    }
 

@@ -363,17 +363,6 @@
     </field>
 
     <field>
-      <name>EnableBkgd</name>
-      <comment>If true, allows filters to use BackgroundImage and BackgroundAlpha source types.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>The EnableBkgd option must be set to true if a section of the vector tree uses filters that have <code>BackgroundImage</code> or <code>BackgroundAlpha</code> as a source.  If it is not set, then filters using <code>BackgroundImage</code> and <code>BackgroundAlpha</code> references will not produce the expected behaviour.</p>
-<p>The EnableBkgd option can be enabled on Vector sub-classes <class name="VectorGroup">VectorGroup</class>, <class name="VectorPattern">VectorPattern</class> and <class name="VectorViewport">VectorViewport</class>.  All other sub-classes will ignore the option if used.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Fill</name>
       <comment>Defines the fill painter using SVG's IRI format.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -756,6 +745,7 @@ Z: Close Path
     <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">
       <const name="DISABLED">The vector is disabled and user input should be ignored.</const>
       <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
+      <const name="ISOLATED">Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.</const>
       <const name="JOIN_PATHS">When appending a new path, use a join operation to connect the tail end to the head.</const>
     </constants>
 

@@ -361,6 +361,7 @@ class extVectorFilter : public objVectorFilter {
    double TargetX, TargetY, TargetWidth, TargetHeight; // Target boundary, computed on acDraw()
    bool Rendered;
    bool Disabled;
+   bool ReqBkgd; // True if the filter requires a background bitmap for one or more effects.
 };
 
 class extFilterEffect : public objFilterEffect {
@@ -411,7 +412,7 @@ class extVector : public objVector {
    VFR    ClipRule;
    RC     Dirty;
    UWORD  TabOrder;
-   UWORD  EnableBkgd:1;
+   UWORD  Isolated:1;
    UWORD  DisableFillColour:1;  // Bitmap fonts set this to true in order to disable colour fills
    UWORD  ButtonLock:1;
    UWORD  ScaledStrokeWidth:1;
@@ -428,7 +429,7 @@ class extVector : public objVector {
 
    double fixed_stroke_width();
 
-   inline bool dirty() { return Dirty != RC::NIL; }
+   inline bool dirty() { return (Dirty & RC::DIRTY) != RC::NIL; }
 
    inline bool is_stroked() {
       return (StrokeWidth > 0) and
@@ -464,6 +465,7 @@ class extVectorScene : public objVectorScene {
    LONG InputHandle;
    PTC Cursor; // Current cursor image
    bool RefreshCursor;
+   UBYTE BufferCount; // Active tally of viewports that are buffered.
 };
 
 //********************************************************************************************************************
@@ -482,11 +484,14 @@ class extVectorViewport : public extVector {
    double vpFixedWidth, vpFixedHeight; // Fixed pixel position values, relative to parent viewport
    TClipRectangle<double> vpBounds; // Bounding box coordinates relative to (0,0), used for clipping
    double vpAlignX, vpAlignY;
+   objBitmap *vpBuffer;
    bool  vpClip; // Viewport requires non-rectangular clipping, e.g. because it is rotated or sheared.
    DMF   vpDimensions;
    ARF   vpAspectRatio;
    VOF   vpOverflowX, vpOverflowY;
    UBYTE vpDragging:1;
+   UBYTE vpBuffered:1; // True if the client requested that the viewport is buffered.
+   UBYTE vpRefreshBuffer:1;
 };
 
 //********************************************************************************************************************
@@ -548,8 +553,8 @@ class GradientColours {
                alpha += table[b].a * table[b].a;
             }
 
-            auto col = agg::rgba8{ 
-               UBYTE(sqrt(red/total)), UBYTE(sqrt(green/total)), UBYTE(sqrt(blue/total)), UBYTE(sqrt(alpha/total)) 
+            auto col = agg::rgba8{
+               UBYTE(sqrt(red/total)), UBYTE(sqrt(green/total)), UBYTE(sqrt(blue/total)), UBYTE(sqrt(alpha/total))
             };
 
             for (LONG b = i; (b < i + block_size) and (b < table.size()); b++) table[b] = col;
@@ -621,12 +626,32 @@ extern ERR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
 extern ERR scene_input_events(const InputEvent *, LONG);
 extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
-extern void set_raster_clip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, VSM);
+
+extern void render_scene_from_viewport(extVectorScene *, objBitmap *, objVectorViewport *);
 
 extern const FieldDef clAspectRatio[];
 extern std::recursive_mutex glVectorFocusLock;
 extern std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
+
+//********************************************************************************************************************
+// Generic function for setting the clip region of an AGG rasterizer
+
+template<class T = LONG> void set_raster_rect_path(agg::rasterizer_scanline_aa<> &Raster, T X, T Y, T Width, T Height)
+{
+   if (Width < 0) Width = 0;
+   if (Height < 0) Height = 0;
+
+   agg::path_storage clip;
+   clip.move_to(X, Y);
+   clip.line_to(X+Width, Y);
+   clip.line_to(X+Width, Y+Height);
+   clip.line_to(X, Y+Height);
+   clip.close_polygon();
+
+   Raster.reset();
+   Raster.add_path(clip);
+}
 
 //********************************************************************************************************************
 
@@ -639,39 +664,57 @@ TClipRectangle<T> get_bounds(VertexSource &vs, const unsigned path_id = 0)
 }
 
 //********************************************************************************************************************
+// If a scene contains buffered viewports, they must be marked for refresh when the state of one or more of their
+// children is changed.
+
+static void mark_buffers_for_refresh(extVector *Vector)
+{
+   if ((Vector->Scene) and (!((extVectorScene *)Vector->Scene)->BufferCount)) return;
+
+   extVectorViewport *parent_view;
+
+   if (Vector->classID() IS CLASSID::VECTORVIEWPORT) parent_view = (extVectorViewport *)Vector;
+   else parent_view = ((extVector *)Vector)->ParentView;
+
+   while (parent_view) {
+      if (parent_view->vpBuffered) {
+         parent_view->vpRefreshBuffer = true;
+         break;
+      }
+
+      parent_view = parent_view->ParentView;
+   }
+}
+
+//********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
-inline static void mark_dirty(objVector *Vector, const RC Flags)
+inline static void mark_children(extVector *Vector, const RC Flags)
 {
    ((extVector *)Vector)->Dirty |= Flags;
    for (auto node=(extVector *)Vector->Child; node; node=(extVector *)node->Next) {
-      if ((node->Dirty & Flags) != Flags) mark_dirty(node, Flags);
+      if ((node->Dirty & Flags) != Flags) mark_children(node, Flags);
    }
 }
 
-//********************************************************************************************************************
-// Return true if any vector in a tree branch is dirty (includes siblings of the target)
-
-inline static bool check_branch_dirty(extVector *Vector)
+inline static void mark_dirty(objVector *Vector, RC Flags)
 {
-   for (auto node=(extVector *)Vector; node; node=(extVector *)node->Next) {
-      if ((node->Dirty & RC::ALL) != RC::NIL) return true;
-      if ((node->Child) and (check_branch_dirty((extVector *)node->Child))) return true;
-   }
-   return false;
+   mark_buffers_for_refresh((extVector *)Vector);
+
+   mark_children((extVector *)Vector, Flags);
 }
 
 //********************************************************************************************************************
 
-inline static agg::path_storage basic_path(double X1, double Y1, double X2, double Y2)
+// Accepts agg::path_storage or agg::rasterizer_scanline_aa as the first argument.
+
+template <class T> void basic_path(T &Target, double X1, double Y1, double X2, double Y2)
 {
-   agg::path_storage path;
-   path.move_to(X1, Y1);
-   path.line_to(X2, Y1);
-   path.line_to(X2, Y2);
-   path.line_to(X1, Y2);
-   path.close_polygon();
-   return std::move(path);
+   Target.move_to(X1, Y1);
+   Target.line_to(X2, Y1);
+   Target.line_to(X2, Y2);
+   Target.line_to(X1, Y2);
+   Target.close_polygon();
 }
 
 //********************************************************************************************************************
@@ -948,7 +991,7 @@ static constexpr LONG dbl_to_int26p6(double p) { return LONG(p * 64.0); }
 
 //********************************************************************************************************************
 
-inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
+inline static void save_bitmap(objBitmap *Bitmap, const std::string Name)
 {
    std::string path = "temp:bmp_" + Name + ".png";
 

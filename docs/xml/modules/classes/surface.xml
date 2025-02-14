@@ -968,11 +968,6 @@ the surface area first).</li>
       <const name="REDRAW_VOLATILE_OVERLAP">Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.</const>
     </constants>
 
-    <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
-      <const name="HORIZONTAL">Flip the bitmap from top to bottom.</const>
-      <const name="VERTICAL">Flip the bitmap from left to right.</const>
-    </constants>
-
     <constants lookup="HOST">
       <const name="STICK_TO_FRONT">The hosted display sticks to the front.</const>
       <const name="TASKBAR">The hosted display is given a taskbar button.</const>
@@ -1017,10 +1012,6 @@ the surface area first).</li>
       <const name="MOVEMENT">X/Y coordinate movement only. Movement such as the wheel mouse spinning is not covered by this type as it does not influence the coordinate system.</const>
       <const name="REPEATED">Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)</const>
       <const name="SECONDARY">Indicates to the receiver of this message that it is not the primary/original recipient</const>
-    </constants>
-
-    <constants lookup="LVF" comment="drwLockBitmap() result flags">
-      <const name="EXPOSE_CHANGES"/>
     </constants>
 
     <constants lookup="PTC" comment="Predefined cursor styles">

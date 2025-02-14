@@ -457,7 +457,6 @@ extern OBJECTPTR glModule;
 extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface, clController;
 extern OBJECTID glPointerID;
 extern DISPLAYINFO glDisplayInfo;
-extern APTR glDither;
 extern objCompression *glCompress;
 extern struct CoreBase *CoreBase;
 extern ColourFormat glColourFormat;

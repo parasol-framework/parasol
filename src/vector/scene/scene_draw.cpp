@@ -13,7 +13,6 @@ private:
    agg::scanline_u8  mScanLine; // Use scanline_p for large solid polygons/rectangles and scanline_u for complex shapes like text
    extVectorViewport *mView;    // The current view
    objBitmap         *mBitmap;
-   std::stack<agg::trans_affine> mTransforms;
 
 public:
    // The ClipBuffer is used to hold any alpha-masks that are generated as the scene is rendered.
@@ -66,7 +65,7 @@ public:
    extVectorScene *Scene; // The top-level VectorScene performing the draw.
 
    SceneRenderer(extVectorScene *pScene) : Scene(pScene) { }
-   void draw(objBitmap *Bitmap);
+   void draw(objBitmap *, objVectorViewport *);
 };
 
 //********************************************************************************************************************
@@ -88,7 +87,7 @@ public:
    VIS    mVisible;
    VOF    mOverflowX, mOverflowY;
    bool   mLinearRGB;
-   bool   mBackgroundActive;
+   bool   mIsolated;
    bool   mDirty;
 
    VectorState() :
@@ -101,7 +100,7 @@ public:
       mVisible(VIS::VISIBLE),
       mOverflowX(VOF::VISIBLE), mOverflowY(VOF::VISIBLE),
       mLinearRGB(false),
-      mBackgroundActive(false),
+      mIsolated(false),
       mDirty(false)
       { }
 };
@@ -234,15 +233,15 @@ private:
 
 //********************************************************************************************************************
 
-class span_repeat_rkl
+class span_repeat_pf
 {
 private:
-   span_repeat_rkl();
+   span_repeat_pf();
 public:
    typedef typename agg::rgba8::value_type value_type;
    typedef agg::rgba8 color_type;
 
-   span_repeat_rkl(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
+   span_repeat_pf(agg::pixfmt_psl & pixf, unsigned offset_x, unsigned offset_y) :
        m_src(&pixf), m_wrap_x(pixf.mWidth), m_wrap_y(pixf.mHeight),
        m_offset_x(offset_x), m_offset_y(offset_y) {
       m_bk_buf[0] = m_bk_buf[1] = m_bk_buf[2] = m_bk_buf[3] = 0;
@@ -328,24 +327,6 @@ const agg::trans_affine SceneRenderer::build_fill_transform(extVector &Vector, b
 }
 
 //********************************************************************************************************************
-// Generic function for setting the clip region of an AGG rasterizer
-
-void set_raster_clip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG Width, LONG Height)
-{
-   if (Width < 0) Width = 0;
-   if (Height < 0) Height = 0;
-
-   agg::path_storage clip;
-   clip.move_to(X, Y);
-   clip.line_to(X+Width, Y);
-   clip.line_to(X+Width, Y+Height);
-   clip.line_to(X, Y+Height);
-   clip.close_polygon();
-   Raster.reset();
-   Raster.add_path(clip);
-}
-
-//********************************************************************************************************************
 
 void set_filter(agg::image_filter_lut &Filter, VSM Method)
 {
@@ -399,8 +380,8 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REPEAT) {
-         agg::span_repeat_rkl source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_repeat_rkl, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_repeat_pf source(pixels, XOffset, YOffset);
+         agg::span_image_filter_rgba<agg::span_repeat_pf, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else { // VSPREAD::PAD and VSPREAD::CLIP modes.
@@ -426,7 +407,7 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REPEAT) {
-         agg::span_repeat_rkl source(pixels, XOffset, YOffset);
+         agg::span_repeat_pf source(pixels, XOffset, YOffset);
          drawBitmapRender(Scanline, RenderBase, Raster, source, Opacity);
       }
       else { // VSPREAD::PAD and VSPREAD::CLIP modes.
@@ -580,7 +561,7 @@ static void stroke_brush(VectorState &State, const objVectorImage &Image, agg::r
 
 //********************************************************************************************************************
 
-void SceneRenderer::draw(objBitmap *Bitmap)
+void SceneRenderer::draw(objBitmap *Bitmap, objVectorViewport *Viewport)
 {
    pf::Log log;
 
@@ -592,7 +573,7 @@ void SceneRenderer::draw(objBitmap *Bitmap)
       return;
    }
 
-   if (Scene->Viewport) {
+   if (Viewport) {
       mBitmap = Bitmap;
       mFormat.setBitmap(*Bitmap);
       mRenderBase.attach(mFormat);
@@ -603,7 +584,7 @@ void SceneRenderer::draw(objBitmap *Bitmap)
       Scene->InputBoundaries.clear();
 
       VectorState state;
-      draw_vectors((extVector *)Scene->Viewport, state);
+      draw_vectors((extVector *)Viewport, state);
    }
 }
 
@@ -621,7 +602,7 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
 
    // Regarding this validation check, SVG requires that stroked vectors have a size > 0 when a paint server is used
    // as a stroker.  If the size is zero, the paint server is ignored and the solid colour can be used as a stroker
-   // if the client has specified one.  Ref: W3C SVG Coordinate chapter, last paragraph of 7.11 
+   // if the client has specified one.  Ref: W3C SVG Coordinate chapter, last paragraph of 7.11
 
    if (Vector.Bounds.valid()) {
       if (Vector.Stroke.Gradient) {
@@ -650,9 +631,9 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
          return;
       }
    }
-   
+
    // Solid colour
-   
+
    if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
       agg::renderer_scanline_bin_solid renderer(mRenderBase);
       renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
@@ -684,7 +665,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       pf::Log log(__FUNCTION__);
       VectorState state = VectorState(ParentState);
 
-      if (shape->Class->BaseClassID != CLASSID::VECTOR) {
+      if (shape->baseClassID() != CLASSID::VECTOR) {
          log.trace("Non-Vector discovered in the vector tree.");
          continue;
       }
@@ -736,7 +717,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       if (shape->LineCap   != agg::inherit_cap)   state.mLineCap   = shape->LineCap;
       state.mOpacity = shape->Opacity * state.mOpacity;
 
-      // Support for enable-background="new".  This requires the bitmap to have an alpha channel so that
+      // Support for isolated vectors.  A vector will be isolated if it has children using a filter that uses BackgroundImage
+      // or BackgroundAlpha as an input.  This feature requires the bitmap to have an alpha channel so that
       // blending will work correctly, and the bitmap will be cleared to accept fresh content.  It acts as
       // a placeholder over the existing target bitmap, and the new content will be rendered to the target
       // after processing the current branch.  The background is then discarded.
@@ -744,11 +726,11 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       // TODO: The allocation of this bitmap during rendering isn't optimal.  Perhaps we could allocate it as a permanent
       // dummy bitmap to be retained with the Vector, and the Data would be allocated dynamically during rendering.
       //
-      // TODO: The clipping area of the bitmap should be declared so that unnecessary pixel scanning is avoided.
+      // TODO: The clipping area of the bitmap should be declared so that unnecessary pixel interaction is avoided.
 
       objBitmap *bmpBkgd = NULL;
       objBitmap *bmpSave = NULL;
-      if (shape->EnableBkgd) {
+      if ((shape->Flags & VF::ISOLATED) != VF::NIL) {
          if ((bmpBkgd = objBitmap::create::local(fl::Name("scene_temp_bkgd"),
                fl::Width(mBitmap->Width),
                fl::Height(mBitmap->Height),
@@ -759,7 +741,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             mBitmap = bmpBkgd;
             mFormat.setBitmap(*bmpBkgd);
             clearmem(bmpBkgd->Data, bmpBkgd->LineWidth * bmpBkgd->Height);
-            state.mBackgroundActive = true;
+            state.mIsolated = true;
          }
       }
 
@@ -906,7 +888,88 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   }
                }
 
-               if (view->Child) draw_vectors((extVector *)view->Child, state);
+               if (view->Child) {
+                  constexpr LONG MAX_AREA = 4096 * 4096; // Maximum allowable area for enabling a viewport buffer
+
+                  if ((view->vpBuffered) and (view->vpFixedWidth * view->vpFixedHeight < MAX_AREA)) {
+                     // In buffered mode, children will be drawn to an independent bitmap that is permanently
+                     // cached.
+
+                     bool redraw = view->vpRefreshBuffer;
+                     view->vpRefreshBuffer = false;
+
+                     if (view->vpBuffer) {
+                        if ((view->vpBuffer->Width != view->vpFixedWidth) or (view->vpBuffer->Height != view->vpFixedHeight)) {
+                           view->vpBuffer->resize(view->vpFixedWidth, view->vpFixedHeight);
+                           redraw = true;
+                        }
+                     }
+                     else {
+                        view->vpBuffer = objBitmap::create::local(fl::Name("vp_buffer"),
+                           fl::Owner(view->UID),
+                           fl::Width(view->vpFixedWidth),
+                           fl::Height(view->vpFixedHeight),
+                           fl::BitsPerPixel(32),
+                           fl::Flags(BMF::ALPHA_CHANNEL));
+                           //fl::ColourSpace(view->vpColourSpace));
+                        redraw = true;
+                     }
+
+                     if (redraw) {
+                        view->vpBuffer->BkgdIndex = 0;
+                        view->vpBuffer->clear();
+
+                        // A new state is allocated for drawing the children.  Clipping to the bitmap is enforced with
+                        // the overflow values.
+
+                        VectorState child_state;
+                        child_state.mOverflowX = VOF::HIDDEN;
+                        child_state.mOverflowY = VOF::HIDDEN;
+
+                        auto save_bmp    = mBitmap;
+                        auto save_format = mFormat;
+                        auto save_rb     = mRenderBase;
+
+                        // The vector paths will target the coordinate space of their parents, so we
+                        // make adjustments to the bitmap to orient to (0,0).
+
+                        mBitmap = view->vpBuffer;
+                        auto save_data = mBitmap->offset(-view->vpBounds.left, -view->vpBounds.top);
+                        mFormat.setBitmap(*view->vpBuffer);
+
+                        draw_vectors((extVector *)view->Child, child_state);
+
+                        mBitmap->Data = save_data;
+
+                        mRenderBase = save_rb;
+                        mBitmap     = save_bmp;
+                        mFormat     = save_format;
+
+                        //save_bitmap(view->vpBuffer, std::string("viewport"));
+                     }
+
+                     // Draw the cached bitmap buffer
+
+                     view->BasePath.approximation_scale(view->Transform.scale());
+
+                     auto transform = view->Transform;
+                     transform.invert();
+
+                     agg::rasterizer_scanline_aa<> raster;
+                     raster.add_path(view->BasePath);
+
+                     if (!state.mClipStack->empty()) {
+                        agg::alpha_mask_gray8 alpha_mask(state.mClipStack->top().m_renderer);
+                        agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+                        drawBitmap(masked_scanline, VSM::AUTO, mRenderBase, raster, view->vpBuffer, VSPREAD::REPEAT, view->Opacity, &transform);
+                     }
+                     else {
+                        agg::scanline_u8 scanline;
+                        drawBitmap(scanline, VSM::AUTO, mRenderBase, raster, view->vpBuffer, VSPREAD::REPEAT, view->Opacity, &transform);
+                     }
+                  }
+                  else draw_vectors((extVector *)view->Child, state);
+               }
 
                if (view->ClipMask) state.mClipStack->pop();
 
@@ -987,13 +1050,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       if (bmpBkgd) {
          agg::rasterizer_scanline_aa raster;
 
-         agg::path_storage clip;
-         clip.move_to(0, 0);
-         clip.line_to(bmpBkgd->Width, 0);
-         clip.line_to(bmpBkgd->Width, bmpBkgd->Height);
-         clip.line_to(0, bmpBkgd->Height);
-         clip.close_polygon();
-         raster.add_path(clip);
+         basic_path(raster, 0, 0, bmpBkgd->Width, bmpBkgd->Height);
 
          mBitmap = bmpSave;
          mFormat.setBitmap(*mBitmap);
@@ -1008,7 +1065,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
          }
          FreeResource(bmpBkgd);
       }
-   }
+   } // for loop
 }
 
 //********************************************************************************************************************
@@ -1092,8 +1149,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 
 void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, bool Linear)
 {
-   auto data = Bitmap.Data + (Bitmap.XOffset * Bitmap.BytesPerPixel) + (Bitmap.YOffset * Bitmap.LineWidth);
-   rawBitmap(data, Bitmap.Clip.Right, Bitmap.Clip.Bottom, Bitmap.LineWidth, Bitmap.BitsPerPixel, *Bitmap.ColourFormat, Linear);
+   rawBitmap(Bitmap.Data, Bitmap.Clip.Right, Bitmap.Clip.Bottom, Bitmap.LineWidth, Bitmap.BitsPerPixel, *Bitmap.ColourFormat, Linear);
 }
 
 void agg::pixfmt_psl::rawBitmap(UBYTE *Data, LONG Width, LONG Height, LONG Stride, LONG BitsPerPixel, ColourFormat &ColourFormat, bool Linear)

@@ -232,14 +232,9 @@ static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
 //   Self->Scene->Viewport->setViewX(Args->X);
 //   Self->Scene->Viewport->setViewY(Args->Y);
 
-   bmp->XOffset += Args->X;
-   bmp->YOffset += Args->Y;
-
+   auto data = bmp->offset(Args->X, Args->Y);
    Action(AC::Draw, Self->Scene, NULL);
-
-   bmp->XOffset -= Args->X;
-   bmp->YOffset -= Args->Y;
-
+   bmp->Data = data;
    return ERR::Okay;
 }
 

@@ -224,11 +224,8 @@ static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG 
 
    LONG owner = find_bitmap_owner(list, Index);
 
-   // Turn off offsets and set the clipping to match the source bitmap exactly (i.e. nothing fancy happening here).
+   // Set the clipping to match the source bitmap exactly (i.e. nothing fancy happening here).
    // The real clipping occurs in the display clip.
-
-   Bitmap->XOffset = 0;
-   Bitmap->YOffset = 0;
 
    Bitmap->Clip.Left   = list[Index].Left - list[owner].Left;
    Bitmap->Clip.Top    = list[Index].Top - list[owner].Top;
@@ -295,9 +292,6 @@ static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG 
    objDisplay *display;
    objBitmap *video_bmp;
    if (access_video(DisplayID, &display, &video_bmp) IS ERR::Okay) {
-      video_bmp->XOffset = 0;
-      video_bmp->YOffset = 0;
-
       video_bmp->Clip.Left   = Left   - list[iscr].Left; // Ensure that the coords are relative to the display bitmap (important for Windows, X11)
       video_bmp->Clip.Top    = Top    - list[iscr].Top;
       video_bmp->Clip.Right  = Right  - list[iscr].Left;
@@ -2346,13 +2340,10 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
    }
 
    ClipRectangle clip = Bitmap->Clip;
-   LONG xoffset = Bitmap->XOffset;
-   LONG yoffset = Bitmap->YOffset;
 
    // Adjust clipping and offset values to match the absolute coordinates of our surface object
 
-   Bitmap->XOffset += Self->X;
-   Bitmap->YOffset += Self->Y;
+   auto data = Bitmap->offset(Self->X, Self->Y);
 
    // Adjust the clipping region of our parent so that it is relative to our surface area
 
@@ -2378,9 +2369,8 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
       process_surface_callbacks(Self, Bitmap);
    }
 
-   Bitmap->Clip    = clip;
-   Bitmap->XOffset = xoffset;
-   Bitmap->YOffset = yoffset;
+   Bitmap->Clip = clip;
+   Bitmap->Data = data;
 }
 
 //********************************************************************************************************************

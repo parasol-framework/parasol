@@ -12,52 +12,24 @@ Name: Bitmap
 using namespace display;
 #endif
 
-static size_t glDitherSize = 0;
-
 //********************************************************************************************************************
 // NOTE: Please ensure that the Width and Height are already clipped to meet the restrictions of BOTH the source and
 // destination bitmaps.
 
-#define DITHER_ERROR(c)                  /* Dither one colour component */ \
-   dif = (buf1[x].c>>3) - (brgb.c<<3);   /* An eighth of the error */ \
-   if (dif) {                            \
-      val3 = buf2[x+1].c + (dif<<1);     /* 1/4 down & right */ \
-      dif = dif + dif + dif;             \
-      val1 = buf1[x+1].c + dif;          /* 3/8 to the right */ \
-      val2 = buf2[x].c + dif;            /* 3/8 to the next row */ \
-      if (dif > 0) {                     /* Check for overflow */ \
-         buf1[x+1].c = std::min(16383, val1); \
-         buf2[x].c   = std::min(16383, val2); \
-         buf2[x+1].c = std::min(16383, val3); \
-      }                                  \
-      else if (dif < 0) {                \
-         buf1[x+1].c = std::max(0, val1);     \
-         buf2[x].c   = std::max(0, val2);     \
-         buf2[x+1].c = std::max(0, val3);     \
-      }                                  \
-   }
-
 static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG Width, LONG Height,
    LONG SrcX, LONG SrcY, LONG DestX, LONG DestY)
 {
-   pf::Log log(__FUNCTION__);
    RGB16 *buf1, *buf2, *buffer;
    RGB8 brgb;
-   UBYTE *srcdata, *destdata, *data;
-   LONG dif, val1, val2, val3;
+   UBYTE *data;
    LONG x, y;
-   ULONG colour;
    WORD index;
-   UBYTE rmask, gmask, bmask;
 
    if ((Width < 1) or (Height < 1)) return ERR::Okay;
 
-   // Punch the developer for making stupid mistakes
+   // Punch the developer for stupid mistakes
 
-   if ((Dest->BitsPerPixel >= 24) and (!Format)) {
-      log.warning("Dithering attempted to a %dbpp bitmap.", Dest->BitsPerPixel);
-      return ERR::Failed;
-   }
+   if ((Dest->BitsPerPixel >= 24) and (!Format)) return ERR::InvalidData;
 
    // Do a straight copy if the bitmap is too small for dithering
 
@@ -71,18 +43,29 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
       return ERR::Okay;
    }
 
-   // Allocate buffer for dithering
-
-   if (Width * sizeof(RGB16) * 2 > glDitherSize) {
-      if (glDither) { FreeResource(glDither); glDither = NULL; }
-
-      if (AllocMemory(Width * sizeof(RGB16) * 2, MEM::NO_CLEAR|MEM::UNTRACKED, &glDither) != ERR::Okay) {
-         return ERR::AllocMemory;
+   auto DITHER_ERROR = [&]<typename T>(UBYTE Src, T RGB16::*Comp, LONG x, LONG y) {
+      // Dither one colour component
+      if (LONG dif = (buf1[x].*Comp>>3) - (Src<<3)) { // An eighth of the error
+         LONG val3 = buf2[x+1].*Comp + (dif<<1);     // 1/4 down & right
+         dif = dif + dif + dif;
+         LONG val1 = buf1[x+1].*Comp + dif;          // 3/8 to the right
+         LONG val2 = buf2[x].*Comp + dif;            // 3/8 to the next row
+         if (dif > 0) {                              // Check for overflow
+            buf1[x+1].*Comp = std::min(16383, val1);
+            buf2[x].*Comp   = std::min(16383, val2);
+            buf2[x+1].*Comp = std::min(16383, val3);
+         }
+         else if (dif < 0) {
+            buf1[x+1].*Comp = std::max(0, val1);
+            buf2[x].*Comp   = std::max(0, val2);
+            buf2[x+1].*Comp = std::max(0, val3);
+         }
       }
-      glDitherSize = Width * sizeof(RGB16) * 2;
-   }
+   };
+   
+   std::vector<RGB16> calc_buffer(Width * sizeof(RGB16) * 2);
 
-   buf1 = (RGB16 *)glDither;
+   buf1 = calc_buffer.data();
    buf2 = buf1 + Width;
 
    // Prime buf2, which will be copied to buf1 at the start of the loop.  We work with six binary "decimal places" to reduce roundoff errors.
@@ -97,18 +80,14 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
 
    if (!Format) Format = &Dest->prvColourFormat;
 
-   srcdata = Bitmap->Data + ((SrcY+1) * Bitmap->LineWidth);
-   destdata = Dest->Data + (DestY * Dest->LineWidth);
-   rmask = Format->RedMask   << Format->RedShift;
-   gmask = Format->GreenMask << Format->GreenShift;
-   bmask = Format->BlueMask  << Format->BlueShift;
+   auto srcdata = Bitmap->Data + ((SrcY+1) * Bitmap->LineWidth);
+   auto destdata = Dest->Data + (DestY * Dest->LineWidth);
+   UBYTE rmask = Format->RedMask   << Format->RedShift;
+   UBYTE gmask = Format->GreenMask << Format->GreenShift;
+   UBYTE bmask = Format->BlueMask  << Format->BlueShift;
 
    for (y=0; y < Height - 1; y++) {
-      // Move line 2 to line 1, line 2 then is empty for reading the next row
-
-      buffer = buf2;
-      buf2 = buf1;
-      buf1 = buffer;
+      std::swap(buf1, buf2); // Move line 2 to line 1, line 2 then is empty for reading the next row
 
       // Read the next source line
 
@@ -116,7 +95,7 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
          buffer = buf2;
          data = srcdata+(SrcX<<2);
          for (x=0; x < Width; x++, data+=4, buffer++) {
-            colour = ((ULONG *)data)[0];
+            auto colour = ((ULONG *)data)[0];
             buffer->Red   = ((UBYTE)(colour >> Bitmap->prvColourFormat.RedPos))<<6;
             buffer->Green = ((UBYTE)(colour >> Bitmap->prvColourFormat.GreenPos))<<6;
             buffer->Blue  = ((UBYTE)(colour >> Bitmap->prvColourFormat.BluePos))<<6;
@@ -127,7 +106,7 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
          buffer = buf2;
          data = srcdata+(SrcX<<1);
          for (x=0; x < Width; x++, data+=2, buffer++) {
-            colour = ((UWORD *)data)[0];
+            auto colour = ((UWORD *)data)[0];
             buffer->Red   = Bitmap->unpackRed(colour)<<6;
             buffer->Green = Bitmap->unpackGreen(colour)<<6;
             buffer->Blue  = Bitmap->unpackBlue(colour)<<6;
@@ -156,9 +135,9 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
             ((UWORD *)data)[0] = ((brgb.Red>>Dest->prvColourFormat.RedShift) << Dest->prvColourFormat.RedPos) |
                                  ((brgb.Green>>Dest->prvColourFormat.GreenShift) << Dest->prvColourFormat.GreenPos) |
                                  ((brgb.Blue>>Dest->prvColourFormat.BlueShift) << Dest->prvColourFormat.BluePos);
-            DITHER_ERROR(Red);
-            DITHER_ERROR(Green);
-            DITHER_ERROR(Blue);
+            DITHER_ERROR(brgb.Red, &RGB16::Red, x, y);
+            DITHER_ERROR(brgb.Green, &RGB16::Green, x, y);
+            DITHER_ERROR(brgb.Blue, &RGB16::Blue, x, y);
          }
       }
       else if (Dest->BytesPerPixel IS 4) {
@@ -167,9 +146,9 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
             brgb.Green = (buffer->Green>>6) & gmask;
             brgb.Blue  = (buffer->Blue>>6) & bmask;
             ((ULONG *)data)[0] = Dest->packPixelWB(brgb.Red, brgb.Green, brgb.Blue, buffer->Alpha);
-            DITHER_ERROR(Red);
-            DITHER_ERROR(Green);
-            DITHER_ERROR(Blue);
+            DITHER_ERROR(brgb.Red, &RGB16::Red, x, y);
+            DITHER_ERROR(brgb.Green, &RGB16::Green, x, y);
+            DITHER_ERROR(brgb.Blue, &RGB16::Blue, x, y);
          }
       }
       else {
@@ -178,18 +157,15 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
             brgb.Green = (buffer->Green>>6) & gmask;
             brgb.Blue  = (buffer->Blue>>6) & bmask;
             Dest->DrawUCRIndex(Dest, data, &brgb);
-            DITHER_ERROR(Red);
-            DITHER_ERROR(Green);
-            DITHER_ERROR(Blue);
+            DITHER_ERROR(brgb.Red, &RGB16::Red, x, y);
+            DITHER_ERROR(brgb.Green, &RGB16::Green, x, y);
+            DITHER_ERROR(brgb.Blue, &RGB16::Blue, x, y);
          }
       }
 
       // Draw the last pixel in the row - no downward propagation
 
-      brgb.Red   = buf1[Width-1].Red>>6;
-      brgb.Green = buf1[Width-1].Green>>6;
-      brgb.Blue  = buf1[Width-1].Blue>>6;
-      brgb.Alpha = buf1[Width-1].Alpha;
+      brgb = { UBYTE(buf1[Width-1].Red>>6), UBYTE(buf1[Width-1].Green>>6), UBYTE(buf1[Width-1].Blue>>6), UBYTE(buf1[Width-1].Alpha) };
       Dest->DrawUCRIndex(Dest, destdata + ((Width - 1) * Dest->BytesPerPixel), &brgb);
 
       srcdata += Bitmap->LineWidth;
@@ -200,10 +176,7 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LONG
 
    if (Bitmap != Dest) {
       for (x=0,index=0; x < Width; x++,index+=Dest->BytesPerPixel) {
-         brgb.Red   = buf2[x].Red>>6;
-         brgb.Green = buf2[x].Green>>6;
-         brgb.Blue  = buf2[x].Blue>>6;
-         brgb.Alpha = buf2[x].Alpha;
+         brgb = { UBYTE(buf2[x].Red>>6), UBYTE(buf2[x].Green>>6), UBYTE(buf2[x].Blue>>6), UBYTE(buf2[x].Alpha) };
          Dest->DrawUCRIndex(Dest, destdata+index, &brgb);
       }
    }
@@ -261,33 +234,31 @@ UBYTE validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
    pf::Log log(Header);
 
 #ifdef _DEBUG // Force break if clipping is wrong (use gdb)
-   if (((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) or
-       ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) or
-       ((Bitmap->XOffset + Bitmap->Clip.Left) < 0) or
+   if (((Bitmap->Clip.Right) > Bitmap->Width) or
+       ((Bitmap->Clip.Bottom) > Bitmap->Height) or
+       ((Bitmap->Clip.Left) < 0) or
        (Bitmap->Clip.Left >= Bitmap->Clip.Right) or
        (Bitmap->Clip.Top >= Bitmap->Clip.Bottom)) {
       DEBUG_BREAK
    }
 #else
-   if ((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) {
-      log.warning("#%d %s: Invalid right-clip of %d (offset %d), limited to width of %d.", Bitmap->UID, Name, Bitmap->Clip.Right, Bitmap->XOffset, Bitmap->Width);
-      Bitmap->Clip.Right = Bitmap->Width - Bitmap->XOffset;
+   if ((Bitmap->Clip.Right) > Bitmap->Width) {
+      log.warning("#%d %s: Invalid right-clip of %d, limited to width of %d.", Bitmap->UID, Name, Bitmap->Clip.Right, Bitmap->Width);
+      Bitmap->Clip.Right = Bitmap->Width;
    }
 
-   if ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) {
-      log.warning("#%d %s: Invalid bottom-clip of %d (offset %d), limited to height of %d.", Bitmap->UID, Name, Bitmap->Clip.Bottom, Bitmap->YOffset, Bitmap->Height);
-      Bitmap->Clip.Bottom = Bitmap->Height - Bitmap->YOffset;
+   if ((Bitmap->Clip.Bottom) > Bitmap->Height) {
+      log.warning("#%d %s: Invalid bottom-clip of %d, limited to height of %d.", Bitmap->UID, Name, Bitmap->Clip.Bottom, Bitmap->Height);
+      Bitmap->Clip.Bottom = Bitmap->Height;
    }
 
-   if ((Bitmap->XOffset + Bitmap->Clip.Left) < 0) {
-      log.warning("#%d %s: Invalid left-clip of %d (offset %d).", Bitmap->UID, Name, Bitmap->Clip.Left, Bitmap->XOffset);
-      Bitmap->XOffset = 0;
+   if ((Bitmap->Clip.Left) < 0) {
+      log.warning("#%d %s: Invalid left-clip of %d.", Bitmap->UID, Name, Bitmap->Clip.Left);
       Bitmap->Clip.Left = 0;
    }
 
-   if ((Bitmap->YOffset + Bitmap->Clip.Top) < 0) {
-      log.warning("#%d %s: Invalid top-clip of %d (offset %d).", Bitmap->UID, Name, Bitmap->Clip.Top, Bitmap->YOffset);
-      Bitmap->YOffset = 0;
+   if ((Bitmap->Clip.Top) < 0) {
+      log.warning("#%d %s: Invalid top-clip of %d.", Bitmap->UID, Name, Bitmap->Clip.Top);
       Bitmap->Clip.Top = 0;
    }
 
@@ -324,7 +295,7 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG
    auto dest = (extBitmap *)Dest;
    if (!src->initialised()) return log.warning(ERR::NotInitialised);
 
-   //log.trace("%dx%d,%dx%d to %dx%d, Offset: %dx%d to %dx%d", X, Y, Width, Height, DestX, DestY, src->XOffset, src->YOffset, Dest->XOffset, Dest->YOffset);
+   //log.trace("%dx%d,%dx%d to %dx%d", X, Y, Width, Height, DestX, DestY);
 
    if (validate_clip(__FUNCTION__, "Source", src)) return ERR::Okay;
 
@@ -438,13 +409,6 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG
    if (Width < 1) return ERR::Okay;
    if (Height < 1) return ERR::Okay;
 
-   // Adjust coordinates by offset values
-
-   X += src->XOffset;
-   Y += src->YOffset;
-   DestX  += Dest->XOffset;
-   DestY  += Dest->YOffset;
-
 #ifdef _WIN32
    if (dest->win.Drawable) { // Destination is a window
 
@@ -535,10 +499,10 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, LONG X, LONG Y, LONG
       if (!src->x11.drawable) {
          if (((Flags & BAF::BLEND) != BAF::NIL) and (src->BitsPerPixel IS 32) and ((src->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
             auto save_clip = dest->Clip;
-            Dest->Clip.Left   = DestX - dest->XOffset;
-            Dest->Clip.Right  = DestX + Width - dest->XOffset;
-            Dest->Clip.Top    = DestY - dest->YOffset;
-            Dest->Clip.Bottom = DestY + Height - dest->YOffset;
+            Dest->Clip.Left   = DestX;
+            Dest->Clip.Right  = DestX + Width;
+            Dest->Clip.Top    = DestY;
+            Dest->Clip.Bottom = DestY + Height;
             if (lock_surface(dest, SURFACE_READ|SURFACE_WRITE) IS ERR::Okay) {
                auto srcdata = (ULONG *)(src->Data + (Y * src->LineWidth) + (X<<2));
 
@@ -1274,9 +1238,6 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap,
       Y += Surface->YOffset;
    }
 
-   XDest += Bitmap->XOffset;
-   YDest += Bitmap->YOffset;
-
    if ((Flags & CSRF::DEFAULT_FORMAT) != CSRF::NIL) gfx::GetColourFormat(&Surface->Format, Surface->BitsPerPixel, 0, 0, 0, 0);;
 
    switch(Surface->BytesPerPixel) {
@@ -1621,26 +1582,23 @@ void DrawRectangle(objBitmap *Target, LONG X, LONG Y, LONG Width, LONG Height, U
 
    if (!Bitmap->initialised()) { log.warning(ERR::NotInitialised); return; }
 
-   X += Bitmap->XOffset;
-   Y += Bitmap->YOffset;
+   if (X >= Bitmap->Clip.Right) return;
+   if (Y >= Bitmap->Clip.Bottom) return;
+   if (X + Width <= Bitmap->Clip.Left) return;
+   if (Y + Height <= Bitmap->Clip.Top) return;
 
-   if (X >= Bitmap->Clip.Right + Bitmap->XOffset) return;
-   if (Y >= Bitmap->Clip.Bottom + Bitmap->YOffset) return;
-   if (X + Width <= Bitmap->Clip.Left + Bitmap->XOffset) return;
-   if (Y + Height <= Bitmap->Clip.Top + Bitmap->YOffset) return;
-
-   if (X < Bitmap->Clip.Left + Bitmap->XOffset) {
-      Width -= Bitmap->Clip.Left + Bitmap->XOffset - X;
-      X = Bitmap->Clip.Left + Bitmap->XOffset;
+   if (X < Bitmap->Clip.Left) {
+      Width -= Bitmap->Clip.Left - X;
+      X = Bitmap->Clip.Left;
    }
 
-   if (Y < Bitmap->Clip.Top + Bitmap->YOffset) {
-      Height -= Bitmap->Clip.Top + Bitmap->YOffset - Y;
-      Y = Bitmap->Clip.Top + Bitmap->YOffset;
+   if (Y < Bitmap->Clip.Top) {
+      Height -= Bitmap->Clip.Top - Y;
+      Y = Bitmap->Clip.Top;
    }
 
-   if ((X + Width) >= Bitmap->Clip.Right + Bitmap->XOffset)   Width = Bitmap->Clip.Right + Bitmap->XOffset - X;
-   if ((Y + Height) >= Bitmap->Clip.Bottom + Bitmap->YOffset) Height = Bitmap->Clip.Bottom + Bitmap->YOffset - Y;
+   if ((X + Width) >= Bitmap->Clip.Right)   Width = Bitmap->Clip.Right - X;
+   if ((Y + Height) >= Bitmap->Clip.Bottom) Height = Bitmap->Clip.Bottom - Y;
 
    UWORD red   = Bitmap->unpackRed(Colour);
    UWORD green = Bitmap->unpackGreen(Colour);
@@ -1868,7 +1826,7 @@ void DrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *Pixel)
 {
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
    if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
-   Bitmap->DrawUCRPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Pixel);
+   Bitmap->DrawUCRPixel(Bitmap, X, Y, Pixel);
 }
 
 /*********************************************************************************************************************
@@ -1891,27 +1849,7 @@ void DrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 {
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left)) return;
    if ((Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) return;
-   Bitmap->DrawUCPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, Colour);
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-FlipBitmap: Flips a bitmap around its horizontal or vertical axis.
-
-The FlipBitmap() function is used to flip bitmap images on their horizontal or vertical axis.  The amount of time
-required to flip a bitmap is dependent on the area of the bitmap you are trying to flip over and its total number of
-colours.
-
--INPUT-
-obj(Bitmap) Bitmap: Pointer to a bitmap object.
-int(FLIP) Orientation: Set to either `HORIZONTAL` or `VERTICAL`.  If set to neither, the function does nothing.
-
-*********************************************************************************************************************/
-
-void FlipBitmap(objBitmap *Bitmap, FLIP Orientation)
-{
-   Bitmap->flip(Orientation);
+   Bitmap->DrawUCPixel(Bitmap, X, Y, Colour);
 }
 
 /*********************************************************************************************************************
@@ -2033,7 +1971,7 @@ void ReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, RGB8 **Pixel)
    }
    else {
       pixel.Alpha = 255;
-      Bitmap->ReadUCRPixel(Bitmap, X + Bitmap->XOffset, Y + Bitmap->YOffset, &pixel);
+      Bitmap->ReadUCRPixel(Bitmap, X, Y, &pixel);
    }
    *Pixel = &pixel;
 }
@@ -2108,7 +2046,7 @@ regions - for instance, if you set regions 0, 1, 2 and 3, then skip 4 and set 5,
 If you have specified multiple clip regions and want to lower the count or reset the list, set the number of the last
 region that you want in your list and set the `Terminate` parameter to `true` to kill the regions specified beyond it.
 
-The `ClipLeft`, `ClipTop`, `ClipRight` and `ClipBottom` fields in the target `Bitmap` will be updated to reflect 
+The `ClipLeft`, `ClipTop`, `ClipRight` and `ClipBottom` fields in the target `Bitmap` will be updated to reflect
 the overall area that is covered by the clipping regions that have been set.
 
 -INPUT-

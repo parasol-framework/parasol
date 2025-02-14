@@ -785,8 +785,6 @@ void copy_bkgd(const SURFACELIST &List, LONG Index, LONG End, LONG Master, ClipR
 
    auto owner = find_bitmap_owner(List, Index);
 
-   SrcBitmap->XOffset = 0;
-   SrcBitmap->YOffset = 0;
    SrcBitmap->Clip.Left   = 0;
    SrcBitmap->Clip.Top    = 0;
    SrcBitmap->Clip.Right  = SrcBitmap->Width;

@@ -759,6 +759,7 @@ Z: Close Path
     <constants lookup="RC">
       <const name="ALL">Synonym for <code>FINAL_PATH | BASE_PATH | TRANSFORM</code></const>
       <const name="BASE_PATH">The base path (shape of the vector) must be recalculated.</const>
+      <const name="DIRTY">Synonym for <code>FINAL_PATH | BASE_PATH | TRANSFORM</code></const>
       <const name="FINAL_PATH">The final path will need to be recalculated, so as to take transforms and/or scaled coordinates into account.</const>
       <const name="TRANSFORM">The transform matrix must be recalculated.  This includes movement, e.g. changing the <code>CX, CY</code> of an ellipse.</const>
     </constants>
@@ -795,6 +796,7 @@ Z: Close Path
     <constants lookup="VF" comment="Optional flags and indicators for the Vector class.">
       <const name="DISABLED">The vector is disabled and user input should be ignored.</const>
       <const name="HAS_FOCUS">The vector holds the user's input focus.</const>
+      <const name="ISOLATED">Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.</const>
       <const name="JOIN_PATHS">When appending a new path, use a join operation to connect the tail end to the head.</const>
     </constants>
 

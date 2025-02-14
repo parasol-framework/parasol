@@ -74,6 +74,7 @@ enum class VF : ULONG {
    DISABLED = 0x00000001,
    HAS_FOCUS = 0x00000002,
    JOIN_PATHS = 0x00000004,
+   ISOLATED = 0x00000008,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(VF)
@@ -471,6 +472,7 @@ enum class RC : UBYTE {
    BASE_PATH = 0x00000002,
    TRANSFORM = 0x00000004,
    ALL = 0x00000007,
+   DIRTY = 0x00000007,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(RC)
@@ -685,6 +687,7 @@ class objVectorScene : public Object {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
@@ -2238,7 +2241,7 @@ class objVector : public Object {
 
    inline ERR setFillOpacity(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[43];
+      auto field = &this->Class->Dictionary[42];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -2278,7 +2281,7 @@ class objVector : public Object {
 
    inline ERR setCursor(const PTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[44];
+      auto field = &this->Class->Dictionary[43];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -2371,12 +2374,6 @@ class objVector : public Object {
       return field->WriteValue(target, field, 0x08000309, Value, 1);
    }
 
-   inline ERR setEnableBkgd(const LONG Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[41];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
    template <class T> inline ERR setFill(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
@@ -2397,7 +2394,7 @@ class objVector : public Object {
 
    template <class T> inline ERR setFilter(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[45];
+      auto field = &this->Class->Dictionary[44];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
@@ -3265,37 +3262,43 @@ class objVectorViewport : public objVector {
 
    inline ERR setAspectRatio(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[8];
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setBuffered(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setDimensions(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setDragCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setOverflow(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setOverflowX(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setOverflowY(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -3315,21 +3318,21 @@ class objVectorViewport : public objVector {
 
    inline ERR setXOffset(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[8];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setYOffset(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setWidth(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[7];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
@@ -3361,7 +3364,7 @@ class objVectorViewport : public objVector {
 
    inline ERR setViewHeight(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -4043,6 +4046,7 @@ inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_InactiveCaptionText 0x5404bd4b
 #define SVF_InfoBackground 0xfa8db651
 #define SVF_InfoText 0x6c41ded6
+#define SVF_ISOLATION_MODE 0x19f91ec9
 #define SVF_Menu 0x7c9a911a
 #define SVF_MenuText 0x7b92e79f
 #define SVF_Scrollbar 0xf5b38a09

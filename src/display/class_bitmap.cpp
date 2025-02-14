@@ -25,7 +25,7 @@ memory (this is the default type).  If the `TEXTURE` or `VIDEO` flags are specif
 CPU cannot access this memory, unless you specifically request it.  To do this, use the #Lock() and #Unlock() actions
 to temporarily gain read/write access to a bitmap.
 
-If you require complex drawing functionality that is not available in the Bitmap class, consider using the 
+If you require complex drawing functionality that is not available in the Bitmap class, consider using the
 functionality provided by the Vector module.
 
 To save the image of a bitmap, either copy its image to a @Picture object, or use the SaveImage()
@@ -211,10 +211,10 @@ ERR lock_surface(extBitmap *Bitmap, WORD Access)
       if (Bitmap->x11.readable) {
          if ((Bitmap->x11.readable->width >= Bitmap->Width) and (Bitmap->x11.readable->height >= Bitmap->Height)) {
             if (Access & SURFACE_READ) {
-               XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
-                  Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
+               XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->Clip.Left,
+                  Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
                   Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
-                  Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
+                  Bitmap->Clip.Left, Bitmap->Clip.Top);
             }
             return ERR::Okay;
          }
@@ -237,10 +237,10 @@ ERR lock_surface(extBitmap *Bitmap, WORD Access)
       if ((Bitmap->x11.readable = XCreateImage(XDisplay, CopyFromParent, Bitmap->BitsPerPixel,
            ZPixmap, 0, (char *)Bitmap->Data, Bitmap->Width, Bitmap->Height, alignment, Bitmap->LineWidth))) {
          if (Access & SURFACE_READ) {
-            XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
-               Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
+            XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->Clip.Left,
+               Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
                Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
-               Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
+               Bitmap->Clip.Left, Bitmap->Clip.Top);
          }
          return ERR::Okay;
       }
@@ -432,7 +432,8 @@ Clearing a bitmap wipes away its graphical contents by drawing a blank area over
 the blank area is determined by the #BkgdIndex field.  To clear a bitmap to a different colour, use the #DrawRectangle()
 method instead.
 
-If the bitmap supports alpha blending, the alpha blend bits will be reset to 'clear' status.
+If the bitmap supports alpha blending and a transparent result is desired, setting #BkgdIndex to zero is 
+an efficient way to achieve this outcome.
 
 *********************************************************************************************************************/
 
@@ -450,7 +451,7 @@ static ERR BITMAP_Clear(extBitmap *Self)
    }
 #endif
 
-   LONG opacity = Self->Opacity;
+   auto opacity = Self->Opacity;
    Self->Opacity = 255;
    gfx::DrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
    Self->Opacity = opacity;
@@ -462,7 +463,7 @@ static ERR BITMAP_Clear(extBitmap *Self)
 -METHOD-
 Compress: Compresses bitmap data to save memory.
 
-A bitmap can be compressed with the CompressBitmap() method to save memory when the bitmap is not in use.  This is 
+A bitmap can be compressed with the CompressBitmap() method to save memory when the bitmap is not in use.  This is
 useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.
 
 Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely
@@ -948,68 +949,10 @@ static ERR BITMAP_DrawRectangle(extBitmap *Self, struct bmp::DrawRectangle *Args
 
 /*********************************************************************************************************************
 
--METHOD-
-Flip: Flips a bitmap around the horizontal or vertical axis.
-
-This method is used to flip bitmap images on their horizontal or vertical axis.
-
--INPUT-
-int(FLIP) Orientation: Set to either `HORIZONTAL` or `VERTICAL`.
-
--ERRORS-
-Okay
-Args
-NullArgs
-
-*********************************************************************************************************************/
-
-static ERR BITMAP_Flip(extBitmap *Self, struct bmp::Flip *Args)
-{
-   pf::Log log;
-
-   if (!Args) return log.warning(ERR::NullArgs);
-
-   // NB: A faster way to flip a Bitmap would be to use CopyArea() to do the transfer in strips, but would require a
-   // temporary memory area to hold the information.
-
-   if (Args->Orientation IS FLIP::HORIZONTAL) {
-      if (lock_surface(Self, SURFACE_READWRITE) IS ERR::Okay) {
-         for (LONG y=0; y < Self->Height/2; y++) {
-            for (LONG x=0; x < Self->Width; x++) {
-               LONG c1 = Self->ReadUCPixel(Self, x, Self->Height - y - 1);
-               LONG c2 = Self->ReadUCPixel(Self, x, y);
-               Self->DrawUCPixel(Self, x, y, c1);
-               Self->DrawUCPixel(Self, x, Self->Height - y - 1, c2);
-            }
-         }
-         unlock_surface(Self);
-      }
-   }
-   else if (Args->Orientation IS FLIP::VERTICAL) {
-      if (lock_surface(Self, SURFACE_READWRITE) IS ERR::Okay) {
-         // Palette based Bitmap
-         for (LONG x=0; x < Self->Width/2; x++) {
-            for (LONG y=0; y < Self->Height; y++) {
-               LONG c1 = Self->ReadUCPixel(Self, Self->Width - x - 1, y); // Right pixel
-               LONG c2 = Self->ReadUCPixel(Self, x, y); // Left pixel
-               Self->DrawUCPixel(Self, Self->Width - x - 1, y, c2);
-               Self->DrawUCPixel(Self, x, y, c1);
-            }
-         }
-         unlock_surface(Self);
-      }
-   }
-   else return log.warning(ERR::Args);
-
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
 -ACTION-
 Flush: Flushes pending graphics operations and returns when the accelerator is idle.
 
-The Flush() action ensures that client graphics operations are synchronised with the graphics accelerator.  
+The Flush() action ensures that client graphics operations are synchronised with the graphics accelerator.
 Synchronisation is essential prior to drawing to the bitmap with the CPU.  Failure to synchronise may
 result in corruption in the bitmap's graphics display.
 
@@ -1358,14 +1301,6 @@ static ERR BITMAP_Init(extBitmap *Self)
 
    if (Self->BitsPerPixel < 32) Self->Flags &= ~BMF::ALPHA_CHANNEL;
 
-   //log.msg("Red: %.2x/%d/%d , Green: %.2x/%d/%d",
-   //   Self->prvColourFormat.RedMask,   Self->prvColourFormat.RedShift,   Self->prvColourFormat.RedPos,
-   //   Self->prvColourFormat.GreenMask, Self->prvColourFormat.GreenShift, Self->prvColourFormat.GreenPos);
-
-   //log.msg("Blue: %.2x/%d/%d , Alpha: %.2x/%d/%d",
-   //   Self->prvColourFormat.BlueMask,  Self->prvColourFormat.BlueShift,  Self->prvColourFormat.BluePos,
-   //   Self->prvColourFormat.AlphaMask, Self->prvColourFormat.AlphaShift, Self->prvColourFormat.AlphaPos);
-
    return ERR::Okay;
 }
 
@@ -1386,10 +1321,10 @@ static ERR BITMAP_Lock(extBitmap *Self)
 
       if (Self->x11.readable) {
          if ((Self->x11.readable->width >= Self->Width) and (Self->x11.readable->height >= Self->Height)) {
-            XGetSubImage(XDisplay, Self->x11.drawable, Self->XOffset + Self->Clip.Left,
-               Self->YOffset + Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
+            XGetSubImage(XDisplay, Self->x11.drawable, Self->Clip.Left,
+               Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
                Self->Clip.Bottom - Self->Clip.Top, 0xffffffff, ZPixmap, Self->x11.readable,
-               Self->XOffset + Self->Clip.Left, Self->YOffset + Self->Clip.Top);
+               Self->Clip.Left, Self->Clip.Top);
             return ERR::Okay;
          }
          else XDestroyImage(Self->x11.readable);
@@ -1412,10 +1347,10 @@ static ERR BITMAP_Lock(extBitmap *Self)
 
       if ((Self->x11.readable = XCreateImage(XDisplay, CopyFromParent, bpp,
            ZPixmap, 0, (char *)Self->Data, Self->Width, Self->Height, alignment, Self->ByteWidth))) {
-         XGetSubImage(XDisplay, Self->x11.drawable, Self->XOffset + Self->Clip.Left,
-            Self->YOffset + Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
+         XGetSubImage(XDisplay, Self->x11.drawable, Self->Clip.Left,
+            Self->Clip.Top, Self->Clip.Right - Self->Clip.Left,
             Self->Clip.Bottom - Self->Clip.Top, 0xffffffff, ZPixmap, Self->x11.readable,
-            Self->XOffset + Self->Clip.Left, Self->YOffset + Self->Clip.Top);
+            Self->Clip.Left, Self->Clip.Top);
       }
       else return ERR::Failed;
    }
@@ -2593,7 +2528,7 @@ ERR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
 -FIELD-
 PlaneMod: The differential between each bitmap plane.
 
-This field specifies the distance (in bytes) between each bitplane.  For non-planar types like `CHUNKY`, this field 
+This field specifies the distance (in bytes) between each bitplane.  For non-planar types like `CHUNKY`, this field
 will reflect the total size of the bitmap.  The calculation used for `PLANAR` types is `ByteWidth * Height`.
 
 -FIELD-
@@ -2703,13 +2638,6 @@ This field defines the graphics data type - either `PLANAR` (required for 1-bit 
 
 -FIELD-
 Width: The width of the bitmap, in pixels.
-
--FIELD-
-XOffset: Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
-
--FIELD-
-YOffset: Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
--END-
 
 *********************************************************************************************************************/
 
@@ -2895,8 +2823,6 @@ static const FieldArray clBitmapFields[] = {
    { "BytesPerPixel", FDF_LONG|FDF_RI },
    { "BitsPerPixel",  FDF_LONG|FDF_RI },
    { "Position",      FDF_LONG|FDF_R },
-   { "XOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW },
-   { "YOffset",       FDF_LONG|FDF_SYSTEM|FDF_RW },
    { "Opacity",       FDF_LONG|FDF_RW },
    { "DataID",        FDF_LONG|FDF_SYSTEM|FDF_R },
    { "TransColour",   FDF_RGB|FDF_RW, NULL, SET_Trans },

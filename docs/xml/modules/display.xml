@@ -216,20 +216,6 @@
   </function>
 
   <function>
-    <name>FlipBitmap</name>
-    <category>Bitmap</category>
-    <comment>Flips a bitmap around its horizontal or vertical axis.</comment>
-    <prototype>void gfx::FlipBitmap(objBitmap * Bitmap, FLIP Orientation)</prototype>
-    <input>
-      <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
-      <param type="FLIP" name="Orientation" lookup="FLIP">Set to either <code>HORIZONTAL</code> or <code>VERTICAL</code>.  If set to neither, the function does nothing.</param>
-    </input>
-    <description>
-<p>The FlipBitmap() function is used to flip bitmap images on their horizontal or vertical axis.  The amount of time required to flip a bitmap is dependent on the area of the bitmap you are trying to flip over and its total number of colours.</p>
-    </description>
-  </function>
-
-  <function>
     <name>GetColourFormat</name>
     <category>Bitmap</category>
     <comment>Generates the values for a <st>ColourFormat</st> structure for a given bit depth.</comment>
@@ -466,26 +452,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="Search">The supplied <code>Surface</code> ID did not refer to a recognised surface object.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>LockBitmap</name>
-    <category>Surfaces</category>
-    <comment>Returns a bitmap that represents the video area covered by the surface object.</comment>
-    <prototype>ERR gfx::LockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info)</prototype>
-    <input>
-      <param type="OBJECTID" name="Surface">Object ID of the surface object that you want to lock.</param>
-      <param type="objBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
-      <param type="LVF *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If <code>EXPOSE_CHANGES</code> is returned, any changes must be exposed in order for them to be displayed to the user.</param>
-    </input>
-    <description>
-<p>Use the LockBitmap() function to gain direct access to the bitmap information of a surface object. Because the layering buffer will be inaccessible to the UI whilst you retain the lock, you must keep your access time to an absolute minimum or desktop performance may suffer.</p>
-<p>Repeated calls to this function will nest.  To release a surface bitmap, call the <function>UnlockBitmap</function> function.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
     </result>
   </function>
 
@@ -821,24 +787,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
   </function>
 
   <function>
-    <name>UnlockBitmap</name>
-    <category>Surfaces</category>
-    <comment>Unlocks any earlier call to gfx::LockBitmap().</comment>
-    <prototype>ERR gfx::UnlockBitmap(OBJECTID Surface, objBitmap * Bitmap)</prototype>
-    <input>
-      <param type="OBJECTID" name="Surface">The ID of the surface object that you are releasing.</param>
-      <param type="objBitmap *" name="Bitmap">Pointer to the bitmap structure returned earlier by LockBitmap().</param>
-    </input>
-    <description>
-<p>Call the UnlockBitmap() function to release a surface object from earlier calls to <function>LockBitmap</function>.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">The bitmap has been unlocked successfully.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>UnlockCursor</name>
     <category>Cursor</category>
     <comment>Undoes an earlier call to LockCursor()</comment>
@@ -1063,11 +1011,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="CHILDREN">If set, all child surfaces that intersect with exposed region will be included in the expose operation.</const>
       <const name="REDRAW_VOLATILE">Redraw every volatile object that intersects with the expose region, including internal volatile children.</const>
       <const name="REDRAW_VOLATILE_OVERLAP">Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.</const>
-    </constants>
-
-    <constants lookup="FLIP" comment="Flags for the bitmap Flip method.">
-      <const name="HORIZONTAL">Flip the bitmap from top to bottom.</const>
-      <const name="VERTICAL">Flip the bitmap from left to right.</const>
     </constants>
 
     <constants lookup="GMF" comment="Flags for gamma operations.">

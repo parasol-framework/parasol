@@ -156,10 +156,6 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     "PREMUL: The RGB values are premultiplied (32-bit only)."
   )
 
-  enum("FLIP", { type="int", start=1, comment="Flags for the bitmap Flip method." },
-    "HORIZONTAL: Flip the bitmap from top to bottom.",
-    "VERTICAL: Flip the bitmap from left to right.")
-
   flags("SCR", { comment="Display flags." },
     "VISIBLE: Set if the screen is on display.",
     "AUTO_SAVE: Saves settings to the global display state when the object is freed.",
@@ -327,14 +323,13 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     { id=1, name="CopyArea" },
     { id=2, name="Compress" },
     { id=3, name="Decompress" },
-    { id=4, name="Flip" },
-    { id=6, name="DrawRectangle" },
-    { id=7, name="SetClipRegion" },
-    { id=8, name="GetColour" },
-    { id=10, name="Premultiply" },
-    { id=11, name="Demultiply" },
-    { id=12, name="ConvertToLinear" },
-    { id=13, name="ConvertToRGB" }
+    { id=4, name="DrawRectangle" },
+    { id=5, name="SetClipRegion" },
+    { id=6, name="GetColour" },
+    { id=7, name="Premultiply" },
+    { id=8, name="Demultiply" },
+    { id=9, name="ConvertToLinear" },
+    { id=10, name="ConvertToRGB" }
   })
 
   class("Bitmap", { version=2.0, src="class_bitmap.cpp", output="class_bitmap_def.c", references={ "ColourFormat" } }, [[
@@ -362,8 +357,6 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     int   BytesPerPixel         # 1, 2, 3, 4
     int   BitsPerPixel          # 1, 8, 15, 16, 24, 32
     int   Position              # Current byte position for reading and writing
-    int   XOffset               # Horizontal offset to apply to graphics coordinates
-    int   YOffset               # Vertical offset to apply to graphics coordinates
     int   Opacity               # Opacity setting to use in drawing operations
     struct(RGB8) TransColour    # The transparent colour of the bitmap.
     struct(RGB8) Bkgd           # Background colour (for clearing, resizing)
@@ -427,6 +420,12 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
 
    inline ULONG packPixelWB(struct RGB8 &RGB, UBYTE Alpha) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
+   }
+
+   inline UBYTE * offset(LONG X, LONG Y) {
+      auto r_data = Data;
+      Data += (X * BytesPerPixel) + (Y * LineWidth);
+      return r_data;
    }
 
    // Colour unpacking routines
@@ -605,7 +604,6 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     "DrawRGBPixel",
     "DrawRectangle",
     "ExposeSurface",
-    "FlipBitmap",
     "GetColourFormat",
     "GetCursorInfo",
     "GetCursorPos",
@@ -619,7 +617,6 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     "GetSurfaceInfo",
     "GetUserFocus",
     "GetVisibleArea",
-    "LockBitmap",
     "LockCursor",
     "ReadPixel",
     "ReadRGBPixel",
@@ -636,7 +633,6 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     "StartCursorDrag",
     "SubscribeInput",
     "Sync",
-    "UnlockBitmap",
     "UnlockCursor",
     "UnsubscribeInput",
     "WindowHook")

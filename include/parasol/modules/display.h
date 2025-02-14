@@ -262,14 +262,6 @@ enum class BMF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(BMF)
 
-// Flags for the bitmap Flip method.
-
-enum class FLIP : LONG {
-   NIL = 0,
-   HORIZONTAL = 1,
-   VERTICAL = 2,
-};
-
 // Display flags.
 
 enum class SCR : ULONG {
@@ -494,14 +486,13 @@ namespace bmp {
 struct CopyArea { objBitmap * DestBitmap; BAF Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Compress { LONG Level; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Decompress { LONG RetainData; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Flip { FLIP Orientation; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; BAF Flags; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Premultiply { static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Demultiply { static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ConvertToLinear { static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ConvertToRGB { static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; BAF Flags; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Premultiply { static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Demultiply { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ConvertToLinear { static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ConvertToRGB { static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -536,8 +527,6 @@ class objBitmap : public Object {
    LONG    BytesPerPixel;                                            // The number of bytes per pixel.
    LONG    BitsPerPixel;                                             // The number of bits per pixel
    LONG    Position;                                                 // The current read/write data position.
-   LONG    XOffset;                                                  // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
-   LONG    YOffset;                                                  // Private. Provided for surface/video drawing purposes - considered too advanced for standard use.
    LONG    Opacity;                                                  // Determines the translucency setting to use in drawing operations.
    struct RGB8 TransColour;                                          // The transparent colour of the bitmap, in RGB format.
    struct RGB8 Bkgd;                                                 // The bitmap's background colour is defined here in RGB format.
@@ -599,6 +588,12 @@ class objBitmap : public Object {
 
    inline ULONG packPixelWB(struct RGB8 &RGB, UBYTE Alpha) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
+   }
+
+   inline UBYTE * offset(LONG X, LONG Y) {
+      auto r_data = Data;
+      Data += (X * BytesPerPixel) + (Y * LineWidth);
+      return r_data;
    }
 
    // Colour unpacking routines
@@ -696,48 +691,44 @@ class objBitmap : public Object {
       struct bmp::Decompress args = { RetainData };
       return(Action(AC(-3), this, &args));
    }
-   inline ERR flip(FLIP Orientation) noexcept {
-      struct bmp::Flip args = { Orientation };
-      return(Action(AC(-4), this, &args));
-   }
    inline ERR drawRectangle(LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) noexcept {
       struct bmp::DrawRectangle args = { X, Y, Width, Height, Colour, Flags };
-      return(Action(AC(-6), this, &args));
+      return(Action(AC(-4), this, &args));
    }
    inline ERR setClipRegion(LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) noexcept {
       struct bmp::SetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
-      return(Action(AC(-7), this, &args));
+      return(Action(AC(-5), this, &args));
    }
    inline ERR getColour(LONG Red, LONG Green, LONG Blue, LONG Alpha, ULONG * Colour) noexcept {
       struct bmp::GetColour args = { Red, Green, Blue, Alpha, (ULONG)0 };
-      ERR error = Action(AC(-8), this, &args);
+      ERR error = Action(AC(-6), this, &args);
       if (Colour) *Colour = args.Colour;
       return(error);
    }
    inline ERR premultiply() noexcept {
-      return(Action(AC(-10), this, NULL));
+      return(Action(AC(-7), this, NULL));
    }
    inline ERR demultiply() noexcept {
-      return(Action(AC(-11), this, NULL));
+      return(Action(AC(-8), this, NULL));
    }
    inline ERR convertToLinear() noexcept {
-      return(Action(AC(-12), this, NULL));
+      return(Action(AC(-9), this, NULL));
    }
    inline ERR convertToRGB() noexcept {
-      return(Action(AC(-13), this, NULL));
+      return(Action(AC(-10), this, NULL));
    }
 
    // Customised field setting
 
    inline ERR setPalette(struct RGBPalette * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[32];
+      auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, 0x08000300, Value, 1);
    }
 
    inline ERR setData(UBYTE * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
@@ -761,7 +752,7 @@ class objBitmap : public Object {
 
    inline ERR setClip(struct ClipRectangle * Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
@@ -785,7 +776,7 @@ class objBitmap : public Object {
 
    inline ERR setTransIndex(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[31];
+      auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -801,16 +792,6 @@ class objBitmap : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setXOffset(const LONG Value) noexcept {
-      this->XOffset = Value;
-      return ERR::Okay;
-   }
-
-   inline ERR setYOffset(const LONG Value) noexcept {
-      this->YOffset = Value;
-      return ERR::Okay;
-   }
-
    inline ERR setOpacity(const LONG Value) noexcept {
       this->Opacity = Value;
       return ERR::Okay;
@@ -818,19 +799,19 @@ class objBitmap : public Object {
 
    inline ERR setTransColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
    inline ERR setBkgd(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
    inline ERR setBkgdIndex(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -841,25 +822,25 @@ class objBitmap : public Object {
 
    inline ERR setClipLeft(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setClipRight(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setClipBottom(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setClipTop(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[38];
+      auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1755,7 +1736,6 @@ struct DisplayBase {
    void (*_DrawRGBPixel)(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB);
    void (*_DrawRectangle)(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
    ERR (*_ExposeSurface)(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
-   void (*_FlipBitmap)(objBitmap *Bitmap, FLIP Orientation);
    void (*_GetColourFormat)(struct ColourFormat *Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
    ERR (*_GetCursorInfo)(struct CursorInfo *Info, LONG Size);
    ERR (*_GetCursorPos)(DOUBLE *X, DOUBLE *Y);
@@ -1769,7 +1749,6 @@ struct DisplayBase {
    ERR (*_GetSurfaceInfo)(OBJECTID Surface, struct SurfaceInfoV2 **Info);
    OBJECTID (*_GetUserFocus)(void);
    ERR (*_GetVisibleArea)(OBJECTID Surface, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height);
-   ERR (*_LockBitmap)(OBJECTID Surface, objBitmap **Bitmap, LVF *Info);
    ERR (*_LockCursor)(OBJECTID Surface);
    ULONG (*_ReadPixel)(objBitmap *Bitmap, LONG X, LONG Y);
    void (*_ReadRGBPixel)(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 **RGB);
@@ -1786,7 +1765,6 @@ struct DisplayBase {
    ERR (*_StartCursorDrag)(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
    ERR (*_SubscribeInput)(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG *Handle);
    void (*_Sync)(objBitmap *Bitmap);
-   ERR (*_UnlockBitmap)(OBJECTID Surface, objBitmap *Bitmap);
    ERR (*_UnlockCursor)(OBJECTID Surface);
    ERR (*_UnsubscribeInput)(LONG Handle);
    ERR (*_WindowHook)(OBJECTID SurfaceID, WH Event, FUNCTION *Callback);
@@ -1806,7 +1784,6 @@ inline void DrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour) { return 
 inline void DrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB) { return DisplayBase->_DrawRGBPixel(Bitmap,X,Y,RGB); }
 inline void DrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
 inline ERR ExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
-inline void FlipBitmap(objBitmap *Bitmap, FLIP Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
 inline void GetColourFormat(struct ColourFormat *Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask) { return DisplayBase->_GetColourFormat(Format,BitsPerPixel,RedMask,GreenMask,BlueMask,AlphaMask); }
 inline ERR GetCursorInfo(struct CursorInfo *Info, LONG Size) { return DisplayBase->_GetCursorInfo(Info,Size); }
 inline ERR GetCursorPos(DOUBLE *X, DOUBLE *Y) { return DisplayBase->_GetCursorPos(X,Y); }
@@ -1820,7 +1797,6 @@ inline ERR GetSurfaceFlags(OBJECTID Surface, RNF *Flags) { return DisplayBase->_
 inline ERR GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 **Info) { return DisplayBase->_GetSurfaceInfo(Surface,Info); }
 inline OBJECTID GetUserFocus(void) { return DisplayBase->_GetUserFocus(); }
 inline ERR GetVisibleArea(OBJECTID Surface, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height) { return DisplayBase->_GetVisibleArea(Surface,X,Y,AbsX,AbsY,Width,Height); }
-inline ERR LockBitmap(OBJECTID Surface, objBitmap **Bitmap, LVF *Info) { return DisplayBase->_LockBitmap(Surface,Bitmap,Info); }
 inline ERR LockCursor(OBJECTID Surface) { return DisplayBase->_LockCursor(Surface); }
 inline ULONG ReadPixel(objBitmap *Bitmap, LONG X, LONG Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
 inline void ReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 **RGB) { return DisplayBase->_ReadRGBPixel(Bitmap,X,Y,RGB); }
@@ -1837,7 +1813,6 @@ inline OBJECTID SetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModa
 inline ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
 inline ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG *Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
 inline void Sync(objBitmap *Bitmap) { return DisplayBase->_Sync(Bitmap); }
-inline ERR UnlockBitmap(OBJECTID Surface, objBitmap *Bitmap) { return DisplayBase->_UnlockBitmap(Surface,Bitmap); }
 inline ERR UnlockCursor(OBJECTID Surface) { return DisplayBase->_UnlockCursor(Surface); }
 inline ERR UnsubscribeInput(LONG Handle) { return DisplayBase->_UnsubscribeInput(Handle); }
 inline ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback) { return DisplayBase->_WindowHook(SurfaceID,Event,Callback); }
@@ -1853,7 +1828,6 @@ extern void DrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour);
 extern void DrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB);
 extern void DrawRectangle(objBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
 extern ERR ExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
-extern void FlipBitmap(objBitmap *Bitmap, FLIP Orientation);
 extern void GetColourFormat(struct ColourFormat *Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
 extern ERR GetCursorInfo(struct CursorInfo *Info, LONG Size);
 extern ERR GetCursorPos(DOUBLE *X, DOUBLE *Y);
@@ -1867,7 +1841,6 @@ extern ERR GetSurfaceFlags(OBJECTID Surface, RNF *Flags);
 extern ERR GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 **Info);
 extern OBJECTID GetUserFocus(void);
 extern ERR GetVisibleArea(OBJECTID Surface, LONG *X, LONG *Y, LONG *AbsX, LONG *AbsY, LONG *Width, LONG *Height);
-extern ERR LockBitmap(OBJECTID Surface, objBitmap **Bitmap, LVF *Info);
 extern ERR LockCursor(OBJECTID Surface);
 extern ULONG ReadPixel(objBitmap *Bitmap, LONG X, LONG Y);
 extern void ReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 **RGB);
@@ -1884,7 +1857,6 @@ extern OBJECTID SetModalSurface(OBJECTID Surface);
 extern ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
 extern ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG *Handle);
 extern void Sync(objBitmap *Bitmap);
-extern ERR UnlockBitmap(OBJECTID Surface, objBitmap *Bitmap);
 extern ERR UnlockCursor(OBJECTID Surface);
 extern ERR UnsubscribeInput(LONG Handle);
 extern ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback);

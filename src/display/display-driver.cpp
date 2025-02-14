@@ -184,7 +184,6 @@ OBJECTPTR glModule = NULL;
 OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL, clController = NULL;
 OBJECTID glPointerID = 0;
 DISPLAYINFO glDisplayInfo;
-APTR glDither = NULL;
 bool glSixBitDisplay = false;
 TIMER glRefreshPointerTimer = 0;
 extBitmap *glComposite = NULL;
@@ -1167,7 +1166,6 @@ static ERR MODExpunge(void)
    clean_clipboard();
 
    glClips.clear();
-   if (glDither)              { FreeResource(glDither); glDither = NULL; }
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
    if (glComposite)           { FreeResource(glComposite); glComposite = NULL; }
    if (glCompress)            { FreeResource(glCompress); glCompress = NULL; }
@@ -1513,11 +1511,6 @@ ERR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Wid
    if (height < 1) return ERR::Okay;
 
    // Adjust coordinates by offset values
-
-   x += Bitmap->XOffset;
-   y += Bitmap->YOffset;
-   xdest += dest->XOffset;
-   ydest += dest->YOffset;
 
    APTR drawable;
    dest->getPtr(FID_Handle, &drawable);

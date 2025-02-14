@@ -22,7 +22,7 @@ extVectorViewport * get_parent_view(extVector *Vector)
 
 //********************************************************************************************************************
 // This 'safe' version of gen_vector_path() forces a refresh of the vector and every parent that is marked as dirty.
-// Nothing is done if the tree is clean.  There is a presumption that dirty markers are always applied to children when 
+// Nothing is done if the tree is clean.  There is a presumption that dirty markers are always applied to children when
 // the parent is marked as such.  Generation of the paths is top-down.
 
 void gen_vector_tree(extVector *Vector)
@@ -71,7 +71,7 @@ void gen_vector_path(extVector *Vector)
    if (Vector->classID() IS CLASSID::VECTORGROUP) {
       Vector->Transform.reset();
       apply_parent_transforms(Vector, Vector->Transform);
-      Vector->Dirty &= ~RC::ALL; // Making out that the group has been refreshed is important
+      Vector->Dirty &= ~RC::DIRTY; // Making out that the group has been refreshed is important
       return;
    }
    else if (Vector->classID() IS CLASSID::VECTORVIEWPORT) {
