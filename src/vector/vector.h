@@ -429,7 +429,7 @@ class extVector : public objVector {
 
    double fixed_stroke_width();
 
-   inline bool dirty() { return Dirty != RC::NIL; }
+   inline bool dirty() { return (Dirty & RC::DIRTY) != RC::NIL; }
 
    inline bool is_stroked() {
       return (StrokeWidth > 0) and
@@ -465,6 +465,7 @@ class extVectorScene : public objVectorScene {
    LONG InputHandle;
    PTC Cursor; // Current cursor image
    bool RefreshCursor;
+   UBYTE BufferCount; // Active tally of viewports that are buffered.
 };
 
 //********************************************************************************************************************
@@ -552,8 +553,8 @@ class GradientColours {
                alpha += table[b].a * table[b].a;
             }
 
-            auto col = agg::rgba8{ 
-               UBYTE(sqrt(red/total)), UBYTE(sqrt(green/total)), UBYTE(sqrt(blue/total)), UBYTE(sqrt(alpha/total)) 
+            auto col = agg::rgba8{
+               UBYTE(sqrt(red/total)), UBYTE(sqrt(green/total)), UBYTE(sqrt(blue/total)), UBYTE(sqrt(alpha/total))
             };
 
             for (LONG b = i; (b < i + block_size) and (b < table.size()); b++) table[b] = col;
@@ -663,39 +664,57 @@ TClipRectangle<T> get_bounds(VertexSource &vs, const unsigned path_id = 0)
 }
 
 //********************************************************************************************************************
+// If a scene contains buffered viewports, they must be marked for refresh when the state of one or more of their
+// children is changed.
+
+static void mark_buffers_for_refresh(extVector *Vector)
+{
+   if ((Vector->Scene) and (!((extVectorScene *)Vector->Scene)->BufferCount)) return;
+
+   extVectorViewport *parent_view;
+
+   if (Vector->classID() IS CLASSID::VECTORVIEWPORT) parent_view = (extVectorViewport *)Vector;
+   else parent_view = ((extVector *)Vector)->ParentView;
+
+   while (parent_view) {
+      if (parent_view->vpBuffered) {
+         parent_view->vpRefreshBuffer = true;
+         break;
+      }
+
+      parent_view = parent_view->ParentView;
+   }
+}
+
+//********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
-inline static void mark_dirty(objVector *Vector, const RC Flags)
+inline static void mark_children(extVector *Vector, const RC Flags)
 {
    ((extVector *)Vector)->Dirty |= Flags;
    for (auto node=(extVector *)Vector->Child; node; node=(extVector *)node->Next) {
-      if ((node->Dirty & Flags) != Flags) mark_dirty(node, Flags);
+      if ((node->Dirty & Flags) != Flags) mark_children(node, Flags);
    }
 }
 
-//********************************************************************************************************************
-// Return true if any vector in a tree branch is dirty (includes siblings of the target)
-
-inline static bool check_branch_dirty(extVector *Vector)
+inline static void mark_dirty(objVector *Vector, RC Flags)
 {
-   for (auto node=(extVector *)Vector; node; node=(extVector *)node->Next) {
-      if ((node->Dirty & RC::ALL) != RC::NIL) return true;
-      if ((node->Child) and (check_branch_dirty((extVector *)node->Child))) return true;
-   }
-   return false;
+   mark_buffers_for_refresh((extVector *)Vector);
+
+   mark_children((extVector *)Vector, Flags);
 }
 
 //********************************************************************************************************************
 
-inline static agg::path_storage basic_path(double X1, double Y1, double X2, double Y2)
+// Accepts agg::path_storage or agg::rasterizer_scanline_aa as the first argument.
+
+template <class T> void basic_path(T &Target, double X1, double Y1, double X2, double Y2)
 {
-   agg::path_storage path;
-   path.move_to(X1, Y1);
-   path.line_to(X2, Y1);
-   path.line_to(X2, Y2);
-   path.line_to(X1, Y2);
-   path.close_polygon();
-   return std::move(path);
+   Target.move_to(X1, Y1);
+   Target.line_to(X2, Y1);
+   Target.line_to(X2, Y2);
+   Target.line_to(X1, Y2);
+   Target.close_polygon();
 }
 
 //********************************************************************************************************************

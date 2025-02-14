@@ -39,21 +39,21 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
    }
 
    if (Painter.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-      fill_image(State, Vector.Bounds, Vector.BasePath, Vector.Scene->SampleMethod, 
+      fill_image(State, Vector.Bounds, Vector.BasePath, Vector.Scene->SampleMethod,
          build_fill_transform(Vector, Painter.Image->Units IS VUNIT::USERSPACE, State),
          mView->vpFixedWidth, mView->vpFixedHeight, *Painter.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
    }
 
    if (Painter.Gradient) {
       if (auto table = get_fill_gradient_table(Painter, State.mOpacity * Vector.FillOpacity)) {
-         fill_gradient(State, Vector.Bounds, &Vector.BasePath, 
+         fill_gradient(State, Vector.Bounds, &Vector.BasePath,
             build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
             mView->vpFixedWidth, mView->vpFixedHeight, *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster);
       }
    }
 
    if (Painter.Pattern) {
-      fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod, 
+      fill_pattern(State, Vector.Bounds, &Vector.BasePath, Vector.Scene->SampleMethod,
          build_fill_transform(Vector, Painter.Pattern->Units IS VUNIT::USERSPACE, State),
          mView->vpFixedWidth, mView->vpFixedHeight, *((extVectorPattern *)Painter.Pattern), mRenderBase, Raster);
    }
@@ -155,7 +155,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
             const double dy = Gradient.Y2 - Gradient.Y1;
             Gradient.Angle     = atan2(dy, dx);
             Gradient.Length    = sqrt((dx * dx) + (dy * dy));
-            Gradient.CalcAngle = false;        
+            Gradient.CalcAngle = false;
          }
 
          transform.scale(Gradient.Length);
@@ -176,13 +176,13 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
          if ((Gradient.Flags & VGF::SCALED_Y2) != VGF::NIL) area.bottom = y_offset + (c_height * Gradient.Y2);
          else area.bottom = y_offset + Gradient.Y2;
-         
+
          if (Gradient.CalcAngle) {
             const double dx = area.width();
             const double dy = area.height();
             Gradient.Angle     = atan2(dy, dx);
             Gradient.Length    = sqrt((dx * dx) + (dy * dy));
-            Gradient.CalcAngle = false;        
+            Gradient.CalcAngle = false;
          }
 
          transform.scale(Gradient.Length / span);
@@ -212,7 +212,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
    }
    else if (Gradient.Type IS VGT::RADIAL) {
       agg::point_d c, f;
-      
+
       double radial_col_span = Gradient.Radius;
       double focal_radius = Gradient.FocalRadius;
       if (focal_radius <= 0) focal_radius = Gradient.Radius;
@@ -227,7 +227,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
 
          if ((Gradient.Flags & (VGF::SCALED_FY|VGF::FIXED_FY)) != VGF::NIL) f.y = Gradient.FocalY;
          else f.y = c.y;
-         
+
          transform.translate(c);
          transform.scale(c_width, c_height);
          apply_transforms(Gradient, transform);
@@ -240,7 +240,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
          radial_col_span *= MAX_SPAN;
          transform.scale(MAX_SPAN);
          focal_radius *= MAX_SPAN;
-            
+
          c.x *= MAX_SPAN;
          c.y *= MAX_SPAN;
          f.x *= MAX_SPAN;
@@ -265,7 +265,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
             radial_col_span = (ViewWidth + ViewHeight) * radial_col_span * 0.5;
             focal_radius = (ViewWidth + ViewHeight) * focal_radius * 0.5;
          }
-         
+
          transform.translate(c);
          apply_transforms(Gradient, transform);
          transform *= Transform;
@@ -294,8 +294,8 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       else {
          // Radial gradient with a displaced focal point (uses agg::gradient_radial_focus).
          // The FocalRadius allows the client to alter the border region at which the focal
-         // calculations are being made. 
-         // 
+         // calculations are being made.
+         //
          // SVG requires the focal point to be within the base radius, this can be enforced by setting CONTAIN_FOCAL.
 
          if ((Gradient.Flags & VGF::CONTAIN_FOCAL) != VGF::NIL) {
@@ -432,7 +432,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
       apply_transforms(Gradient, transform);
       transform *= Transform;
       transform.invert();
-      
+
       // Regarding repeatable spread methods, bear in mind that the nature of the contour gradient
       // means that it is always masked by the target path.  To achieve repetition, the client can
       // use an x2 value > 1.0 to specify the number of colour cycles.
@@ -485,7 +485,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       if (dmf::hasScaledHeight(Pattern.Dimensions)) target_height = elem_height * Pattern.Height;
       else if (dmf::hasHeight(Pattern.Dimensions)) target_height = Pattern.Height;
       else target_height = 1;
-      
+
       if (dmf::hasScaledX(Pattern.Dimensions)) dx = x_offset + (elem_width * Pattern.X);
       else if (dmf::hasX(Pattern.Dimensions)) dx = x_offset + Pattern.X;
       else dx = x_offset;
@@ -500,7 +500,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       if ((page_width != Pattern.Scene->PageWidth) or (page_height != Pattern.Scene->PageHeight)) {
          Pattern.Scene->PageWidth = page_width;
          Pattern.Scene->PageHeight = page_height;
-         mark_dirty(Pattern.Scene->Viewport, RC::ALL);
+         mark_dirty(Pattern.Scene->Viewport, RC::DIRTY);
       }
    }
    else {
@@ -521,7 +521,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
       if (dmf::hasScaledHeight(Pattern.Dimensions)) target_height = Pattern.Height * elem_height;
       else target_height = Pattern.Height;
-      
+
       dx = x_offset + ((elem_width * Pattern.X) * (SCALE_BITMAP ? Transform.sx : 1.0));
       dy = y_offset + ((elem_height * Pattern.Y) * (SCALE_BITMAP ? Transform.sy : 1.0));
 
@@ -544,7 +544,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
          }
          Pattern.Scene->PageWidth  = page_width;
          Pattern.Scene->PageHeight = page_height;
-         mark_dirty(Pattern.Scene->Viewport, RC::ALL);
+         mark_dirty(Pattern.Scene->Viewport, RC::DIRTY);
       }
    }
 

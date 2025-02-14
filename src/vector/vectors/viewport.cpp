@@ -112,7 +112,11 @@ static ERR VECTORVIEWPORT_Free(extVectorViewport *Self)
       Self->subscribeInput(JTYPE::NIL, C_FUNCTION(drag_callback));
    }
 
-   if (Self->vpBuffer) { FreeResource(Self->vpBuffer); Self->vpBuffer = NULL; }
+   if (Self->vpBuffer) { 
+      FreeResource(Self->vpBuffer); 
+      Self->vpBuffer = NULL; 
+      if (Self->Scene) ((extVectorScene *)Self->Scene)->BufferCount--;
+   }
 
    return ERR::Okay;
 }
@@ -125,6 +129,10 @@ static ERR VECTORVIEWPORT_Init(extVectorViewport *Self)
 
    // Please refer to gen_vector_path() for the initialisation of vpFixedX/Y/Width/Height, which has
    // its own section for dealing with viewports.
+
+   if (Self->vpBuffered) {
+      ((extVectorScene *)Self->Scene)->BufferCount++;
+   }
 
    return ERR::Okay;
 }
@@ -308,14 +316,15 @@ static ERR VIEW_GET_Buffer(extVectorViewport* Self, objBitmap * &Value)
 Buffered: Set to true if the viewport should buffer its content.
 
 Viewport buffering is enabled by setting this field to `true` prior to initialisation.  A @Bitmap buffer will be
-created after the first drawing operation, and is available for the client to read from the #Buffer field.
+created at the first drawing operation, and is available for the client to read from the #Buffer field.
 
-Potential reasons for enabling viewport buffering include: The client can read the rendered graphics directly from
-the #Buffer; On-screen rendering can be more efficient if the content of the viewport rarely changes.
+Potential reasons for enabling viewport buffering include: 1. Allows the client to read the rendered graphics 
+directly from the #Buffer; 2. Overall rendering will be faster if the content of the viewport rarely changes; 3. The
+use of multiple buffers can improve threaded rendering.
 
 Buffering comes at a cost of using extra memory, and rendering may be less efficient if the buffered content
-changes frequently.  Buffering also enforces overflow restrictions (i.e. content is clipped), equivalent to #Overflow
-being set to `HIDDEN`.
+changes frequently (e.g. is animated).  Buffering also enforces overflow (clipping) restrictions, equivalent to 
+#Overflow being permanently set to `HIDDEN`.
 
 *********************************************************************************************************************/
 
@@ -349,7 +358,7 @@ static ERR VIEW_GET_Dimensions(extVectorViewport *Self, DMF &Value)
 static ERR VIEW_SET_Dimensions(extVectorViewport *Self, DMF Value)
 {
    Self->vpDimensions = Value;
-   mark_dirty((extVector *)Self, RC::ALL);
+   mark_dirty((extVector *)Self, RC::DIRTY);
    return ERR::Okay;
 }
 
@@ -458,7 +467,7 @@ static ERR VIEW_SET_Height(extVectorViewport *Self, Unit &Value)
    Self->vpTargetHeight = Value;
    if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
-   mark_dirty((extVector *)Self, RC::ALL);
+   mark_dirty((extVector *)Self, RC::DIRTY);
    return ERR::Okay;
 }
 
@@ -556,7 +565,7 @@ static ERR VIEW_SET_ViewHeight(extVectorViewport *Self, DOUBLE Value)
 {
    if (Value > 0.0) {
       Self->vpViewHeight = Value;
-      mark_dirty((extVector *)Self, RC::ALL);
+      mark_dirty((extVector *)Self, RC::DIRTY);
       return ERR::Okay;
    }
    else return ERR::InvalidValue;
@@ -581,7 +590,7 @@ static ERR VIEW_GET_ViewX(extVectorViewport *Self, DOUBLE &Value)
 static ERR VIEW_SET_ViewX(extVectorViewport *Self, DOUBLE Value)
 {
    Self->vpViewX = Value;
-   mark_dirty((extVector *)Self, RC::ALL);
+   mark_dirty((extVector *)Self, RC::DIRTY);
    return ERR::Okay;
 }
 
@@ -605,7 +614,7 @@ static ERR VIEW_SET_ViewWidth(extVectorViewport *Self, DOUBLE Value)
 {
    if (Value > 0.0) {
       Self->vpViewWidth = Value;
-      mark_dirty((extVector *)Self, RC::ALL);
+      mark_dirty((extVector *)Self, RC::DIRTY);
       return ERR::Okay;
    }
    else return ERR::InvalidValue;
@@ -630,7 +639,7 @@ static ERR VIEW_GET_ViewY(extVectorViewport *Self, DOUBLE &Value)
 static ERR VIEW_SET_ViewY(extVectorViewport *Self, DOUBLE Value)
 {
    Self->vpViewY = Value;
-   mark_dirty((extVector *)Self, RC::ALL);
+   mark_dirty((extVector *)Self, RC::DIRTY);
    return ERR::Okay;
 }
 
@@ -687,7 +696,7 @@ static ERR VIEW_SET_Width(extVectorViewport *Self, Unit &Value)
    Self->vpTargetWidth = Value;
    if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
-   mark_dirty((extVector *)Self, RC::ALL);
+   mark_dirty((extVector *)Self, RC::DIRTY);
    return ERR::Okay;
 }
 
@@ -732,7 +741,7 @@ static ERR VIEW_SET_X(extVectorViewport *Self, Unit &Value)
    Self->vpTargetX = Value;
    if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
-   mark_dirty((extVector *)Self, RC::ALL);
+   mark_dirty((extVector *)Self, RC::DIRTY);
    return ERR::Okay;
 }
 
@@ -779,7 +788,7 @@ static ERR VIEW_SET_XOffset(extVectorViewport *Self, Unit &Value)
    Self->vpTargetXO = Value;
    if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_X_OFFSET) & (~DMF::FIXED_X_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_X_OFFSET) & (~DMF::SCALED_X_OFFSET);
-   mark_dirty((extVector *)Self, RC::ALL);
+   mark_dirty((extVector *)Self, RC::DIRTY);
    return ERR::Okay;
 }
 
@@ -825,7 +834,7 @@ static ERR VIEW_SET_Y(extVectorViewport *Self, Unit &Value)
    Self->vpTargetY = Value;
    if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
-   mark_dirty((extVector *)Self, RC::ALL);
+   mark_dirty((extVector *)Self, RC::DIRTY);
    return ERR::Okay;
 }
 
@@ -872,7 +881,7 @@ static ERR VIEW_SET_YOffset(extVectorViewport *Self, Unit &Value)
    Self->vpTargetYO = Value;
    if (Value.scaled()) Self->vpDimensions = (Self->vpDimensions | DMF::SCALED_Y_OFFSET) & (~DMF::FIXED_Y_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF::FIXED_Y_OFFSET) & (~DMF::SCALED_Y_OFFSET);
-   mark_dirty((extVector *)Self, RC::ALL);
+   mark_dirty((extVector *)Self, RC::DIRTY);
    return ERR::Okay;
 }
 

@@ -889,7 +889,9 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                }
 
                if (view->Child) {
-                  if (view->vpBuffered) {
+                  constexpr LONG MAX_AREA = 4096 * 4096; // Maximum allowable area for enabling a viewport buffer
+
+                  if ((view->vpBuffered) and (view->vpFixedWidth * view->vpFixedHeight < MAX_AREA)) {
                      // In buffered mode, children will be drawn to an independent bitmap that is permanently
                      // cached.
 
@@ -1048,13 +1050,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       if (bmpBkgd) {
          agg::rasterizer_scanline_aa raster;
 
-         agg::path_storage clip;
-         clip.move_to(0, 0);
-         clip.line_to(bmpBkgd->Width, 0);
-         clip.line_to(bmpBkgd->Width, bmpBkgd->Height);
-         clip.line_to(0, bmpBkgd->Height);
-         clip.close_polygon();
-         raster.add_path(clip);
+         basic_path(raster, 0, 0, bmpBkgd->Width, bmpBkgd->Height);
 
          mBitmap = bmpSave;
          mFormat.setBitmap(*mBitmap);

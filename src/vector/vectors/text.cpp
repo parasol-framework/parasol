@@ -1454,7 +1454,7 @@ static ERR reset_font(extVectorText *Vector, bool Force)
          Vector->txBitmapFont = ((bmp_font *)Vector->txHandle)->font;
          Vector->txFontSize = std::trunc(DOUBLE(Vector->txBitmapFont->Height) * (DISPLAY_DPI / 72.0));
       }
-      mark_dirty(Vector, RC::ALL);
+      mark_dirty(Vector, RC::DIRTY);
       return ERR::Okay;
    }
    else return log.warning(error);

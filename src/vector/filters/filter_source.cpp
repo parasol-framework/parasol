@@ -153,7 +153,7 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       Self->Source->Parent = save_parent;
       Self->Source->Next   = save_next;
       ((extVectorViewport *)Self->Scene->Viewport)->Matrices = NULL;
-      mark_dirty(Self->Source, RC::ALL);
+      mark_dirty(Self->Source, RC::DIRTY);
    }
 
    gfx::CopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);

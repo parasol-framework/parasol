@@ -492,7 +492,10 @@ Hide: Changes the vector's visibility setting to hidden.
 
 static ERR VECTOR_Hide(extVector *Self)
 {
-   Self->Visibility = VIS::HIDDEN;
+   if (Self->Visibility != VIS::HIDDEN) {
+      Self->Visibility = VIS::HIDDEN;
+      mark_buffers_for_refresh(Self);
+   }
    return ERR::Okay;
 }
 
@@ -534,6 +537,8 @@ static ERR VECTOR_Init(extVector *Self)
          glResizeSubscriptions.erase(Self);
       }
    }
+
+   mark_buffers_for_refresh(Self);
 
    return ERR::Okay;
 }
@@ -579,7 +584,7 @@ static ERR VECTOR_NewPlacement(extVector *Self)
    Self->Visibility    = VIS::VISIBLE;
    Self->FillRule      = VFR::NON_ZERO;
    Self->ClipRule      = VFR::NON_ZERO;
-   Self->Dirty         = RC::ALL;
+   Self->Dirty         = RC::DIRTY;
    Self->TabOrder      = 255;
    Self->ColourSpace   = VCS::INHERIT;
    Self->ValidState    = true;
@@ -815,7 +820,10 @@ Show: Changes the vector's visibility setting to visible.
 
 static ERR VECTOR_Show(extVector *Self)
 {
-   Self->Visibility = VIS::VISIBLE;
+   if (Self->Visibility != VIS::VISIBLE) {
+      Self->Visibility = VIS::VISIBLE;
+      mark_buffers_for_refresh(Self);
+   }
    return ERR::Okay;
 }
 
@@ -2367,6 +2375,15 @@ Visibility: Controls the visibility of a vector and its children.
 
 *********************************************************************************************************************/
 
+static ERR VECTOR_SET_Visibility(extVector *Self, VIS Value)
+{
+   if (Self->Visibility != Value) {
+      Self->Visibility = Value;
+      mark_buffers_for_refresh(Self);
+   }
+   return ERR::Okay;
+}
+
 //********************************************************************************************************************
 // For sending events to the client
 
@@ -2477,7 +2494,7 @@ static const FieldArray clVectorFields[] = {
    { "MiterLimit",      FDF_DOUBLE|FD_RW, NULL, VECTOR_SET_MiterLimit },
    { "InnerMiterLimit", FDF_DOUBLE|FD_RW },
    { "DashOffset",      FDF_DOUBLE|FD_RW, NULL, VECTOR_SET_DashOffset },
-   { "Visibility",      FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorVisibility },
+   { "Visibility",      FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, VECTOR_SET_Visibility, &clVectorVisibility },
    { "Flags",           FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clVectorFlags },
    { "Cursor",          FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, VECTOR_SET_Cursor, &clVectorCursor },
    { "PathQuality",     FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorPathQuality },
