@@ -9,9 +9,8 @@
     <comment>Provides pixel remapping; equivalent to feComponentTransfer in SVG.</comment>
     <version>1</version>
     <id>3eb33c98</id>
-    <idstring>ID_REMAPFX</idstring>
+    <idstring>REMAPFX</idstring>
     <category>Graphics</category>
-    <include>modules/remapfx.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The RemapFX class provides an implementation of the <code>feComponentTransfer</code> functionality in SVG.</p>

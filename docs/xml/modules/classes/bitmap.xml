@@ -9,10 +9,9 @@
     <comment>Manages bitmap graphics and provides drawing functionality.</comment>
     <version>2</version>
     <id>f42617e2</id>
-    <idstring>ID_BITMAP</idstring>
+    <idstring>BITMAP</idstring>
     <category>Graphics</category>
-    <include>modules/bitmap.h</include>
-    <copyright>Paul Manias 2003-2024</copyright>
+    <copyright>Paul Manias 2003-2025</copyright>
     <description>
 <p>The Bitmap class provides a way of describing an area of memory that an application can draw to, and/or display if the data is held in video memory.  Bitmaps are used in the handling of <class name="Display">Display</class> and <class name="Picture">Picture</class> objects, and form the backbone of Parasol's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and alpha blending features.</p>
 <p>To create a new bitmap object, you need to specify its <fl>Width</fl> and <fl>Height</fl> at a minimum.  Preferably, you should also know how many colours you want to use and whether the bitmap data should be held in standard memory (for CPU based reading and writing) or video memory (for hardware based drawing).  After creating a bitmap you can use a number of available drawing methods for the purpose of image management.  Please note that these methods are designed to be called under exclusive conditions, and it is not recommended that you call methods on a bitmap using the message system.</p>
@@ -31,7 +30,7 @@
       <prototype>ERR acClear(*Object)</prototype>
       <description>
 <p>Clearing a bitmap wipes away its graphical contents by drawing a blank area over its existing graphics.  The colour of the blank area is determined by the <fl>BkgdIndex</fl> field.  To clear a bitmap to a different colour, use the <method>DrawRectangle</method> method instead.</p>
-<p>If the bitmap supports alpha blending, the alpha blend bits will be reset to 'clear' status.</p>
+<p>If the bitmap supports alpha blending and a transparent result is desired, setting <fl>BkgdIndex</fl> to zero is an efficient way to achieve this outcome.</p>
       </description>
     </action>
 

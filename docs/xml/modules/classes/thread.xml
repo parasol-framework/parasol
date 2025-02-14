@@ -9,10 +9,9 @@
     <comment>Threads are created and managed by the Thread class.</comment>
     <version>1</version>
     <id>1e0f9fdd</id>
-    <idstring>ID_THREAD</idstring>
+    <idstring>THREAD</idstring>
     <category>System</category>
-    <include>modules/thread.h</include>
-    <copyright>Paul Manias 1996-2024</copyright>
+    <copyright>Paul Manias 1996-2025</copyright>
     <description>
 <p>The Thread class provides the means to execute and manage threads within an application.</p>
 <p>The following code illustrates how to create a temporary thread that is automatically destroyed after the <code>thread_entry()</code> function has completed:</p>

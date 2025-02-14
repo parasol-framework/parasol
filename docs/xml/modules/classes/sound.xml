@@ -6,15 +6,14 @@
     <name>Sound</name>
     <type>class</type>
     <module>Audio</module>
-    <comment>Plays and records sound samples in a variety of different data formats.</comment>
+    <comment>Plays and records sound samples in multiple media formats.</comment>
     <fileExtension>*.wav|*.wave|*.snd</fileExtension>
     <fileDescription>Sound Sample</fileDescription>
     <version>1</version>
     <id>105ee06e</id>
-    <idstring>ID_SOUND</idstring>
+    <idstring>SOUND</idstring>
     <category>Audio</category>
-    <include>modules/sound.h</include>
-    <copyright>Paul Manias © 2002-2024</copyright>
+    <copyright>Paul Manias © 2002-2025</copyright>
     <description>
 <p>The Sound class provides an interface for the playback of audio sample files. By default, all loading and saving of sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound class extensions, if available.</p>
 <p>Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the <fl>Stream</fl> field.</p>

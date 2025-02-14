@@ -9,9 +9,8 @@
     <comment>Extends the Vector class with support for generating custom paths.</comment>
     <version>1</version>
     <id>51b8d205</id>
-    <idstring>ID_VECTORPATH</idstring>
+    <idstring>VECTORPATH</idstring>
     <category>Graphics</category>
-    <include>modules/vectorpath.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>VectorPath provides support for parsing SVG styled path strings.</p></description>

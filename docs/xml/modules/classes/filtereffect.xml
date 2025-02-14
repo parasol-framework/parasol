@@ -9,9 +9,8 @@
     <comment>FilterEffect is a support class for managing effects hosted by the VectorFilter class.</comment>
     <version>1</version>
     <id>79e93e58</id>
-    <idstring>ID_FILTEREFFECT</idstring>
+    <idstring>FILTEREFFECT</idstring>
     <category>Graphics</category>
-    <include>modules/filtereffect.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The FilterEffect class provides base-class functionality for effect classes.  FilterEffect objects mut not be instantiated directly by the client.</p>

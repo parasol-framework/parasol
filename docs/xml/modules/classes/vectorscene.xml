@@ -9,9 +9,8 @@
     <comment>Manages the scene graph for a collection of vectors.</comment>
     <version>1</version>
     <id>890a3646</id>
-    <idstring>ID_VECTORSCENE</idstring>
+    <idstring>VECTORSCENE</idstring>
     <category>Graphics</category>
-    <include>modules/vectorscene.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The VectorScene class acts as a container and control point for the management of vector definitions.  Its main purpose is to draw the scene to a target <class name="Bitmap">Bitmap</class> or <class name="Surface">Surface</class> provided by the client.</p>

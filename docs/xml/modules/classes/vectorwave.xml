@@ -9,9 +9,8 @@
     <comment>Extends the Vector class with support for sine wave based paths.</comment>
     <version>1</version>
     <id>51bca8eb</id>
-    <idstring>ID_VECTORWAVE</idstring>
+    <idstring>VECTORWAVE</idstring>
     <category>Graphics</category>
-    <include>modules/vectorwave.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The VectorWave class provides functionality for generating paths based on sine waves.  This feature is not part of the SVG standard and therefore should not be used in cases where SVG compliance is a strict requirement.</p>

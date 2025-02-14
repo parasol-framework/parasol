@@ -9,9 +9,8 @@
     <comment>Applies the morphology filter effect.</comment>
     <version>1</version>
     <id>25d95173</id>
-    <idstring>ID_MORPHOLOGYFX</idstring>
+    <idstring>MORPHOLOGYFX</idstring>
     <category>Graphics</category>
-    <include>modules/morphologyfx.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>The MorphologyFX class performs "fattening" or "thinning" of artwork.  It is particularly useful for fattening or thinning an alpha channel.</p>

@@ -9,10 +9,9 @@
     <comment>The Clipboard class manages cut, copy and paste between applications.</comment>
     <version>1</version>
     <id>4912a9b5</id>
-    <idstring>ID_CLIPBOARD</idstring>
+    <idstring>CLIPBOARD</idstring>
     <category>IO</category>
-    <include>modules/clipboard.h</include>
-    <copyright>Paul Manias 2003-2024</copyright>
+    <copyright>Paul Manias 2003-2025</copyright>
     <description>
 <p>The Clipboard class manages data transfer between applications on behalf of the user.  Depending on the host system, behaviour between platforms can vary.</p>
 <p>On Windows the clipboard is tightly integrated by default, allowing it to support native Windows applications.  This reduces the default feature set, but ensures that the clipboard behaves in a way that the user would expect it to. If historical buffering is enabled with the <code>CPF::HISTORY_BUFFER</code> option then the clipboard API will actively monitor the clipboard and store copied data in the local <code>clipboard:</code> file cache.  This results in additional overhead to clipboard management.</p>

@@ -6,7 +6,7 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -CLASS-
-Sound: Plays and records sound samples in a variety of different data formats.
+Sound: Plays and records sound samples in multiple media formats.
 
 The Sound class provides an interface for the playback of audio sample files. By default, all loading and saving of
 sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound class extensions,

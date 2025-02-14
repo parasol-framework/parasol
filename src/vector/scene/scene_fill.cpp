@@ -494,6 +494,9 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       else if (dmf::hasY(Pattern.Dimensions)) dy = y_offset + Pattern.Y;
       else dy = y_offset;
 
+      //target_width  *= Transform.sx;
+      //target_height *= Transform.sy;
+      
       LONG page_width = F2T(target_width);
       LONG page_height = F2T(target_height);
 

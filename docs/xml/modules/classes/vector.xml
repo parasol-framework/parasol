@@ -9,9 +9,8 @@
     <comment>An abstract class for supporting vector graphics objects and functionality.</comment>
     <version>1</version>
     <id>227baf98</id>
-    <idstring>ID_VECTOR</idstring>
+    <idstring>VECTOR</idstring>
     <category>Graphics</category>
-    <include>modules/vector.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>Vector is an abstract class that is used as a blueprint for other vector classes that provide specific functionality for a vector scene.  At this time the classes are <class name="VectorClip">VectorClip</class>, <class name="VectorEllipse">VectorEllipse</class>, <class name="VectorGroup">VectorGroup</class>, <class name="VectorPath">VectorPath</class>, <class name="VectorPolygon">VectorPolygon</class>, <class name="VectorRectangle">VectorRectangle</class>, <class name="VectorSpiral">VectorSpiral</class>, <class name="VectorText">VectorText</class>, <class name="VectorViewport">VectorViewport</class> and <class name="VectorWave">VectorWave</class>.</p>
@@ -708,7 +707,7 @@ Z: Close Path
     <field>
       <name>Visibility</name>
       <comment>Controls the visibility of a vector and its children.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="VIS">VIS</type>
       <description>
 <types lookup="VIS"/>

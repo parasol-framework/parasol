@@ -9,9 +9,8 @@
     <comment>A filter effect that utilises the Perlin turbulence function.</comment>
     <version>1</version>
     <id>45df4e3c</id>
-    <idstring>ID_TURBULENCEFX</idstring>
+    <idstring>TURBULENCEFX</idstring>
     <category>Graphics</category>
-    <include>modules/turbulencefx.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>This filter effect creates an image using the Perlin turbulence function. It allows the synthesis of artificial textures like clouds or marble.  For a detailed description the of the Perlin turbulence function, see "Texturing and Modeling", Ebert et al, AP Professional, 1994. The resulting image will fill the entire filter primitive subregion for this filter primitive.</p>

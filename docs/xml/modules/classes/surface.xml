@@ -9,10 +9,9 @@
     <comment>Manages the display and positioning of 2-Dimensional rendered graphics.</comment>
     <version>1</version>
     <id>b15cfb8e</id>
-    <idstring>ID_SURFACE</idstring>
+    <idstring>SURFACE</idstring>
     <category>GUI</category>
-    <include>modules/surface.h</include>
-    <copyright>Paul Manias 2003-2024</copyright>
+    <copyright>Paul Manias 2003-2025</copyright>
     <description>
 <p>The Surface class is used to manage the positioning, drawing and interaction with layered display interfaces.  It works in conjunction with the <class name="Bitmap">Bitmap</class> class for rendering graphics, and the <class name="Pointer">Pointer</class> class for user interaction.</p>
 <p>On a platform such as Windows or Linux, the top-level surface will typically be hosted in an application window.  On Android or when a full screen display is required, a surface can cover the entire display and be window-less.  The top-level surface can act as a host to additional surfaces, which are referred to as children. Placing more surface objects inside of these children will create a hierarchy of many objects that requires sophisticated management that is provisioned by the Surface class.</p>

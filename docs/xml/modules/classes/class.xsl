@@ -74,19 +74,19 @@
         <a><xsl:attribute name="href"><xsl:value-of select="$mod_lower"/>.html#tf-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
       </xsl:when>
       <xsl:otherwise>
-        <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/fields/field[name=$fieldName]/comment"/></xsl:attribute><xsl:attribute name="href">#tf-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
+        <a data-bs-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/fields/field[name=$fieldName]/comment"/></xsl:attribute><xsl:attribute name="href">#tf-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
 
   <xsl:template match="st"> <!-- Struct reference -->
     <xsl:variable name="structName"><xsl:value-of select="node()"/></xsl:variable>
-    <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/structs/struct[name=$structName]/comment"/></xsl:attribute><xsl:attribute name="href">?page=struct-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
+    <a data-bs-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/structs/struct[name=$structName]/comment"/></xsl:attribute><xsl:attribute name="href">?page=struct-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
   </xsl:template>
 
   <xsl:template match="lk"> <!-- Type reference -->
     <xsl:variable name="typeName"><xsl:value-of select="node()"/></xsl:variable>
-    <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/structs/struct[name=$typeName]/comment"/></xsl:attribute><xsl:attribute name="href">?page=<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
+    <a data-bs-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/structs/struct[name=$typeName]/comment"/></xsl:attribute><xsl:attribute name="href">?page=<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/></a>
   </xsl:template>
 
   <xsl:template match="function">
@@ -103,10 +103,10 @@
   </xsl:template>
 
   <xsl:template match="action"><xsl:variable name="actionName"><xsl:value-of select="node()"/></xsl:variable>
-    <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/actions/action[name=$actionName]/comment"/></xsl:attribute><xsl:attribute name="href">#ta-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/>()</a></xsl:template>
+    <a data-bs-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/actions/action[name=$actionName]/comment"/></xsl:attribute><xsl:attribute name="href">#ta-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/>()</a></xsl:template>
 
   <xsl:template match="method"><xsl:variable name="methodName"><xsl:value-of select="node()"/></xsl:variable>
-    <a data-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/methods/method[name=$methodName]/comment"/></xsl:attribute><xsl:attribute name="href">#tm-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/>()</a></xsl:template>
+    <a data-bs-toggle="tooltip"><xsl:attribute name="title"><xsl:value-of select="/book/methods/method[name=$methodName]/comment"/></xsl:attribute><xsl:attribute name="href">#tm-<xsl:value-of select="node()"/></xsl:attribute><xsl:value-of select="node()"/>()</a></xsl:template>
 
   <xsl:template match="class">
     <xsl:variable name="class_name"><xsl:value-of select="@name"/></xsl:variable>
@@ -176,55 +176,194 @@
       <head>
         <xsl:call-template name="addGoogleTracking"/>
         <meta charset="utf-8"/>
-        <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+        <!-- The above 2 meta tags *must* come first in the head; any other head content must come *after* these tags -->
         <meta name="description" content="Parasol Framework documentation, machine generated from source"/>
         <meta name="author" content="Paul Manias"/>
         <link rel="icon" href="/favicon.ico"/>
         <title>Parasol Framework Manual</title>
-        <!-- Bootstrap core CSS -->
         <link href="../../css/bootstrap.min.css" rel="stylesheet"/>
-        <!-- Custom styles for this template -->
         <link href="../../css/module-template.css" rel="stylesheet"/>
-
         <script>
           var shiftWindow = function() { scrollBy(0, -100) };
           window.addEventListener("hashchange", shiftWindow);
           function load() { if (window.location.hash) shiftWindow(); }
         </script>
-        <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
-        <!--[if lt IE 9]>
-          <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
-          <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-        <![endif]-->
       </head>
 
       <body>
-        <nav class="navbar navbar-inverse navbar-fixed-top">
-          <div class="container">
+        <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+          <div class="container-fluid">
             <div class="navbar-header">
-              <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-                <span class="sr-only">Toggle navigation</span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-              </button>
               <a class="navbar-brand" href="../../index.html">Parasol Framework</a>
             </div>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
-                <li><a href="../core.html">Modules</a></li>
-                <li class="active"><a href="module.html">Classes</a></li>
-                <li><a href="https://github.com/parasol-framework/parasol/wiki">Wiki</a></li>
+                <li class="nav-item"><a class="nav-link" href="../../gallery.html">Gallery</a></li>
+                <li class="nav-item"><a class="nav-link" href="../core.html">API</a></li>
+                <li class="nav-item"><a class="nav-link" href="../../wiki/Home.html">Wiki</a></li>
+                <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
               </ul>
             </div> <!-- nav-collapse -->
           </div>
         </nav>
 
-        <div id="container-body" class="container"> <!-- Use container-fluid if you want full width -->
-          <div id="row-body" class="row">
-            <div class="col-sm-9">
+        <div class="container-fluid"> <!-- 'container-fluid' for full width, 'container' for restricted -->
+          <div class="row">
+
+            <!-- SIDEBAR -->
+            <div class="col-sm-3" style="max-width: 250px;">
+              <div class="flex-shrink-1 pt-2 sticky-top overflow-auto vh-100 b-shadow">
+
+                <ul class="list-unstyled">
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#audio-collapse" aria-expanded="false">Modules</button>
+                    <div class="collapse" id="audio-collapse">
+                      <ul class="btn-toggle-nav list-unstyled fw-normal">
+                        <li class="api-ref"><a class="rounded" href="../audio.html">Audio</a></li>
+                        <li class="api-ref"><a class="rounded" href="../core.html">Core</a></li>
+                        <li class="api-ref"><a class="rounded" href="../display.html">Display</a></li>
+                        <li class="api-ref"><a class="rounded" href="../fluid.html">Fluid</a></li>
+                        <li class="api-ref"><a class="rounded" href="../font.html">Font</a></li>
+                        <li class="api-ref"><a class="rounded" href="../network.html">Network</a></li>
+                        <li class="api-ref"><a class="rounded" href="../vector.html">Vector</a></li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+
+                <ul class="list-unstyled">
+                  <li class="border-top my-3"></li> <!-- Line break -->
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#audio-collapse" aria-expanded="false">Audio</button>
+                    <div class="collapse" id="audio-collapse">
+                      <ul class="btn-toggle-nav list-unstyled fw-normal pb-1">
+                        <li class="api-ref"><a class="rounded" href="audio.html">Audio</a></li>
+                        <li class="api-ref"><a class="rounded" href="sound.html">Sound</a></li>
+                      </ul>
+                    </div>
+                  </li>
+
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#core-collapse" aria-expanded="false">Core</button>
+                    <div class="collapse" id="core-collapse">
+                      <ul class="btn-toggle-nav list-unstyled pb-1">
+                        <li class="api-ref"><a class="rounded" href="file.html">File</a></li>
+                        <li class="api-ref"><a class="rounded" href="metaclass.html">MetaClass</a></li>
+                        <li class="api-ref"><a class="rounded" href="module.html">Module</a></li>
+                        <li class="api-ref"><a class="rounded" href="storagedevice.html">StorageDevice</a></li>
+                        <li class="api-ref"><a class="rounded" href="task.html">Task</a></li>
+                        <li class="api-ref"><a class="rounded" href="thread.html">Thread</a></li>
+                        <li class="api-ref"><a class="rounded" href="time.html">Time</a></li>
+                      </ul>
+                    </div>
+                  </li>
+
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#data-collapse" aria-expanded="false">Data</button>
+                    <div class="collapse" id="data-collapse">
+                      <ul class="btn-toggle-nav list-unstyled pb-1">
+                        <li class="api-ref"><a class="rounded" href="compression.html">Compression</a></li>
+                        <li class="api-ref"><a class="rounded" href="config.html">Config</a></li>
+                        <li class="api-ref"><a class="rounded" href="script.html">Script</a></li>
+                        <li class="api-ref"><a class="rounded" href="xml.html">XML</a></li>
+                      </ul>
+                    </div>
+                  </li>
+
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#devices-collapse" aria-expanded="false">Devices</button>
+                    <div class="collapse" id="devices-collapse">
+                      <ul class="btn-toggle-nav list-unstyled pb-1">
+                        <li class="api-ref"><a class="rounded" href="controller.html">Controller</a></li>
+                      </ul>
+                    </div>
+                  </li>
+
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#effects-collapse" aria-expanded="false">Effects</button>
+                    <div class="collapse" id="effects-collapse">
+                      <ul class="btn-toggle-nav list-unstyled pb-1">
+                        <li class="api-ref"><a class="rounded" href="blurfx.html">BlurFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="colourfx.html">ColourFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="compositefx.html">CompositeFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="convolvefx.html">ConvolveFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="displacementfx.html">DisplacementFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="filtereffect.html">FilterEffect</a></li>
+                        <li class="api-ref"><a class="rounded" href="floodfx.html">FloodFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="imagefx.html">ImageFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="lightingfx.html">LightingFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="mergefx.html">MergeFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="morphologyfx.html">MorphologyFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="offsetfx.html">OffsetFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="remapfx.html">RemapFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="sourcefx.html">SourceFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="turbulencefx.html">TurbulenceFX</a></li>
+                        <li class="api-ref"><a class="rounded" href="wavefunctionfx.html">WaveFunctionFX</a></li>
+                      </ul>
+                    </div>
+                  </li>
+
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#ext-collapse" aria-expanded="false">Extensions</button>
+                    <div class="collapse" id="ext-collapse">
+                      <ul class="btn-toggle-nav list-unstyled pb-1">
+                        <li class="api-ref"><a class="rounded" href="scintilla.html">Scintilla</a></li>
+                        <li class="api-ref"><a class="rounded" href="scintillasearch.html">ScintillaSearch</a></li>
+                      </ul>
+                    </div>
+                  </li>
+
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#gfx-collapse" aria-expanded="false">Graphics</button>
+                    <div class="collapse" id="gfx-collapse">
+                      <ul class="btn-toggle-nav list-unstyled pb-1">
+                        <li class="api-ref"><a class="rounded" href="bitmap.html">Bitmap</a></li>
+                        <li class="api-ref"><a class="rounded" href="clipboard.html">Clipboard</a></li>
+                        <li class="api-ref"><a class="rounded" href="display.html">Display</a></li>
+                        <li class="api-ref"><a class="rounded" href="document.html">Document</a></li>
+                        <li class="api-ref"><a class="rounded" href="font.html">Font</a></li>
+                        <li class="api-ref"><a class="rounded" href="picture.html">Picture</a></li>
+                        <li class="api-ref"><a class="rounded" href="pointer.html">Pointer</a></li>
+                        <li class="api-ref"><a class="rounded" href="surface.html">Surface</a></li>
+                        <li class="api-ref"><a class="rounded" href="svg.html">SVG</a></li>
+                      </ul>
+                    </div>
+                  </li>
+
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#net-collapse" aria-expanded="false">Network</button>
+                    <div class="collapse" id="net-collapse">
+                      <ul class="btn-toggle-nav list-unstyled pb-1">
+                        <li class="api-ref"><a class="rounded" href="clientsocket.html">ClientSocket</a></li>
+                        <li class="api-ref"><a class="rounded" href="http.html">HTTP</a></li>
+                        <li class="api-ref"><a class="rounded" href="netsocket.html">NetSocket</a></li>
+                        <li class="api-ref"><a class="rounded" href="proxy.html">Proxy</a></li>
+                      </ul>
+                    </div>
+                  </li>
+
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#vectors-collapse" aria-expanded="false">Vectors</button>
+                    <div class="collapse" id="vectors-collapse">
+                      <ul class="btn-toggle-nav list-unstyled pb-1">
+                        <li class="api-ref"><a class="rounded" href="vector.html">Vector</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorclip.html">VectorClip</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorcolour.html">VectorColour</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorellipse.html">VectorEllipse</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorfilter.html">VectorFilter</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorgradient.html">VectorGradient</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorgroup.html">VectorGroup</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorimage.html">VectorImage</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorpath.html">VectorPath</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorpattern.html">VectorPattern</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorpolygon.html">VectorPolygon</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorrectangle.html">VectorRectangle</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorscene.html">VectorScene</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorshape.html">VectorShape</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorspiral.html">VectorSpiral</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectortext.html">VectorText</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectortransition.html">VectorTransition</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorviewport.html">VectorViewport</a></li>
+                        <li class="api-ref"><a class="rounded" href="vectorwave.html">VectorWave</a></li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="col-sm-9" style="max-width: 1200px;">
               <div class="docs-content" style="display:none;" id="default-page">
                 <div class="page-header"><h1><xsl:value-of select="/book/info/name"/> Class</h1></div>
                 <p class="lead"><xsl:value-of select="/book/info/comment"/></p>
@@ -235,25 +374,28 @@
                 <xsl:if test="/book/fields/field">
                 <h3>Structure</h3>
                 <p>The <xsl:value-of select="info/name"/> class consists of the following fields:</p>
-                <table class="table table-hover">
-                  <thead><th class="col-md-1"><div data-toggle="tooltip"  title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead>
+                <table class="table">
+                  <thead><th class="col-md-1"><div data-bs-toggle="tooltip"  title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead>
                   <tbody>
                     <xsl:for-each select="/book/fields/field">
-                      <tr id="_" data-toggle="collapse" data-target="_" class="clickable">
-                        <xsl:attribute name="data-target">#fl-<xsl:value-of select="name"/></xsl:attribute>
+                      <tr id="_" data-bs-toggle="collapse" data-bs-target="_" style="scroll-margin:3em;">
+                        <xsl:attribute name="data-bs-target">#fl-<xsl:value-of select="name"/></xsl:attribute>
+                        <xsl:if test="description or input">
+                          <xsl:attribute name="role">button</xsl:attribute>
+                        </xsl:if>
                         <td class="col-md-1">
-                          <a><xsl:attribute name="id">tf-<xsl:value-of select="name"/></xsl:attribute></a>
+                          <xsl:attribute name="id">tf-<xsl:value-of select="name"/></xsl:attribute>
                           <xsl:choose>
-                            <xsl:when test="access/@read='R'"><span class="glyphicon glyphicon-ok text-success" data-toggle="tooltip"  title="Direct read access"/></xsl:when>
-                            <xsl:when test="access/@read='G'"><span class="glyphicon glyphicon-ok text-danger" data-toggle="tooltip" title="Functional read access"/></xsl:when>
-                            <xsl:otherwise><span class="glyphicon glyphicon-minus text-muted" data-toggle="tooltip" title="Not readable"/></xsl:otherwise>
+                            <xsl:when test="access/@read='R'"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"/></xsl:when>
+                            <xsl:when test="access/@read='G'"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"/></xsl:when>
+                            <xsl:otherwise><i class="bi bi-dash-circle text-secondary" data-bs-toggle="tooltip" title="Not readable"/></xsl:otherwise>
                           </xsl:choose>
                           &#160;
                           <xsl:choose>
-                            <xsl:when test="access/@write='W'"><span class="glyphicon glyphicon-ok text-success" data-toggle="tooltip" title="Direct write access"/></xsl:when>
-                            <xsl:when test="access/@write='S'"><span class="glyphicon glyphicon-ok text-danger" data-toggle="tooltip" title="Functional write access"/></xsl:when>
-                            <xsl:when test="access/@write='I'"><span class="glyphicon glyphicon-cog text-danger" data-toggle="tooltip" title="Immutable"/></xsl:when>
-                            <xsl:otherwise><span class="glyphicon glyphicon-minus text-muted" data-toggle="tooltip" title="Not writeable"/></xsl:otherwise>
+                            <xsl:when test="access/@write='W'"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"/></xsl:when>
+                            <xsl:when test="access/@write='S'"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"/></xsl:when>
+                            <xsl:when test="access/@write='I'"><i class="bi bi-check-lg text-success" data-bs-toggle="tooltip" title="Immutable"/></xsl:when>
+                            <xsl:otherwise><i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"/></xsl:otherwise>
                           </xsl:choose></td>
                         <th class="col-md-1"><xsl:value-of select="name"/></th>
                         <td class="col-md-1"><span class="text-nowrap">
@@ -271,7 +413,7 @@
                         <td><xsl:apply-templates select="comment"/></td>
                       </tr>
                       <xsl:if test="description">
-                        <tr class="no-hover">
+                        <tr>
                           <td colspan="4" class="hiddenRow">
                             <div id="_" class="accordion-body collapse">
                               <xsl:attribute name="id">fl-<xsl:value-of select="name"/></xsl:attribute>
@@ -292,63 +434,59 @@
                 <xsl:if test="/book/actions/action">
                   <h3>Actions</h3>
                   <p>The following actions are currently supported:</p>
-                  <table class="table table-hover">
-                    <thead><th style="width:1%; border-top-style: none; border-bottom-style: none;"/><th class="col-md-1">Name</th><th>Comment</th></thead>
+                  <table class="table">
                     <tbody>
                       <xsl:for-each select="/book/actions/action">
-                        <tr data-toggle="collapse" data-target="_" class="clickable">
-                          <xsl:attribute name="data-target">#ta-<xsl:value-of select="name"/></xsl:attribute>
+                        <tr data-bs-toggle="collapse" data-bs-target="_" style="scroll-margin:3em;">
+                          <xsl:attribute name="id">ta-<xsl:value-of select="name"/></xsl:attribute>
+                          <xsl:attribute name="data-bs-target">#tac-<xsl:value-of select="name"/></xsl:attribute>
+                          <xsl:if test="description or input">
+                            <xsl:attribute name="role">button</xsl:attribute>
+                          </xsl:if>
                           <td style="width:1%; border-top-style: none; border-bottom-style: none;">
-                            <xsl:choose>
-                              <xsl:when test="description">
-                                <span class="glyphicon glyphicon-chevron-right"/>
-                              </xsl:when>
-                            </xsl:choose>
+                            <xsl:if test="description or input">
+                              <i class="bi bi-chevron-double-right text-secondary"/>
+                            </xsl:if>
                           </td>
                           <th class="col-md-1 text-primary"><xsl:value-of select="name"/></th>
                           <td><xsl:apply-templates select="comment"/></td>
                         </tr>
                         <xsl:if test="description or input">
-                          <tr class="no-hover">
+                          <tr>
                             <td class="hiddenRow" style="width:1%; border-top-style: none; border-bottom-style: none;"/>
                             <td colspan="2" class="hiddenRow">
-                              <div id="_" class="accordion-body collapse">
-                                <xsl:attribute name="id">ta-<xsl:value-of select="name"/></xsl:attribute>
+                              <div id="_" class="collapse">
+                                <xsl:attribute name="id">tac-<xsl:value-of select="name"/></xsl:attribute>
+                                <div class="card" style="border-radius: 0;">
+                                  <div class="card-header action-header" style="border-radius: 0;"><samp><xsl:value-of select="prototype"/></samp></div>
+                                  <xsl:if test="input/param">
+                                      <div class="card-body" style="padding:0px">
+                                        <table class="table">
+                                          <thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead>
+                                          <tbody>
+                                            <xsl:for-each select="input/param">
+                                              <xsl:choose>
+                                                <xsl:when test="@lookup">
+                                                  <tr><td><a><xsl:attribute name="href">../core.html?page=<xsl:value-of select="@lookup"/></xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:apply-templates select="."/></td></tr>
+                                                </xsl:when>
+                                                <xsl:otherwise>
+                                                  <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
+                                                </xsl:otherwise>
+                                              </xsl:choose>
+                                            </xsl:for-each>
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                  </xsl:if>
+                                </div>
 
-                              <div class="panel panel-info" style="border-radius: 0;">
-                                <div class="panel-heading" style="border-radius: 0;"><samp><xsl:value-of select="prototype"/></samp></div>
-                                <xsl:choose>
-                                  <xsl:when test="input/param">
-                                    <div class="panel-body">
-                                      <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
-                                        <thead>
-                                          <tr><th class="col-md-1">Input</th><th>Description</th></tr>
-                                        </thead>
-                                        <tbody>
-                                          <xsl:for-each select="input/param">
-                                            <xsl:choose>
-                                              <xsl:when test="@lookup">
-                                                <tr><td><a><xsl:attribute name="href">../core.html?page=<xsl:value-of select="@lookup"/></xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:apply-templates select="."/></td></tr>
-                                              </xsl:when>
-                                              <xsl:otherwise>
-                                                <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
-                                              </xsl:otherwise>
-                                            </xsl:choose>
-                                          </xsl:for-each>
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </xsl:when>
-                                </xsl:choose>
-                              </div>
-
-                                <div class="docs-content" style="margin:10px 10px 0px 30px">
+                                <div class="docs-content" style="margin:1em .5em 1em .5em;">
                                   <xsl:for-each select="description">
                                     <xsl:apply-templates/>
                                   </xsl:for-each>
                                   <xsl:choose>
                                     <xsl:when test="result/error">
-                                      <h3>Error Codes</h3>
+                                      <div class="sub-header">Error Codes</div>
                                       <table class="table table-sm borderless">
                                         <tbody>
                                           <xsl:for-each select="result/error">
@@ -358,7 +496,7 @@
                                       </table>
                                     </xsl:when>
                                     <xsl:when test="result">
-                                      <h3>Result</h3>
+                                      <div class="sub-header">Result</div>
                                       <p><xsl:apply-templates select="result/."/></p>
                                     </xsl:when>
                                   </xsl:choose>
@@ -375,55 +513,49 @@
                 <xsl:if test="/book/methods/method">
                   <h3>Methods</h3>
                   <p>The following methods are currently supported:</p>
-                  <table class="table table-hover">
-                    <thead><th class="col-md-1">Name</th><th>Comment</th></thead>
+                  <table class="table">
                     <tbody>
                       <xsl:for-each select="/book/methods/method">
-                        <tr data-toggle="collapse" data-target="_" class="clickable">
-                          <xsl:attribute name="data-target">#tmx-<xsl:value-of select="name"/></xsl:attribute>
+                        <tr data-bs-toggle="collapse" data-bs-target="_" role="button" style="scroll-margin:3em;">
+                          <xsl:attribute name="data-bs-target">#tmx-<xsl:value-of select="name"/></xsl:attribute>
                           <th class="col-md-1 text-primary"><xsl:value-of select="name"/></th>
-                          <td><a><xsl:attribute name="id">tm-<xsl:value-of select="name"/></xsl:attribute></a><xsl:apply-templates select="comment"/></td>
+                          <td><xsl:attribute name="id">tm-<xsl:value-of select="name"/></xsl:attribute><xsl:apply-templates select="comment"/></td>
                         </tr>
-                        <tr class="no-hover">
+                        <tr>
                           <td colspan="2" class="hiddenRow">
                             <div id="_" class="accordion-body collapse">
                               <xsl:attribute name="id">tmx-<xsl:value-of select="name"/></xsl:attribute>
-
-                              <div class="panel panel-info" style="border-radius: 0;">
-                                <div class="panel-heading" style="border-radius: 0;"><samp><xsl:value-of select="prototype"/></samp></div>
-                                <xsl:choose>
-                                  <xsl:when test="input/param">
-                                    <div class="panel-body">
-                                      <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
-                                        <thead>
-                                          <tr><th class="col-md-1">Input</th><th>Description</th></tr>
-                                        </thead>
-                                        <tbody>
-                                          <xsl:for-each select="input/param">
-                                            <xsl:choose>
-                                              <xsl:when test="@lookup">
-                                                <tr><td><a><xsl:attribute name="href">?page=<xsl:value-of select="@lookup"/></xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:apply-templates select="."/></td></tr>
-                                              </xsl:when>
-                                              <xsl:otherwise>
-                                                <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
-                                              </xsl:otherwise>
-                                            </xsl:choose>
-                                          </xsl:for-each>
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  </xsl:when>
-                                </xsl:choose>
+                              <div class="card" style="border-radius: 0;">
+                                <div class="card-header action-header" style="border-radius: 0;"><samp><xsl:value-of select="prototype"/></samp></div>
+                                <xsl:if test="input/param">
+                                  <div class="card-body" style="padding:0px">
+                                    <table class="table">
+                                      <thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead>
+                                      <tbody>
+                                        <xsl:for-each select="input/param">
+                                          <xsl:choose>
+                                            <xsl:when test="@lookup">
+                                              <tr><td><a><xsl:attribute name="href">?page=<xsl:value-of select="@lookup"/></xsl:attribute><xsl:value-of select="@name"/></a></td><td><xsl:apply-templates select="."/></td></tr>
+                                            </xsl:when>
+                                            <xsl:otherwise>
+                                              <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
+                                            </xsl:otherwise>
+                                          </xsl:choose>
+                                        </xsl:for-each>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </xsl:if>
                               </div>
 
-                              <div class="docs-content" style="margin:30px 20px;">
+                              <div class="docs-content" style="margin:1em .5em 1em .5em;">
                                 <xsl:for-each select="description">
                                   <xsl:apply-templates/>
                                 </xsl:for-each>
 
                                 <xsl:choose>
                                   <xsl:when test="result/error">
-                                    <h3>Error Codes</h3>
+                                    <div class="sub-header">Error Codes</div>
                                     <table class="table table-sm borderless">
                                       <tbody>
                                         <xsl:for-each select="result/error">
@@ -433,7 +565,7 @@
                                     </table>
                                   </xsl:when>
                                   <xsl:when test="result">
-                                    <h3>Result</h3>
+                                    <div class="sub-header">Result</div>
                                     <p><xsl:apply-templates select="result/."/></p>
                                   </xsl:when>
                                 </xsl:choose>
@@ -454,7 +586,7 @@
                   <xsl:attribute name="id"><xsl:value-of select="@lookup"/></xsl:attribute>
                   <h1><xsl:value-of select="@lookup"/> Type</h1>
                   <p class="lead"><xsl:apply-templates select="@comment"/></p>
-                  <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
+                  <table class="table">
                     <thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead>
                     <tbody>
                       <xsl:for-each select="const">
@@ -472,7 +604,7 @@
                   <xsl:attribute name="id">struct-<xsl:value-of select="@name"/></xsl:attribute>
                   <h1><xsl:value-of select="@name"/> Structure</h1>
                   <p class="lead"><xsl:apply-templates select="@comment"/></p>
-                  <table class="table" style="border: 4px; margin-bottom: 0px; border: 0px; border-bottom: 0px;">
+                  <table class="table">
                     <thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead>
                     <tbody>
                       <xsl:for-each select="field">
@@ -490,77 +622,58 @@
 
             </div> <!-- End of core content -->
 
-            <!-- SIDEBAR -->
-            <div class="col-sm-3">
-              <div id="nav-tree">
-                <div class="panel-group" id="accordion">
-                  <table class="table ">
-                  <thead><th colspan="2"><h4>Class Info</h4></th></thead>
-                    <tbody>
-                      <tr><th class="col-md-1 text-primary">ID</th><td><xsl:value-of select="/book/info/idstring"/></td></tr>
-                      <tr><th class="col-md-1 text-primary">Category</th><td><xsl:value-of select="/book/info/category"/></td></tr>
-                      <tr><th class="col-md-1 text-primary">Include</th><td><xsl:value-of select="/book/info/include"/></td></tr>
-                      <tr><th class="col-md-1 text-primary">Version</th><td><xsl:value-of select="/book/info/version"/></td></tr>
-                    </tbody>
-                  </table>
-
-                  <div class="panel panel-primary">
-                    <div class="panel-heading">
-                      <h4 class="panel-title">Class List</h4>
-                    </div>
-                    <div id="structures" class="panel-collapse">
-                      <div class="panel-body">
-                        <ul class="list-unstyled">
-                          <li>Audio<ul><li><a href="audio.html">Audio</a></li><li><a href="sound.html">Sound</a></li></ul></li>
-                          <li>Core<ul><li><a href="file.html">File</a></li><li><a href="metaclass.html">MetaClass</a></li><li><a href="module.html">Module</a></li><li><a href="storagedevice.html">StorageDevice</a></li><li><a href="task.html">Task</a></li><li><a href="thread.html">Thread</a></li><li><a href="time.html">Time</a></li></ul></li>
-                          <li>Data<ul><li><a href="compression.html">Compression</a></li><li><a href="config.html">Config</a></li><li><a href="script.html">Script</a></li><li><a href="xml.html">XML</a></li></ul></li>
-                          <li>Effects<ul><li><a href="blurfx.html">BlurFX</a></li><li><a href="colourfx.html">ColourFX</a></li><li><a href="compositefx.html">CompositeFX</a></li><li><a href="convolvefx.html">ConvolveFX</a></li><li><a href="displacementfx.html">DisplacementFX</a></li><li><a href="filtereffect.html">FilterEffect</a></li><li><a href="floodfx.html">FloodFX</a></li><li><a href="imagefx.html">ImageFX</a></li><li><a href="lightingfx.html">LightingFX</a></li><li><a href="mergefx.html">MergeFX</a></li><li><a href="morphologyfx.html">MorphologyFX</a></li><li><a href="offsetfx.html">OffsetFX</a></li><li><a href="remapfx.html">RemapFX</a></li><li><a href="sourcefx.html">SourceFX</a></li><li><a href="turbulencefx.html">TurbulenceFX</a></li><li><a href="wavefunctionfx.html">WaveFunctionFX</a></li></ul></li>
-                          <li>Extensions<ul><li><a href="scintilla.html">Scintilla</a></li><li><a href="scintillasearch.html">ScintillaSearch</a></li></ul></li>
-                          <li>Graphics<ul><li><a href="bitmap.html">Bitmap</a></li><li><a href="clipboard.html">Clipboard</a></li><li><a href="display.html">Display</a></li><li><a href="document.html">Document</a></li><li><a href="font.html">Font</a></li><li><a href="picture.html">Picture</a></li><li><a href="pointer.html">Pointer</a></li><li><a href="surface.html">Surface</a></li><li><a href="svg.html">SVG</a></li></ul></li>
-                          <li>Network<ul><li><a href="clientsocket.html">ClientSocket</a></li><li><a href="http.html">HTTP</a></li><li><a href="netsocket.html">NetSocket</a></li><li><a href="proxy.html">Proxy</a></li></ul></li>
-                          <li>Vectors<ul><li><a href="vector.html">Vector</a></li><li><a href="vectorclip.html">VectorClip</a></li><li><a href="vectorcolour.html">VectorColour</a></li><li><a href="vectorellipse.html">VectorEllipse</a></li><li><a href="vectorfilter.html">VectorFilter</a></li><li><a href="vectorgradient.html">VectorGradient</a></li><li><a href="vectorgroup.html">VectorGroup</a></li><li><a href="vectorimage.html">VectorImage</a></li><li><a href="vectorpath.html">VectorPath</a></li><li><a href="vectorpattern.html">VectorPattern</a></li><li><a href="vectorpolygon.html">VectorPolygon</a></li><li><a href="vectorrectangle.html">VectorRectangle</a></li><li><a href="vectorscene.html">VectorScene</a></li><li><a href="vectorshape.html">VectorShape</a></li><li><a href="vectorspiral.html">VectorSpiral</a></li><li><a href="vectortext.html">VectorText</a></li><li><a href="vectortransition.html">VectorTransition</a></li><li><a href="vectorviewport.html">VectorViewport</a></li><li><a href="vectorwave.html">VectorWave</a></li></ul></li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div> <!-- row -->
         </div> <!-- container -->
 
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-        <script src="../../js/bootstrap.min.js"></script>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
         <script src="../../js/base.js"></script>
-        <script type="text/javascript">
-var glCurrentMethod;
+        <script>
+const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);
 
-$(document).ready(function() {
-   glCurrentMethod = document.getElementById("Introduction");
+   var xslt = false;
+   var url = window.location.pathname;
+   var filename = url.substring(url.lastIndexOf('/')+1);
+   if (filename.endsWith(".xml")) { // XSLT is being used to view this document
+      filename = filename.substr(0, filename.length-3) + 'html';
+      xslt = true;
+   }
 
-  $('[data-toggle="tooltip"]').tooltip()
+   // Auto-open the relevant sidebar branch
+
+   var nl = document.querySelectorAll('li[class="api-ref"] > a[href="' + filename + '"]');
+   if (nl.length > 0) {
+      // Target the last matching element to avoid confusion with matching module names (e.g. Audio module == Audio class)
+      var el = nl.item(nl.length-1)
+      var parent = getParentNode(el, '[class="collapse"]');
+      if (parent) new bootstrap.Collapse(parent, { show: true }); // Causes animation
+
+      el.style.backgroundColor = '#d2f4ea';
+   }
 
    var page = glParameters["page"];
    if (isEmpty(page)) page = glParameters["function"];
+   var div = document.getElementById(page);
+   if (!div) div = document.getElementById("default-page");
+   if (div) div.style.display = "block";
 
-   if (isEmpty(page)) {
-      showPage("default-page");
+   cancelAnimations();
+
+ready(function(){
+   // Initialise tooltips
+   var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+   var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+     return new bootstrap.Tooltip(tooltipTriggerEl)
+   })
+
+   // In XSLT mode, changing all HTML links to XML is helpful for navigation (if heavy handed)
+   if (xslt) {
+      var nl = document.querySelectorAll('a[href*=".html"]');
+      nl.forEach((el) => {
+         el.href = el.href.substr(0, el.href.length-5) + '.xml'
+      })
    }
-   else showPage(page);
 });
 
-function showPage(Name)
-{
-   var div = document.getElementById(Name);
-   if (div) {
-      if (glCurrentMethod) { // Hide previous method.
-         glCurrentMethod.style.display = "none";
-      }
-      div.style.display = "block"; // Show selected method.
-      glCurrentMethod = div;
-   }
-   else console.log("Div for '" + Name + "' not found.");
-}
          </script>
       </body>
     </html>

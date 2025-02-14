@@ -9,9 +9,8 @@
     <comment>Applies a matrix convolution filter effect.</comment>
     <version>1</version>
     <id>522bdc4f</id>
-    <idstring>ID_CONVOLVEFX</idstring>
+    <idstring>CONVOLVEFX</idstring>
     <category>Graphics</category>
-    <include>modules/convolvefx.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>Convolve applies a matrix convolution filter effect to an input source.  A convolution combines pixels in the input image with neighbouring pixels to produce a resulting image.  A wide variety of imaging operations can be achieved through convolutions, including blurring, edge detection, sharpening, embossing and beveling.</p>
