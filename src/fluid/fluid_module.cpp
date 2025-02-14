@@ -44,7 +44,7 @@ static int module_load(lua_State *Lua)
 
    // Check if there is an include file with the same name as this module.
 
-   ERR error = load_include(Lua->Script, modname);
+   auto error = load_include(Lua->Script, modname);
    if ((error != ERR::Okay) and (error != ERR::FileNotFound)) {
       log.debranch();
       luaL_error(Lua, "Failed to load include file for the %s module.", modname);

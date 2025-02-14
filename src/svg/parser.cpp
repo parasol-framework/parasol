@@ -41,8 +41,8 @@ void svgState::process_inherit_refs(XMLTag &Tag) noexcept
    for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("inherit", Tag.Attribs[a].Value)) {
          switch (strihash(Tag.Attribs[a].Name)) {
-            case SVF_STOP_COLOR: 
-               Tag.Attribs[a].Value = m_stop_color; 
+            case SVF_STOP_COLOR:
+               Tag.Attribs[a].Value = m_stop_color;
                break;
             case SVF_STOP_OPACITY: Tag.Attribs[a].Value = std::to_string(m_stop_opacity); break;
          }
@@ -148,7 +148,7 @@ void svgState::applyStateToVector(objVector *Vector) const noexcept
       else if (iequals("inline", m_display))   Vector->setVisibility(VIS::VISIBLE);
       else if (iequals("inherit", m_display))  Vector->setVisibility(VIS::INHERIT);
    }
-   
+
    if (!m_visibility.empty()) {
       if (iequals("visible", m_visibility))       Vector->setVisibility(VIS::VISIBLE);
       else if (iequals("hidden", m_visibility))   Vector->setVisibility(VIS::HIDDEN);
@@ -174,7 +174,7 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
 
    log.traceBranch("Total Attributes: %d", LONG(std::ssize(Tag.Attribs)));
 
-   if (Tag.Children.empty()) { 
+   if (Tag.Children.empty()) {
       // If the tag has no children then few tags are worth saving to the state. E.g.
       // 'color' is only required for the 'currentColor' value.
       for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
@@ -182,9 +182,9 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
          if (val.empty()) continue;
 
          switch (strihash(Tag.Attribs[a].Name)) {
-            case SVF_COLOR: 
+            case SVF_COLOR:
                if ("inherit" IS val) break;
-               m_color = val; 
+               m_color = val;
                break;
          }
       }
@@ -196,15 +196,15 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
       if (val.empty()) continue;
 
       switch (strihash(Tag.Attribs[a].Name)) {
-         case SVF_COLOR: // Affects 'currentColor'     
+         case SVF_COLOR: // Affects 'currentColor'
             if ("inherit" IS val) break;
-            m_color = val; 
+            m_color = val;
             break;
 
          case SVF_FILL:
             if ("inherit" IS val);
             else if ("currentColor" IS val) m_fill = m_color;
-            else m_fill = val; 
+            else m_fill = val;
             break;
 
          case SVF_STROKE:
@@ -213,7 +213,7 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
             else m_stroke = val;
             if (!m_stroke_width) m_stroke_width = 1;
             break;
-            
+
          case SVF_STOP_COLOR: m_stop_color = val; break;
          case SVF_DISPLAY:    m_display = val; break;
          case SVF_VISIBILITY: m_visibility = val; break;
@@ -250,11 +250,11 @@ void svgState::applyTag(const XMLTag &Tag) noexcept
 
          case SVF_STROKE_WIDTH: m_stroke_width = strtod(val.c_str(), NULL); break;
          case SVF_FONT_FAMILY:  m_font_family = val; break;
-         case SVF_FONT_SIZE:    
+         case SVF_FONT_SIZE:
             m_font_size = val;
             m_font_size_px = UNIT(FID_FontSize, val).value;
             break;
-         
+
          case SVF_FONT_WEIGHT: {
             m_font_weight = strtod(val.c_str(), NULL);
             if (!m_font_weight) {
@@ -2664,7 +2664,7 @@ void svgState::proc_link(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noe
 
 void svgState::proc_switch(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noexcept
 {
-   for (auto &child : Tag.Children) {      
+   for (auto &child : Tag.Children) {
       bool render = true;
       for (LONG a=1; a < std::ssize(child.Attribs); a++) {
          auto &val = child.Attribs[a].Value;
@@ -3305,7 +3305,7 @@ static void process_rule(extSVG *Self, objXML::TAGS &Tags, KatanaRule *Rule)
 
 //********************************************************************************************************************
 
-ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std::string StrValue) noexcept  
+ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std::string StrValue) noexcept
 {
    pf::Log log(__FUNCTION__);
 
@@ -3690,7 +3690,7 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
       case SVF_FILTER:       Vector->setFilter(StrValue); break;
 
       case SVF_COLOR:
-         if (StrValue != "inherit") Vector->setFill(StrValue); 
+         if (StrValue != "inherit") Vector->setFill(StrValue);
          break;
 
       case SVF_STROKE:
@@ -3717,7 +3717,7 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
 
       case SVF_STROKE_DASHARRAY: {
          auto values = read_array(StrValue);
-         Vector->setDashArray(values.data(), values.size()); 
+         Vector->setDashArray(values.data(), values.size());
          break;
       }
 

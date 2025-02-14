@@ -472,6 +472,7 @@ enum class RC : UBYTE {
    BASE_PATH = 0x00000002,
    TRANSFORM = 0x00000004,
    ALL = 0x00000007,
+   DIRTY = 0x00000007,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(RC)
@@ -3261,37 +3262,43 @@ class objVectorViewport : public objVector {
 
    inline ERR setAspectRatio(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[8];
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERR setBuffered(const LONG Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setDimensions(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setDragCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setOverflow(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setOverflowX(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setOverflowY(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -3311,21 +3318,21 @@ class objVectorViewport : public objVector {
 
    inline ERR setXOffset(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[8];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setYOffset(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
    inline ERR setWidth(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[7];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
@@ -3357,7 +3364,7 @@ class objVectorViewport : public objVector {
 
    inline ERR setViewHeight(const DOUBLE Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 

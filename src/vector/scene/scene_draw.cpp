@@ -13,7 +13,6 @@ private:
    agg::scanline_u8  mScanLine; // Use scanline_p for large solid polygons/rectangles and scanline_u for complex shapes like text
    extVectorViewport *mView;    // The current view
    objBitmap         *mBitmap;
-   std::stack<agg::trans_affine> mTransforms;
 
 public:
    // The ClipBuffer is used to hold any alpha-masks that are generated as the scene is rendered.
@@ -325,24 +324,6 @@ const agg::trans_affine SceneRenderer::build_fill_transform(extVector &Vector, b
       return transform;
    }
    else return Vector.Transform; // Default BoundingBox: The vector's position, transforms, and parent transforms apply.
-}
-
-//********************************************************************************************************************
-// Generic function for setting the clip region of an AGG rasterizer
-
-void set_raster_clip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG Width, LONG Height)
-{
-   if (Width < 0) Width = 0;
-   if (Height < 0) Height = 0;
-
-   agg::path_storage clip;
-   clip.move_to(X, Y);
-   clip.line_to(X+Width, Y);
-   clip.line_to(X+Width, Y+Height);
-   clip.line_to(X, Y+Height);
-   clip.close_polygon();
-   Raster.reset();
-   Raster.add_path(clip);
 }
 
 //********************************************************************************************************************
@@ -907,7 +888,88 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                   }
                }
 
-               if (view->Child) draw_vectors((extVector *)view->Child, state);
+               if (view->Child) {
+                  constexpr LONG MAX_AREA = 4096 * 4096; // Maximum allowable area for enabling a viewport buffer
+
+                  if ((view->vpBuffered) and (view->vpFixedWidth * view->vpFixedHeight < MAX_AREA)) {
+                     // In buffered mode, children will be drawn to an independent bitmap that is permanently
+                     // cached.
+
+                     bool redraw = view->vpRefreshBuffer;
+                     view->vpRefreshBuffer = false;
+
+                     if (view->vpBuffer) {
+                        if ((view->vpBuffer->Width != view->vpFixedWidth) or (view->vpBuffer->Height != view->vpFixedHeight)) {
+                           view->vpBuffer->resize(view->vpFixedWidth, view->vpFixedHeight);
+                           redraw = true;
+                        }
+                     }
+                     else {
+                        view->vpBuffer = objBitmap::create::local(fl::Name("vp_buffer"),
+                           fl::Owner(view->UID),
+                           fl::Width(view->vpFixedWidth),
+                           fl::Height(view->vpFixedHeight),
+                           fl::BitsPerPixel(32),
+                           fl::Flags(BMF::ALPHA_CHANNEL));
+                           //fl::ColourSpace(view->vpColourSpace));
+                        redraw = true;
+                     }
+
+                     if (redraw) {
+                        view->vpBuffer->BkgdIndex = 0;
+                        view->vpBuffer->clear();
+
+                        // A new state is allocated for drawing the children.  Clipping to the bitmap is enforced with
+                        // the overflow values.
+
+                        VectorState child_state;
+                        child_state.mOverflowX = VOF::HIDDEN;
+                        child_state.mOverflowY = VOF::HIDDEN;
+
+                        auto save_bmp    = mBitmap;
+                        auto save_format = mFormat;
+                        auto save_rb     = mRenderBase;
+
+                        // The vector paths will target the coordinate space of their parents, so we
+                        // make adjustments to the bitmap to orient to (0,0).
+
+                        mBitmap = view->vpBuffer;
+                        auto save_data = mBitmap->offset(-view->vpBounds.left, -view->vpBounds.top);
+                        mFormat.setBitmap(*view->vpBuffer);
+
+                        draw_vectors((extVector *)view->Child, child_state);
+
+                        mBitmap->Data = save_data;
+
+                        mRenderBase = save_rb;
+                        mBitmap     = save_bmp;
+                        mFormat     = save_format;
+
+                        //save_bitmap(view->vpBuffer, std::string("viewport"));
+                     }
+
+                     // Draw the cached bitmap buffer
+
+                     view->BasePath.approximation_scale(view->Transform.scale());
+
+                     auto transform = view->Transform;
+                     transform.invert();
+
+                     agg::rasterizer_scanline_aa<> raster;
+                     raster.add_path(view->BasePath);
+
+                     if (!state.mClipStack->empty()) {
+                        agg::alpha_mask_gray8 alpha_mask(state.mClipStack->top().m_renderer);
+                        agg::scanline_u8_am<agg::alpha_mask_gray8> masked_scanline(alpha_mask);
+                        drawBitmap(masked_scanline, VSM::AUTO, mRenderBase, raster, view->vpBuffer, VSPREAD::REPEAT, view->Opacity, &transform);
+                     }
+                     else {
+                        agg::scanline_u8 scanline;
+                        drawBitmap(scanline, VSM::AUTO, mRenderBase, raster, view->vpBuffer, VSPREAD::REPEAT, view->Opacity, &transform);
+                     }
+                  }
+                  else draw_vectors((extVector *)view->Child, state);
+               }
 
                if (view->ClipMask) state.mClipStack->pop();
 
@@ -988,13 +1050,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
       if (bmpBkgd) {
          agg::rasterizer_scanline_aa raster;
 
-         agg::path_storage clip;
-         clip.move_to(0, 0);
-         clip.line_to(bmpBkgd->Width, 0);
-         clip.line_to(bmpBkgd->Width, bmpBkgd->Height);
-         clip.line_to(0, bmpBkgd->Height);
-         clip.close_polygon();
-         raster.add_path(clip);
+         basic_path(raster, 0, 0, bmpBkgd->Width, bmpBkgd->Height);
 
          mBitmap = bmpSave;
          mFormat.setBitmap(*mBitmap);

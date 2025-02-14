@@ -585,7 +585,7 @@ ERR load_include(objScript *Script, CSTRING IncName)
    }
 
    if (prv->Includes.contains(IncName)) {
-      log.trace("Include file '%s' has already been loaded.", IncName);
+      log.trace("Include file '%s' already loaded.", IncName);
       return ERR::Okay;
    }
 

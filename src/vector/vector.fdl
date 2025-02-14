@@ -279,7 +279,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
     "FINAL_PATH: The final path will need to be recalculated, so as to take transforms and/or scaled coordinates into account.",
     "BASE_PATH: The base path (shape of the vector) must be recalculated.",
     "TRANSFORM: The transform matrix must be recalculated.  This includes movement, e.g. changing the `CX, CY` of an ellipse.",
-    { ALL = "FINAL_PATH|BASE_PATH|TRANSFORM" })
+    { ALL = "FINAL_PATH|BASE_PATH|TRANSFORM" },
+    { DIRTY = "FINAL_PATH|BASE_PATH|TRANSFORM" })
 
   flags("ARF", { comment="Aspect ratios control alignment, scaling and clipping." },
     "X_MIN: Align to the left.",
