@@ -30,7 +30,7 @@
       <prototype>ERR acClear(*Object)</prototype>
       <description>
 <p>Clearing a bitmap wipes away its graphical contents by drawing a blank area over its existing graphics.  The colour of the blank area is determined by the <fl>BkgdIndex</fl> field.  To clear a bitmap to a different colour, use the <method>DrawRectangle</method> method instead.</p>
-<p>If the bitmap supports alpha blending, the alpha blend bits will be reset to 'clear' status.</p>
+<p>If the bitmap supports alpha blending and a transparent result is desired, setting <fl>BkgdIndex</fl> to zero is an efficient way to achieve this outcome.</p>
       </description>
     </action>
 

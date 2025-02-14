@@ -2066,6 +2066,11 @@ Z: Close Path
 <td>The base path (shape of the vector) must be recalculated.</td>
 </tr>
 <tr>
+<th>RC::DIRTY</th>
+<td>Synonym for <code>FINAL_PATH | BASE_PATH | TRANSFORM</code>
+</td>
+</tr>
+<tr>
 <th>RC::FINAL_PATH</th>
 <td>The final path will need to be recalculated, so as to take transforms and/or scaled coordinates into account.</td>
 </tr>
@@ -2214,6 +2219,10 @@ Z: Close Path
 <tr>
 <th>VF::HAS_FOCUS</th>
 <td>The vector holds the user's input focus.</td>
+</tr>
+<tr>
+<th>VF::ISOLATED</th>
+<td>Enables isolation mode, which results in a bitmap buffer being allocated for the vector and its children while drawing.</td>
 </tr>
 <tr>
 <th>VF::JOIN_PATHS</th>

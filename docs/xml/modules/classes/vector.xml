@@ -707,7 +707,7 @@ Z: Close Path
     <field>
       <name>Visibility</name>
       <comment>Controls the visibility of a vector and its children.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="VIS">VIS</type>
       <description>
 <types lookup="VIS"/>
