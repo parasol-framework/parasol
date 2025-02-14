@@ -140,8 +140,6 @@ GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS Col
 
 GradientColours::GradientColours(const std::array<FRGB, 256> &Map, double Resolution)
 {
-   resolution = Resolution;
-
    for (LONG i=0; i < std::ssize(Map); i++) {
       table[i] = agg::rgba8(Map[i]);
    }
