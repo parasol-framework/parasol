@@ -21,6 +21,9 @@
 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
   <div class="container-fluid">
     <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
     <div id="navbar" class="collapse navbar-collapse">
       <ul class="nav navbar-nav"><li class="nav-item">
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
@@ -338,12 +341,6 @@
 
       el.style.backgroundColor = '#d2f4ea';
    }
-
-   var page = glParameters["page"];
-   if (isEmpty(page)) page = glParameters["function"];
-   var div = document.getElementById(page);
-   if (!div) div = document.getElementById("default-page");
-   if (div) div.style.display = "block";
 
    cancelAnimations();
     </script>

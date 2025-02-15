@@ -194,9 +194,10 @@
       <body>
         <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
           <div class="container-fluid">
-            <div class="navbar-header">
-              <a class="navbar-brand" href="../../index.html">Parasol Framework</a>
-            </div>
+            <div class="navbar-header"><a class="navbar-brand" href="../../index.html">Parasol Framework</a></div>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
                 <li class="nav-item"><a class="nav-link" href="../../gallery.html">Gallery</a></li>
