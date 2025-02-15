@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      system/errors.h
-// Copyright: Paul Manias © 1996-2024
+// Copyright: Paul Manias © 1996-2025
 // Generator: idl-c
 
 #ifdef __cplusplus

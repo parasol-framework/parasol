@@ -2269,8 +2269,9 @@ class objVector : public Object {
    }
 
    inline ERR setVisibility(const VIS Value) noexcept {
-      this->Visibility = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setFlags(const VF Value) noexcept {

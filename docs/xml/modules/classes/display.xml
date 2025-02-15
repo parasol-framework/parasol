@@ -9,10 +9,9 @@
     <comment>Manages the video display and graphics hardware.</comment>
     <version>1</version>
     <id>12cd479b</id>
-    <idstring>ID_DISPLAY</idstring>
+    <idstring>DISPLAY</idstring>
     <category>Graphics</category>
-    <include>modules/display.h</include>
-    <copyright>Paul Manias 2003-2024</copyright>
+    <copyright>Paul Manias 2003-2025</copyright>
     <description>
 <p>A Display object represents a region of displayable video memory and metadata that defines the display mode. The Display is a primitive, hardware oriented interface.  It is recommended that unless otherwise required, the <class name="Surface">Surface</class> class is used to create displayable graphics regions.</p></description>
     <source>

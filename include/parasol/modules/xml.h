@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      xml.h
-// Copyright: Paul Manias © 2001-2024
+// Copyright: Paul Manias © 2001-2025
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -183,7 +183,7 @@ class objXML : public Object {
    TAGS Tags;
 
    template <class T> inline ERR insertStatement(LONG Index, XMI Where, T Statement, XMLTag **Result) {
-      LONG index_result; 
+      LONG index_result;
       XMLTag *tag_result;
       if (auto error = insertXML(Index, Where, to_cstring(Statement), &index_result); error IS ERR::Okay) {
          error = getTag(index_result, &tag_result);

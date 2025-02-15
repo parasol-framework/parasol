@@ -9,9 +9,8 @@
     <comment>Extends the Vector class with support for organising vectors into groups.</comment>
     <version>1</version>
     <id>88397565</id>
-    <idstring>ID_VECTORGROUP</idstring>
+    <idstring>VECTORGROUP</idstring>
     <category>Graphics</category>
-    <include>modules/vectorgroup.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>Groups provide a simple way of grouping vector objects.  Groups have a passive effect on the drawing process and can be effective at assigning inheritable attributes to child vectors.</p>

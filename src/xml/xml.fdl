@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0, timestamp=20240611 }, function()
+module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestamp=20240611 }, function()
   cpp_include("<functional>", "<sstream>", "<parasol/strings.hpp>")
 
   const("XMS", { comment="For SetAttrib()" }, {
@@ -136,7 +136,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0, timestam
    TAGS Tags;
 
    template <class T> inline ERR insertStatement(LONG Index, XMI Where, T Statement, XMLTag **Result) {
-      LONG index_result; 
+      LONG index_result;
       XMLTag *tag_result;
       if (auto error = insertXML(Index, Where, to_cstring(Statement), &index_result); error IS ERR::Okay) {
          error = getTag(index_result, &tag_result);

@@ -9,9 +9,8 @@
     <comment>Applies the displacement map filter effect.</comment>
     <version>1</version>
     <id>aec93c3c</id>
-    <idstring>ID_DISPLACEMENTFX</idstring>
+    <idstring>DISPLACEMENTFX</idstring>
     <category>Graphics</category>
-    <include>modules/displacementfx.h</include>
     <copyright>Paul Manias © 2010-2025</copyright>
     <description>
 <p>This filter effect uses the pixel values from the image from Mix to spatially displace the image from Input. This is the transformation to be performed:</p>

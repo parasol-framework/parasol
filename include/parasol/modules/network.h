@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      network.h
-// Copyright: Paul Manias © 2005-2024
+// Copyright: Paul Manias © 2005-2025
 // Generator: idl-c
 
 #include <parasol/main.h>

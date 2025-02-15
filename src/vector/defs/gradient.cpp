@@ -573,6 +573,7 @@ Resolution: Affects the rate of change for colours in the gradient.
 
 By default, the colours generated for a gradient will be spaced for a smooth transition between stops that maximise
 resolution.  The resolution can be reduced by setting the Resolution value to a fraction between 0 and 1.0.
+
 This results in the colour values being averaged to a single value for every block of n colours, where n is the value 
 `1 / (1 - Resolution)`.
 
