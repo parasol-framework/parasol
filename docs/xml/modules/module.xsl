@@ -158,11 +158,14 @@
         <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
           <div class="container-fluid">
             <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
                 <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
                 <li class="nav-item"><a class="nav-link" href="core.html">API</a></li>
-                <li class="nav-item"><a class="nav-link" href="../Wiki/Home.html">Wiki</a></li>
+                <li class="nav-item"><a class="nav-link" href="../wiki/Home.html">Wiki</a></li>
                 <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
               </ul>
             </div> <!-- nav-collapse -->
@@ -173,8 +176,8 @@
           <div class="row">
 
             <!-- SIDEBAR -->
-            <div class="col-sm-3" style="max-width: 250px;">
-              <div class="flex-shrink-1 pt-2 sticky-top overflow-auto vh-100 b-shadow">
+            <div class="d-sm-block d-none col-3 sidebar" style="max-width: 230px;">
+              <div class="flex-shrink-1 pt-2 pe-2 sticky-top overflow-auto vh-100 b-shadow">
 
 <ul class="list-unstyled">
   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#func-collapse" aria-expanded="true"><xsl:value-of select="/book/info/name"/> API</button>

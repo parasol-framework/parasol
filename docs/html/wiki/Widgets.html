@@ -21,6 +21,9 @@
 <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
   <div class="container-fluid">
     <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
     <div id="navbar" class="collapse navbar-collapse">
       <ul class="nav navbar-nav"><li class="nav-item">
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
@@ -33,8 +36,9 @@
 </nav>
 
 <div class="container-fluid">
-<div class="row">
-<div class="col-sm-3" style="max-width: 250px;"><div class="flex-shrink-1 pt-2 sticky-top overflow-auto vh-100 b-shadow">
+  <div class="row">
+    <div class="d-sm-block d-none col-3 sidebar" style="max-width: 230px;">
+      <div class="flex-shrink-1 pt-2 pe-2 sticky-top overflow-auto vh-100 b-shadow">
 
 <ul class="list-unstyled">
   <li>
@@ -241,7 +245,7 @@
 </div>
 
 <div class="col-sm-9" style="max-width: 1200px;">
-<div class="docs-content" style="display:none;" id="default-page">
+<div class="docs-content" id="default-page">
 <h1>Widgets</h1>
 <p>Fluid&#39;s widget APIs are stored in the <code>scripts/gui</code> folder and installed as a standard feature of the Parasol Framework.</p>
 <p>To use an API listed in this guide, the script must make an appropriate <code>require</code> call for the interface. For example:</p>
@@ -2089,12 +2093,6 @@
 
       el.style.backgroundColor = '#d2f4ea';
    }
-
-   var page = glParameters["page"];
-   if (isEmpty(page)) page = glParameters["function"];
-   var div = document.getElementById(page);
-   if (!div) div = document.getElementById("default-page");
-   if (div) div.style.display = "block";
 
    cancelAnimations();
     </script>
