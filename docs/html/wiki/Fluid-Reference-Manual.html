@@ -36,8 +36,9 @@
 </nav>
 
 <div class="container-fluid">
-<div class="row">
-<div class="col-sm-3" style="max-width: 250px;"><div class="flex-shrink-1 pt-2 sticky-top overflow-auto vh-100 b-shadow">
+  <div class="row">
+    <div class="d-sm-block d-none col-3 sidebar" style="max-width: 230px;">
+      <div class="flex-shrink-1 pt-2 pe-2 sticky-top overflow-auto vh-100 b-shadow">
 
 <ul class="list-unstyled">
   <li>
@@ -244,7 +245,7 @@
 </div>
 
 <div class="col-sm-9" style="max-width: 1200px;">
-<div class="docs-content" style="display:none;" id="default-page">
+<div class="docs-content" id="default-page">
 <h1>Fluid Reference Manual</h1>
 <p>Fluid is a Lua-based scripting language, specially customised for integration with the Parasol Framework. It supports garbage collection, dynamic typing and a bytecode interpreter for compiled code. Lua was chosen as our preferred programming language due to its extensive popularity amongst game developers, a testament to its low overhead, speed and lightweight processing when compared to common scripting languages.</p>
 <p>Full compatibility with Parasol&#39;s C++ APIs is included. This includes support for all common constants found in the C headers (e.g. error codes, action ID&#39;s and special flags). Object classes are self-describing, so the need for external libraries or header files to communicate with a given type of object is unnecessary under normal circumstances. Module functions are also self-describing, offering the same level of access to function calls as one would expect when programming in C.</p>

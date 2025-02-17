@@ -208,13 +208,14 @@
             </div> <!-- nav-collapse -->
           </div>
         </nav>
+        <xsl:text>&#xa;</xsl:text>
 
         <div class="container-fluid"> <!-- 'container-fluid' for full width, 'container' for restricted -->
           <div class="row">
 
             <!-- SIDEBAR -->
-            <div class="col-sm-3" style="max-width: 250px;">
-              <div class="flex-shrink-1 pt-2 sticky-top overflow-auto vh-100 b-shadow">
+            <div class="d-sm-block d-none col-3 sidebar" style="max-width: 230px;">
+              <div class="flex-shrink-1 pt-2 pe-2 sticky-top overflow-auto vh-100 b-shadow">
 
                 <ul class="list-unstyled">
                   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#audio-collapse" aria-expanded="false">Modules</button>
@@ -362,7 +363,7 @@
                   </li>
                 </ul>
               </div>
-            </div>
+            </div><xsl:text>&#xa;</xsl:text>
 
             <div class="col-sm-9" style="max-width: 1200px;">
               <div class="docs-content" style="display:none;" id="default-page">
@@ -427,6 +428,7 @@
                           </td>
                         </tr>
                       </xsl:if>
+                      <xsl:text>&#xa;</xsl:text>
                     </xsl:for-each>
                   </tbody>
                 </table>
@@ -506,6 +508,7 @@
                             </td>
                           </tr>
                         </xsl:if>
+                        <xsl:text>&#xa;</xsl:text>
                       </xsl:for-each>
                     </tbody>
                   </table>
@@ -574,6 +577,7 @@
                             </div>
                           </td>
                         </tr>
+                        <xsl:text>&#xa;</xsl:text>
                       </xsl:for-each>
                     </tbody>
                   </table>
@@ -597,6 +601,7 @@
                   </table>
                   <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
                 </div>
+                <xsl:text>&#xa;</xsl:text>
               </xsl:for-each> <!-- End of type scan -->
 
               <!-- STRUCTURES -->
@@ -619,6 +624,7 @@
                   </table>
                   <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> class documentation © <xsl:value-of select="/book/info/copyright"/></div>
                 </div>
+                <xsl:text>&#xa;</xsl:text>
               </xsl:for-each> <!-- End of struct scan -->
 
             </div> <!-- End of core content -->

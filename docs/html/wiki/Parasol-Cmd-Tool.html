@@ -36,8 +36,9 @@
 </nav>
 
 <div class="container-fluid">
-<div class="row">
-<div class="col-sm-3" style="max-width: 250px;"><div class="flex-shrink-1 pt-2 sticky-top overflow-auto vh-100 b-shadow">
+  <div class="row">
+    <div class="d-sm-block d-none col-3 sidebar" style="max-width: 230px;">
+      <div class="flex-shrink-1 pt-2 pe-2 sticky-top overflow-auto vh-100 b-shadow">
 
 <ul class="list-unstyled">
   <li>
@@ -244,7 +245,7 @@
 </div>
 
 <div class="col-sm-9" style="max-width: 1200px;">
-<div class="docs-content" style="display:none;" id="default-page">
+<div class="docs-content" id="default-page">
 <h1>Parasol  Tool</h1>
 <p>Parasol&#39;s main executable is located in the root folder of our distribution as <code>parasol</code>. This tool allows you to run Fluid scripts with the <code>.fluid</code> extension.</p>
 <p>Run the tool with <code>--help</code> to see the available options and confirm that the install worked correctly. At the time of writing, this looks as follows:</p>

@@ -176,8 +176,8 @@
           <div class="row">
 
             <!-- SIDEBAR -->
-            <div class="col-sm-3" style="max-width: 250px;">
-              <div class="flex-shrink-1 pt-2 sticky-top overflow-auto vh-100 b-shadow">
+            <div class="d-sm-block d-none col-3 sidebar" style="max-width: 230px;">
+              <div class="flex-shrink-1 pt-2 pe-2 sticky-top overflow-auto vh-100 b-shadow">
 
 <ul class="list-unstyled">
   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#func-collapse" aria-expanded="true"><xsl:value-of select="/book/info/name"/> API</button>

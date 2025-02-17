@@ -36,8 +36,9 @@
 </nav>
 
 <div class="container-fluid">
-<div class="row">
-<div class="col-sm-3" style="max-width: 250px;"><div class="flex-shrink-1 pt-2 sticky-top overflow-auto vh-100 b-shadow">
+  <div class="row">
+    <div class="d-sm-block d-none col-3 sidebar" style="max-width: 230px;">
+      <div class="flex-shrink-1 pt-2 pe-2 sticky-top overflow-auto vh-100 b-shadow">
 
 <ul class="list-unstyled">
   <li>
@@ -244,7 +245,7 @@
 </div>
 
 <div class="col-sm-9" style="max-width: 1200px;">
-<div class="docs-content" style="display:none;" id="default-page">
+<div class="docs-content" id="default-page">
 <h1>Unit Testing</h1>
 <p>Automated testing is an important part of Parasol&#39;s build process, and can help to ensure that new changes do not have unexpected consequences for existing code.</p>
 <p>We use our own command-line script, Flute, to run tests and evaluate their success. Flute can be run directly from the terminal, but is primarily intended for use in CMake build scripts to ensure that tests are being run as part of the build and release process.</p>

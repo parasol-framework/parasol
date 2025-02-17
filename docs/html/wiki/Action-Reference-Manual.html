@@ -36,8 +36,9 @@
 </nav>
 
 <div class="container-fluid">
-<div class="row">
-<div class="col-sm-3" style="max-width: 250px;"><div class="flex-shrink-1 pt-2 sticky-top overflow-auto vh-100 b-shadow">
+  <div class="row">
+    <div class="d-sm-block d-none col-3 sidebar" style="max-width: 230px;">
+      <div class="flex-shrink-1 pt-2 pe-2 sticky-top overflow-auto vh-100 b-shadow">
 
 <ul class="list-unstyled">
   <li>
@@ -244,7 +245,7 @@
 </div>
 
 <div class="col-sm-9" style="max-width: 1200px;">
-<div class="docs-content" style="display:none;" id="default-page">
+<div class="docs-content" id="default-page">
 <h1>Action Reference Manual</h1>
 <p>Actions are an implementation of the design-by-contract approach to object orientation. Common activities such as showing and hiding an object on the display, or reading and writing data have been given a dedicated action interface. The &#39;contract&#39; exists in the strict objectives of each action, as documented in this manual. For instance, calling <code>Show</code> and <code>Hide</code> actions on a UI object will change its visibility as one would expect.</p>
 <p>If an action isn&#39;t applicable to an object, calling it is legal but will do nothing.</p>
