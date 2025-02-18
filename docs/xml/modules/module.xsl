@@ -164,7 +164,7 @@
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
                 <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
-                <li class="nav-item"><a class="nav-link" href="core.html">API</a></li>
+                <li class="nav-item"><a class="nav-link" href="api.html">API</a></li>
                 <li class="nav-item"><a class="nav-link" href="../wiki/Home.html">Wiki</a></li>
                 <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
               </ul>
