@@ -1,12 +1,12 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
-<html xml:lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-8254DG7MT6"> </script><script>
 	   window.dataLayer = window.dataLayer || [];
 	   function gtag(){dataLayer.push(arguments);}
 	   gtag('js', new Date());
-      gtag('config', 'G-8254DG7MT6');</script><meta charset="utf-8">
+      gtag('config', 'G-8254DG7MT6');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Parasol Framework documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
@@ -27,7 +27,7 @@
     <div id="navbar" class="collapse navbar-collapse">
       <ul class="nav navbar-nav"><li class="nav-item">
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
-        <li class="nav-item"><a class="nav-link" href="../modules/core.html">API</a></li>
+        <li class="nav-item"><a class="nav-link" href="../modules/api.html">API</a></li>
         <li class="nav-item"><a class="nav-link" href="Home.html">Wiki</a></li>
         <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
       </ul>
@@ -333,13 +333,13 @@ Free()             [Module:710] vector, Owner: 676</code></pre>
 <p>Resolving an object UID to its pointer can be achieved with <code>GetObjectPtr()</code>. This is the fastest means of pointer resolution but comes with the caveat that there is no protection from race conditions involving other threads that could terminate the object.</p>
 <h2 id="object-locking">Object Locking</h2>
 <p>If your code prevents the possibility of an object being involved in an unscheduled termination, C++ threads can take advantage of using the object pointer directly and lock the object using in-built atomic operations. The <code>Object.lock()</code> and <code>Object.unlock()</code> C++ methods are available for this:</p>
-<hr />
+<hr>
 <h3 id="err-objectlock">ERR Object.lock()</h3>
 <p>Gains direct access to an object with an atomic operation. If the operation fails because the object is already in use, the function reverts to using <code>LockObject()</code> and the thread will sleep until the object becomes available.</p>
 <p>Note that this call can fail if the object is marked for collection, as objects in a collecting state are considered unsafe for active use.</p>
 <h3 id="objectunlock">Object.unlock()</h3>
 <p>Reverses an earlier call to <code>Object.lock()</code>. If there are threads waiting on the object&#39;s availability, the function will defer to <code>ReleaseObject()</code> so that the next thread in the queue is woken correctly.</p>
-<hr />
+<hr>
 <p>To lock an object that is referenced via its UID, use the <code>AccessObject()</code> and <code>ReleaseObject()</code> functions. These functions guarantee safety from all potential race conditions.</p>
 <h3 id="scopedobjectlock">ScopedObjectLock</h3>
 <p>The <code>ScopedObjectLock</code> C++ class provides an interface for both UID and direct pointer locks. It guarantees that the lock is released when its instance goes out of scope. Available constructors are:</p>
@@ -525,7 +525,7 @@ public variables and methods is helpful in accelerating development for new user
 
 <script src="../js/bootstrap.bundle.min.js"></script>
 <script src="../js/base.js"></script>
-<script type="text/javascript">
+<script>
 
    // Auto-open the relevant sidebar branch
 

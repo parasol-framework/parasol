@@ -55,6 +55,7 @@
          local fl = obj.new('file', { path=res_output_path, flags='WRITE|NEW' })
 
          mod_header = header:gsub('<title>Parasol Wiki</title>', '<title>Parasol Wiki - ' .. title .. '</title>')
+         md_output = md_output:gsub('<hr />', '<hr>') -- HTML5 compliance
 
          fl.acWrite(mod_header)
          fl.acWrite('\n<h1>' .. title .. '</h1>\n')
