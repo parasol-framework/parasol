@@ -1,12 +1,12 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
-<html xml:lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-8254DG7MT6"> </script><script>
 	   window.dataLayer = window.dataLayer || [];
 	   function gtag(){dataLayer.push(arguments);}
 	   gtag('js', new Date());
-      gtag('config', 'G-8254DG7MT6');</script><meta charset="utf-8">
+      gtag('config', 'G-8254DG7MT6');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Parasol Framework documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
@@ -27,7 +27,7 @@
     <div id="navbar" class="collapse navbar-collapse">
       <ul class="nav navbar-nav"><li class="nav-item">
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
-        <li class="nav-item"><a class="nav-link" href="../modules/core.html">API</a></li>
+        <li class="nav-item"><a class="nav-link" href="../modules/api.html">API</a></li>
         <li class="nav-item"><a class="nav-link" href="Home.html">Wiki</a></li>
         <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
       </ul>
@@ -249,7 +249,7 @@
 <h1>FDL Reference Manual</h1>
 <p>FDL - the Fluid Definition Language - is an Interface Definition Language designed specifically for Parasol. It is accompanied with a series of tools - <code>idl-c</code>, <code>idl-compile</code> and <code>idl-doc</code>, which parse <code>.fdl</code> files to produce language headers and user documentation.</p>
 <p>This document describes the definition language itself. Instruction on how to use the tools is provided in the FDL Tools manual.</p>
-<hr />
+<hr>
 <h2 id="file-structure">File Structure</h2>
 <p>FDL files must be given a <code>.fdl</code> extension and are expected to start with <code>--$FLUID:Include</code> on their first line. FDL is a function-oriented document format, meaning the document itself makes calls to the parser so that it has control over the entire process. The first function that is called from the FDL file must be one of the following:</p>
 <h3 id="module">module()</h3>
@@ -296,7 +296,7 @@
 </tbody>
 </table>
 <p>The <code>Function</code> is a callback that will define the header content, using the functions declared in the next section.</p>
-<hr />
+<hr>
 <h2 id="utility-functions">Utility Functions</h2>
 <h3 id="c_include">c_include()</h3>
 <p><code>c_include(&#39;&lt;a&gt;&#39;, &#39;&lt;b&gt;&#39;, ...)</code></p>
@@ -578,7 +578,7 @@ end)</code></pre>
 
 <script src="../js/bootstrap.bundle.min.js"></script>
 <script src="../js/base.js"></script>
-<script type="text/javascript">
+<script>
 
    // Auto-open the relevant sidebar branch
 

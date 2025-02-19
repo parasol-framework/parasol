@@ -1,12 +1,12 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
-<html xml:lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-8254DG7MT6"> </script><script>
 	   window.dataLayer = window.dataLayer || [];
 	   function gtag(){dataLayer.push(arguments);}
 	   gtag('js', new Date());
-      gtag('config', 'G-8254DG7MT6');</script><meta charset="utf-8">
+      gtag('config', 'G-8254DG7MT6');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Parasol Framework documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
@@ -27,7 +27,7 @@
     <div id="navbar" class="collapse navbar-collapse">
       <ul class="nav navbar-nav"><li class="nav-item">
         <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
-        <li class="nav-item"><a class="nav-link" href="../modules/core.html">API</a></li>
+        <li class="nav-item"><a class="nav-link" href="../modules/api.html">API</a></li>
         <li class="nav-item"><a class="nav-link" href="Home.html">Wiki</a></li>
         <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
       </ul>
@@ -258,7 +258,7 @@
 <li><a href="/www.lua.org/pil/"><span>http://www.lua.org/pil/</span></a></li>
 <li><a href="lua-users.org/wiki/SampleCode"><span>http://lua-users.org/wiki/SampleCode</span></a></li>
 </ul>
-<hr />
+<hr>
 <h2 id="usage">Usage</h2>
 <p>To run a Fluid script, use the parasol executable:</p>
 <p><code>parasol myfile.fluid</code></p>
@@ -268,7 +268,7 @@
 <p>For further information on available options, execute parasol with the <code>--help</code> parameter.</p>
 <h3 id="file-recognition">File Recognition</h3>
 <p>Fluid files can use the file extension <code>.lua</code> or <code>.fluid</code> for identification. Ideally, scripts should start with the comment <code>-- $FLUID</code> near the start of the document so that they can be correctly identified by the Fluid parser.</p>
-<hr />
+<hr>
 <h2 id="lua-extensions">Lua Extensions</h2>
 <p>A number of extensions have been added (and some features removed) to Lua 5.1 in order to add value to the Fluid language. This section examines the major changes in regards to the published Lua Reference Manual.</p>
 <h3 id="removed-features">Removed Features</h3>
@@ -288,7 +288,7 @@
 <p>A non-zero value detection function, <code>nz()</code>, is included to simplify the handling of nil and zero values (such as a zero length string). Using <code>nz()</code> simplifies program flow where variables must have a value, for example:</p>
 <p><code>myvalue = nz(var.shoppinglist, &#39;Empty Basket&#39;)</code></p>
 <p>The first parameter is checked if it is empty. If so, the function&#39;s second parameter is returned if provided. Otherwise a value of <code>true</code> is returned.</p>
-<hr />
+<hr>
 <h2 id="script-management">Script Management</h2>
 <h3 id="include">include</h3>
 <p>The <code>include</code> statement is used to load the definitions for an API&#39;s functions and classes. It accepts a series of API names as input, and will load each in sequence, for example:</p>
@@ -304,7 +304,7 @@
 <h3 id="exec">exec()</h3>
 <p>Use <code>exec()</code> to parse a Fluid statement and execute it. Can raise an exception if the statement is unparseable or fails during execution. Example:</p>
 <p><code>exec(&#39;print(&quot;Hello World&quot;)&#39;)</code></p>
-<hr />
+<hr>
 <h3 id="exception-handling">Exception Handling</h3>
 <p>Calls to the Parasol API do not raise exceptions by default, instead opting to return <code>ERR</code> codes that can be managed by the client (or ignored). Promoting <code>ERR</code> codes to exceptions can be a useful at times, so some functionality is provided to enable this feature as seen in the functions described below.</p>
 <h4 id="check">check()</h4>
@@ -337,7 +337,7 @@ end)</code></pre>
 <p>Be aware that the scope of catch runs deep, and extends into any functions that are called. Using <code>catch()</code> over a broad section of code is considered mis-use, and can lead to unexpected confusion. Consider using <code>xpcall()</code> instead when broad exception handling is desired.</p>
 <p>The following <code>ERR</code> codes are <em>not</em> treated as exceptions:</p>
 <p><code>Okay</code>, <code>False</code>, <code>LimitedSuccess</code>, <code>Cancelled</code>, <code>NothingDone</code>, <code>Continue</code>, <code>Skip</code>, <code>Retry</code>, <code>DirEmpty</code>.</p>
-<hr />
+<hr>
 <h2 id="module-interface">Module Interface</h2>
 <p>The module interface provides a means for Fluid programs to communicate with Parasol&#39;s APIs. They are loaded using the <code>mod.load()</code> function, for instance:</p>
 <p><code>mGfx = mod.load(&#39;display&#39;)</code></p>
@@ -403,7 +403,7 @@ end)</code></pre>
 <p>In Fluid, result-pointer arguments are excluded from the function specification, as the ability to write to variable addresses is a risk to stability. Instead, such arguments are handled internally and their values are returned as part of the result set. The following example shows how to call <code>ListMemory()</code> in Fluid:</p>
 <p><code>local err, list = mSys.ListMemory(0)</code></p>
 <p>Some functions like the above can return allocated memory or some other form of temporary resource. These are normally marked as such in the function definition, which allows the garbage collector to automatically remove it once its references have been reduced to zero. Remember to use <code>local</code> wherever possible to clean up resources that have gone out of scope.</p>
-<hr />
+<hr>
 <h2 id="object-interface">Object Interface</h2>
 <p>The object interface provides the necessary functionality to create and manage objects. It allows you to read and manipulate object fields, call methods and actions, manage subscriptions and connect to existing named objects.</p>
 <h3 id="object-creation">Object Creation</h3>
@@ -462,7 +462,7 @@ end)</code></pre>
 <p>If the named flag is set, a value of 1 is returned, otherwise 0.</p>
 <p>To get the value of a flag or lookup field in string format, prefix the name of the field with a <code>$</code> symbol when using the <code>get()</code> method as follows:</p>
 <p><code>name = object.get(&#39;$flags&#39;)</code></p>
-<hr />
+<hr>
 <h2 id="action--method-subscriptions">Action &amp; Method Subscriptions</h2>
 <p>Parasol allows clients to monitor the functional execution of an object by subscribing to its actions and methods. One commonly used strategy involves subscribing to the <code>free()</code> action of an object so that the client is notified of object termination.</p>
 <p>Subscription is enabled via the <code>subscribe()</code> method. The following example illustrates the creation of an HTTP object that performs a download and calls <code>my_function()</code> on completion of the download process. Note that <code>Args</code> is a table that contains named arguments for the action that was subscribed to. The <code>CustomRef</code> is an optional value that will be passed to the subscriber.</p>
@@ -474,7 +474,7 @@ end)</code></pre>
 <span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="va">http</span><span class="op">.</span>acActivate<span class="op">()</span></span>
 <span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="va">handle</span> <span class="op">=</span> <span class="va">http</span><span class="op">.</span>subscribe<span class="op">(</span><span class="st">&#39;deactivate&#39;</span><span class="op">,</span> <span class="va">my_function</span><span class="op">,</span> <span class="va">customref</span><span class="op">)</span></span></code></pre></div>
 <p>To unsubscribe from an action, call <code>unsubscribe()</code> with the action/method name. Doing so will allow the garbage collector to remove associated resources that are no longer required.</p>
-<hr />
+<hr>
 <h2 id="processing-interface">Processing Interface</h2>
 <p>The processing interface assists with the management of your program&#39;s idle state and reaction to signals. Its most basic feature is the commonly used <code>sleep()</code> function, as follows:</p>
 <p><code>processing.sleep()</code></p>
@@ -506,7 +506,7 @@ end)</code></pre>
 <p>Notice that we called <code>processing.new()</code> to create a dedicated interface for signal management. The two objects that will be signalled are passed in via the <code>signals</code> field. When the thread completes, it calls <code>acSignal()</code> on the objects to change their signal state. It is necessary for both objects to change state in order to wake the main thread.</p>
 <h3 id="signal">signal()</h3>
 <p>If no signal objects are listed in a call to <code>processing.new()</code>, it is possible to manually call the <code>signal()</code> method to wake the sleeping thread instead. This simple technique is sometimes used in passive event systems, e.g. the user clicking a mouse button could result in a <code>signal()</code> call that wakes the main thread.</p>
-<hr />
+<hr>
 <h2 id="thread-interface">Thread Interface</h2>
 <p>Fluid supports a simplified threading model so as to minimise the potential problems occurring from their use. The functionality is as follows:</p>
 <h3 id="threadscriptstatement-callback">thread.script(Statement, Callback)</h3>
@@ -533,7 +533,7 @@ processing.sleep()</code></pre>
 <p>The <code>Callback</code> routine receives notification of the thread&#39;s completion, and in this example uses this as an opportunity to free the file object. This is a recommended pattern, and ensures that the target object is not destroyed while the thread is executing. Never declare the object value as <code>local</code>.</p>
 <p>Internally, callbacks are executed on the next message processing cycle and this is why a call to <code>processing.sleep()</code> is used in this example.</p>
 <p>The <code>Error</code> parameter in the callback reflects the <code>ERR</code> code returned by the action - but bear in mind the possibility that if thread preparation fails, the callback will never be executed and an exception will be thrown instead.</p>
-<hr />
+<hr>
 <h2 id="structure-interface">Structure Interface</h2>
 <p>The structure interface is provided so that Fluid can use C/C++ structures declared in the Parasol API. You will find that many class and module API&#39;s use structures for returning condensed information.</p>
 <h3 id="creating-a-structure">Creating a Structure</h3>
@@ -617,7 +617,7 @@ processing.sleep()</code></pre>
 </tbody>
 </table>
 <p>Fixed arrays are also permitted in the structure definition if a field name is followed with enclosed square brackets that contain the array size, e.g. <code>[12]</code>.</p>
-<hr />
+<hr>
 <h2 id="array-interface">Array Interface</h2>
 <p>The array interface is used to manage the arrays that are returned by object fields, actions, methods and certain functions. Although Lua includes native support for arrays, their functionality is particular to the Lua environment. Arrays for use within the Parasol API must use the interface that we provide.</p>
 <p>To create an array, use the <code>new()</code> method with the following prototype:</p>
@@ -636,21 +636,21 @@ processing.sleep()</code></pre>
 <h3 id="arraycopy">array.copy()</h3>
 <p><code>array.copy(Source, [DestIndex], [TotalElements])</code></p>
 <p>The <code>copy()</code> method is used to copy the data from <code>Source</code> to the array, targeting <code>DestIndex</code>. The <code>Source</code> can be either a <code>string</code> type or another <code>array</code>.</p>
-<hr />
+<hr>
 <h2 id="logging">Logging</h2>
 <p>The following functions are included as standard so that messages can be logged to the console.</p>
 <h3 id="msg">msg()</h3>
 <p><code>msg()</code> accepts a single string parameter and prints it to the debug log. The log level must be set to <code>api</code> or higher in order to be visible.</p>
 <h3 id="print">print()</h3>
 <p><code>print()</code> accepts a single string parameter and prints it to <code>stderr</code>. If <code>stderr</code> is unavailable on a system like Android, the message is printed to the debug log instead.</p>
-<hr />
+<hr>
 <h3 id="event-subsystem">Event Subsystem</h3>
 <p>Fluid programs can receive system-wide events whenever they are broadcast. Two functions are provided for the purpose of event management. The first is subscribeEvent(), which will connect a Fluid function to a specific event:</p>
 <p><code>error, handle = subscribeEvent(eventname, function)</code></p>
 <p>The <code>eventname</code> is a string that must follow the format <code>group.subgroup.name</code>, for example <code>system.task.created</code>. Valid event strings are described in full detail in the Events Manual of the Parasol SDK. A single asterisk wildcard is allowed in the subgroup and/or name if listening to multiple events is desirable, for example <code>system.*.*</code> would listen for all system events. The referenced function will receive two arguments if the event is signalled - <code>EventID</code> and <code>Args</code>. The <code>Args</code> parameter is a table containing named parameters - if the event does not include any parameters then the table will be empty.</p>
 <p>To unsubscribe from an event, call unsubscribeEvent() with the event handle that was returned by the initial subscribeEvent() call:</p>
 <p><code>unsubscribeEvent(handle)</code></p>
-<hr />
+<hr>
 <h2 id="credits">Credits</h2>
 <p>Fluid is developed by Paul Manias and runs on Mike Pall&#39;s <a href="https://luajit.org/">LuaJIT</a> framework, which in turn is based on the <a href="https://lua.org/">Lua</a> programming language.</p>
 <p>Lua is designed and implemented by a team at PUC-Rio, the Pontifical Catholic University of Rio de Janeiro in Brazil. Lua was born and raised at Tecgraf, the Computer Graphics Technology Group of PUC-Rio, and is now housed at Lua.org. Both Tecgraf and Lua.org are laboratories of the Department of Computer Science.</p>
@@ -658,7 +658,7 @@ processing.sleep()</code></pre>
 
 <script src="../js/bootstrap.bundle.min.js"></script>
 <script src="../js/base.js"></script>
-<script type="text/javascript">
+<script>
 
    // Auto-open the relevant sidebar branch
 
