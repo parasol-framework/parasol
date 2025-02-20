@@ -5,12 +5,12 @@ Controller: Provides support for reading state-based game controllers.
 
 Use the Controller class to read the state of game controllers that are recognised by the operating system.
 
-Unlike analog devices that stream input commands (e.g. mice), gamepad controllers maintain a state that can be read 
-at any time.  The controller state is normally read at least once per frame, which can be achieved in the main
+Unlike analog devices that stream input commands (e.g. mice), gamepad controllers maintain a state that can be read
+at any time.  The controller state is normally read at least once per frame, which can be achieved in a program's
 inner loop, or in a separate timer.
 
-Controller input management is governed by the @Display class.  The `GRAB_CONTROLLERS` flag must be defined in the 
-active Display's Flags field in order to ensure that controller input can be received.  Failure to do so may mean 
+Controller input management is governed by the @Display class.  The `GRAB_CONTROLLERS` flag must be defined in the
+active Display's Flags field in order to ensure that controller input can be received.  Failure to do so may mean
 that the Controller object appears to work but does not receive input.
 
 -END-

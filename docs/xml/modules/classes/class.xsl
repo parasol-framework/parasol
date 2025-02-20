@@ -1,5 +1,13 @@
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-  <xsl:output doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" media-type="application/html+xml" encoding="utf-8" omit-xml-declaration="yes" indent="no"/>
+<xsl:stylesheet
+  version="1.0"
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns="http://www.w3.org/1999/xhtml">
+
+  <xsl:output
+    doctype-public="-//W3C//DTD XHTML 1.1//EN"
+    doctype-system="http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"
+    method="html" encoding="utf-8"
+    omit-xml-declaration="yes" indent="no"/>
 
   <xsl:template match="types">
     <xsl:choose>
@@ -16,6 +24,7 @@
                   <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
                 </xsl:otherwise>
               </xsl:choose>
+              <xsl:text>&#xa;</xsl:text>
             </xsl:for-each>
           </tbody>
         </table>
@@ -27,6 +36,7 @@
           <tbody>
             <xsl:for-each select="/book/types/constants[@lookup=$prefix]/const">
               <tr><th class="col-md-1"><xsl:value-of select="$prefix"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
+              <xsl:text>&#xa;</xsl:text>
             </xsl:for-each>
           </tbody>
         </table>
@@ -46,6 +56,7 @@
           <tbody>
             <xsl:for-each select="/book/structs/struct[@name=$prefix]/field">
               <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:value-of select="@type"/></td><td><xsl:apply-templates select="."/></td></tr>
+              <xsl:text>&#xa;</xsl:text>
             </xsl:for-each>
           </tbody>
         </table>
@@ -56,11 +67,11 @@
     </xsl:choose>
   </xsl:template>
 
-  <xsl:template match="p">
-    <xsl:copy>
+  <xsl:template match="p|b|li">
+    <xsl:element name="{name()}" xmlns="http://www.w3.org/1999/xhtml">
       <xsl:copy-of select="@*"/>
-      <xsl:apply-templates select="*|text()" />
-    </xsl:copy>
+      <xsl:apply-templates select="*|text()"/>
+    </xsl:element>
   </xsl:template>
 
   <xsl:template match="text()"><xsl:value-of select="."/></xsl:template>
@@ -136,13 +147,6 @@
     </xsl:choose>
   </xsl:template>
 
-  <xsl:template match="li">
-    <xsl:copy>
-      <xsl:copy-of select="@*"/>
-      <xsl:apply-templates select="*|text()" />
-    </xsl:copy>
-  </xsl:template>
-
   <xsl:template match="include">
     <code><xsl:value-of select="."/></code>
   </xsl:template>
@@ -152,17 +156,21 @@
   </xsl:template>
 
   <xsl:template match="code">
-    <xsl:copy-of select="."/>
+    <xsl:element name="{name()}" xmlns="http://www.w3.org/1999/xhtml">
+      <xsl:apply-templates select="*|text()" />
+    </xsl:element>
   </xsl:template>
 
-  <xsl:template match="pre">
-    <xsl:copy-of select="."/>
+  <xsl:template match="pre"> <!-- Note that pre areas can legitimately use elements like 'b' for visual enhancement -->
+    <xsl:element name="{name()}" xmlns="http://www.w3.org/1999/xhtml">
+      <xsl:apply-templates select="*|node()"/>
+    </xsl:element>
   </xsl:template>
 
   <xsl:template name="addGoogleTracking">
     <!-- Global site tag (gtag.js) - Google Analytics -->
-	 <script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-8254DG7MT6"><xsl:text> </xsl:text></script>
-	 <script>
+	 <script type="text/javascript" async="async" src="https://www.googletagmanager.com/gtag/js?id=G-8254DG7MT6"><xsl:text> </xsl:text></script>
+	 <script type="text/javascript">
 	   <xsl:text disable-output-escaping="yes">
 	   window.dataLayer = window.dataLayer || [];
 	   function gtag(){dataLayer.push(arguments);}
@@ -172,10 +180,14 @@
   </xsl:template>
 
   <xsl:template match="/book">
-    <html xml:lang="en">
+    <html version="-//W3C//DTD XHTML 1.1//EN"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.w3.org/MarkUp/SCHEMA/xhtml11.xsd">
       <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
         <xsl:call-template name="addGoogleTracking"/>
-        <meta charset="utf-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <!-- The above 2 meta tags *must* come first in the head; any other head content must come *after* these tags -->
         <meta name="description" content="Parasol Framework documentation, machine generated from source"/>
@@ -184,7 +196,7 @@
         <title>Parasol Framework Manual</title>
         <link href="../../css/bootstrap.min.css" rel="stylesheet"/>
         <link href="../../css/module-template.css" rel="stylesheet"/>
-        <script>
+        <script type="text/javascript">
           var shiftWindow = function() { scrollBy(0, -100) };
           window.addEventListener("hashchange", shiftWindow);
           function load() { if (window.location.hash) shiftWindow(); }
@@ -216,10 +228,10 @@
             <!-- SIDEBAR -->
             <div class="d-sm-block d-none col-3 sidebar" style="max-width: 230px;">
               <div class="flex-shrink-1 pt-2 pe-2 sticky-top overflow-auto vh-100 b-shadow">
-
+                <xsl:text>&#xa;</xsl:text>
                 <ul class="list-unstyled">
-                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#audio-collapse" aria-expanded="false">Modules</button>
-                    <div class="collapse" id="audio-collapse">
+                  <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#mod-collapse" aria-expanded="false">Modules</button>
+                    <div class="collapse" id="mod-collapse">
                       <ul class="btn-toggle-nav list-unstyled fw-normal">
                         <li class="api-ref"><a class="rounded" href="../audio.html">Audio</a></li>
                         <li class="api-ref"><a class="rounded" href="../core.html">Core</a></li>
@@ -232,7 +244,7 @@
                     </div>
                   </li>
                 </ul>
-
+                <xsl:text>&#xa;</xsl:text>
                 <ul class="list-unstyled">
                   <li class="border-top my-3"></li> <!-- Line break -->
                   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#audio-collapse" aria-expanded="false">Audio</button>
@@ -243,7 +255,7 @@
                       </ul>
                     </div>
                   </li>
-
+                  <xsl:text>&#xa;</xsl:text>
                   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#core-collapse" aria-expanded="false">Core</button>
                     <div class="collapse" id="core-collapse">
                       <ul class="btn-toggle-nav list-unstyled pb-1">
@@ -257,7 +269,7 @@
                       </ul>
                     </div>
                   </li>
-
+                  <xsl:text>&#xa;</xsl:text>
                   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#data-collapse" aria-expanded="false">Data</button>
                     <div class="collapse" id="data-collapse">
                       <ul class="btn-toggle-nav list-unstyled pb-1">
@@ -268,7 +280,7 @@
                       </ul>
                     </div>
                   </li>
-
+                  <xsl:text>&#xa;</xsl:text>
                   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#devices-collapse" aria-expanded="false">Devices</button>
                     <div class="collapse" id="devices-collapse">
                       <ul class="btn-toggle-nav list-unstyled pb-1">
@@ -276,7 +288,7 @@
                       </ul>
                     </div>
                   </li>
-
+                  <xsl:text>&#xa;</xsl:text>
                   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#effects-collapse" aria-expanded="false">Effects</button>
                     <div class="collapse" id="effects-collapse">
                       <ul class="btn-toggle-nav list-unstyled pb-1">
@@ -299,7 +311,7 @@
                       </ul>
                     </div>
                   </li>
-
+                  <xsl:text>&#xa;</xsl:text>
                   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#ext-collapse" aria-expanded="false">Extensions</button>
                     <div class="collapse" id="ext-collapse">
                       <ul class="btn-toggle-nav list-unstyled pb-1">
@@ -308,7 +320,7 @@
                       </ul>
                     </div>
                   </li>
-
+                  <xsl:text>&#xa;</xsl:text>
                   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#gfx-collapse" aria-expanded="false">Graphics</button>
                     <div class="collapse" id="gfx-collapse">
                       <ul class="btn-toggle-nav list-unstyled pb-1">
@@ -324,7 +336,7 @@
                       </ul>
                     </div>
                   </li>
-
+                  <xsl:text>&#xa;</xsl:text>
                   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#net-collapse" aria-expanded="false">Network</button>
                     <div class="collapse" id="net-collapse">
                       <ul class="btn-toggle-nav list-unstyled pb-1">
@@ -335,7 +347,7 @@
                       </ul>
                     </div>
                   </li>
-
+                  <xsl:text>&#xa;</xsl:text>
                   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#vectors-collapse" aria-expanded="false">Vectors</button>
                     <div class="collapse" id="vectors-collapse">
                       <ul class="btn-toggle-nav list-unstyled pb-1">
@@ -363,14 +375,15 @@
                   </li>
                 </ul>
               </div>
-            </div><xsl:text>&#xa;</xsl:text>
-
+            </div>
+            <xsl:text>&#xa;</xsl:text>
             <div class="col-sm-9" style="max-width: 1200px;">
               <div class="docs-content" style="display:none;" id="default-page">
                 <div class="page-header"><h1><xsl:value-of select="/book/info/name"/> Class</h1></div>
                 <p class="lead"><xsl:value-of select="/book/info/comment"/></p>
                 <xsl:for-each select="/book/info/description">
                   <xsl:apply-templates/>
+                  <xsl:text>&#xa;</xsl:text>
                 </xsl:for-each>
 
                 <xsl:if test="/book/fields/field">
@@ -380,7 +393,7 @@
                   <thead><th class="col-md-1"><div data-bs-toggle="tooltip"  title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead>
                   <tbody>
                     <xsl:for-each select="/book/fields/field">
-                      <tr id="_" data-bs-toggle="collapse" data-bs-target="_" style="scroll-margin:3em;">
+                      <tr data-bs-toggle="collapse" data-bs-target="_" style="scroll-margin:3em;">
                         <xsl:attribute name="data-bs-target">#fl-<xsl:value-of select="name"/></xsl:attribute>
                         <xsl:if test="description or input">
                           <xsl:attribute name="role">button</xsl:attribute>
@@ -421,7 +434,7 @@
                               <xsl:attribute name="id">fl-<xsl:value-of select="name"/></xsl:attribute>
                               <div class="doc-content" style="margin:20px">
                                 <xsl:for-each select="description">
-                                  <xsl:apply-templates/>
+                                  <xsl:apply-templates/><xsl:text>&#xa;</xsl:text>
                                 </xsl:for-each>
                               </div>
                             </div>
@@ -476,6 +489,7 @@
                                                   <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
                                                 </xsl:otherwise>
                                               </xsl:choose>
+                                              <xsl:text>&#xa;</xsl:text>
                                             </xsl:for-each>
                                           </tbody>
                                         </table>
@@ -486,6 +500,7 @@
                                 <div class="docs-content" style="margin:1em .5em 1em .5em;">
                                   <xsl:for-each select="description">
                                     <xsl:apply-templates/>
+                                    <xsl:text>&#xa;</xsl:text>
                                   </xsl:for-each>
                                   <xsl:choose>
                                     <xsl:when test="result/error">
@@ -494,6 +509,7 @@
                                         <tbody>
                                           <xsl:for-each select="result/error">
                                             <tr><th class="col-md-1"><xsl:value-of select="@code"/></th><td><xsl:apply-templates select="."/></td></tr>
+                                            <xsl:text>&#xa;</xsl:text>
                                           </xsl:for-each>
                                         </tbody>
                                       </table>
@@ -545,6 +561,7 @@
                                               <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
                                             </xsl:otherwise>
                                           </xsl:choose>
+                                          <xsl:text>&#xa;</xsl:text>
                                         </xsl:for-each>
                                       </tbody>
                                     </table>
@@ -555,6 +572,7 @@
                               <div class="docs-content" style="margin:1em .5em 1em .5em;">
                                 <xsl:for-each select="description">
                                   <xsl:apply-templates/>
+                                  <xsl:text>&#xa;</xsl:text>
                                 </xsl:for-each>
 
                                 <xsl:choose>
@@ -564,6 +582,7 @@
                                       <tbody>
                                         <xsl:for-each select="result/error">
                                           <tr><th class="col-md-1"><xsl:value-of select="@code"/></th><td><xsl:apply-templates select="."/></td></tr>
+                                          <xsl:text>&#xa;</xsl:text>
                                         </xsl:for-each>
                                       </tbody>
                                     </table>
@@ -596,6 +615,7 @@
                     <tbody>
                       <xsl:for-each select="const">
                         <tr><th><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
+                        <xsl:text>&#xa;</xsl:text>
                       </xsl:for-each>
                     </tbody>
                   </table>
@@ -619,6 +639,7 @@
                           <td><span class="text-nowrap"><xsl:value-of select="@type"/></span></td>
                           <td><xsl:apply-templates select="."/></td>
                         </tr>
+                        <xsl:text>&#xa;</xsl:text>
                       </xsl:for-each>
                     </tbody>
                   </table>
@@ -632,9 +653,9 @@
           </div> <!-- row -->
         </div> <!-- container -->
 
-        <script src="../../js/bootstrap.bundle.min.js"></script>
-        <script src="../../js/base.js"></script>
-        <script>
+        <script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script>
+        <script type="text/javascript" src="../../js/base.js"></script>
+        <script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);
 
    var xslt = false;

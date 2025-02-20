@@ -1,6 +1,15 @@
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:stylesheet
+  version="1.0"
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns="http://www.w3.org/1999/xhtml">
+
   <!-- python3 -m http.server -d /parasol/docs/xml -->
-  <xsl:output doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" media-type="application/html+xml" encoding="utf-8" omit-xml-declaration="yes" indent="yes"/>
+
+  <xsl:output
+    doctype-public="-//W3C//DTD XHTML 1.1//EN"
+    doctype-system="http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"
+    method="html" encoding="utf-8"
+    omit-xml-declaration="yes" indent="no"/>
 
   <xsl:template match="constants">
     <xsl:choose>
@@ -10,6 +19,7 @@
           <tbody>
             <xsl:for-each select="const">
               <tr><th class="col-md-1"><xsl:value-of select="../@prefix"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
+              <xsl:text>&#xa;</xsl:text>
             </xsl:for-each>
           </tbody>
         </table>
@@ -21,6 +31,7 @@
           <tbody>
             <xsl:for-each select="/book/types/constants[@lookup=$prefix]/const">
               <tr><th class="col-md-1"><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
+              <xsl:text>&#xa;</xsl:text>
             </xsl:for-each>
           </tbody>
         </table>
@@ -43,6 +54,7 @@
                   <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
                 </xsl:otherwise>
               </xsl:choose>
+              <xsl:text>&#xa;</xsl:text>
             </xsl:for-each>
           </tbody>
         </table>
@@ -54,6 +66,7 @@
           <tbody>
             <xsl:for-each select="/book/types/constants[@lookup=$prefix]/const">
               <tr><th><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
+              <xsl:text>&#xa;</xsl:text>
             </xsl:for-each>
           </tbody>
         </table>
@@ -63,11 +76,11 @@
 
   <xsl:template match="text()"><xsl:value-of select="."/></xsl:template>
 
-  <xsl:template match="p">
-    <xsl:copy>
+  <xsl:template match="p|b|li">
+    <xsl:element name="{name()}" xmlns="http://www.w3.org/1999/xhtml">
       <xsl:copy-of select="@*"/>
-      <xsl:apply-templates select="*|text()" />
-    </xsl:copy>
+      <xsl:apply-templates select="*|text()"/>
+    </xsl:element>
   </xsl:template>
 
   <xsl:template match="st"> <!-- Struct reference -->
@@ -104,13 +117,6 @@
     </xsl:choose>
   </xsl:template>
 
-  <xsl:template match="li">
-    <xsl:copy>
-      <xsl:copy-of select="@*"/>
-      <xsl:apply-templates select="*|text()" />
-    </xsl:copy>
-  </xsl:template>
-
   <xsl:template match="include">
     <code><xsl:value-of select="."/></code>
   </xsl:template>
@@ -120,17 +126,21 @@
   </xsl:template>
 
   <xsl:template match="code">
-    <xsl:copy-of select="."/>
+    <xsl:element name="{name()}" xmlns="http://www.w3.org/1999/xhtml">
+      <xsl:apply-templates select="*|text()" />
+    </xsl:element>
   </xsl:template>
 
-  <xsl:template match="pre">
-    <xsl:copy-of select="."/>
+  <xsl:template match="pre"> <!-- Note that pre areas can legitimately use elements like 'b' for visual enhancement -->
+    <xsl:element name="{name()}" xmlns="http://www.w3.org/1999/xhtml">
+      <xsl:apply-templates select="*|node()"/>
+    </xsl:element>
   </xsl:template>
 
   <xsl:template name="addGoogleTracking">
     <!-- Global site tag (gtag.js) - Google Analytics -->
-	 <script async="async" src="https://www.googletagmanager.com/gtag/js?id=G-8254DG7MT6"><xsl:text> </xsl:text></script>
-	 <script>
+	 <script type="text/javascript" async="async" src="https://www.googletagmanager.com/gtag/js?id=G-8254DG7MT6"><xsl:text> </xsl:text></script>
+	 <script type="text/javascript">
 	   <xsl:text disable-output-escaping="yes">
 	   window.dataLayer = window.dataLayer || [];
 	   function gtag(){dataLayer.push(arguments);}
@@ -140,10 +150,10 @@
   </xsl:template>
 
   <xsl:template match="/book">
-    <html xml:lang="en">
+    <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
       <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
         <xsl:call-template name="addGoogleTracking"/>
-        <meta charset="utf-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <!-- The above 2 meta tags *must* come first in the head; any other head content must come *after* these tags -->
         <meta name="description" content="Parasol Framework documentation, machine generated from source"/>
@@ -160,18 +170,18 @@
             <div class="navbar-header"><a class="navbar-brand" href="../index.html">Parasol Framework</a></div>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
               <span class="navbar-toggler-icon"></span>
-            </button>
+            </button><xsl:text>&#xa;</xsl:text>
             <div id="navbar" class="collapse navbar-collapse">
               <ul class="nav navbar-nav">
                 <li class="nav-item"><a class="nav-link" href="../gallery.html">Gallery</a></li>
                 <li class="nav-item"><a class="nav-link" href="api.html">API</a></li>
                 <li class="nav-item"><a class="nav-link" href="../wiki/Home.html">Wiki</a></li>
                 <li class="nav-item"><a class="nav-link" href="https://github.com/parasol-framework/parasol">GitHub</a></li>
-              </ul>
+              </ul><xsl:text>&#xa;</xsl:text>
             </div> <!-- nav-collapse -->
           </div>
         </nav>
-
+        <xsl:text>&#xa;</xsl:text>
         <div class="container-fluid"> <!-- 'container-fluid' for full width, 'container' for restricted -->
           <div class="row">
 
@@ -181,30 +191,32 @@
 
 <ul class="list-unstyled">
   <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#func-collapse" aria-expanded="true"><xsl:value-of select="/book/info/name"/> API</button>
-    <div class="collapse show" id="func-collapse">
-      <ul class="btn-toggle-nav list-unstyled fw-normal">
+    <div class="collapse show" id="func-collapse"><xsl:text>&#xa;</xsl:text>
+      <ul class="btn-toggle-nav list-unstyled fw-normal"><xsl:text>&#xa;</xsl:text>
         <li><a class="rounded" role="button"><xsl:attribute name="onclick">showPage('default-page');</xsl:attribute><i class="bi bi-house"/><xsl:text>&#160;</xsl:text>Overview</a></li>
         <li class="border-top my-1"></li> <!-- Line break -->
-
+        <xsl:text>&#xa;</xsl:text>
         <xsl:if test="count(/book/*/category) = 0">
           <xsl:for-each select="/book/function[not(category)]"><li><a role="button" class="rounded"><xsl:attribute name="onclick">showPage('<xsl:value-of select="name"/>');</xsl:attribute><xsl:value-of select="name"/>()</a></li></xsl:for-each>
         </xsl:if>
-
+        <xsl:text>&#xa;</xsl:text>
         <xsl:for-each select="info/categories/category">
           <xsl:variable name="category"><xsl:value-of select="."/></xsl:variable>
           <xsl:variable name="id-category" select="translate($category,' ','_')"/>
-           <ul class="list-unstyled ps-3">
+          <li><ul class="list-unstyled ps-3">
              <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" aria-expanded="false"><xsl:attribute name="data-bs-target">#<xsl:value-of select="."/>-collapse</xsl:attribute><xsl:value-of select="."/></button>
                <div class="collapse">
                  <xsl:attribute name="id"><xsl:value-of select="."/>-collapse</xsl:attribute>
                  <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 ps-3">
                    <xsl:for-each select="/book/function[category=$category]">
                      <li><a class="rounded" role="button"><xsl:attribute name="onclick">showPage('<xsl:value-of select="name"/>');</xsl:attribute><xsl:value-of select="name"/>()</a></li>
+                     <xsl:text>&#xa;</xsl:text>
                    </xsl:for-each>
-                 </ul>
-               </div>
-             </li>
-           </ul>
+                 </ul><xsl:text>&#xa;</xsl:text>
+               </div><xsl:text>&#xa;</xsl:text>
+             </li><xsl:text>&#xa;</xsl:text>
+           </ul></li><xsl:text>&#xa;</xsl:text>
+           <xsl:text>&#xa;</xsl:text>
         </xsl:for-each> <!-- Category -->
       </ul>
     </div>
@@ -520,6 +532,7 @@
                                     <tr><td><xsl:value-of select="@name"/></td><td><xsl:apply-templates select="."/></td></tr>
                                   </xsl:otherwise>
                                 </xsl:choose>
+                                <xsl:text>&#xa;</xsl:text>
                               </xsl:for-each>
                             </tbody>
                           </table>
@@ -539,6 +552,7 @@
                         <tbody>
                           <xsl:for-each select="result/error">
                             <tr><th class="col-md-1"><xsl:value-of select="@code"/></th><td><xsl:apply-templates select="."/></td></tr>
+                            <xsl:text>&#xa;</xsl:text>
                           </xsl:for-each>
                         </tbody>
                       </table>
@@ -551,25 +565,33 @@
 
                   <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
                 </div>
+                <xsl:text>&#xa;</xsl:text>
               </xsl:for-each> <!-- End of function scan -->
 
               <!-- TYPES -->
-              <xsl:for-each select="types/constants">
-                <div class="docs-content" style="display:none;">
-                  <xsl:attribute name="id"><xsl:value-of select="@lookup"/></xsl:attribute>
-                  <h1><xsl:value-of select="@lookup"/> Type</h1>
-                  <p class="lead"><xsl:apply-templates select="@comment"/></p>
-                  <table class="table">
-                    <thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead>
-                    <tbody>
-                      <xsl:for-each select="const">
-                        <tr><th><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
-                      </xsl:for-each>
-                    </tbody>
-                  </table>
-                  <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
-                </div>
-              </xsl:for-each> <!-- End of type scan -->
+
+              <xsl:if test="count(types/constants) > 0">
+                <xsl:for-each select="types/constants">
+                  <div class="docs-content" style="display:none;">
+                    <xsl:attribute name="id"><xsl:value-of select="@lookup"/></xsl:attribute>
+                    <h1><xsl:value-of select="@lookup"/> Type</h1>
+                    <p class="lead"><xsl:apply-templates select="@comment"/></p>
+                    <xsl:if test="count(const) > 0">
+                      <table class="table">
+                        <thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead>
+                        <tbody>
+                          <xsl:for-each select="const">
+                            <tr><th><xsl:value-of select="../@lookup"/>::<xsl:value-of select="@name"/></th><td><xsl:apply-templates select="."/></td></tr>
+                            <xsl:text>&#xa;</xsl:text>
+                          </xsl:for-each>
+                        </tbody>
+                      </table>
+                    </xsl:if>
+                    <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
+                  </div>
+                  <xsl:text>&#xa;</xsl:text>
+                </xsl:for-each> <!-- End of type scan -->
+              </xsl:if>
 
               <!-- STRUCTURES -->
               <xsl:for-each select="structs/struct">
@@ -586,18 +608,20 @@
                           <td><span class="text-nowrap"><xsl:value-of select="@type"/></span></td>
                           <td><xsl:apply-templates select="."/></td>
                         </tr>
+                        <xsl:text>&#xa;</xsl:text>
                       </xsl:for-each>
                     </tbody>
                   </table>
                   <div class="footer copyright text-right"><xsl:value-of select="/book/info/name"/> module documentation © <xsl:value-of select="/book/info/copyright"/></div>
                 </div>
+                <xsl:text>&#xa;</xsl:text>
               </xsl:for-each> <!-- End of struct scan -->
             </div> <!-- End of core content -->
           </div> <!-- row -->
         </div> <!-- container -->
 
-        <script src="../js/bootstrap.bundle.min.js"></script>
-        <script src="../js/base.js"></script>
+        <script type="text/javascript" src="../js/bootstrap.bundle.min.js"></script>
+        <script type="text/javascript" src="../js/base.js"></script>
         <script type="text/javascript">
 var glCurrentMethod;
 
