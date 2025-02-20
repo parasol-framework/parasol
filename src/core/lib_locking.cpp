@@ -285,7 +285,7 @@ direct calls to AccessObject().  The following example illustrates lock acquisit
 
 <pre>
 {
-   pf::ScopedObjectLock<OBJECTPTR> obj(my_object_id, 1000);
+   pf::ScopedObjectLock&lt;OBJECTPTR&gt; obj(my_object_id, 1000);
    if (lock.granted()) {
       obj.acDraw();
    }
