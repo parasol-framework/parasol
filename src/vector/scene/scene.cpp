@@ -42,7 +42,7 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 class VectorState;
 
 static void fill_image(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage &, VSM,
-   const agg::trans_affine &, DOUBLE, DOUBLE, objVectorImage &, agg::renderer_base<agg::pixfmt_psl> &,
+   const agg::trans_affine &, DOUBLE, DOUBLE, extVectorImage &, agg::renderer_base<agg::pixfmt_psl> &,
    agg::rasterizer_scanline_aa<> &, DOUBLE Alpha = 1.0);
 
 static void fill_gradient(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *,

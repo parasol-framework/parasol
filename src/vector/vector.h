@@ -332,6 +332,12 @@ class extVectorGradient : public objVectorGradient {
    bool   CalcAngle; // True if the Angle/Length values require recalculation.
 };
 
+class extVectorImage : public objVectorImage {
+   public:
+   using create = pf::Create<extVectorImage>;
+
+};
+
 class extVectorPattern : public objVectorPattern {
    public:
    using create = pf::Create<extVectorPattern>;

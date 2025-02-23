@@ -18,7 +18,7 @@ NOTE: For the rendering of vectors as flattened images, use @VectorPattern.
 
 *********************************************************************************************************************/
 
-static ERR IMAGE_Init(objVectorImage *Self)
+static ERR IMAGE_Init(extVectorImage *Self)
 {
    pf::Log log;
 
@@ -33,7 +33,7 @@ static ERR IMAGE_Init(objVectorImage *Self)
 
 //********************************************************************************************************************
 
-static ERR IMAGE_NewObject(objVectorImage *Self)
+static ERR IMAGE_NewObject(extVectorImage *Self)
 {
    Self->Units        = VUNIT::BOUNDING_BOX;
    Self->SpreadMethod = VSPREAD::CLIP;
@@ -59,7 +59,7 @@ algorithm.  The source bitmap must be in a 32-bit graphics format.
 
 *********************************************************************************************************************/
 
-static ERR IMAGE_SET_Bitmap(objVectorImage *Self, objBitmap *Value)
+static ERR IMAGE_SET_Bitmap(extVectorImage *Self, objBitmap *Value)
 {
    if (Value->BitsPerPixel < 32) {
       pf::Log log;
@@ -89,7 +89,7 @@ The picture bitmap must be in a 32-bit graphics format.
 
 *********************************************************************************************************************/
 
-static ERR IMAGE_SET_Picture(objVectorImage *Self, objPicture *Value)
+static ERR IMAGE_SET_Picture(extVectorImage *Self, objPicture *Value)
 {
    if (Value->Bitmap->BitsPerPixel < 32) {
       pf::Log log;
@@ -176,7 +176,7 @@ ERR init_image(void) // The gradient is a definition type for creating gradients
       fl::Category(CCF::GRAPHICS),
       fl::Actions(clImageActions),
       fl::Fields(clImageFields),
-      fl::Size(sizeof(objVectorImage)),
+      fl::Size(sizeof(extVectorImage)),
       fl::Path(MOD_PATH));
 
    return clVectorImage ? ERR::Okay : ERR::AddClass;

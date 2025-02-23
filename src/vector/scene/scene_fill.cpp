@@ -41,7 +41,7 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
    if (Painter.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
       fill_image(State, Vector.Bounds, Vector.BasePath, Vector.Scene->SampleMethod,
          build_fill_transform(Vector, Painter.Image->Units IS VUNIT::USERSPACE, State),
-         mView->vpFixedWidth, mView->vpFixedHeight, *Painter.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
+         mView->vpFixedWidth, mView->vpFixedHeight, *((extVectorImage *)Painter.Image), mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
    }
 
    if (Painter.Gradient) {
@@ -66,7 +66,7 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
 
 static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds, agg::path_storage &Path, VSM SampleMethod,
    const agg::trans_affine &Transform, double ViewWidth, double ViewHeight,
-   objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+   extVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, double Alpha)
 {
    const double c_width  = (Image.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds.width();
