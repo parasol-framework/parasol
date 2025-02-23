@@ -326,10 +326,10 @@ class extVectorGradient : public objVectorGradient {
    FRGB   Colour;
    RGB8   ColourRGB; // A cached conversion of the FRGB value
    STRING ID;
-   LONG NumericID;
+   LONG   NumericID;
    double Angle;
    double Length;
-   bool CalcAngle; // True if the Angle/Length values require recalculation.
+   bool   CalcAngle; // True if the Angle/Length values require recalculation.
 };
 
 class extVectorPattern : public objVectorPattern {

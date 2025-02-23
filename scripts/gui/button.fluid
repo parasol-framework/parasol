@@ -23,7 +23,7 @@ gui.button = function(Options)
    self.disable = function(self)
       self.disabled = true
       self.viewport.acDisable()
-      self.text.opacity = 0.5
+      if self.text then self.text.opacity = 0.5 end
       self.bkgd.fill = gui.style.button.bkgd
       if self.events.disable then self.events.disable(self) end
       self.viewport.acDraw()
@@ -32,7 +32,7 @@ gui.button = function(Options)
    self.enable = function(self)
       self.disabled = false
       self.viewport.acDisable()
-      self.text.opacity = 1.0
+      if self.text then self.text.opacity = 1.0 end
       self.bkgd.fill = gui.style.button.bkgd
       if self.events.enable then self.events.enable(self) end
       self.viewport.acDraw()
@@ -112,18 +112,25 @@ gui.button = function(Options)
       overflow = VOF_HIDDEN
    })
 
-   self.text = self._textClip.new('VectorText', {
-      x         = GAP + label_offset,
-      y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (gui.style.widget.strokeWidth * 2)) * 0.5),
-      face      = gui.fonts.button.face,
-      fontSize  = string.format('%.2fpt', gui.fonts.button.size),
-      fill      = gui.style.widget.text,
-      string    = Options.text,
-      lineLimit = 1
-   })
+   if Options.text then
+      self.text = self._textClip.new('VectorText', {
+         x         = GAP + label_offset,
+         y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (gui.style.widget.strokeWidth * 2)) * 0.5),
+         face      = gui.fonts.button.face,
+         fontSize  = string.format('%.2fpt', gui.fonts.button.size),
+         fill      = gui.style.widget.text,
+         string    = Options.text,
+         lineLimit = 1
+      })
+   end
 
    if calc_width then
-      self.viewport.width = GAP + label_offset + self.text.textWidth + GAP
+      if Options.text then
+         self.viewport.width = GAP + label_offset + self.text.textWidth + GAP
+      else
+         self.viewport.width = (HEIGHT - ICON_SIZE) + ICON_SIZE
+         self.iconRender.x = (HEIGHT - ICON_SIZE) * 0.5
+      end
    end
 
    self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
