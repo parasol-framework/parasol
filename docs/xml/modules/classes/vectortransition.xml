@@ -29,7 +29,7 @@
 </pre>
 <p>Transitions are most effective when used in conjunction with the morph feature in the <class name="Vector">Vector</class> class.</p></description>
     <source>
-      <file path="defs/">transition.cpp</file>
+      <file path="transformers/">transition.cpp</file>
     </source>
   </info>
 

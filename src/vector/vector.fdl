@@ -382,7 +382,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
   // Use SET_VECTOR_COLOUR() to configure the RGB values in VectorColour
 
   class("VectorColour", {
-    src="defs/colour.cpp",
+    src="painters/colour.cpp",
     comment="VectorColour is a basic stub class that is used for the DrawPath() routine when filling or stroking solid colour values"
   }, [[
    double Red
@@ -392,7 +392,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
   ]])
 
   class('VectorTransition', {
-    src='defs/transition.cpp',
+    src='transformers/transition.cpp',
     references={ 'Transition' },
     comment="Transitions are used to gradually apply transforms over distance."
   })
@@ -417,7 +417,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
    int(VSM) SampleMethod         # Method to use for resampling images and patterns.
   ]])
 
-  class("VectorImage", { src="defs/image.cpp" }, [[
+  class("VectorImage", { src="painters/image.cpp" }, [[
     double X                   # Starting horizontal coordinate
     double Y                   # Starting vertical coordinate
     obj(Picture) Picture
@@ -428,7 +428,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
     int(ARF)     AspectRatio   # Defines how the referenced image should fit in the boundary of its target shape.
   ]])
 
-  class("VectorPattern", { src="defs/pattern.cpp" }, [[
+  class("VectorPattern", { src="painters/pattern.cpp" }, [[
     double X                      # Starting horizontal coordinate
     double Y                      # Starting vertical coordinate
     double Width                  # Width of the canvas
@@ -442,7 +442,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
     int(DMF) Dimensions           # Flags for the dimension values.
   ]])
 
-  class("VectorGradient", { src="defs/gradient.cpp", output="defs/gradient_def.c" }, [[
+  class("VectorGradient", { src="painters/gradient.cpp", output="painters/gradient_def.c" }, [[
     double X1                    # Starting X coordinate of the gradient 'line'
     double Y1                    # Starting Y coordinate of the gradient 'line'
     double X2                    # Ending X of the gradient 'line'

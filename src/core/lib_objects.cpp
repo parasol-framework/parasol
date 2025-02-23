@@ -748,11 +748,13 @@ OBJECTPTR ParentContext(void)
 /*********************************************************************************************************************
 
 -FUNCTION-
-FindClass: Returns all class objects for a given class ID.
+FindClass: Returns the internal MetaClass for a given class ID.
 
-This function will find a specific class by ID and return its @MetaClass.  If the class is not in memory, the internal
-dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded
-into memory and the class will be returned.  In any event of failure, `NULL` is returned.
+This function will find a specific class by ID and return its @MetaClass.  If the class is not already loaded, the 
+internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is 
+loaded into memory and the correct MetaClass will be returned.
+
+In any event of failure, `NULL` is returned.
 
 If the ID of a named class is not known, call ~ResolveClassName() first and pass the resulting ID to this function.
 
@@ -1361,16 +1363,35 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
 /*********************************************************************************************************************
 
 -FUNCTION-
-NotifySubscribers: Used to send notification messages to action subscribers.
+NotifySubscribers: Send a notification event to action subscribers.
 
-This function can be used by classes that need total control over notification management.  It allows an action to
-notify its subscribers manually, rather than deferring to the system default of notifying on return.
+This function can be used by classes that need fine-tuned control over notification events, as managed by the 
+~SubscribeAction() function.  Normally the Core will automatically notify subscribers after an action 
+is executed.  Using NotifySubscribers(), the client can instead manually notify subscribers during the
+execution of the action.
 
-Another useful feature is that parameter values can be customised for the recipients.
+Another useful aspect is that the client can control the parameter values that are passed on to the subscribers.
 
-NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it
-normally would, thus causing duplication.  To prevent this, the client must logical-or the return code of
+NOTE: The use of NotifySubscribers() does not prevent the core from sending out an action notification as it
+normally would, which will cause duplication.  To prevent this, the client must logical-or the return code of
 the action function with `ERR::Notified`, e.g. `ERR::Okay|ERR::Notified`.
+
+In the following example you can see how the @Surface class uses NotifySubscribers() to convert a Move event to a
+Redimension event.  The parameter values are customised to support this, and the function returns `ERR::Notified` to
+prevent the core from sending out a Move notification.
+
+<pre>
+ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
+{
+   if (!Args) return ERR::NullArgs|ERR::Notified;
+
+   ...
+
+   struct acRedimension redimension = { Self->X, Self->Y, 0, Self->Width, Self->Height, 0 };
+   NotifySubscribers(Self, AC::Redimension, &redimension, ERR::Okay);
+   return ERR::Okay|ERR::Notified;
+}
+</pre>
 
 -INPUT-
 obj Object: Pointer to the object that is to receive the notification message.

@@ -18,7 +18,7 @@
 <p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p>
 <p>NOTE: For the rendering of vectors as flattened images, use <class name="VectorPattern">VectorPattern</class>.</p></description>
     <source>
-      <file path="defs/">image.cpp</file>
+      <file path="painters/">image.cpp</file>
     </source>
   </info>
 
