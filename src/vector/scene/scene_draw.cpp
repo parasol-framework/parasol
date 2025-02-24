@@ -66,6 +66,10 @@ public:
 
    SceneRenderer(extVectorScene *pScene) : Scene(pScene) { }
    void draw(objBitmap *, objVectorViewport *);
+
+   ~SceneRenderer() {
+      Scene->ShareModified = false;
+   }
 };
 
 //********************************************************************************************************************
@@ -897,6 +901,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
                      bool redraw = view->vpRefreshBuffer;
                      view->vpRefreshBuffer = false;
+
+                     if ((!redraw) and (Scene->ShareModified)) redraw = true;
 
                      if (view->vpBuffer) {
                         if ((view->vpBuffer->Width != view->vpFixedWidth) or (view->vpBuffer->Height != view->vpFixedHeight)) {

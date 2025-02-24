@@ -51,6 +51,17 @@ vector.
 
 <types lookup="ARF"/>
 
+*********************************************************************************************************************/
+
+static ERR IMAGE_SET_AspectRatio(extVectorImage *Self, ARF Value)
+{
+   Self->AspectRatio = Value;
+   Self->modified();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Bitmap: Reference to a source bitmap for the rendering algorithm.
 
@@ -68,7 +79,7 @@ static ERR IMAGE_SET_Bitmap(extVectorImage *Self, objBitmap *Value)
    }
 
    Self->Bitmap = Value;
-   Self->Picture = NULL;
+   Self->Picture = nullptr;
    return ERR::Okay;
 }
 
@@ -111,6 +122,17 @@ The SpreadMethod defines the way in which the image is tiled within the target a
 available space.  It is secondary to the application of #AspectRatio.  The default setting is `CLIP`, which prevents
 the image from being tiled.
 
+*********************************************************************************************************************/
+
+static ERR IMAGE_SET_SpreadMethod(extVectorImage* Self, VSPREAD Value)
+{
+   Self->SpreadMethod = Value;
+   Self->modified();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Units: Declares the coordinate system to use for the #X and #Y values.
 
@@ -119,16 +141,36 @@ This field declares the coordinate system that is used for values in the #X and 
 -FIELD-
 X: Apply a horizontal offset to the image, the origin of which is determined by the #Units value.
 
+*********************************************************************************************************************/
+
+static ERR IMAGE_SET_X(extVectorImage *Self, DOUBLE Value)
+{
+   Self->X = Value;
+   Self->modified();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Y: Apply a vertical offset to the image, the origin of which is determined by the #Units value.
 -END-
 
 *********************************************************************************************************************/
 
+static ERR IMAGE_SET_Y(extVectorImage *Self, DOUBLE Value)
+{
+   Self->X = Value;
+   Self->modified();
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
 static const ActionArray clImageActions[] = {
    { AC::Init,      IMAGE_Init },
    { AC::NewObject, IMAGE_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const FieldDef clImageSpread[] = {
@@ -137,13 +179,13 @@ static const FieldDef clImageSpread[] = {
    { "ReflectX", VSPREAD::REFLECT_X },
    { "ReflectY", VSPREAD::REFLECT_Y },
    { "Clip",     VSPREAD::CLIP },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clImageUnits[] = {
    { "BoundingBox", VUNIT::BOUNDING_BOX }, // Coordinates are relative to the object's bounding box
    { "UserSpace",   VUNIT::USERSPACE },    // Coordinates are relative to the current viewport
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clImageDimensions[] = {
@@ -151,18 +193,18 @@ static const FieldDef clImageDimensions[] = {
    { "FixedY",  DMF::FIXED_Y },
    { "ScaledX", DMF::SCALED_X },
    { "ScaledY", DMF::SCALED_Y },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clImageFields[] = {
-   { "X",            FDF_DOUBLE|FDF_RW },
-   { "Y",            FDF_DOUBLE|FDF_RW },
-   { "Picture",      FDF_OBJECT|FDF_RW, NULL, IMAGE_SET_Picture, CLASSID::PICTURE },
-   { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, IMAGE_SET_Bitmap, CLASSID::BITMAP },
-   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clImageUnits },
-   { "Dimensions",   FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clImageDimensions },
-   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clImageSpread },
-   { "AspectRatio",  FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clAspectRatio },
+   { "X",            FDF_DOUBLE|FDF_RW, nullptr, IMAGE_SET_X },
+   { "Y",            FDF_DOUBLE|FDF_RW, nullptr, IMAGE_SET_Y },
+   { "Picture",      FDF_OBJECT|FDF_RW, nullptr, IMAGE_SET_Picture, CLASSID::PICTURE },
+   { "Bitmap",       FDF_OBJECT|FDF_RW, nullptr, IMAGE_SET_Bitmap, CLASSID::BITMAP },
+   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clImageUnits },
+   { "Dimensions",   FDF_LONGFLAGS|FDF_RW, nullptr, nullptr, &clImageDimensions },
+   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, IMAGE_SET_SpreadMethod, &clImageSpread },
+   { "AspectRatio",  FDF_LONGFLAGS|FDF_RW, nullptr, IMAGE_SET_AspectRatio, &clAspectRatio },
    END_FIELD
 };
 

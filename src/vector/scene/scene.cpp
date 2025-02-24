@@ -210,18 +210,22 @@ static ERR VECTORSCENE_AddDef(extVectorScene *Self, struct sc::AddDef *Args)
 
    OBJECTPTR def = Args->Def;
 
-   if ((def->classID() IS CLASSID::VECTORSCENE) or
-       (def->baseClassID() IS CLASSID::VECTOR) or
-       (def->classID() IS CLASSID::VECTORGRADIENT) or
-       (def->classID() IS CLASSID::VECTORIMAGE) or
-       (def->classID() IS CLASSID::VECTORPATH) or
-       (def->classID() IS CLASSID::VECTORPATTERN) or
-       (def->baseClassID() IS CLASSID::VECTORFILTER) or
-       (def->classID() IS CLASSID::VECTORTRANSITION) or
-       (def->classID() IS CLASSID::VECTORCLIP)) {
-      // The use of this object as a definition is valid.
+   switch(def->classID()) {
+      case CLASSID::VECTORGRADIENT:   ((extVectorGradient*)def)->HostScene = Self; break;
+      case CLASSID::VECTORIMAGE:      ((extVectorImage *)def)->HostScene = Self; break;
+      case CLASSID::VECTORPATH:       ((extVectorPath*)def)->HostScene = Self; break;
+      case CLASSID::VECTORPATTERN:    ((extVectorPattern*)def)->HostScene = Self; break;
+      case CLASSID::VECTORTRANSITION: ((extVectorTransition*)def)->HostScene = Self; break;
+      case CLASSID::VECTORCLIP:       ((extVectorClip*)def)->HostScene = Self; break;
+      case CLASSID::VECTORSCENE:      break;
+
+      default:
+         switch(def->baseClassID()) {
+            case CLASSID::VECTOR:       break;
+            case CLASSID::VECTORFILTER: break;
+            default: return log.warning(ERR::InvalidObject);
+         }
    }
-   else return log.warning(ERR::InvalidObject);
 
    // If the resource does not belong to the Scene object, this can lead to invalid pointer references
 
