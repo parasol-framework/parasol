@@ -5,6 +5,8 @@ Gradient Demonstration
    require 'gui/window'
    require 'gui/combobox'
    require 'gui/slider'
+   require 'gui/button'
+   require 'gui/filedialog'
 
    local win, viewport, gradient, gradientVP, rect
    local focalEllipse, contourShape, uiEvent
@@ -94,7 +96,7 @@ function buildScene()
 
    viewport.scene.mtAddDef('gradient', gradient)
 
-   gradientVP = viewport.new('VectorViewport', { name='vp_gradient', x = 0, y = 20, xOffset = 0, yOffset=0, overflow='hidden' })
+   gradientVP = viewport.new('VectorViewport', { name='vp_gradient', x = 0, y = 20, xOffset = 0, yOffset=0, overflow='hidden', buffered = true })
    rect = gradientVP.new('VectorRectangle', { name='rect_gradient', x = 0, y = 0, width='100%', height='100%', fill='url(#gradient)' })
 
    focalEllipse = gradientVP.new('VectorEllipse', {
@@ -179,6 +181,43 @@ function buildScene()
          activate = function(Widget, Value)
             gradient.resolution = Value
             gradientVP.scene.surface.mtScheduleRedraw()
+         end
+      }
+   })
+
+   local iSave = gui.button({
+      target  = viewport,
+      xOffset = win.margins.right,
+      y       = 10,
+      icon    = 'items/file_saveas',
+      size    = cmbColours.viewport.height,
+      events  = {
+         activate = function(Button)
+            gui.dialog.file({
+               title       = 'Save Gradient as PNG Image',
+               okText      = 'Save',
+               cancelText  = 'Cancel',
+               modal       = true,
+               popOver     = win.surface,
+               warnExists  = true,
+               filterList  = { { name='PNG Images', pattern='.png' } },
+               feedback    = function(Dialog, Path, Files)
+                  if (Files == nil) then return end
+
+                  local target_file = Path .. Files[1].filename
+
+                  local bmp = gradientVP.buffer
+                  if bmp then
+                     local pic = obj.new('picture', {
+                        width = bmp.width, height = bmp.height, bitsPerPixel = bmp.bitsPerPixel,
+                        flags = 'NEW'
+                     })
+                     bmp.acCopyData(pic.bitmap)
+                     local file = obj.new('file', { flags='NEW|WRITE', path=target_file })
+                     pic.acSaveImage(file)
+                  end
+               end
+            })
          end
       }
    })
