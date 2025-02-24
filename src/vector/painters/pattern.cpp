@@ -149,6 +149,7 @@ static ERR PATTERN_SET_Height(extVectorPattern *Self, Unit &Value)
    if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_HEIGHT) & (~DMF::FIXED_HEIGHT);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_HEIGHT) & (~DMF::SCALED_HEIGHT);
    Self->Height = Value;
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -224,6 +225,7 @@ static ERR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Valu
       Self->Matrices = NULL;
    }
 
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -242,6 +244,7 @@ static ERR PATTERN_SET_Opacity(extVectorPattern *Self, DOUBLE Value)
    if (Value < 0.0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
    Self->Opacity = Value;
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -259,6 +262,17 @@ SpreadMethod: The behaviour to use when the pattern bounds do not match the vect
 
 Indicates what happens if the pattern starts or ends inside the bounds of the target vector.  The default value is PAD.
 
+*********************************************************************************************************************/
+
+static ERR PATTERN_SET_SpreadMethod(extVectorPattern *Self, VSPREAD Value)
+{
+   Self->SpreadMethod = Value;
+   Self->modified();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Transform: Applies a transform to the pattern during the render process.
 
@@ -271,6 +285,8 @@ static ERR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
    pf::Log log;
 
    if (!Commands) return log.warning(ERR::InvalidValue);
+
+   Self->modified();
 
    if (!Self->Matrices) {
       VectorMatrix *matrix;
@@ -340,6 +356,7 @@ static ERR PATTERN_SET_Width(extVectorPattern *Self, Unit &Value)
    if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_WIDTH) & (~DMF::FIXED_WIDTH);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_WIDTH) & (~DMF::SCALED_WIDTH);
    Self->Width = Value;
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -363,6 +380,7 @@ static ERR PATTERN_SET_X(extVectorPattern *Self, Unit &Value)
    if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_X) & (~DMF::FIXED_X);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_X) & (~DMF::SCALED_X);
    Self->X = Value;
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -387,6 +405,7 @@ static ERR PATTERN_SET_Y(extVectorPattern *Self, Unit &Value)
    if (Value.scaled()) Self->Dimensions = (Self->Dimensions | DMF::SCALED_Y) & (~DMF::FIXED_Y);
    else Self->Dimensions = (Self->Dimensions | DMF::FIXED_Y) & (~DMF::SCALED_Y);
    Self->Y = Value;
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -435,7 +454,7 @@ static const FieldArray clPatternFields[] = {
    { "Opacity",      FDF_DOUBLE|FDF_RW, NULL, PATTERN_SET_Opacity },
    { "Scene",        FDF_LOCAL|FDF_R },
    { "Inherit",      FDF_OBJECT|FDF_RW, NULL, PATTERN_SET_Inherit },
-   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternSpread },
+   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, PATTERN_SET_SpreadMethod, &clPatternSpread },
    { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternUnits },
    { "ContentUnits", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternUnits },
    { "Dimensions",   FDF_LONGFLAGS|FDF_R, NULL, NULL, &clPatternDimensions },

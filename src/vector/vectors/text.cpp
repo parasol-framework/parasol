@@ -188,7 +188,7 @@ class extVectorText : public extVector {
    DOUBLE *txRotate;  // A series of angles that will rotate each individual character.
    objFont *txBitmapFont;
    objBitmap *txAlphaBitmap; // Host for the bitmap font texture
-   objVectorImage *txBitmapImage;
+   extVectorImage *txBitmapImage;
    common_font *txHandle;
    TextCursor txCursor;
    CSTRING txFamily; // Family name(s) as requested by the client

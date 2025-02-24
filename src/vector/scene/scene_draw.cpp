@@ -66,6 +66,10 @@ public:
 
    SceneRenderer(extVectorScene *pScene) : Scene(pScene) { }
    void draw(objBitmap *, objVectorViewport *);
+
+   ~SceneRenderer() {
+      Scene->ShareModified = false;
+   }
 };
 
 //********************************************************************************************************************
@@ -522,7 +526,7 @@ class pattern_rgb {
 
 //********************************************************************************************************************
 
-static void stroke_brush(VectorState &State, const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
+static void stroke_brush(VectorState &State, const extVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::conv_transform<agg::path_storage, agg::trans_affine> &Path, DOUBLE StrokeWidth)
 {
    typedef agg::pattern_filter_bilinear_rgba8 FILTER_TYPE;
@@ -627,7 +631,7 @@ void SceneRenderer::render_stroke(VectorState &State, extVector &Vector)
          Vector.BasePath.approximation_scale(transform.scale());
          agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(Vector.BasePath, transform);
 
-         stroke_brush(State, *Vector.Stroke.Image, mRenderBase, stroke_path, stroke_width);
+         stroke_brush(State, *((extVectorImage *)Vector.Stroke.Image), mRenderBase, stroke_path, stroke_width);
          return;
       }
    }
@@ -898,6 +902,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      bool redraw = view->vpRefreshBuffer;
                      view->vpRefreshBuffer = false;
 
+                     if ((!redraw) and (Scene->ShareModified)) redraw = true;
+
                      if (view->vpBuffer) {
                         if ((view->vpBuffer->Width != view->vpFixedWidth) or (view->vpBuffer->Height != view->vpFixedHeight)) {
                            view->vpBuffer->resize(view->vpFixedWidth, view->vpFixedHeight);
@@ -1099,7 +1105,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          agg::render_scanlines(mRaster, scanline, solid);
       }
       else if (FillStyle->classID() IS CLASSID::VECTORIMAGE) {
-         objVectorImage &image = (objVectorImage &)*FillStyle;
+         extVectorImage &image = (extVectorImage &)*FillStyle;
          fill_image(state, bounds, mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster);
       }
       else if (FillStyle->classID() IS CLASSID::VECTORGRADIENT) {
@@ -1128,7 +1134,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          fill_pattern(state, bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*StrokeStyle, mRenderer, mRaster);
       }
       else if (StrokeStyle->classID() IS CLASSID::VECTORIMAGE) {
-         objVectorImage &image = (objVectorImage &)*StrokeStyle;
+         extVectorImage &image = (extVectorImage &)*StrokeStyle;
          agg::conv_transform<agg::path_storage, agg::trans_affine> path(mPath, transform);
          stroke_brush(state, image, mRenderer, path, StrokeWidth);
       }

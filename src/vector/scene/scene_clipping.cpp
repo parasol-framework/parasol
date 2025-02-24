@@ -68,7 +68,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
                      if (node->Fill->Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
                         fill_image(state, node->Bounds, node->BasePath, node->Scene->SampleMethod, t,
-                           Render.view_width(), Render.view_height(), *node->Fill->Image, rb, Raster,
+                           Render.view_width(), Render.view_height(), *((extVectorImage *)node->Fill->Image), rb, Raster,
                            node->FillOpacity);
                      }
 

@@ -219,6 +219,7 @@ static ERR VECTORPATH_Clear(extVectorPath *Self)
 {
    Self->Commands.clear();
    reset_path(Self);
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -284,12 +285,13 @@ static ERR VECTORPATH_AddCommand(extVectorPath *Self, struct vp::AddCommand *Arg
 
    if ((total_cmds <= 0) or (total_cmds > 1000000)) return log.warning(ERR::Args);
 
-   PathCommand *list = Args->Commands;
+   auto list = Args->Commands;
    for (LONG i=0; i < total_cmds; i++) {
       Self->Commands.push_back(list[i]);
    }
 
    reset_path(Self);
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -356,6 +358,7 @@ static ERR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vp::RemoveComman
    Self->Commands.erase(first, last);
 
    reset_path(Self);
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -392,6 +395,7 @@ static ERR VECTORPATH_SetCommand(extVectorPath *Self, struct vp::SetCommand *Arg
    copymem(Args->Command, &Self->Commands[Args->Index], total_cmds * sizeof(PathCommand));
 
    reset_path(Self);
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -436,6 +440,7 @@ static ERR VECTORPATH_SetCommandList(extVectorPath *Self, struct vp::SetCommandL
    }
 
    reset_path(Self);
+   Self->modified();
    return ERR::Okay;
 }
 
@@ -469,7 +474,10 @@ static ERR VECTORPATH_SET_Commands(extVectorPath *Self, PathCommand *Value, LONG
       Self->Commands.push_back(Value[i]);
    }
 
-   if (Self->initialised()) reset_path(Self);
+   if (Self->initialised()) {
+      reset_path(Self);
+      Self->modified();
+   }
    return ERR::Okay;
 }
 
@@ -495,6 +503,7 @@ static ERR VECTORPATH_SET_PathLength(extVectorPath *Self, LONG Value)
 {
    if (Value >= 0) {
       Self->PathLength = Value;
+      Self->modified();
       return ERR::Okay;
    }
    else return ERR::InvalidValue;
@@ -537,6 +546,7 @@ static ERR VECTORPATH_SET_Sequence(extVectorPath *Self, CSTRING Value)
    ERR error = ERR::Okay;
    if (Value) error = read_path(Self->Commands, Value);
    reset_path(Self);
+   Self->modified();
    return error;
 }
 
@@ -560,6 +570,7 @@ static ERR VECTORPATH_SET_TotalCommands(extVectorPath *Self, LONG Value)
    pf::Log log;
    if (Value < 0) return log.warning(ERR::OutOfRange);
    Self->Commands.resize(Value);
+   Self->modified();
    return ERR::Okay;
 }
 

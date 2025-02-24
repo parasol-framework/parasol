@@ -299,6 +299,15 @@ public:
 
 //********************************************************************************************************************
 
+class SceneDef {
+   public:
+   extVectorScene *HostScene;
+
+   inline void modified();
+};
+
+//********************************************************************************************************************
+
 constexpr LONG MAX_TRANSITION_STOPS = 10;
 
 struct TransitionStop { // Passed to the Stops field.
@@ -307,7 +316,7 @@ struct TransitionStop { // Passed to the Stops field.
    agg::trans_affine *AGGTransform;
 };
 
-class extVectorTransition : public objVectorTransition {
+class extVectorTransition : public objVectorTransition, public SceneDef {
    public:
    LONG TotalStops; // Total number of stops registered.
 
@@ -315,7 +324,7 @@ class extVectorTransition : public objVectorTransition {
    bool Dirty:1;
 };
 
-class extVectorGradient : public objVectorGradient {
+class extVectorGradient : public objVectorGradient, public SceneDef {
    public:
    using create = pf::Create<extVectorGradient>;
 
@@ -332,7 +341,12 @@ class extVectorGradient : public objVectorGradient {
    bool   CalcAngle; // True if the Angle/Length values require recalculation.
 };
 
-class extVectorPattern : public objVectorPattern {
+class extVectorImage : public objVectorImage, public SceneDef {
+   public:
+   using create = pf::Create<extVectorImage>;
+};
+
+class extVectorPattern : public objVectorPattern, public SceneDef {
    public:
    using create = pf::Create<extVectorPattern>;
 
@@ -465,6 +479,7 @@ class extVectorScene : public objVectorScene {
    LONG InputHandle;
    PTC Cursor; // Current cursor image
    bool RefreshCursor;
+   bool ShareModified; // True if a shareable object has been modified (e.g. VectorGradient), requiring a redraw of any vectors that use it.
    UBYTE BufferCount; // Active tally of viewports that are buffered.
 };
 
@@ -506,7 +521,7 @@ class extVectorPoly : public extVector {
    bool Closed:1;      // Polygons are closed (TRUE) and Polylines are open (FALSE)
 };
 
-class extVectorPath : public extVector {
+class extVectorPath : public extVector, public SceneDef {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORPATH;
    static constexpr CSTRING CLASS_NAME = "VectorPath";
@@ -564,7 +579,7 @@ class GradientColours {
 
 //********************************************************************************************************************
 
-class extVectorClip : public objVectorClip {
+class extVectorClip : public objVectorClip, public SceneDef {
    public:
    static constexpr CLASSID CLASS_ID = CLASSID::VECTORCLIP;
    static constexpr CSTRING CLASS_NAME = "VectorClip";
@@ -1234,4 +1249,8 @@ template <class T> TClipRectangle<T>::TClipRectangle(const extVector *pVector) {
 
 template <class T> TClipRectangle<T>::TClipRectangle(const class extVectorViewport *pVector) {
    *this = pVector->vpBounds;
+}
+
+inline void SceneDef::modified() {
+   if (HostScene) HostScene->ShareModified = true;
 }

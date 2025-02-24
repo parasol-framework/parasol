@@ -1,7 +1,7 @@
 /*********************************************************************************************************************
 
 -CLASS-
-VectorTransition: Transitions are used to gradually apply transforms over distance.
+VectorTransition: Transitions are used to incrementally apply transforms over distance.
 
 The VectorTransition class is used to gradually transform vector shapes over the length of a path.  This feature is
 not SVG compliant, though it can be utilised from SVG files via the 'parasol:' name space.
@@ -189,6 +189,7 @@ static ERR TRANSITION_SET_Stops(extVectorTransition *Self, Transition *Value, LO
          set_stop_transform(Self, &Self->Stops[i], Value[i].Transform);
 
          last_offset = Value[i].Offset;
+         Self->modified();
       }
       return ERR::Okay;
    }
