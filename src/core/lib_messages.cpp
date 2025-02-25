@@ -648,16 +648,18 @@ ERR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)
 -FUNCTION-
 WaitForObjects: Process incoming messages while waiting on objects to complete their activities.
 
-The WaitForObjects() function acts as a front-end to ~ProcessMessages(), with the capability of being able to wait for
-a series of objects that must signal an end to their activities.  An object can be signalled via the Signal() action.
-Termination of a monitored object is also treated as a signal.  The function will return once ALL of the objects are
-signalled or a time-out occurs.
+WaitForObjects() acts as a front-end to ~ProcessMessages(), with an ability to wait for a list of objects that are
+expected to signal an end to their activities.  An object can be signalled via the Signal() action, or via termination.
+This function will only return once ALL of the objects are signalled or a time-out occurs.
 
 Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the
 object will not be monitored.
 
+If this function is called recursively, the state of the earlier call will be preserved so that it will not be 
+affected by subsequent calls.
+
 -INPUT-
-int(PMF) Flags: Optional flags are specified here (clients should set a value of zero).
+int(PMF) Flags: Optional flags are specified here.
 int TimeOut: A time-out value measured in milliseconds.  If this value is negative then no time-out applies and the function will not return until an incoming message or signal breaks it.
 struct(*ObjectSignal) ObjectSignals: A null-terminated array of objects to monitor for signals.
 
@@ -665,7 +667,7 @@ struct(*ObjectSignal) ObjectSignals: A null-terminated array of objects to monit
 Okay
 NullArgs
 Failed
-Recursion
+TimeOut
 OutsideMainThread
 
 -END-
@@ -676,8 +678,8 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 {
    // Refer to the Task class for the message interception routines
    pf::Log log(__FUNCTION__);
-
-   if (!glWFOList.empty()) return log.warning(ERR::Recursion);
+   
+   std::unordered_map<OBJECTID, ObjectSignal> saved_list;
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if (!tlMainThread) return log.warning(ERR::OutsideMainThread);
@@ -686,7 +688,9 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 
    pf::SwitchContext ctx(glCurrentTask);
 
-   ERR error = ERR::Okay;
+   auto error = ERR::Okay;
+
+   if (!glWFOList.empty()) std::swap(saved_list, glWFOList);
    glWFOList.clear();
 
    if (ObjectSignals) {
@@ -695,7 +699,8 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 
          if (lock.granted()) {
             if (ObjectSignals[i].Object->defined(NF::SIGNALLED)) {
-               // Objects that have already been signalled do not require monitoring
+               // Objects that have already been signalled do not require monitoring and we switch off the
+               // signal flag.
                ObjectSignals[i].Object->Flags = ObjectSignals[i].Object->Flags & (~NF::SIGNALLED);
             }
             else {
@@ -742,6 +747,8 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
       }
       glWFOList.clear();
    }
+
+   if (!saved_list.empty()) std::swap(glWFOList, saved_list);
 
    if ((error > ERR::ExceptionThreshold) and (error != ERR::TimeOut)) log.warning(error);
    return error;
