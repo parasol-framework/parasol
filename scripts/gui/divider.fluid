@@ -31,17 +31,9 @@ local function arrangeAll(self, Middle)
    if (self._orientation == 'h') then
       local margin = 0
       self._div = { x = a_len, y = self._primary.y + margin, width = GAP, height = self._primary.height - (margin*2) }
-      if self._pattern then
-         self._pattern.x = self._vp.absX + a_len
-         self._pattern.y = self._primary.absY + margin
-      end
    else
       local margin = 0
       self._div = { x = self._primary.x + margin, y = a_len, width = self._primary.width - (margin*2), height = GAP }
-      if self._pattern then
-         self._pattern.x = self._primary.absX + margin
-         self._pattern.y = self._vp.absY + a_len
-      end
    end
 
    self._secondary[self._anchor] = a_len + GAP
