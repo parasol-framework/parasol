@@ -10,16 +10,20 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
    log.msg("Identifying file '%s'", TargetFile);
 
    CLASSID class_id, subclass;
-   if ((error = IdentifyFile(TargetFile, CLASSID::NIL, &class_id, &subclass)) != ERR::Okay) {
+   if (pf::startswith("STRING:", TargetFile)) {
+      subclass = CLASSID::SCRIPT;
+      class_id = CLASSID::SCRIPT;
+   }
+   else if ((error = IdentifyFile(TargetFile, CLASSID::NIL, &class_id, &subclass)) != ERR::Okay) {
       printf("Failed to identify the type of file for path '%s', error: %s.  Assuming CLASSID::SCRIPT.\n", TargetFile, GetErrorMsg(error));
       subclass = CLASSID::SCRIPT;
       class_id = CLASSID::SCRIPT;
    }
 
-   if (class_id IS CLASSID::PARC) glSandbox = TRUE;
+   if (class_id IS CLASSID::PARC) glSandbox = true;
 
    if (glSandbox) {
-      pf::vector<std::string> *params = NULL;
+      pf::vector<std::string> *params = nullptr;
       glTask->getPtr(FID_Parameters, &params);
 
       #ifdef _WIN32
@@ -71,7 +75,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
       #else
 /*
-         error = init_sandbox(args, glRelaunched ? FALSE : TRUE);
+         error = init_sandbox(args, glRelaunched ? false : true);
          if (error IS ERR::LimitedSuccess) {
             // Limited success means that the process was re-launched with a lower priority.
             return error;
