@@ -21,16 +21,17 @@ This version of the Parasol launcher is intended for use from the command-line o
 extern struct CoreBase *CoreBase;
 
 static std::string glProcedure;
-static objSurface *glTarget = NULL;
+static objSurface *glTarget = nullptr;
 pf::vector<std::string> *glArgs;
 static LONG glArgsIndex = 0;
-//static STRING glAllow = NULL;
+//static STRING glAllow = nullptr;
 static std::string glTargetFile;
-static OBJECTPTR glTask = NULL;
-static objScript *glScript = NULL;
+static OBJECTPTR glTask = nullptr;
+static objScript *glScript = nullptr;
 static bool glSandbox = false;
 static bool glRelaunched = false;
 static bool glTime = false;
+static bool glDialog = false;
 
 static ERR exec_source(CSTRING, LONG, const std::string);
 
@@ -43,11 +44,29 @@ The following options can be used when executing script files:\n\
 \n\
  --procedure [n] The name of a procedure to execute.\n\
  --time          Print the amount of time that it took to execute the script.\n\
+ --dialog        Display a file dialog for choosing a script manually.\n\
 \n\
  --log-api       Activates run-time log messages at API level.\n\
  --log-info      Activates run-time log messages at INFO level.\n\
  --log-error     Activates run-time log messages at ERROR level.\n"
 };
+
+static std::string glDialogScript =
+"STRING:require 'gui/filedialog'\n\
+gui.dialog.file({\n\
+ filterList = { { name='Script Files', pattern='*.fluid' } },\n\
+ title      = 'Run a Script',\n\
+ okText     = 'Run Script',\n\
+ cancelText = 'Exit',\n\
+ path       = '%%PATH%%',\n\
+ feedback = function(Dialog, Path, Files)\n\
+  if (Files == nil) then mSys.SendMessage(MSGID_QUIT) return end\n\
+  glRunFile = Path .. Files[1].filename\n\
+  processing.signal()\n\
+ end\n\
+})\n\
+processing.sleep(nil, true)\n\
+if glRunFile then obj.new('script', { src = glRunFile }).acActivate() end\n";
 
 //********************************************************************************************************************
 
@@ -74,6 +93,10 @@ static ERR process_args(void)
          }
          else if (pf::iequals(args[i], "--time")) {
             glTime = true;
+         }
+         else if (pf::iequals(args[i], "--dialog")) {
+            // Display a file dialog for choosing a script manually
+            glDialog = true;
          }
          else if (pf::iequals(args[i], "--relaunch")) {
             // Internal argument to detect relaunching at an altered security level
@@ -117,7 +140,22 @@ extern "C" int main(int argc, char **argv)
 
    int result = 0;
    if (process_args() IS ERR::Okay) {
-      if (!glTargetFile.empty()) {
+      if (glDialog) {
+         auto start = glDialogScript.find("%%PATH%%");
+         if (!glTargetFile.empty()) {
+            std::string::size_type n = 0;
+            while ((n = glTargetFile.find('\\', n)) != std::string::npos) {
+                glTargetFile.replace(n, 1, "\\\\");
+                n += 2;
+            }
+
+            glDialogScript.replace(start, 8, glTargetFile);
+         }
+         else glDialogScript.replace(start, 8, "parasol:");
+
+         result = LONG(exec_source(glDialogScript.c_str(), glTime, glProcedure));
+      }
+      else if (!glTargetFile.empty()) {
          STRING path;
          if (glTask->get(FID_Path, &path) IS ERR::Okay) log.msg("Path: %s", path);
          else log.error("No working path.");
@@ -145,7 +183,7 @@ extern "C" int main(int argc, char **argv)
          if ((AnalysePath(pkg_path.c_str(), &type) IS ERR::Okay) and (type IS LOC::FILE)) {
             // Create a "package:" volume and attempt to run "package:main.fluid"
             if ((glPackageArchive = objCompression::create::local(fl::Path(pkg_path), fl::ArchiveName("package"), fl::Flags(CMF::READ_ONLY)))) {
-               if (SetVolume("package", "archive:package/", "filetypes/archive", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return -1;
+               if (SetVolume("package", "archive:package/", "filetypes/archive", nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return -1;
 
                result = (LONG)exec_source("package:main.fluid", glTime, glProcedure);
             }
@@ -160,7 +198,7 @@ extern "C" int main(int argc, char **argv)
       }
    }
 
-   if (glScript) { FreeResource(glScript); glScript = NULL; }
+   if (glScript) { FreeResource(glScript); glScript = nullptr; }
 
    close_parasol();
 
