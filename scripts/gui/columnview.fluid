@@ -292,6 +292,22 @@ local function rearrangeItems(View)
    for _, item in pairs(View.items) do
       item._y = y
       if item._vectors.viewport then
+         local vis
+         if item.hidden then
+            vis = VIS_HIDDEN
+         else
+            vis = VIS_VISIBLE
+         end
+
+         item._vectors.viewport.visibility = vis
+         item._vectors.iconImage.visibility = vis
+
+         for _, col in pairs(View.columns) do
+            if item._col and item._col[col.attrib].text then
+               item._col[col.attrib].text.visibility = vis
+            end
+         end
+
          item._vectors.viewport.y = y
       end
 
@@ -305,8 +321,10 @@ local function rearrangeItems(View)
          end
       end
 
-      View.addZone(0, item._y, nil, LINE_HEIGHT, item)
-      y = y + LINE_HEIGHT + VSPACING
+      if not item.hidden then
+         View.addZone(0, item._y, nil, LINE_HEIGHT, item)
+         y = y + LINE_HEIGHT + VSPACING
+      end
    end
 end
 
@@ -511,13 +529,20 @@ gui.columnView = function(Options)
          if not item._vectors then item._vectors = { } end
          if not item._col then item._col = { } end
 
+         local vis
+         if item.hidden then
+            vis = VIS_HIDDEN
+         else
+            vis = VIS_VISIBLE
+         end
+
          item._y = y
 
          -- Each item gets a viewport within the page
 
          if not item._vectors.viewport then
             item._vectors.viewport = View.page.new('VectorViewport', {
-               x = EDGE, y = y, xOffset = EDGE, height = LINE_HEIGHT
+               x = EDGE, y = y, xOffset = EDGE, height = LINE_HEIGHT, visibility = vis
             })
          else
             item._vectors.viewport.y     = y
@@ -560,7 +585,8 @@ gui.columnView = function(Options)
                         x      = MARGIN * 2,
                         y      = y + ICON_OFFSET,
                         width  = ICON_SIZE,
-                        height = ICON_SIZE
+                        height = ICON_SIZE,
+                        visibility = vis
                      })
                   end
                end)
@@ -585,7 +611,8 @@ gui.columnView = function(Options)
                      face     = gui.fonts.widget.face,
                      fontSize = string.format('%.2fpt', gui.fonts.widget.size),
                      align    = nz(col.align, 'left'),
-                     y        = y + LINE_OFFSET
+                     y        = y + LINE_OFFSET,
+                     visibility = vis
                   })
                   item._vectors['_a_' .. attrib] = item._col[attrib].text -- Referenced for future termination
                else
@@ -606,12 +633,16 @@ gui.columnView = function(Options)
                item._highlightEvent(View, item, false)
             end
 
-            View.addZone(0, item._y, nil, LINE_HEIGHT, item)
+            if not item.hidden then
+               View.addZone(0, item._y, nil, LINE_HEIGHT, item)
+            end
 
             cx = cx + col.width
          end
 
-         y = y + LINE_HEIGHT + VSPACING
+         if not item.hidden then
+            y = y + LINE_HEIGHT + VSPACING
+         end
       end
 
       View.page.height = y + EDGE
