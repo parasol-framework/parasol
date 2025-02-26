@@ -200,7 +200,7 @@ function buildScene()
                modal       = true,
                popOver     = win.surface,
                warnExists  = true,
-               filterList  = { { name='PNG Images', pattern='.png' } },
+               filterList  = { { name='PNG Images', ext='.png' } },
                feedback    = function(Dialog, Path, Files)
                   if (Files == nil) then return end
 
