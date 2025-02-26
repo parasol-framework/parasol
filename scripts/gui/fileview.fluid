@@ -204,7 +204,7 @@ local function defineViewColumns(Path)
    end
 end
 
--- Return active filters as a list
+-- Return allowed file extensions as a string list, which is cached.
 
 local function getFilters(self)
    if self._filters then return self._filters end
@@ -212,12 +212,12 @@ local function getFilters(self)
    if self.filterList then
       for _, filter in ipairs(self.filterList) do
          if filter.selected then
-            if type(filter.pattern) == 'table' then
-               for _, pattern in pairs(filter.pattern) do
-                  table.insert(self._filters, pattern)
+            if type(filter.ext) == 'table' then
+               for _, ext in pairs(filter.ext) do
+                  table.insert(self._filters, ext)
                end
             else
-               table.insert(self._filters, filter.pattern)
+               table.insert(self._filters, filter.ext)
             end
          end
       end
@@ -1584,12 +1584,12 @@ gui.fileview = function(View, Options)
                local current_path = self.path
 
                gui.dialog.message({
-                  modal         = true,
-                  image         = 'items/new_bookmark',
-                  title         = 'Create New Volume',
-                  message       = 'Enter a new volume name for the path ' .. self.path,
-                  userInput     = '',
-                  options = {
+                  modal     = true,
+                  image     = 'items/new_bookmark',
+                  title     = 'Create New Volume',
+                  message   = 'Enter a new volume name for the path ' .. self.path,
+                  userInput = '',
+                  options   = {
                      { id=2, text='Cancel', icon='items/cancel' },
                      { id=1, text='Create Volume', icon='items/checkmark' }
                   },

@@ -54,7 +54,7 @@ The following options can be used when executing script files:\n\
 static std::string glDialogScript =
 "STRING:require 'gui/filedialog'\n\
 gui.dialog.file({\n\
- filterList = { { name='Script Files', pattern='*.fluid' } },\n\
+ filterList = { { name='Script Files', ext='.fluid' } },\n\
  title      = 'Run a Script',\n\
  okText     = 'Run Script',\n\
  cancelText = 'Exit',\n\

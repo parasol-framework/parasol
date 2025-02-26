@@ -221,12 +221,26 @@ gui.dialog.file = function(Options)
 
    -- Filter selection
 
+   local fv_filters = { name='All Files', ext='', selected=false }
    if Options.filterList and (#Options.filterList > 0) then
-      local items = { }
+      local cmb_items = { }
       self.filters = { }
+
+      -- Pick the first item as being selected if none other is chosen.
+
+      local selection = false
       for _, item in pairs(Options.filterList) do
-         table.insert(items, { item=item.name })
-         self.filters[item.name] = item.pattern
+         if item.selected then
+            selection = true
+            break
+         end
+      end
+      if not selection then Options.filterList[1].selected = true end
+
+      for _, filter in pairs(Options.filterList) do
+         table.insert(cmb_items, { item=filter.name })
+         self.filters[filter.name] = filter.ext -- Can be a string or list of strings
+         table.insert(fv_filters, filter)
       end
 
       self.filter = gui.combobox({
@@ -236,7 +250,7 @@ gui.dialog.file = function(Options)
          xOffset     = self.window.margins.right,
          yOffset     = footer,
          allowCustom = userInput,
-         items       = items,
+         items       = cmb_items,
          events = {
             activate = function(Widget, Text)
                self.fileview.filter = nz(self.filters[Text], Text)
@@ -315,11 +329,11 @@ gui.dialog.file = function(Options)
    })
 
    self.fileview = gui.fileview(self.view, {
-      path     = Options.path,
-      filter   = '*',
-      sysKeys  = true,
-      fileSelected = processFeedback,
-      pathChanged = function(FlieView, Path)
+      path          = Options.path,
+      filterList    = fv_filters,
+      sysKeys       = true,
+      fileSelected  = processFeedback,
+      pathChanged   = function(FlieView, Path)
          self.currentPath = Path
          self.pathbox.text.string = self.currentPath
       end

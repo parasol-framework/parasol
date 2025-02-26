@@ -208,10 +208,10 @@ end
          displayPath   = true,
          path     = arg('path', ':'),
          filterList = {
-            { name='SVG Images', pattern='.svg' },
-            { name='RIPL Documents', pattern={ '.ripl', '.rpl' } },
-            { name='JPEG Images', pattern={ '.jpeg', '.jpg' } },
-            { name='PNG Images', pattern='.png' }
+            { name='SVG Images', ext='.svg' },
+            { name='RIPL Documents', ext={ '.ripl', '.rpl' } },
+            { name='JPEG Images', ext={ '.jpeg', '.jpg' } },
+            { name='PNG Images', ext='.png' }
          },
          fileSelected = function(FileView)
             displayFile(FileView.selectionPath())

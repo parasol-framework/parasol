@@ -233,7 +233,7 @@ end
       events = {
          activate = function(Widget)
             gui.dialog.file({
-               filterList  = { { name='All Files', pattern='*' }, { name='MP3 Audio Files', pattern='*.mp3' }, { name='Text Files', pattern='*.txt' } },
+               filterList  = { { name='All Files', ext='' }, { name='MP3 Audio Files', ext='.mp3' }, { name='Text Files', ext='.txt' } },
                okText      = 'Select File',
                cancelText  = 'Exit',
                modal       = true,
