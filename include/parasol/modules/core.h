@@ -1026,6 +1026,7 @@ enum class NF : ULONG {
    RECLASSED = 0x00000100,
    MESSAGE = 0x00000200,
    SIGNALLED = 0x00000400,
+   PERMIT_TERMINATE = 0x00000800,
    UNIQUE = 0x40000000,
    NAME = 0x80000000,
 };
@@ -2601,7 +2602,6 @@ struct Object { // Must be 64-bit aligned
    NF       Flags;               // Object flags
    std::atomic_int ThreadID;     // Managed by locking functions.  Atomic due to volatility.
    char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
-   bool PermitTerminate;
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }

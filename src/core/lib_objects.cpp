@@ -61,7 +61,7 @@ ERR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
    OBJECTPTR obj;
    if (AccessObject(((OBJECTID *)Message)[0], 10000, &obj) IS ERR::Okay) {
       // Use PermitTerminate to inform object_free() that the object can be terminated safely while the lock is held.
-      obj->PermitTerminate = true;
+      obj->Flags |= NF::PERMIT_TERMINATE;
       FreeResource(obj);
    }
    return ERR::Okay;
@@ -88,7 +88,7 @@ static ERR object_free(Object *Object)
    // If the object is locked then we mark it for collection and return.
    // Collection is achieved via the message queue for maximum safety.
 
-   if ((Object->Queue > 1) and (!Object->PermitTerminate)) {
+   if ((Object->Queue > 1) and (!Object->defined(NF::PERMIT_TERMINATE))) {
       log.detail("Object #%d locked; marking for deletion.", Object->UID);
       if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL; // The Owner pointer is no longer safe to use
       Object->Flags |= NF::FREE_ON_UNLOCK;
