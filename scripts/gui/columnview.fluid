@@ -17,8 +17,8 @@ local MARGIN = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics eleme
 
 LINE_HEIGHT = math.round(LINE_HEIGHT * 1.33)
 
-local ICON_OFFSET = (LINE_HEIGHT - ICON_SIZE) * 0.5
-local LINE_OFFSET = (LINE_HEIGHT + FONT_HEIGHT) * 0.5
+local ICON_OFFSET = math.round((LINE_HEIGHT - ICON_SIZE) * 0.5)
+local LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
 local BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
 local lEnableTextGradients
 
@@ -443,7 +443,7 @@ gui.columnView = function(Options)
                face     = gui.fonts.widget.face,
                fontSize = string.format('%.2fpt', gui.fonts.widget.size),
                align    = nz(col.align, 'left'),
-               y        = (BANNER_HEIGHT + FONT_HEIGHT) * 0.5
+               y        = math.round((BANNER_HEIGHT + FONT_HEIGHT) * 0.5)
             })
 
             -- Support for resize management
@@ -611,7 +611,7 @@ gui.columnView = function(Options)
                         visibility = vis
                      })
                   else
-                     item._vectors.iconImage.y = y
+                     item._vectors.iconImage.y = y + ICON_OFFSET
                      item._vectors.iconImage.visibility = vis
                   end
                end)
