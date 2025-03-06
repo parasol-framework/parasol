@@ -677,6 +677,11 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
       if (shape->dirty()) gen_vector_path(shape);
       else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Class->ClassName, shape->UID, shape->ParentView ? shape->ParentView->UID : 0);
+      
+      if (shape->RequiresRedraw) {
+         state.mDirty = true; // Carry-forward dirty marker for children
+         shape->RequiresRedraw = false;
+      }
 
       // Visibility management.  NB: Under SVG rules VectorGroup objects are always visible as they are not
       // classed as a graphics element.
@@ -899,7 +904,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      // In buffered mode, children will be drawn to an independent bitmap that is permanently
                      // cached.
 
-                     bool redraw = view->vpRefreshBuffer;
+                     bool redraw = view->vpRefreshBuffer or state.mDirty;
                      view->vpRefreshBuffer = false;
 
                      if ((!redraw) and (Scene->ShareModified)) redraw = true;

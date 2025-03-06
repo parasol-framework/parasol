@@ -85,8 +85,8 @@ gui.listView = function(Options)
    local function newItems(View, Items)
       if #Items == 0 then return end
 
-      local width  = View.window.width - EDGE - EDGE
-      local height = View.window.height
+      local width  = View.frame.width - EDGE - EDGE
+      local height = View.frame.height
       local x      = EDGE
       local y      = 0
       local widest_item = 0

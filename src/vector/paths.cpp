@@ -404,6 +404,7 @@ void gen_vector_path(extVector *Vector)
 
    // Changes to the path could mean that the mouse cursor needs to be refreshed.
    ((extVectorScene *)Vector->Scene)->RefreshCursor = true;
+   Vector->RequiresRedraw = true;
 }
 
 //********************************************************************************************************************

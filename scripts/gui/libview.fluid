@@ -198,7 +198,9 @@ gui.initView = function(Options, BuildUI, NewItems)
       itemDeselected = Options.itemDeselected,
       itemActivated  = Options.itemActivated,
       activeChange   = Options.activeChange,
-      events     = nz(Options.events, {})
+      events         = nz(Options.events, {}),
+      top            = { },
+      totalTop       = 0
    }
 
    vw.addItem = function(Item)
@@ -533,10 +535,20 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.page.x = 0 -- Reset the page position
       vw.page.y = 0
 
-      BuildUI(vw, vw.scene, vw.window, vw.page)
+      BuildUI(vw, vw.scene, vw.frame, vw.page)
       cursorActivity() -- Reset the cursor
       if vw.border then vw.border.acMoveToFront() end
       vw.scene.surface.mtScheduleRedraw()
+   end
+
+   -- Internal function for offsetting the frame, e.g. to accommodate a toolbar.
+
+   vw.reserveTop = function(ID, Height)
+      if vw.top[ID] then return end
+      vw.top[ID] = { y=vw.totalTop, height=Height }
+      vw.totalTop = vw.totalTop + Height
+      if vw.frame then vw.frame.y = vw.totalTop end
+      if vw.scrollbar then vw.scrollbar.vbar.viewport.y = vw.totalTop end
    end
 
    -- Initialisation --
@@ -546,15 +558,16 @@ gui.initView = function(Options, BuildUI, NewItems)
    vw.scene    = vw.parentViewport.scene
    vw.viewport = vw.parentViewport.new('VectorViewport', { name='view_main', overflow='hidden' }) -- Main viewport for vector graphics.
 
-   vw.bkgd = vw.viewport.new('VectorRectangle', {
+   vw.frame = vw.viewport.new('VectorViewport', { name='view_frame', x=0, xOffset=0, y=0, yOffset=0, overflow=VOF_HIDDEN })
+
+   vw.bkgd = vw.frame.new('VectorRectangle', {
       name   = 'view_bkgd',
       fill   = gui.style.page.bkgd,
       width  = '100%',
       height = '100%'
    })
 
-   vw.window = vw.viewport.new('VectorViewport', { name='view_view', x=0, xOffset=0, y=0, yOffset=0, overflow=VOF_HIDDEN })
-   vw.page = vw.window.new('VectorViewport', { name='view_page', width='100%', height='100%', buffered=true })
+   vw.page = vw.frame.new('VectorViewport', { name='view_page', width='100%', height='100%', buffered=true })
 
    if not Options.borderless then
       vw.border = vw.viewport.new('VectorRectangle', {
@@ -587,7 +600,7 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    vw.scrollbar = gui.scrollbar({
       target = vw.viewport,
-      view   = vw.window,
+      view   = vw.frame,
       page   = vw.page,
       direction = 'all'
    })

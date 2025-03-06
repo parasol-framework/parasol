@@ -23,7 +23,7 @@ local BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
 local lEnableTextGradients
 
 local lColours = {
-   strokeButton = 'rgb(160,160,160)'
+   strokeButton = 'rgb(255,255,255,0.3)'
 }
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -84,50 +84,6 @@ local function columnText(Value, Type)
    return Value
 end
 
-local function setColumnGradient(View, Column)
-   if not lEnableTextGradients then
-      Column.fillItem = gui.style.page.text
-      Column.fillItemSelect = gui.style.page.textHighlight
-   elseif not Column.vecGradient then
-      local defName = 'colGradient' .. lCounter
-      lCounter = lCounter + 1
-      local selName = 'colSelect' .. lCounter
-      lCounter = lCounter + 1
-
-      if nz(Column.align, 'left') == 'right' then
-         Column.vecGradient = gui.simpleGradient(View.scene, defName,
-            { { r=0,g=0,b=0,a=0,offset=0.1 }, { r=0,g=0,b=0,a=255,offset=0.2 }, { r=0,g=0,b=0,a=255,offset=1.0 } },
-            0, 0, Column.width, 0, 'userspace')
-
-         Column.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-            { { r=255,g=255,b=255,a=0,offset=0.1 }, { r=255,g=255,b=255,a=255,offset=0.2}, { r=255,g=255,b=255,a=255,offset=1.0 } },
-            0, 0, Column.width, 0, 'userspace')
-      else
-         Column.vecGradient = gui.simpleGradient(View.scene, defName,
-            { { r=0,g=0,b=0,a=255,offset=0 }, { r=0,g=0,b=0,a=255,offset=0.9 }, { r=0,g=0,b=0,a=0,offset=0.98 } },
-            0, 0, Column.width, 0, 'userspace')
-
-         Column.vecGradientSelect = gui.simpleGradient(View.scene, selName,
-            { { r=255,g=255,b=255,a=255,offset=0 }, { r=255,g=255,b=255,a=255,offset=0.9 }, { r=255,g=255,b=255,a=0,offset=0.98 } },
-            0, 0, Column.width, 0, 'userspace')
-      end
-
-      Column.fillItem = 'url(#' .. defName .. ')'
-      Column.fillItemSelect = 'url(#' .. selName .. ')'
-   else
-      Column.vecGradient.x2 = Column.width
-      Column.vecGradientSelect.x2 = Column.width
-   end
-
-   if View.scrollbar then
-      local page_width = 0
-      for _, col in pairs(View.columns) do
-         page_width = col.x + col.width + EDGE
-      end
-      View.scrollbar.setDynamicPageSize(page_width, page_width, View.page.height)
-   end
-end
-
 local function setListTextFill(Item, Fill)
    if Item._vectors.text then
       Item._vectors.text.fill = Fill
@@ -148,7 +104,9 @@ local function highlightItem(View, Item, Highlighted)
             if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
          end
          local col = gui.interpolateRGB(gui.strToRGB(gui.style.page.textHighlightBkgd), gui.strToRGB(gui.style.page.textSelectBkgd))
-         Item._vectors.highlight.fill = gui.rgbToSVG(col) --gui.style.page.textHighlightBkgd
+         Item._vectors.highlight.fill = gui.style.page.textSelectBkgd
+         Item._vectors.highlight.stroke = gui.style.page.textHighlightBkgd
+         Item._vectors.highlight.strokeWidth = 2
          if Item._vectors.iconImage and Item._iconHighlight then
             Item._vectors.iconImage.fill = Item._iconHighlight
          end
@@ -157,6 +115,7 @@ local function highlightItem(View, Item, Highlighted)
             if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
          end
          Item._vectors.highlight.fill = gui.style.page.textHighlightBkgd
+         Item._vectors.highlight.strokeWidth = 0
          if Item._vectors.iconImage and Item._iconHighlight then
             Item._vectors.iconImage.fill = Item._iconHighlight
          end
@@ -166,6 +125,7 @@ local function highlightItem(View, Item, Highlighted)
          if col.text then col.text.fill = View.namedCol[k].fillItemSelect end
       end
       Item._vectors.highlight.fill = gui.style.page.textSelectBkgd
+      Item._vectors.highlight.strokeWidth = 0
       if Item._vectors.iconImage and Item._iconHighlight then
          Item._vectors.iconImage.fill = Item._iconHighlight
       end
@@ -210,18 +170,50 @@ local function arrangeColumns(View)
 
       pc.type = PE_Move
       pc.x    = col.x + col.width
-      pc.y    = 0
+      pc.y    = 1
       View.banner.lines.mtAddCommand(pc)
 
       pc.type = PE_Line
       pc.x    = col.x + col.width
-      pc.y    = View.bannerHeight
+      pc.y    = BANNER_HEIGHT
       View.banner.lines.mtAddCommand(pc)
 
       col.bannerVP.x = col.x
       col.bannerVP.width = col.width
 
-      setColumnGradient(View, col)
+      if not lEnableTextGradients then
+         col.fillItem = gui.style.page.text
+         col.fillItemSelect = gui.style.page.textHighlight
+      elseif not col.vecGradient then
+         local defName = 'colGradient' .. lCounter
+         lCounter = lCounter + 1
+         local selName = 'colSelect' .. lCounter
+         lCounter = lCounter + 1
+
+         if nz(col.align, 'left') == 'right' then
+            col.vecGradient = gui.simpleGradient(View.scene, defName,
+               { { r=0,g=0,b=0,a=0,offset=0.1 }, { r=0,g=0,b=0,a=255,offset=0.2 }, { r=0,g=0,b=0,a=255,offset=1.0 } },
+               0, 0, col.width, 0, 'userspace')
+
+            col.vecGradientSelect = gui.simpleGradient(View.scene, selName,
+               { { r=255,g=255,b=255,a=0,offset=0.1 }, { r=255,g=255,b=255,a=255,offset=0.2}, { r=255,g=255,b=255,a=255,offset=1.0 } },
+               0, 0, col.width, 0, 'userspace')
+         else
+            col.vecGradient = gui.simpleGradient(View.scene, defName,
+               { { r=0,g=0,b=0,a=255,offset=0 }, { r=0,g=0,b=0,a=255,offset=0.9 }, { r=0,g=0,b=0,a=0,offset=0.98 } },
+               0, 0, col.width, 0, 'userspace')
+
+            col.vecGradientSelect = gui.simpleGradient(View.scene, selName,
+               { { r=255,g=255,b=255,a=255,offset=0 }, { r=255,g=255,b=255,a=255,offset=0.9 }, { r=255,g=255,b=255,a=0,offset=0.98 } },
+               0, 0, col.width, 0, 'userspace')
+         end
+
+         col.fillItem = 'url(#' .. defName .. ')'
+         col.fillItemSelect = 'url(#' .. selName .. ')'
+      else
+         col.vecGradient.x2 = col.width
+         col.vecGradientSelect.x2 = col.width
+      end
    end
 
    if View._sort then
@@ -231,6 +223,14 @@ local function arrangeColumns(View)
       else
          View._sort.icon.x = col.width - MARGIN - ICON_SIZE
       end
+   end
+
+   if View.scrollbar then
+      local page_width = 0
+      for _, col in pairs(View.columns) do
+         page_width = col.x + col.width + EDGE
+      end
+      View.scrollbar.setDynamicPageSize(page_width, page_width, View.page.height)
    end
 end
 
@@ -284,10 +284,11 @@ local function bannerZoneClick(View, Col, X, Y, Value)
    View.viewport.acDraw()
 end
 
-local function rearrangeItems(View)
-   -- Rearrange items vertically
+-- Set correct item coordinates after a sort operation
 
+local function rearrangeItems(View)
    View.zones = { }
+   View._last_y = EDGE
    local y = EDGE
    for _, item in pairs(View.items) do
       item._y = y
@@ -326,6 +327,8 @@ local function rearrangeItems(View)
          y = y + LINE_HEIGHT + VSPACING
       end
    end
+
+   View._last_y = y
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -344,49 +347,48 @@ gui.columnView = function(Options)
          end
       end
 
-      View.bannerHeight = BANNER_HEIGHT
-      View.y = View.bannerHeight
+      View.reserveTop('ViewUI', BANNER_HEIGHT)
+
+      if View.banner then View.banner.clip.free() end
+
       View.banner = { }
 
       -- Background graphics
 
-      if not View.banner.viewport then
-         View.banner.clip = View.viewport.new('VectorViewport', {
-            x = 0, y = 0, xOffset = 2, height = View.bannerHeight, overflow = VOF_HIDDEN
-         })
+      View.banner.clip = View.viewport.new('VectorViewport', {
+         x = 0, y = View.frame.y - BANNER_HEIGHT, width = '100%', height = BANNER_HEIGHT, overflow = VOF_HIDDEN
+      })
 
-         View.banner.viewport = View.banner.clip.new('VectorViewport', {
-            x = 0, y = 0, width = '100%', height = View.bannerHeight, overflow = VOF_HIDDEN
-         })
+      View.banner.viewport = View.banner.clip.new('VectorViewport', {
+         x = 0, y = 0, width = '100%', height = BANNER_HEIGHT, overflow = VOF_HIDDEN
+      })
 
-         View.banner.bkgd = View.banner.viewport.new('VectorRectangle', {
-            x = 0, y = 0, width = '100%', height = '100%',
-            fill = gui.style.button.bkgd, stroke = lColours.strokeButton, strokeWidth = 1
-         })
+      View.banner.bkgd = View.banner.clip.new('VectorRectangle', {
+         x = 0, y = 0, width = '100%', height = '1', fill = lColours.strokeButton
+      })
 
-         View.banner.lines = View.banner.viewport.new('VectorPath', {
-            stroke = lColours.strokeButton, strokeWidth = 1
-         })
+      View.banner.lines = View.banner.viewport.new('VectorPath', {
+         stroke = lColours.strokeButton, strokeWidth = 1
+      })
 
-         View.banner.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
-            local ev = Events
-            while ev do
-               if ev.type == JET_BUTTON_1 then
-                  if bit.band(ev.flags, JTYPE_REPEATED) != 0 then
-                     return
-                  end
+      View.banner.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
+         local ev = Events
+         while ev do
+            if ev.type == JET_BUTTON_1 then
+               if bit.band(ev.flags, JTYPE_REPEATED) != 0 then
+                  return
+               end
 
-                  for _, zone in pairs(View.columns) do
-                     if (ev.x >= zone.x+2) and (ev.x < zone.x + zone.width-2) then
-                        bannerZoneClick(View, zone, ev.x, ev.y, ev.value)
-                        break
-                     end
+               for _, zone in pairs(View.columns) do
+                  if (ev.x >= zone.x+2) and (ev.x < zone.x + zone.width-2) then
+                     bannerZoneClick(View, zone, ev.x, ev.y, ev.value)
+                     break
                   end
                end
-               ev = ev.next
             end
-         end)
-      end
+            ev = ev.next
+         end
+      end)
 
       -- Draw column text and separators
 
@@ -417,7 +419,7 @@ gui.columnView = function(Options)
                face     = gui.fonts.widget.face,
                fontSize = string.format('%.2fpt', gui.fonts.widget.size),
                align    = nz(col.align, 'left'),
-               y        = (View.bannerHeight + FONT_HEIGHT) * 0.5
+               y        = (BANNER_HEIGHT + FONT_HEIGHT) * 0.5
             })
 
             -- Support for resize management
@@ -487,14 +489,25 @@ gui.columnView = function(Options)
       -- Ensure that the column banner is always aligned with the page.
 
       Page.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
-         View.banner.viewport.x     = View.page.x
-         View.banner.viewport.width = View.page.width
+         View.banner.viewport.x = View.page.x
+
+         local page_width = View.page.width
+         local frame_width = View.viewport.width
+         if page_width > frame_width then
+            View.banner.clip.width = page_width
+         else
+            View.banner.clip.width = frame_width
+         end
       end)
 
-      Window.y = View.bannerHeight
+      View.frame.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+         View.banner.clip.y = View.frame.y - BANNER_HEIGHT
+      end)
    end
 
    local function setColumns(View, Columns)
+      if #Columns == 0 then return end
+
       local c = 1
       local set = { }
       View.namedCol = { }
@@ -511,19 +524,18 @@ gui.columnView = function(Options)
       end
 
       View.columns = set
-      constructColumnBanner(View, View.scene, View.window, View.page)
+      constructColumnBanner(View, View.scene, View.frame, View.page)
    end
 
-   -- Generate graphics for items in a columnar view.
+   -- Process new items that have been added to the view
 
    local function newItems(View, Items)
       if not View.columns then return end
 
       if #Items == 0 then return end
 
-      local width = View.window.width - EDGE - EDGE
-      local y = EDGE
-      y = y + ((#View.items - #Items) * (LINE_HEIGHT + VSPACING))
+      local width = View.frame.width - EDGE - EDGE
+      local y = View._last_y
 
       for _, item in pairs(Items) do
          if not item._vectors then item._vectors = { } end
@@ -547,6 +559,7 @@ gui.columnView = function(Options)
          else
             item._vectors.viewport.y     = y
             item._vectors.viewport.width = width
+            item._vectors.viewport.visibility = vis
          end
 
          item._highlightEvent = highlightItem
@@ -588,6 +601,9 @@ gui.columnView = function(Options)
                         height = ICON_SIZE,
                         visibility = vis
                      })
+                  else
+                     item._vectors.iconImage.y = y
+                     item._vectors.iconImage.visibility = vis
                   end
                end)
             elseif col.checkBoxes then
@@ -617,6 +633,7 @@ gui.columnView = function(Options)
                   item._vectors['_a_' .. attrib] = item._col[attrib].text -- Referenced for future termination
                else
                   item._col[attrib].text.y = y + LINE_OFFSET
+                  item._col[attrib].text.visibility = vis
                end
 
                if col.align == 'right' then
@@ -645,6 +662,7 @@ gui.columnView = function(Options)
          end
       end
 
+      View._last_y = y
       View.page.height = y + EDGE
 
       for _, col in pairs(View.columns) do
@@ -657,6 +675,7 @@ gui.columnView = function(Options)
    local function constructColumnView(View, Scene, Window, Page)
       setColumns(View, nz(Options.columns, { }))
 
+      View._last_y = EDGE
       if #View.items > 0 then newItems(View, View.items) end
 
       collectgarbage('collect')

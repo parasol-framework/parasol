@@ -435,6 +435,7 @@ class extVector : public objVector {
    UWORD  FGFill:1;
    UWORD  Stroked:1;
    UWORD  ValidState:1;         // Can be set to false during path generation if the shape is invalid
+   UWORD  RequiresRedraw:1;
    agg::line_join_e  LineJoin;
    agg::line_cap_e   LineCap;
    agg::inner_join_e InnerJoin;

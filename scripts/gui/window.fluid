@@ -45,6 +45,7 @@ gui.window = function(Options)
       minimiseEnabled = nz(Options.minimise, true),
       maximiseEnabled = nz(Options.maximise, true),
       moveToBackEnabled = nz(Options.moveToBack, true),
+      invertedPalette = Options.invertPalette,
       closeEnabled = nz(Options.close, true),
       focus        = nz(Options.focus, true),
       quit         = nz(Options.quit, true),
@@ -56,6 +57,7 @@ gui.window = function(Options)
       menubar      = Options.menubar, -- Menubar configuration
       margins      = { left, right, top, bottom },
       surface      = nil, -- Client access to the surface is permitted
+      textFill     = gui.style.window.text, -- Recommended fill for overlayed text
       viewport     = nil -- The window's top-level viewport
    }
 
@@ -388,8 +390,16 @@ gui.window = function(Options)
    })
 
    if hosted(self) then
+      local fill
+      if Options.invertPalette then
+         fill = gui.palette.base
+         self.textFill = gui.palette.altText
+      else
+         fill = gui.style.window.bkgd
+      end
+
       self.bkgd = self.viewport.new('VectorRectangle', {
-         fill   = gui.style.window.bkgd,
+         fill   = fill,
          x      = 0,
          y      = 0,
          width  = '100%',

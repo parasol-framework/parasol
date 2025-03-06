@@ -60,7 +60,7 @@ gui.toolbar = function(Options)
    local function newItem(Type, Name, ID)
       if ID and self._lookup[ID] then error('An item with identifier ' .. ID .. ' already exists.') end
 
-      local item = { type=Type, id=ID, name=Name }
+      local item = { type=Type, id=ID, name=Name, x=0, y=0, width=0, height=0 }
       if nz(Name) then
          item.displayName = string.translate(Name)
       end
@@ -260,6 +260,12 @@ gui.toolbar = function(Options)
                end
             end
 
+            if item.sticker then
+               item.sticker.viewport.x = item.x + item.width - item.sticker.viewport.width - 1
+               item.sticker.viewport.y = item.y + 1
+               item.sticker.viewport.acMoveToFront()
+            end
+
             if self._horizontal then
                x = x + item.width
             else
@@ -396,6 +402,67 @@ gui.toolbar = function(Options)
          self.viewport.acDraw()
       else
          raise(ERR_Search)
+      end
+   end
+
+   -- Annotate a toolbar item with a sticker.
+
+   self.applySticker = function(ID, Content)
+      local item = self._lookup[ID]
+      if not item then return end
+
+      local sticker_size = math.floor(self._iconSize * 0.5)
+
+      if not item.sticker then item.sticker = { } end
+
+      if not item.sticker.viewport then
+         item.sticker.viewport = self.viewport.new('VectorViewport', {
+            x=item.x + item.width - sticker_size - 1, y=item.y + 1, width=sticker_size, height=sticker_size
+         })
+
+         item.sticker.bkgd = item.sticker.viewport.new('VectorEllipse', {
+            cx='50%', cy='50%', radius=self._iconSize * 0.25, fill=gui.palette.prime
+         })
+      end
+
+      if item.sticker.content then
+         item.sticker.content.free()
+         item.sticker.content = nil
+      end
+
+      if Content then
+         if type(Content) == 'number' then
+            if Content > 9 then
+               local size = math.floor(self._iconSize * 0.33)
+               gui.createIcon(self.viewport.scene, 'items/add', size, 'pearl', 'sticker_plus')
+               item.sticker.content = item.sticker.viewport.new('VectorRectangle', {
+                  fill = 'url(#sticker_plus)', x=math.floor((sticker_size - size)*0.5), y=math.floor((sticker_size - size)*0.5), width=size, height=size
+               })
+               return
+            elseif Content < 0 then
+               return
+            end
+         end
+
+         if type(Content) == 'string' then
+            if Content:len() > 1 then Content = Content:sub(1,1) end
+         end
+
+         local font_size = sticker_size * 0.75
+         item.sticker.content = item.sticker.viewport.new('VectorText', {
+            face='Noto Sans', fontStyle='bold', fontSize=font_size,
+            x=math.floor(sticker_size*0.5), y=math.floor(sticker_size-((sticker_size-font_size))),
+            fill='white', string=Content, align='middle'
+         })
+      end
+   end
+
+   self.removeSticker = function(ID)
+      local item = self._lookup[ID]
+      if not item then return end
+      if item.sticker then
+         item.sticker.viewport.free()
+         item.sticker = { }
       end
    end
 

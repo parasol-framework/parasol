@@ -108,9 +108,9 @@ gui.input = function(Options)
          name     = 'vt_input_label',
          x        = 0,
          y        = font_height + math.floor((box_height - font_height) * 0.5),
-         face     = gui.fonts.widget.face,
+         face     = nz(Options.textFace, gui.fonts.widget.face),
          fontSize = string.format('%.2fpt', gui.fonts.widget.size),
-         fill     = gui.style.window.text,
+         fill     = nz(Options.labelFill, gui.style.window.text),
          string   = self.label,
          lineLimit = 1
       })
@@ -123,7 +123,7 @@ gui.input = function(Options)
    end
 
    self.bkgd = self.inputViewport.new('VectorRectangle', {
-      fill = gui.style.page.bkgd, x = 0, y = 0, width = '100%', height = '100%',
+      fill = nz(Options.bkgd, gui.style.page.bkgd), x = 0, y = 0, width = '100%', height = '100%',
    })
 
    if not Options.flushEdges then
@@ -144,9 +144,10 @@ gui.input = function(Options)
       name      = 'vt_input',
       x         = 4,
       y         = font_height + math.floor((box_height - font_height - (gui.style.page.strokeWidth * 2)) * 0.5),
-      face      = gui.fonts.widget.face,
+      face      = nz(Options.textFace, gui.fonts.widget.face),
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
-      fill      = gui.style.page.text,
+      fontStyle = nz(Options.textStyle, 'Regular'),
+      fill      = nz(Options.textFill, gui.style.page.text),
       string    = Options.text,
       lineLimit = 1,
       textFlags = (function()

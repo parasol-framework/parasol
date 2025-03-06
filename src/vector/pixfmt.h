@@ -755,7 +755,7 @@ private:
          } while(--len);
       }
    }
-   
+
    static void copyColorHSpan8(agg::pixfmt_psl *Self, int x, int y, ULONG len, const agg::rgba8 *colors) noexcept
    {
       UBYTE *p = Self->mData + (y * Self->mStride) + x;
@@ -796,7 +796,7 @@ private:
          UBYTE grey = F2T((cr * 0.2126) + (cg * 0.7152) + (cb * 0.0722));
          alpha = (alpha * (cover + 1)) >> 8;
          if (alpha == 0xff) p[0] = grey;
-         else p[0] = ((p[0] * (0xff-alpha)) + (grey * alpha) + 0xff)>>8;         
+         else p[0] = ((p[0] * (0xff-alpha)) + (grey * alpha) + 0xff)>>8;
       }
    }
 

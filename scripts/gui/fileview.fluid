@@ -1,4 +1,6 @@
 --[[
+Enhances any view object, such as listview or columnview to create a file system browser.
+
 Documentation is available in the Parasol Wiki.
 --]]
 
@@ -31,6 +33,11 @@ local paste_clipboard = [[
    require 'gui/file'
    file.ui.paste(arg('dest'), arg('cluster'))
 ]]
+
+local TBID = {
+   ROOT=1, PARENT=2, FILTER=3, PREV=5, NEXT=6, CUT=8, COPY=9, PASTE=10,
+   BOOKMARK=12, CREATE_FOLDER=13, RENAME=14, DELETE=15, COL_VIEW=17, LIST_VIEW=18, FONT=19
+}
 
 local lFolderFill = gui.strToRGB(gui.style.page.bkgd)
 
@@ -225,6 +232,14 @@ local function getFilters(self)
    return self._filters
 end
 
+local function selectedFilters(self)
+   local count = 0
+   for _, filter in ipairs(self.filterList) do
+      if filter.selected then count = count + 1 end
+   end
+   return count
+end
+
 -- Returns true if Filename should be visible
 
 local function filterCheck(self, Filename)
@@ -311,6 +326,13 @@ local function displayFilters(self)
                         item.selected = true
                         self._filters = nil
                      end
+
+                     local filter_count = selectedFilters(self)
+                     if filter_count > 0 then
+                        self.toolbar.applySticker(TBID.FILTER, filter_count)
+                     else
+                        self.toolbar.removeSticker(TBID.FILTER)
+                     end
                   end
                end
                ev = ev.next
@@ -332,19 +354,17 @@ local function displayFilters(self)
 
    -- Toggle the filter list
 
+   local list_y = self.view.totalTop
    if self.filterViewport.visibility != VIS_HIDDEN then
       self.filterViewport.visibility = VIS_HIDDEN
-      local list_y = self._reserved_height
-      self.view.window.y = list_y
-      self.view.scrollbar.vbar.viewport.y = list_y
    else
       self.filterViewport.visibility = VIS_VISIBLE
-      local list_y = self._reserved_height + self.filterViewport.height
-      self.view.window.y = list_y
-      self.view.scrollbar.vbar.viewport.y = list_y
+      list_y = list_y + self.filterViewport.height
    end
+   self.view.frame.y = list_y
+   self.view.scrollbar.vbar.viewport.y = list_y
 
-   self.view.viewport.acDraw()
+   self.view.scene.surface.mtScheduleRedraw()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -384,7 +404,7 @@ local function copyFromList(Folder, List, Move)
       lBkgdTasks[task.id] = task
    end,
    function(Exception)
-      gui.dialog.error('Copy File Failure', 'File copy attempt failed with exception: ' .. Exception.message, self.window)
+      gui.dialog.error('Copy File Failure', 'File copy attempt failed with exception: ' .. Exception.message, self.frame)
    end)
 end
 
@@ -418,7 +438,7 @@ local function pasteFromClipboard(Folder, Cluster)
       lBkgdTasks[task.id] = task
    end,
    function(Exception)
-      gui.dialog.error('File Paste Failure', 'File paste attempt failed with exception: ' .. Exception.message, self.window)
+      gui.dialog.error('File Paste Failure', 'File paste attempt failed with exception: ' .. Exception.message, self.frame)
    end)
 end
 
@@ -553,8 +573,7 @@ gui.fileview = function(View, Options)
       showDocs      = nz(Options.showDocs, false),
       enableSysKeys = nz(Options.sysKeys, false),
       pathChanged   = Options.pathChanged,
-      filterList    = Options.filterList,
-      _reserved_height = 0
+      filterList    = Options.filterList
    }
 
    local lOptions = Options
@@ -882,13 +901,13 @@ gui.fileview = function(View, Options)
                type     = 'question',
                options  = { { id=-1, text='No', icon='items/cancel' },
                             { id=1, text='Yes', icon='items/checkmark' } },
-               popover  = self.window,
+               popover  = self.frame,
                modal    = true,
                feedback = function(Dialog, Response, State)
                   if mSys.MoveFile(Dialog.var.src, Dialog.var.dest) == ERR_Okay then
                      --DelayMsg(AC_Refresh, Self.Head.UniqueID, NULL)
                   else
-                     gui.dialog.error('File Rename Failure', 'The rename operation failed.', self.window)
+                     gui.dialog.error('File Rename Failure', 'The rename operation failed.', self.frame)
                   end
                end
             })
@@ -916,7 +935,7 @@ gui.fileview = function(View, Options)
                end
             end,
             function(Exception)
-               gui.dialog.error('File Rename Failure', 'Failed to rename the file.  ' .. Exception.message, self.window)
+               gui.dialog.error('File Rename Failure', 'Failed to rename the file.  ' .. Exception.message, self.frame)
             end)
          end
       end
@@ -1060,7 +1079,7 @@ gui.fileview = function(View, Options)
             options   = { { id=-1, text='Cancel', icon='items/cancel' },
                           { id=1, text='Okay', icon='items/checkmark' } },
             modal     = true,
-            popover   = self.window,
+            popover   = self.frame,
             userInput = true,
             inputRequired = true,
             feedback = function(Dialog, Response, State)
@@ -1075,7 +1094,7 @@ gui.fileview = function(View, Options)
                         end
                      end
                   else
-                     gui.dialog.error('Failed to create dir "' .. path .. '"', self.window)
+                     gui.dialog.error('Failed to create dir "' .. path .. '"', self.frame)
                   end
                end
             end
@@ -1101,7 +1120,7 @@ gui.fileview = function(View, Options)
          image   = 'folders/folder',
          icon    = 'folders/folder',
          message = Message,
-         popover = self.window,
+         popover = self.frame,
          options = {
             { id=1, text='Okay', icon='items/checkmark' },
             { id=-1, text='Cancel', icon='items/cancel' }
@@ -1142,7 +1161,7 @@ gui.fileview = function(View, Options)
          options  = { { id=-1, text='No', icon='items/cancel' },
                       { id=1, text='Yes', icon='items/checkmark' } },
          message  = msg,
-         popover  = self.window,
+         popover  = self.frame,
          modal    = true,
          feedback = function(Dialog, Response, State)
             if Response.id > 0 then
@@ -1173,7 +1192,7 @@ gui.fileview = function(View, Options)
       openFiles(self.view.selectedItems(), 'Edit')
    end
 
-   -- Apply a file filter using wildcards.  E.g. '.*%.fluid$'
+   -- Apply a private file filter using Lua patterns.  E.g. '.*%.fluid$'
 
    self.filter = function(Filter)
       lFilter = Filter
@@ -1228,7 +1247,7 @@ gui.fileview = function(View, Options)
          type      = 'request',
          modal     = true,
          userInput = sel,
-         popover   = self.window,
+         popover   = self.frame,
          inputRequired = true,
          feedback  = responseRename
       })
@@ -1365,7 +1384,7 @@ gui.fileview = function(View, Options)
 
       self.inRefresh = false
 
-      self.view.viewport.acDraw()
+      self.view.scene.surface.mtScheduleRedraw()
    end
 
    -- Returns the name of the currently selected item, as it appears to the user (e.g.
@@ -1428,7 +1447,7 @@ gui.fileview = function(View, Options)
       flags = '!DragDrop',
       requestHandler = function(Clipboard, Requester, Item, Datatypes)
          if not nz(self.path) then -- Do nothing if we are at the root level
-            gui.dialog.error('Drag and Drop Failure', 'Drag and drop from volumes is not supported.', self.window);
+            gui.dialog.error('Drag and Drop Failure', 'Drag and drop from volumes is not supported.', self.frame);
             return
          end
 
@@ -1543,10 +1562,19 @@ gui.fileview = function(View, Options)
       end
    end
 
-   if Options.navigationBar then
+   if Options.toolBar then
       local bkgd = self.view.viewport.new('VectorRectangle', {
          x=0, y=0, xOffset=0, height=1, fill=gui.palette.base
       })
+
+      local tbo
+      if (Options.toolBar == true) or (Options.toolBar == 'all') then
+         tbo = { navigation=true, clipboard=true, actions=true, views=true }
+      elseif type(Options.toolBar) == 'table' then
+         tbo = Options.toolBar
+      else
+         error('Invalid value passed to fileview.toolBar')
+      end
 
       self.toolbar = gui.toolbar({
          iconTheme = 'pearl',
@@ -1556,58 +1584,108 @@ gui.fileview = function(View, Options)
          xOffset = 0,
          flush   = true,
          createItems = function(Bar)
-            Bar.addItem(1, 'Root', 'Root Folder', 'devices/harddisk', function()
+            Bar.addItem(TBID.ROOT, 'Root', 'Root Folder', 'devices/harddisk', function()
                self.browse(nil)
             end)
 
-            Bar.addItem(2, 'Parent', 'Parent Folder', 'folders/parent', function()
+            Bar.addItem(TBID.PARENT, 'Parent', 'Parent Folder', 'folders/parent', function()
                self.parentFolder()
             end)
 
-            Bar.addItem(4, 'Prev', 'Previous File', 'arrows/fat_left', function()
-               self.view.selectPrev(function (Item) if Item.type == 'file' then return true end end)
-            end)
-
-            Bar.addItem(5, 'Next', 'Next File', 'arrows/fat_right', function()
-               self.view.selectNext(function (Item) if Item.type == 'file' then return true end end)
-            end)
-
             if self.filterList then
-               Bar.addItem(6, 'Filter', 'Filter', 'tools/filter', function()
+               Bar.addItem(TBID.FILTER, 'Filter', 'Filter', 'tools/filter', function()
                   displayFilters(self)
+               end)
+
+               local filter_count = selectedFilters(self)
+               if filter_count > 0 then
+                  Bar.applySticker(TBID.FILTER, filter_count)
+               end
+            end
+
+            if tbo.navigation then
+               Bar.addGroup(4, 'Navigation', 2)
+
+               Bar.addItem(TBID.PREV, 'Prev', 'Previous File', 'arrows/fat_left', function()
+                  self.view.selectPrev(function (Item) if Item.type == 'file' then return true end end)
+               end)
+
+               Bar.addItem(TBID.NEXT, 'Next', 'Next File', 'arrows/fat_right', function()
+                  self.view.selectNext(function (Item) if Item.type == 'file' then return true end end)
                end)
             end
 
-            Bar.addItem(3, 'Bookmark', 'Create Bookmark', 'items/new_bookmark', function()
-               if not self.path or (string.len(self.path) < 3) then return end
+            if tbo.clipboard then
+               Bar.addGroup(7, 'Clipboard', 3)
 
-               local current_path = self.path
+               Bar.addItem(TBID.CUT, 'Cut', 'Cut', 'tools/cut', function()
+                  self.cutFiles()
+               end)
 
-               gui.dialog.message({
-                  modal     = true,
-                  image     = 'items/new_bookmark',
-                  title     = 'Create New Volume',
-                  message   = 'Enter a new volume name for the path ' .. self.path,
-                  userInput = '',
-                  options   = {
-                     { id=2, text='Cancel', icon='items/cancel' },
-                     { id=1, text='Create Volume', icon='items/checkmark' }
-                  },
-                  feedback = function(Dialog, Response, State)
-                     if Response and Response.id == 1 and string.len(State.input) > 0 then
-                        mSys.SetVolume(State.input, current_path, 'items/bookmark', nil, nil, VOLUME_REPLACE)
+               Bar.addItem(TBID.COPY, 'Copy', 'Copy', 'tools/copy', function()
+                  self.copyFiles()
+               end)
+
+               Bar.addItem(TBID.PASTE, 'Paste', 'Paste', 'tools/paste', function()
+                  self.pasteFiles()
+               end)
+            end
+
+            if tbo.actions then
+               Bar.addGroup(11, 'Actions', 4)
+
+               Bar.addItem(TBID.BOOKMARK, 'Bookmark', 'Create Bookmark', 'items/new_bookmark', function()
+                  if not self.path or (string.len(self.path) < 3) then return end
+
+                  local current_path = self.path
+
+                  gui.dialog.message({
+                     modal     = true,
+                     image     = 'items/new_bookmark',
+                     title     = 'Create New Volume',
+                     message   = 'Enter a new volume name for the path ' .. self.path,
+                     userInput = '',
+                     options   = {
+                        { id=2, text='Cancel', icon='items/cancel' },
+                        { id=1, text='Create Volume', icon='items/checkmark' }
+                     },
+                     feedback = function(Dialog, Response, State)
+                        if Response and Response.id == 1 and string.len(State.input) > 0 then
+                           mSys.SetVolume(State.input, current_path, 'items/bookmark', nil, nil, VOLUME_REPLACE)
+                        end
                      end
-                  end
-               })
-            end)
+                  })
+               end)
 
+               Bar.addItem(TBID.CREATE_FOLDER, 'Create Folder', 'Create Folder', 'folders/folder_new', function()
+                  self.createFolder()
+               end)
+
+               Bar.addItem(TBID.RENAME, 'Rename', 'Rename', 'layout/interface_textbox', function()
+                  self.renameFile()
+               end)
+
+               Bar.addItem(TBID.DELETE, 'Delete', 'Delete', 'tools/eraser', function()
+                  self.deleteFiles()
+               end)
+            end
+
+            if tbo.settings then
+               Bar.addGroup(16, 'Settings', 2)
+
+               Bar.addItem(TBID.COL_VIEW, 'Column View', 'Column View', 'layout/column_three', function()
+                  self.fileview.view.style = 'column'
+               end)
+
+               Bar.addItem(TBID.LIST_VIEW, 'List View', 'List View', 'layout/list', function()
+                  self.fileview.view.style = 'list'
+               end)
+            end
          end
       })
 
       bkgd.height = self.toolbar.viewport.height
-      self._reserved_height = self.toolbar.viewport.height
-      self.view.window.y = self._reserved_height
-      self.view.scrollbar.vbar.viewport.y = self._reserved_height
+      self.view.reserveTop('FileView', self.toolbar.viewport.height)
    end
 
    local err
@@ -1629,7 +1707,7 @@ gui.fileview = function(View, Options)
       end)
    end
 
-   self.window = parentWindow(self.view.viewport.scene.surface)
+   self.frame = parentWindow(self.view.viewport.scene.surface)
 
    return self
 end
