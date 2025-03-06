@@ -93,6 +93,7 @@ end
 local function highlightItem(View, Item, Highlighted)
    if not Item._vectors.highlight and (Highlighted or Item._selected) then
       Item._vectors.highlight = Item._vectors.viewport.new('VectorRectangle', {
+         name = 'item_highlight',
          roundX = 4, roundY = 4, x = 0, y = 0, width = '100%', height = '100%'
       })
       Item._vectors.highlight.acMoveToBack()
@@ -251,6 +252,7 @@ local function bannerZoneClick(View, Col, X, Y, Value)
          end
 
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
+            name   = 'banner_sort',
             fill   = View._sort_desc,
             y      = math.round( ((BANNER_HEIGHT - ICON_SIZE) * 0.5)),
             width  = ICON_SIZE,
@@ -266,6 +268,7 @@ local function bannerZoneClick(View, Col, X, Y, Value)
          end
 
          View._sort.icon = Col.bannerVP.new('VectorRectangle', {
+            name   = 'banner_sort',
             fill   = View._sort_asc,
             y      = math.round((BANNER_HEIGHT - ICON_SIZE) * 0.5),
             width  = ICON_SIZE,
@@ -335,8 +338,23 @@ end
 
 gui.columnView = function(Options)
 
-   local function constructColumnBanner(View, Scene, Window, Page)
-      -- Note that the banner is placed outside of the view so that it cannot be scrolled vertically.
+   local function setColumns(View, Columns)
+      if #Columns == 0 then return end
+
+      local c = 1
+      local set = { }
+      View.namedCol = { }
+      for _, col in pairs(Columns) do
+         if not col['attrib'] then error('No attrib defined for column ' .. c) end
+
+         local new_col = { _index=c, width=100, title='Untitled' }
+         for k, v in pairs(col) do
+            new_col[k] = v
+         end
+         table.insert(set, new_col)
+         View.namedCol[col['attrib']] = new_col
+         c = c + 1
+      end
 
       if View.columns then -- Clear any existing banner allocations
          for _, col in pairs(View.columns) do
@@ -347,6 +365,8 @@ gui.columnView = function(Options)
          end
       end
 
+      View.columns = set
+
       View.reserveTop('ViewUI', BANNER_HEIGHT)
 
       if View.banner then View.banner.clip.free() end
@@ -356,19 +376,20 @@ gui.columnView = function(Options)
       -- Background graphics
 
       View.banner.clip = View.viewport.new('VectorViewport', {
+         name = 'banner_clip',
          x = 0, y = View.frame.y - BANNER_HEIGHT, width = '100%', height = BANNER_HEIGHT, overflow = VOF_HIDDEN
       })
 
       View.banner.viewport = View.banner.clip.new('VectorViewport', {
-         x = 0, y = 0, width = '100%', height = BANNER_HEIGHT, overflow = VOF_HIDDEN
+         name = 'banner_vp', x = 0, y = 0, width = '100%', height = BANNER_HEIGHT, overflow = VOF_HIDDEN
       })
 
       View.banner.bkgd = View.banner.clip.new('VectorRectangle', {
-         x = 0, y = 0, width = '100%', height = '1', fill = lColours.strokeButton
+         name = 'banner_bkgd', x = 0, y = 0, width = '100%', height = '1', fill = lColours.strokeButton
       })
 
       View.banner.lines = View.banner.viewport.new('VectorPath', {
-         stroke = lColours.strokeButton, strokeWidth = 1
+         name = 'banner_lines', stroke = lColours.strokeButton, strokeWidth = 1
       })
 
       View.banner.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
@@ -406,16 +427,19 @@ gui.columnView = function(Options)
          if not col.bannerVP then
             -- Each banner viewport hosts the title and sorting icon
             col.bannerVP = View.banner.viewport.new('VectorViewport', {
+               name = 'col_banner_vp',
                x = x, y = 0, width = col.width, height = '100%', overflow = VOF_HIDDEN
             })
 
-            col.vecViewport = Page.new('VectorViewport', {  -- The column VP hosts all page text for the column
+            col.vecViewport = View.page.new('VectorViewport', {  -- The column VP hosts all page text for the column
+               name = 'col_content',
                x = x, y = 0, width = col.width, height = '100%', overflow = VOF_HIDDEN
             })
 
             -- Column title
 
             col.vecTitle = col.bannerVP.new('VectorText', {
+               name     = 'col_title',
                face     = gui.fonts.widget.face,
                fontSize = string.format('%.2fpt', gui.fonts.widget.size),
                align    = nz(col.align, 'left'),
@@ -425,6 +449,7 @@ gui.columnView = function(Options)
             -- Support for resize management
 
             col.resizeVP = View.banner.viewport.new('VectorViewport', {
+               name = 'col_resize_zone',
                x = x + col.width - (MARGIN * 0.5), y = 0,
                width = MARGIN, height = '100%', cursor = PTC_SPLIT_HORIZONTAL
             })
@@ -450,7 +475,7 @@ gui.columnView = function(Options)
 
                if View.scrollbar then
                   local page_width = new_x + EDGE + EDGE
-                  View.scrollbar.setDynamicPageSize(page_width, page_width, Page.height)
+                  View.scrollbar.setDynamicPageSize(page_width, page_width, View.page.height)
                end
 
                if col.align == 'right' then -- Realign all text in this column
@@ -486,45 +511,27 @@ gui.columnView = function(Options)
 
       arrangeColumns(View)
 
-      -- Ensure that the column banner is always aligned with the page.
+      if not View.columnsInitialised then
+         -- Ensure that the column banner is always aligned with the page.
 
-      Page.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
-         View.banner.viewport.x = View.page.x
+         View.page.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+            View.banner.viewport.x = View.page.x
 
-         local page_width = View.page.width
-         local frame_width = View.viewport.width
-         if page_width > frame_width then
-            View.banner.clip.width = page_width
-         else
-            View.banner.clip.width = frame_width
-         end
-      end)
+            local page_width = View.page.width
+            local frame_width = View.viewport.width
+            if page_width > frame_width then
+               View.banner.clip.width = page_width
+            else
+               View.banner.clip.width = frame_width
+            end
+         end)
 
-      View.frame.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
-         View.banner.clip.y = View.frame.y - BANNER_HEIGHT
-      end)
-   end
-
-   local function setColumns(View, Columns)
-      if #Columns == 0 then return end
-
-      local c = 1
-      local set = { }
-      View.namedCol = { }
-      for _, col in pairs(Columns) do
-         if not col['attrib'] then error('No attrib defined for column ' .. c) end
-
-         local new_col = { _index=c, width=100, title='Untitled' }
-         for k, v in pairs(col) do
-            new_col[k] = v
-         end
-         table.insert(set, new_col)
-         View.namedCol[col['attrib']] = new_col
-         c = c + 1
+         View.frame.mtSubscribeFeedback(FM_PATH_CHANGED, function(Viewport, Event)
+            View.banner.clip.y = View.frame.y - BANNER_HEIGHT
+         end)
       end
 
-      View.columns = set
-      constructColumnBanner(View, View.scene, View.frame, View.page)
+      View.columnsInitialised = true;
    end
 
    -- Process new items that have been added to the view
@@ -554,6 +561,7 @@ gui.columnView = function(Options)
 
          if not item._vectors.viewport then
             item._vectors.viewport = View.page.new('VectorViewport', {
+               name = 'item_vp',
                x = EDGE, y = y, xOffset = EDGE, height = LINE_HEIGHT, visibility = vis
             })
          else
@@ -594,6 +602,7 @@ gui.columnView = function(Options)
 
                   if not item._vectors.iconImage then
                      item._vectors.iconImage = col.vecViewport.new('VectorRectangle', {
+                        name   = 'item_icon',
                         fill   = item._iconFill,
                         x      = MARGIN * 2,
                         y      = y + ICON_OFFSET,
@@ -624,6 +633,7 @@ gui.columnView = function(Options)
             if nz(item[attrib]) then
                if not item._col[attrib].text then
                   item._col[attrib].text = col.vecViewport.new('VectorText', {
+                     name     = 'text_' .. attrib,
                      face     = gui.fonts.widget.face,
                      fontSize = string.format('%.2fpt', gui.fonts.widget.size),
                      align    = nz(col.align, 'left'),
@@ -670,9 +680,9 @@ gui.columnView = function(Options)
       end
    end
 
-   -- Callback function for constructing the view from scratch
+   -- Callback function for constructing the view from scratch.  Can be called multiple times
 
-   local function constructColumnView(View, Scene, Window, Page)
+   local function constructColumnView(View)
       setColumns(View, nz(Options.columns, { }))
 
       View._last_y = EDGE

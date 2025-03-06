@@ -535,7 +535,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.page.x = 0 -- Reset the page position
       vw.page.y = 0
 
-      BuildUI(vw, vw.scene, vw.frame, vw.page)
+      BuildUI(vw)
       cursorActivity() -- Reset the cursor
       if vw.border then vw.border.acMoveToFront() end
       vw.scene.surface.mtScheduleRedraw()
@@ -605,7 +605,7 @@ gui.initView = function(Options, BuildUI, NewItems)
       direction = 'all'
    })
 
-   if not Options.borderless then
+   if not Options.borderless and vw.scrollbar then
       vw.scrollbar.hbar.viewport.x = 1
       vw.scrollbar.vbar.viewport.y = 1
    end

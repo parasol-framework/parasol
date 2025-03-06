@@ -230,7 +230,7 @@ gui.listView = function(Options)
       end
    end
 
-   local function constructListView(View, Scene, Window, Page)
+   local function constructListView(View)
       if not View.icons then View.icons = { } end
       if not View.hIcons then View.hIcons = { } end
 

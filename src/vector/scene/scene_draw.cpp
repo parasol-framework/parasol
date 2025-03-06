@@ -63,6 +63,7 @@ private:
 
 public:
    extVectorScene *Scene; // The top-level VectorScene performing the draw.
+   LONG mObjectCount;     // The number of objects drawn
 
    SceneRenderer(extVectorScene *pScene) : Scene(pScene) { }
    void draw(objBitmap *, objVectorViewport *);
@@ -569,6 +570,8 @@ void SceneRenderer::draw(objBitmap *Bitmap, objVectorViewport *Viewport)
 {
    pf::Log log;
 
+   mObjectCount = 0;
+
    log.traceBranch("Bitmap: %dx%d,%dx%d, Viewport: %p", Bitmap->Clip.Left, Bitmap->Clip.Top, Bitmap->Clip.Right, Bitmap->Clip.Bottom, Scene->Viewport);
 
    if ((Bitmap->Clip.Bottom > Bitmap->Height) or (Bitmap->Clip.Right > Bitmap->Width)) {
@@ -698,6 +701,8 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
             continue;
          }
       }
+
+      mObjectCount++;
 
       auto filter = (extVectorFilter *)shape->Filter;
       if ((filter) and (!filter->Disabled)) {
