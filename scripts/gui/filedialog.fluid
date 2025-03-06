@@ -28,13 +28,6 @@ gui.dialog.file = function(Options)
    local function processFeedback()
       local list = self.view.selectedItems()
 
-      if #list == 0 then -- User may have manually entered a filename
-         local filename = self.filebox.text.string
-         if nz(filename) then
-            list = { { filename = filename } }
-         end
-      end
-
       if (self.warnExists == true) and (#list > 0) then
          local error, type = mSys.AnalysePath(nz(self.fileview.path,'') .. list[1].filename)
          if (type == LOC_FILE) then
@@ -198,34 +191,22 @@ gui.dialog.file = function(Options)
       dragDrop    = true,
       multiSelect = self.multiSelect,
       itemSelected = function(View, Reason, Item)
-         -- Display the selected item in the file text box.
-
+         -- Display the selected item in the path box.
+--[[
          if (self.fileview == nil) then return end
 
          local selection = self.fileview.selectionPath()
          if not nz(selection) then
-            --self.filebox.text.string = ''
-            return
-         end
-
-         local err, fileType = mSys.AnalysePath(selection)
-         if (err != ERR_Okay) then
-            self.filebox.text.string = ''
-            return
-         end
-
-         if (fileType == LOC_FILE) then
-            self.filebox.text.string = self.fileview.selection()
-            return
-         end
-
-         if nz(Options.selectFolder) then
-            if (fileType == LOC_FOLDER) then
-               self.filebox.text.string = ''
-            elseif (fileType == LOC_VOLUME) then
-               self.filebox.text.string = ''
+            self.pathbox.text.string = self.currentPath
+         else
+            local err, fileType = mSys.AnalysePath(selection)
+            if (err != ERR_Okay) then
+               self.pathbox.text.string = self.currentPath
+            elseif (fileType == LOC_FILE) then
+               self.pathbox.text.string = self.currentPath .. '/' .. self.fileview.selection()
             end
          end
+--]]
       end
    })
 
