@@ -811,12 +811,11 @@ FindObject: Searches for objects by name.
 
 The FindObject() function searches for all objects that match a given name and can filter by class.
 
-The following example is a typical illustration of this function's use.  It finds the most recent object created
-with a given name:
+The following example illustrates typical usage, and finds the most recent object created with a given name:
 
 <pre>
 OBJECTID id;
-FindObject("SystemPointer", CLASSID::POINTER, 0, &id);
+FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &id);
 </pre>
 
 If FindObject() cannot find any matching objects then it will return an error code.

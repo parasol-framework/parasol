@@ -1163,12 +1163,12 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
 
 //********************************************************************************************************************
 
-void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, bool Linear)
+void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, bool Linear) noexcept
 {
    rawBitmap(Bitmap.Data, Bitmap.Clip.Right, Bitmap.Clip.Bottom, Bitmap.LineWidth, Bitmap.BitsPerPixel, *Bitmap.ColourFormat, Linear);
 }
 
-void agg::pixfmt_psl::rawBitmap(UBYTE *Data, LONG Width, LONG Height, LONG Stride, LONG BitsPerPixel, ColourFormat &ColourFormat, bool Linear)
+void agg::pixfmt_psl::rawBitmap(UBYTE *Data, LONG Width, LONG Height, LONG Stride, LONG BitsPerPixel, ColourFormat &ColourFormat, bool Linear) noexcept
 {
    mData   = Data;
    mWidth  = Width;
