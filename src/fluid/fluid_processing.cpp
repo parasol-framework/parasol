@@ -128,6 +128,7 @@ static int processing_sleep(lua_State *Lua)
 
    bool wake_on_signal;
    if (lua_type(Lua, 2) IS LUA_TBOOLEAN) wake_on_signal = lua_toboolean(Lua, 2);
+   else if (!timeout) wake_on_signal = false; // We don't want to intercept signals if just processing messages
    else wake_on_signal = true;
 
    log.branch("Timeout: %d, WakeOnSignal: %c", timeout, wake_on_signal ? 'Y' : 'N');
