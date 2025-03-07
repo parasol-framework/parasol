@@ -11,8 +11,8 @@ local VSPACING  = 1
 local EDGE      = 4
 
 local LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-LINE_HEIGHT = math.round(LINE_HEIGHT * 1.3)
-local LINE_OFFSET = (LINE_HEIGHT + FONT_HEIGHT) * 0.5
+LINE_HEIGHT = math.round(LINE_HEIGHT * 1.2)
+local LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
 
 local function rearrangeItems(View)
    View.zones = { }
@@ -171,10 +171,11 @@ gui.listView = function(Options)
          if item_name then
             if not item._vectors.text then
                item._vectors.text = vp.new('VectorText', {
-                  face     = gui.fonts.widget.face,
-                  fontSize = string.format('%.2fpt', gui.fonts.widget.size),
-                  align    = 'left',
-                  y        = LINE_OFFSET
+                  face      = gui.fonts.filesys.face,
+                  fontSize  = string.format('%.2fpt', gui.fonts.filesys.size),
+                  fontStyle = gui.fonts.filesys.style,
+                  align     = 'left',
+                  y         = LINE_OFFSET
                })
             end
 

@@ -389,6 +389,7 @@ end
      icon     = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Labeling for icons
      menu     = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Menu item text
      titlebar = { face='Noto Sans', size='100%' }, -- Window titlebar text
+     filesys  = { face='Inconsolata', size='12', style='medium' }, -- Text for files, folders
      small    = { face='Tiny', size='60%' }, -- Recommended text for small sizes
      large    = { face='Noto Sans,Source Sans Pro', size='130%' }, -- Recommended text for headers
      widget   = { face='Noto Sans,Source Sans Pro', size='100%' }, -- Text inside widgets (e.g. combobox)

@@ -17,7 +17,7 @@ local PAGE_LINE_HEIGHT, PAGE_FONT_HEIGHT = gui.getFontHeight(gui.fonts.page)
 local MARGIN = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
 
 LINE_HEIGHT = math.round(LINE_HEIGHT * 1.33)
-PAGE_LINE_HEIGHT = math.round(PAGE_LINE_HEIGHT * 1.33)
+PAGE_LINE_HEIGHT = math.round(PAGE_LINE_HEIGHT * 1.1)
 
 local ICON_OFFSET = math.round((PAGE_LINE_HEIGHT - ICON_SIZE) * 0.5)
 local LINE_OFFSET = math.round((PAGE_LINE_HEIGHT + PAGE_FONT_HEIGHT) * 0.5)
@@ -441,11 +441,12 @@ gui.columnView = function(Options)
             -- Column title
 
             col.vecTitle = col.bannerVP.new('VectorText', {
-               name     = 'col_title',
-               face     = gui.fonts.widget.face,
-               fontSize = string.format('%.2fpt', gui.fonts.widget.size),
-               align    = nz(col.align, 'left'),
-               y        = math.round((BANNER_HEIGHT + FONT_HEIGHT) * 0.5)
+               name      = 'col_title',
+               face      = gui.fonts.filesys.face,
+               fontSize  = string.format('%.2fpt', gui.fonts.filesys.size),
+               fontStyle = gui.fonts.filesys.style,
+               align     = nz(col.align, 'left'),
+               y         = math.round((BANNER_HEIGHT + FONT_HEIGHT) * 0.5)
             })
 
             -- Support for resize management
@@ -635,11 +636,12 @@ gui.columnView = function(Options)
             if nz(item[attrib]) then
                if not item._col[attrib].text then
                   item._col[attrib].text = col.vecViewport.new('VectorText', {
-                     name     = 'text_' .. attrib,
-                     face     = gui.fonts.page.face,
-                     fontSize = string.format('%.2fpt', gui.fonts.page.size),
-                     align    = nz(col.align, 'left'),
-                     y        = y + LINE_OFFSET,
+                     name      = 'text_' .. attrib,
+                     face      = gui.fonts.filesys.face,
+                     fontSize  = string.format('%.2fpt', gui.fonts.filesys.size),
+                     fontStyle = gui.fonts.filesys.style,
+                     align     = nz(col.align, 'left'),
+                     y         = y + LINE_OFFSET,
                      visibility = vis
                   })
                   item._vectors['_a_' .. attrib] = item._col[attrib].text -- Referenced for future termination
