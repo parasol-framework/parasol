@@ -4,8 +4,8 @@
    require 'gui'
    require 'gui/scrollbar'
 
-   if (not mGfx) then mGfx = mod.load('display') end
-   if (not mVec) then mVec = mod.load('vector') end
+   if not mGfx then mGfx = mod.load('display') end
+   if not mVec then mVec = mod.load('vector') end
 
    local lItemCounter   = 1
 
@@ -193,6 +193,9 @@ gui.initView = function(Options, BuildUI, NewItems)
       viewport   = nil,
       page       = nil,
       window     = nil, -- Host of the page
+      fontFace   = nz(Options.fontFace, gui.fonts.page.face),
+      fontSize   = nz(Options.fontSize, gui.fonts.page.size),
+      fontStyle  = nz(Options.fontStyle, gui.fonts.page.style),
       noIcons    = Options.noIcons,
       itemSelected   = Options.itemSelected,
       itemDeselected = Options.itemDeselected,

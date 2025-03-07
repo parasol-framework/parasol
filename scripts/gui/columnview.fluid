@@ -17,7 +17,7 @@ local PAGE_LINE_HEIGHT, PAGE_FONT_HEIGHT = gui.getFontHeight(gui.fonts.page)
 local MARGIN = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
 
 LINE_HEIGHT = math.round(LINE_HEIGHT * 1.33)
-PAGE_LINE_HEIGHT = math.round(PAGE_LINE_HEIGHT * 1.1)
+PAGE_LINE_HEIGHT = math.round(PAGE_LINE_HEIGHT * 1.3)
 
 local ICON_OFFSET = math.round((PAGE_LINE_HEIGHT - ICON_SIZE) * 0.5)
 local LINE_OFFSET = math.round((PAGE_LINE_HEIGHT + PAGE_FONT_HEIGHT) * 0.5)
@@ -637,9 +637,9 @@ gui.columnView = function(Options)
                if not item._col[attrib].text then
                   item._col[attrib].text = col.vecViewport.new('VectorText', {
                      name      = 'text_' .. attrib,
-                     face      = gui.fonts.filesys.face,
-                     fontSize  = string.format('%.2fpt', gui.fonts.filesys.size),
-                     fontStyle = gui.fonts.filesys.style,
+                     face      = View.fontFace,
+                     fontSize  = string.format('%.2fpt', View.fontSize),
+                     fontStyle = View.fontStyle,
                      align     = nz(col.align, 'left'),
                      y         = y + LINE_OFFSET,
                      visibility = vis

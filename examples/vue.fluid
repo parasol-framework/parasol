@@ -193,15 +193,18 @@ end
       -- File view on the left
 
       glView = gui.listView({
-         target       = glViewport,
-         x            = glWindow.margins.left,
-         y            = glWindow.margins.top,
-         width        = 200,
-         yOffset      = glWindow.margins.top,
-         dragDrop     = true,
-         sensitive    = true,
-         multiSelect  = false,
-         borderless   = true
+         target      = glViewport,
+         x           = glWindow.margins.left,
+         y           = glWindow.margins.top,
+         width       = 200,
+         yOffset     = glWindow.margins.top,
+         dragDrop    = true,
+         sensitive   = true,
+         multiSelect = false,
+         borderless  = true,
+         fontFace    = gui.fonts.filesys.face,
+         fontSize    = gui.fonts.filesys.size,
+         fontStyle   = gui.fonts.filesys.style,
       })
 
       glFileview = gui.fileview(glView, {

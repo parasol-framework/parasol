@@ -189,6 +189,9 @@ gui.dialog.file = function(Options)
       target      = viewRegion,
       dragDrop    = true,
       multiSelect = self.multiSelect,
+      fontFace    = gui.fonts.filesys.face,
+      fontSize    = gui.fonts.filesys.size,
+      fontStyle   = gui.fonts.filesys.style,
       itemSelected = function(View, Reason, Item)
          -- Display the selected item in the path box.
 --[[
