@@ -5,8 +5,8 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui'
 
-local FONT_MAX_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-local HEIGHT        = math.floor(FONT_MAX_HEIGHT * 1.75) + 1
+local LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+local HEIGHT        = math.floor(LINE_SPACING * 1.75) + 1
 local ICON_SIZE     = HEIGHT * 0.56
 local GAP           = HEIGHT * 0.35
 
@@ -118,6 +118,7 @@ gui.button = function(Options)
          y         = FONT_HEIGHT + math.floor((HEIGHT - FONT_HEIGHT - (gui.style.widget.strokeWidth * 2)) * 0.5),
          face      = gui.fonts.button.face,
          fontSize  = string.format('%.2fpt', gui.fonts.button.size),
+         fontStyle = gui.fonts.button.style,
          fill      = gui.style.widget.text,
          string    = Options.text,
          lineLimit = 1

@@ -44,6 +44,7 @@ gui.tooltip = function(Options)
       string    = Options.text,
       fill      = gui.style.page.text,
       face      = gui.fonts.button.face,
+      fontStyle = gui.fonts.button.style,
       fontSize  = string.format('%.2fpt', gui.fonts.button.size),
       textFlags = VTXF_RASTER
    })

@@ -13,12 +13,14 @@ local lCounter  = 1
 local EDGE      = 4 -- Whitespace around the page
 
 local LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
+local PAGE_LINE_HEIGHT, PAGE_FONT_HEIGHT = gui.getFontHeight(gui.fonts.page)
 local MARGIN = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
 
 LINE_HEIGHT = math.round(LINE_HEIGHT * 1.33)
+PAGE_LINE_HEIGHT = math.round(PAGE_LINE_HEIGHT * 1.33)
 
-local ICON_OFFSET = math.round((LINE_HEIGHT - ICON_SIZE) * 0.5)
-local LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
+local ICON_OFFSET = math.round((PAGE_LINE_HEIGHT - ICON_SIZE) * 0.5)
+local LINE_OFFSET = math.round((PAGE_LINE_HEIGHT + PAGE_FONT_HEIGHT) * 0.5)
 local BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
 local lEnableTextGradients
 
@@ -326,8 +328,8 @@ local function rearrangeItems(View)
       end
 
       if not item.hidden then
-         View.addZone(0, item._y, nil, LINE_HEIGHT, item)
-         y = y + LINE_HEIGHT + VSPACING
+         View.addZone(0, item._y, nil, PAGE_LINE_HEIGHT, item)
+         y = y + PAGE_LINE_HEIGHT + VSPACING
       end
    end
 
@@ -562,7 +564,7 @@ gui.columnView = function(Options)
          if not item._vectors.viewport then
             item._vectors.viewport = View.page.new('VectorViewport', {
                name = 'item_vp',
-               x = EDGE, y = y, xOffset = EDGE, height = LINE_HEIGHT, visibility = vis
+               x = EDGE, y = y, xOffset = EDGE, height = PAGE_LINE_HEIGHT, visibility = vis
             })
          else
             item._vectors.viewport.y     = y
@@ -634,8 +636,8 @@ gui.columnView = function(Options)
                if not item._col[attrib].text then
                   item._col[attrib].text = col.vecViewport.new('VectorText', {
                      name     = 'text_' .. attrib,
-                     face     = gui.fonts.widget.face,
-                     fontSize = string.format('%.2fpt', gui.fonts.widget.size),
+                     face     = gui.fonts.page.face,
+                     fontSize = string.format('%.2fpt', gui.fonts.page.size),
                      align    = nz(col.align, 'left'),
                      y        = y + LINE_OFFSET,
                      visibility = vis
@@ -661,14 +663,14 @@ gui.columnView = function(Options)
             end
 
             if not item.hidden then
-               View.addZone(0, item._y, nil, LINE_HEIGHT, item)
+               View.addZone(0, item._y, nil, PAGE_LINE_HEIGHT, item)
             end
 
             cx = cx + col.width
          end
 
          if not item.hidden then
-            y = y + LINE_HEIGHT + VSPACING
+            y = y + PAGE_LINE_HEIGHT + VSPACING
          end
       end
 

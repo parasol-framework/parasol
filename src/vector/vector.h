@@ -81,6 +81,7 @@ class extVectorViewport;
 class extVectorClip;
 
 extern std::unordered_map<std::string, std::array<FRGB, 256>> glColourMaps;
+extern objConfig *glFontConfig;
 
 //********************************************************************************************************************
 

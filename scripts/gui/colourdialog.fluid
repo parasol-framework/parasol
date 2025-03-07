@@ -139,13 +139,14 @@ local function buildLayout(self, Options)
    local dy = 0
 
    self.txtBasicColours = self.viewport.new('VectorText', {
-      x        = dx,
-      y        = dy + gui.getFontHeight(gui.fonts.window),
-      string   = 'Basic colours',
-      fill     = 'rgba(0,0,0,1)',
-      face     = gui.fonts.window.face,
-      fontSize = string.format('%.2fpt', gui.fonts.window.size),
-      align    = 'left'
+      x         = dx,
+      y         = dy + gui.getFontHeight(gui.fonts.window),
+      string    = 'Basic colours',
+      fill      = 'rgba(0,0,0,1)',
+      face      = gui.fonts.window.face,
+      fontSize  = string.format('%.2fpt', gui.fonts.window.size),
+      fontStyle = gui.fonts.window.style,
+      align     = 'left'
    })
 
    dy = dy + gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
@@ -189,13 +190,14 @@ local function buildLayout(self, Options)
    -- Configure an array of 8x2 user customised colours
 
    self.txtPersonalColours = self.viewport.new('VectorText', {
-      x        = dx,
-      y        = dy + gui.getFontHeight(gui.fonts.window),
-      string   = 'Personal colours',
-      fill     = 'rgba(0,0,0,1)',
-      face     = gui.fonts.window.face,
-      fontSize = string.format('%.2fpt', gui.fonts.window.size),
-      align    = 'left'
+      x         = dx,
+      y         = dy + gui.getFontHeight(gui.fonts.window),
+      string    = 'Personal colours',
+      fill      = 'rgba(0,0,0,1)',
+      face      = gui.fonts.window.face,
+      fontSize  = string.format('%.2fpt', gui.fonts.window.size),
+      fontStyle = gui.fonts.window.style,
+      align     = 'left'
    })
 
    self._colourNodes = { }
@@ -296,13 +298,14 @@ local function buildLayout(self, Options)
    dy = 0
 
    self.txtRainbowPalette = self.viewport.new('VectorText', {
-      x        = dx,
-      y        = dy + gui.getFontHeight(gui.fonts.window),
-      string   = 'Rainbow palette',
-      fill     = 'rgba(0,0,0,1)',
-      face     = gui.fonts.window.face,
-      fontSize = string.format('%.2fpt', gui.fonts.window.size),
-      align    = 'left'
+      x         = dx,
+      y         = dy + gui.getFontHeight(gui.fonts.window),
+      string    = 'Rainbow palette',
+      fill      = 'rgba(0,0,0,1)',
+      face      = gui.fonts.window.face,
+      fontSize  = string.format('%.2fpt', gui.fonts.window.size),
+      fontStyle = gui.fonts.window.style,
+      align     = 'left'
    })
 
    dy = dy + gui.getFontHeight(gui.fonts.window) + WIDGET_GAP

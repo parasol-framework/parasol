@@ -84,6 +84,7 @@ gui.dropdown = function(Options)
                x        = TEXT_X,
                face     = gui.fonts.menu.face,
                fontSize = string.format('%.2fpt', gui.fonts.menu.size),
+               fontStyle = gui.fonts.menu.style,
                fill     = gui.style.page.text,
                align    = 'left',
                string   = item['item']

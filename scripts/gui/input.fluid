@@ -105,13 +105,14 @@ gui.input = function(Options)
 
    if self.label then
       self.labelText = self.viewport.new('VectorText', {
-         name     = 'vt_input_label',
-         x        = 0,
-         y        = math.round(font_height + math.floor((box_height - font_height) * 0.5)),
-         face     = nz(Options.textFace, gui.fonts.widget.face),
-         fontSize = string.format('%.2fpt', gui.fonts.widget.size),
-         fill     = nz(Options.labelFill, gui.style.window.text),
-         string   = self.label,
+         name      = 'vt_input_label',
+         x         = 0,
+         y         = math.round(font_height + math.floor((box_height - font_height) * 0.5)),
+         face      = nz(Options.textFace, gui.fonts.label.face),
+         fontSize  = string.format('%.2fpt', gui.fonts.label.size),
+         fontStyle = gui.fonts.label.style,
+         fill      = nz(Options.labelFill, gui.style.window.text),
+         string    = self.label,
          lineLimit = 1
       })
 
@@ -146,7 +147,7 @@ gui.input = function(Options)
       y         = math.round(font_height + math.floor((box_height - font_height - (gui.style.page.strokeWidth * 2)) * 0.5)),
       face      = nz(Options.textFace, gui.fonts.widget.face),
       fontSize  = string.format('%.2fpt', gui.fonts.widget.size),
-      fontStyle = nz(Options.textStyle, 'Regular'),
+      fontStyle = nz(Options.textStyle, gui.fonts.widget.style),
       fill      = nz(Options.textFill, gui.style.page.text),
       string    = Options.text,
       lineLimit = 1,

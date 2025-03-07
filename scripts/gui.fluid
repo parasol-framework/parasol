@@ -506,7 +506,7 @@ end
    end
 
    gui.interface = {
-     fontSize  = 11, -- Default font-size for everything (pt)
+     fontSize  = 12, -- Default font-size for everything (pt)
      iconTheme = 'Default', -- Named folder to load the icons from
      iconSize  = 20   -- Recommended default size for icons (px) and should be linked to fontSize
    }
@@ -519,5 +519,9 @@ end
             pct = tonumber(string.match(gui.fonts[k].size, '^(%-?%d+)%%$'))
             gui.fonts[k].size = math.floor(gui.interface.fontSize * (pct / 100))
          end
+      end
+
+      if not gui.fonts[k].style then
+         gui.fonts[k].style = 'Regular'
       end
    end

@@ -25,7 +25,7 @@ fast `1:1` rendering without transforms.  The user is otherwise better served th
 Some notes about font rendering:
 
 * Font glyphs should always be positioned with a rounded vertical baseline when drawn.  That is to say a Y coordinate of
-  385 is fine, but a value of 385.76 is not.  The Freetype glyphs are hinted based on this assumption.  If a glyph's
+  385 is fine and 385.76 is not.  The Freetype glyphs are hinted based on this assumption.  If a glyph's
   baseline can adopt any position, the hinting may as well be turned off.
 
 * Whether or not a glyph's X coordinate should be rounded is a matter of preference.  An aligned glyph will be less
@@ -61,6 +61,7 @@ where large glyphs were oriented around sharp corners.  The process would look s
 const LONG DEFAULT_WEIGHT = 400;
 
 static FIELD FID_FreetypeFace;
+objConfig *glFontConfig = NULL;
 
 //********************************************************************************************************************
 
@@ -2094,6 +2095,11 @@ static const FieldArray clTextFields[] = {
 static ERR init_text(void)
 {
    FID_FreetypeFace = strihash("FreetypeFace");
+   
+   OBJECTID id;
+   if (FindObject("cfgSystemFonts", CLASSID::CONFIG, FOF::NIL, &id) IS ERR::Okay) {
+      glFontConfig = (objConfig *)GetObjectPtr(id);
+   }
 
    clVectorText = objMetaClass::create::global(
       fl::BaseClassID(CLASSID::VECTOR),
