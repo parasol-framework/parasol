@@ -377,6 +377,12 @@ gui.columnView = function(Options)
 
       -- Background graphics
 
+      if View.invertedPalette then
+         View.banner.fgFill = gui.palette.altText
+      else
+         View.banner.fgFill = gui.style.window.text
+      end
+
       View.banner.clip = View.viewport.new('VectorViewport', {
          name = 'banner_clip',
          x = 0, y = View.frame.y - BANNER_HEIGHT, width = '100%', height = BANNER_HEIGHT, overflow = VOF_HIDDEN
@@ -387,11 +393,11 @@ gui.columnView = function(Options)
       })
 
       View.banner.bkgd = View.banner.clip.new('VectorRectangle', {
-         name = 'banner_bkgd', x = 0, y = 0, width = '100%', height = '1', fill = lColours.strokeButton
+         name = 'banner_bkgd', x = 0, y = 0, width = '100%', height = '1', fill = View.banner.fgFill, opacity=0.5
       })
 
       View.banner.lines = View.banner.viewport.new('VectorPath', {
-         name = 'banner_lines', stroke = lColours.strokeButton, strokeWidth = 1
+         name = 'banner_lines', stroke = View.banner.fgFill, strokeWidth = 1, opacity=0.5
       })
 
       View.banner.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
@@ -445,6 +451,7 @@ gui.columnView = function(Options)
                face      = gui.fonts.filesys.face,
                fontSize  = string.format('%.2fpt', gui.fonts.filesys.size),
                fontStyle = gui.fonts.filesys.style,
+               fill      = View.banner.fgFill,
                align     = nz(col.align, 'left'),
                y         = math.round((BANNER_HEIGHT + FONT_HEIGHT) * 0.5)
             })
@@ -502,11 +509,6 @@ gui.columnView = function(Options)
          end
 
          col.vecTitle.string = nz(col['title'], 'Untitled')
-         if View._sort and (col == View._sort.col) then
-            col.vecTitle.fill = gui.style.widget.text
-         else
-            col.vecTitle.fill = gui.style.widget.text
-         end
 
          x = x + col.width
          prev = col

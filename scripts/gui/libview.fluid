@@ -197,13 +197,14 @@ gui.initView = function(Options, BuildUI, NewItems)
       fontSize   = nz(Options.fontSize, gui.fonts.page.size),
       fontStyle  = nz(Options.fontStyle, gui.fonts.page.style),
       noIcons    = Options.noIcons,
-      itemSelected   = Options.itemSelected,
-      itemDeselected = Options.itemDeselected,
-      itemActivated  = Options.itemActivated,
-      activeChange   = Options.activeChange,
-      events         = nz(Options.events, {}),
-      top            = { },
-      totalTop       = 0
+      itemSelected    = Options.itemSelected,
+      itemDeselected  = Options.itemDeselected,
+      itemActivated   = Options.itemActivated,
+      invertedPalette = Options.invertPalette,
+      activeChange    = Options.activeChange,
+      events          = nz(Options.events, {}),
+      top             = { },
+      totalTop        = 0
    }
 
    vw.addItem = function(Item)
