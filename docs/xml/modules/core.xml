@@ -637,9 +637,9 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     </input>
     <description>
 <p>The FindObject() function searches for all objects that match a given name and can filter by class.</p>
-<p>The following example is a typical illustration of this function's use.  It finds the most recent object created with a given name:</p>
+<p>The following example illustrates typical usage, and finds the most recent object created with a given name:</p>
 <pre>OBJECTID id;
-FindObject("SystemPointer", CLASSID::POINTER, 0, &amp;id);
+FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 </pre>
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
     </description>

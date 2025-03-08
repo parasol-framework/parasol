@@ -1,13 +1,7 @@
 
-INLINE void BLEND32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
-{
-   p[oR] = ((p[oR] * (0xff-ca)) + (cr * ca) + 0xff)>>8;
-   p[oG] = ((p[oG] * (0xff-ca)) + (cg * ca) + 0xff)>>8;
-   p[oB] = ((p[oB] * (0xff-ca)) + (cb * ca) + 0xff)>>8;
-   p[oA] = 0xff - (((0xff - ca) * (0xff - p[oA]))>>8); // The W3C's SVG sanctioned method for the alpha channel :)
-}
+extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
 
-INLINE void LINEAR32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
+inline void LINEAR32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
 {
    p[oR] = glLinearRGB.invert(((glLinearRGB.convert(p[oR]) * (0xff-ca)) + (glLinearRGB.convert(cr) * ca) + 0xff)>>8);
    p[oG] = glLinearRGB.invert(((glLinearRGB.convert(p[oG]) * (0xff-ca)) + (glLinearRGB.convert(cg) * ca) + 0xff)>>8);
@@ -15,60 +9,50 @@ INLINE void LINEAR32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr,
    p[oA] = 0xff - (((0xff - ca) * (0xff - p[oA]))>>8);
 }
 
-INLINE void COPY32(UBYTE *p, ULONG r, ULONG g, ULONG b, ULONG a, ULONG cr, ULONG cg, ULONG cb, ULONG ca)
+#define FAST_BLEND 1
+#ifdef FAST_BLEND
+inline void BLEND32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
 {
-   p[r] = cr;
-   p[g] = cg;
-   p[b] = cb;
-   p[a] = ca;
+   p[oR] = ((p[oR] * (0xff-ca)) + (cr * ca) + 0xff)>>8;
+   p[oG] = ((p[oG] * (0xff-ca)) + (cg * ca) + 0xff)>>8;
+   p[oB] = ((p[oB] * (0xff-ca)) + (cb * ca) + 0xff)>>8;
+   p[oA] = 0xff - (((0xff - ca) * (0xff - p[oA]))>>8); // The W3C's SVG sanctioned method for the alpha channel :)
 }
+#else
+// Gamma correct blending.  To be used only when alpha < 255
 
-/*
-INLINE void BLEND32(UBYTE *p, UBYTE r, UBYTE g, UBYTE b, UBYTE a, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
+inline void BLEND32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
 {
-   const ULONG a1 = p[a];
-   const ULONG &a2 = ca;
-   const ULONG a2inv = 0xff - a2;
-   const ULONG a5 = a2inv * a1;
-   const ULONG a3 = a2 + a5 / 0xff;
+   const auto dest_alpha = p[oA];
+   const UBYTE alpha_inv = 0xff - ca;
+   const ULONG a5 = alpha_inv * dest_alpha;
+   const ULONG final_alpha = 0xff - ((alpha_inv * (0xff - dest_alpha))>>8);
 
-   if (a3 > 0) {
-       const ULONG r1 = glGamma.dir(p[r]);
-       const ULONG g1 = glGamma.dir(p[g]);
-       const ULONG b1 = glGamma.dir(p[b]);
+   if (final_alpha > 0) {
+       const ULONG r1 = glGamma.dir(p[oR]);
+       const ULONG g1 = glGamma.dir(p[oG]);
+       const ULONG b1 = glGamma.dir(p[oB]);
 
        const ULONG r2 = glGamma.dir(cr);
        const ULONG g2 = glGamma.dir(cg);
        const ULONG b2 = glGamma.dir(cb);
 
-       const ULONG a4 = 0xff * a2;
-       const ULONG a6 = 0xff * a3;
+       const ULONG a4 = 0xff * ca;
+       const ULONG a6 = 0xff * final_alpha;
 
        const ULONG r3 = (r2 * a4 + r1 * a5) / a6;
        const ULONG g3 = (g2 * a4 + g1 * a5) / a6;
        const ULONG b3 = (b2 * a4 + b1 * a5) / a6;
 
-       p[r] = glGamma.inv(r3 < glGamma.hi_res_mask ? r3 : glGamma.hi_res_mask);
-       p[g] = glGamma.inv(g3 < glGamma.hi_res_mask ? g3 : glGamma.hi_res_mask);
-       p[b] = glGamma.inv(b3 < glGamma.hi_res_mask ? b3 : glGamma.hi_res_mask);
-       p[a] = a3;
+       p[oR] = glGamma.inv(r3 < glGamma.hi_res_mask ? r3 : glGamma.hi_res_mask);
+       p[oG] = glGamma.inv(g3 < glGamma.hi_res_mask ? g3 : glGamma.hi_res_mask);
+       p[oB] = glGamma.inv(b3 < glGamma.hi_res_mask ? b3 : glGamma.hi_res_mask);
+       p[oA] = final_alpha;
    }
-   else {
-      p[r] = 0;
-      p[g] = 0;
-      p[b] = 0;
-      p[a] = 0;
-   }
+   else ((ULONG *)p)[0] = 0;
 }
 
-INLINE void COPY32(UBYTE *p, UBYTE r, UBYTE g, UBYTE b, UBYTE a, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
-{
-   p[R] = glGamma.dir(p[cr])>>4;
-   p[G] = glGamma.dir(p[cg])>>4;
-   p[B] = glGamma.dir(p[cb])>>4;
-   p[a] = ca;
-}
-*/
+#endif
 
 namespace agg {
 
