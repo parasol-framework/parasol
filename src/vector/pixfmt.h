@@ -11,6 +11,7 @@ inline void LINEAR32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr,
 
 #define FAST_BLEND 1
 #ifdef FAST_BLEND
+// Common but incorrect sRGB blending algorithm.
 inline void BLEND32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
 {
    p[oR] = ((p[oR] * (0xff-ca)) + (cr * ca) + 0xff)>>8;
@@ -29,20 +30,12 @@ inline void BLEND32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, 
    const ULONG final_alpha = 0xff - ((alpha_inv * (0xff - dest_alpha))>>8);
 
    if (final_alpha > 0) {
-       const ULONG r1 = glGamma.dir(p[oR]);
-       const ULONG g1 = glGamma.dir(p[oG]);
-       const ULONG b1 = glGamma.dir(p[oB]);
-
-       const ULONG r2 = glGamma.dir(cr);
-       const ULONG g2 = glGamma.dir(cg);
-       const ULONG b2 = glGamma.dir(cb);
-
        const ULONG a4 = 0xff * ca;
        const ULONG a6 = 0xff * final_alpha;
 
-       const ULONG r3 = (r2 * a4 + r1 * a5) / a6;
-       const ULONG g3 = (g2 * a4 + g1 * a5) / a6;
-       const ULONG b3 = (b2 * a4 + b1 * a5) / a6;
+       const ULONG r3 = (glGamma.dir(cr) * a4 + glGamma.dir(p[oR]) * a5) / a6;
+       const ULONG g3 = (glGamma.dir(cg) * a4 + glGamma.dir(p[oG]) * a5) / a6;
+       const ULONG b3 = (glGamma.dir(cb) * a4 + glGamma.dir(p[oB]) * a5) / a6;
 
        p[oR] = glGamma.inv(r3 < glGamma.hi_res_mask ? r3 : glGamma.hi_res_mask);
        p[oG] = glGamma.inv(g3 < glGamma.hi_res_mask ? g3 : glGamma.hi_res_mask);

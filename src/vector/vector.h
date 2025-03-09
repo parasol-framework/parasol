@@ -218,11 +218,11 @@ public:
    UBYTE *Data;
    LONG DataSize;
 
-   filter_bitmap() : Bitmap(NULL), Data(NULL), DataSize(0) { };
+   filter_bitmap() : Bitmap(nullptr), Data(nullptr), DataSize(0) { };
 
    ~filter_bitmap() {
-      if (Bitmap) { FreeResource(Bitmap); Bitmap = NULL; }
-      if (Data) { FreeResource(Data); Data = NULL; }
+      if (Bitmap) { FreeResource(Bitmap); Bitmap = nullptr; }
+      if (Data) { FreeResource(Data); Data = nullptr; }
    };
 
    objBitmap * get_bitmap(LONG Width, LONG Height, TClipRectangle<LONG> &Clip, bool Debug) {
@@ -233,12 +233,12 @@ public:
 
       if ((Clip.bottom <= Clip.top) or (Clip.right <= Clip.left)) {
          log.warning("Invalid clip region %d %d %d %d", Clip.left, Clip.top, Clip.right, Clip.bottom);
-         return NULL;
+         return nullptr;
       }
 
       if ((Width < 1) or (Height < 1) or (Width > 0xffff) or (Height > 0xffff)) {
          log.warning("Invalid bitmap size of %dx%d", Width, Height);
-         return NULL;
+         return nullptr;
       }
 
       if (Bitmap) {
@@ -251,7 +251,7 @@ public:
             fl::Name("dummy_fx_bitmap"),
             fl::Width(Width), fl::Height(Height), fl::BitsPerPixel(32),
             fl::Flags(Debug ? BMF::ALPHA_CHANNEL : (BMF::ALPHA_CHANNEL|BMF::NO_DATA)));
-         if (!Bitmap) return NULL;
+         if (!Bitmap) return nullptr;
       }
 
       Bitmap->Clip = { Clip.left, Clip.top, Clip.right, Clip.bottom };
@@ -265,8 +265,8 @@ public:
 
          if ((Data) and (DataSize < Bitmap->LineWidth * canvas_height)) {
             FreeResource(Data);
-            Data = NULL;
-            Bitmap->Data = NULL;
+            Data = nullptr;
+            Bitmap->Data = nullptr;
          }
 
          if (!Bitmap->Data) {
@@ -275,7 +275,7 @@ public:
             }
             else {
                log.warning("Failed to allocate graphics area of size %d(B) x %d", Bitmap->LineWidth, canvas_height);
-               return NULL;
+               return nullptr;
             }
          }
 
@@ -642,7 +642,7 @@ extern objBitmap * get_source_graphic(extVectorFilter *);
 extern ERR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
 extern ERR scene_input_events(const InputEvent *, LONG);
-extern void send_feedback(extVector *, FM, OBJECTPTR = NULL);
+extern void send_feedback(extVector *, FM, OBJECTPTR = nullptr);
 extern void set_filter(agg::image_filter_lut &, VSM);
 
 extern void render_scene_from_viewport(extVectorScene *, objBitmap *, objVectorViewport *);
@@ -1022,7 +1022,7 @@ inline static void save_bitmap(objBitmap *Bitmap, const std::string Name)
 
    if (pic.ok()) {
       gfx::CopyArea(Bitmap, pic->Bitmap, BAF::NIL, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
-      pic->saveImage(NULL);
+      pic->saveImage(nullptr);
    }
 }
 
@@ -1055,23 +1055,23 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
          out  += bmp->LineWidth;
          Data += Width * bmp->BytesPerPixel;
       }
-      pic->saveImage(NULL);
+      pic->saveImage(nullptr);
    }
 }
 
 //********************************************************************************************************************
-// Find the first parent of the targeted vector.  Returns NULL if no valid parent is found.
+// Find the first parent of the targeted vector.  Returns nullptr if no valid parent is found.
 
 inline static extVector * get_parent(const extVector *Vector)
 {
-   if (Vector->Class->BaseClassID != CLASSID::VECTOR) return NULL;
+   if (Vector->Class->BaseClassID != CLASSID::VECTOR) return nullptr;
    while (Vector) {
       if (!Vector->Parent) Vector = (extVector *)Vector->Prev; // Scan back to the first sibling to find the parent
       else if (Vector->Parent->Class->BaseClassID IS CLASSID::VECTOR) return (extVector *)(Vector->Parent);
-      else return NULL;
+      else return nullptr;
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
