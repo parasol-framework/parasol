@@ -42,7 +42,7 @@ A file viewer for recognised documents like SVG and RIPL
 </page>
 ]]
 
-   local glWindow, glViewport, glTerminateView, glScrollbar, glViewArea, glStats, glAppBar
+   local glWindow, glFileView, glTerminateView, glScrollbar, glViewArea, glStats, glAppBar
 
    local glScript = obj.find('self')
 
@@ -192,25 +192,20 @@ end
    else
       -- File view on the left
 
-      glView = gui.listView({
-         target      = glViewport,
-         x           = glWindow.margins.left,
-         y           = glWindow.margins.top,
-         width       = 200,
-         yOffset     = glWindow.margins.top,
-         dragDrop    = true,
-         sensitive   = true,
-         multiSelect = false,
-         borderless  = true,
-         fontFace    = gui.fonts.filesys.face,
-         fontSize    = gui.fonts.filesys.size,
-         fontStyle   = gui.fonts.filesys.style,
-      })
-
-      glFileview = gui.fileview(glView, {
-         toolBar       = { navigation=true },
+      glFileView = gui.fileview({
+         viewOptions = {
+            x          = glWindow.margins.left,
+            y          = glWindow.margins.top,
+            width      = 200,
+            yOffset    = glWindow.margins.top,
+            sensitive  = true,
+            borderless = true
+         },
+         target        = glViewport,
+         style         = 'list',
+         toolBar       = { navigation=true, views=true },
          displayPath   = true,
-         path     = arg('path', ':'),
+         path          = arg('path', ':'),
          filterList = {
             { name='SVG Images', ext='.svg' },
             { name='RIPL Documents', ext={ '.ripl', '.rpl' } },
@@ -230,7 +225,7 @@ end
       -- Document viewer on the right
 
       glViewManager = glViewport.new('VectorViewport', {
-        x=glView.viewport.x + glView.viewport.width + 6, y=glWindow.margins.top,
+        x=glFileView.view.viewport.x + glFileView.view.viewport.width + 6, y=glWindow.margins.top,
         xOffset=glWindow.margins.right, yOffset=glWindow.margins.top
       })
 
@@ -285,7 +280,7 @@ end
       })
 
       gui.divider({
-         left = glView.viewport, right = glViewManager,
+         left = glFileView.view.viewport, right = glViewManager,
          minA = 100, maxA = glWindow.surface.insideWidth * 0.4, minB = 100
       })
    end

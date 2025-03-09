@@ -9,6 +9,8 @@ Documentation is available in the Parasol Wiki.
    require 'gui/menu'
    require 'gui/dialog'
    require 'gui/toolbar'
+   require 'gui/columnview'
+   require 'gui/listview'
    require 'json'
    include 'vector'
 
@@ -559,9 +561,8 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-gui.fileview = function(View, Options)
+gui.fileview = function(Options)
    local self = {
-      view          = View,
       window        = nil,
       path          = Options.path,
       timer         = nil,
@@ -1407,6 +1408,29 @@ gui.fileview = function(View, Options)
 
    self.selectionPath = function()
       if self.view.sItem then return nz(self.path,'') .. self.view.sItem.filename end
+   end
+
+   if not Options.target then error('A target viewport must be specified.') end
+
+   -- View initialisation
+
+   local vo = {
+      target    = Options.target,
+      fontFace  = gui.fonts.filesys.face,
+      fontSize  = gui.fonts.filesys.size,
+      fontStyle = gui.fonts.filesys.style,
+      dragDrop    = true,
+      multiSelect = Options.multiSelect
+   }
+
+   for k,v in pairs(Options.viewOptions) do vo[k] = v end
+
+   if Options.style == 'column' then
+      self.view = gui.columnView(vo)
+   elseif Options.style == 'list' then
+      self.view = gui.listView(vo)
+   else
+      self.view = gui.columnView(vo)
    end
 
    self.view.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)

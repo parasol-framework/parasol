@@ -26,7 +26,7 @@ gui.dialog.file = function(Options)
    }
 
    local function processFeedback()
-      local list = self.view.selectedItems()
+      local list = self.fileview.view.selectedItems()
 
       if (self.warnExists == true) and (#list > 0) then
          local error, type = mSys.AnalysePath(nz(self.fileview.path,'') .. list[1].filename)
@@ -185,41 +185,18 @@ gui.dialog.file = function(Options)
       overflow = VOF_HIDDEN
    })
 
-   self.view = gui.columnView({
-      target      = viewRegion,
-      dragDrop    = true,
-      multiSelect = self.multiSelect,
-      invertPalette = true,
-      fontFace    = gui.fonts.filesys.face,
-      fontSize    = gui.fonts.filesys.size,
-      fontStyle   = gui.fonts.filesys.style,
-      itemSelected = function(View, Reason, Item)
-         -- Display the selected item in the path box.
---[[
-         if (self.fileview == nil) then return end
-
-         local selection = self.fileview.selectionPath()
-         if not nz(selection) then
-            self.pathbox.text.string = self.currentPath
-         else
-            local err, fileType = mSys.AnalysePath(selection)
-            if (err != ERR_Okay) then
-               self.pathbox.text.string = self.currentPath
-            elseif (fileType == LOC_FILE) then
-               self.pathbox.text.string = self.currentPath .. '/' .. self.fileview.selection()
-            end
-         end
---]]
-      end
-   })
-
-   self.fileview = gui.fileview(self.view, {
+   self.fileview = gui.fileview({
+      target        = viewRegion,
       path          = Options.path,
       filterList    = fv_filters,
       sysKeys       = true,
       fileSelected  = processFeedback,
+      style         = 'list', -- column, list, tree
       toolBar       = { clipboard=true, settings=true },
-      pathChanged   = function(FlieView, Path)
+      viewOptions = {
+         invertPalette = true
+      },
+      pathChanged = function(FlieView, Path)
          self.currentPath = Path
          self.pathbox.text.string = self.currentPath
       end

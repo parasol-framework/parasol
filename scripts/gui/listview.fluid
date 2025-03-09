@@ -16,6 +16,7 @@ local LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
 
 local function rearrangeItems(View)
    View.zones = { }
+   View._last_y = 0
    local y = 0
    for _, item in pairs(View.items) do
       item._y = y
@@ -88,10 +89,8 @@ gui.listView = function(Options)
       local width  = View.frame.width - EDGE - EDGE
       local height = View.frame.height
       local x      = EDGE
-      local y      = 0
+      local y      = View._last_y
       local widest_item = 0
-
-      y = y + ((#View.items - #Items) * (LINE_HEIGHT + VSPACING))
 
       for _, item in pairs(Items) do
          if not item._vectors then item._vectors = { } end
@@ -211,6 +210,8 @@ gui.listView = function(Options)
          if width > widest_item then widest_item = width end
       end
 
+      View._last_y = y
+
       -- Item click and hover management
 
       for _, item in pairs(View.items) do
@@ -235,6 +236,7 @@ gui.listView = function(Options)
       if not View.icons then View.icons = { } end
       if not View.hIcons then View.hIcons = { } end
 
+      View._last_y = 0
       if #View.items > 0 then newItems(View, View.items) end
 
       collectgarbage()
