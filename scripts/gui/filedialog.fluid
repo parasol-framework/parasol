@@ -191,7 +191,7 @@ gui.dialog.file = function(Options)
       filterList    = fv_filters,
       sysKeys       = true,
       fileSelected  = processFeedback,
-      style         = 'list', -- column, list, tree
+      style         = 'column', -- column, list, tree
       toolBar       = { clipboard=true, settings=true },
       viewOptions = {
          invertPalette = true

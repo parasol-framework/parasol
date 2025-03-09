@@ -457,6 +457,13 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.scene.surface.mtScheduleRedraw()
    end
 
+   vw.free = function()
+      vw.clear()
+      vw.viewport.free()
+      for k,v in pairs(vw) do vw[k] = nil end
+      collectgarbage()
+   end
+
    -- TODO: Changes the underlying attributes of any item in the view.
 
    vw.setItem = function(XPath, TagIndex, Key, Value)
