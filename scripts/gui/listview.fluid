@@ -10,9 +10,7 @@ local ICON_SIZE = 16
 local VSPACING  = 1
 local EDGE      = 4
 
-local LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-LINE_HEIGHT = math.round(LINE_HEIGHT * 1.3)
-local LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
+local LINE_HEIGHT, FONT_HEIGHT, LINE_OFFSET
 
 local function rearrangeItems(View)
    View.zones = { }
@@ -233,6 +231,10 @@ gui.listView = function(Options)
    end
 
    local function constructListView(View)
+      LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight({ face=View.fontFace, size=View.fontSize, style=View.fontStyle })
+      LINE_HEIGHT = math.round(LINE_HEIGHT * 1.5)
+      LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
+
       if not View.icons then View.icons = { } end
       if not View.hIcons then View.hIcons = { } end
 

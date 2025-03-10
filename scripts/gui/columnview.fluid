@@ -12,17 +12,8 @@ local ICON_SIZE = 16
 local lCounter  = 1
 local EDGE      = 4 -- Whitespace around the page
 
-local LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight(gui.fonts.widget)
-local PAGE_LINE_HEIGHT, PAGE_FONT_HEIGHT = gui.getFontHeight(gui.fonts.page)
-local MARGIN = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
-
-LINE_HEIGHT = math.round(LINE_HEIGHT * 1.33)
-PAGE_LINE_HEIGHT = math.round(PAGE_LINE_HEIGHT * 1.3)
-
-local ICON_OFFSET = math.round((PAGE_LINE_HEIGHT - ICON_SIZE) * 0.5)
-local LINE_OFFSET = math.round((PAGE_LINE_HEIGHT + PAGE_FONT_HEIGHT) * 0.5)
-local BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
-local lEnableTextGradients
+local LINE_HEIGHT, FONT_HEIGHT, LINE_HEIGHT, FONT_HEIGHT, MARGIN
+local ICON_OFFSET, LINE_OFFSET, BANNER_HEIGHT, lEnableTextGradients
 
 local lColours = {
    strokeButton = 'rgb(255,255,255,0.3)'
@@ -96,7 +87,7 @@ local function highlightItem(View, Item, Highlighted)
    if not Item._vectors.highlight and (Highlighted or Item._selected) then
       Item._vectors.highlight = Item._vectors.viewport.new('VectorRectangle', {
          name = 'item_highlight',
-         roundX = 4, roundY = 4, x = 0, y = 0, width = '100%', height = '100%'
+         roundX = LINE_HEIGHT * 0.2, roundY = LINE_HEIGHT * 0.2, x = 0, y = 0, width = '100%', height = '100%'
       })
       Item._vectors.highlight.acMoveToBack()
    end
@@ -166,23 +157,23 @@ local function arrangeColumns(View)
    local pc = struct.new('PathCommand')
    for _, col in pairs(View.columns) do
       if col.align == 'right' then
-         col.vecTitle.x = col.width - MARGIN
+         col.vecTitle.x = col.px_width - MARGIN
       else
          col.vecTitle.x = MARGIN
       end
 
       pc.type = PE_Move
-      pc.x    = col.x + col.width
+      pc.x    = col.x + col.px_width
       pc.y    = 1
       View.banner.lines.mtAddCommand(pc)
 
       pc.type = PE_Line
-      pc.x    = col.x + col.width
+      pc.x    = col.x + col.px_width
       pc.y    = BANNER_HEIGHT
       View.banner.lines.mtAddCommand(pc)
 
       col.bannerVP.x = col.x
-      col.bannerVP.width = col.width
+      col.bannerVP.width = col.px_width
 
       if not lEnableTextGradients then
          col.fillItem = gui.style.page.text
@@ -196,26 +187,26 @@ local function arrangeColumns(View)
          if nz(col.align, 'left') == 'right' then
             col.vecGradient = gui.simpleGradient(View.scene, defName,
                { { r=0,g=0,b=0,a=0,offset=0.1 }, { r=0,g=0,b=0,a=255,offset=0.2 }, { r=0,g=0,b=0,a=255,offset=1.0 } },
-               0, 0, col.width, 0, 'userspace')
+               0, 0, col.px_width, 0, 'userspace')
 
             col.vecGradientSelect = gui.simpleGradient(View.scene, selName,
                { { r=255,g=255,b=255,a=0,offset=0.1 }, { r=255,g=255,b=255,a=255,offset=0.2}, { r=255,g=255,b=255,a=255,offset=1.0 } },
-               0, 0, col.width, 0, 'userspace')
+               0, 0, col.px_width, 0, 'userspace')
          else
             col.vecGradient = gui.simpleGradient(View.scene, defName,
                { { r=0,g=0,b=0,a=255,offset=0 }, { r=0,g=0,b=0,a=255,offset=0.9 }, { r=0,g=0,b=0,a=0,offset=0.98 } },
-               0, 0, col.width, 0, 'userspace')
+               0, 0, col.px_width, 0, 'userspace')
 
             col.vecGradientSelect = gui.simpleGradient(View.scene, selName,
                { { r=255,g=255,b=255,a=255,offset=0 }, { r=255,g=255,b=255,a=255,offset=0.9 }, { r=255,g=255,b=255,a=0,offset=0.98 } },
-               0, 0, col.width, 0, 'userspace')
+               0, 0, col.px_width, 0, 'userspace')
          end
 
          col.fillItem = 'url(#' .. defName .. ')'
          col.fillItemSelect = 'url(#' .. selName .. ')'
       else
-         col.vecGradient.x2 = col.width
-         col.vecGradientSelect.x2 = col.width
+         col.vecGradient.x2 = col.px_width
+         col.vecGradientSelect.x2 = col.px_width
       end
    end
 
@@ -224,14 +215,14 @@ local function arrangeColumns(View)
       if col.align == 'right' then
          View._sort.icon.x = MARGIN
       else
-         View._sort.icon.x = col.width - MARGIN - ICON_SIZE
+         View._sort.icon.x = col.px_width - MARGIN - ICON_SIZE
       end
    end
 
    if View.scrollbar then
       local page_width = 0
       for _, col in pairs(View.columns) do
-         page_width = col.x + col.width + EDGE
+         page_width = col.x + col.px_width + EDGE
       end
       View.scrollbar.setDynamicPageSize(page_width, page_width, View.page.height)
    end
@@ -282,7 +273,7 @@ local function bannerZoneClick(View, Col, X, Y, Value)
    if Col.align == 'right' then
       View._sort.icon.x = MARGIN
    else
-      View._sort.icon.x = Col.width - MARGIN - ICON_SIZE
+      View._sort.icon.x = Col.px_width - MARGIN - ICON_SIZE
    end
 
    View:sortColumn(Col, View._sort.ascending)
@@ -328,8 +319,8 @@ local function rearrangeItems(View)
       end
 
       if not item.hidden then
-         View.addZone(0, item._y, nil, PAGE_LINE_HEIGHT, item)
-         y = y + PAGE_LINE_HEIGHT + VSPACING
+         View.addZone(0, item._y, nil, LINE_HEIGHT, item)
+         y = y + LINE_HEIGHT + VSPACING
       end
    end
 
@@ -349,10 +340,8 @@ gui.columnView = function(Options)
       for _, col in pairs(Columns) do
          if not col['attrib'] then error('No attrib defined for column ' .. c) end
 
-         local new_col = { _index=c, width=100, title='Untitled' }
-         for k, v in pairs(col) do
-            new_col[k] = v
-         end
+         local new_col = { _index=c, width=8, title='Untitled' }
+         for k, v in pairs(col) do new_col[k] = v end
          table.insert(set, new_col)
          View.namedCol[col['attrib']] = new_col
          c = c + 1
@@ -404,13 +393,11 @@ gui.columnView = function(Options)
          local ev = Events
          while ev do
             if ev.type == JET_BUTTON_1 then
-               if bit.band(ev.flags, JTYPE_REPEATED) != 0 then
-                  return
-               end
+               if bit.band(ev.flags, JTYPE_REPEATED) != 0 then return end
 
-               for _, zone in pairs(View.columns) do
-                  if (ev.x >= zone.x+2) and (ev.x < zone.x + zone.width-2) then
-                     bannerZoneClick(View, zone, ev.x, ev.y, ev.value)
+               for _, col in pairs(View.columns) do
+                  if (ev.x >= col.x+2) and (ev.x < col.x + col.px_width-2) then
+                     bannerZoneClick(View, col, ev.x, ev.y, ev.value)
                      break
                   end
                end
@@ -431,26 +418,27 @@ gui.columnView = function(Options)
 
          col.x = x
          col.minWidth = x + MARGIN
+         col.px_width = col.width * View.fontSize * (4 / 3)
 
          if not col.bannerVP then
             -- Each banner viewport hosts the title and sorting icon
             col.bannerVP = View.banner.viewport.new('VectorViewport', {
                name = 'col_banner_vp',
-               x = x, y = 0, width = col.width, height = '100%', overflow = VOF_HIDDEN
+               x = x, y = 0, width = col.px_width, height = '100%', overflow = VOF_HIDDEN
             })
 
             col.vecViewport = View.page.new('VectorViewport', {  -- The column VP hosts all page text for the column
                name = 'col_content',
-               x = x, y = 0, width = col.width, height = '100%', overflow = VOF_HIDDEN
+               x = x, y = 0, width = col.px_width, height = '100%', overflow = VOF_HIDDEN
             })
 
             -- Column title
 
             col.vecTitle = col.bannerVP.new('VectorText', {
                name      = 'col_title',
-               face      = gui.fonts.filesys.face,
-               fontSize  = string.format('%.2fpt', gui.fonts.filesys.size),
-               fontStyle = gui.fonts.filesys.style,
+               face      = View.fontFace,
+               fontSize  = string.format('%.2fpt', View.fontSize),
+               fontStyle = View.fontStyle,
                fill      = View.banner.fgFill,
                align     = nz(col.align, 'left'),
                y         = math.round((BANNER_HEIGHT + FONT_HEIGHT) * 0.5)
@@ -460,19 +448,19 @@ gui.columnView = function(Options)
 
             col.resizeVP = View.banner.viewport.new('VectorViewport', {
                name = 'col_resize_zone',
-               x = x + col.width - (MARGIN * 0.5), y = 0,
+               x = x + col.px_width - (MARGIN * 0.5), y = 0,
                width = MARGIN, height = '100%', cursor = PTC_SPLIT_HORIZONTAL
             })
 
             col.resizeVP.dragCallback = function(SizeVP, X, Y)
                -- Rearrange layout
                local delta_x = X - SizeVP.x
-               col.width = col.width + delta_x
-               if col.width < MARGIN then col.width = MARGIN end
-               col.vecViewport.width = col.width
+               col.px_width = col.px_width + delta_x
+               if col.px_width < MARGIN then col.px_width = MARGIN end
+               col.vecViewport.width = col.px_width
 
                local scan = col.next
-               local new_x = col.x + col.width
+               local new_x = col.x + col.px_width
                while scan do
                   scan.x = new_x
                   scan.resizeVP.x = new_x + scan.width - (MARGIN * 0.5)
@@ -489,7 +477,7 @@ gui.columnView = function(Options)
                end
 
                if col.align == 'right' then -- Realign all text in this column
-                  local align_x = col.width - MARGIN
+                  local align_x = col.px_width - MARGIN
                   for _, item in pairs(View.items) do
                      if item._col and item._col[col.attrib].text then
                         item._col[col.attrib].text.x = align_x
@@ -497,20 +485,20 @@ gui.columnView = function(Options)
                   end
                end
 
-               SizeVP.x = col.x + col.width - (MARGIN * 0.5)
+               SizeVP.x = col.x + col.px_width - (MARGIN * 0.5)
                SizeVP.acDraw()
             end
          else
             col.bannerVP.x = x
-            col.bannerVP.width = col.width
+            col.bannerVP.width = col.px_width
 
             col.vecViewport.x = x
-            col.vecViewport.width = col.width
+            col.vecViewport.width = col.px_width
          end
 
          col.vecTitle.string = nz(col['title'], 'Untitled')
 
-         x = x + col.width
+         x = x + col.px_width
          prev = col
       end
 
@@ -567,7 +555,7 @@ gui.columnView = function(Options)
          if not item._vectors.viewport then
             item._vectors.viewport = View.page.new('VectorViewport', {
                name = 'item_vp',
-               x = EDGE, y = y, xOffset = EDGE, height = PAGE_LINE_HEIGHT, visibility = vis
+               x = EDGE, y = y, xOffset = EDGE, height = LINE_HEIGHT, visibility = vis
             })
          else
             item._vectors.viewport.y     = y
@@ -653,7 +641,7 @@ gui.columnView = function(Options)
                end
 
                if col.align == 'right' then
-                  item._col[attrib].text.x = col.width - MARGIN
+                  item._col[attrib].text.x = col.px_width - MARGIN
                else
                   if col.showIcons then
                      item._col[attrib].text.x = (MARGIN * 2) + ICON_SIZE + (MARGIN * 2)
@@ -667,14 +655,14 @@ gui.columnView = function(Options)
             end
 
             if not item.hidden then
-               View.addZone(0, item._y, nil, PAGE_LINE_HEIGHT, item)
+               View.addZone(0, item._y, nil, LINE_HEIGHT, item)
             end
 
-            cx = cx + col.width
+            cx = cx + col.px_width
          end
 
          if not item.hidden then
-            y = y + PAGE_LINE_HEIGHT + VSPACING
+            y = y + LINE_HEIGHT + VSPACING
          end
       end
 
@@ -689,6 +677,14 @@ gui.columnView = function(Options)
    -- Callback function for constructing the view from scratch.  Can be called multiple times
 
    local function constructColumnView(View)
+      LINE_HEIGHT, FONT_HEIGHT = gui.getFontHeight({ face=View.fontFace, size=View.fontSize, style=View.fontStyle })
+      ICON_SIZE = LINE_HEIGHT
+      MARGIN = math.round(LINE_HEIGHT * 0.3) -- Min space between graphics elements
+      LINE_HEIGHT = math.round(LINE_HEIGHT * 1.5)
+      ICON_OFFSET = math.round((LINE_HEIGHT - ICON_SIZE) * 0.5)
+      LINE_OFFSET = math.round((LINE_HEIGHT + FONT_HEIGHT) * 0.5)
+      BANNER_HEIGHT = math.round(LINE_HEIGHT * 1.15)
+
       setColumns(View, nz(Options.columns, { }))
 
       View._last_y = EDGE

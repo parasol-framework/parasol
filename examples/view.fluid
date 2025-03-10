@@ -37,9 +37,9 @@ Basic demo of the View widget
          { id=5, group='file', path='parasol:system/', name='fruit salad.dessert', icon='filetypes/text', size=143566143, dateCreated='2018-08-02T21:14' }
       },
       columns = {
-        { attrib='name',        title='Name', width=160, showIcons=true },
-        { attrib='size',        title='Size', width=70, type='bytesize', align='right' },
-        { attrib='dateCreated', title='Date', width=100, type='date', align='right' }
+        { attrib='name',        title='Name', width=16, showIcons=true },
+        { attrib='size',        title='Size', width=7, type='bytesize', align='right' },
+        { attrib='dateCreated', title='Date', width=10, type='date', align='right' }
       }
    })
 

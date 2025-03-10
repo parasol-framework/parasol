@@ -27,7 +27,7 @@ gui.getFontHeight = function(Font)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Read a style value and return it in pixel units.
+-- Read a style value and return it in pixel units.  Supports px, in, mm, pt, dp
 
 gui.pixel = function(val)
    if val != nil then

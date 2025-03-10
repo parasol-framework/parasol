@@ -11,6 +11,7 @@ Documentation is available in the Parasol Wiki.
    require 'gui/toolbar'
    require 'gui/columnview'
    require 'gui/listview'
+   require 'gui/fontdialog'
    require 'json'
    include 'vector'
 
@@ -191,24 +192,24 @@ end
 local function defineViewColumns(Path)
    if not Path then
       return {
-         { attrib='name',      title='Name',       width=210, showIcons=true },
-         { attrib='freespace', title='Free Space', width=90, type='bytesize', align='right' },
-         { attrib='totalsize', title='Total Size', width=90, type='bytesize', align='right' }
+         { attrib='name',      title='Name',       width=16, showIcons=true },
+         { attrib='freespace', title='Free Space', width=7, type='bytesize', align='right' },
+         { attrib='totalsize', title='Total Size', width=7, type='bytesize', align='right' }
       }
    elseif (lSys.platform == 'Linux') or (lSys.platform == 'Native') then
       return {
-         { attrib='name',        title='Name',        width=210, showIcons=true },
-         { attrib='size',        title='Size',        width=90,  type='bytesize', align='right' },
-         { attrib='date',        title='Date',        width=100, type='date' },
-         { attrib='permissions', title='Permissions', width=90 },
-         { attrib='owner',       title='Owner',       width=60 },
-         { attrib='group',       title='Group',       width=60 }
+         { attrib='name',        title='Name',        width=16, showIcons=true },
+         { attrib='size',        title='Size',        width=7, type='bytesize', align='right' },
+         { attrib='date',        title='Date',        width=8, type='date' },
+         { attrib='permissions', title='Permissions', width=7 },
+         { attrib='owner',       title='Owner',       width=5 },
+         { attrib='group',       title='Group',       width=5 }
       }
    else
       return {
-         { attrib='name', title='Name', width=210, showIcons=true },
-         { attrib='size', title='Size', width=90,  type='bytesize', align='right' },
-         { attrib='date', title='Date', width=120, type='date' }
+         { attrib='name', title='Name', width=16, showIcons=true },
+         { attrib='size', title='Size', width=7, type='bytesize', align='right' },
+         { attrib='date', title='Date', width=8, type='date' }
       }
    end
 end
@@ -1505,6 +1506,7 @@ gui.fileview = function(Options)
                   Bar.addGroup(16, 'Settings', 2)
 
                   Bar.addItem(TBID.COL_VIEW, 'Column View', 'Column View', 'layout/column_three', function()
+                     self.style = 'column'
                      self.view.free()
                      self.view = gui.columnView(ViewOptions)
                      configureView(self, ViewOptions)
@@ -1512,6 +1514,7 @@ gui.fileview = function(Options)
                   end)
 
                   Bar.addItem(TBID.LIST_VIEW, 'List View', 'List View', 'layout/list', function()
+                     self.style = 'list'
                      self.view.free()
                      self.view = gui.listView(ViewOptions)
                      configureView(self, ViewOptions)
@@ -1519,7 +1522,29 @@ gui.fileview = function(Options)
                   end)
 
                   Bar.addItem(TBID.FONT, 'Font', 'Font Settings', 'items/font', function()
-
+                     gui.dialog.font({
+                        okText     = 'Select Font',
+                        cancelText = 'Exit',
+                        modal      = true,
+                        popOver    = self._surface,
+                        feedback = function(Dialog, Accepted)
+                           if Accepted then
+                              ViewOptions.fontFace  = Dialog.face
+                              ViewOptions.fontSize  = Dialog.pointSize
+                              ViewOptions.fontStyle = Dialog.style
+                              self.view.free()
+                              if self.style == 'column' then
+                                 self.view = gui.columnView(ViewOptions)
+                              elseif self.style == 'list' then
+                                 self.view = gui.listView(ViewOptions)
+                              else
+                                 self.view = gui.listView(ViewOptions)
+                              end
+                              configureView(self, ViewOptions)
+                              self.refresh()
+                           end
+                        end
+                     })
                   end)
                end
             end
@@ -1625,10 +1650,13 @@ gui.fileview = function(Options)
 
    if Options.style == 'column' then
       self.view = gui.columnView(vo)
+      self.style = 'column'
    elseif Options.style == 'list' then
       self.view = gui.listView(vo)
+      self.style = 'list'
    else
       self.view = gui.columnView(vo)
+      self.style = 'list'
    end
 
    -- Drag and drop support is implemented with help from the Clipboard class.  It allows items to be
