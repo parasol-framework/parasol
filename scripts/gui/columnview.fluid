@@ -240,7 +240,7 @@ local function bannerZoneClick(View, Col, X, Y, Value)
       View._sort = { col=Col, ascending=false }
       if not View.iconDescending then
          if not View._sort_desc then
-            local info = gui.createIcon(View.scene, 'layout/sort_alpha_desc', ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text), 'sort_desc')
+            local info = gui.createIcon(View.scene, 'layout/sort_alpha_desc', ICON_SIZE, gui.rgbToIconTheme(View.banner.fgFill), 'sort_desc')
             View._sort_desc = info.fill
          end
 
@@ -256,7 +256,7 @@ local function bannerZoneClick(View, Col, X, Y, Value)
       View._sort = { col=Col, ascending=true }
       if not View.iconAscending then
          if not View._sort_asc then
-            local info = gui.createIcon(View.scene, 'layout/sort_alpha_asc', ICON_SIZE, gui.rgbToIconTheme(gui.style.widget.text), 'sort_asc')
+            local info = gui.createIcon(View.scene, 'layout/sort_alpha_asc', ICON_SIZE, gui.rgbToIconTheme(View.banner.fgFill), 'sort_asc')
             View._sort_asc = info.fill
          end
 

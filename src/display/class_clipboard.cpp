@@ -143,7 +143,7 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
    list << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
 
    auto str = list.str();
-   winAddClip(LONG(CLIPTYPE::FILE), str.c_str(), str.size(), Cut);
+   winAddFileClip(str.c_str(), str.size(), Cut);
    return ERR::Okay;
 #else
    return ERR::NoSupport;
@@ -178,7 +178,7 @@ static ERR add_text_to_host(objClipboard *Self, CSTRING String, LONG Length = 0x
    }
    utf16[i] = 0;
 
-   ERR error = (ERR)winAddClip(LONG(CLIPTYPE::TEXT), utf16.data(), utf16.size() * sizeof(UWORD), false);
+   auto error = (ERR)winAddClip(LONG(CLIPTYPE::TEXT), utf16.data(), utf16.size() * sizeof(UWORD), false);
    if (error != ERR::Okay) log.warning(error);
    return error;
 #else

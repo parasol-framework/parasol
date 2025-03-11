@@ -622,7 +622,7 @@ gui.fileview = function(Options)
 
    local function deleteItem(File)
       for _, item in pairs(self.view.items) do
-         if File == nz(item.name,''):gsub('^(.-)[:/\\]+$', '%1') then
+         if File == nz(item.name.value,''):gsub('^(.-)[:/\\]+$', '%1') then
             self.view.removeItem(item)
             return true
          end
@@ -922,13 +922,13 @@ gui.fileview = function(Options)
                   if item then
                      local new_name = State.input
                      if item.type == 'folder' then
-                        item.name = new_name .. '/'
+                        item.name.value = new_name .. '/'
                         item.filename = new_name .. '/'
                      elseif item.type == 'volume' then
-                        item.name = new_name .. ':'
+                        item.name.value = new_name .. ':'
                         item.filename = new_name .. ':'
                      else
-                        item.name = new_name
+                        item.name.value = new_name
                         item.filename = new_name
                      end
 
@@ -1019,7 +1019,7 @@ gui.fileview = function(Options)
       local clipboard = obj.new('clipboard')
       clipboard.mtRemove(CLIPTYPE_FILE)
       for _,item in pairs(self.view.selectedItems()) do
-         clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. item.name, CEF_DELETE)
+         clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. item.name.value, CEF_DELETE)
       end
    end
 
@@ -1029,7 +1029,7 @@ gui.fileview = function(Options)
       local clipboard = obj.new('clipboard')
       clipboard.mtRemove(CLIPTYPE_FILE)
       for _,item in pairs(self.view.selectedItems()) do
-         clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. item.name, CEF_EXTEND)
+         clipboard.mtAddFile(CLIPTYPE_FILE, self.path .. item.name.value, CEF_EXTEND)
       end
    end
 
@@ -1038,7 +1038,7 @@ gui.fileview = function(Options)
 
    self.copyFilesTo = function(Dest)
       if self.path and nz(Dest) then
-         for _, item in pairs(self.view.selectedItems()) do
+         for _, items in pairs(self.view.selectedItems()) do
             local file_list = { }
             for _,item in pairs(items) do
                table.insert(file_list, self.path .. item.name)
