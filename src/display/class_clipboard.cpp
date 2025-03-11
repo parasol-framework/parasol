@@ -30,6 +30,7 @@ there is a fixed limit to the clip count and the oldest members are automaticall
 
 #include "defs.h"
 #include <regex>
+#include <codecvt>
 
 #ifdef _WIN32
 using namespace display;
@@ -133,17 +134,19 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
 #ifdef _WIN32
    // Build a list of resolved path names in a new buffer that is suitable for passing to Windows.
 
-   std::stringstream list;
+   std::basic_stringstream<char16_t> list;
    for (auto &item : Items) {
       std::string path;
       if (ResolvePath(item.Path, RSF::NIL, &path) IS ERR::Okay) {
-         list << path << '\0';
+         std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+         std::u16string dest = convert.from_bytes(path);
+         list << dest << '\0';
       }
    }
    list << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
 
    auto str = list.str();
-   winAddFileClip(str.c_str(), str.size(), Cut);
+   winAddFileClip(str.c_str(), str.size() * sizeof(char16_t), Cut);
    return ERR::Okay;
 #else
    return ERR::NoSupport;

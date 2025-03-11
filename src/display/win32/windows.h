@@ -75,7 +75,7 @@ void winTerminateClipboard(void);
 namespace display {
 
 extern "C" int winAddClip(int, const void *, int, int);
-extern "C" int winAddFileClip(const char *, int, int);
+extern "C" int winAddFileClip(const char16_t *, int, int);
 extern "C" void winClearClipboard(void);
 extern "C" void winCopyClipboard(void);
 extern "C" int winExtractFile(void *, int, char *, int);

@@ -743,7 +743,7 @@ int winAddClip(int Datatype, const void *Data, int Size, int Cut)
 
 //********************************************************************************************************************
 
-int winAddFileClip(const char *Path, int Size, int Cut)
+int winAddFileClip(const unsigned short *Path, int Size, int Cut)
 {
    MSG("winAddFileClip()\n");
 
@@ -759,7 +759,7 @@ int winAddFileClip(const char *Path, int Size, int Cut)
             df->pt.x = 0;
             df->pt.y = 0;
             df->fNC = 0;
-            df->fWide = 0;
+            df->fWide = 1;
             memcpy(pdata+sizeof(DROPFILES), Path, Size);
             GlobalUnlock(hdata);
             
