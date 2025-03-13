@@ -424,6 +424,8 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
    pf::Log log("Core");
 
+   AdjustLogLevel(1); // Temporarily limit log output when opening the Core because it's not that interesting
+
 #ifdef _WIN32
    activate_console(glLogLevel > 0); // This works for the MinGW runtime libraries but not MSYS2
 
@@ -598,6 +600,8 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    #ifdef _DEBUG
       print_class_list();
    #endif
+      
+   AdjustLogLevel(-1);
 
    log.msg("PROGRAM OPENED");
 
