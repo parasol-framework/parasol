@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="16 17 44 45" preserveAspectRatio="xMidyMid meet">
-	<path d="M 25,27L 25,17L 51,17L 51,27L 47,27L 47,21L 29,21L 29,27L 25,27 Z M 16,28L 60,28L 60,51L 52,51L 52,46L 55,46L 55,33L 21,33L 21,46L 24,46L 24,51L 16,51L 16,28 Z M 25,39L 28,39L 28,52L 35,52L 35,59L 48,59L 48,39L 51,39L 51,62L 33,62L 25,54L 25,39 Z M 46,55L 38,55L 38,52L 46,52L 46,55 Z M 46,49L 30,49L 30,46L 46,46L 46,49 Z M 46,43L 30,43L 30,40L 46,40L 46,43 Z "/>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 24 24" preserveAspectRatio="xMidyMid meet">
+	<path d="M18 2V6H6V2H18M19 11A1 1 0 0020 10 1 1 0 0019 9 1 1 0 0018 10 1 1 0 0019 11M16 18V13H8V18H16M19 7A3 3 0 0122 10V16H18V20H6V16H2V10A3 3 0 015 7H19Z"/>
 </svg>

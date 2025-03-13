@@ -8,7 +8,7 @@ void CloseCore(void)
    pf::Log log("Shutdown");
 
    if (glCodeIndex IS CP_FINISHED) return;
-
+   
    log.msg("PROGRAM TERMINATING");
 
    #ifdef __unix__

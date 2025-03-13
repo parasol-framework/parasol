@@ -2,30 +2,27 @@
 static const LONG MAXLOOP = 1000;
 
 static const char glDefaultStyles[] =
-"<template name=\"h1\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"22pt\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h2\"><p leading=\"1.5\" font-face=\"Noto Sans\" font-size=\"16pt\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h3\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14pt\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h4\"><p leading=\"1.25\" font-face=\"Noto Sans\" font-size=\"14pt\"><inject/></p></template>\n\
-<template name=\"h5\"><p leading=\"1.0\" font-face=\"Noto Sans\" font-size=\"12pt\"><inject/></p></template>\n\
-<template name=\"h6\"><p leading=\"1.0\" font-face=\"Noto Sans\" font-size=\"10pt\"><inject/></p></template>\n";
+"<template name=\"h1\"><p leading=\"1.5\" font-size=\"22pt\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h2\"><p leading=\"1.5\"  font-size=\"16pt\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h3\"><p leading=\"1.25\" font-size=\"14pt\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h4\"><p leading=\"1.25\" font-size=\"14pt\"><inject/></p></template>\n\
+<template name=\"h5\"><p leading=\"1.0\"  font-size=\"12pt\"><inject/></p></template>\n\
+<template name=\"h6\"><p leading=\"1.0\"  font-size=\"10pt\"><inject/></p></template>\n";
 
-static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
+static const Field * find_field(OBJECTPTR Object, std::string_view Name, OBJECTPTR *Source) // Read-only, thread safe function.
 {
    // Skip any special characters that are leading the field name (e.g. $, @).  Some symbols like / are used for XPath
    // lookups, so we only want to skip reserved symbols or we risk confusion between real fields and variable fields.
 
-   while (Name[0]) {
-      if (Name[0] IS '$') Name++;
-      else if (Name[0] IS '@') Name++;
-      else break;
-   }
-
+   LONG i;
+   for (i=0; i < Name.size() and ((Name[i] IS '$') or (Name[i] IS '@')); i++);
+   if (i) Name.remove_prefix(i);
    return FindField(Object, strihash(Name), Source);
 }
 
 //********************************************************************************************************************
 
-constexpr static DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
+constexpr static double fast_hypot(double Width, double Height)
 {
    if (Width > Height) std::swap(Width, Height);
    if ((Height / Width) <= 1.5) return 5.0 * (Width + Height) / 7.0; // Fast hypot calculation accurate to within 1% for specific use cases.
@@ -129,14 +126,14 @@ Special operators include:
 
 *********************************************************************************************************************/
 
-static std::string write_calc(DOUBLE Value, WORD Precision)
+static std::string write_calc(double Value, WORD Precision)
 {
    if (!Precision) return std::to_string(F2T(Value));
 
    LARGE wholepart = F2T(Value);
    auto out = std::to_string(wholepart);
 
-   DOUBLE fraction = std::abs(Value) - std::abs(wholepart);
+   double fraction = std::abs(Value) - std::abs(wholepart);
    if ((fraction > 0) or (Precision < 0)) {
       out += '.';
       fraction *= 10;
@@ -157,7 +154,7 @@ static std::string write_calc(DOUBLE Value, WORD Precision)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Scaled)
+static CSTRING read_unit(CSTRING Input, double &Output, bool &Scaled)
 {
    bool isnumber = true;
    auto v = Input;
@@ -178,8 +175,8 @@ static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Scaled)
          else isnumber = false;
       }
 
-      DOUBLE multiplier = 1.0;
-      DOUBLE dpi = 96.0;
+      double multiplier = 1.0;
+      double dpi = 96.0;
 
       if (*str IS '%') {
          Scaled = true;
@@ -434,7 +431,6 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    Self->RelPageWidth  = false;
    Self->MinPageWidth  = MIN_PAGE_WIDTH;
    Self->DefaultScript = NULL;
-   Self->FontSize      = DEFAULT_FONTSIZE;
    Self->FocusIndex    = -1;
    Self->PageProcessed = false;
    Self->RefreshTemplates = true;
@@ -448,7 +444,8 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    Self->Links.clear();
 
-   Self->FontFace = "Noto Sans";
+   Self->FontFace = DEFAULT_FONTFACE;
+   Self->FontSize = DEFAULT_FONTSIZE;
    Self->PageTag = NULL;
 
    Self->EditCells.clear();
@@ -673,7 +670,7 @@ static bc_font * find_style(RSTREAM &Stream, stream_char &Char)
 //********************************************************************************************************************
 // For a given line segment, convert a horizontal coordinate to the corresponding character index and its coordinate.
 /*
-static ERR resolve_font_pos(doc_segment &Segment, DOUBLE X, DOUBLE &CharX, stream_char &Char)
+static ERR resolve_font_pos(doc_segment &Segment, double X, double &CharX, stream_char &Char)
 {
    pf::Log log(__FUNCTION__);
 

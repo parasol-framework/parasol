@@ -7,25 +7,22 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui/window'
 
+local ICONS = {
+   error     = 'items/error',
+   critical  = 'items/error',
+   warning   = 'items/alert_circle',
+   help      = 'items/question',
+   question  = 'items/question',
+   request   = 'items/info',
+   info      = 'items/info'
+}
+
    if (gui == nil) then gui = { } end
    if (gui.dialog == nil) then gui.dialog = { } end
 
 local function defaultIcon(self)
-   if nz(self.type) then
-      local icons = {
-         error     = 'error',
-         critical  = 'error',
-         warning   = 'warning',
-         attention = 'info',
-         alarm     = 'alarm',
-         help      = 'question',
-         question  = 'question',
-         request   = 'info',
-         info      = 'info'
-      }
-      for k,v in pairs(icons) do
-         if self.type == k then return 'items/' .. v end
-      end
+   if self.type and ICONS[self.type] then
+      return ICONS[self.type]
    end
    return 'items/question'
 end
@@ -41,24 +38,12 @@ gui.dialog.message = function(Options)
       fmtMessage = Options.fmtMessage
    }
 
-   -- Change the message in the dialog
-
-   self.setMessage = function(Message, Formatted)
-      if Formatted then
-         self.message = nil
-         self.fmtMessage = Message
-      else
-         self.message = Message
-         self.fmtMessage = nil
-      end
-      lDoc.acClear()
-      lDoc.acDataFeed(0, DATA_XML, buildDocument())
-   end
-
    -- Wait for the user to respond to the dialog.
 
    self.wait = function()
-      processMessages(-1)
+      self.waiting = true
+      processing.sleep(-1, true)
+      self.waiting = nil
    end
 
    local function matchWindowToDocSize(self, Document)
@@ -100,6 +85,7 @@ gui.dialog.message = function(Options)
             self.feedback(self, response, state)
          end
 
+         if self.waiting then processing.signal() end
          table.clear(self)
       else
          print('Document event received')
@@ -214,6 +200,20 @@ gui.dialog.message = function(Options)
       return doc
    end
 
+   -- Change the message in the dialog
+
+   self.setMessage = function(Message, Formatted)
+      if Formatted then
+         self.message = nil
+         self.fmtMessage = Message
+      else
+         self.message = Message
+         self.fmtMessage = nil
+      end
+      lDoc.acClear()
+      lDoc.acDataFeed(0, DATA_XML, buildDocument())
+   end
+
    local dlg_width = 320
    if self.message then
       local longest = 0
@@ -254,6 +254,7 @@ gui.dialog.message = function(Options)
                self.feedback(self, nil, nil)
             end
 
+            if self.waiting then processing.signal() end
             table.clear(self)
          end
       }
@@ -283,6 +284,15 @@ gui.dialog.message = function(Options)
    self.document = lDoc
 
    return self
+end
+
+gui.dialog.error = function(Title, Message, PopOver)
+   return gui.dialog.message({
+      type    = 'error',
+      popOver = PopOver,
+      title   = Title,
+      string  = Message
+   })
 end
 
    -- This sub-routine is provided for languages other than Fluid to utilise the module.

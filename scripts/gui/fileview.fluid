@@ -12,6 +12,7 @@ Documentation is available in the Parasol Wiki.
    require 'gui/columnview'
    require 'gui/listview'
    require 'gui/fontdialog'
+   require 'io/filemgr'
    require 'json'
    include 'vector'
 
@@ -30,11 +31,6 @@ local copy_list = [[
    end
    if arg('move') then Move = true end
    file.ui.copy(glList, arg('dest'), { move=Move })
-]]
-
-local paste_clipboard = [[
-   require 'gui/file'
-   file.ui.paste(arg('dest'), arg('cluster'))
 ]]
 
 local TBID = {
@@ -411,38 +407,35 @@ local function copyFromList(Folder, List, Move)
    end)
 end
 
--- Paste from a clipboard to a folder
+-- Paste from a clipboard to a folder using a new thread
 
-local function pasteFromClipboard(Folder, Cluster)
+local function pasteFromClipboard(Folder)
    if not file.isFolder(Folder) then error('Invalid folder target of ' .. Folder) end
 
-   msg('pasteFromClipboard("' .. Folder ..  '", ' .. nz(Cluster,'nil') .. ')')
+   local paste_script = obj.new('script', { statement = [[
+   require 'io/filecopy'
+   file.ui.paste(arg('dest'))
+]] })
+   paste_script.acSetKey('dest', Folder)
 
-   catch(function()
-      local params = { '--dest', Folder }
-      if Cluster then
-         table.insert(params, '--cluster')
-         table.insert(params, Cluster)
-      end
+   if enable_threading then
+      if not self.threads then self.threads = { } end
 
-      local task = obj.new('task', {
-         location     = 'parasol:fluid',
-         flags        = '!Pipe',
-         parameters   = params,
-         exitCallback = function(Task)
+      self.threads[paste_script.id] = paste_script
+
+      thread.action(paste_script, 'Activate', function(ActionID, Script, Error, ScriptID)
+         if nz(Error) then
+            print('Failed to paste files: ' .. mSys.GetErrorMsg(Error))
+         else
+            print('Files successfully pasted.')
+            --proc.signal()
             if not self.watch then self.refresh() end
-            lBkgdTasks[Task.id] = nil
+            self.threads[ScriptID] = nil
          end
-      })
-
-      task.acActivate()
-      task.acWrite(paste_clipboard)
-      task.acWrite(nil)
-      lBkgdTasks[task.id] = task
-   end,
-   function(Exception)
-      gui.dialog.error('File Paste Failure', 'File paste attempt failed with exception: ' .. Exception.message)
-   end)
+      end, paste_script.id)
+   else
+      paste_script.acActivate()
+   end
 end
 
 -- Returns a single item structure identifying a file/folder/volume
@@ -1121,11 +1114,12 @@ gui.fileview = function(Options)
          title   = 'Create Shortcut',
          image   = 'folders/folder',
          icon    = 'folders/folder',
+         type    = 'request',
          message = Message,
          popover = self._surface,
          options = {
-            { id=1, text='Okay', icon='items/checkmark' },
-            { id=-1, text='Cancel', icon='items/cancel' }
+            { id=-1, text='Cancel', icon='items/cancel' },
+            { id=1, text='Okay', icon='items/checkmark' }
          },
          inject = inject,
          feedback = function(Dialog, Response, State)
@@ -1244,9 +1238,9 @@ gui.fileview = function(Options)
          title     = 'Rename',
          message   = 'Please enter the new name for the selected file or folder.',
          image     = 'tools/edit',
+         type      = 'request',
          options   = { { id=-1, text='Cancel', icon='items/cancel' },
                        { id=1, text='Okay', icon='items/checkmark' } },
-         type      = 'request',
          modal     = true,
          userInput = sel,
          popover   = self._surface,
@@ -1474,11 +1468,12 @@ gui.fileview = function(Options)
                      gui.dialog.message({
                         modal     = true,
                         image     = 'items/new_bookmark',
+                        type      = 'request',
                         title     = 'Create New Volume',
                         message   = 'Enter a new volume name for the path ' .. self.path,
                         userInput = '',
                         options   = {
-                           { id=2, text='Cancel', icon='items/cancel' },
+                           { id=-1, text='Cancel', icon='items/cancel' },
                            { id=1, text='Create Volume', icon='items/checkmark' }
                         },
                         feedback = function(Dialog, Response, State)

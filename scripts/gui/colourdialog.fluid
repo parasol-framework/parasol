@@ -255,15 +255,7 @@ local function buildLayout(self, Options)
                      refreshColourNodes(self)
                      self.viewport.acDraw()
                   else
-                     gui.dialog.message({
-                        icon    = 'items/error',
-                        image   = 'items/error',
-                        type    = 'error',
-                        buttons = 'okay',
-                        title   = 'Out of Palette Space',
-                        popOver = self._window.surface,
-                        string  = 'You have run out of space for adding new colours to your personal palette.  Please delete some of your existing colours before adding new ones.',
-                     })
+                     gui.dialog.error('Out of Palette Space', 'You have run out of space for adding new colours to your personal palette.  Please delete some of your existing colours before adding new ones.', self._window.surface)
                   end
                end
             }

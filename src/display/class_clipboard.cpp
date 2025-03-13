@@ -461,10 +461,10 @@ recommended as the most efficient method.
 
 -INPUT-
 int(CLIPTYPE) Filter: Filter down to the specified data type.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.
-int Index: If the `Filter` parameter is zero, this parameter may be set to the index of the desired clip item.
+int Index: If the `Filter` parameter is zero and clipboard history is enabled, this parameter refers to a historical clipboard item, with zero being the most recent.
 &int(CLIPTYPE) Datatype: The resulting datatype of the requested clip data.
-!array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a `NULL` entry.  You are required to free the returned array with ~Core.FreeResource().
-&int(CEF) Flags: Result flags are returned in this parameter.  If `DELETE` is set, you need to delete the files after use in order to support the 'cut' operation.
+!array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a `NULL` entry.  The client must free the returned array with ~Core.FreeResource().
+&int(CEF) Flags: Result flags are returned in this parameter.  If `DELETE` is defined, the client must delete the files after use in order to support the 'cut' operation.
 
 -ERRORS-
 Okay: A matching clip was found and returned.

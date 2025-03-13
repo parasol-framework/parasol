@@ -73,17 +73,17 @@ static ERR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-DerefProcedure: Dereferences a function.
+DerefProcedure: Dereferences an acquired procedure.
 
-This method is applicable to scripting languages that manage function references as a keyed resource.  Fluid is
-one such language.
+This method will release a procedure reference that has been acquired through #GetProcedureID().  It is only necessary 
+to make this call if the scripting language is managing function references as a keyed resource.  Fluid is one such 
+language.  Languages that do not manage functions as a resource will ignore calls to this method.
 
-Any routine that accepts a script function as a parameter should call DerefProcedure at a later point in order to
-ensure that the function reference is released.  Not doing so may leave the reference in memory until the Script that
-owns the procedure is terminated.
+Note that acquiring a procedure reference and then failing to release it can result in the reference remaining in 
+memory until the Script is terminated.  There may also be unforeseen consequences in the garbage collection process.
 
 -INPUT-
-ptr(func) Procedure: The function to be dereferenced.
+ptr(func) Procedure: The procedure to be dereferenced.
 
 -ERRORS-
 Okay:
@@ -102,7 +102,7 @@ static ERR SCRIPT_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Arg
 -METHOD-
 Callback: An internal method for managing callbacks.
 
-Private
+Not for client use.
 
 -INPUT-
 large ProcedureID: An identifier for the target procedure.
@@ -216,7 +216,7 @@ static ERR SCRIPT_Exec(objScript *Self, struct sc::Exec *Args)
    if ((Args->TotalArgs < 0) or (Args->TotalArgs > 32)) return log.warning(ERR::Args);
 
    auto save_id = Self->ProcedureID;
-   CSTRING save_name = Self->Procedure;
+   auto save_name = Self->Procedure;
    Self->ProcedureID = 0;
    Self->Procedure = Args->Procedure;
 
@@ -256,8 +256,8 @@ static ERR SCRIPT_Free(objScript *Self)
 -METHOD-
 GetProcedureID: Converts a procedure name to an ID.
 
-This method will convert a procedure name to a unique reference that will be recognised by the script as a direct
-reference to that procedure.  The ID can be used to create new `FUNCTION` definitions, for example:
+This method will convert a procedure name to a unique reference within the script, if such a procedure exists.  The 
+ID can be used by the client to create new `FUNCTION` definitions, for example:
 
 <pre>
 FUNCTION callback;
@@ -296,13 +296,10 @@ GetKey: Script parameters can be retrieved through this action.
 
 static ERR SCRIPT_GetKey(objScript *Self, struct acGetKey *Args)
 {
-   pf::Log log;
-
    if ((!Args) or (!Args->Value) or (!Args->Key)) return ERR::NullArgs;
-   if (Args->Size < 2) return log.warning(ERR::Args);
+   if (Args->Size < 2) return ERR::Args;
 
-   auto it = Self->Vars.find(Args->Key);
-   if (it != Self->Vars.end()) {
+   if (auto it = Self->Vars.find(Args->Key); it != Self->Vars.end()) {
       strcopy(it->second, Args->Value, Args->Size);
       return ERR::Okay;
    }
@@ -365,13 +362,12 @@ SetKey: Script parameters can be set through this action.
 
 static ERR SCRIPT_SetKey(objScript *Self, struct acSetKey *Args)
 {
-   pf::Log log;
-
    // It is acceptable to set zero-length string values (this has its uses in some scripts).
 
    if ((!Args) or (!Args->Key) or (!Args->Value)) return ERR::NullArgs;
    if (!Args->Key[0]) return ERR::NullArgs;
-
+   
+   pf::Log log;
    log.trace("%s = %s", Args->Key, Args->Value);
 
    Self->Vars[Args->Key] = Args->Value;

@@ -53,12 +53,14 @@ that is distributed with this package.  Please refer to it for further informati
 #include "defs/hashes.h"
 #include "../link/unicode.h"
 
-static const LONG MAX_PAGE_WIDTH    = 30000;
-static const LONG MAX_PAGE_HEIGHT   = 100000;
-static const LONG MIN_PAGE_WIDTH    = 20;
-static const LONG MAX_DEPTH         = 40;    // Limits recursion from tables-within-tables
-static const LONG WIDTH_LIMIT       = 4000;
-static const LONG DEFAULT_FONTSIZE  = 16;    // 72DPI pixel size
+static constexpr LONG MAX_PAGE_WIDTH   = 30000;
+static constexpr LONG MAX_PAGE_HEIGHT  = 100000;
+static constexpr LONG MIN_PAGE_WIDTH   = 20;
+static constexpr LONG MAX_DEPTH        = 40;    // Limits recursion from tables-within-tables
+static constexpr LONG WIDTH_LIMIT      = 4000;
+#define DEFAULT_FONTSTYLE "Medium"
+#define DEFAULT_FONTFACE "Noto Sans"
+static constexpr LONG DEFAULT_FONTSIZE = 14;    // 72DPI pixel size
 
 using BYTECODE = ULONG;
 using CELL_ID = ULONG;
@@ -144,7 +146,7 @@ static void  deactivate_edit(extDocument *, bool);
 static ERR extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
 static void  error_dialog(const std::string, const std::string);
 static void  error_dialog(const std::string, ERR);
-static const Field * find_field(OBJECTPTR, CSTRING, OBJECTPTR *);
+static const Field * find_field(OBJECTPTR, std::string_view, OBJECTPTR *);
 static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
 static LONG  find_tabfocus(extDocument *, TT, BYTECODE);
 static ERR flash_cursor(extDocument *, LARGE, LARGE);

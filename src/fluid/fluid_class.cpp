@@ -634,7 +634,7 @@ static ERR FLUID_GetProcedureID(objScript *Self, struct sc::GetProcedureID *Args
    }
 
    lua_getglobal(prv->Lua, Args->Procedure);
-   LONG id = luaL_ref(prv->Lua, LUA_REGISTRYINDEX);
+   auto id = luaL_ref(prv->Lua, LUA_REGISTRYINDEX);
    if ((id != LUA_REFNIL) and (id != LUA_NOREF)) {
       Args->ProcedureID = id;
       return ERR::Okay;

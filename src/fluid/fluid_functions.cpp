@@ -501,6 +501,7 @@ int fcmd_require(lua_State *Lua)
          if ((module[i] >= 'a') and (module[i] <= 'z')) continue;
          if ((module[i] >= 'A') and (module[i] <= 'Z')) continue;
          if ((module[i] >= '0') and (module[i] <= '9')) continue;
+         if (module[i] IS '-') continue;
          if (module[i] IS '/') { slash_count++; continue; }
          break;
       }
