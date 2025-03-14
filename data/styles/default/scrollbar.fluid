@@ -1,6 +1,6 @@
 -- Styling for the 'gui/scrollbar' script.
 
-   if (mVec == nil) then mVec = mod.load('vector') end
+   if mVec == nil then mVec = mod.load('vector') end
 
    local glCounter = 0
 

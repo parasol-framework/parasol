@@ -20,7 +20,7 @@ A demonstration of standard widgets
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
 
-   local win = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400, center=true })
+   local win = gui.window({ title='Widget Examples', insideWidth=600, insideHeight=400 })
    local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
 function itemCallback(Bar, Item)
@@ -385,6 +385,6 @@ end
       }
    })
 
-   win:show()
+   win:show(true)
    processing.sleep() -- Will sleep until the window sends MSGID_QUIT
 

@@ -7,13 +7,15 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui/window'
 
+local LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.window)
+
 local ICONS = {
    error     = 'items/error',
    critical  = 'items/error',
    warning   = 'items/alert_circle',
    help      = 'items/question',
    question  = 'items/question',
-   request   = 'items/info',
+   request   = 'items/request',
    info      = 'items/info'
 }
 
@@ -45,6 +47,8 @@ gui.dialog.message = function(Options)
       processing.sleep(-1, true)
       self.waiting = nil
    end
+
+   -- Configure the window according to initial doc size
 
    local function matchWindowToDocSize(self, Document)
       local page_width  = Document.pageWidth
@@ -236,18 +240,14 @@ gui.dialog.message = function(Options)
 
    self.window = gui.window({
       insideWidth  = dlg_width,
-      insideHeight = 102,
-      minWidth     = 190,
-      minHeight    = 102,
+      insideHeight = 300,
       quit         = nz(Options.quit, false),
-      center       = true,
       popover      = Options.popover,
       parent       = Options.target,
       aspectRatio  = true,
       icon         = nz(Options.icon, 'items/question'),
       title        = nz(Options.title, 'Confirmation Required'),
       modal        = nz(Options.modal, false),
-      flags        = 'NoMargins',
       events = {
          close = function(Window)
             if (self.feedback != nil) then
@@ -279,7 +279,7 @@ gui.dialog.message = function(Options)
    matchWindowToDocSize(self, lDoc)
 
    self.window:moveToFront()
-   self.window:show()
+   self.window:show(true)
 
    self.document = lDoc
 

@@ -229,7 +229,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-   win = gui.window({ title='Gradient Demo', insideWidth=1024, insideHeight=800, center=true })
+   win = gui.window({ title='Gradient Demo', insideWidth=1024, insideHeight=800 })
    viewport = win:clientViewport({
       aspectRatio = ARF_MEET
    })
@@ -256,5 +256,5 @@ end
       end
    end))
 
-   win:show()
+   win:show(true)
    processing.sleep()

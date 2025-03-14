@@ -7,7 +7,7 @@ Gamepad demonstration
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
 
-   local win = gui.window({ title='Gamepad Demo', insideWidth=600, insideHeight=400, center=true, enableControllers=true })
+   local win = gui.window({ title='Gamepad Demo', insideWidth=600, insideHeight=400, enableControllers=true })
    local viewport = win:clientViewport({ aspectRatio = ARF_MEET })
 
    local text = viewport.new('vectortext', {
@@ -55,5 +55,5 @@ Gamepad demonstration
       viewport.scene.surface.mtScheduleRedraw()
    end)
 
-   win:show()
+   win:show(true)
    processing.sleep()

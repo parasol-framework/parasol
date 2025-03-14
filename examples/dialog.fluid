@@ -5,8 +5,7 @@ Dialog test
    require 'gui/dialog'
 
    gui.dialog.message({
-      modal         = true,
-      image         = 'items/warning',
+      type          = 'question',
       title         = 'Hamlet has a question',
       message       = 'To be or not to be?',
       userInput     = 'That is the question',

@@ -97,8 +97,6 @@ gui.window = function(Options)
       end
    end
 
-   -- Returns the size of the client area.  The (x,y) values
-
    self.getClientSize = function(self)
       if hosted(self) then
          return {
@@ -278,7 +276,40 @@ gui.window = function(Options)
       end
    end
 
-   self.show = function(self)
+   self.show = function(self, Center)
+      if Options.center or Center then -- Options.center is obsolete
+         local x, y = (function()
+            if self.surface.popOver then
+               local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popOver)
+               if err == ERR_Okay then
+                  x = x + ((powidth - self.surface.width) / 2)
+                  y = y + ((poheight - self.surface.height) / 2)
+                  local err, _, _, px, py, _, _ = mGfx.GetSurfaceCoords(self.surface.parent)
+                  if err == ERR_Okay then
+                     return x - px, y - py
+                  end
+               end
+            elseif self.surface.parent then
+               local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
+               if (err == ERR_Okay) then
+                  x = vx + ((vwidth - self.surface.width) / 2)
+                  y = vy + ((vheight - self.surface.height) / 2)
+                  --check_overlap(self, x, y, 0, 0)
+                  return x, y
+               end
+            else
+               local err, display = mGfx.GetDisplayInfo(0)
+               if err == ERR_Okay then
+                  return (display.width - self.surface.width) / 2, (display.height - self.surface.height) / 2
+               end
+            end
+         end)()
+
+         if x and y then
+            self.surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
+         end
+      end
+
       self.visible = true
       self.surface.acShow()
       if bit.band(self.surface.flags, RNF_HAS_FOCUS) != 0 then
@@ -441,39 +472,6 @@ gui.window = function(Options)
          if (bit.band(info.flags, RNF_STICK_TO_FRONT) != 0) then
             self.surface.flags = bit.bor(self.surface.flags, RNF_STICK_TO_FRONT)
          end
-      end
-   end
-
-   if Options.center then
-      local x, y = (function()
-         if (self.surface.popOver) then
-            local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popOver)
-            if (err == ERR_Okay) then
-               x = x + ((powidth - self.surface.width) / 2)
-               y = y + ((poheight - self.surface.height) / 2)
-               local err, _, _, px, py, _, _ = mGfx.GetSurfaceCoords(self.surface.parent)
-               if (err == ERR_Okay) then
-                  return x - px, y - py
-               end
-            end
-         elseif (self.surface.parent) then
-            local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
-            if (err == ERR_Okay) then
-               x = vx + ((vwidth - self.surface.width) / 2)
-               y = vy + ((vheight - self.surface.height) / 2)
-               --check_overlap(self, x, y, 0, 0)
-               return x, y
-            end
-         else
-            local err, display = mGfx.GetDisplayInfo(0)
-            if (err == ERR_Okay) then
-               return (display.width - self.surface.width) / 2, (display.height - self.surface.height) / 2
-            end
-         end
-      end)()
-
-      if x and y then
-         self.surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
       end
    end
 
