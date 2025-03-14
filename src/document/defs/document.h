@@ -413,13 +413,14 @@ struct font_entry {
 
 struct bc_font : public entity {
    WORD font_index;     // Font lookup (will reflect the true font face, point size, style)
-   FSO  options;        // Style options, like underline and italics
+   FSO  options;        // Style options, like underline
    ALIGN valign;        // Vertical alignment of text within the available line height
    std::string fill;    // Font fill instruction
    std::string face;    // The font face as requested by the client.  Might not match the font we actually use.
-   DOUBLE font_size;    // The 72 DPI pixel size as requested by the client.  Might not match the font we actually use.
+   std::string style;   // The font style as requested by the client.  Might not match the font we actually use.
+   double font_size;    // The 72 DPI pixel size as requested by the client.  Might not match the font we actually use.
 
-   bc_font(): font_index(-1), options(FSO::NIL), valign(ALIGN::BOTTOM), fill("rgb(0,0,0)"), font_size(0) { code = SCODE::FONT; }
+   bc_font(): font_index(-1), options(FSO::NIL), valign(ALIGN::BOTTOM), fill("rgb(0,0,0)"), style("Regular"), font_size(0) { code = SCODE::FONT; }
 
    font_entry * get_font();
 
@@ -1070,6 +1071,7 @@ class extDocument : public objDocument {
    std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
    std::string Background;     // Background fill instruction
    std::string CursorStroke;   // Stroke instruction for the text cursor
+   std::string FontStyle;      // Default font style, usually set to Regular
    objXML *Templates;          // All templates for the current document are stored here
    objXML *PretextXML;         // Execute this XML prior to loading a new page.
    objSVG *SVG;                // Allocated by the <svg> tag

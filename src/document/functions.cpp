@@ -446,6 +446,7 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    Self->FontFace = DEFAULT_FONTFACE;
    Self->FontSize = DEFAULT_FONTSIZE;
+   Self->FontStyle = DEFAULT_FONTSTYLE;
    Self->PageTag = NULL;
 
    Self->EditCells.clear();
@@ -554,16 +555,6 @@ static LONG get_line_from_index(extDocument *Self, INDEX index)
    return 0;
 }
 #endif
-
-//********************************************************************************************************************
-
-inline std::string get_font_style(const FSO Options)
-{
-   if ((Options & (FSO::BOLD|FSO::ITALIC)) IS (FSO::BOLD|FSO::ITALIC)) return "Bold Italic";
-   else if ((Options & FSO::BOLD) != FSO::NIL) return "Bold";
-   else if ((Options & FSO::ITALIC) != FSO::NIL) return "Italic";
-   else return "Regular";
-}
 
 //********************************************************************************************************************
 //Checks if an object reference is a valid member of the document.

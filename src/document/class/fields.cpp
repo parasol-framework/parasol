@@ -301,7 +301,7 @@ static ERR SET_PageWidth(extDocument *Self, Unit *Value)
 Pretext: Execute the XML defined here prior to loading new pages.
 
 Use the Pretext field to execute document code prior to the loading of a new document.  This feature is commonly used
-to set configure a document in advance, such as setting default font values and background graphics.  It is
+to configure a document in advance, such as setting default font values and background graphics.  It is
 functionally equivalent to embedding an `<include/>` statement at the top of a document, but with the benefit
 of guaranteeing continued execution if the user navigates away from the first page.
 
@@ -372,13 +372,12 @@ static ERR SET_Viewport(extDocument *Self, objVectorViewport *Value)
 WorkingPath: Defines the working path (folder or URI).
 
 The working path for a document is defined here.  By default this is defined as the location from which the document
-was loaded, without the file name.  If this cannot be determined then the working path for the parent task is used
+was loaded, without the file name.  If this cannot be determined, the working path for the parent task is used
 (this is usually set to the location of the parasol executable).
 
-The working path is always fully qualified with a slash or colon at the end of the string unless the path cannot be
-determined - in which case an empty string is returned.
+The working path is always fully qualified with a slash or colon at the end of the string.
 
-You can manually change the working path by setting the #Origin field without affecting the loaded document.
+The client can manually change the working path by setting the #Origin field without affecting the loaded document.
 -END-
 
 *********************************************************************************************************************/

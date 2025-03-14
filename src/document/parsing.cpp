@@ -98,7 +98,7 @@ struct parser {
    inline void tag_div(XMLTag &);
    inline void tag_editdef(XMLTag &);
    inline void tag_font(XMLTag &);
-   inline void tag_font_style(objXML::TAGS &, FSO);
+   inline void tag_font_style(objXML::TAGS &, FSO, std::string_view);
    inline void tag_head(XMLTag &);
    inline void tag_image(XMLTag &);
    inline void tag_include(XMLTag &);
@@ -1004,7 +1004,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
          break;
 
       case HASH_b:
-         if (!Tag.Children.empty()) tag_font_style(Tag.Children, FSO::BOLD);
+         if (!Tag.Children.empty()) tag_font_style(Tag.Children, FSO::NIL, "Bold");
          break;
 
       case HASH_div:
@@ -1018,7 +1018,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
          break;
 
       case HASH_i:
-         if (!Tag.Children.empty()) tag_font_style(Tag.Children, FSO::ITALIC);
+         if (!Tag.Children.empty()) tag_font_style(Tag.Children, FSO::NIL, "Italic");
          break;
 
       case HASH_li:
@@ -1029,7 +1029,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
          if (!Tag.Children.empty()) tag_pre(Tag.Children);
          break;
 
-      case HASH_u: if (!Tag.Children.empty()) tag_font_style(Tag.Children, FSO::UNDERLINE); break;
+      case HASH_u: if (!Tag.Children.empty()) tag_font_style(Tag.Children, FSO::UNDERLINE, m_style.style); break;
 
       case HASH_list: if (!Tag.Children.empty()) tag_list(Tag); break;
 
@@ -1230,7 +1230,7 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
 {
    bool font_change = false;
 
-   if ((Style.options & (FSO::BOLD|FSO::ITALIC)) != (m_style.options & (FSO::BOLD|FSO::ITALIC))) {
+   if (Style.style != m_style.style) {
       font_change = true;
    }
    else if ((Style.options & (FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE)) !=
@@ -1372,9 +1372,7 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
             j = Attrib.Value.find(':', j);
             if (j != std::string::npos) { // Style follows
                j++;
-               if (iequals("bold", str+j)) Style.options |= FSO::BOLD;
-               else if (iequals("italic", str+j)) Style.options |= FSO::ITALIC;
-               else if (iequals("bold italic", str+j)) Style.options |= FSO::BOLD|FSO::ITALIC;
+               Style.style = str+j;
             }
          }
 
@@ -1391,9 +1389,7 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
       case HASH_font_style:
          [[fallthrough]];
       case HASH_style:
-         if (iequals("bold", Attrib.Value)) Style.options |= FSO::BOLD;
-         else if (iequals("italic", Attrib.Value)) Style.options |= FSO::ITALIC;
-         else if (iequals("bold italic", Attrib.Value)) Style.options |= FSO::BOLD|FSO::ITALIC;
+         Style.style = Attrib.Value;
          return true;
    }
 
@@ -3402,13 +3398,14 @@ void parser::tag_script(XMLTag &Tag)
 }
 
 //********************************************************************************************************************
-// Supports FSO::BOLD, FSO::ITALIC, FSO::UNDERLINE
+// Supports FSO::UNDERLINE and named styles
 
-void parser::tag_font_style(objXML::TAGS &Children, FSO StyleFlag)
+void parser::tag_font_style(objXML::TAGS &Children, FSO StyleFlag, std::string_view StyleName)
 {
-   if ((m_style.options & StyleFlag) IS FSO::NIL) {
+   if (((m_style.options & StyleFlag) != StyleFlag) or (m_style.style != StyleName)) {
       auto new_status = m_style;
       new_status.options |= StyleFlag;
+      new_status.style = StyleName;
       parse_tags_with_style(Children, new_status);
    }
    else parse_tags(Children);

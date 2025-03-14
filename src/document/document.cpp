@@ -150,7 +150,6 @@ static const Field * find_field(OBJECTPTR, std::string_view, OBJECTPTR *);
 static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
 static LONG  find_tabfocus(extDocument *, TT, BYTECODE);
 static ERR flash_cursor(extDocument *, LARGE, LARGE);
-inline std::string get_font_style(const FSO);
 static LONG getutf8(CSTRING, LONG *);
 static ERR  insert_text(extDocument *, RSTREAM *, stream_char &, const std::string_view, bool);
 static ERR  insert_xml(extDocument *, RSTREAM *, objXML *, objXML::TAGS &, LONG, STYLE = STYLE::NIL, IPF = IPF::NIL);
@@ -200,7 +199,7 @@ font_entry * bc_font::get_font()
    pf::Log log(__FUNCTION__);
 
    if (font_index IS -2) {
-      if (!glFonts.empty()) return &glFonts[0]; // Always try to return a font rather than NULL
+      if (!glFonts.empty()) return &glFonts[0]; // Always try to return a font rather than nullptr
       return NULL;
    }
 
@@ -217,13 +216,12 @@ font_entry * bc_font::get_font()
 
    // Check the cache for this font
 
-   auto style_name = get_font_style(options);
-   APTR new_handle;
+   APTR new_handle = nullptr;
    CSTRING resolved_face;
    if (fnt::ResolveFamilyName(face.c_str(), &resolved_face) IS ERR::Okay) {
       face.assign(resolved_face);
 
-      if (vec::GetFontHandle(face.c_str(), style_name.c_str(), 400, font_size, &new_handle) IS ERR::Okay) {
+      if (vec::GetFontHandle(face.c_str(), style.c_str(), 400, font_size, &new_handle) IS ERR::Okay) {
          for (unsigned i=0; i < glFonts.size(); i++) {
             if (new_handle IS glFonts[i].handle) {
                font_index = i;
@@ -232,15 +230,13 @@ font_entry * bc_font::get_font()
          }
       }
 
-      if (font_index IS -1) { // Font not in cache
+      if ((font_index IS -1) and (new_handle)) { // Font not in cache
          std::lock_guard lk(glFontsMutex);
 
-         log.branch("Index: %d, %s, %s, %g", LONG(std::ssize(glFonts)), face.c_str(), style_name.c_str(), font_size);
+         log.branch("Index: %d, %s, %s, %g", LONG(std::ssize(glFonts)), face.c_str(), style.c_str(), font_size);
 
-         if (font_index IS -1) { // Add the font to the cache
-            font_index = std::ssize(glFonts);
-            glFonts.emplace_back(new_handle, face, style_name, font_size);
-         }
+         font_index = std::ssize(glFonts);
+         glFonts.emplace_back(new_handle, face, style, font_size);
       }
 
       if (font_index >= 0) return &glFonts[font_index];

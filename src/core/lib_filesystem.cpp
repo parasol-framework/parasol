@@ -679,7 +679,7 @@ object or use ~ResolvePath() first.
 
 The `Callback` parameter can be set with a function that matches the prototype `LONG Callback(struct FileFeedback *)`.
 
-Prior to the deletion of any file, a &FileFeedback structure is passed that describes the file's location.  The
+Prior to the deletion of any file, a !FileFeedback structure is passed that describes the file's location.  The
 callback must return a constant value that can potentially affect file processing.  Valid values are `FFR::Okay` (delete
 the file), `FFR::Skip` (do not delete the file) and `FFR::Abort` (abort the process completely and return `ERR::Cancelled`
 as an error code).
