@@ -154,9 +154,9 @@ gui.dialog.message = function(Options)
 ]]
 
       if Options.userInput then
-         local inputFlags = '!IgnoreFocus'
+         local inputOptions = ''
          if Options.secret then
-            inputFlags = inputFlags .. '|Secret'
+            inputOptions = 'secret="true"'
          end
 
          local msg
@@ -166,7 +166,7 @@ gui.dialog.message = function(Options)
             msg = ''
          end
 
-         doc = doc .. '<p><input name="input" flags="' .. inputFlags .. '" width="200" value="' .. msg .. '"/></p>\n'
+         doc = doc .. '<p><input name="input" ' .. inputOptions .. ' width="16em" value="' .. msg .. '"/></p>\n'
       end
 
       if Options.checkboxLabel then

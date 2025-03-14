@@ -14,7 +14,7 @@ static const Field * find_field(OBJECTPTR Object, std::string_view Name, OBJECTP
    // Skip any special characters that are leading the field name (e.g. $, @).  Some symbols like / are used for XPath
    // lookups, so we only want to skip reserved symbols or we risk confusion between real fields and variable fields.
 
-   LONG i;
+   unsigned i;
    for (i=0; i < Name.size() and ((Name[i] IS '$') or (Name[i] IS '@')); i++);
    if (i) Name.remove_prefix(i);
    return FindField(Object, strihash(Name), Source);

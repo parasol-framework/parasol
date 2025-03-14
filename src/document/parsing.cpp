@@ -1998,6 +1998,7 @@ void parser::tag_input(XMLTag &Tag)
          case HASH_width:     widget.width = DUNIT(value); break;
          case HASH_font_fill: widget.font_fill = value; break;
          case HASH_name:      widget.name = value; break;
+         case HASH_secret:    if (iequals(value, "true")) widget.secret = true; break;
          case HASH_label_pos:
             if (iequals("left", value)) widget.label_pos = 0;
             else if (iequals("right", value)) widget.label_pos = 1;
