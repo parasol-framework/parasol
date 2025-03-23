@@ -223,24 +223,16 @@ gui.dialog.message = function(Options)
       lDoc.acDataFeed(0, DATA_XML, buildDocument())
    end
 
-   local dlg_width = 320
+   local dlg_width = 400
    if self.message then
-      local longest = 0
+      local longest = 10
       for word in self.message:gmatch("%S+") do
-         if (word:len() > longest) then
-            longest = word:len()
-         end
+         if word:len() > longest then longest = word:len() end
       end
-      dlg_width = 120 + (longest * 12)
-      if dlg_width < 300 then
-         dlg_width = 300
-      elseif dlg_width > 480 then
-         dlg_width = 480
-      end
+      dlg_width = 120 + (longest * FONT_HEIGHT)
+      if dlg_width > 600 then dlg_width = 600 end
    elseif self.fmtMessage then
-      if self.fmtMessage:len() > 80 then
-         dlg_width = 390
-      end
+
    end
 
    self.window = gui.window({
