@@ -161,32 +161,23 @@ static void printerror(void)
 
 //********************************************************************************************************************
 
-void winGetCoords(HWND Window, int *WinX, int *WinY, int *WinWidth, int *WinHeight, int *ClientX, int *ClientY,
-   int *ClientWidth, int *ClientHeight)
+ERR winGetCoords(HWND Window, int &WinX, int &WinY, int &WinWidth, int &WinHeight, int &ClientX, int &ClientY,
+   int &ClientWidth, int &ClientHeight)
 {
-   WINDOWINFO info;
+   WINDOWINFO info = { .cbSize = sizeof(info) };
 
-   info.cbSize = sizeof(info);
    if (GetWindowInfo(Window, &info)) {
-      if (WinX)         *WinX      = info.rcWindow.left;
-      if (WinY)         *WinY      = info.rcWindow.top;
-      if (WinWidth)     *WinWidth  = info.rcWindow.right - info.rcWindow.left;
-      if (WinHeight)    *WinHeight = info.rcWindow.bottom - info.rcWindow.top;
-      if (ClientX)      *ClientX      = info.rcClient.left;
-      if (ClientY)      *ClientY      = info.rcClient.top;
-      if (ClientWidth)  *ClientWidth  = info.rcClient.right - info.rcClient.left;
-      if (ClientHeight) *ClientHeight = info.rcClient.bottom - info.rcClient.top;
+      WinX      = info.rcWindow.left;
+      WinY      = info.rcWindow.top;
+      WinWidth  = info.rcWindow.right - info.rcWindow.left;
+      WinHeight = info.rcWindow.bottom - info.rcWindow.top;
+      ClientX      = info.rcClient.left;
+      ClientY      = info.rcClient.top;
+      ClientWidth  = info.rcClient.right - info.rcClient.left;
+      ClientHeight = info.rcClient.bottom - info.rcClient.top;
+      return ERR::Okay;
    }
-   else {
-      if (WinX)         *WinX      = 0;
-      if (WinY)         *WinY      = 0;
-      if (WinWidth)     *WinWidth  = 0;
-      if (WinHeight)    *WinHeight = 0;
-      if (ClientX)      *ClientX      = 0;
-      if (ClientY)      *ClientY      = 0;
-      if (ClientWidth)  *ClientWidth  = 0;
-      if (ClientHeight) *ClientHeight = 0;
-   }
+   else return ERR::Failed;
 }
 
 //********************************************************************************************************************
@@ -704,7 +695,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 {
    PAINTSTRUCT paint;
    HDC hdc;
-   int newwidth, newheight, surfaceid;
+   int surfaceid;
    LPRECT rect;
    RECT winrect, client;
 
@@ -830,8 +821,9 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 
       case WM_MOVE: {
          int wx, wy, wwidth, wheight, cx, cy, cwidth, cheight;
-         winGetCoords(window, &wx, &wy, &wwidth, &wheight, &cx, &cy, &cwidth, &cheight);
-         MsgResizedWindow(winLookupSurfaceID(window), wx, wy, wwidth, wheight, cx, cy, cwidth, cheight);
+         if (winGetCoords(window, wx, wy, wwidth, wheight, cx, cy, cwidth, cheight) == ERR::Okay) {
+            MsgResizedWindow(winLookupSurfaceID(window), wx, wy, wwidth, wheight, cx, cy, cwidth, cheight);
+         }
          return 0;
       }
 
@@ -858,9 +850,9 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
             WINDOWPLACEMENT win;
 
             if ((surfaceid = winLookupSurfaceID(window))) {
-               newwidth  = cwidth;
-               newheight = cheight;
-               CheckWindowSize(surfaceid, &newwidth, &newheight);
+               auto newwidth  = cwidth;
+               auto newheight = cheight;
+               CheckWindowSize(surfaceid, newwidth, newheight);
                if ((newwidth != cwidth) or (newheight != cheight)) {
                   ZeroMemory(&win, sizeof(WINDOWPLACEMENT));
                   win.length = sizeof(WINDOWPLACEMENT);
@@ -876,8 +868,9 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          // Send a resize message to the surface object
 
          int wx, wy, wwidth, wheight, cx, cy;
-         winGetCoords(window, &wx, &wy, &wwidth, &wheight, &cx, &cy, &cwidth, &cheight);
-         MsgResizedWindow(winLookupSurfaceID(window), wx, wy, wwidth, wheight, cx, cy, cwidth, cheight);
+         if (winGetCoords(window, wx, wy, wwidth, wheight, cx, cy, cwidth, cheight) == ERR::Okay) {
+            MsgResizedWindow(winLookupSurfaceID(window), wx, wy, wwidth, wheight, cx, cy, cwidth, cheight);
+         }
          return 0;
       }
 
@@ -895,7 +888,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          rect = (LPRECT)lParam;
          int cwidth  = (rect->right - rect->left) - ((winrect.right - winrect.left) - (client.right - client.left));
          int cheight = (rect->bottom - rect->top) - ((winrect.bottom- winrect.top) - (client.bottom - client.top));
-         CheckWindowSize(winLookupSurfaceID(window), &cwidth, &cheight);
+         CheckWindowSize(winLookupSurfaceID(window), cwidth, cheight);
          if ((wParam == WMSZ_BOTTOMRIGHT) or (wParam == WMSZ_RIGHT) or (wParam == WMSZ_TOPRIGHT))    rect->right  = rect->left + cwidth + ((winrect.right - winrect.left) - (client.right - client.left));
          if ((wParam == WMSZ_BOTTOMRIGHT) or (wParam == WMSZ_BOTTOM) or (wParam == WMSZ_BOTTOMLEFT)) rect->bottom = rect->top + cheight + (winrect.bottom - client.bottom - winrect.top);
          if ((wParam == WMSZ_BOTTOMLEFT) or (wParam == WMSZ_LEFT) or (wParam == WMSZ_TOPLEFT))       rect->left   = rect->right - cwidth - ((winrect.right - winrect.left) - (client.right - client.left));
@@ -1248,7 +1241,8 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
 
    // Return the absolute coordinates of the client region
 
-   winGetCoords(Window, 0, 0, 0, 0, X, Y, Width, Height);
+   int dummy;
+   winGetCoords(Window, dummy, dummy, dummy, dummy, *X, *Y, *Width, *Height);
 
    if (glTrayIcon) {
       NOTIFYICONDATA nid;

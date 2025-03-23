@@ -31,6 +31,7 @@ areas.
 #undef __xwindows__
 #include "../defs.h"
 #include <parasol/modules/picture.h>
+#include <numeric> // For std::gcd
 
 #ifdef _WIN32
 using namespace display;
@@ -542,12 +543,12 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERR R
    else if ((Self->Align & ALIGN::BOTTOM) != ALIGN::NIL) y = parentheight - height;
    else if ((Self->Align & ALIGN::VERTICAL) != ALIGN::NIL) y = (parentheight - height) * 0.5;
 
-   if (width > Self->MaxWidth) {
+   if ((Self->MaxWidth > 0) and (width > Self->MaxWidth)) {
       log.trace("Calculated width of %.0f exceeds max limit of %d", width, Self->MaxWidth);
       width = Self->MaxWidth;
    }
 
-   if (height > Self->MaxHeight) {
+   if ((Self->MaxHeight > 0) and (height > Self->MaxHeight)) {
       log.trace("Calculated height of %.0f exceeds max limit of %d", height, Self->MaxHeight);
       height = Self->MaxHeight;
    }
@@ -1187,8 +1188,8 @@ static ERR SURFACE_Init(extSurface *Self)
 
       if (Self->Height < Self->MinHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MinHeight + Self->TopMargin  + Self->BottomMargin;
       if (Self->Width  < Self->MinWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;
-      if (Self->Height > Self->MaxHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin;
-      if (Self->Width  > Self->MaxWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;
+      if ((Self->MaxHeight > 0) and (Self->Height > Self->MaxHeight + Self->TopMargin  + Self->BottomMargin)) Self->Height = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin;
+      if ((Self->MaxWidth > 0) and (Self->Width  > Self->MaxWidth  + Self->LeftMargin + Self->RightMargin))  Self->Width  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;
 
       Self->DisplayID     = parent->DisplayID;
       Self->DisplayWindow = parent->DisplayWindow;
@@ -1291,10 +1292,10 @@ static ERR SURFACE_Init(extSurface *Self)
          }
       }
 
-      if (Self->Height < Self->MinHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MinHeight + Self->TopMargin  + Self->BottomMargin;
       if (Self->Width  < Self->MinWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;
-      if (Self->Height > Self->MaxHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin;
-      if (Self->Width  > Self->MaxWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;
+      if (Self->Height < Self->MinHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MinHeight + Self->TopMargin  + Self->BottomMargin;
+      if ((Self->MaxWidth > 0) and (Self->Width  > Self->MaxWidth  + Self->LeftMargin + Self->RightMargin))  Self->Width  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;
+      if ((Self->MaxHeight > 0) and (Self->Height > Self->MaxHeight + Self->TopMargin  + Self->BottomMargin)) Self->Height = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin;
 
       if ((Self->Flags & RNF::STICK_TO_FRONT) != RNF::NIL) gfx::SetHostOption(HOST::STICK_TO_FRONT, 1);
       else gfx::SetHostOption(HOST::STICK_TO_FRONT, 0);
@@ -1302,7 +1303,7 @@ static ERR SURFACE_Init(extSurface *Self)
       if ((Self->Flags & RNF::COMPOSITE) != RNF::NIL) scrflags |= SCR::COMPOSITE;
 
       OBJECTID id, pop_display = 0;
-      CSTRING name = FindObject("SystemDisplay", CLASSID::NIL, FOF::NIL, &id) != ERR::Okay ? "SystemDisplay" : (CSTRING)NULL;
+      CSTRING name = FindObject("SystemDisplay", CLASSID::NIL, FOF::NIL, &id) != ERR::Okay ? "SystemDisplay" : (CSTRING)nullptr;
 
       if (Self->PopOverID) {
          if (pf::ScopedObjectLock<extSurface> popsurface(Self->PopOverID, 2000); popsurface.granted()) {

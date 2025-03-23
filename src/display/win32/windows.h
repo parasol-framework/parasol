@@ -115,7 +115,7 @@ extern void MsgTimer(void);
 extern void MsgWindowClose(int SurfaceID);
 extern void MsgWindowDestroyed(int SurfaceID);
 
-void CheckWindowSize(int, int *, int *);
+void CheckWindowSize(int, int &, int &);
 
 void Win32ManagerLoop(void);
 
@@ -132,7 +132,7 @@ extern void winFindClose(HANDLE);
 extern HANDLE winFindWindow(char *, char *);
 extern void winFocus(HWND);
 extern void winFreeDragDrop(void);
-extern void winGetCoords(HWND, int *, int *, int *, int *, int *, int *, int *, int *);
+extern ERR winGetCoords(HWND, int &, int &, int &, int &, int &, int &, int &, int &);
 extern int winGetDesktopSize(int *, int *);
 extern int winGetDisplaySettings(int *, int *, int *);
 extern void winGetMargins(HWND, int *, int *, int *, int *);

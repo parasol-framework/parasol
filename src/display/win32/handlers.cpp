@@ -198,7 +198,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
 //********************************************************************************************************************
 // The width and height arguments must reflect the dimensions of the client area.
 
-void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
+void CheckWindowSize(OBJECTID SurfaceID, LONG &Width, LONG &Height)
 {
    if ((!SurfaceID) or (!Width) or (!Height)) return;
 
@@ -212,19 +212,19 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
       auto bottom    = surface->get<LONG>(FID_BottomMargin);
       auto right     = surface->get<LONG>(FID_RightMargin);
 
-      if (*Width < minwidth + left + right)   *Width  = minwidth + left + right;
-      if (*Height < minheight + top + bottom) *Height = minheight + top + bottom;
-      if (*Width > maxwidth + left + right)   *Width  = maxwidth + left + right;
-      if (*Height > maxheight + top + bottom) *Height = maxheight + top + bottom;
+      if ((minwidth > 0) and (Width < minwidth + left + right))    Width  = minwidth + left + right;
+      if ((minheight > 0) and (Height < minheight + top + bottom)) Height = minheight + top + bottom;
+      if ((maxwidth > 0) and (Width > maxwidth + left + right))    Width  = maxwidth + left + right;
+      if ((maxheight > 0) and (Height > maxheight + top + bottom)) Height = maxheight + top + bottom;
 
       if ((surface->Flags & RNF::ASPECT_RATIO) != RNF::NIL) {
          if (minwidth > minheight) {
-            DOUBLE scale = (DOUBLE)minheight / (DOUBLE)minwidth;
-            *Height = *Width * scale;
+            auto scale = (double)minheight / (double)minwidth;
+            Height = F2T(Width * scale);
          }
          else {
-            DOUBLE scale = (DOUBLE)minwidth / (DOUBLE)minheight;
-            *Width = *Height * scale;
+            auto scale = (double)minwidth / (double)minheight;
+            Width = F2T(Height * scale);
          }
       }
    }

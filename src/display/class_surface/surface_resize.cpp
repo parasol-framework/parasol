@@ -60,7 +60,7 @@ static ERR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
       }
    }
 
-   if ((newwidth > Self->MaxWidth + Self->LeftMargin + Self->RightMargin)) newwidth = Self->MaxWidth + Self->LeftMargin + Self->RightMargin;
+   if ((Self->MaxWidth > 0) and (newwidth > Self->MaxWidth + Self->LeftMargin + Self->RightMargin)) newwidth = Self->MaxWidth + Self->LeftMargin + Self->RightMargin;
 
    if (newwidth < 2) newwidth = 2;
 

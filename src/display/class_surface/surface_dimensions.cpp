@@ -414,8 +414,8 @@ static ERR SET_MaxHeight(extSurface *Self, LONG Value)
    if ((!Self->ParentID) and (Self->DisplayID)) {
       pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
       if (display.granted()) display->sizeHints(-1, -1,
-         Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
-         Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
+         (Self->MaxWidth > 0) ? (Self->MaxWidth + Self->LeftMargin + Self->RightMargin) : -1,
+         (Self->MaxHeight > 0) ? (Self->MaxHeight + Self->TopMargin + Self->BottomMargin) : -1,
          (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
    }
 
@@ -443,8 +443,8 @@ static ERR SET_MaxWidth(extSurface *Self, LONG Value)
    if ((!Self->ParentID) and (Self->DisplayID)) {
       if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
          display->sizeHints(-1, -1,
-            Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
-            Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
+            (Self->MaxWidth > 0) ? (Self->MaxWidth + Self->LeftMargin + Self->RightMargin) : -1,
+            (Self->MaxHeight > 0) ? (Self->MaxHeight + Self->TopMargin + Self->BottomMargin) : -1,
             (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
       }
    }
@@ -652,13 +652,13 @@ static ERR GET_VisibleWidth(extSurface *Self, LONG *Value)
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      WORD i;
-      if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
-
-      auto clip = glSurfaces[i].area();
-      restrict_region_to_parents(glSurfaces, i, clip, false);
-      *Value = clip.width();
-      return ERR::Okay;
+      if (auto i = find_surface_list(Self); i != -1) {
+         auto clip = glSurfaces[i].area();
+         restrict_region_to_parents(glSurfaces, i, clip, false);
+         *Value = clip.width();
+         return ERR::Okay;
+      }
+      else return ERR::Search;
    }
 }
 
@@ -686,14 +686,13 @@ static ERR GET_VisibleX(extSurface *Self, LONG *Value)
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      WORD i;
-      if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
-
-      auto clip = glSurfaces[i].area();
-      restrict_region_to_parents(glSurfaces, i, clip, false);
-
-      *Value = clip.Left - glSurfaces[i].Left;
-      return ERR::Okay;
+      if (auto i = find_surface_list(Self); i != -1) {
+         auto clip = glSurfaces[i].area();
+         restrict_region_to_parents(glSurfaces, i, clip, false);
+         *Value = clip.Left - glSurfaces[i].Left;
+         return ERR::Okay;
+      }
+      else return ERR::Search;
    }
 }
 
@@ -721,13 +720,13 @@ static ERR GET_VisibleY(extSurface *Self, LONG *Value)
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      WORD i;
-      if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
-
-      auto clip = glSurfaces[i].area();
-      restrict_region_to_parents(glSurfaces, i, clip, false);
-      *Value = clip.Top - glSurfaces[i].Top;
-      return ERR::Okay;
+      if (auto i = find_surface_list(Self); i != -1) {
+         auto clip = glSurfaces[i].area();
+         restrict_region_to_parents(glSurfaces, i, clip, false);
+         *Value = clip.Top - glSurfaces[i].Top;
+         return ERR::Okay;
+      }
+      else return ERR::Search;
    }
 }
 
