@@ -203,7 +203,7 @@ class extVectorText : public extVector {
    LONG  txWeight; // 100 - 300 (Light), 400 (Normal), 700 (Bold), 900 (Boldest)
    ALIGN txAlignFlags;
    VTXF  txFlags;
-   char  txFontStyle[20];
+   char  txFontStyle[30];
    bool txScaledFontSize;
    bool txXScaled:1;
    bool txYScaled:1;
