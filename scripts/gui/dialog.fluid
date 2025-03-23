@@ -19,8 +19,8 @@ local ICONS = {
    info      = 'items/info'
 }
 
-   if (gui == nil) then gui = { } end
-   if (gui.dialog == nil) then gui.dialog = { } end
+   if gui == nil then gui = { } end
+   if gui.dialog == nil then gui.dialog = { } end
 
 local function defaultIcon(self)
    if self.type and ICONS[self.type] then
@@ -37,7 +37,8 @@ gui.dialog.message = function(Options)
       feedback = Options.feedback,
       inputRequired = Options.inputRequired,
       message    = Options.message,
-      fmtMessage = Options.fmtMessage
+      fmtMessage = Options.fmtMessage,
+      scaleWindow = nz(Options.scale, true)
    }
 
    -- Wait for the user to respond to the dialog.
@@ -61,8 +62,12 @@ gui.dialog.message = function(Options)
       self.window.surface.insideWidth  = page_width
       self.window.surface.insideHeight = page_height
 
-      self.viewport.viewWidth  = page_width
-      self.viewport.viewHeight = page_height
+      -- If the viewport dimensions are set, the dialog will scale with the window.
+      if self.scaleWindow then
+         self.viewport.aspectRatio = 'XMin|YMin'
+         self.viewport.viewWidth  = page_width
+         self.viewport.viewHeight = page_height
+      end
    end
 
    local function docEvent(Document, EventFlag, Parameters)
