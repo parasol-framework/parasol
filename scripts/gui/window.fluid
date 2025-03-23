@@ -65,6 +65,8 @@ gui.window = function(Options)
       if self._clientViewport then return self._clientViewport end
       if not Options then Options = { } end
 
+      if not Options.aspectRatio then Options.aspectRatio = 'XMin|YMin|Meet' end
+
       if hosted(self) then
          Options.x = 0
          Options.y = 0
@@ -336,15 +338,11 @@ gui.window = function(Options)
 
    self._desktop = obj.find('desktop')
 
-   self.surface = obj.new('surface', {
+   local surface_opts = {
       name      = 'winsurface',
       parent    = self._desktop,
       width     = nz(Options.width, DEFAULT_WIDTH),
       height    = nz(Options.height, DEFAULT_HEIGHT),
-      minWidth  = Options.minWidth,
-      minHeight = Options.minHeight,
-      maxWidth  = nz(Options.maxWidth, 4096),
-      maxHeight = nz(Options.maxHeight, 4096),
       type      = RT_ROOT,
       modal     = nz(Options.modal, false),
       popOver   = Options.popOver,
@@ -365,7 +363,14 @@ gui.window = function(Options)
 
          return flags
       end)()
-   })
+   }
+
+   if Options.minWidth  then surface_opts.minWidth  = Options.minWidth end
+   if Options.minHeight then surface_opts.minHeight = Options.minHeight end
+   if Options.maxWidth  then surface_opts.maxWidth  = Options.maxWidth end
+   if Options.maxHeight then surface_opts.maxHeight = Options.maxHeight end
+
+   self.surface = obj.new('surface', surface_opts)
 
    if Options.enableControllers then
       self.surface.display.flags = bit.bor(self.surface.display.flags, SCR_GRAB_CONTROLLERS)
@@ -417,7 +422,8 @@ gui.window = function(Options)
       x       = 0,
       y       = 0,
       width   = '100%',
-      height  = '100%'
+      height  = '100%',
+      aspectRatio = 'XMin|YMin|Meet'
    })
 
    if hosted(self) then

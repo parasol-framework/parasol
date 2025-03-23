@@ -200,7 +200,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
 
 void CheckWindowSize(OBJECTID SurfaceID, LONG &Width, LONG &Height)
 {
-   if ((!SurfaceID) or (!Width) or (!Height)) return;
+   if (!SurfaceID) return;
 
    if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
       auto minwidth  = surface->get<LONG>(FID_MinWidth);

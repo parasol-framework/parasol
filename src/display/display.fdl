@@ -85,7 +85,7 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     "COMPOSITE|NO_PRECOMPOSITE|POST_COMPOSITE: Do not copy background information into the surface buffer - composite on the fly instead",
     "FULL_SCREEN: Allow the surface to open as a new screen display",
     "IGNORE_FOCUS: Focus is diverted directly to the parent",
-    "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by @Surface.MinWidth and @Surface.MinHeight.",
+    "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by the diagonal from @Surface.MinWidth, @Surface.MinHeight to @Surface.MaxWidth, @Surface.MaxHeight.",
     { VOLATILE = "PRECOPY|AFTER_COPY|CURSOR" },
     { READ_ONLY = "HAS_FOCUS|CURSOR|AFTER_COPY" },
     { INIT_ONLY = "HOST|TRANSPARENT|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })

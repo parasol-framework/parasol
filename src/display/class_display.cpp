@@ -1351,7 +1351,7 @@ int MinWidth: The minimum width of the window.
 int MinHeight: The minimum height of the window.
 int MaxWidth: The maximum width of the window.
 int MaxHeight: The maximum width of the window.
-int EnforceAspect: Set to true to enforce an aspect ratio that is scaled by MinHeight / MinWidth.
+int EnforceAspect: Set to true to enforce an aspect ratio that is scaled from MinWidth,MinHeight to MaxWidth,MaxHeight.
 
 -ERRORS-
 Okay

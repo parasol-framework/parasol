@@ -740,7 +740,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <tr><th>PTC::TEXT</th><td>The text cursor is popular for the precise positioning of text cursors.</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias 2003-2025</div></div>
 <div class="docs-content" style="display:none;" id="RNF"><h1>RNF Type</h1><p class="lead">Switches for the Surface class' Flags field.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>RNF::AFTER_COPY</th><td>Read-only.  Indicates that after-copy mode has been enabled.</td></tr>
-<tr><th>RNF::ASPECT_RATIO</th><td>When resizing, enforce the aspect ratio as defined by Surface.MinWidth and Surface.MinHeight.</td></tr>
+<tr><th>RNF::ASPECT_RATIO</th><td>When resizing, enforce the aspect ratio as defined by the diagonal from Surface.MinWidth, Surface.MinHeight to Surface.MaxWidth, Surface.MaxHeight.</td></tr>
 <tr><th>RNF::AUTO_QUIT</th><td>The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</td></tr>
 <tr><th>RNF::COMPOSITE</th><td>Do not copy background information into the surface buffer - composite on the fly instead</td></tr>
 <tr><th>RNF::DISABLED</th><td>This flag is set if the Disable action has been called on a surface object.  Calling the Enable action will turn off the flag setting.</td></tr>

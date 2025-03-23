@@ -839,7 +839,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       }
 
       case WM_SIZE: {
-         // Note that the WM_SIZE function tells us the size of the client area
+         // Note that the WM_SIZE function tells us the size of the client area.  See WM_SIZING for incoming size requests from the user
 
          int cwidth  = LOWORD(lParam);
          int cheight = HIWORD(lParam);
@@ -874,12 +874,6 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          return 0;
       }
 
-      case WM_WINDOWPOSCHANGING: {
-         LPWINDOWPOS winpos = (LPWINDOWPOS)lParam;
-         winpos->flags |= SWP_NOCOPYBITS|SWP_NOREDRAW;
-         return 0;
-      }
-
       case WM_SIZING: {
          // This procedure is called when the user is resizing a window by its anchor points.
 
@@ -893,6 +887,12 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          if ((wParam == WMSZ_BOTTOMRIGHT) or (wParam == WMSZ_BOTTOM) or (wParam == WMSZ_BOTTOMLEFT)) rect->bottom = rect->top + cheight + (winrect.bottom - client.bottom - winrect.top);
          if ((wParam == WMSZ_BOTTOMLEFT) or (wParam == WMSZ_LEFT) or (wParam == WMSZ_TOPLEFT))       rect->left   = rect->right - cwidth - ((winrect.right - winrect.left) - (client.right - client.left));
          if ((wParam == WMSZ_TOPLEFT) or (wParam == WMSZ_TOP) or (wParam == WMSZ_TOPRIGHT))          rect->top    = rect->bottom - cheight - ((winrect.bottom - winrect.top) - (client.bottom - client.top));
+         return 0;
+      }
+
+      case WM_WINDOWPOSCHANGING: {
+         auto winpos = (LPWINDOWPOS)lParam;
+         winpos->flags |= SWP_NOCOPYBITS|SWP_NOREDRAW;
          return 0;
       }
 
