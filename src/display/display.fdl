@@ -550,10 +550,6 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     oid Buffer            # Buffer bitmap (backing store)
     oid Parent            # Graphical container of the Surface object, if any
     oid PopOver           # Keeps a surface in front of another surface in the Z order.
-    int TopMargin         # Top movement limit
-    int BottomMargin      # Bottom movement limit
-    int LeftMargin        # Left movement limit
-    int RightMargin       # Right movement limit
     int MinWidth          # Minimum width setting
     int MinHeight         # Minimum height setting
     int MaxWidth          # Maximum width setting

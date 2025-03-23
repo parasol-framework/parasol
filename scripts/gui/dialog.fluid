@@ -59,8 +59,8 @@ gui.dialog.message = function(Options)
       if (page_height < 100) then page_height = 100 end
 
       self.window:sizeHints(page_width, page_height, page_width * 3, page_height * 3, false)
-      self.window.surface.insideWidth  = page_width
-      self.window.surface.insideHeight = page_height
+      self.window.surface.width  = page_width
+      self.window.surface.height = page_height
 
       -- If the viewport dimensions are set, the dialog will scale with the window.
       if self.scaleWindow then

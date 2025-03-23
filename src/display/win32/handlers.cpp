@@ -207,15 +207,11 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG &Width, LONG &Height)
       auto minheight = surface->get<LONG>(FID_MinHeight);
       auto maxwidth  = surface->get<LONG>(FID_MaxWidth);
       auto maxheight = surface->get<LONG>(FID_MaxHeight);
-      auto left      = surface->get<LONG>(FID_LeftMargin);
-      auto top       = surface->get<LONG>(FID_TopMargin);
-      auto bottom    = surface->get<LONG>(FID_BottomMargin);
-      auto right     = surface->get<LONG>(FID_RightMargin);
 
-      if ((minwidth > 0) and (Width < minwidth + left + right))    Width  = minwidth + left + right;
-      if ((minheight > 0) and (Height < minheight + top + bottom)) Height = minheight + top + bottom;
-      if ((maxwidth > 0) and (Width > maxwidth + left + right))    Width  = maxwidth + left + right;
-      if ((maxheight > 0) and (Height > maxheight + top + bottom)) Height = maxheight + top + bottom;
+      if ((minwidth > 0) and (Width < minwidth))    Width  = minwidth; 
+      if ((minheight > 0) and (Height < minheight)) Height = minheight;
+      if ((maxwidth > 0) and (Width > maxwidth))    Width  = maxwidth;
+      if ((maxheight > 0) and (Height > maxheight)) Height = maxheight;
 
       if ((surface->Flags & RNF::ASPECT_RATIO) != RNF::NIL) {
          if (minwidth > minheight) {

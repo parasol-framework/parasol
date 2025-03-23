@@ -53,28 +53,28 @@ static ERR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
 
    // Ensure that the requested width does not exceed minimum and maximum values
 
-   if ((Self->MinWidth > 0) and (newwidth < Self->MinWidth + Self->LeftMargin + Self->RightMargin)) {
+   if ((Self->MinWidth > 0) and (newwidth < Self->MinWidth)) {
       if (oldwidth > newwidth) {
-         if (oldwidth > Self->MinWidth + Self->LeftMargin + Self->RightMargin) newwidth = Self->MinWidth + Self->LeftMargin + Self->RightMargin;
+         if (oldwidth > Self->MinWidth) newwidth = Self->MinWidth;
          else newwidth = oldwidth; // Maintain the current width because it is < MinWidth
       }
    }
 
-   if ((Self->MaxWidth > 0) and (newwidth > Self->MaxWidth + Self->LeftMargin + Self->RightMargin)) newwidth = Self->MaxWidth + Self->LeftMargin + Self->RightMargin;
+   if ((Self->MaxWidth > 0) and (newwidth > Self->MaxWidth)) newwidth = Self->MaxWidth;
 
    if (newwidth < 2) newwidth = 2;
 
    // Check requested height against minimum and maximum height values
 
-   if ((Self->MinHeight > 0) and (newheight < Self->MinHeight + Self->TopMargin + Self->BottomMargin)) {
+   if ((Self->MinHeight > 0) and (newheight < Self->MinHeight)) {
       if (oldheight > newheight) {
-         if (oldheight > Self->MinHeight + Self->TopMargin + Self->BottomMargin) newheight = Self->MinHeight + Self->TopMargin + Self->BottomMargin;
+         if (oldheight > Self->MinHeight) newheight = Self->MinHeight;
          else newheight = oldheight;
       }
    }
 
-   if ((Self->MaxHeight > 0) and (newheight > Self->MaxHeight + Self->TopMargin + Self->BottomMargin)) {
-      newheight = Self->MaxHeight + Self->TopMargin + Self->BottomMargin;
+   if ((Self->MaxHeight > 0) and (newheight > Self->MaxHeight)) {
+      newheight = Self->MaxHeight;
    }
 
    if (newheight < 2) newheight = 2;

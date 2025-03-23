@@ -794,13 +794,15 @@ class objVectorImage : public Object {
    // Customised field setting
 
    inline ERR setX(const DOUBLE Value) noexcept {
-      this->X = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setY(const DOUBLE Value) noexcept {
-      this->Y = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setPicture(objPicture * Value) noexcept {
@@ -826,13 +828,15 @@ class objVectorImage : public Object {
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
-      this->SpreadMethod = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setAspectRatio(const ARF Value) noexcept {
-      this->AspectRatio = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
 };
@@ -903,8 +907,9 @@ class objVectorPattern : public Object {
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
-      this->SpreadMethod = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setUnits(const VUNIT Value) noexcept {
@@ -953,7 +958,7 @@ class objVectorGradient : public Object {
    DOUBLE  Radius;        // The radius of the gradient.
    DOUBLE  FocalRadius;   // The size of the focal radius for radial gradients.
    DOUBLE  Resolution;    // Affects the rate of change for colours in the gradient.
-   VSPREAD SpreadMethod;  // The behaviour to use when the gradient bounds do not match the vector path.
+   VSPREAD SpreadMethod;  // Determines the rendering behaviour to use when gradient colours are cycled.
    VUNIT   Units;         // Defines the coordinate system for X1, Y1, X2 and Y2.
    VGT     Type;          // Specifies the type of gradient (e.g. RADIAL, LINEAR)
    VGF     Flags;         // Dimension flags are stored here.
@@ -1042,8 +1047,9 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
-      this->SpreadMethod = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setUnits(const VUNIT Value) noexcept {
@@ -1053,8 +1059,9 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setType(const VGT Value) noexcept {
-      this->Type = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setFlags(const VGF Value) noexcept {

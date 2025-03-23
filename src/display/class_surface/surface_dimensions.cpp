@@ -124,27 +124,6 @@ static ERR SET_BottomLimit(extSurface *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-BottomMargin: Manipulates the bottom margin of a surface object.
-
-The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin
-values have no significant meaning or effect on a surface object itself, but they are often used by other objects and
-can be helpful in interface construction.  For instance, the Window script uses margins to indicate the space
-available for placing graphics and other surface objects inside of it.
-
-By default, all margins are set to zero when a new surface object is created.
-
-*********************************************************************************************************************/
-
-static ERR SET_BottomMargin(extSurface *Self, LONG Value)
-{
-   if (Value < 0) Self->BottomMargin = -Value;
-   else Self->BottomMargin = Value;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Dimensions: Indicates currently active dimension settings.
 Lookup: DMF
 
@@ -313,59 +292,6 @@ static ERR SET_Height(extSurface *Self, Unit *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-InsideHeight: Defines the amount of space between the vertical margins.
-
-A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value
-is the result of calculating this formula: `Height - TopMargin - BottomMargin`.
-
-If the #TopMargin and #BottomMargin fields are not set, the returned value will be equal to the surface object's
-height.
-
-*********************************************************************************************************************/
-
-static ERR GET_InsideHeight(extSurface *Self, LONG *Value)
-{
-   *Value = Self->Height - Self->TopMargin - Self->BottomMargin;
-   return ERR::Okay;
-}
-
-static ERR SET_InsideHeight(extSurface *Self, LONG Value)
-{
-   LONG height = Value + Self->TopMargin + Self->BottomMargin;
-   if (height < Self->MinHeight) height = Self->MinHeight;
-   Self->setHeight(height);
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-InsideWidth: Defines the amount of space between the horizontal margins.
-
-A client can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the
-result of calculating this formula: `Width - LeftMargin - RightMargin`.
-
-If the #LeftMargin and #RightMargin fields are not set, the returned value will be equal to the surface object's width.
-
-*********************************************************************************************************************/
-
-static ERR GET_InsideWidth(extSurface *Self, LONG *Value)
-{
-   *Value = Self->Width - Self->LeftMargin - Self->RightMargin;
-   return ERR::Okay;
-}
-
-static ERR SET_InsideWidth(extSurface *Self, LONG Value)
-{
-   LONG width = Value + Self->LeftMargin + Self->RightMargin;
-   if (width < Self->MinWidth) width = Self->MinWidth;
-   Self->setWidth(width);
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 LeftLimit: Prevents a surface object from moving beyond a given point on the left-hand side.
 
 A client can prevent a surface object from moving beyond a given point at the left-hand side of its container by setting
@@ -386,24 +312,12 @@ static ERR SET_LeftLimit(extSurface *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-LeftMargin: Manipulates the left margin of a surface object.
-
-The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin
-values have no significant meaning or effect on a surface object itself, but they are often used by other objects and
-can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space
-available for placing graphics and other surface objects inside of it.
-
-By default, all margins are set to zero when a new surface object is created.
-
--FIELD-
 MaxHeight: Prevents the height of a surface object from exceeding a certain value.
 
 A client can limit the maximum height of a surface object by setting this field.  Limiting the height affects resizing,
 making it impossible to use the Resize() action to extend beyond the height you specify.
 
-It is possible to circumvent the MaxHeight by setting the Height field directly.  Note that the MaxHeight value refers
-to the inside-height of the surface area, thus the overall maximum height will include both the #TopMargin and
-#BottomMargin values.
+It is possible to circumvent the MaxHeight by setting the Height field directly.
 
 *********************************************************************************************************************/
 
@@ -414,8 +328,8 @@ static ERR SET_MaxHeight(extSurface *Self, LONG Value)
    if ((!Self->ParentID) and (Self->DisplayID)) {
       pf::ScopedObjectLock<extDisplay> display(Self->DisplayID);
       if (display.granted()) display->sizeHints(-1, -1,
-         (Self->MaxWidth > 0) ? (Self->MaxWidth + Self->LeftMargin + Self->RightMargin) : -1,
-         (Self->MaxHeight > 0) ? (Self->MaxHeight + Self->TopMargin + Self->BottomMargin) : -1,
+         (Self->MaxWidth > 0) ? (Self->MaxWidth) : -1,
+         (Self->MaxHeight > 0) ? (Self->MaxHeight) : -1,
          (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
    }
 
@@ -430,9 +344,7 @@ MaxWidth: Prevents the width of a surface object from exceeding a certain value.
 A client can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making
 it impossible to use the #Resize() action to extend beyond the width you specify.
 
-It is possible to circumvent the MaxWidth by setting the Width field directly.  Note that the MaxWidth value refers to
-the inside-width of the surface area, thus the overall maximum width will include both the #LeftMargin and #RightMargin
-values.
+It is possible to circumvent the MaxWidth by setting the Width field directly.
 
 *********************************************************************************************************************/
 
@@ -443,8 +355,8 @@ static ERR SET_MaxWidth(extSurface *Self, LONG Value)
    if ((!Self->ParentID) and (Self->DisplayID)) {
       if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
          display->sizeHints(-1, -1,
-            (Self->MaxWidth > 0) ? (Self->MaxWidth + Self->LeftMargin + Self->RightMargin) : -1,
-            (Self->MaxHeight > 0) ? (Self->MaxHeight + Self->TopMargin + Self->BottomMargin) : -1,
+            (Self->MaxWidth > 0) ? (Self->MaxWidth) : -1,
+            (Self->MaxHeight > 0) ? (Self->MaxHeight) : -1,
             (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
       }
    }
@@ -472,8 +384,7 @@ static ERR SET_MinHeight(extSurface *Self, LONG Value)
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
       if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
-         display->sizeHints(Self->MinWidth + Self->LeftMargin + Self->RightMargin,
-            Self->MinHeight + Self->TopMargin + Self->BottomMargin,
+         display->sizeHints(Self->MinWidth, Self->MinHeight,
             -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
       }
    }
@@ -501,8 +412,7 @@ static ERR SET_MinWidth(extSurface *Self, LONG Value)
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
       if (pf::ScopedObjectLock<extDisplay> display(Self->DisplayID); display.granted()) {
-         display->sizeHints(Self->MinWidth + Self->LeftMargin + Self->RightMargin,
-            Self->MinHeight + Self->TopMargin + Self->BottomMargin,
+         display->sizeHints(Self->MinWidth, Self->MinHeight,
             -1, -1, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
       }
    }
@@ -546,27 +456,6 @@ static ERR SET_RightLimit(extSurface *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-RightMargin: Manipulates the right margin of a surface object.
-
-The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin
-values have no significant meaning or effect on a surface object itself, but they are often used by other objects and
-can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space
-available for placing graphics and other surface objects inside of it.
-
-By default, all margins are set to zero when a new surface object is created.
-
-*********************************************************************************************************************/
-
-static ERR SET_RightMargin(extSurface *Self, LONG Value)
-{
-   if (Value < 0) Self->RightMargin = -Value;
-   else Self->RightMargin = Value;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 TopLimit: Prevents a surface object from moving beyond a given point at the top of its container.
 
 A client can prevent a surface object from moving beyond a given point at the top of its container by setting this field.
@@ -585,16 +474,6 @@ static ERR SET_TopLimit(extSurface *Self, LONG Value)
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-TopMargin: Manipulates the top margin of a surface object.
-
-The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin
-values have no significant meaning or effect on a surface object itself, but they are often used by other objects and
-can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space
-available for placing graphics and other surface objects inside of it.
-
-By default, all margins are set to zero when a new surface object is created.
 
 -FIELD-
 VisibleHeight: The visible height of the surface area, relative to its parents.

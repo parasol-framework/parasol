@@ -1186,10 +1186,10 @@ static ERR SURFACE_Init(extSurface *Self)
       else if ((Self->Align & ALIGN::BOTTOM) != ALIGN::NIL) { Self->Y = parent->Height - Self->Height; Self->setY(Self->Y); }
       else if ((Self->Align & ALIGN::VERTICAL) != ALIGN::NIL) { Self->Y = (parent->Height - Self->Height) / 2; Self->setY(Self->Y); }
 
-      if (Self->Width  < Self->MinWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;
-      if (Self->Height < Self->MinHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MinHeight + Self->TopMargin  + Self->BottomMargin;
-      if ((Self->MaxWidth > 0) and (Self->Width  > Self->MaxWidth  + Self->LeftMargin + Self->RightMargin))  Self->Width  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;
-      if ((Self->MaxHeight > 0) and (Self->Height > Self->MaxHeight + Self->TopMargin  + Self->BottomMargin)) Self->Height = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin;
+      if (Self->Width  < Self->MinWidth)  Self->Width  = Self->MinWidth;
+      if (Self->Height < Self->MinHeight) Self->Height = Self->MinHeight;
+      if ((Self->MaxWidth > 0) and (Self->Width  > Self->MaxWidth))  Self->Width  = Self->MaxWidth;
+      if ((Self->MaxHeight > 0) and (Self->Height > Self->MaxHeight)) Self->Height = Self->MaxHeight;
 
       Self->DisplayID     = parent->DisplayID;
       Self->DisplayWindow = parent->DisplayWindow;
@@ -1292,10 +1292,10 @@ static ERR SURFACE_Init(extSurface *Self)
          }
       }
 
-      if (Self->Width  < Self->MinWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;
-      if (Self->Height < Self->MinHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MinHeight + Self->TopMargin  + Self->BottomMargin;
-      if ((Self->MaxWidth > 0) and (Self->Width  > Self->MaxWidth  + Self->LeftMargin + Self->RightMargin))  Self->Width  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;
-      if ((Self->MaxHeight > 0) and (Self->Height > Self->MaxHeight + Self->TopMargin  + Self->BottomMargin)) Self->Height = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin;
+      if (Self->Width  < Self->MinWidth)  Self->Width  = Self->MinWidth;
+      if (Self->Height < Self->MinHeight) Self->Height = Self->MinHeight;
+      if ((Self->MaxWidth > 0) and (Self->Width  > Self->MaxWidth))  Self->Width  = Self->MaxWidth;
+      if ((Self->MaxHeight > 0) and (Self->Height > Self->MaxHeight)) Self->Height = Self->MaxHeight;
 
       if ((Self->Flags & RNF::STICK_TO_FRONT) != RNF::NIL) gfx::SetHostOption(HOST::STICK_TO_FRONT, 1);
       else gfx::SetHostOption(HOST::STICK_TO_FRONT, 0);
@@ -1341,10 +1341,10 @@ static ERR SURFACE_Init(extSurface *Self)
          // Configure sizing hints for the display.
 
          if ((Self->MaxWidth > 0) or (Self->MaxHeight > 0) or (Self->MinWidth > 0) or (Self->MinHeight > 0)) {
-            LONG mxW = (Self->MaxWidth > 0)  ? Self->MaxWidth  + Self->LeftMargin + Self->RightMargin  : 0;
-            LONG mxH = (Self->MaxHeight > 0) ? Self->MaxHeight + Self->TopMargin  + Self->BottomMargin : 0;
-            LONG mnW = (Self->MinWidth > 0)  ? Self->MinWidth  + Self->LeftMargin + Self->RightMargin  : 0;
-            LONG mnH = (Self->MinHeight > 0) ? Self->MinHeight + Self->TopMargin  + Self->BottomMargin : 0;
+            LONG mxW = (Self->MaxWidth > 0)  ? Self->MaxWidth  : 0;
+            LONG mxH = (Self->MaxHeight > 0) ? Self->MaxHeight : 0;
+            LONG mnW = (Self->MinWidth > 0)  ? Self->MinWidth  : 0;
+            LONG mnH = (Self->MinHeight > 0) ? Self->MinHeight : 0;
             display->sizeHints(mnW, mnH, mxW, mxH, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
          }
          else if ((Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL) {
@@ -1628,7 +1628,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 
    log.traceBranch("X,Y: %d,%d", xchange, ychange);
 
-   // Margin/Limit handling
+   // Limit handling
 
    if (!Self->ParentID) {
       move_layer(Self, Self->X + move.DeltaX, Self->Y + move.DeltaY);
@@ -2540,10 +2540,6 @@ static const FieldArray clSurfaceFields[] = {
    { "Buffer",       FDF_OBJECTID|FDF_R,  NULL, NULL, CLASSID::BITMAP },
    { "Parent",       FDF_OBJECTID|FDF_RW, NULL, SET_Parent, CLASSID::SURFACE },
    { "PopOver",      FDF_OBJECTID|FDF_RI, NULL, SET_PopOver },
-   { "TopMargin",    FDF_LONG|FDF_RW,  NULL, NULL },
-   { "BottomMargin", FDF_LONG|FDF_RW,  NULL, SET_BottomMargin },
-   { "LeftMargin",   FDF_LONG|FDF_RW,  NULL, NULL },
-   { "RightMargin",  FDF_LONG|FDF_RW,  NULL, SET_RightMargin },
    { "MinWidth",     FDF_LONG|FDF_RW,  NULL, SET_MinWidth },
    { "MinHeight",    FDF_LONG|FDF_RW,  NULL, SET_MinHeight },
    { "MaxWidth",     FDF_LONG|FDF_RW,  NULL, SET_MaxWidth },
@@ -2571,8 +2567,6 @@ static const FieldArray clSurfaceFields[] = {
    { "AbsY",          FDF_VIRTUAL|FDF_LONG|FDF_RW, GET_AbsY, SET_AbsY },
    { "BitsPerPixel",  FDF_VIRTUAL|FDF_LONG|FDF_RI, GET_BitsPerPixel, SET_BitsPerPixel },
    { "Bottom",        FDF_VIRTUAL|FDF_LONG|FDF_R,  GET_Bottom },
-   { "InsideHeight",  FDF_VIRTUAL|FDF_LONG|FDF_RW, GET_InsideHeight, SET_InsideHeight },
-   { "InsideWidth",   FDF_VIRTUAL|FDF_LONG|FDF_RW, GET_InsideWidth, SET_InsideWidth },
    { "Movement",      FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, NULL, SET_Movement, &MovementFlags },
    { "Opacity",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, GET_Opacity, SET_Opacity },
    { "RevertFocus",   FDF_SYSTEM|FDF_VIRTUAL|FDF_OBJECTID|FDF_W, NULL, SET_RevertFocus },

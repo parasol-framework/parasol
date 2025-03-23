@@ -565,7 +565,7 @@
       <access write="S">Set</access>
       <type>STRING</type>
       <description>
-<p>Use the Pretext field to execute document code prior to the loading of a new document.  This feature is commonly used to set configure a document in advance, such as setting default font values and background graphics.  It is functionally equivalent to embedding an <code>
+<p>Use the Pretext field to execute document code prior to the loading of a new document.  This feature is commonly used to configure a document in advance, such as setting default font values and background graphics.  It is functionally equivalent to embedding an <code>
 <include/></code> statement at the top of a document, but with the benefit of guaranteeing continued execution if the user navigates away from the first page.</p>
 <p>A Pretext will always survive document unloading and resets.  It can be removed only by setting this field with <code>NULL</code>.</p>
       </description>
@@ -614,9 +614,9 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The working path for a document is defined here.  By default this is defined as the location from which the document was loaded, without the file name.  If this cannot be determined then the working path for the parent task is used (this is usually set to the location of the parasol executable).</p>
-<p>The working path is always fully qualified with a slash or colon at the end of the string unless the path cannot be determined - in which case an empty string is returned.</p>
-<p>You can manually change the working path by setting the <fl>Origin</fl> field without affecting the loaded document.</p>
+<p>The working path for a document is defined here.  By default this is defined as the location from which the document was loaded, without the file name.  If this cannot be determined, the working path for the parent task is used (this is usually set to the location of the parasol executable).</p>
+<p>The working path is always fully qualified with a slash or colon at the end of the string.</p>
+<p>The client can manually change the working path by setting the <fl>Origin</fl> field without affecting the loaded document.</p>
       </description>
     </field>
 

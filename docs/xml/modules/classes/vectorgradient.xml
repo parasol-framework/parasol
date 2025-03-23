@@ -178,11 +178,11 @@
 
     <field>
       <name>SpreadMethod</name>
-      <comment>The behaviour to use when the gradient bounds do not match the vector path.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <comment>Determines the rendering behaviour to use when gradient colours are cycled.</comment>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="VSPREAD">VSPREAD</type>
       <description>
-<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD::PAD</code>.  Other valid options for gradients are <code>REFLECT</code>, <code>REPEAT</code> and <code>CLIP</code>.</p>
+<p>SpreadMethod determines what happens when the first cycle of gradient colours is exhausted and needs to begin again. The default setting is <code>VSPREAD::PAD</code>.</p>
 <types lookup="VSPREAD"/>
       </description>
     </field>
@@ -220,7 +220,7 @@
     <field>
       <name>Type</name>
       <comment>Specifies the type of gradient (e.g. <code>RADIAL</code>, <code>LINEAR</code>)</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="VGT">VGT</type>
       <description>
 <p>The type of the gradient to be drawn is specified here.</p>

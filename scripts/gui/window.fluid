@@ -409,11 +409,6 @@ gui.window = function(Options)
       self.margins = { left = 6, top = 6, right = 6, bottom = 6 }
    end
 
-   self.surface.leftMargin   = self.margins.left
-   self.surface.rightMargin  = self.margins.right
-   self.surface.topMargin    = self.margins.top
-   self.surface.bottomMargin = self.margins.bottom
-
    self.scene = self.surface.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
 
    gui.configureScene(self, self.scene) -- Support GUI customisation

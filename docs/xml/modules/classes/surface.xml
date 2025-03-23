@@ -408,17 +408,6 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>BottomMargin</name>
-      <comment>Manipulates the bottom margin of a surface object.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window script uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Buffer</name>
       <comment>The ID of the bitmap that manages the surface's graphics.</comment>
       <access read="R">Read</access>
@@ -523,28 +512,6 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>InsideHeight</name>
-      <comment>Defines the amount of space between the vertical margins.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the result of calculating this formula: <code>Height - TopMargin - BottomMargin</code>.</p>
-<p>If the <fl>TopMargin</fl> and <fl>BottomMargin</fl> fields are not set, the returned value will be equal to the surface object's height.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>InsideWidth</name>
-      <comment>Defines the amount of space between the horizontal margins.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
-      <description>
-<p>A client can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the result of calculating this formula: <code>Width - LeftMargin - RightMargin</code>.</p>
-<p>If the <fl>LeftMargin</fl> and <fl>RightMargin</fl> fields are not set, the returned value will be equal to the surface object's width.</p>
-      </description>
-    </field>
-
-    <field>
       <name>LeftLimit</name>
       <comment>Prevents a surface object from moving beyond a given point on the left-hand side.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -556,24 +523,13 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>LeftMargin</name>
-      <comment>Manipulates the left margin of a surface object.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
-      </description>
-    </field>
-
-    <field>
       <name>MaxHeight</name>
       <comment>Prevents the height of a surface object from exceeding a certain value.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
 <p>A client can limit the maximum height of a surface object by setting this field.  Limiting the height affects resizing, making it impossible to use the Resize() action to extend beyond the height you specify.</p>
-<p>It is possible to circumvent the MaxHeight by setting the Height field directly.  Note that the MaxHeight value refers to the inside-height of the surface area, thus the overall maximum height will include both the <fl>TopMargin</fl> and <fl>BottomMargin</fl> values.</p>
+<p>It is possible to circumvent the MaxHeight by setting the Height field directly.</p>
       </description>
     </field>
 
@@ -584,7 +540,7 @@ the surface area first).</li>
       <type>INT</type>
       <description>
 <p>A client can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making it impossible to use the <action>Resize</action> action to extend beyond the width you specify.</p>
-<p>It is possible to circumvent the MaxWidth by setting the Width field directly.  Note that the MaxWidth value refers to the inside-width of the surface area, thus the overall maximum width will include both the <fl>LeftMargin</fl> and <fl>RightMargin</fl> values.</p>
+<p>It is possible to circumvent the MaxWidth by setting the Width field directly.</p>
       </description>
     </field>
 
@@ -685,17 +641,6 @@ the surface area first).</li>
     </field>
 
     <field>
-      <name>RightMargin</name>
-      <comment>Manipulates the right margin of a surface object.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Root</name>
       <comment>Surface that is acting as a root for many surface children (useful when applying translucency)</comment>
       <access>-/-</access>
@@ -710,17 +655,6 @@ the surface area first).</li>
       <description>
 <p>A client can prevent a surface object from moving beyond a given point at the top of its container by setting this field. If for example you were to set the TopLimit to 10, then any attempt to move the surface object into or beyond the 10 units at the top of its container would fail.</p>
 <p>Limits only apply to movement, as induced through the <action>Move</action> action.  This means that limits can be over-ridden by setting the coordinate fields directly (which can be useful in certain cases).</p>
-      </description>
-    </field>
-
-    <field>
-      <name>TopMargin</name>
-      <comment>Manipulates the top margin of a surface object.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
       </description>
     </field>
 

@@ -1350,10 +1350,6 @@ class objSurface : public Object {
    OBJECTID BufferID;   // The ID of the bitmap that manages the surface's graphics.
    OBJECTID ParentID;   // The parent for a surface is defined here.
    OBJECTID PopOverID;  // Keeps a surface in front of another surface in the Z order.
-   LONG     TopMargin;  // Manipulates the top margin of a surface object.
-   LONG     BottomMargin; // Manipulates the bottom margin of a surface object.
-   LONG     LeftMargin; // Manipulates the left margin of a surface object.
-   LONG     RightMargin; // Manipulates the right margin of a surface object.
    LONG     MinWidth;   // Prevents the width of a surface object from shrinking beyond a certain value.
    LONG     MinHeight;  // Prevents the height of a surface object from shrinking beyond a certain value.
    LONG     MaxWidth;   // Prevents the width of a surface object from exceeding a certain value.
@@ -1489,35 +1485,13 @@ class objSurface : public Object {
 
    inline ERR setPopOver(OBJECTID Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[40];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERR setTopMargin(const LONG Value) noexcept {
-      this->TopMargin = Value;
-      return ERR::Okay;
-   }
-
-   inline ERR setBottomMargin(const LONG Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[43];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERR setLeftMargin(const LONG Value) noexcept {
-      this->LeftMargin = Value;
-      return ERR::Okay;
-   }
-
-   inline ERR setRightMargin(const LONG Value) noexcept {
-      auto target = this;
       auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setMinWidth(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[37];
+      auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1553,13 +1527,13 @@ class objSurface : public Object {
 
    inline ERR setTopLimit(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[52];
+      auto field = &this->Class->Dictionary[46];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setBottomLimit(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[50];
+      auto field = &this->Class->Dictionary[44];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1610,7 +1584,7 @@ class objSurface : public Object {
 
    inline ERR setCursor(const PTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[53];
+      auto field = &this->Class->Dictionary[47];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1633,7 +1607,7 @@ class objSurface : public Object {
 
    inline ERR setRootLayer(OBJECTID Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[39];
+      auto field = &this->Class->Dictionary[37];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1651,19 +1625,7 @@ class objSurface : public Object {
 
    inline ERR setBitsPerPixel(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[41];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERR setInsideHeight(const LONG Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[47];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERR setInsideWidth(const LONG Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[36];
+      auto field = &this->Class->Dictionary[39];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
