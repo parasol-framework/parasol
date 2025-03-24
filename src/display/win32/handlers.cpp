@@ -196,30 +196,42 @@ void MsgSetFocus(OBJECTID SurfaceID)
 }
 
 //********************************************************************************************************************
-// The width and height arguments must reflect the dimensions of the client area.
+// Called from WM_SIZE and WM_SIZING events to confirm that the requested window size is within the limits set by the
+// surface object.
 
-void CheckWindowSize(OBJECTID SurfaceID, LONG &Width, LONG &Height)
+void CheckWindowSize(OBJECTID SurfaceID, LONG &Width, LONG &Height, LONG CurrentWidth, LONG CurrentHeight, LONG Axis)
 {
    if (!SurfaceID) return;
+   if ((Width IS CurrentWidth) and (Height IS CurrentHeight)) return;
 
    if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
-      auto minwidth  = surface->get<LONG>(FID_MinWidth);
-      auto minheight = surface->get<LONG>(FID_MinHeight);
-      auto maxwidth  = surface->get<LONG>(FID_MaxWidth);
-      auto maxheight = surface->get<LONG>(FID_MaxHeight);
+      auto min_width  = surface->get<LONG>(FID_MinWidth);
+      auto min_height = surface->get<LONG>(FID_MinHeight);
+      auto max_width  = surface->get<LONG>(FID_MaxWidth);
+      auto max_height = surface->get<LONG>(FID_MaxHeight);
 
-      if ((minwidth > 0) and (Width < minwidth))    Width  = minwidth; 
-      if ((minheight > 0) and (Height < minheight)) Height = minheight;
-      if ((maxwidth > 0) and (Width > maxwidth))    Width  = maxwidth;
-      if ((maxheight > 0) and (Height > maxheight)) Height = maxheight;
+      if ((min_width > 0) and (Width < min_width))    Width  = min_width; 
+      if ((min_height > 0) and (Height < min_height)) Height = min_height;
+      if ((max_width > 0) and (Width > max_width))    Width  = max_width;
+      if ((max_height > 0) and (Height > max_height)) Height = max_height;
 
       if ((surface->Flags & RNF::ASPECT_RATIO) != RNF::NIL) {
-         if (minwidth > minheight) {
-            auto scale = (double)minheight / (double)minwidth;
+         if (Axis IS AXIS_BOTH) {
+            if (min_width > min_height) {
+               auto scale = (double)min_height / (double)min_width;
+               Height = F2T(Width * scale);
+            }
+            else {
+               auto scale = (double)min_width / (double)min_height;
+               Width = F2T(Height * scale);
+            }
+         }
+         else if (Axis IS AXIS_HORIZONTAL) {
+            auto scale = (double)min_height / (double)min_width;
             Height = F2T(Width * scale);
          }
-         else {
-            auto scale = (double)minwidth / (double)minheight;
+         else if (Axis IS AXIS_VERTICAL) {
+            auto scale = (double)min_width / (double)min_height;
             Width = F2T(Height * scale);
          }
       }

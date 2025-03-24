@@ -695,9 +695,6 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 {
    PAINTSTRUCT paint;
    HDC hdc;
-   int surfaceid;
-   LPRECT rect;
-   RECT winrect, client;
 
 #ifdef DBGMSG
    if (glCmd.contains(msgcode)) {
@@ -839,21 +836,22 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       }
 
       case WM_SIZE: {
-         // Note that the WM_SIZE function tells us the size of the client area.  See WM_SIZING for incoming size requests from the user
+         // The WM_SIZE event reports the new size of the client area.  See WM_SIZING for incoming size requests from the user.
 
          int cwidth  = LOWORD(lParam);
          int cheight = HIWORD(lParam);
 
-         // If the window has just been maximised, check if the surface object has restrictions on the width and height.  If so, force the window back to its previous dimensions so that it obeys the developer's requirements.
+         // If the window has just been maximised, check if the surface object has restrictions on the width and height.  
+         // If so, force the window back to its previous dimensions so that it obeys the developer's requirements.
 
          if (wParam & SIZE_MAXIMIZED) {
             WINDOWPLACEMENT win;
 
-            if ((surfaceid = winLookupSurfaceID(window))) {
-               auto newwidth  = cwidth;
-               auto newheight = cheight;
-               CheckWindowSize(surfaceid, newwidth, newheight);
-               if ((newwidth != cwidth) or (newheight != cheight)) {
+            if (auto surface_id = winLookupSurfaceID(window)) {
+               auto new_width  = cwidth;
+               auto new_height = cheight;
+               CheckWindowSize(surface_id, new_width, new_height, cwidth, cheight, AXIS_BOTH);
+               if ((new_width != cwidth) or (new_height != cheight)) {
                   ZeroMemory(&win, sizeof(WINDOWPLACEMENT));
                   win.length = sizeof(WINDOWPLACEMENT);
                   GetWindowPlacement(window, &win);
@@ -877,16 +875,48 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_SIZING: {
          // This procedure is called when the user is resizing a window by its anchor points.
 
+         RECT winrect, client;
          GetWindowRect(window, &winrect);
          GetClientRect(window, &client);
-         rect = (LPRECT)lParam;
-         int cwidth  = (rect->right - rect->left) - ((winrect.right - winrect.left) - (client.right - client.left));
-         int cheight = (rect->bottom - rect->top) - ((winrect.bottom- winrect.top) - (client.bottom - client.top));
-         CheckWindowSize(winLookupSurfaceID(window), cwidth, cheight);
-         if ((wParam == WMSZ_BOTTOMRIGHT) or (wParam == WMSZ_RIGHT) or (wParam == WMSZ_TOPRIGHT))    rect->right  = rect->left + cwidth + ((winrect.right - winrect.left) - (client.right - client.left));
-         if ((wParam == WMSZ_BOTTOMRIGHT) or (wParam == WMSZ_BOTTOM) or (wParam == WMSZ_BOTTOMLEFT)) rect->bottom = rect->top + cheight + (winrect.bottom - client.bottom - winrect.top);
-         if ((wParam == WMSZ_BOTTOMLEFT) or (wParam == WMSZ_LEFT) or (wParam == WMSZ_TOPLEFT))       rect->left   = rect->right - cwidth - ((winrect.right - winrect.left) - (client.right - client.left));
-         if ((wParam == WMSZ_TOPLEFT) or (wParam == WMSZ_TOP) or (wParam == WMSZ_TOPRIGHT))          rect->top    = rect->bottom - cheight - ((winrect.bottom - winrect.top) - (client.bottom - client.top));
+
+         const int h_margins = ((winrect.right - winrect.left) - (client.right - client.left));
+         const int v_margins = ((winrect.bottom - winrect.top) - (client.bottom - client.top));
+         
+         auto rect = (LPRECT)lParam;
+
+         int req_width  = (rect->right - rect->left) - h_margins;
+         int req_height = (rect->bottom - rect->top) - v_margins;
+         
+         int axis;
+         switch(wParam) {
+            case WMSZ_BOTTOMRIGHT:
+            case WMSZ_BOTTOMLEFT:
+            case WMSZ_TOPLEFT:
+            case WMSZ_TOPRIGHT:
+               axis = AXIS_BOTH;
+               break;
+
+            case WMSZ_LEFT:
+            case WMSZ_RIGHT:
+               axis = AXIS_HORIZONTAL;
+               break;
+
+            case WMSZ_TOP:
+            case WMSZ_BOTTOM:
+               axis = AXIS_VERTICAL;
+               break;
+
+            default:
+               axis = AXIS_BOTH;
+               break;
+         }
+
+         CheckWindowSize(winLookupSurfaceID(window), req_width, req_height, client.right - client.left, client.bottom - client.top, axis);
+         
+         rect->right  = rect->left + req_width + h_margins;
+         rect->bottom = rect->top + req_height + v_margins;
+         rect->left   = rect->right - req_width - h_margins;
+         rect->top    = rect->bottom - req_height - v_margins;
          return 0;
       }
 
