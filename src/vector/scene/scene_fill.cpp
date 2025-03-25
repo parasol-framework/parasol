@@ -74,7 +74,8 @@ static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds,
    const double dx = Bounds.left + (dmf::hasScaledX(Image.Dimensions) ? (c_width * Image.X) : Image.X);
    const double dy = Bounds.top + (dmf::hasScaledY(Image.Dimensions) ? (c_height * Image.Y) : Image.Y);
 
-   Path.approximation_scale(Transform.scale());
+   auto t_scale = Transform.scale();
+   Path.approximation_scale(t_scale);
 
    double x_scale, y_scale, x_offset, y_offset;
    calc_aspectratio("fill_image", Image.AspectRatio, c_width, c_height,
@@ -86,6 +87,15 @@ static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds,
    transform *= Transform;
 
    transform.invert();
+
+   const double final_x_scale = t_scale * x_scale;
+   const double final_y_scale = t_scale * y_scale;
+
+   if (SampleMethod IS VSM::AUTO) {
+      if ((final_x_scale <= 0.5) or (final_y_scale <= 0.5)) SampleMethod = VSM::BICUBIC;
+      else if ((final_x_scale <= 1.0) or (final_y_scale <= 1.0)) SampleMethod = VSM::SINC8;
+      else SampleMethod = VSM::SPLINE16; // Spline works well for enlarging monotone vectors and avoids sharpening artifacts.
+   }
 
    if (!State.mClipStack->empty()) {
       agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
@@ -473,8 +483,9 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    const double x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
    const double y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
    double dx, dy;
-
-   Path->approximation_scale(Transform.scale());
+   
+   auto t_scale = Transform.scale();
+   Path->approximation_scale(t_scale);
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coords in the pattern; equiv. to 'userSpaceOnUse' in SVG
       double target_width, target_height;
@@ -570,6 +581,13 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    }
 
    transform *= Transform;
+
+   if (SampleMethod IS VSM::AUTO) {
+      if ((transform.sx <= 0.5) or (transform.sy <= 0.5)) SampleMethod = VSM::BICUBIC;
+      else if ((transform.sx <= 1.0) or (transform.sy <= 1.0)) SampleMethod = VSM::SINC8;
+      else SampleMethod = VSM::SPLINE16; // Spline works well for flat vectors and avoids sharpening artifacts.
+   }
+
    transform.invert();
 
    if (!State.mClipStack->empty()) {

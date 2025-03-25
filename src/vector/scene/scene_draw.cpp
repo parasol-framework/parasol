@@ -363,6 +363,7 @@ void set_filter(agg::image_filter_lut &Filter, VSM Method)
 
 //********************************************************************************************************************
 // A generic drawing function for VMImage and VMPattern, this is used to fill vectors with bitmap images.
+// Optimium drawing speed is ensured by only using the chosen SampleMethod if the transform is complex.
 
 template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
    objBitmap *SrcBitmap, VSPREAD SpreadMethod, DOUBLE Opacity, agg::trans_affine *Transform = NULL, DOUBLE XOffset = 0, DOUBLE YOffset = 0)

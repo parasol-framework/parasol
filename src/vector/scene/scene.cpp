@@ -480,7 +480,7 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
 
 static ERR VECTORSCENE_NewObject(extVectorScene *Self)
 {
-   Self->SampleMethod = VSM::BILINEAR;
+   Self->SampleMethod = VSM::AUTO;
 
    // Please refer to the Reset action for setting variable defaults
    return VECTORSCENE_Reset(Self);
@@ -726,9 +726,8 @@ SampleMethod: The sampling method to use when interpolating images and patterns.
 
 The SampleMethod controls the sampling algorithm that is used when images and patterns in the vector definition are affected
 by rotate, skew and scale transforms.  The choice of method will have a significant impact on the speed and quality of
-the images that are displayed in the rendered scene.  The recommended default is `BILINEAR`, which provides a
-comparatively average result and execution speed.  The most advanced method is `BLACKMAN8`, which produces an excellent
-level of quality at the cost of very poor execution speed.
+the images that are displayed in the rendered scene.  The recommended default is `AUTO`, which allows the drawing 
+algorithms to choose the best quality option dynamically.
 
 -FIELD-
 Surface: May refer to a @Surface object for enabling automatic rendering.
