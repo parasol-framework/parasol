@@ -281,10 +281,9 @@ static ERR GET_PageWidth(extDocument *Self, Unit *Value)
 
 static ERR SET_PageWidth(extDocument *Self, Unit *Value)
 {
-   pf::Log log;
-
    if (Value->Value <= 0) {
-      log.warning("A page width of %.2f is illegal.", Value->Value);
+      pf::Log log;
+      log.warning("A page width of %g is illegal.", Value->Value);
       return ERR::OutOfRange;
    }
    Self->PageWidth = Value->Value;

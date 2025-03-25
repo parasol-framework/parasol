@@ -887,15 +887,8 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          int req_width  = (rect->right - rect->left) - h_margins;
          int req_height = (rect->bottom - rect->top) - v_margins;
          
-         int axis;
+         int axis = AXIS_BOTH;
          switch(wParam) {
-            case WMSZ_BOTTOMRIGHT:
-            case WMSZ_BOTTOMLEFT:
-            case WMSZ_TOPLEFT:
-            case WMSZ_TOPRIGHT:
-               axis = AXIS_BOTH;
-               break;
-
             case WMSZ_LEFT:
             case WMSZ_RIGHT:
                axis = AXIS_HORIZONTAL;
@@ -904,10 +897,6 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
             case WMSZ_TOP:
             case WMSZ_BOTTOM:
                axis = AXIS_VERTICAL;
-               break;
-
-            default:
-               axis = AXIS_BOTH;
                break;
          }
 

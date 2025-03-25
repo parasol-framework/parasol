@@ -109,17 +109,18 @@ restart:
 }
 
 //********************************************************************************************************************
-// Receiver for events from Self->View.  Bear in mind that the XOffset and YOffset of the document's View must
-// be zero initially, and will be controlled by the scrollbar.  For that reason we don't need to do much here other
-// than respond by updating the layout of the page.
+// Receiver for events from Self->View, primarily path changes.
+// 
+// Bear in mind that the XOffset and YOffset of the document's View must be zero initially, and will be controlled by 
+// the scrollbar.  For that reason we don't need to do much here other than update the layout of the page.
 
 static ERR feedback_view(objVectorViewport *View, FM Event)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
-   auto width  = View->get<DOUBLE>(FID_Width);
-   auto height = View->get<DOUBLE>(FID_Height);
+   auto width  = View->get<double>(FID_ViewWidth);
+   auto height = View->get<double>(FID_ViewHeight);
 
    if ((Self->VPWidth IS width) and (Self->VPHeight IS height)) return ERR::Okay;
 
@@ -127,12 +128,12 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
 
    Self->VPWidth = width;
    Self->VPHeight = height;
+   
+   // The resize event is triggered just prior to the layout of the document.  The recipient
+   // function can resize elements on the page in advance of the new layout.
 
    for (auto &trigger : Self->Triggers[LONG(DRT::BEFORE_LAYOUT)]) {
       if (trigger.isScript()) {
-         // The resize event is triggered just prior to the layout of the document.  This allows the trigger
-         // function to resize elements on the page in preparation of the new layout.
-
          sc::Call(trigger, std::to_array<ScriptArg>({ { "ViewWidth",  Self->VPWidth }, { "ViewHeight", Self->VPHeight } }));
       }
       else if (trigger.isC()) {
@@ -219,7 +220,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_AddListener(extDocument *Self, struct doc::AddListener *Args)
+static ERR DOCUMENT_AddListener(extDocument *Self, doc::AddListener *Args)
 {
    if ((!Args) or (Args->Trigger IS DRT::NIL) or (!Args->Function)) return ERR::NullArgs;
 
@@ -259,7 +260,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_CallFunction(extDocument *Self, struct doc::CallFunction *Args)
+static ERR DOCUMENT_CallFunction(extDocument *Self, doc::CallFunction *Args)
 {
    pf::Log log;
 
@@ -481,7 +482,7 @@ Search: The cell was not found.
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_Edit(extDocument *Self, struct doc::Edit *Args)
+static ERR DOCUMENT_Edit(extDocument *Self, doc::Edit *Args)
 {
    if (!Args) return ERR::NullArgs;
 
@@ -524,7 +525,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_FeedParser(extDocument *Self, struct doc::FeedParser *Args)
+static ERR DOCUMENT_FeedParser(extDocument *Self, doc::FeedParser *Args)
 {
    pf::Log log;
 
@@ -565,7 +566,7 @@ Search: The index was not found.
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_FindIndex(extDocument *Self, struct doc::FindIndex *Args)
+static ERR DOCUMENT_FindIndex(extDocument *Self, doc::FindIndex *Args)
 {
    pf::Log log;
 
@@ -692,7 +693,7 @@ Search
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_HideIndex(extDocument *Self, struct doc::HideIndex *Args)
+static ERR DOCUMENT_HideIndex(extDocument *Self, doc::HideIndex *Args)
 {
    pf::Log log(__FUNCTION__);
    LONG tab;
@@ -790,8 +791,8 @@ static ERR DOCUMENT_Init(extDocument *Self)
 
    SubscribeAction(Self->Viewport, AC::Free, C_FUNCTION(notify_free_viewport));
 
-   Self->VPWidth  = Self->Viewport->get<DOUBLE>(FID_Width);
-   Self->VPHeight = Self->Viewport->get<DOUBLE>(FID_Height);
+   Self->VPWidth  = Self->Viewport->get<double>(FID_ViewWidth);
+   Self->VPHeight = Self->Viewport->get<double>(FID_ViewHeight);
 
    FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
    Self->Viewport->setFillColour(bkgd, 4);
@@ -887,7 +888,7 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_InsertXML(extDocument *Self, struct doc::InsertXML *Args)
+static ERR DOCUMENT_InsertXML(extDocument *Self, doc::InsertXML *Args)
 {
    pf::Log log;
 
@@ -941,7 +942,7 @@ Failed
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_InsertText(extDocument *Self, struct doc::InsertText *Args)
+static ERR DOCUMENT_InsertText(extDocument *Self, doc::InsertText *Args)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1006,7 +1007,7 @@ NoData: Operation successful, but no data was present for extraction.
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_ReadContent(extDocument *Self, struct doc::ReadContent *Args)
+static ERR DOCUMENT_ReadContent(extDocument *Self, doc::ReadContent *Args)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1114,7 +1115,7 @@ Args
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_RemoveContent(extDocument *Self, struct doc::RemoveContent *Args)
+static ERR DOCUMENT_RemoveContent(extDocument *Self, doc::RemoveContent *Args)
 {
    pf::Log log;
 
@@ -1149,7 +1150,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_RemoveListener(extDocument *Self, struct doc::RemoveListener *Args)
+static ERR DOCUMENT_RemoveListener(extDocument *Self, doc::RemoveListener *Args)
 {
    if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR::NullArgs;
 
@@ -1219,7 +1220,7 @@ OutOfRange
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_SelectLink(extDocument *Self, struct doc::SelectLink *Args)
+static ERR DOCUMENT_SelectLink(extDocument *Self, doc::SelectLink *Args)
 {
    pf::Log log;
 
@@ -1291,7 +1292,7 @@ Search: The index could not be found.
 
 *********************************************************************************************************************/
 
-static ERR DOCUMENT_ShowIndex(extDocument *Self, struct doc::ShowIndex *Args)
+static ERR DOCUMENT_ShowIndex(extDocument *Self, doc::ShowIndex *Args)
 {
    pf::Log log;
 

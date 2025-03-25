@@ -22,8 +22,8 @@ Stroke        Stroke pattern for border.
 Padding:      Padding inside each cell (margins)
 Spacing:      Spacing between cells.
 
-For complex tables with different coloured borders between cells, allocate single-pixel sized cells with the background
-colour set to the desired value in order to create the illusion of multi-coloured cell borders.
+For complex tables with different colour borders between cells, allocate single-pixel sized cells with the background
+colour set to the desired value in order to create the illusion of multi-colour cell borders.
 
 The page area owned by a table is given a clipping zone by the page layout engine, in the same way that objects are
 given clipping zones.  This allows text to be laid out around the table with no effort on the part of the developer.
@@ -839,7 +839,7 @@ void layout::lay_paragraph()
 
    if (!m_font) {
       pf::Log log;
-      DLAYOUT("Failed to lookup font for %s:%g", para.font.face.c_str(), para.font.point);
+      DLAYOUT("Failed to lookup font for %s:%g", para.font.face.c_str(), para.font.font_size);
       Self->Error = ERR::Failed;
       return;
    }
@@ -1250,7 +1250,7 @@ static void layout_doc(extDocument *Self)
       repeat = false;
       l.m_break_loop--;
 
-      DOUBLE page_width;
+      double page_width;
 
       if (Self->PageWidth <= 0) {
          // No preferred page width; maximise the page width to the available viewing area
@@ -1268,7 +1268,7 @@ static void layout_doc(extDocument *Self)
       if (glFonts.empty()) return;
       auto font = &glFonts[0];
 
-      DOUBLE page_height = 1;
+      double page_height = 1;
       l = layout(Self, &Self->Stream, Self->Page, margins);
       bool vertical_repass = false;
       if (l.do_layout(&font, page_width, page_height, vertical_repass) != ERR::Okay) break;
