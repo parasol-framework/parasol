@@ -9,7 +9,6 @@ inline void LINEAR32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr,
    p[oA] = 0xff - (((0xff - ca) * (0xff - p[oA]))>>8);
 }
 
-#define FAST_BLEND 1
 #ifdef FAST_BLEND
 // Common but incorrect sRGB blending algorithm.
 inline void BLEND32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
@@ -24,7 +23,7 @@ inline void BLEND32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, 
 
 inline void BLEND32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, UBYTE cg, UBYTE cb, UBYTE ca)
 {
-   const auto dest_alpha = p[oA];
+   const UBYTE dest_alpha = p[oA];
    const UBYTE alpha_inv = 0xff - ca;
    const ULONG a5 = alpha_inv * dest_alpha;
    const ULONG final_alpha = 0xff - ((alpha_inv * (0xff - dest_alpha))>>8);
@@ -44,7 +43,6 @@ inline void BLEND32(UBYTE *p, UBYTE oR, UBYTE oG, UBYTE oB, UBYTE oA, UBYTE cr, 
    }
    else ((ULONG *)p)[0] = 0;
 }
-
 #endif
 
 namespace agg {

@@ -794,7 +794,7 @@ static ERR DOCUMENT_Init(extDocument *Self)
    Self->VPWidth  = Self->Viewport->get<double>(FID_ViewWidth);
    Self->VPHeight = Self->Viewport->get<double>(FID_ViewHeight);
 
-   FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
+   float bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
    Self->Viewport->setFillColour(bkgd, 4);
 
    // Allocate the view and page areas.  NB: If the parent Viewport is terminated then the

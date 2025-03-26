@@ -30,21 +30,6 @@ constexpr static double fast_hypot(double Width, double Height)
 }
 
 //********************************************************************************************************************
-
-static bool read_rgb8(CSTRING Value, RGB8 *RGB)
-{
-   VectorPainter painter;
-   if (vec::ReadPainter(NULL, Value, &painter, NULL) IS ERR::Okay) {
-      RGB->Red   = F2T(painter.Colour.Red   * 255.0);
-      RGB->Green = F2T(painter.Colour.Green * 255.0);
-      RGB->Blue  = F2T(painter.Colour.Blue  * 255.0);
-      RGB->Alpha = F2T(painter.Colour.Alpha * 255.0);
-      return true;
-   }
-   else return false;
-}
-
-//********************************************************************************************************************
 // Extract all printable text between start and End.
 
 static std::string stream_to_string(RSTREAM &Stream, stream_char Start, stream_char End)

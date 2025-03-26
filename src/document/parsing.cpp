@@ -143,7 +143,7 @@ struct parser {
             fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
             fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(1.0),
             fl::RoundX(SCALE(0.03)), fl::RoundY(SCALE(0.03)),
-            fl::Fill("rgba(0,0,0,.5)")
+            fl::Fill("rgba(0,0,0,.7)")
          });
 
          Self->Viewport->Scene->addDef("/widget/default", pattern);
@@ -1517,7 +1517,7 @@ void parser::tag_body(XMLTag &Tag)
             break;
 
          case HASH_font_colour: // DEPRECATED, use font fill
-            log.warning("The fontcolour attrib is deprecated, use font-fill.");
+            log.warning("The font-colour attrib is deprecated, use font-fill.");
             [[fallthrough]];
          case HASH_font_fill: // Default font fill
             Self->FontFill = Tag.Attribs[i].Value;
@@ -1530,7 +1530,7 @@ void parser::tag_body(XMLTag &Tag)
          case HASH_page_width:
             [[fallthrough]];
          case HASH_width:
-            Self->PageWidth = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), NULL), 1.0, 6000.0);
+            Self->PageWidth = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), nullptr), 1.0, 6000.0);
 
             if (Tag.Attribs[i].Value.find('%') != std::string::npos) Self->RelPageWidth = true;
             else Self->RelPageWidth = false;
@@ -1811,7 +1811,7 @@ void parser::tag_checkbox(XMLTag &Tag)
             fl::X(-8), fl::Y(-8), fl::Width(54), fl::Height(54),
             fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0),
             fl::RoundX(6), fl::RoundY(6),
-            fl::Fill("rgba(0,0,0,.5)")
+            fl::Fill("rgba(0,0,0,.7)")
          });
 
          objVectorPath::create::global({
@@ -1837,13 +1837,13 @@ void parser::tag_checkbox(XMLTag &Tag)
             fl::X(-8), fl::Y(-8), fl::Width(54), fl::Height(54),
             fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0),
             fl::RoundX(6), fl::RoundY(6),
-            fl::Fill("rgba(0,0,0,.5)")
+            fl::Fill("rgba(0,0,0,.7)")
          });
 
          objVectorPath::create::global({
             fl::Owner(vp->UID),
             fl::Sequence("M4.75 15.0832 15.8333 26.1665 33.2498 4 38 8.75 15.8333 35.6665 0 19.8332 4.75 15.0832Z"),
-            fl::Fill("rgba(255,255,255,.25)")
+            fl::Fill("rgba(255,255,255,.5)")
          });
 
          vp->setFields(fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN|ARF::MEET),
@@ -1945,10 +1945,10 @@ void parser::tag_combobox(XMLTag &Tag)
          auto rect = objVectorRectangle::create::global({ // Button background
             fl::Owner(vp->UID),
             fl::X(-(PAD-1)), fl::Y(-(PAD-1)), fl::Width(29+((PAD-1)*2)), fl::Height(29+((PAD-1)*2)),
-            fl::Fill("rgba(0,0,0,.5)")
+            fl::Fill("rgba(0,0,0,.7)")
          });
 
-         std::array<DOUBLE, 8> round = { 0, 0, 6, 6, 6, 6, 0, 0 };
+         std::array<double, 8> round = { 0, 0, 6, 6, 6, 6, 0, 0 };
          SetArray(rect, FID_Rounding|TDOUBLE, round);
 
          objVectorPath::create::global({ // Down arrow

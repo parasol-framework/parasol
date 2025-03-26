@@ -99,7 +99,7 @@ gui.divider = function(Options)
 
    local div_name = 'divider-bkgd-' .. self._vp.id
    if (Options.style != 'none') then
-      local opacity = 0.15
+      local opacity = 0.25
       if (self._orientation == 'h') then -- Top to bottom tiling
          self._pattern = self._vp.scene.new('VectorPattern', {
             name = 'div_pattern', x = 0, y = 0, pageWidth = GAP, pageHeight = GAP*4, width = GAP, height = GAP*4,

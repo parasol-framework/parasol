@@ -163,7 +163,6 @@ static void notify_free_event(OBJECTPTR, ACTIONID, ERR, APTR);
 static void notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
 static ERR  feedback_view(objVectorViewport *, FM);
 static void process_parameters(extDocument *, const std::string_view);
-static bool read_rgb8(CSTRING, RGB8 *);
 static CSTRING read_unit(CSTRING, DOUBLE &, bool &);
 static void redraw(extDocument *, bool);
 static ERR  report_event(extDocument *, DEF, entity *, KEYVALUE *);
@@ -179,10 +178,6 @@ static bool view_area(extDocument *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 static std::string write_calc(DOUBLE, WORD);
 
 static ERR GET_WorkingPath(extDocument *, CSTRING *);
-
-inline bool read_rgb8(const std::string Value, RGB8 *RGB) {
-   return read_rgb8(Value.c_str(), RGB);
-}
 
 #ifdef DBG_STREAM
 static void print_stream(RSTREAM &);

@@ -4,7 +4,7 @@
 
 enum class DU : UBYTE {
    NIL = 0,
-   PIXEL,             // px
+   PIXEL,             // px in 72DPI
    SCALED,            // %: Scale to fill empty space
    FONT_SIZE,         // em
    CHAR,              // ch: The advance (width) of the '0' character

@@ -13,7 +13,7 @@ Documentation is available in the Parasol Wiki.
 local BTNSIZE    = 20
 local BTNGAP     = 3
 local WIDGET_GAP = 6
-local COL_BORDER = { r=0, g=0, b=0,  a=128 }
+local COL_BORDER = { r=0, g=0, b=0, a=160 }
 
 local COMMON = {
   '0,64,64', '0,128,128', '0,192,192', '0,255,255', '64,255,255',  '128,255,255', '192,255,255', '224,255,255', -- Aqua
