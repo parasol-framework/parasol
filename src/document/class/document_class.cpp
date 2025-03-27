@@ -121,6 +121,8 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
 
    auto width  = View->get<double>(FID_ViewWidth);
    auto height = View->get<double>(FID_ViewHeight);
+   if (!width) width = View->get<double>(FID_Width);
+   if (!height) height = View->get<double>(FID_Height);
 
    if ((Self->VPWidth IS width) and (Self->VPHeight IS height)) return ERR::Okay;
 
@@ -793,6 +795,8 @@ static ERR DOCUMENT_Init(extDocument *Self)
 
    Self->VPWidth  = Self->Viewport->get<double>(FID_ViewWidth);
    Self->VPHeight = Self->Viewport->get<double>(FID_ViewHeight);
+   if (!Self->VPWidth) Self->VPWidth = Self->Viewport->get<double>(FID_Width);
+   if (!Self->VPHeight) Self->VPHeight = Self->Viewport->get<double>(FID_Height);
 
    float bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
    Self->Viewport->setFillColour(bkgd, 4);

@@ -1346,6 +1346,7 @@ bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_f
 }
 
 //********************************************************************************************************************
+// To assist parsing of <p>, <font>, etc...
 
 bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
 {
