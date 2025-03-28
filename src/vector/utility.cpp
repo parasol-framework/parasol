@@ -138,7 +138,7 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
    PathCommand path;
 
-   LONG max_cmds = 8192; // Maximum commands per path - this acts as a safety net in case the parser gets stuck.
+   int max_cmds = 8192; // Maximum commands per path - this acts as a safety net in case the parser gets stuck.
    UBYTE cmd = 0;
    while (*Value) {
       if (std::isalpha(*Value)) cmd = *Value++;
@@ -301,7 +301,7 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
    }
 
    log.trace("ARF Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
-      LONG(AspectRatio), TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
+      int(AspectRatio), TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
 }
 
 //********************************************************************************************************************
@@ -408,7 +408,7 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
 
 //********************************************************************************************************************
 
-std::string weight_to_style(CSTRING Style, LONG Weight)
+std::string weight_to_style(CSTRING Style, int Weight)
 {
    std::string weight_name;
 
@@ -427,7 +427,7 @@ std::string weight_to_style(CSTRING Style, LONG Weight)
 
 //********************************************************************************************************************
 
-ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size, common_font **Handle)
+ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, common_font **Handle)
 {
    Log.branch("Family: %s, Style: %s, Weight: %d, Size: %d", Family, Style, Weight, Size);
 
@@ -447,7 +447,7 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
       style = weight_to_style(Style, Weight);
    }
 
-   const LONG point_size = std::round(Size * (72.0 / DISPLAY_DPI));
+   const int point_size = std::round(Size * (72.0 / DISPLAY_DPI));
    CSTRING location = NULL;
    FMETA meta = FMETA::NIL;
    if (auto error = fnt::SelectFont(family.c_str(), style.c_str(), &location, &meta); error IS ERR::Okay) {
@@ -499,13 +499,13 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
                      if (!FT_Get_Default_Named_Instance(ftface, &index)) {
                         auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
                         for (FT_UInt s=0; s < mvar->num_namedstyles; s++) {
-                           for (LONG n=name_table_size-1; n >= 0; n--) {
+                           for (int n=name_table_size-1; n >= 0; n--) {
                               FT_SfntName sft_name;
                               if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
                                  if (sft_name.name_id IS mvar->namedstyle[s].strid) {
                                     // Decode UTF16 Big Endian
                                     char buffer[100];
-                                    LONG out = 0;
+                                    int out = 0;
                                     auto str = (UWORD *)sft_name.string;
                                     UWORD prev_unicode = 0;
                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {

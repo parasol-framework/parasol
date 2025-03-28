@@ -507,13 +507,13 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                if (!checkbox.label.empty()) {
                   if (checkbox.label_pos) {
                      // Right-sided labels can be integrated with the widget so that clicking affects state.
-                     if (position_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, checkbox.label_width + checkbox.label_pad, true, wx, wy) IS ERR::Okay) {
+                     if (position_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, checkbox.label_width + checkbox.label_pad.px(*this), true, wx, wy) IS ERR::Okay) {
                         double x, y;
                         auto font = stack_style.top()->get_font();
                         const double avail_space = checkbox.final_height - font->metrics.Descent;
                         y = avail_space - ((avail_space - font->metrics.Height) * 0.5);
 
-                        x = checkbox.final_width + checkbox.label_pad;
+                        x = checkbox.final_width + checkbox.label_pad.px(*this);
 
                         if (checkbox.label_text.empty()) {
                            checkbox.label_text.set(objVectorText::create::global({
@@ -598,13 +598,13 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                         });
                      }
 
-                     combo.label_text->setFields(fl::X(F2T(x_advance + combo.label_pad)), fl::Y(F2T(y)));
+                     combo.label_text->setFields(fl::X(F2T(x_advance + combo.label_pad.px(*this))), fl::Y(F2T(y)));
 
-                     x_advance += combo.label_width + combo.label_pad;
+                     x_advance += combo.label_width + combo.label_pad.px(*this);
                   }
                   else {
                      auto x_label = x_advance;
-                     x_advance += combo.label_pad + combo.label_width;
+                     x_advance += combo.label_pad.px(*this) + combo.label_width;
 
                      position_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
@@ -667,8 +667,8 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                }
 
                if (!combo.clip_vp.empty()) {
-                  combo.clip_vp->setFields(fl::X(combo.label_pad * 0.75), fl::Y(0),
-                     fl::XOffset(combo.label_pad + (combo.final_height * 0.75)), fl::YOffset(0));
+                  combo.clip_vp->setFields(fl::X(combo.label_pad.px(*this) * 0.75), fl::Y(0),
+                     fl::XOffset(combo.label_pad.px(*this) + (combo.final_height * 0.75)), fl::YOffset(0));
                }
 
                combo.menu.define_font(font);
@@ -711,13 +711,13 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                         });
                      }
 
-                     input.label_text->setFields(fl::X(F2T(x_advance + input.label_pad)), fl::Y(F2T(y)));
+                     input.label_text->setFields(fl::X(F2T(x_advance + input.label_pad.px(*this))), fl::Y(F2T(y)));
 
-                     x_advance += input.label_width + input.label_pad;
+                     x_advance += input.label_width + input.label_pad.px(*this);
                   }
                   else {
                      auto x_label = x_advance;
-                     x_advance += input.label_pad + input.label_width;
+                     x_advance += input.label_pad.px(*this) + input.label_width;
 
                      position_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
@@ -771,7 +771,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                }
 
                if (!input.clip_vp.empty()) {
-                  input.clip_vp->setFields(fl::X(input.label_pad), fl::Y(0), fl::XOffset(input.label_pad), fl::YOffset(0));
+                  input.clip_vp->setFields(fl::X(input.label_pad.px(*this)), fl::Y(0), fl::XOffset(input.label_pad.px(*this)), fl::YOffset(0));
                }
 
                Self->VPToEntity.emplace(input.viewport.id, vp_to_entity { &input });

@@ -36,7 +36,7 @@ struct parser {
    bool  m_checkbox_patterns = false;
    bool  m_combobox_patterns = false;
    stream_char m_index;
-   bc_font m_style;
+   bc_font m_style; // Reflects the active font during parsing.
    std::stack<bc_list *> m_list_stack;
    std::stack<process_table> m_table_stack;
 
@@ -611,34 +611,32 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
    else if (!Output.compare(pos, sizeof("[%title]")-1, "[%title]")) {
       Output.replace(pos, sizeof("[%title]")-1, Self->Title);
    }
-   else if (!Output.compare(pos, sizeof("[%font]")-1, "[%font]")) {
-      if (auto font = m_style.get_font()) {
-         char buffer[60];
-         snprintf(buffer, sizeof(buffer), "%s:%g:%s", font->face.c_str(), font->font_size, font->style.c_str());
-         Output.replace(pos, sizeof("[%font]")-1, buffer);
-      }
+   else if (!Output.compare(pos, sizeof("[%font-style]")-1, "[%font-style]")) {
+      Output.replace(pos, sizeof("[%font-style]")-1, m_style.style);
    }
    else if (!Output.compare(pos, sizeof("[%font-face]")-1, "[%font-face]")) {
-      if (auto font = m_style.get_font()) {
-         Output.replace(pos, sizeof("[%font-face]")-1, font->face);
-      }
+      Output.replace(pos, sizeof("[%font-face]")-1, m_style.face);
    }
    else if (!Output.compare(pos, sizeof("[%font-fill]")-1, "[%font-fill]")) {
       Output.replace(pos, sizeof("[%font-fill]")-1, m_style.fill);
    }
    else if (!Output.compare(pos, sizeof("[%font-size]")-1, "[%font-size]")) {
-      if (auto font = m_style.get_font()) {
-         char buffer[28];
-         snprintf(buffer, sizeof(buffer), "%g", font->font_size);
-         Output.replace(pos, sizeof("[%font-size]")-1, buffer);
+      char buffer[28];
+      switch(m_style.req_size.type) {
+         case DU::PIXEL: 
+            snprintf(buffer, sizeof(buffer), "%gpx", m_style.req_size.value);
+            break;
+         case DU::FONT_SIZE:
+            snprintf(buffer, sizeof(buffer), "%gem", m_style.req_size.value);
+            break;
+         case DU::SCALED:
+            snprintf(buffer, sizeof(buffer), "%g%%", m_style.req_size.value * 100.0);
+            break;
+         default:
+            snprintf(buffer, sizeof(buffer), "%dpx", DEFAULT_FONTSIZE);
+            break;
       }
-   }
-   else if (!Output.compare(pos, sizeof("[%line-height]")-1, "[%line-height]")) {
-      if (auto font = m_style.get_font()) {
-         char buffer[28];
-         snprintf(buffer, sizeof(buffer), "%d", font->metrics.Ascent);
-         Output.replace(pos, sizeof("[%line-height]")-1, buffer);
-      }
+      Output.replace(pos, sizeof("[%font-size]")-1, buffer);
    }
    else if (!Output.compare(pos, sizeof("[%line-no]")-1, "[%line-no]")) {
       auto num = std::to_string(Self->Segments.size());
@@ -1240,7 +1238,7 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
    else if ((Style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) != (m_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM))) {
       font_change = true;
    }
-   else if ((Style.face != m_style.face) or (Style.font_size != m_style.font_size)) {
+   else if ((Style.face != m_style.face) or (Style.req_size != m_style.req_size)) {
       font_change = true;
    }
    else if ((Style.fill != m_style.fill)) {
@@ -1369,7 +1367,7 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
          if (j != std::string::npos) { // Font size follows
             auto str = Attrib.Value.c_str();
             j++;
-            Style.font_size = DUNIT(str+j).value;
+            Style.req_size = DUNIT(str+j);
             j = Attrib.Value.find(':', j);
             if (j != std::string::npos) { // Style follows
                j++;
@@ -1384,7 +1382,7 @@ bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
       case HASH_font_size:
          [[fallthrough]];
       case HASH_size:
-         Style.font_size = DUNIT(Attrib.Value).value;
+         Style.req_size = DUNIT(Attrib.Value);
          return true;
 
       case HASH_font_style:
@@ -1513,9 +1511,15 @@ void parser::tag_body(XMLTag &Tag)
             Self->FontFace = Tag.Attribs[i].Value;
             break;
 
-         case HASH_font_size: // Default font point size
-            Self->FontSize = DUNIT(Tag.Attribs[i].Value).value;
+         case HASH_font_size: { 
+            // Default font point size, which must be fixed.  Relative sizes like 'em' are not permitted.
+            auto val = DUNIT(Tag.Attribs[i].Value);
+            switch (val.type) {
+               case DU::PIXEL: Self->FontSize = val.value; break;
+               default: log.warning("Invalid font size unit '%s'.", Tag.Attribs[i].Value.c_str());
+            }
             break;
+         }
 
          case HASH_font_colour: // DEPRECATED, use font fill
             log.warning("The font-colour attrib is deprecated, use font-fill.");
@@ -1546,10 +1550,10 @@ void parser::tag_body(XMLTag &Tag)
 
    // Overwrite the default Style attributes with the client's choices
 
-   m_style.options   = FSO::NIL;
-   m_style.fill      = Self->FontFill;
-   m_style.face      = Self->FontFace;
-   m_style.font_size = Self->FontSize;
+   m_style.options  = FSO::NIL;
+   m_style.fill     = Self->FontFill;
+   m_style.face     = Self->FontFace;
+   m_style.req_size = DUNIT(Self->FontSize, DU::PIXEL);
 
    if (!Tag.Children.empty()) m_body_tag = &Tag.Children;
 }
@@ -1856,7 +1860,7 @@ void parser::tag_checkbox(XMLTag &Tag)
 
    widget.def_size = DUNIT(1.4, DU::FONT_SIZE);
 
-   if (!widget.label.empty()) widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
+   if (!widget.label.empty()) widget.label_pad = DUNIT(0.5, DU::FONT_SIZE);
 
    if (!widget.name.empty()) Self->Vars[widget.name] = widget.alt_state ? "1" : "0";
 
@@ -1975,7 +1979,7 @@ void parser::tag_combobox(XMLTag &Tag)
    if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
 
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
-   widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
+   widget.label_pad = DUNIT(0.5, DU::FONT_SIZE);
 
    if (!widget.name.empty()) Self->Vars[widget.name] = widget.value;
 
@@ -2018,7 +2022,7 @@ void parser::tag_input(XMLTag &Tag)
    if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
 
    widget.def_size  = DUNIT(1.7, DU::FONT_SIZE);
-   widget.label_pad = m_style.get_font()->metrics.Ascent * 0.5;
+   widget.label_pad = DUNIT(0.5, DU::FONT_SIZE);
 
    if (!widget.name.empty()) Self->Vars[widget.name] = widget.value;
 
@@ -2553,7 +2557,7 @@ void parser::tag_paragraph(XMLTag &Tag)
 
    bc_paragraph para(m_style);
 
-   for (LONG i=1; i < std::ssize(Tag.Attribs); i++) {
+   for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("align", Tag.Attribs[i].Name)) {
          if ((iequals(Tag.Attribs[i].Value, "center")) or
              (iequals(Tag.Attribs[i].Value, "middle"))) {
@@ -2627,7 +2631,7 @@ void parser::tag_template(XMLTag &Tag)
 
    // Validate the template (must have a name)
 
-   LONG n;
+   int n;
    for (n=1; n < std::ssize(Tag.Attribs); n++) {
       if ((iequals("name", Tag.Attribs[n].Name)) and (!Tag.Attribs[n].Value.empty())) break;
    }

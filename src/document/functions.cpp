@@ -1,13 +1,13 @@
 
-static const LONG MAXLOOP = 1000;
+static const int MAXLOOP = 1000;
 
 static const char glDefaultStyles[] =
-"<template name=\"h1\"><p leading=\"1.5\" font-size=\"22pt\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h2\"><p leading=\"1.5\"  font-size=\"16pt\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h3\"><p leading=\"1.25\" font-size=\"14pt\" font-style=\"bold\"><inject/></p></template>\n\
-<template name=\"h4\"><p leading=\"1.25\" font-size=\"14pt\"><inject/></p></template>\n\
-<template name=\"h5\"><p leading=\"1.0\"  font-size=\"12pt\"><inject/></p></template>\n\
-<template name=\"h6\"><p leading=\"1.0\"  font-size=\"10pt\"><inject/></p></template>\n";
+"<template name=\"h1\"><p leading=\"1.5\" font-size=\"2em\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h2\"><p leading=\"1.5\"  font-size=\"1.8em\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h3\"><p leading=\"1.25\" font-size=\"1.6em\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h4\"><p leading=\"1.25\" font-size=\"1.4em\"><inject/></p></template>\n\
+<template name=\"h5\"><p leading=\"1.0\"  font-size=\"1.2em\"><inject/></p></template>\n\
+<template name=\"h6\"><p leading=\"1.0\"  font-size=\"1em\"><inject/></p></template>\n";
 
 static const Field * find_field(OBJECTPTR Object, std::string_view Name, OBJECTPTR *Source) // Read-only, thread safe function.
 {
@@ -187,7 +187,7 @@ static CSTRING read_unit(CSTRING Input, double &Output, bool &Scaled)
 //********************************************************************************************************************
 // Checks if the file path is safe, i.e. does not refer to an absolute file location.
 
-static LONG safe_file_path(extDocument *Self, const std::string &Path)
+static int safe_file_path(extDocument *Self, const std::string &Path)
 {
    if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) return true;
 
@@ -208,7 +208,7 @@ static ERR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML::T
 
    if (TargetIndex < 0) TargetIndex = Stream->size();
 
-   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, LONG(StyleFlags), Tag[0].Attribs[0].Name.c_str());
+   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, int(StyleFlags), Tag[0].Attribs[0].Name.c_str());
 
    if ((StyleFlags & STYLE::INHERIT_STYLE) != STYLE::NIL) { // Do nothing to change the style
       parser parse(Self, XML, Stream);
@@ -226,7 +226,11 @@ static ERR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML::T
    }
    else {
       bc_font style;
-      style.fill = Self->FontFill;
+      style.fill     = Self->FontFill;
+      style.face     = Self->FontFace;
+      style.req_size = DUNIT(Self->FontSize, DU::PIXEL);
+      style.style    = Self->FontStyle;
+      style.pixel_size = Self->FontSize;
 
       if ((StyleFlags & STYLE::RESET_STYLE) != STYLE::NIL) {
          // Do not search for the most recent font style (force a reset)
@@ -246,13 +250,6 @@ static ERR insert_xml(extDocument *Self, RSTREAM *Stream, objXML *XML, objXML::T
                break;
             }
          }
-      }
-
-      // Revert to the default style if none is available.
-
-      if (auto font = style.get_font()) {
-         style.face  = font->face;
-         style.font_size = font->font_size;
       }
 
       parser parse(Self, XML, Stream);
@@ -388,7 +385,7 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("Flags: $%.2x", LONG(Flags));
+   log.branch("Flags: $%.2x", int(Flags));
 
    #ifdef DBG_STREAM
       print_stream(Self->Stream);
@@ -529,9 +526,9 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 //********************************************************************************************************************
 
 #if 0
-static LONG get_line_from_index(extDocument *Self, INDEX index)
+static int get_line_from_index(extDocument *Self, INDEX index)
 {
-   LONG line;
+   int line;
    for (line=1; line < Self->SegCount; line++) {
       if (index < Self->Segments[line].index) {
          return line-1;
@@ -557,9 +554,9 @@ static bool valid_objectid(extDocument *Self, OBJECTID ObjectID)
 
 //********************************************************************************************************************
 
-static LONG getutf8(CSTRING Value, LONG *Unicode)
+static int getutf8(CSTRING Value, int *Unicode)
 {
-   LONG i, len, code;
+   int i, len, code;
 
    if ((*Value & 0x80) != 0x80) {
       if (Unicode) *Unicode = *Value;
@@ -657,7 +654,7 @@ static ERR resolve_font_pos(doc_segment &Segment, double X, double &CharX, strea
    for (INDEX i = Segment.start.index; i < Segment.stop.index; i++) {
       if (Segment.stream[0][i].code IS SCODE::TEXT) {
          auto &str = Segment.stream->lookup<bc_text>(i).text;
-         LONG offset, cx;
+         int offset, cx;
          if (!fntConvertCoords(font, str.c_str(), X - Segment.area.X, 0, NULL, NULL, NULL, &offset, &cx)) {
             CharX = cx;
             Char.set(Segment.start.index, offset);
@@ -913,7 +910,7 @@ void ui_link::exec(extDocument *Self)
             log.trace("Switching to page '%s'", origin.ref.c_str());
 
             if (!Self->Path.empty()) {
-               LONG end;
+               int end;
                for (end=0; Self->Path[end]; end++) {
                   if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
                }
@@ -972,7 +969,7 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
 
    // Find the indexes for the bookmark name
 
-   LONG start, end;
+   int start, end;
    if (Self->findIndex(Bookmark.c_str(), &start, &end) IS ERR::Okay) {
       // Get the vertical position of the index and scroll to it
 
@@ -1001,7 +998,7 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
    ERR result = ERR::Okay;
 
    if ((Event & Self->EventMask) != DEF::NIL) {
-      log.traceBranch("Event $%x -> Entity %d", LONG(Event), Entity->uid);
+      log.traceBranch("Event $%x -> Entity %d", int(Event), Entity->uid);
 
       if (Self->EventCallback.isC()) {
          auto routine = (ERR (*)(extDocument *, DEF, KEYVALUE *, entity *, APTR))Self->EventCallback.Routine;
@@ -1012,7 +1009,7 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
          if (EventData) {
             sc::Call(Self->EventCallback, std::to_array<ScriptArg>({
                { "Document", Self, FD_OBJECTPTR },
-               { "EventMask", LONG(Event) },
+               { "EventMask", int(Event) },
                { "KeyValue:Parameters", EventData, FD_STRUCT },
                { "Entity", Entity->uid }
             }), result);
@@ -1020,14 +1017,14 @@ static ERR report_event(extDocument *Self, DEF Event, entity *Entity, KEYVALUE *
          else {
             sc::Call(Self->EventCallback, std::to_array<ScriptArg>({
                { "Document",  Self, FD_OBJECTPTR },
-               { "EventMask", LONG(Event) },
-               { "KeyValue",  LONG(0) },
+               { "EventMask", int(Event) },
+               { "KeyValue",  int(0) },
                { "Entity",    Entity->uid }
             }), result);
          }
       }
    }
-   else log.trace("No subscriber for event $%.8x", (LONG)Event);
+   else log.trace("No subscriber for event $%.8x", (int)Event);
 
    return result;
 }

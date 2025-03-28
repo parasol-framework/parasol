@@ -53,15 +53,6 @@ that is distributed with this package.  Please refer to it for further informati
 #include "defs/hashes.h"
 #include "../link/unicode.h"
 
-static constexpr LONG MAX_PAGE_WIDTH   = 30000;
-static constexpr LONG MAX_PAGE_HEIGHT  = 100000;
-static constexpr LONG MIN_PAGE_WIDTH   = 20;
-static constexpr LONG MAX_DEPTH        = 40;    // Limits recursion from tables-within-tables
-static constexpr LONG WIDTH_LIMIT      = 4000;
-#define DEFAULT_FONTSTYLE "Medium"
-#define DEFAULT_FONTFACE "Noto Sans"
-static constexpr LONG DEFAULT_FONTSIZE = 14;    // 72DPI pixel size
-
 using BYTECODE = ULONG;
 using CELL_ID = ULONG;
 
@@ -81,8 +72,8 @@ JUMPTABLE_VECTOR
 
 static std::string glHighlight = "rgb(219,219,255,255)";
 
-static OBJECTPTR clDocument = NULL;
-static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL, modVector = NULL;
+static OBJECTPTR clDocument = nullptr;
+static OBJECTPTR modDisplay = nullptr, modFont = nullptr, modDocument = nullptr, modVector = nullptr;
 
 //********************************************************************************************************************
 
@@ -138,22 +129,22 @@ std::vector<sorted_segment> & extDocument::get_sorted_segments()
 
 struct layout; // Pre-def
 
-static ERR activate_cell_edit(extDocument *, LONG, stream_char);
-static ERR add_document_class(void);
-static LONG  add_tabfocus(extDocument *, TT, BYTECODE);
-static void  advance_tabfocus(extDocument *, BYTE);
-static void  deactivate_edit(extDocument *, bool);
-static ERR extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
-static void  error_dialog(const std::string, const std::string);
-static void  error_dialog(const std::string, ERR);
+static ERR  activate_cell_edit(extDocument *, int, stream_char);
+static ERR  add_document_class(void);
+static int add_tabfocus(extDocument *, TT, BYTECODE);
+static void advance_tabfocus(extDocument *, BYTE);
+static void deactivate_edit(extDocument *, bool);
+static ERR  extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
+static void error_dialog(const std::string, const std::string);
+static void error_dialog(const std::string, ERR);
 static const Field * find_field(OBJECTPTR, std::string_view, OBJECTPTR *);
 static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
-static LONG  find_tabfocus(extDocument *, TT, BYTECODE);
-static ERR flash_cursor(extDocument *, LARGE, LARGE);
-static LONG getutf8(CSTRING, LONG *);
+static int  find_tabfocus(extDocument *, TT, BYTECODE);
+static ERR  flash_cursor(extDocument *, LARGE, LARGE);
+static int getutf8(CSTRING, int *);
 static ERR  insert_text(extDocument *, RSTREAM *, stream_char &, const std::string_view, bool);
-static ERR  insert_xml(extDocument *, RSTREAM *, objXML *, objXML::TAGS &, LONG, STYLE = STYLE::NIL, IPF = IPF::NIL);
-static ERR  key_event(objVectorViewport *, KQ, KEY, LONG);
+static ERR  insert_xml(extDocument *, RSTREAM *, objXML *, objXML::TAGS &, int, STYLE = STYLE::NIL, IPF = IPF::NIL);
+static ERR  key_event(objVectorViewport *, KQ, KEY, int);
 static void layout_doc(extDocument *);
 static ERR  load_doc(extDocument *, std::string, bool, ULD = ULD::NIL);
 static void notify_disable_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
@@ -168,8 +159,8 @@ static void redraw(extDocument *, bool);
 static ERR  report_event(extDocument *, DEF, entity *, KEYVALUE *);
 static void reset_cursor(extDocument *);
 static ERR  resolve_fontx_by_index(extDocument *, stream_char, DOUBLE &);
-static LONG safe_file_path(extDocument *, const std::string &);
-static void set_focus(extDocument *, LONG, CSTRING);
+static int  safe_file_path(extDocument *, const std::string &);
+static void set_focus(extDocument *, int, CSTRING);
 static void show_bookmark(extDocument *, const std::string &);
 static std::string stream_to_string(RSTREAM &, stream_char, stream_char);
 static ERR  unload_doc(extDocument *, ULD = ULD::NIL);
@@ -184,79 +175,19 @@ static void print_stream(RSTREAM &);
 #endif
 
 //********************************************************************************************************************
-// Fonts are shared in a global cache (multiple documents can have access to the cache)
-
-static std::deque<font_entry> glFonts; // font_entry pointers must be kept stable
-static std::mutex glFontsMutex;
-
-font_entry * bc_font::get_font()
-{
-   pf::Log log(__FUNCTION__);
-
-   if (font_index IS -2) {
-      if (!glFonts.empty()) return &glFonts[0]; // Always try to return a font rather than nullptr
-      return NULL;
-   }
-
-   if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
-
-   // Sanity check the face and point values
-
-   if (face.empty()) face = ((extDocument *)CurrentContext())->FontFace;
-
-   if (font_size < 3) {
-      font_size = ((extDocument *)CurrentContext())->FontSize;
-      if (font_size < 3) font_size = DEFAULT_FONTSIZE;
-   }
-
-   // Check the cache for this font
-
-   APTR new_handle = nullptr;
-   CSTRING resolved_face;
-   if (fnt::ResolveFamilyName(face.c_str(), &resolved_face) IS ERR::Okay) {
-      face.assign(resolved_face);
-
-      if (vec::GetFontHandle(face.c_str(), style.c_str(), 400, font_size, &new_handle) IS ERR::Okay) {
-         for (unsigned i=0; i < glFonts.size(); i++) {
-            if (new_handle IS glFonts[i].handle) {
-               font_index = i;
-               break;
-            }
-         }
-      }
-
-      if ((font_index IS -1) and (new_handle)) { // Font not in cache
-         std::lock_guard lk(glFontsMutex);
-
-         log.branch("Index: %d, %s, %s, %g", LONG(std::ssize(glFonts)), face.c_str(), style.c_str(), font_size);
-
-         font_index = std::ssize(glFonts);
-         glFonts.emplace_back(new_handle, face, style, font_size);
-      }
-
-      if (font_index >= 0) return &glFonts[font_index];
-   }
-
-   log.warning("Failed to create font %s:%g", face.c_str(), font_size);
-
-   if (!glFonts.empty()) return &glFonts[0]; // Always try to return a font rather than NULL
-   else return NULL;
-}
-
-//********************************************************************************************************************
 
 template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
 
 //********************************************************************************************************************
 
-static const std::array<std::string_view, LONG(SCODE::END)> strCodes = {
+static const std::array<std::string_view, int(SCODE::END)> strCodes = {
    "?", "Text", "Font", "FontEnd", "Link", "TabDef", "PE", "P", "EndLink", "Advance", "List", "ListEnd",
    "Table", "TableEnd", "Row", "Cell", "RowEnd", "Index", "IndexEnd", "XML", "Image", "Use", "Button", "Checkbox",
    "Combobox", "Input"
 };
 
 template <class T> inline const std::string_view & BC_NAME(RSTREAM &Stream, T Index) {
-   return strCodes[LONG(Stream[Index].code)];
+   return strCodes[int(Stream[Index].code)];
 }
 
 //********************************************************************************************************************
@@ -279,6 +210,18 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       }
    }
 
+   // Set the first entry of glFonts with the default font face.
+
+   CSTRING resolved_face;
+   if (fnt::ResolveFamilyName(DEFAULT_FONTFACE.c_str(), &resolved_face) IS ERR::Okay) {
+      APTR new_handle = nullptr;
+      if (vec::GetFontHandle(resolved_face, DEFAULT_FONTSTYLE.c_str(), 400, DEFAULT_FONTSIZE, &new_handle) IS ERR::Okay) {
+         glFonts.emplace_back(new_handle, resolved_face, DEFAULT_FONTSTYLE, DEFAULT_FONTSIZE);
+      }
+      else return ERR::Failed;
+   }
+   else return ERR::Failed;
+
    return add_document_class();
 }
 
@@ -286,11 +229,11 @@ static ERR MODExpunge(void)
 {
    glFonts.clear();
 
-   if (modVector)  { FreeResource(modVector);  modVector  = NULL; }
-   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
-   if (modFont)    { FreeResource(modFont);    modFont    = NULL; }
+   if (modVector)  { FreeResource(modVector);  modVector  = nullptr; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = nullptr; }
+   if (modFont)    { FreeResource(modFont);    modFont    = nullptr; }
 
-   if (clDocument) { FreeResource(clDocument); clDocument = NULL; }
+   if (clDocument) { FreeResource(clDocument); clDocument = nullptr; }
    return ERR::Okay;
 }
 
@@ -326,7 +269,7 @@ inline doc_edit * find_editdef(extDocument *Self, std::string_view Name)
 {
    auto it = Self->EditDefs.find(Name);
    if (it != Self->EditDefs.end()) return &it->second;
-   else return NULL;
+   else return nullptr;
 }
 
 //********************************************************************************************************************
@@ -380,5 +323,5 @@ static ERR add_document_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_document_module() { return &ModHeader; }

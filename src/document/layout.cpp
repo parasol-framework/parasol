@@ -295,8 +295,8 @@ CELL layout::lay_cell(bc_table *Table)
          }));
       }
    }
-   
-   if ((!cell.stroke.empty()) or 
+
+   if ((!cell.stroke.empty()) or
        ((cell.stroke_width.value > 0) and (cell.stroke_width != Table->stroke_width))) {
       if (cell.border_path.empty()) {
          cell.border_path.set(objVectorPath::create::global({
@@ -456,6 +456,11 @@ WRAP layout::place_widget(widget_mgr &Widget)
 {
    auto wrap_result = WRAP::DO_NOTHING;
 
+   auto full_width = [&Widget, this]() {
+      if (Widget.internal_page) return Widget.final_width + Widget.final_pad.left + Widget.final_pad.right;
+      else return Widget.final_width + Widget.label_width + Widget.label_pad.px(*this) + Widget.final_pad.left + Widget.final_pad.right;
+   };
+
    if (Widget.floating_x()) {
       // Calculate horizontal position
 
@@ -464,10 +469,10 @@ WRAP layout::place_widget(widget_mgr &Widget)
       }
       else if ((Widget.align & ALIGN::CENTER) != ALIGN::NIL) {
          // We use the left margin and not the cursor for calculating the center because the widget is floating.
-         Widget.x = m_left_margin + ((m_align_edge - Widget.full_width()) * 0.5);
+         Widget.x = m_left_margin + ((m_align_edge - full_width()) * 0.5);
       }
       else if ((Widget.align & ALIGN::RIGHT) != ALIGN::NIL) {
-         Widget.x = m_align_edge - Widget.full_width();
+         Widget.x = m_align_edge - full_width();
       }
       else Widget.x = m_cursor_x;
 
@@ -482,7 +487,7 @@ WRAP layout::place_widget(widget_mgr &Widget)
       // For a floating widget we need to declare a clip region based on the final widget dimensions.
       // TODO: Add support for masked clipping through SVG paths.
 
-      m_clips.emplace_back(Widget.x, m_cursor_y, Widget.x + Widget.full_width(), m_cursor_y + Widget.full_height(),
+      m_clips.emplace_back(Widget.x, m_cursor_y, Widget.x + full_width(), m_cursor_y + Widget.full_height(),
          idx, false, "Widget");
    }
    else { // Widget is inline and must be treated like a text character.
@@ -493,14 +498,14 @@ WRAP layout::place_widget(widget_mgr &Widget)
       // adjusted in this call because if a wrap occurs then the widget won't be in the former segment.
 
       wrap_result = check_wordwrap(m_word_index,
-         m_cursor_x, m_cursor_y, m_word_width + Widget.full_width(), m_line.height);
+         m_cursor_x, m_cursor_y, m_word_width + full_width(), m_line.height);
 
       // The inline widget will probably increase the height of the line, but due to the potential for delayed
       // word-wrapping (if we're part of an embedded word) we need to cache the value for now.
 
       if (Widget.full_height() > m_line.word_height) m_line.word_height = Widget.full_height();
 
-      m_word_width += Widget.full_width();
+      m_word_width += full_width();
       m_kernchar   = 0;
    }
 
@@ -581,7 +586,7 @@ void layout::lay_font()
 {
    auto &style = m_stream->lookup<bc_font>(idx);
 
-   if ((m_font = style.get_font())) {
+   if ((m_font = style.layout_font(*this))) {
       apply_style(style);
 
       // Setting m_word_index ensures that the font code appears in the current segment.
@@ -602,7 +607,7 @@ void layout::lay_font_end()
 
    m_stack_font.pop();
    if (!m_stack_font.empty()) {
-      m_font = m_stack_font.top()->get_font();
+      m_font = m_stack_font.top()->layout_font(*this);
       apply_style(*m_stack_font.top());
    }
 }
@@ -835,11 +840,11 @@ void layout::lay_paragraph()
 
    if (!m_stack_list.empty()) para.leading = m_stack_list.top()->v_spacing.px(*this);
 
-   m_font = para.font.get_font();
+   m_font = para.font.layout_font(*this);
 
    if (!m_font) {
       pf::Log log;
-      DLAYOUT("Failed to lookup font for %s:%g", para.font.face.c_str(), para.font.font_size);
+      DLAYOUT("Failed to lookup font for %s:%d", para.font.face.c_str(), para.font.pixel_size);
       Self->Error = ERR::Failed;
       return;
    }
@@ -877,7 +882,7 @@ void layout::lay_paragraph_end()
 
    m_stack_font.pop();
    if (!m_stack_font.empty()) {
-      m_font = m_stack_font.top()->get_font();
+      m_font = m_stack_font.top()->layout_font(*this);
       apply_style(*m_stack_font.top());
    }
 }
@@ -1265,7 +1270,6 @@ static void layout_doc(extDocument *Self)
       Self->PageProcessed = false;
       Self->Error = ERR::Okay;
 
-      if (glFonts.empty()) return;
       auto font = &glFonts[0];
 
       double page_height = 1;
@@ -1361,7 +1365,7 @@ ERR layout::do_layout(font_entry **Font, DOUBLE &Width, DOUBLE &Height, bool &Ve
    }
 
    #ifdef DBG_LAYOUT
-   log.branch("Dimensions: %gx%g (edge %g), LM %d RM %d TM %d BM %d",
+   log.branch("Dimensions: %gx%g (edge %g), LM %g RM %g TM %g BM %g",
       m_page_width, page_height, m_page_width - m_margins.right,
       m_margins.left, m_margins.right, m_margins.top, m_margins.bottom);
    #endif
@@ -1505,6 +1509,7 @@ extend_page:
             auto &link = m_stream->lookup<bc_link>(idx);
 
             m_stack_font.push(&link.font);
+            link.font.layout_font(*this);
 
             if (link.path.empty()) {
                // This 'invisible' viewport will be used to receive user input
@@ -1523,7 +1528,7 @@ extend_page:
 
          case SCODE::LINK_END:
             m_stack_font.pop();
-            if (!m_stack_font.empty()) m_font = m_stack_font.top()->get_font();
+            if (!m_stack_font.empty()) m_font = m_stack_font.top()->layout_font(*this);
             break;
 
          case SCODE::PARAGRAPH_START: lay_paragraph(); break;
@@ -2049,4 +2054,58 @@ DOUBLE layout::calc_page_height()
       m_segments.back().area.Y, m_segments.back().area.Height, page_height, m_margins.bottom);
 
    return page_height;
+}
+
+//********************************************************************************************************************
+// Fonts are shared in glFonts, note that multiple documents all have access to the cache.
+
+font_entry * bc_font::layout_font(layout &Layout)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
+
+   // Sanity check the face and point values
+
+   if (face.empty()) face = Layout.Self->FontFace;
+
+   if ((req_size.type IS DU::PIXEL) and (req_size.value < 3)) {
+      req_size.value = Layout.Self->FontSize;
+      if (req_size.value < 3) req_size = DUNIT(DEFAULT_FONTSIZE, DU::PIXEL);
+   }
+
+   pixel_size = req_size.px(Layout);
+
+   // Check the cache for this font
+
+   CSTRING resolved_face;
+   if (fnt::ResolveFamilyName(face.c_str(), &resolved_face) IS ERR::Okay) {
+      face.assign(resolved_face);
+   }
+
+   APTR new_handle = nullptr;
+   if (vec::GetFontHandle(face.c_str(), style.c_str(), 400, pixel_size, &new_handle) IS ERR::Okay) {
+      for (unsigned i=0; i < glFonts.size(); i++) {
+         if (new_handle IS glFonts[i].handle) {
+            font_index = i;
+            break;
+         }
+      }
+   }
+
+   if ((font_index IS -1) and (new_handle)) { // Font not in cache
+      std::lock_guard lk(glFontsMutex);
+
+      log.branch("Index: %d, %s, %s, %d", LONG(std::ssize(glFonts)), face.c_str(), style.c_str(), pixel_size);
+
+      font_index = std::ssize(glFonts);
+      glFonts.emplace_back(new_handle, face, style, pixel_size);
+   }
+
+   if (font_index >= 0) return &glFonts[font_index];
+
+   log.warning("Failed to create font %s:%d", face.c_str(), pixel_size);
+
+   if (!glFonts.empty()) return &glFonts[0]; // Always try to return a font rather than null
+   else return nullptr;
 }
