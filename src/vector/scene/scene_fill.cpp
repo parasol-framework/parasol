@@ -508,8 +508,8 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       //target_width  *= Transform.sx;
       //target_height *= Transform.sy;
 
-      LONG page_width = F2T(target_width);
-      LONG page_height = F2T(target_height);
+      int page_width = F2T(target_width);
+      int page_height = F2T(target_height);
 
       if ((page_width != Pattern.Scene->PageWidth) or (page_height != Pattern.Scene->PageHeight)) {
          Pattern.Scene->PageWidth = page_width;
