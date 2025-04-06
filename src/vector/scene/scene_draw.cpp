@@ -208,21 +208,21 @@ public:
       } while(--len);
    }
 
-  int8u * span(int x, int y, unsigned) {
+   int8u * span(int x, int y, unsigned) {
       m_x = x;
       m_row_ptr = m_src->row_ptr(m_wrap_y(y));
       return m_row_ptr + m_wrap_x(x) * 4;
-  }
+   }
 
-  int8u * next_x() {
+   int8u * next_x() {
       int x = ++m_wrap_x;
       return m_row_ptr + x * 4;
-  }
+   }
 
-  int8u * next_y() {
+   int8u * next_y() {
       m_row_ptr = m_src->row_ptr(++m_wrap_y);
       return m_row_ptr + m_wrap_x(m_x) * 4;
-  }
+   }
 
    agg::pixfmt_psl *m_src;
 

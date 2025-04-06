@@ -729,6 +729,17 @@ by rotate, skew and scale transforms.  The choice of method will have a signific
 the images that are displayed in the rendered scene.  The recommended default is `AUTO`, which allows the drawing 
 algorithms to choose the best quality option dynamically.
 
+*********************************************************************************************************************/
+
+static ERR SET_SampleMethod(extVectorScene* Self, VSM Value)
+{
+   if ((Value != Self->SampleMethod) and (Self->Viewport)) mark_dirty(Self->Viewport, RC::FINAL_PATH);
+   Self->SampleMethod = Value;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Surface: May refer to a @Surface object for enabling automatic rendering.
 
@@ -962,7 +973,7 @@ static const FieldArray clSceneFields[] = {
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clVectorSceneFlags },
    { "PageWidth",    FDF_LONG|FDF_RW,      NULL, SET_PageWidth },
    { "PageHeight",   FDF_LONG|FDF_RW,      NULL, SET_PageHeight },
-   { "SampleMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorSceneSampleMethod },
+   { "SampleMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, SET_SampleMethod, &clVectorSceneSampleMethod },
    // Virtual fields
    { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R, GET_Defs, NULL },
    END_FIELD
