@@ -19,12 +19,9 @@ static const struct FieldDef clVectorSceneSampleMethod[] = {
    { "Gaussian", 0x00000007 },
    { "Bessel", 0x00000008 },
    { "Mitchell", 0x00000009 },
-   { "Sinc3", 0x0000000a },
-   { "Lanczos3", 0x0000000b },
-   { "Blackman3", 0x0000000c },
-   { "Sinc8", 0x0000000d },
-   { "Lanczos8", 0x0000000e },
-   { "Blackman8", 0x0000000f },
+   { "Sinc", 0x0000000a },
+   { "Lanczos", 0x0000000b },
+   { "Blackman", 0x0000000c },
    { NULL, 0 }
 };
 

@@ -93,7 +93,7 @@ static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds,
 
    if (SampleMethod IS VSM::AUTO) {
       if ((final_x_scale <= 0.5) or (final_y_scale <= 0.5)) SampleMethod = VSM::BICUBIC;
-      else if ((final_x_scale <= 1.0) or (final_y_scale <= 1.0)) SampleMethod = VSM::SINC8;
+      else if ((final_x_scale <= 1.0) or (final_y_scale <= 1.0)) SampleMethod = VSM::SINC;
       else SampleMethod = VSM::SPLINE16; // Spline works well for enlarging monotone vectors and avoids sharpening artifacts.
    }
 
@@ -542,8 +542,8 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       // Scale the bitmap so that it matches the final scale on the display.  This requires a matching inverse
       // adjustment when computing the final transform.
 
-      LONG page_width = F2T(target_width * (SCALE_BITMAP ? Transform.sx : 1.0));
-      LONG page_height = F2T(target_height * (SCALE_BITMAP ? Transform.sy : 1.0));
+      int page_width = F2T(target_width * (SCALE_BITMAP ? Transform.sx : 1.0));
+      int page_height = F2T(target_height * (SCALE_BITMAP ? Transform.sy : 1.0));
 
       // Mark the bitmap for recomputation if needed.
 
@@ -569,7 +569,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
    agg::trans_affine transform;
 
-   if (Pattern.Matrices) {
+   if (Pattern.Matrices) { // Client used the 'patternTransform' SVG attribute
       auto &m = *Pattern.Matrices;
       transform.load_all(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX + dx, m.TranslateY + dy);
    }
@@ -583,9 +583,9 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    transform *= Transform;
 
    if (SampleMethod IS VSM::AUTO) {
-      if ((transform.sx <= 0.5) or (transform.sy <= 0.5)) SampleMethod = VSM::BICUBIC;
-      else if ((transform.sx <= 1.0) or (transform.sy <= 1.0)) SampleMethod = VSM::SINC8;
-      else SampleMethod = VSM::SPLINE16; // Spline works well for flat vectors and avoids sharpening artifacts.
+      // Using anything more sophisticated than bicubic sampling for tiling is a CPU killer.
+      // If the client requires a different method, they will need to set it explicitly.
+      SampleMethod = VSM::BILINEAR;
    }
 
    transform.invert();

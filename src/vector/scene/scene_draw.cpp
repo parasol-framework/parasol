@@ -333,8 +333,19 @@ const agg::trans_affine SceneRenderer::build_fill_transform(extVector &Vector, b
 
 //********************************************************************************************************************
 
-void set_filter(agg::image_filter_lut &Filter, VSM Method)
+void set_filter(agg::image_filter_lut &Filter, VSM Method, agg::trans_affine &Transform, double Kernel)
 {
+   auto compute_kernel = [&Transform, &Kernel]() {
+      // For auto kernel calculation, use larger kernel sizes when shrinking.  A base-level of 3.0 is used so that 
+      // the use of advanced filter algorithms is justified for the client.
+      double k;
+      if (Kernel > 0.0) k = Kernel;
+      else k = 3.0 + (1.0 / svg_diag(Transform.sx, Transform.sy));
+      if (k < 2.0) k = 2.0;
+      else if (k > 8) k = 8.0;
+      return k;
+   };
+
    switch(Method) {
       case VSM::AUTO:
       case VSM::NEIGHBOUR: // There is a 'span_image_filter_rgb_nn' class but no equivalent image_filter_neighbour() routine?
@@ -346,18 +357,10 @@ void set_filter(agg::image_filter_lut &Filter, VSM Method)
       case VSM::GAUSSIAN:  Filter.calculate(agg::image_filter_gaussian(), true); break;
       case VSM::BESSEL:    Filter.calculate(agg::image_filter_bessel(), true); break;
       case VSM::MITCHELL:  Filter.calculate(agg::image_filter_mitchell(), true); break;
-      case VSM::SINC3:     Filter.calculate(agg::image_filter_sinc(3.0), true); break;
-      case VSM::LANCZOS3:  Filter.calculate(agg::image_filter_lanczos(3.0), true); break;
-      case VSM::BLACKMAN3: Filter.calculate(agg::image_filter_blackman(3.0), true); break;
-      case VSM::SINC8:     Filter.calculate(agg::image_filter_sinc(8.0), true); break;
-      case VSM::LANCZOS8:  Filter.calculate(agg::image_filter_lanczos(8.0), true); break;
-      case VSM::BLACKMAN8: Filter.calculate(agg::image_filter_blackman(8.0), true); break;
-      default: {
-         pf::Log log;
-         log.warning("Unrecognised sampling method %d", LONG(Method));
-         Filter.calculate(agg::image_filter_bicubic(), true);
-         break;
-      }
+      case VSM::SINC:      Filter.calculate(agg::image_filter_sinc(compute_kernel()), true); break;
+      case VSM::LANCZOS:   Filter.calculate(agg::image_filter_lanczos(compute_kernel()), true); break;
+      case VSM::BLACKMAN:  Filter.calculate(agg::image_filter_blackman(compute_kernel()), true); break;
+      default:             Filter.calculate(agg::image_filter_bicubic(), true); break;
    }
 }
 
@@ -373,7 +376,7 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
    if ((Transform) and (Transform->is_complex())) {
       agg::span_interpolator_linear interpolator(*Transform);
       agg::image_filter_lut filter;
-      set_filter(filter, SampleMethod);  // Set the interpolation filter to use.
+      set_filter(filter, SampleMethod, *Transform);  // Set the interpolation filter to use.
 
       if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, XOffset, YOffset);

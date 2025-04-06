@@ -449,12 +449,9 @@ enum class VSM : LONG {
    GAUSSIAN = 7,
    BESSEL = 8,
    MITCHELL = 9,
-   SINC3 = 10,
-   LANCZOS3 = 11,
-   BLACKMAN3 = 12,
-   SINC8 = 13,
-   LANCZOS8 = 14,
-   BLACKMAN8 = 15,
+   SINC = 10,
+   LANCZOS = 11,
+   BLACKMAN = 12,
 };
 
 enum class RQ : LONG {

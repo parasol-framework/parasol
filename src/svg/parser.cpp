@@ -1505,7 +1505,7 @@ ERR svgState::parse_fe_image(objVectorFilter *Filter, XMLTag &Tag) noexcept
 
          case SVF_IMAGE_RENDERING: {
             if (iequals("optimizeSpeed", val)) fx->set(FID_ResampleMethod, LONG(VSM::BILINEAR));
-            else if (iequals("optimizeQuality", val)) fx->set(FID_ResampleMethod, LONG(VSM::LANCZOS3));
+            else if (iequals("optimizeQuality", val)) fx->set(FID_ResampleMethod, LONG(VSM::LANCZOS));
             else if (iequals("auto", val));
             else if (iequals("inherit", val));
             else log.warning("Unrecognised image-rendering option '%s'", val.c_str());

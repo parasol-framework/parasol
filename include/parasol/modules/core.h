@@ -30,7 +30,7 @@
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef int type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef LARGE type; };
 // used as an approximation of std::underlying_type<T>
 template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
@@ -1473,7 +1473,7 @@ typedef AC ACTIONID;
 #define __attribute__(a)
 #endif
 
-typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
+typedef const std::vector<std::pair<std::string, uint32_t>> STRUCTS;
 typedef std::map<std::string, std::string, std::less<>> KEYVALUE;
 
 #ifndef STRINGIFY
@@ -1498,12 +1498,12 @@ __export struct ModHeader ModHeader;
 #endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
-#define MOD_NAME NULL
+#define MOD_NAME nullptr
 #endif
 
 namespace pf {
 
-template <class T> T roundup(T Num, LONG Alignment) {
+template <class T> T roundup(T Num, int Alignment) {
    return (Num + Alignment) - (Num % Alignment); // Round up to Alignment value, e.g. (14,8) = 16
 }
 
@@ -1534,31 +1534,31 @@ template <class T> T roundup(T Num, LONG Alignment) {
 
 #if defined(__GNUC__) && defined(__x86__)
 
-INLINE LONG F2I(DOUBLE val) {
+inline int F2I(double val) {
    // This will round if the CPU is kept in its default rounding mode
-   LONG ret;
+   int ret;
    asm ("fistpl %0" : "=m" (ret) : "t" (val) : "st");
    return(ret);
 }
 
 #else
 
-INLINE LONG F2I(DOUBLE val) {
-   DOUBLE t = val + 6755399441055744.0;
+inline int F2I(double val) {
+   double t = val + 6755399441055744.0;
    return *((int *)(&t));
 }
 
 #endif
 
-inline LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG) is faster than F2T().
+inline int F2T(double val) // For numbers no larger than 16 bit, standard (int) is faster than F2T().
 {
-   if ((val > 32767.0) or (val < -32767.0)) return((LONG)val);
+   if ((val > 32767.0) or (val < -32767.0)) return((int)val);
    else {
       val = val + (68719476736.0 * 1.5);
       if constexpr (std::endian::native == std::endian::little) {
-         return ((LONG *)(APTR)&val)[0]>>16;
+         return ((int *)(APTR)&val)[0]>>16;
       }
-      else return ((LONG *)&val)[1]>>16;
+      else return ((int *)&val)[1]>>16;
    }
 }
 
@@ -1569,7 +1569,7 @@ inline LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG
 struct OpenTag {
    TOI Tag;
    union {
-      LONG Long;
+      int Long;
       LARGE Large;
       APTR Pointer;
       CSTRING String;
@@ -1584,9 +1584,9 @@ struct OpenInfo {
    CSTRING RootPath;        // OPF::ROOT_PATH
    OpenTag *Options;        // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
    OPF     Flags;           // OPF::flags need to be set for fields that have been defined in this structure.
-   LONG    MaxDepth;        // OPF::MAX_DEPTH
-   LONG    Detail;          // OPF::DETAIL
-   LONG    ArgCount;        // OPF::ARGS
+   int     MaxDepth;        // OPF::MAX_DEPTH
+   int     Detail;          // OPF::DETAIL
+   int     ArgCount;        // OPF::ARGS
    ERR     Error;           // OPF::ERROR
 };
 
@@ -1617,7 +1617,7 @@ struct OpenInfo {
 
 #define FDF_BYTE       FD_BYTE
 #define FDF_WORD       FD_WORD     // Field is word sized (16-bit)
-#define FDF_LONG       FD_LONG     // Field is long sized (32-bit)
+#define FDF_LONG       FD_LONG     // Field is int sized (32-bit)
 #define FDF_DOUBLE     FD_DOUBLE   // Field is double floating point sized (64-bit)
 #define FDF_LARGE      FD_LARGE    // Field is large sized (64-bit)
 #define FDF_POINTER    FD_POINTER  // Field is an address pointer (typically 32-bit)
@@ -1680,42 +1680,42 @@ struct OpenInfo {
 namespace pf {
 
 struct FieldValue {
-   ULONG FieldID;
-   LONG Type;
+   uint32_t FieldID;
+   int Type;
    union {
       CSTRING String;
       APTR    Pointer;
       CPTR    CPointer;
-      DOUBLE  Double;
+      double  Double;
       SCALE   Percent;
       LARGE   Large;
-      LONG    Long;
+      int    Long;
    };
 
    //std::string not included as not compatible with constexpr
-   constexpr FieldValue(ULONG pFID, CSTRING pValue)   : FieldID(pFID), Type(FD_STRING), String(pValue) { };
-   constexpr FieldValue(ULONG pFID, LONG pValue)      : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
-   constexpr FieldValue(ULONG pFID, LARGE pValue)     : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
-   constexpr FieldValue(ULONG pFID, size_t pValue)    : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
-   constexpr FieldValue(ULONG pFID, DOUBLE pValue)    : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
-   constexpr FieldValue(ULONG pFID, SCALE pValue)     : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
-   constexpr FieldValue(ULONG pFID, const FUNCTION &pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(&pValue) { };
-   constexpr FieldValue(ULONG pFID, const FUNCTION *pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(pValue) { };
-   constexpr FieldValue(ULONG pFID, APTR pValue)      : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
-   constexpr FieldValue(ULONG pFID, CPTR pValue)      : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
-   constexpr FieldValue(ULONG pFID, CPTR pValue, LONG pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
+   constexpr FieldValue(uint32_t pFID, CSTRING pValue)   : FieldID(pFID), Type(FD_STRING), String(pValue) { };
+   constexpr FieldValue(uint32_t pFID, int pValue)      : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
+   constexpr FieldValue(uint32_t pFID, LARGE pValue)     : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
+   constexpr FieldValue(uint32_t pFID, size_t pValue)    : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
+   constexpr FieldValue(uint32_t pFID, double pValue)    : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
+   constexpr FieldValue(uint32_t pFID, SCALE pValue)     : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
+   constexpr FieldValue(uint32_t pFID, const FUNCTION &pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(&pValue) { };
+   constexpr FieldValue(uint32_t pFID, const FUNCTION *pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(pValue) { };
+   constexpr FieldValue(uint32_t pFID, APTR pValue)      : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
+   constexpr FieldValue(uint32_t pFID, CPTR pValue)      : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
+   constexpr FieldValue(uint32_t pFID, CPTR pValue, int pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
 };
 
 
 class FloatRect {
    public:
-   DOUBLE X;    // Left-most coordinate
-   DOUBLE Y;     // Top coordinate
-   DOUBLE Width;   // Right-most coordinate
-   DOUBLE Height;  // Bottom coordinate
+   double X;    // Left-most coordinate
+   double Y;     // Top coordinate
+   double Width;   // Right-most coordinate
+   double Height;  // Bottom coordinate
    FloatRect() { }
-   FloatRect(DOUBLE Value) : X(Value), Y(Value), Width(Value), Height(Value) { }
-   FloatRect(DOUBLE pX, DOUBLE pY, DOUBLE pWidth, DOUBLE pHeight) : X(pX), Y(pY), Width(pWidth), Height(pHeight) { }
+   FloatRect(double Value) : X(Value), Y(Value), Width(Value), Height(Value) { }
+   FloatRect(double pX, double pY, double pWidth, double pHeight) : X(pX), Y(pY), Width(pWidth), Height(pHeight) { }
 };
 
 }
@@ -1812,7 +1812,7 @@ struct FieldArray {
    APTR    SetField; // ERR SetField(*Object, APTR Value);
    MAXINT  Arg;     // Can be a pointer or an integer value
    ULONG   Flags;   // Special flags that describe the field
-  template <class G = APTR, class S = APTR, class T = MAXINT> FieldArray(CSTRING pName, ULONG pFlags, G pGetField = NULL, S pSetField = NULL, T pArg = 0) :
+  template <class G = APTR, class S = APTR, class T = MAXINT> FieldArray(CSTRING pName, uint32_t pFlags, G pGetField = NULL, S pSetField = NULL, T pArg = 0) :
      Name(pName), GetField((APTR)pGetField), SetField((APTR)pSetField), Arg((MAXINT)pArg), Flags(pFlags)
      { }
 };
@@ -1820,7 +1820,7 @@ struct FieldArray {
 struct FieldDef {
    CSTRING Name;    // The name of the constant.
    LONG    Value;   // The value of the constant.
-   template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(LONG(pValue)) { }
+   template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(int(pValue)) { }
 };
 
 struct SystemState {
@@ -1832,7 +1832,7 @@ struct SystemState {
 struct Unit {
    DOUBLE Value;    // The unit value.
    ULONG  Type;     // Additional type information
-   Unit(double pValue, LONG pType = FD_DOUBLE) : Value(pValue), Type(pType) { }
+   Unit(double pValue, int pType = FD_DOUBLE) : Value(pValue), Type(pType) { }
    Unit() : Value(0), Type(0) { }
    operator double() const { return Value; }
    inline void set(const double pValue) { Value = pValue; }
@@ -1852,7 +1852,7 @@ struct MethodEntry {
    const struct FunctionField * Args;    // List of parameters accepted by the method
    LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
    MethodEntry() : MethodID(AC::NIL), Routine(NULL), Name(NULL) { }
-   MethodEntry(AC pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+   MethodEntry(AC pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, int pSize) :
       MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
 };
 
@@ -1918,7 +1918,7 @@ struct CompressionFeedback {
       Progress(0), OriginalSize(0), CompressedSize(0),
       Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
 
-   CompressionFeedback(FDB pFeedback, LONG pIndex, CSTRING pPath, CSTRING pDest) :
+   CompressionFeedback(FDB pFeedback, int pIndex, CSTRING pPath, CSTRING pDest) :
       FeedbackID(pFeedback), Index(pIndex), Path(pPath), Dest(pDest),
       Progress(0), OriginalSize(0), CompressedSize(0),
       Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
@@ -1961,10 +1961,10 @@ struct DirInfo {
    STRING prvPath;          // Original folder location string
    STRING prvResolvedPath;  // Resolved folder location
    RDF    prvFlags;         // OpenFolder() RDF flags
-   LONG   prvTotal;         // Total number of items in the folder
-   ULONG  prvVirtualID;     // Unique ID (name hash) for a virtual device
+   int    prvTotal;         // Total number of items in the folder
+   uint32_t prvVirtualID;     // Unique ID (name hash) for a virtual device
    union {
-      LONG prvIndex;        // Current index within the folder when scanning
+      int prvIndex;        // Current index within the folder when scanning
       APTR prvIndexPtr;
    };
    WORD   prvResolveLen;    // Byte length of ResolvedPath
@@ -1995,23 +1995,23 @@ struct Field {
 
 struct ScriptArg { // For use with sc::Exec
    CSTRING Name;
-   ULONG Type;
+   uint32_t Type;
    union {
       APTR   Address;
-      LONG   Long;
+      int   Long;
       LARGE  Large;
-      DOUBLE Double;
+      double Double;
    };
 
-   ScriptArg(CSTRING pName, OBJECTPTR pValue, ULONG pType = FD_OBJECTPTR) : Name(pName), Type(pType), Address((APTR)pValue) { }
-   ScriptArg(CSTRING pName, std::string &pValue, ULONG pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue.data()) { }
-   ScriptArg(CSTRING pName, const std::string &pValue, ULONG pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue.data()) { }
-   ScriptArg(CSTRING pName, CSTRING pValue, ULONG pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue) { }
-   ScriptArg(CSTRING pName, APTR pValue, ULONG pType = FD_PTR) : Name(pName), Type(pType), Address(pValue) { }
-   ScriptArg(CSTRING pName, LONG pValue, ULONG pType = FD_LONG) : Name(pName), Type(pType), Long(pValue) { }
-   ScriptArg(CSTRING pName, ULONG pValue, ULONG pType = FD_LONG) : Name(pName), Type(pType), Long(pValue) { }
-   ScriptArg(CSTRING pName, LARGE pValue, ULONG pType = FD_LARGE) : Name(pName), Type(pType), Large(pValue) { }
-   ScriptArg(CSTRING pName, DOUBLE pValue, ULONG pType = FD_DOUBLE) : Name(pName), Type(pType), Double(pValue) { }
+   ScriptArg(CSTRING pName, OBJECTPTR pValue, uint32_t pType = FD_OBJECTPTR) : Name(pName), Type(pType), Address((APTR)pValue) { }
+   ScriptArg(CSTRING pName, std::string &pValue, uint32_t pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue.data()) { }
+   ScriptArg(CSTRING pName, const std::string &pValue, uint32_t pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue.data()) { }
+   ScriptArg(CSTRING pName, CSTRING pValue, uint32_t pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue) { }
+   ScriptArg(CSTRING pName, APTR pValue, uint32_t pType = FD_PTR) : Name(pName), Type(pType), Address(pValue) { }
+   ScriptArg(CSTRING pName, int pValue, uint32_t pType = FD_LONG) : Name(pName), Type(pType), Long(pValue) { }
+   ScriptArg(CSTRING pName, uint32_t pValue, uint32_t pType = FD_LONG) : Name(pName), Type(pType), Long(pValue) { }
+   ScriptArg(CSTRING pName, LARGE pValue, uint32_t pType = FD_LARGE) : Name(pName), Type(pType), Large(pValue) { }
+   ScriptArg(CSTRING pName, double pValue, uint32_t pType = FD_DOUBLE) : Name(pName), Type(pType), Double(pValue) { }
 };
 
 #ifdef PARASOL_STATIC
@@ -2313,7 +2313,7 @@ extern "C" OBJECTPTR ParentContext(void);
 
 //********************************************************************************************************************
 
-#define END_FIELD FieldArray(NULL, 0)
+#define END_FIELD FieldArray(nullptr, 0)
 #define FDEF static const struct FunctionField
 
 template <class T> inline MEMORYID GetMemoryID(T &&A) {
@@ -2339,7 +2339,7 @@ inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR *Handle) {
    return SubscribeEvent(Event,&Callback,Handle);
 }
 
-inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION Callback, APTR *Subscription) {
+inline ERR SubscribeTimer(double Interval, FUNCTION Callback, APTR *Subscription) {
    return SubscribeTimer(Interval,&Callback,Subscription);
 }
 
@@ -2350,10 +2350,10 @@ inline ERR ReleaseMemory(const void *Address) {
 
 inline ERR FreeResource(const void *Address) {
    if (!Address) return ERR::NullArgs;
-   return FreeResource(((LONG *)Address)[-2]);
+   return FreeResource(((int *)Address)[-2]);
 }
 
-inline ERR AllocMemory(LONG Size, MEM Flags, APTR Address) {
+inline ERR AllocMemory(int Size, MEM Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
@@ -2407,9 +2407,9 @@ inline void clearmem(APTR Memory, std::size_t Length) {
    if (Memory) memset(Memory, 0, Length);
 }
 
-static THREADVAR LONG _tlUniqueThreadID = 0;
+static THREADVAR int _tlUniqueThreadID = 0;
 
-[[nodiscard]] inline LONG _get_thread_id(void) {
+[[nodiscard]] inline int _get_thread_id(void) {
    if (_tlUniqueThreadID) return _tlUniqueThreadID;
    _tlUniqueThreadID = GetResource(RES::THREAD_ID);
    return _tlUniqueThreadID;
@@ -2422,7 +2422,7 @@ static THREADVAR LONG _tlUniqueThreadID = 0;
 
 class Log { // C++ wrapper for Parasol's log functionality
    private:
-      LONG branches;
+      int branches;
       CSTRING header;
 
    public:
@@ -2555,9 +2555,9 @@ class Log { // C++ wrapper for Parasol's log functionality
 
 class LogLevel {
    private:
-      LONG level;
+      int level;
    public:
-      LogLevel(LONG Level) : level(Level) {
+      LogLevel(int Level) : level(Level) {
          AdjustLogLevel(Level);
       }
 
@@ -2572,8 +2572,8 @@ class LogLevel {
 // Refer to Object->get() to see what this is about...
 
 template <class T> inline LARGE FIELD_TAG()     { return 0; }
-template <> inline LARGE FIELD_TAG<DOUBLE>()    { return TDOUBLE; }
-template <> inline LARGE FIELD_TAG<LONG>()      { return TLONG; }
+template <> inline LARGE FIELD_TAG<double>()    { return TDOUBLE; }
+template <> inline LARGE FIELD_TAG<int>()      { return TLONG; }
 template <> inline LARGE FIELD_TAG<FLOAT>()     { return TFLOAT; }
 template <> inline LARGE FIELD_TAG<OBJECTPTR>() { return TPTR; }
 template <> inline LARGE FIELD_TAG<APTR>()      { return TPTR; }
@@ -2623,7 +2623,7 @@ struct Object { // Must be 64-bit aligned
 
    // Use lock() to quickly obtain an object lock without a call to LockObject().  Can fail if the object is being collected.
 
-   inline ERR lock(LONG Timeout = -1) {
+   inline ERR lock(int Timeout = -1) {
       if (++Queue IS 1) {
          ThreadID = pf::_get_thread_id();
          return ERR::Okay;
@@ -2660,7 +2660,7 @@ struct Object { // Must be 64-bit aligned
    inline ERR set(FIELD FieldID, long Value)            { return SetField(this, FieldID|TLONG, Value); }
    inline ERR set(FIELD FieldID, unsigned int Value)    { return SetField(this, FieldID|TLONG, Value); }
    inline ERR set(FIELD FieldID, LARGE Value)           { return SetField(this, FieldID|TLARGE, Value); }
-   inline ERR set(FIELD FieldID, DOUBLE Value)          { return SetField(this, FieldID|TDOUBLE, Value); }
+   inline ERR set(FIELD FieldID, double Value)          { return SetField(this, FieldID|TDOUBLE, Value); }
    inline ERR set(FIELD FieldID, const FUNCTION *Value) { return SetField(this, FieldID|TFUNCTION, Value); }
    inline ERR set(FIELD FieldID, const char *Value)     { return SetField(this, FieldID|TSTRING, Value); }
    inline ERR set(FIELD FieldID, const unsigned char *Value) { return SetField(this, FieldID|TSTRING, Value); }
@@ -2669,19 +2669,19 @@ struct Object { // Must be 64-bit aligned
    // Works both for regular data pointers and function pointers if field is defined correctly.
    inline ERR set(FIELD FieldID, const void *Value) { return SetField(this, FieldID|TPTR, Value); }
 
-   inline ERR setScale(FIELD FieldID, DOUBLE Value) { return SetField(this, FieldID|TDOUBLE|TSCALE, Value); }
+   inline ERR setScale(FIELD FieldID, double Value) { return SetField(this, FieldID|TDOUBLE|TSCALE, Value); }
 
    // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
    // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
 
-   inline ERR get(FIELD FieldID, LONG *Value)     { return GetField(this, FieldID|TLONG, Value); }
+   inline ERR get(FIELD FieldID, int *Value)     { return GetField(this, FieldID|TLONG, Value); }
    inline ERR get(FIELD FieldID, LARGE *Value)    { return GetField(this, FieldID|TLARGE, Value); }
-   inline ERR get(FIELD FieldID, DOUBLE *Value)   { return GetField(this, FieldID|TDOUBLE, Value); }
+   inline ERR get(FIELD FieldID, double *Value)   { return GetField(this, FieldID|TDOUBLE, Value); }
    inline ERR get(FIELD FieldID, STRING *Value)   { return GetField(this, FieldID|TSTRING, Value); }
    inline ERR get(FIELD FieldID, CSTRING *Value)  { return GetField(this, FieldID|TSTRING, Value); }
    inline ERR get(FIELD FieldID, Unit *Value)     { return GetField(this, FieldID|TUNIT, Value); }
    inline ERR getPtr(FIELD FieldID, APTR Value)   { return GetField(this, FieldID|TPTR, Value); }
-   inline ERR getScale(FIELD FieldID, DOUBLE *Value) { return GetField(this, FieldID|TDOUBLE|TSCALE, Value); }
+   inline ERR getScale(FIELD FieldID, double *Value) { return GetField(this, FieldID|TDOUBLE|TSCALE, Value); }
 
    template <class T> inline T get(FIELD FieldID) { // Validity of the result is not guaranteed
       T val(T(0));
@@ -2882,25 +2882,25 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResou
 
 struct acClipboard     { static const AC id = AC::Clipboard; CLIPMODE Mode; };
 struct acCopyData      { static const AC id = AC::CopyData; OBJECTPTR Dest; };
-struct acDataFeed      { static const AC id = AC::DataFeed; OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
-struct acDragDrop      { static const AC id = AC::DragDrop; OBJECTPTR Source; LONG Item; CSTRING Datatype; };
-struct acDraw          { static const AC id = AC::Draw; LONG X; LONG Y; LONG Width; LONG Height; };
-struct acGetKey        { static const AC id = AC::GetKey; CSTRING Key; STRING Value; LONG Size; };
-struct acMove          { static const AC id = AC::Move; DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acMoveToPoint   { static const AC id = AC::MoveToPoint; DOUBLE X; DOUBLE Y; DOUBLE Z; MTF Flags; };
+struct acDataFeed      { static const AC id = AC::DataFeed; OBJECTPTR Object; DATA Datatype; const void *Buffer; int Size; };
+struct acDragDrop      { static const AC id = AC::DragDrop; OBJECTPTR Source; int Item; CSTRING Datatype; };
+struct acDraw          { static const AC id = AC::Draw; int X; int Y; int Width; int Height; };
+struct acGetKey        { static const AC id = AC::GetKey; CSTRING Key; STRING Value; int Size; };
+struct acMove          { static const AC id = AC::Move; double DeltaX; double DeltaY; double DeltaZ; };
+struct acMoveToPoint   { static const AC id = AC::MoveToPoint; double X; double Y; double Z; MTF Flags; };
 struct acNewChild      { static const AC id = AC::NewChild; OBJECTPTR Object; };
 struct acNewOwner      { static const AC id = AC::NewOwner; OBJECTPTR NewOwner; };
-struct acRead          { static const AC id = AC::Read; APTR Buffer; LONG Length; LONG Result; };
-struct acRedimension   { static const AC id = AC::Redimension; DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acRedo          { static const AC id = AC::Redo; LONG Steps; };
+struct acRead          { static const AC id = AC::Read; APTR Buffer; int Length; int Result; };
+struct acRedimension   { static const AC id = AC::Redimension; double X; double Y; double Z; double Width; double Height; double Depth; };
+struct acRedo          { static const AC id = AC::Redo; int Steps; };
 struct acRename        { static const AC id = AC::Rename; CSTRING Name; };
-struct acResize        { static const AC id = AC::Resize; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
+struct acResize        { static const AC id = AC::Resize; double Width; double Height; double Depth; };
 struct acSaveImage     { static const AC id = AC::SaveImage; OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acSaveToObject  { static const AC id = AC::SaveToObject; OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSeek          { static const AC id = AC::Seek; DOUBLE Offset; SEEK Position; };
+struct acSeek          { static const AC id = AC::Seek; double Offset; SEEK Position; };
 struct acSetKey        { static const AC id = AC::SetKey; CSTRING Key; CSTRING Value; };
-struct acUndo          { static const AC id = AC::Undo; LONG Steps; };
-struct acWrite         { static const AC id = AC::Write; CPTR Buffer; LONG Length; LONG Result; };
+struct acUndo          { static const AC id = AC::Undo; int Steps; };
+struct acWrite         { static const AC id = AC::Write; CPTR Buffer; int Length; int Result; };
 
 // Action Macros
 
@@ -2932,34 +2932,34 @@ inline ERR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
    return Action(AC::Clipboard, Object, &args);
 }
 
-inline ERR acDragDrop(OBJECTPTR Object, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
+inline ERR acDragDrop(OBJECTPTR Object, OBJECTPTR Source, int Item, CSTRING Datatype) {
    struct acDragDrop args = { Source, Item, Datatype };
    return Action(AC::DragDrop, Object, &args);
 }
 
-inline ERR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height) {
+inline ERR acDrawArea(OBJECTPTR Object, int X, int Y, int Width, int Height) {
    struct acDraw args = { X, Y, Width, Height };
    return Action(AC::Draw, Object, &args);
 }
 
-inline ERR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
+inline ERR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, int Size) {
    struct acDataFeed args = { Sender, Datatype, Buffer, Size };
    return Action(AC::DataFeed, Object, &args);
 }
 
-inline ERR acGetKey(OBJECTPTR Object, CSTRING Key, STRING Value, LONG Size) {
+inline ERR acGetKey(OBJECTPTR Object, CSTRING Key, STRING Value, int Size) {
    struct acGetKey args = { Key, Value, Size };
    ERR error = Action(AC::GetKey, Object, &args);
    if ((error != ERR::Okay) and (Value)) Value[0] = 0;
    return error;
 }
 
-inline ERR acMove(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
+inline ERR acMove(OBJECTPTR Object, double X, double Y, double Z) {
    struct acMove args = { X, Y, Z };
    return Action(AC::Move, Object, &args);
 }
 
-inline ERR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
+inline ERR acRead(OBJECTPTR Object, APTR Buffer, int Bytes, int *Read) {
    struct acRead read = { (BYTE *)Buffer, Bytes };
    if (auto error = Action(AC::Read, Object, &read); error IS ERR::Okay) {
       if (Read) *Read = read.Result;
@@ -2971,12 +2971,12 @@ inline ERR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
    }
 }
 
-inline ERR acRedo(OBJECTPTR Object, LONG Steps = 1) {
+inline ERR acRedo(OBJECTPTR Object, int Steps = 1) {
    struct acRedo args = { Steps };
    return Action(AC::Redo, Object, &args);
 }
 
-inline ERR acRedimension(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+inline ERR acRedimension(OBJECTPTR Object, double X, double Y, double Z, double Width, double Height, double Depth) {
    struct acRedimension args = { X, Y, Z, Width, Height, Depth };
    return Action(AC::Redimension, Object, &args);
 }
@@ -2986,12 +2986,12 @@ inline ERR acRename(OBJECTPTR Object, CSTRING Name) {
    return Action(AC::Rename, Object, &args);
 }
 
-inline ERR acResize(OBJECTPTR Object, DOUBLE Width, DOUBLE Height, DOUBLE Depth) {
+inline ERR acResize(OBJECTPTR Object, double Width, double Height, double Depth) {
    struct acResize args = { Width, Height, Depth };
    return Action(AC::Resize, Object, &args);
 }
 
-inline ERR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
+inline ERR acMoveToPoint(OBJECTPTR Object, double X, double Y, double Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return Action(AC::MoveToPoint, Object, &moveto);
 }
@@ -3006,7 +3006,7 @@ inline ERR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = CL
    return Action(AC::SaveToObject, Object, &args);
 }
 
-inline ERR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
+inline ERR acSeek(OBJECTPTR Object, double Offset, SEEK Position) {
    struct acSeek args = { Offset, Position };
    return Action(AC::Seek, Object, &args);
 }
@@ -3027,12 +3027,12 @@ inline ERR acSetKeys(OBJECTPTR Object, CSTRING tags, ...) {
    return ERR::Okay;
 }
 
-inline ERR acUndo(OBJECTPTR Object, LONG Steps) {
+inline ERR acUndo(OBJECTPTR Object, int Steps) {
    struct acUndo args = { Steps };
    return Action(AC::Undo, Object, &args);
 }
 
-inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result = NULL) {
+inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, int Bytes, int *Result = NULL) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
    if (auto error = Action(AC::Write, Object, &write); error IS ERR::Okay) {
       if (Result) *Result = write.Result;
@@ -3044,7 +3044,7 @@ inline ERR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result = NUL
    }
 }
 
-inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
+inline int acWriteResult(OBJECTPTR Object, CPTR Buffer, int Bytes) {
    struct acWrite write = { (BYTE *)Buffer, Bytes };
    if (Action(AC::Write, Object, &write) IS ERR::Okay) return write.Result;
    else return 0;
@@ -3483,7 +3483,7 @@ class objConfig : public Object {
 
    // For C++ only, these read variants avoid method calls for speed, but apply identical logic.
 
-   inline ERR read(std::string_view pGroup, std::string_view pKey, DOUBLE &pValue) {
+   inline ERR read(std::string_view pGroup, std::string_view pKey, double &pValue) {
       for (auto& [group, keys] : Groups[0]) {
          if ((!pGroup.empty()) and (group.compare(pGroup))) continue;
          if (pKey.empty()) pValue = strtod(keys.cbegin()->second.c_str(), NULL);
@@ -3494,7 +3494,7 @@ class objConfig : public Object {
       return ERR::Search;
    }
 
-   inline ERR read(std::string_view pGroup, std::string_view pKey, LONG &pValue) {
+   inline ERR read(std::string_view pGroup, std::string_view pKey, int &pValue) {
       for (auto& [group, keys] : Groups[0]) {
          if ((!pGroup.empty()) and (group.compare(pGroup))) continue;
          if (pKey.empty()) pValue = strtol(keys.cbegin()->second.c_str(), NULL, 0);
@@ -3655,9 +3655,9 @@ class objScript : public Object {
    STRING   ErrorString;
    CSTRING  Procedure;
    STRING   CacheFile;
-   LONG     ActivationCount;      // Incremented every time the script is activated.
-   LONG     ResultsTotal;
-   LONG     TotalArgs;            // Total number of ProcArgs
+   int     ActivationCount;      // Incremented every time the script is activated.
+   int     ResultsTotal;
+   int     TotalArgs;            // Total number of ProcArgs
    char     LanguageDir[32];      // Directory to use for language files
    OBJECTID ScriptOwnerID;
 #endif
@@ -3778,12 +3778,12 @@ class objScript : public Object {
 
 namespace sc {
 template <std::size_t SIZE> ERR Call(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args) noexcept {
-   struct Callback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
+   struct Callback args = { Function.ProcedureID, Args.data(), int(std::ssize(Args)), ERR::Okay };
    return Action(sc::Callback::id, Function.Context, &args);
 }
 
 template <std::size_t SIZE> ERR Call(const FUNCTION &Function, const std::array<ScriptArg, SIZE> &Args, ERR &Result) noexcept {
-   struct Callback args = { Function.ProcedureID, Args.data(), LONG(std::ssize(Args)), ERR::Okay };
+   struct Callback args = { Function.ProcedureID, Args.data(), int(std::ssize(Args)), ERR::Okay };
    ERR error = Action(sc::Callback::id, Function.Context, &args);
    Result = args.Error;
    return(error);
@@ -4449,7 +4449,7 @@ namespace pf {
 #ifdef __system__
    struct ActionMessage {
       OBJECTID ObjectID;  // The object that is to receive the action
-      LONG  Time;
+      int  Time;
       AC ActionID;        // ID of the action or method to execute
       bool SendArgs;
 
@@ -4505,8 +4505,8 @@ typedef struct { EVENTID EventID; } evUserLogin;
 typedef struct { EVENTID EventID; } evKeymapChange;
 typedef struct { EVENTID EventID; } evScreensaverOn;
 typedef struct { EVENTID EventID; } evScreensaverOff;
-typedef struct { EVENTID EventID; DOUBLE Volume; LONG Muted; } evVolume;
-typedef struct { EVENTID EventID; KQ Qualifiers; KEY Code; LONG Unicode; } evKey;
+typedef struct { EVENTID EventID; double Volume; int Muted; } evVolume;
+typedef struct { EVENTID EventID; KQ Qualifiers; KEY Code; int Unicode; } evKey;
 typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
 // Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.
@@ -4515,10 +4515,10 @@ struct evHotplug {
    EVENTID EventID;
    WORD Type;            // HT ID
    WORD Action;          // HTA_INSERTED, HTA_REMOVED
-   LONG VendorID;        // USB vendor ID
+   int VendorID;        // USB vendor ID
    union {
-      LONG ProductID;    // USB product or device ID
-      LONG DeviceID;
+      int ProductID;    // USB product or device ID
+      int DeviceID;
    };
    char  ID[20];         // Typically the PCI bus ID or USB bus ID, serial number or unique identifier
    char  Group[32];      // Group name in the config file

@@ -643,7 +643,7 @@ extern ERR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
 extern ERR scene_input_events(const InputEvent *, LONG);
 extern void send_feedback(extVector *, FM, OBJECTPTR = nullptr);
-extern void set_filter(agg::image_filter_lut &, VSM);
+extern void set_filter(agg::image_filter_lut &, VSM, agg::trans_affine &, double Kernel = 0);
 
 extern void render_scene_from_viewport(extVectorScene *, objBitmap *, objVectorViewport *);
 

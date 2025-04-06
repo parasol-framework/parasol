@@ -107,7 +107,7 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
       agg::span_interpolator_linear<> interpolator(img_transform);
 
       agg::image_filter_lut ifilter;
-      set_filter(ifilter, Self->ResampleMethod);
+      set_filter(ifilter, Self->ResampleMethod, img_transform);
 
       agg::span_once<agg::pixfmt_psl> source(pixSource, 0, 0);
       agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
@@ -294,12 +294,9 @@ static const FieldDef clResampleMethod[] = {
    { "Gaussian",  VSM::GAUSSIAN },
    { "Bessel",    VSM::BESSEL },
    { "Mitchell",  VSM::MITCHELL },
-   { "Sinc3",     VSM::SINC3 },
-   { "Lanczos3",  VSM::LANCZOS3 },
-   { "Blackman3", VSM::BLACKMAN3 },
-   { "Sinc8",     VSM::SINC8 },
-   { "Lanczos8",  VSM::LANCZOS8 },
-   { "Blackman8", VSM::BLACKMAN8 },
+   { "Sinc",     VSM::SINC },
+   { "Lanczos",  VSM::LANCZOS },
+   { "Blackman", VSM::BLACKMAN },
    { NULL, 0 }
 };
 

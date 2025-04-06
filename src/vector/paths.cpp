@@ -212,13 +212,7 @@ void gen_vector_path(extVector *Vector)
 
       apply_parent_transforms(get_parent(Vector), Vector->Transform);
 
-      Vector->BasePath.free_all();
-      Vector->BasePath.move_to(0, 0); // Top left
-      Vector->BasePath.line_to(view->vpFixedWidth, 0); // Top right
-      Vector->BasePath.line_to(view->vpFixedWidth, view->vpFixedHeight); // Bottom right
-      Vector->BasePath.line_to(0, view->vpFixedHeight); // Bottom left
-      Vector->BasePath.close_polygon();
-
+      Vector->BasePath.rect(view->vpFixedWidth, view->vpFixedHeight);
       Vector->BasePath.transform(Vector->Transform);
 
       // Compute the clipping boundary of the viewport and store it in the BX/Y fields.
