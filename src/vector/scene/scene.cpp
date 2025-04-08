@@ -707,8 +707,8 @@ RenderTime: Returns the rendering time of the last scene.
 RenderTime returns the rendering time of the last scene that was drawn, measured in microseconds.  This value can also
 be used to compute frames-per-second with `1000000 / RenderTime`.
 
-The `RENDER_TIME` flag should also be set before fetching this value, as it is required to enable the timing feature.  If
-`RENDER_TIME` is not set, it will be set automatically so that subsequent calls succeed correctly.
+The `RENDER_TIME` flag must be set before fetching this value, as it is required to enable the timing feature.  If
+`RENDER_TIME` is not set, it will be set automatically so that subsequent calls return a correct value.
 
 *********************************************************************************************************************/
 

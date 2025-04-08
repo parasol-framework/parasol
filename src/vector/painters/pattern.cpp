@@ -60,10 +60,10 @@ static ERR PATTERN_Free(extVectorPattern *Self)
       next = node->Next;
       FreeResource(node);
    }
-   Self->Matrices = NULL;
+   Self->Matrices = nullptr;
 
-   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Scene)  { FreeResource(Self->Scene); Self->Scene = NULL; }
+   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = nullptr; }
+   if (Self->Scene)  { FreeResource(Self->Scene); Self->Scene = nullptr; }
 
    return ERR::Okay;
 }
@@ -172,7 +172,7 @@ static ERR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value)
       }
       else return ERR::InvalidValue;
    }
-   else Self->Inherit = NULL;
+   else Self->Inherit = nullptr;
    return ERR::Okay;
 }
 
@@ -182,6 +182,8 @@ Matrices: A linked list of transform matrices that have been applied to the patt
 
 All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is
 represented by a !VectorMatrix structure, and are linked in the order in which they were applied to the pattern.
+
+Setting this field is always additive unless NULL is passed, in which case all existing matrices are removed.
 
 !VectorMatrix
 
@@ -291,7 +293,7 @@ static ERR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
    if (!Self->Matrices) {
       VectorMatrix *matrix;
       if (AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix) IS ERR::Okay) {
-         matrix->Vector = NULL;
+         matrix->Vector = nullptr;
          matrix->Next   = Self->Matrices;
          matrix->ScaleX = 1.0;
          matrix->ScaleY = 1.0;
@@ -416,7 +418,7 @@ static const ActionArray clPatternActions[] = {
    { AC::Free,      PATTERN_Free },
    { AC::Init,      PATTERN_Init },
    { AC::NewObject, PATTERN_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const FieldDef clPatternDimensions[] = {
@@ -428,13 +430,13 @@ static const FieldDef clPatternDimensions[] = {
    { "FixedHeight",  DMF::FIXED_HEIGHT },
    { "ScaledWidth",  DMF::SCALED_WIDTH },
    { "ScaledHeight", DMF::SCALED_HEIGHT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clPatternUnits[] = {
    { "BoundingBox", VUNIT::BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
    { "UserSpace",   VUNIT::USERSPACE },    // Coordinates are relative to the current viewport
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clPatternSpread[] = {
@@ -443,7 +445,7 @@ static const FieldDef clPatternSpread[] = {
    { "Repeat",   VSPREAD::REPEAT },
    { "ReflectX", VSPREAD::REFLECT_X },
    { "ReflectY", VSPREAD::REFLECT_Y },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clPatternFields[] = {

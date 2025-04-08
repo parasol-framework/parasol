@@ -529,7 +529,7 @@ ERR svgState::parse_fe_blur(objVectorFilter *Filter, XMLTag &Tag) noexcept
 
       switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_STDDEVIATION: { // Y is optional, if not set then it is equivalent to X.
-            DOUBLE x = -1, y = -1;
+            double x = -1, y = -1;
             read_numseq(val, { &x, &y });
             if ((x) and (y IS -1)) y = x;
             if (x > 0) fx->set(FID_SX, x);
@@ -767,7 +767,7 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XMLTag &Tag) noe
 
       switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_ORDER: {
-            DOUBLE ox = 0, oy = 0;
+            double ox = 0, oy = 0;
             read_numseq(val, { &ox, &oy });
             if (ox < 1) ox = 3;
             if (oy < 1) oy = ox;
@@ -783,14 +783,14 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XMLTag &Tag) noe
          }
 
          case SVF_DIVISOR: {
-            DOUBLE divisor = 0;
+            double divisor = 0;
             read_numseq(val, { &divisor });
             fx->set(FID_Divisor, divisor);
             break;
          }
 
          case SVF_BIAS: {
-            DOUBLE bias = 0;
+            double bias = 0;
             read_numseq(val, { &bias });
             fx->set(FID_Bias, bias);
             break;
@@ -807,7 +807,7 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XMLTag &Tag) noe
             break;
 
          case SVF_KERNELUNITLENGTH: {
-            DOUBLE kx = 1, ky = 1;
+            double kx = 1, ky = 1;
             read_numseq(val, { &kx, &ky });
             if (kx < 1) kx = 1;
             if (ky < 1) ky = kx;
@@ -870,7 +870,7 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XMLTag &Tag, LT Type) n
          }
 
          case SVF_KERNELUNITLENGTH: {
-            DOUBLE kx = 1, ky = 1;
+            double kx = 1, ky = 1;
             read_numseq(val, { &kx, &ky });
             if (kx < 1) kx = 1;
             if (ky < 1) ky = kx;
@@ -900,7 +900,7 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XMLTag &Tag, LT Type) n
       ERR error;
       auto &child = Tag.Children[0];
       if (std::string_view("feDistantLight") == child.name()) {
-         DOUBLE azimuth = 0, elevation = 0;
+         double azimuth = 0, elevation = 0;
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             switch(strihash(child.Attribs[a].Name)) {
@@ -912,7 +912,7 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XMLTag &Tag, LT Type) n
          error = fx->setDistantLight(azimuth, elevation);
       }
       else if (std::string_view("fePointLight") == child.name()) {
-         DOUBLE x = 0, y = 0, z = 0;
+         double x = 0, y = 0, z = 0;
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             switch(strihash(child.Attribs[a].Name)) {
@@ -925,8 +925,8 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XMLTag &Tag, LT Type) n
          error = fx->setPointLight(x, y, z);
       }
       else if (std::string_view("feSpotLight") == child.name()) {
-         DOUBLE x = 0, y = 0, z = 0, px = 0, py = 0, pz = 0;
-         DOUBLE exponent = 1, cone_angle = 0;
+         double x = 0, y = 0, z = 0, px = 0, py = 0, pz = 0;
+         double exponent = 1, cone_angle = 0;
 
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             auto &val = child.Attribs[a].Value;
@@ -1107,7 +1107,7 @@ ERR svgState::parse_fe_component_xfer(objVectorFilter *Filter, XMLTag &Tag) noex
 
          ULONG type = 0;
          LONG mask = 0xff;
-         DOUBLE amp = 1.0, offset = 0, exp = 1.0, slope = 1.0, intercept = 0.0;
+         double amp = 1.0, offset = 0, exp = 1.0, slope = 1.0, intercept = 0.0;
          std::vector<DOUBLE> values;
          for (LONG a=1; a < std::ssize(child.Attribs); a++) {
             switch(strihash(child.Attribs[a].Name)) {
@@ -1207,28 +1207,28 @@ ERR svgState::parse_fe_composite(objVectorFilter *Filter, XMLTag &Tag) noexcept
          }
 
          case SVF_K1: {
-            DOUBLE k1;
+            double k1;
             read_numseq(val, { &k1 });
             fx->set(FID_K1, k1);
             break;
          }
 
          case SVF_K2: {
-            DOUBLE k2;
+            double k2;
             read_numseq(val, { &k2 });
             fx->set(FID_K2, k2);
             break;
          }
 
          case SVF_K3: {
-            DOUBLE k3;
+            double k3;
             read_numseq(val, { &k3 });
             fx->set(FID_K3, k3);
             break;
          }
 
          case SVF_K4: {
-            DOUBLE k4;
+            double k4;
             read_numseq(val, { &k4 });
             fx->set(FID_K4, k4);
             break;
@@ -1322,7 +1322,7 @@ ERR svgState::parse_fe_turbulence(objVectorFilter *Filter, XMLTag &Tag) noexcept
 
       switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_BASEFREQUENCY: {
-            DOUBLE bfx = -1, bfy = -1;
+            double bfx = -1, bfy = -1;
             read_numseq(val, { &bfx, &bfy });
             if (bfx < 0) bfx = 0;
             if (bfy < 0) bfy = bfx;
@@ -1380,7 +1380,7 @@ ERR svgState::parse_fe_morphology(objVectorFilter *Filter, XMLTag &Tag) noexcept
 
       switch(strihash(Tag.Attribs[a].Name)) {
          case SVF_RADIUS: {
-            DOUBLE x = -1, y = -1;
+            double x = -1, y = -1;
             read_numseq(val, { &x, &y });
             if (x > 0) fx->set(FID_RadiusX, F2T(x));
             if (y > 0) fx->set(FID_RadiusY, F2T(y));
@@ -1605,7 +1605,7 @@ void svgState::proc_filter(XMLTag &Tag) noexcept
             case SVF_OPACITY: UNIT(FID_Opacity, std::clamp(strtod(val.c_str(), NULL), 0.0, 1.0)).set(filter); break;
 
             case SVF_FILTERRES: {
-               DOUBLE x = 0, y = 0;
+               double x = 0, y = 0;
                read_numseq(val, { &x, &y });
                filter->setFields(fl::ResX(F2T(x)), fl::ResY(F2T(y)));
                break;
@@ -1625,7 +1625,7 @@ void svgState::proc_filter(XMLTag &Tag) noexcept
 
 /*
             case SVF_VIEWBOX: {
-               DOUBLE x=0, y=0, width=0, height=0;
+               double x=0, y=0, width=0, height=0;
                read_numseq(val, { &x, &y, &width, &height });
                filter->Viewport->setFields(fl::ViewX(x), fl::ViewY(y), fl::ViewWidth(width), fl::ViewHeight(height));
                break;
@@ -1751,7 +1751,7 @@ void svgState::proc_pattern(XMLTag &Tag) noexcept
                case SVF_HEIGHT:   height = val; break;
 
                case SVF_VIEWBOX: {
-                  DOUBLE vx=0, vy=0, vwidth=1, vheight=1; // Default view-box for bounding-box mode
+                  double vx=0, vy=0, vwidth=1, vheight=1; // Default view-box for bounding-box mode
                   pattern->ContentUnits = VUNIT::USERSPACE;
                   read_numseq(val, { &vx, &vy, &vwidth, &vheight });
                   viewport->setFields(fl::ViewX(vx), fl::ViewY(vy), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
@@ -1937,7 +1937,7 @@ ERR svgState::process_tag(XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent, objV
 //********************************************************************************************************************
 // The Width/Height can be zero if the original image dimensions are desired.
 
-static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE Width = 0, DOUBLE Height = 0)
+static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, double Width = 0, double Height = 0)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2488,7 +2488,7 @@ void svgState::proc_use(XMLTag &Tag, OBJECTPTR Parent) noexcept
             case SVF_WIDTH:  UNIT(FID_Width, val).set(viewport); break;
             case SVF_HEIGHT: UNIT(FID_Height, val).set(viewport); break;
             case SVF_VIEWBOX:  {
-               DOUBLE x=0, y=0, width=0, height=0;
+               double x=0, y=0, width=0, height=0;
                read_numseq(val, { &x, &y, &width, &height });
                viewport->setFields(fl::ViewX(x), fl::ViewY(y), fl::ViewWidth(width), fl::ViewHeight(height));
                break;
@@ -2793,7 +2793,7 @@ void svgState::proc_svg(XMLTag &Tag, OBJECTPTR Parent, objVector * &Vector) noex
          }
 
          case SVF_VERSION: {
-            DOUBLE version = strtod(val.c_str(), NULL);
+            double version = strtod(val.c_str(), NULL);
             if (version > Self->SVGVersion) Self->SVGVersion = version;
             break;
          }
@@ -3460,7 +3460,7 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
             case SVF_FONT_VARIANT: return ERR::NoSupport;
 
             case SVF_FONT_WEIGHT: { // SVG: normal | bold | bolder | lighter | inherit
-               DOUBLE num = strtod(StrValue.c_str(), NULL);
+               double num = strtod(StrValue.c_str(), NULL);
                if (num) Vector->set(FID_Weight, num);
                else switch(strihash(StrValue)) {
                   case SVF_NORMAL:  Vector->set(FID_Weight, 400); return ERR::Okay;

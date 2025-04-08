@@ -73,7 +73,7 @@ static const ActionArray clActions[] = {
    { AC::Free,         FLUID_Free },
    { AC::Init,         FLUID_Init },
    { AC::SaveToObject, FLUID_SaveToObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 //********************************************************************************************************************
@@ -82,9 +82,9 @@ static ERR FLUID_GetProcedureID(objScript *, struct sc::GetProcedureID *);
 static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);
 
 static const MethodEntry clMethods[] = {
-   { sc::GetProcedureID::id, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
-   { sc::DerefProcedure::id, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
-   { AC::NIL, NULL, NULL, NULL, 0 }
+   { sc::GetProcedureID::id, (APTR)FLUID_GetProcedureID, "GetProcedureID", nullptr, 0 },
+   { sc::DerefProcedure::id, (APTR)FLUID_DerefProcedure, "DerefProcedure", nullptr, 0 },
+   { AC::NIL, nullptr, nullptr, nullptr, 0 }
 };
 
 //********************************************************************************************************************
@@ -95,12 +95,12 @@ static void free_all(objScript *Self)
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return; // Not a problem - indicates the object did not pass initialisation
 
-   if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
+   if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = nullptr; }
 
    prv->~prvFluid();
 
    lua_close(prv->Lua);
-   prv->Lua = NULL;
+   prv->Lua = nullptr;
 }
 
 //********************************************************************************************************************
@@ -164,10 +164,9 @@ void process_error(objScript *Self, CSTRING Procedure)
    }
 }
 
-/*********************************************************************************************************************
-** This routine is intended for handling action notifications only.  It takes the FunctionField list provided by the
-** action and copies them into a table.  Each value is represented by the relevant parameter name for ease of use.
-*/
+//********************************************************************************************************************
+// This routine is intended for handling action notifications only.  It takes the FunctionField list provided by the
+// action and copies them into a table.  Each value is represented by the relevant parameter name for ease of use.
 
 static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *args, BYTE *Buffer)
 {
@@ -247,21 +246,24 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID
             lua_newtable(prv->Lua);  // +1: Table to store the parameters
-            if (stack_args(prv->Lua, Object->UID, scan.Args, (STRING)Args) IS ERR::Okay) {
-               LONG total_args;
-               if (scan.Reference) { // +1: Custom reference (optional)
-                  lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Reference);
-                  total_args = 3; // ObjectID, ArgTable, Reference
-               }
-               else total_args = 2; // ObjectID, ArgTable
 
-               if (lua_pcall(prv->Lua, total_args, 0, 0)) { // Make the call, function & args are removed from stack.
-                  process_error(Self, "Action Subscription");
-               }
-
-               log.traceBranch("Collecting garbage.");
-               lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
+            if ((scan.Args) and (Args)) {
+               stack_args(prv->Lua, Object->UID, scan.Args, (STRING)Args);
             }
+            
+            LONG total_args = 2;
+
+            if (scan.Reference) { // +1: Custom reference (optional)
+               lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Reference);
+               total_args++; // ObjectID, ArgTable, Reference
+            }
+
+            if (lua_pcall(prv->Lua, total_args, 0, 0)) { // Make the call, function & args are removed from stack.
+               process_error(Self, "Action Subscription");
+            }
+
+            log.traceBranch("Collecting garbage.");
+            lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
          }
 
          SetResource(RES::LOG_DEPTH, depth);
@@ -409,7 +411,7 @@ static ERR FLUID_Activate(objScript *Self)
             // Format: [string "..."]:Line:Error
             if ((i = strsearch("\"]:", errorstr)) != -1) {
                i += 3;
-               LONG line = strtol(errorstr + i, NULL, 0);
+               LONG line = strtol(errorstr + i, nullptr, 0);
                while ((errorstr[i]) and (errorstr[i] != ':')) i++;
                if (errorstr[i] IS ':') i++;
 
@@ -667,7 +669,7 @@ static ERR FLUID_Init(objScript *Self)
    ERR error;
    bool compile = false;
    LONG loaded_size = 0;
-   objFile *src_file = NULL;
+   objFile *src_file = nullptr;
    if ((!Self->String) and (Self->Path)) {
       LARGE src_ts, src_size;
 
@@ -722,7 +724,7 @@ static ERR FLUID_Init(objScript *Self)
             else {
                log.trace("Failed to read %" PF64 " bytes from '%s'", src_size, Self->Path);
                FreeResource(Self->String);
-               Self->String = NULL;
+               Self->String = nullptr;
                error = ERR::ReadFileToBuffer;
             }
          }
@@ -758,7 +760,7 @@ static ERR FLUID_Init(objScript *Self)
    if (!(prv->Lua = luaL_newstate())) {
       log.warning("Failed to open a Lua instance.");
       FreeResource(Self->ChildPrivate);
-      Self->ChildPrivate = NULL;
+      Self->ChildPrivate = nullptr;
       if (src_file) FreeResource(src_file);
       return ERR::Failed;
    }
@@ -935,7 +937,7 @@ static ERR run_script(objScript *Self)
                   if (args[1].Type & FD_ARRAYSIZE) {
                      if (args[1].Type & FD_LONG) total_elements = args[1].Long;
                      else if (args[1].Type & FD_LARGE) total_elements = args[1].Large;
-                     else values = NULL;
+                     else values = nullptr;
                      i++; args++; // Because we took the array-size parameter into account
                   }
                   else log.trace("The size of the array is not defined.");
@@ -968,8 +970,8 @@ static ERR run_script(objScript *Self)
                   if ((type & FD_BUFFER) and (i+1 < Self->TotalArgs) and (args[1].Type & FD_BUFSIZE)) {
                      // Buffers are considered to be directly writable regions of memory, so the array interface is
                      // used to represent them.
-                     if (args[1].Type & FD_LONG) make_array(prv->Lua, FD_BYTE|FD_WRITE, NULL, (APTR *)args->Address, args[1].Long, false);
-                     else if (args[1].Type & FD_LARGE) make_array(prv->Lua, FD_BYTE|FD_WRITE, NULL, (APTR *)args->Address, args[1].Large, false);
+                     if (args[1].Type & FD_LONG) make_array(prv->Lua, FD_BYTE|FD_WRITE, nullptr, (APTR *)args->Address, args[1].Long, false);
+                     else if (args[1].Type & FD_LARGE) make_array(prv->Lua, FD_BYTE|FD_WRITE, nullptr, (APTR *)args->Address, args[1].Large, false);
                      else lua_pushnil(prv->Lua);
                      i++; args++; // Because we took the buffer-size parameter into account
                   }
@@ -1058,7 +1060,7 @@ static ERR run_script(objScript *Self)
             array[i] = lua_tostring(prv->Lua, -results+i);
             log.trace("Result: %d/%d: %s", i, results, array[i]);
          }
-         array[i] = NULL;
+         array[i] = nullptr;
          SetArray(Self, FID_Results, array.data(), i);
          lua_pop(prv->Lua, results);  // pop returned values
       }

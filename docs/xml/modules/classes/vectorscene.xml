@@ -216,14 +216,14 @@
       <type>BIGINT</type>
       <description>
 <p>RenderTime returns the rendering time of the last scene that was drawn, measured in microseconds.  This value can also be used to compute frames-per-second with <code>1000000 / RenderTime</code>.</p>
-<p>The <code>RENDER_TIME</code> flag should also be set before fetching this value, as it is required to enable the timing feature.  If <code>RENDER_TIME</code> is not set, it will be set automatically so that subsequent calls succeed correctly.</p>
+<p>The <code>RENDER_TIME</code> flag must be set before fetching this value, as it is required to enable the timing feature.  If <code>RENDER_TIME</code> is not set, it will be set automatically so that subsequent calls return a correct value.</p>
       </description>
     </field>
 
     <field>
       <name>SampleMethod</name>
       <comment>The sampling method to use when interpolating images and patterns.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="VSM">VSM</type>
       <description>
 <p>The SampleMethod controls the sampling algorithm that is used when images and patterns in the vector definition are affected by rotate, skew and scale transforms.  The choice of method will have a significant impact on the speed and quality of the images that are displayed in the rendered scene.  The recommended default is <code>AUTO</code>, which allows the drawing algorithms to choose the best quality option dynamically.</p>
@@ -264,7 +264,7 @@
     <constants lookup="VSM">
       <const name="AUTO">The default option is chosen by the system.  This will typically be <code>BILINEAR</code>, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</const>
       <const name="BESSEL"/>
-      <const name="BICUBIC">Produces a similar result to <code>BILINEAR</code> with a marginally sharper after-effect.</const>
+      <const name="BICUBIC">Produces a similar result to <code>BILINEAR</code> at a slightly higher CPU cost and a marginally sharper after-effect.</const>
       <const name="BILINEAR">Bilinear is a common algorithm that produces a reasonable quality image quickly.</const>
       <const name="BLACKMAN">Five times slower than <code>BILINEAR</code>, the final result will be less sharp than SINC.</const>
       <const name="GAUSSIAN"/>
@@ -274,7 +274,7 @@
       <const name="NEIGHBOUR">Nearest neighbour is the fastest sampler at the cost of poor quality.</const>
       <const name="QUADRIC"/>
       <const name="SINC">Five times slower than <code>BILINEAR</code>, the final result is of very good quality.</const>
-      <const name="SPLINE16">About half the speed of <code>BILINEAR</code>, this method produces a considerably better result.</const>
+      <const name="SPLINE16">About twice as slow as <code>BILINEAR</code>, this method produces a considerably better result, and is a good choice for enlarging images without producing artifacts when contrasting colours are present.</const>
     </constants>
 
   </types>
