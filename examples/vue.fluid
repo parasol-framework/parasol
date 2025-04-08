@@ -280,7 +280,7 @@ end
 
       gui.divider({
          left = glFileView.view.viewport, right = glViewManager,
-         minA = 100, maxA = glWindow.surface.insideWidth * 0.4, minB = 100
+         minA = 100, maxA = glWindow.surface.width * 0.4, minB = 100
       })
    end
 
