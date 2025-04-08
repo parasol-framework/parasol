@@ -197,13 +197,13 @@ static ERR VECTORPATTERN_GET_Matrices(extVectorPattern *Self, VectorMatrix **Val
 
 static ERR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Value)
 {
-   if (!Value) {
+   if (Value) {
       auto hook = &Self->Matrices;
       while (Value) {
          VectorMatrix *matrix;
          if (AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix) IS ERR::Okay) {
-            matrix->Vector = NULL;
-            matrix->Next   = NULL;
+            matrix->Vector = nullptr;
+            matrix->Next   = nullptr;
             matrix->ScaleX = Value->ScaleX;
             matrix->ScaleY = Value->ScaleY;
             matrix->ShearX = Value->ShearX;
@@ -224,7 +224,7 @@ static ERR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Valu
          next = node->Next;
          FreeResource(node);
       }
-      Self->Matrices = NULL;
+      Self->Matrices = nullptr;
    }
 
    Self->modified();
