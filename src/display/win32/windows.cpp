@@ -910,6 +910,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       }
 
       case WM_WINDOWPOSCHANGING: {
+         // Improve performance by preventing the window from being redrawn when it is moved or resized.
          auto winpos = (LPWINDOWPOS)lParam;
          winpos->flags |= SWP_NOCOPYBITS|SWP_NOREDRAW;
          return 0;
@@ -1150,7 +1151,7 @@ int winCreateScreenClass(void)
    glDefaultCursor = LoadCursor(NULL, IDC_ARROW);
 
    winclass.cbSize        = sizeof(winclass);
-   winclass.style         = CS_DBLCLKS;
+   winclass.style         = CS_DBLCLKS|CS_VREDRAW|CS_HREDRAW;
    winclass.lpfnWndProc   = WindowProcedure;
    winclass.cbClsExtra    = 0;
    winclass.cbWndExtra    = sizeof(struct winextra);
