@@ -862,7 +862,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                      view->Fill[0].Pattern->Scene->Viewport->setFields(fl::Width(view->vpFixedWidth), fl::Height(view->vpFixedHeight));
                   }
 
-                  draw_vectors(((extVectorPattern *)view->Fill[0].Pattern)->Viewport, state);
+                  draw_vectors((extVectorViewport *)((extVectorPattern *)view->Fill[0].Pattern)->Viewport, state);
 
                   matrix->ScaleX = 1.0;
                   matrix->ScaleY = 1.0;
@@ -894,7 +894,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
                         view->Fill[1].Pattern->Scene->Viewport->setFields(fl::Width(view->vpFixedWidth), fl::Height(view->vpFixedHeight));
                      }
 
-                     draw_vectors(((extVectorPattern *)view->Fill[1].Pattern)->Viewport, state);
+                     draw_vectors((extVectorViewport *)((extVectorPattern *)view->Fill[1].Pattern)->Viewport, state);
 
                      matrix->ScaleX = 1.0;
                      matrix->ScaleY = 1.0;

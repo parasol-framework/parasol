@@ -762,8 +762,9 @@ class objVectorScene : public Object {
    }
 
    inline ERR setSampleMethod(const VSM Value) noexcept {
-      this->SampleMethod = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
 };
@@ -849,17 +850,18 @@ class objVectorPattern : public Object {
 
    using create = pf::Create<objVectorPattern>;
 
-   DOUBLE  X;                     // X coordinate for the pattern.
-   DOUBLE  Y;                     // Y coordinate for the pattern.
-   DOUBLE  Width;                 // Width of the pattern tile.
-   DOUBLE  Height;                // Height of the pattern tile.
-   DOUBLE  Opacity;               // The opacity of the pattern.
-   objVectorScene * Scene;        // Refers to the internal VectorScene that will contain the rendered pattern.
-   objVectorPattern * Inherit;    // Inherit attributes from a VectorPattern referenced here.
-   VSPREAD SpreadMethod;          // The behaviour to use when the pattern bounds do not match the vector path.
-   VUNIT   Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
-   VUNIT   ContentUnits;          // Private. Not yet implemented.
-   DMF     Dimensions;            // Dimension flags are stored here.
+   DOUBLE  X;                       // X coordinate for the pattern.
+   DOUBLE  Y;                       // Y coordinate for the pattern.
+   DOUBLE  Width;                   // Width of the pattern tile.
+   DOUBLE  Height;                  // Height of the pattern tile.
+   DOUBLE  Opacity;                 // The opacity of the pattern.
+   objVectorScene * Scene;          // Refers to the internal VectorScene that will contain the rendered pattern.
+   objVectorViewport * Viewport;    // Refers to the viewport that contains the pattern.
+   objVectorPattern * Inherit;      // Inherit attributes from a VectorPattern referenced here.
+   VSPREAD SpreadMethod;            // The behaviour to use when the pattern bounds do not match the vector path.
+   VUNIT   Units;                   // Defines the coordinate system for fields X, Y, Width and Height.
+   VUNIT   ContentUnits;            // Private. Not yet implemented.
+   DMF     Dimensions;              // Dimension flags are stored here.
 
    // Customised field setting
 

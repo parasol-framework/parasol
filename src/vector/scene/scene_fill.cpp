@@ -524,7 +524,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
       double target_width, target_height;
 
-      Pattern.Viewport->vpAspectRatio = ARF::X_MAX|ARF::Y_MAX; // Stretch the 1x1 viewport to match the PageW/H
+      ((extVectorViewport *)Pattern.Viewport)->vpAspectRatio = ARF::X_MAX|ARF::Y_MAX; // Stretch the 1x1 viewport to match the PageW/H
 
       if (Pattern.ContentUnits IS VUNIT::BOUNDING_BOX) {
          Pattern.Viewport->setFields(fl::ViewWidth(Pattern.Width), fl::ViewHeight(Pattern.Height));

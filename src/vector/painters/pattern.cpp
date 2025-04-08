@@ -328,16 +328,6 @@ Viewport: Refers to the viewport that contains the pattern.
 The Viewport refers to a @VectorViewport object that is created to host the vectors for the rendered pattern.  If the
 Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.
 
-*********************************************************************************************************************/
-
-static ERR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Value)
-{
-   *Value = Self->Viewport;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
 -FIELD-
 Width: Width of the pattern tile.
 
@@ -453,18 +443,18 @@ static const FieldArray clPatternFields[] = {
    { "Y",            FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Y, PATTERN_SET_Y },
    { "Width",        FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Width, PATTERN_SET_Width },
    { "Height",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Height, PATTERN_SET_Height },
-   { "Opacity",      FDF_DOUBLE|FDF_RW, NULL, PATTERN_SET_Opacity },
-   { "Scene",        FDF_LOCAL|FDF_R },
-   { "Inherit",      FDF_OBJECT|FDF_RW, NULL, PATTERN_SET_Inherit },
-   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, PATTERN_SET_SpreadMethod, &clPatternSpread },
-   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternUnits },
-   { "ContentUnits", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternUnits },
-   { "Dimensions",   FDF_LONGFLAGS|FDF_R, NULL, NULL, &clPatternDimensions },
+   { "Opacity",      FDF_DOUBLE|FDF_RW, nullptr, PATTERN_SET_Opacity },
+   { "Scene",        FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::VECTORSCENE },
+   { "Viewport",     FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "Inherit",      FDF_OBJECT|FDF_RW, nullptr, PATTERN_SET_Inherit },
+   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, PATTERN_SET_SpreadMethod, &clPatternSpread },
+   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clPatternUnits },
+   { "ContentUnits", FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clPatternUnits },
+   { "Dimensions",   FDF_LONGFLAGS|FDF_R, nullptr, nullptr, &clPatternDimensions },
    //{ "AspectRatio", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, PATTERN_GET_AspectRatio, PATTERN_SET_AspectRatio, &clAspectRatio },
    // Virtual fields
    { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, VECTORPATTERN_GET_Matrices, VECTORPATTERN_SET_Matrices, "VectorMatrix" },
-   { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, NULL, PATTERN_SET_Transform },
-   { "Viewport",     FDF_VIRTUAL|FDF_OBJECT|FDF_R, PATTERN_GET_Viewport, NULL, CLASSID::VECTORVIEWPORT },
+   { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, nullptr, PATTERN_SET_Transform },
    END_FIELD
 };
 

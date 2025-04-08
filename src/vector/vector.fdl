@@ -432,6 +432,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
     double Height                 # Height of the canvas
     double Opacity                # Level of opacity from 0 - 1.0
     obj(VectorScene) Scene        # Internal scene
+    obj(VectorViewport) Viewport  # Internal viewport
     obj(VectorPattern) Inherit    # Reference to another pattern from which to inherit attributes
     int(VSPREAD) SpreadMethod     # Behaviour to use when pattern bounds do not match the vector path.
     int(VUNIT) Units              # VUNIT constant

@@ -352,7 +352,6 @@ class extVectorPattern : public objVectorPattern, public SceneDef {
    using create = pf::Create<extVectorPattern>;
 
    struct VectorMatrix *Matrices;
-   extVectorViewport *Viewport;
    objBitmap *Bitmap;
 };
 
