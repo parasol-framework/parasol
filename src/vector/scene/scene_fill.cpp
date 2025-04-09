@@ -536,14 +536,14 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       if (dmf::hasScaledHeight(Pattern.Dimensions)) target_height = Pattern.Height * elem_height;
       else target_height = Pattern.Height;
 
-      dx = x_offset + ((elem_width * Pattern.X) * (SCALE_BITMAP ? Transform.sx : 1.0));
-      dy = y_offset + ((elem_height * Pattern.Y) * (SCALE_BITMAP ? Transform.sy : 1.0));
+      dx = x_offset + ((elem_width * Pattern.X) * (SCALE_BITMAP ? t_scale : 1.0));
+      dy = y_offset + ((elem_height * Pattern.Y) * (SCALE_BITMAP ? t_scale : 1.0));
 
       // Scale the bitmap so that it matches the final scale on the display.  This requires a matching inverse
       // adjustment when computing the final transform.
 
-      int page_width = F2T(target_width * (SCALE_BITMAP ? Transform.sx : 1.0));
-      int page_height = F2T(target_height * (SCALE_BITMAP ? Transform.sy : 1.0));
+      int page_width = F2T(target_width * (SCALE_BITMAP ? t_scale : 1.0));
+      int page_height = F2T(target_height * (SCALE_BITMAP ? t_scale : 1.0));
 
       // Mark the bitmap for recomputation if needed.
 
@@ -577,7 +577,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
    if ((SCALE_BITMAP) and (Pattern.Units IS VUNIT::BOUNDING_BOX)) {
       // Invert any prior bitmap scaling
-      transform.scale(1.0 / Transform.sx, 1.0 / Transform.sy);
+      transform.scale(1.0 / t_scale, 1.0 / t_scale);
    }
 
    transform *= Transform;

@@ -74,12 +74,12 @@ static ERR PATTERN_Init(extVectorPattern *Self)
 {
    pf::Log log;
 
-   if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
+   if ((int(Self->SpreadMethod) <= 0) or (int(Self->SpreadMethod) >= int(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return log.warning(ERR::OutOfRange);
    }
 
-   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
+   if ((int(Self->Units) <= 0) or (int(Self->Units) >= int(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR::OutOfRange);
    }
@@ -241,7 +241,7 @@ is 1.0.
 
 *********************************************************************************************************************/
 
-static ERR PATTERN_SET_Opacity(extVectorPattern *Self, DOUBLE Value)
+static ERR PATTERN_SET_Opacity(extVectorPattern *Self, double Value)
 {
    if (Value < 0.0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
