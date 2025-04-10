@@ -505,9 +505,6 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       else if (dmf::hasY(Pattern.Dimensions)) dy = y_offset + Pattern.Y;
       else dy = y_offset;
 
-      //target_width  *= Transform.sx;
-      //target_height *= Transform.sy;
-
       int page_width = F2T(target_width);
       int page_height = F2T(target_height);
 
@@ -579,6 +576,10 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       // Invert any prior bitmap scaling
       transform.scale(1.0 / t_scale, 1.0 / t_scale);
    }
+
+   // NB: If the Transform multiplication isn't performed, the pattern tile effectively becomes detached
+   // from the target vector and is drawn as a static background.  Would it a be a useful feature for this
+   // to be available to the client as a toggle?
 
    transform *= Transform;
 

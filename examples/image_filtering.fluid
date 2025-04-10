@@ -10,6 +10,7 @@ Image Filter Demonstration
    if not mVector then mVector = mod.load('vector') end
 
    local win, viewport, photo, mainVP, rect
+   local transformStyle = 'scale'
    local glRotate = 0
    local glScale = 1.0
 
@@ -50,12 +51,105 @@ function transform()
       local err
       err, glMatrix = rect.mtNewMatrix(false)
    end
+
    mVector.ResetMatrix(glMatrix)
-   mVector.Rotate(glMatrix, glRotate, 0.5, 0.5)
-   mVector.Translate(glMatrix, -0.5, -0.5)
-   mVector.Scale(glMatrix, glScale, glScale)
-   mVector.Translate(glMatrix, 0.5, 0.5)
+
+   if transformStyle == 'zoom' then
+      local scaled_size = 1.0 / glScale
+      local half_scale = scaled_size * 0.5
+      rect.width  = scaled_size
+      rect.height = scaled_size
+
+      mVector.Translate(glMatrix, -half_scale, -half_scale)
+      mVector.Rotate(glMatrix, glRotate)
+      mVector.Scale(glMatrix, glScale, glScale)
+      mVector.Translate(glMatrix, half_scale, half_scale)
+      mVector.Translate(glMatrix, 0.5-half_scale, 0.5-half_scale)
+   else
+      mVector.Rotate(glMatrix, glRotate, 0.5, 0.5)
+      mVector.Translate(glMatrix, -0.5, -0.5)
+      mVector.Scale(glMatrix, glScale, glScale)
+      mVector.Translate(glMatrix, 0.5, 0.5)
+   end
+
    mainVP.scene.surface.mtScheduleRedraw()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function addPhoto()
+   local photo = viewport.scene.new('VectorImage', {
+      name = 'photo', picture=picPhoto
+   })
+
+   viewport.scene.mtAddDef('photo', photo)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function addPattern()
+   local pattern = viewport.scene.new('VectorPattern', {
+      name = 'pattern',
+      width = 0.1, height = 0.1,
+      units = VUNIT_BOUNDING_BOX,
+      spreadMethod = VSPREAD_REPEAT
+   })
+
+   pattern.viewport.viewWidth = 1
+   pattern.viewport.viewHeight = 1
+
+   pattern.viewport.new('VectorRectangle', {
+      fill='white', x=0.5, y=0, width=0.5, height=0.5, stroke='none'
+   })
+
+   pattern.viewport.new('VectorEllipse', {
+      fill='white', cx=0.25, cy=0.75, radius=0.25, stroke='none'
+   })
+
+   pattern.viewport.new('VectorPath', {
+      stroke='black', strokeWidth=0.05,
+      sequence="M0,0 L1,1"
+   })
+
+   pattern.viewport.new('VectorPath', {
+      stroke='red', strokeWidth=0.025,
+      sequence="M0.5,0 L1,0.5Z M0,0.5 L0.5,1 Z"
+   })
+
+   pattern.viewport.new('VectorPath', {
+      stroke='green', strokeWidth=0.025,
+      sequence="M0.75,0 L1,0.25Z M0,0.75 L0.25,1Z M0,0.25 L0.75,1Z M0.25,0 L1,0.75Z"
+   })
+
+   viewport.scene.mtAddDef('pattern', pattern)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function addGradient()
+   local pattern = viewport.scene.new('VectorPattern', {
+      name = 'pattern_gradient',
+      width = 0.1, height = 0.1,
+      units = VUNIT_BOUNDING_BOX,
+      spreadMethod = VSPREAD_REPEAT
+   })
+
+   pattern.viewport.viewWidth = 1
+   pattern.viewport.viewHeight = 1
+
+   gui.simpleGradient(pattern.viewport.scene, 'red_blue', { { r=255,g=0, b=0 }, { r=0, g=0, b=255 } }, 0, 0, 0, 1)
+
+   gui.simpleGradient(pattern.viewport.scene, 'grey', { { r=255,g=255, b=255 }, { r=0, g=0, b=0 } }, 0, 0, 0, 1)
+
+   pattern.viewport.new('VectorRectangle', {
+      fill='url(#red_blue)', x=0, y=0, width=1, height=0.5, stroke='none'
+   })
+
+   pattern.viewport.new('VectorRectangle', {
+      fill='url(#grey)', x=0, y=0.5, width=1, height=0.5, stroke='none'
+   })
+
+   viewport.scene.mtAddDef('gradient', pattern)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -63,11 +157,10 @@ end
 function buildScene()
    picPhoto = obj.new('picture', { src=glPath .. 'data/mandril.png', bitsPerPixel=32 })
 
-   photo = viewport.scene.new('VectorImage', {
-      name = 'photo', picture=picPhoto
-   })
+   addPhoto()
+   addPattern()
+   addGradient()
 
-   viewport.scene.mtAddDef('photo', photo)
    viewport.scene.flags = bit.bor(viewport.scene.flags, VPF_RENDER_TIME)
 
    viewport.scene.subscribe('draw', function(Surface, Args)
@@ -125,15 +218,18 @@ function buildScene()
       text   = 'Photo',
       x      = cmbFilter.viewport.x + cmbFilter.viewport.width + 10,
       y      = 10,
-      items  = { { item='Test Pattern' }, { item='Photo' }, { item='Contrast' } },
+      items  = { { item='Test Pattern' }, { item='Photo' }, { item='Gradient' } },
       events = {
          activate = function(Widget, Text)
             if Text == 'Test Pattern' then
                rect.fill = 'url(#pattern)'
+               transformStyle = 'zoom'
             elseif Text == 'Photo' then
                rect.fill = 'url(#photo)'
-            elseif Text == 'Contrast' then
-               rect.fill = 'url(#contrast)'
+               transformStyle = 'scale'
+            elseif Text == 'Gradient' then
+               rect.fill = 'url(#gradient)'
+               transformStyle = 'zoom'
             end
             mainVP.scene.surface.mtScheduleRedraw()
          end
