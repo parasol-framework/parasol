@@ -29,19 +29,19 @@ function selectFilter(Text)
    elseif Text == 'Sinc' then
       mainVP.scene.sampleMethod = VSM_SINC
    elseif Text == 'Nearest Neighbour' then
-      mainVP.scene.sampleMethod = 'NEIGHBOUR'
+      mainVP.scene.sampleMethod = VSM_NEIGHBOUR
    elseif Text == 'Spline16' then
-      mainVP.scene.sampleMethod = 'SPLINE16'
+      mainVP.scene.sampleMethod = VSM_SPLINE16
    elseif Text == 'Kaiser' then
-      mainVP.scene.sampleMethod = 'KAISER'
+      mainVP.scene.sampleMethod = VSM_KAISER
    elseif Text == 'Quadric' then
-      mainVP.scene.sampleMethod = 'QUADRIC'
+      mainVP.scene.sampleMethod = VSM_QUADRIC
    elseif Text == 'Gaussian' then
-      mainVP.scene.sampleMethod = 'GAUSSIAN'
+      mainVP.scene.sampleMethod = VSM_GAUSSIAN
    elseif Text == 'Bessel' then
-      mainVP.scene.sampleMethod = 'BESSEL'
+      mainVP.scene.sampleMethod = VSM_BESSEL
    elseif Text == 'Mitchell' then
-      mainVP.scene.sampleMethod = 'MITCHELL'
+      mainVP.scene.sampleMethod = VSM_MITCHELL
    end
    mainVP.scene.surface.mtScheduleRedraw()
 end
