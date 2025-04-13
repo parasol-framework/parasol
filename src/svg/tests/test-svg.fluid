@@ -84,12 +84,12 @@ function testEllipseVertices() hashTestSVG('paths/ellipse_vertices.svg', 0xa0a8e
 function testPolygons()        hashTestSVG('paths/polygons.svg', 0xbde2d0c7) end
 function testRough()           hashTestSVG('paths/rough_js.svg', 0xdb8d9130) end
 function testShapes()          hashTestSVG('paths/shapes.svg', 0x1bfb26c5) end
-function testSpirals()         hashTestSVG('paths/spirals.svg', 0x7542c47d) end
+function testSpirals()         hashTestSVG('paths/spirals.svg', 0x785a3408) end
 function testStrokes()         hashTestSVG('paths/strokes.svg', 0xc35a546a) end
 function testSuperShapes()     hashTestSVG('paths/supershapes.svg', 0x07dc5ee7) end
 function testSuperSpiral()     hashTestSVG('paths/superspiral.svg', 0x4cbc6fd9) end
 function testTransitions()     hashTestSVG('paths/transitions.svg', 0x801a2fb0) end
-function testWave()            hashTestSVG('paths/wave.svg', 0x854f97b9) end
+function testWave()            hashTestSVG('paths/wave.svg', 0xf35f8a72) end
 function testW3Paths01()       hashTestSVG('paths/w3-paths-data-01-t.svg', 0x7fdb0e82) end
 function testW3Paths02()       hashTestSVG('paths/w3-paths-data-02-t.svg', 0xb100cbc6) end
 function testW3Paths03()       hashTestSVG('paths/w3-paths-data-03-f.svg', 0x0100b85b) end
@@ -112,7 +112,7 @@ function testW3Paths19()       hashTestSVG('paths/w3-paths-data-19-f.svg', 0x70e
 function testW3Paths20()       hashTestSVG('paths/w3-paths-data-20-f.svg', 0x4504e106) end
 
 function testChevrons()     hashTestSVG('patterns/chevrons.svg', 0x3fee5b91) end
-function testComplex()      hashTestSVG('patterns/complex.svg', 0x9b1f1a61) end
+function testComplex()      hashTestSVG('patterns/complex.svg', 0x88291c9f) end
 function testDiamonds()     hashTestSVG('patterns/diamonds.svg', 0x3328d5fa) end
 function testDimple()       hashTestSVG('patterns/dimple.svg', 0x1806e6a0) end
 function testDot()          hashTestSVG('patterns/dot.svg', 0x6736bc6c) end
@@ -126,7 +126,7 @@ function testW3Patterns03() hashTestSVG('patterns/w3-pservers-pattern-02-f.svg',
 
 function testW3Coords01() hashTestSVG('coords/w3-coords-coord-01-t.svg', 0x8a49c228) end
 function testW3Coords02() hashTestSVG('coords/w3-coords-coord-02-t.svg', 0x8a49c228) end
-function testW3Coords03() hashTestSVG('coords/w3-coords-units-01-b.svg', 0xa56c9214) end
+function testW3Coords03() hashTestSVG('coords/w3-coords-units-01-b.svg', 0x1b47372d) end
 function testW3Coords04() hashTestSVG('coords/w3-coords-units-02-b.svg', 0x5644fad5) end
 function testW3Coords05() hashTestSVG('coords/w3-coords-units-03-b.svg', 0xb462f91b) end
 function testW3Coords06() hashTestSVG('coords/w3-coords-viewattr-01-b.svg', -1) end
@@ -254,7 +254,7 @@ function testW3TransformAttr04() hashTestSVG('transforms/w3-coords-transformattr
 function testW3TransformAttr05() hashTestSVG('transforms/w3-coords-transformattr-05-f.svg', 0xf7d910a6) end
 
 function testCSS()                hashTestSVG('misc/css.svg', 0x8c373aac) end
-function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x91b662f6) end
+function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0x656a5e37) end
 function testContourGradient()    hashTestSVG('gradients/contour-gradient.svg', 0x9ace93f4) end
 
 function testBottleTree()         hashTestSVG('images/bottletree.svg', 0xfc741c6e) end

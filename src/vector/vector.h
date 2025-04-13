@@ -83,6 +83,24 @@ class extVectorClip;
 extern std::unordered_map<std::string, std::array<FRGB, 256>> glColourMaps;
 extern objConfig *glFontConfig;
 
+class PIXEL_ORDER {
+public:
+   PIXEL_ORDER() = default;
+   PIXEL_ORDER(uint8_t r, uint8_t g, uint8_t b, uint8_t a) : Red(r), Green(g), Blue(b), Alpha(a) {}
+   uint8_t Red, Green, Blue, Alpha;
+};
+
+class PIXEL_DATA : public PIXEL_ORDER {
+public:
+   const UBYTE *Data;
+   PIXEL_DATA(UBYTE *pData) : Data(pData) { }
+   PIXEL_DATA(UBYTE *pData, const PIXEL_ORDER pPX) : PIXEL_ORDER(pPX), Data(pData) {}
+
+   agg::rgba8 getRGB() const {
+      return agg::rgba8(Data[Red], Data[Green], Data[Blue], Data[Alpha]);
+   }
+};
+
 //********************************************************************************************************************
 
 template<class T = double> struct TClipRectangle {
@@ -865,10 +883,10 @@ public:
       y += m_offset_y;
       const value_type* p = (const value_type*)span(x, y, len);
       do {
-         s->r = p[m_src->oR];
-         s->g = p[m_src->oG];
-         s->b = p[m_src->oB];
-         s->a = p[m_src->oA];
+         s->r = p[m_src->mPixelOrder.Red];
+         s->g = p[m_src->mPixelOrder.Green];
+         s->b = p[m_src->mPixelOrder.Blue];
+         s->a = p[m_src->mPixelOrder.Alpha];
          p = (const value_type*)next_x();
          ++s;
       } while(--len);

@@ -296,12 +296,12 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
 
       lt.x = (lt.x * c_width) + client->Bounds.left;
       lt.y = (lt.y * c_height) + client->Bounds.top;
-      lt.z = lt.z * sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
+      lt.z = lt.z * sqrt((c_width * c_width) + (c_height * c_height)) * SQRT2DIV2;
 
       if (Self->LightSource IS LS::SPOT) {
          pt.x = (pt.x * c_width) + client->Bounds.left;
          pt.y = (pt.y * c_height) + client->Bounds.top;
-         pt.z = pt.z * sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
+         pt.z = pt.z * sqrt((c_width * c_width) + (c_height * c_height)) * SQRT2DIV2;
       }
    }
 
@@ -309,7 +309,7 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
    t.transform(&lt.x, &lt.y);
 
    // The Z axis is affected by scaling only.  Compute this according to SVG rules.
-   const DOUBLE sz = (t.sx IS t.sy) ? t.sx : sqrt((t.sx*t.sx) + (t.sy*t.sy)) * 0.70710678118654752440084436210485;
+   const DOUBLE sz = (t.sx IS t.sy) ? t.sx : sqrt((t.sx*t.sx) + (t.sy*t.sy)) * SQRT2DIV2;
    lt.z *= sz;
 
    // Rendering algorithm requires light source coordinates to be relative to the exposed bitmap.
