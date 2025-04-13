@@ -138,10 +138,10 @@ public:
       y += m_offset_y;
       const value_type* p = (const value_type*)span(x, y, len);
       do {
-         s->r = p[m_src->oR];
-         s->g = p[m_src->oG];
-         s->b = p[m_src->oB];
-         s->a = p[m_src->oA];
+         s->r = p[m_src->mPixelOrder.Red];
+         s->g = p[m_src->mPixelOrder.Green];
+         s->b = p[m_src->mPixelOrder.Blue];
+         s->a = p[m_src->mPixelOrder.Alpha];
          p = (const value_type*)next_x();
          ++s;
       } while(--len);
@@ -199,10 +199,10 @@ public:
       y += m_offset_y;
       const value_type* p = (const value_type*)span(x, y, len);
       do {
-         s->r = p[m_src->oR];
-         s->g = p[m_src->oG];
-         s->b = p[m_src->oB];
-         s->a = p[m_src->oA];
+         s->r = p[m_src->mPixelOrder.Red];
+         s->g = p[m_src->mPixelOrder.Green];
+         s->b = p[m_src->mPixelOrder.Blue];
+         s->a = p[m_src->mPixelOrder.Alpha];
          p = (const value_type*)next_x();
          ++s;
       } while(--len);
@@ -259,10 +259,10 @@ public:
       y += m_offset_y;
       const value_type* p = (const value_type*)span(x, y, len);
       do {
-         s->r = p[m_src->oR];
-         s->g = p[m_src->oG];
-         s->b = p[m_src->oB];
-         s->a = p[m_src->oA];
+         s->r = p[m_src->mPixelOrder.Red];
+         s->g = p[m_src->mPixelOrder.Green];
+         s->b = p[m_src->mPixelOrder.Blue];
+         s->a = p[m_src->mPixelOrder.Alpha];
          p = (const value_type*)next_x();
          ++s;
       } while(--len);
@@ -287,11 +287,9 @@ public:
    agg::pixfmt_psl *m_src;
 
 private:
-   wrap_mode_repeat_auto_pow2 m_wrap_x;
-   wrap_mode_repeat_auto_pow2 m_wrap_y;
+   wrap_mode_repeat_auto_pow2 m_wrap_x, m_wrap_y;
    uint8_t *m_row_ptr;
-   unsigned m_offset_x;
-   unsigned m_offset_y;
+   unsigned m_offset_x, m_offset_y;
    uint8_t m_bk_buf[4];
    int m_x;
 };
@@ -448,10 +446,9 @@ class pattern_rgb {
             if (Bitmap.ColourFormat->BluePos IS 0) pixel = &pixel24BGR;
             else pixel = &pixel24RGB;
          }
-         else if (Bitmap.BitsPerPixel IS 16) {
-            if ((Bitmap.ColourFormat->BluePos IS 0) and (Bitmap.ColourFormat->RedPos IS 11)) pixel = &pixel16BGR;
-            else if ((Bitmap.ColourFormat->RedPos IS 0) and (Bitmap.ColourFormat->BluePos IS 11)) pixel = &pixel16RGB;
-            else pixel = &pixel16;
+         else {
+            pf::Log log;
+            log.warning("pattern_rgb: Unsupported bitmap format %dbpp", Bitmap.BitsPerPixel);
          }
 
          if (Height != (double)mBitmap->Height) {
@@ -464,48 +461,33 @@ class pattern_rgb {
       unsigned height() const { return mHeight; }
 
       static agg::rgba8 pixel32BGRA(const pattern_rgb &Pattern, int x, int y) {
-         uint8_t *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2);
-         return agg::rgba8(p[2], p[1], p[0], p[3]);
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxBGRA);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixel32RGBA(const pattern_rgb &Pattern, int x, int y) {
-         uint8_t *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2);
-         return agg::rgba8(p[0], p[1], p[2], p[3]);
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxRGBA);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixel32AGBR(const pattern_rgb &Pattern, int x, int y) {
-         uint8_t *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2);
-         return agg::rgba8(p[3], p[1], p[2], p[0]);
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxAGBR);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixel32ARGB(const pattern_rgb &Pattern, int x, int y) {
-         uint8_t *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2);
-         return agg::rgba8(p[1], p[2], p[3], p[0]);
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxARGB);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixel24BGR(const pattern_rgb &Pattern, int x, int y) {
-         uint8_t *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x*3);
-         return agg::rgba8(p[2], p[1], p[0], p[3]);
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxBGR);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixel24RGB(const pattern_rgb &Pattern, int x, int y) {
-         uint8_t *p = Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x*3);
-         return agg::rgba8(p[0], p[1], p[2]);
-      }
-
-      static agg::rgba8 pixel16BGR(const pattern_rgb &Pattern, int x, int y) {
-         UWORD p = ((UWORD *)(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<1)))[0];
-         return agg::rgba8((p>>8) & 0xf8, (p>>3) & 0xf8, p<<3);
-      }
-
-      static agg::rgba8 pixel16RGB(const pattern_rgb &Pattern, int x, int y) {
-         UWORD p = ((UWORD *)(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<1)))[0];
-         return agg::rgba8(p<<3, (p>>3) & 0xf8, (p>>8) & 0xf8);
-      }
-
-      static agg::rgba8 pixel16(const pattern_rgb &Pattern, int x, int y) {
-         UWORD p = ((UWORD *)(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<1)))[0];
-         return agg::rgba8(Pattern.mBitmap->unpackRed(p), Pattern.mBitmap->unpackGreen(p), Pattern.mBitmap->unpackBlue(p));
+         auto p = PIXEL_DATA(Pattern.mBitmap->Data + (y * Pattern.mBitmap->LineWidth) + (x<<2), pxRGB);
+         return p.getRGB();
       }
 
       static agg::rgba8 pixelScaled(const pattern_rgb &Pattern, int x, int y) {
@@ -1186,26 +1168,26 @@ void agg::pixfmt_psl::rawBitmap(uint8_t *Data, int Width, int Height, int Stride
 
       if (ColourFormat.AlphaPos IS 24) {
          if (ColourFormat.BluePos IS 0) {
-            pixel_order(2, 1, 0, 3); // BGRA
+            pixel_order(pxBGRA); // BGRA
             fBlendPix = Linear ? &linear32BGRA : &blend32BGRA;
             fCopyPix  = Linear ? &linearCopy32BGRA : &copy32BGRA;
             fCoverPix = Linear ? &linearCover32BGRA : &cover32BGRA;
          }
          else {
-            pixel_order(0, 1, 2, 3); // RGBA
+            pixel_order(pxRGBA); // RGBA
             fBlendPix = Linear ? &linear32RGBA : &blend32RGBA;
             fCopyPix  = Linear ? &linearCopy32RGBA : &copy32RGBA;
             fCoverPix = Linear ? &linearCover32RGBA : &cover32RGBA;
          }
       }
       else if (ColourFormat.RedPos IS 24) {
-         pixel_order(3, 1, 2, 0); // AGBR
+         pixel_order(pxAGBR); // AGBR
          fBlendPix = Linear ? &linear32AGBR : &blend32AGBR;
          fCopyPix  = Linear ? &linearCopy32AGBR : &copy32AGBR;
          fCoverPix = Linear ? &linearCover32AGBR : &cover32AGBR;
       }
       else {
-         pixel_order(1, 2, 3, 0); // ARGB
+         pixel_order(pxARGB); // ARGB
          fBlendPix = Linear ? &linear32ARGB : &blend32ARGB;
          fCopyPix  = Linear ? &linearCopy32ARGB : &copy32ARGB;
          fCoverPix = Linear ? &linearCover32ARGB : &cover32ARGB;
@@ -1218,13 +1200,13 @@ void agg::pixfmt_psl::rawBitmap(uint8_t *Data, int Width, int Height, int Stride
       fCopyColorHSpan  = &copyColorHSpan24;
 
       if (ColourFormat.BluePos IS 0) {
-         pixel_order(2, 1, 0, 0); // BGR
+         pixel_order(pxBGR); // BGR
          fBlendPix = &blend24BGR;
          fCopyPix  = &copy24BGR;
          fCoverPix = &cover24BGR;
       }
       else {
-         pixel_order(0, 1, 2, 0); // RGB
+         pixel_order(pxRGB); // RGB
          fBlendPix = &blend24RGB;
          fCopyPix  = &copy24RGB;
          fCoverPix = &cover24RGB;

@@ -291,8 +291,9 @@ namespace agg
    }
 
    inline double trans_affine::scale() const {
-      double x = 0.707106781 * sx  + 0.707106781 * shx;
-      double y = 0.707106781 * shy + 0.707106781 * sy;
+      static double SQRT2DIV2 = sqrt(2.0) / 2.0;
+      double x = SQRT2DIV2 * sx  + SQRT2DIV2 * shx;
+      double y = SQRT2DIV2 * shy + SQRT2DIV2 * sy;
       return sqrt(x*x + y*y);
    }
 

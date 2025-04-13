@@ -1,8 +1,15 @@
 
 extern agg::gamma_lut<uint8_t, UWORD, 8, 12> glGamma;
 
+static PIXEL_ORDER pxBGRA(2, 1, 0, 3);
+static PIXEL_ORDER pxRGBA(0, 1, 2, 3);
+static PIXEL_ORDER pxARGB(1, 2, 3, 0);
+static PIXEL_ORDER pxAGBR(3, 1, 2, 0);
+static PIXEL_ORDER pxBGR(2, 1, 0, 0);
+static PIXEL_ORDER pxRGB(0, 1, 2, 0);
+
 //********************************************************************************************************************
- 
+
 // For use when the bitmap data is already in linear RGB space.
 
 struct linear_blend32 {
@@ -67,7 +74,7 @@ struct srgb_blend32_gamma {
 // Blend the pixel at (p) with the provided colour values and store the result back in (p)
 
 template <uint8_t oR, uint8_t oG, uint8_t oB, uint8_t oA, typename DrawPixel>
-void alphablend(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha) noexcept
+void blend32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha) noexcept
 {
    if (p[oA]) DrawPixel{oR,oG,oB,oA}(p,Red,Green,Blue,Alpha);
    else {
@@ -108,107 +115,109 @@ void cover32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha
    }
 }
 
-   static void blend32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      alphablend<2,1,0,3,srgb_blend32_gamma>(p, cr, cg, cb, alpha);
-   }
+//********************************************************************************************************************
 
-   static void blend32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      alphablend<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
-   }
+static void blend32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<2,1,0,3,srgb_blend32_gamma>(p, cr, cg, cb, alpha);
+}
 
-   static void blend32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      alphablend<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
-   }
+static void blend32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
+}
 
-   static void blend32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      alphablend<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
-   }
+static void blend32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
+}
 
-   // Linear version of the blend operations
+static void blend32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
+}
 
-   static void linear32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      alphablend<2,1,0,3,linear_blend32>(p,cr,cg,cb,alpha);
-   }
+// Linear version of the blend operations
 
-   static void linear32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      alphablend<0,1,2,3,linear_blend32>(p,cr,cg,cb,alpha);
-   }
+static void linear32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<2,1,0,3,linear_blend32>(p,cr,cg,cb,alpha);
+}
 
-   static void linear32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      alphablend<3,1,2,0,linear_blend32>(p,cr,cg,cb,alpha);
-   }
+static void linear32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<0,1,2,3,linear_blend32>(p,cr,cg,cb,alpha);
+}
 
-   static void linear32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      alphablend<1,2,3,0,linear_blend32>(p,cr,cg,cb,alpha);
-   }
+static void linear32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<3,1,2,0,linear_blend32>(p,cr,cg,cb,alpha);
+}
 
-   // Direct copy pixel if possible.
+static void linear32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<1,2,3,0,linear_blend32>(p,cr,cg,cb,alpha);
+}
 
-   static void copy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      alphablend<2,1,0,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
-   }
+// Direct copy pixel if possible.
 
-   static void cover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
-      cover32<2,1,0,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
-   }
+static void copy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<2,1,0,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
+}
 
-   static void copy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      copy32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
-   }
+static void cover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<2,1,0,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
+}
 
-   static void cover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
-      cover32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
-   }
+static void copy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   copy32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
+}
 
-   static void copy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      copy32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
-   }
+static void cover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
+}
 
-   static void cover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
-      cover32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
-   }
+static void copy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   copy32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
+}
 
-   static void copy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      copy32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
-   }
+static void cover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
+}
 
-   static void cover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
-      cover32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
-   }
+static void copy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   copy32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
+}
 
-   // Linear copy and cover operations
+static void cover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
+}
 
-   static void linearCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      copy32<2,1,0,3,linear_blend32>(p,cr,cg,cb,alpha);
-   }
+// Linear copy and cover operations
 
-   static void linearCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
-      cover32<2,1,0,3,linear_blend32>(p,cr,cg,cb,alpha,cover);
-   }
+static void linearCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   copy32<2,1,0,3,linear_blend32>(p,cr,cg,cb,alpha);
+}
 
-   static void linearCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      copy32<0,1,2,3,linear_blend32>(p,cr,cg,cb,alpha);
-   }
+static void linearCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<2,1,0,3,linear_blend32>(p,cr,cg,cb,alpha,cover);
+}
 
-   static void linearCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
-      cover32<0,1,2,3,linear_blend32>(p,cr,cg,cb,alpha,cover);
-   }
+static void linearCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   copy32<0,1,2,3,linear_blend32>(p,cr,cg,cb,alpha);
+}
 
-   static void linearCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      copy32<3,1,2,0,linear_blend32>(p,cr,cg,cb,alpha);
-   }
+static void linearCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<0,1,2,3,linear_blend32>(p,cr,cg,cb,alpha,cover);
+}
 
-   static void linearCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
-      cover32<3,1,2,0,linear_blend32>(p,cr,cg,cb,alpha,cover);
-   }
+static void linearCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   copy32<3,1,2,0,linear_blend32>(p,cr,cg,cb,alpha);
+}
 
-   static void linearCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
-      copy32<1,2,3,0,linear_blend32>(p,cr,cg,cb,alpha);
-   }
+static void linearCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<3,1,2,0,linear_blend32>(p,cr,cg,cb,alpha,cover);
+}
 
-   static void linearCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
-      cover32<1,2,3,0,linear_blend32>(p,cr,cg,cb,alpha,cover);
-   }
+static void linearCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   copy32<1,2,3,0,linear_blend32>(p,cr,cg,cb,alpha);
+}
+
+static void linearCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<1,2,3,0,linear_blend32>(p,cr,cg,cb,alpha,cover);
+}
 
 //********************************************************************************************************************
 
@@ -220,12 +229,12 @@ public:
    typedef agg::rgba8 color_type;
    typedef typename agg::rendering_buffer::row_data row_data;
 
-   pixfmt_psl() :  oR(0), oG(0), oB(0), oA(0) {}
-   explicit pixfmt_psl(objBitmap &Bitmap, bool Linear = false) : oR(0), oG(0), oB(0), oA(0) {
+   pixfmt_psl() {}
+   explicit pixfmt_psl(objBitmap &Bitmap, bool Linear = false) {
       setBitmap(Bitmap, Linear);
    }
 
-   explicit pixfmt_psl(uint8_t *Data, int Width, int Height, int Stride, int BPP, ColourFormat &Format, bool Linear = false) : oR(0), oG(0), oB(0), oA(0) {
+   explicit pixfmt_psl(uint8_t *Data, int Width, int Height, int Stride, int BPP, ColourFormat &Format, bool Linear = false) {
       rawBitmap(Data, Width, Height, Stride, BPP, Format, Linear);
    }
 
@@ -249,16 +258,13 @@ public:
 
    uint8_t *mData;
    int mWidth, mHeight, mStride;
-   uint8_t oR, oG, oB, oA;
    uint8_t mBytesPerPixel;
+   PIXEL_ORDER mPixelOrder;
 
 private:
-   void pixel_order(uint8_t aoR, uint8_t aoG, uint8_t aoB, uint8_t aoA)
+   void pixel_order(PIXEL_ORDER PixelOrder)
    {
-      oR = aoR;
-      oG = aoG;
-      oB = aoB;
-      oA = aoA;
+      mPixelOrder = PixelOrder;
    }
 
    // Generic 32-bit routines.
@@ -270,10 +276,10 @@ private:
          uint32_t alpha = (uint32_t(c.a) * (cover + 1)) >> 8;
          if (alpha == 0xff) {
             uint32_t v;
-            ((uint8_t *)&v)[Self->oR] = c.r;
-            ((uint8_t *)&v)[Self->oG] = c.g;
-            ((uint8_t *)&v)[Self->oB] = c.b;
-            ((uint8_t *)&v)[Self->oA] = c.a;
+            ((uint8_t *)&v)[Self->mPixelOrder.Red] = c.r;
+            ((uint8_t *)&v)[Self->mPixelOrder.Green] = c.g;
+            ((uint8_t *)&v)[Self->mPixelOrder.Blue] = c.b;
+            ((uint8_t *)&v)[Self->mPixelOrder.Alpha] = c.a;
             do {
                *(uint32_t *)p = v;
                p += sizeof(uint32_t);
@@ -295,10 +301,10 @@ private:
          do {
             uint32_t alpha = (uint32_t(c.a) * (uint32_t(*covers) + 1)) >> 8;
             if (alpha == 0xff) {
-               p[Self->oR] = c.r;
-               p[Self->oG] = c.g;
-               p[Self->oB] = c.b;
-               p[Self->oA] = 0xff;
+               p[Self->mPixelOrder.Red] = c.r;
+               p[Self->mPixelOrder.Green] = c.g;
+               p[Self->mPixelOrder.Blue] = c.b;
+               p[Self->mPixelOrder.Alpha] = 0xff;
             }
             else Self->fBlendPix(p, c.r, c.g, c.b, alpha);
             p += sizeof(uint32_t);
@@ -337,10 +343,10 @@ private:
    {
       uint8_t *p = Self->mData + (y * Self->mStride) + (x<<2);
       do {
-          p[Self->oR] = colors->r;
-          p[Self->oG] = colors->g;
-          p[Self->oB] = colors->b;
-          p[Self->oA] = colors->a;
+          p[Self->mPixelOrder.Red] = colors->r;
+          p[Self->mPixelOrder.Green] = colors->g;
+          p[Self->mPixelOrder.Blue] = colors->b;
+          p[Self->mPixelOrder.Alpha] = colors->a;
           ++colors;
           p += sizeof(uint32_t);
       } while(--len);
@@ -355,9 +361,9 @@ private:
          uint32_t alpha = (uint32_t(c.a) * (cover + 1)) >> 8;
          if (alpha == 0xff) {
             uint32_t v;
-            ((uint8_t *)&v)[Self->oR] = c.r;
-            ((uint8_t *)&v)[Self->oG] = c.g;
-            ((uint8_t *)&v)[Self->oB] = c.b;
+            ((uint8_t *)&v)[Self->mPixelOrder.Red] = c.r;
+            ((uint8_t *)&v)[Self->mPixelOrder.Green] = c.g;
+            ((uint8_t *)&v)[Self->mPixelOrder.Blue] = c.b;
             do {
                *(uint32_t *)p = v;
                p += 3;
@@ -379,9 +385,9 @@ private:
          do {
             uint32_t alpha = (uint32_t(c.a) * (uint32_t(*covers) + 1)) >> 8;
             if (alpha == 0xff) {
-               p[Self->oR] = c.r;
-               p[Self->oG] = c.g;
-               p[Self->oB] = c.b;
+               p[Self->mPixelOrder.Red] = c.r;
+               p[Self->mPixelOrder.Green] = c.g;
+               p[Self->mPixelOrder.Blue] = c.b;
             }
             else Self->fBlendPix(p, c.r, c.g, c.b, alpha);
             p += 3;
@@ -420,9 +426,9 @@ private:
    {
       uint8_t *p = Self->mData + (y * Self->mStride) + (x / 3);
       do {
-          p[Self->oR] = colors->r;
-          p[Self->oG] = colors->g;
-          p[Self->oB] = colors->b;
+          p[Self->mPixelOrder.Red] = colors->r;
+          p[Self->mPixelOrder.Green] = colors->g;
+          p[Self->mPixelOrder.Blue] = colors->b;
           ++colors;
           p += 3;
       } while(--len);

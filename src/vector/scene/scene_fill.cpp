@@ -483,7 +483,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    const double x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.left;
    const double y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
    double dx, dy;
-   
+
    auto t_scale = Transform.scale();
    Path->approximation_scale(t_scale);
 
@@ -572,7 +572,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    }
    else transform.translate(dx, dy);
 
-   if ((SCALE_BITMAP) and (Pattern.Units IS VUNIT::BOUNDING_BOX)) {
+   if ((SCALE_BITMAP) and (Pattern.Units != VUNIT::USERSPACE)) {
       // Invert any prior bitmap scaling
       transform.scale(1.0 / t_scale, 1.0 / t_scale);
    }

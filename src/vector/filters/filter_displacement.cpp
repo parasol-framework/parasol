@@ -49,9 +49,11 @@ class extDisplacementFX : public extFilterEffect {
    static constexpr CSTRING CLASS_NAME = "DisplacementFX";
    using create = pf::Create<extDisplacementFX>;
 
-   DOUBLE Scale;
+   double Scale;
    CMP XChannel, YChannel;
 };
+
+static double SQRT2DIV2 = sqrt(2.0) / 2.0;
 
 /*********************************************************************************************************************
 -ACTION-
@@ -94,21 +96,21 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    const LONG in_height  = inBmp->Clip.Bottom  - inBmp->Clip.Top;
 
    auto &client = Self->Filter->ClientVector;
-   const DOUBLE c_width  = client->Bounds.width();
-   const DOUBLE c_height = client->Bounds.height();
+   const double c_width  = client->Bounds.width();
+   const double c_height = client->Bounds.height();
 
-   DOUBLE sx, sy;
-   DOUBLE scale_against;
+   double sx, sy;
+   double scale_against;
    if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       // Scale is relative to the bounding box dimensions
-      scale_against = sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
-      DOUBLE scale = Self->Scale / scale_against;
+      scale_against = sqrt((c_width * c_width) + (c_height * c_height)) * SQRT2DIV2;
+      double scale = Self->Scale / scale_against;
       sx = scale * DOUBLE(mix_width)  * (1.0 / 255.0);
       sy = scale * DOUBLE(mix_height) * (1.0 / 255.0);
    }
    else { // USERSPACE
-      scale_against = sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
-      DOUBLE scale = Self->Scale / scale_against;
+      scale_against = sqrt((c_width * c_width) + (c_height * c_height)) * SQRT2DIV2;
+      double scale = Self->Scale / scale_against;
       sx = scale * DOUBLE(mix_width)  * (1.0 / 255.0);
       sy = scale * DOUBLE(mix_height) * (1.0 / 255.0);
    }
@@ -119,7 +121,7 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    //log.warning("W/H: %dx%d; MW/H: %dx%d; IW/H: %dx%d; CW/H: %.2fx%.2f, BBox: %d", width, height, mix_width, mix_height, in_width, in_height, c_width, c_height, Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX);
    //log.warning("X Channel: %d, Y Channel: %d; Scale: %.2f / %.2f -> %.2f,%.2f; WH: %dx%d", Self->XChannel, Self->YChannel, Self->Scale, scale_against, sx, sy, width, height);
 
-   static const DOUBLE HALF8BIT = 255.0 * 0.5;
+   static const double HALF8BIT = 255.0 * 0.5;
    for (LONG y=0; y < height; y++) {
       auto m = mix;
       auto d = (ULONG *)dest;
@@ -163,13 +165,13 @@ When the value of this field is 0, this operation has no effect on the source im
 
 *********************************************************************************************************************/
 
-static ERR DISPLACEMENTFX_GET_Scale(extDisplacementFX *Self, DOUBLE *Value)
+static ERR DISPLACEMENTFX_GET_Scale(extDisplacementFX *Self, double *Value)
 {
    *Value = Self->Scale;
    return ERR::Okay;
 }
 
-static ERR DISPLACEMENTFX_SET_Scale(extDisplacementFX *Self, DOUBLE Value)
+static ERR DISPLACEMENTFX_SET_Scale(extDisplacementFX *Self, double Value)
 {
    Self->Scale = Value;
    return ERR::Okay;
