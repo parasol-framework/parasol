@@ -56,7 +56,7 @@ void svgState::process_inherit_refs(XMLTag &Tag) noexcept
 
    std::function<void(pf::vector<XMLTag> &, const std::string &)> process_color;
 
-   process_color = [process_color](pf::vector<XMLTag> &Tags, const std::string &Colour) {
+   process_color = [&process_color](pf::vector<XMLTag> &Tags, const std::string &Colour) {
       for (auto &scan : Tags) {
          if (!scan.isTag()) continue;
          for (LONG a=1; a < std::ssize(scan.Attribs); a++) {
@@ -64,6 +64,7 @@ void svgState::process_inherit_refs(XMLTag &Tag) noexcept
                scan.Attribs[a].Value = Colour;
             }
          }
+
          if (!scan.Children.empty()) process_color(scan.Children, Colour);
       }
    };
