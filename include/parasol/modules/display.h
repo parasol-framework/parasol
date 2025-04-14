@@ -237,6 +237,16 @@ enum class BMP : LONG {
    CHUNKY = 3,
 };
 
+// The blending algorithm to use when rendering transparent pixels to this bitmap.
+
+enum class BLM : LONG {
+   NIL = 0,
+   AUTO = 0,
+   NONE = 1,
+   SRGB = 2,
+   GAMMA = 3,
+};
+
 // Bitmap flags
 
 enum class BMF : ULONG {
@@ -256,8 +266,7 @@ enum class BMF : ULONG {
    NEVER_SHRINK = 0x00001000,
    X11_DGA = 0x00002000,
    FIXED_DEPTH = 0x00004000,
-   NO_BLEND = 0x00008000,
-   PREMUL = 0x00010000,
+   PREMUL = 0x00008000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(BMF)
@@ -528,6 +537,7 @@ class objBitmap : public Object {
    LONG    BitsPerPixel;                                             // The number of bits per pixel
    LONG    Position;                                                 // The current read/write data position.
    LONG    Opacity;                                                  // Determines the translucency setting to use in drawing operations.
+   BLM     BlendMode;                                                // Defines the blending algorithm to use when rendering transparent pixels.
    struct RGB8 TransColour;                                          // The transparent colour of the bitmap, in RGB format.
    struct RGB8 Bkgd;                                                 // The bitmap's background colour is defined here in RGB format.
    LONG    BkgdIndex;                                                // The bitmap's background colour is defined here as a colour index.
@@ -797,6 +807,11 @@ class objBitmap : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setBlendMode(const BLM Value) noexcept {
+      this->BlendMode = Value;
+      return ERR::Okay;
+   }
+
    inline ERR setTransColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
@@ -840,7 +855,7 @@ class objBitmap : public Object {
 
    inline ERR setClipTop(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[36];
+      auto field = &this->Class->Dictionary[37];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 

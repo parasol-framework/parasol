@@ -48,8 +48,15 @@ static const struct FieldDef clBitmapFlags[] = {
    { "NeverShrink", 0x00001000 },
    { "X11DGA", 0x00002000 },
    { "FixedDepth", 0x00004000 },
-   { "NoBlend", 0x00008000 },
-   { "Premul", 0x00010000 },
+   { "Premul", 0x00008000 },
+   { NULL, 0 }
+};
+
+static const struct FieldDef clBitmapBlendMode[] = {
+   { "Auto", 0x00000000 },
+   { "None", 0x00000001 },
+   { "SRGB", 0x00000002 },
+   { "Gamma", 0x00000003 },
    { NULL, 0 }
 };
 

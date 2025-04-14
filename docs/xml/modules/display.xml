@@ -81,7 +81,7 @@
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Mismatch">The destination bitmap is not a close enough match to the source bitmap in order to perform the blit.</error>
+      <error code="Mismatch">The destination bitmap is not a close enough match to the source bitmap in order to perform the operation.</error>
       <error code="InvalidState">The <code>LINEAR</code> flag was used when at least one bitmap is using a linear colourspace.</error>
       <error code="NullArgs">The <code>Dest</code> parameter was not specified.</error>
     </result>
@@ -185,10 +185,10 @@
       <param type="LONG" name="Width">The width of the rectangle.</param>
       <param type="LONG" name="Height">The height of the rectangle.</param>
       <param type="ULONG" name="Colour">The colour value to use for the rectangle.</param>
-      <param type="BAF" name="Flags" lookup="BAF">Use <code>FILL</code> to fill the rectangle.  Use of <code>BLEND</code> will enable blending.</param>
+      <param type="BAF" name="Flags" lookup="BAF">Use <code>FILL</code> to fill the rectangle.</param>
     </input>
     <description>
-<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified <code>Width</code> and <code>Height</code>.  If the <code>Flags</code> parameter defines <code>BAF::FILL</code> then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the <code>Colour</code> parameter.  Blending is not enabled unless the <code>BAF::BLEND</code> flag is defined and an alpha value is present in the <code>Colour</code>.</p>
+<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified <code>Width</code> and <code>Height</code>.  If the <code>Flags</code> parameter defines <code>BAF::FILL</code> then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the <code>Colour</code> parameter.  Alpha blending is not supported.</p>
     </description>
   </function>
 
@@ -872,6 +872,13 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="REDRAW">Redraw the surface before performing the copy operation.</const>
     </constants>
 
+    <constants lookup="BLM" comment="The blending algorithm to use when rendering transparent pixels to this bitmap.">
+      <const name="AUTO">The best available algorithm should be chosen by the rendering code.</const>
+      <const name="GAMMA">Use gamma correct blending.  This algorithm is slow but produces a high quality result.</const>
+      <const name="NONE">Never blend transparent pixels, just copy as-is.</const>
+      <const name="SRGB">Use SRGB linear blending.  This algorithm is efficient but produces poor results.</const>
+    </constants>
+
     <constants lookup="BMF" comment="Bitmap flags">
       <const name="ACCELERATED_2D">2D video acceleration is available.</const>
       <const name="ACCELERATED_3D">3D video acceleration is available.</const>
@@ -883,7 +890,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="INVERSE_ALPHA">Indicates reverse alpha blending, higher values are transparent.</const>
       <const name="MASK">Declare the <class name="Bitmap">Bitmap</class> as a 1 or 8 bit mask.  Must be set in conjunction with the <class name="Bitmap" field="BitsPerPixel">Bitmap.BitsPerPixel</class> field on initialisation.</const>
       <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
-      <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
       <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
       <const name="PREMUL">The RGB values are premultiplied (32-bit only).</const>
       <const name="QUERIED">Automatically set after a <code>Query()</code> on the bitmap.</const>
