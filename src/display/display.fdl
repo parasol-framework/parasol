@@ -136,12 +136,12 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
      "CHUNKY: Chunky pixel mode (default).")
 
-  enum("BLM", { type="int", start=0, comment="The blending algorithm to use when rendering transparent pixels to this bitmap." },
-    "AUTO: The best available algorithm should be chosen by the rendering code.",
+  enum("BLM", { type="int", start=0, comment="Defines the blending algorithm to use when transparent pixels are rendered to the bitmap." },
+    "AUTO: Use the most suitable of the available algorithms.",
     "NONE: Never blend transparent pixels, just copy as-is.",
-    "SRGB: Use SRGB linear blending.  This algorithm is efficient but produces poor results.",
+    "SRGB: Use sRGB linear blending.  This algorithm is extremely efficient but produces poor quality results.",
     "GAMMA: Use gamma correct blending.  This algorithm is slow but produces a high quality result.",
-    "LINEAR: Use linear blending.  Applicable if the bitmap is in linear colour space only."
+    "LINEAR: Use linear blending.  Applicable if the bitmap is in linear colour space."
   )
 
   flags("BMF", { comment="Bitmap flags" },

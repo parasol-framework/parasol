@@ -237,7 +237,7 @@ enum class BMP : LONG {
    CHUNKY = 3,
 };
 
-// The blending algorithm to use when rendering transparent pixels to this bitmap.
+// Defines the blending algorithm to use when transparent pixels are rendered to the bitmap.
 
 enum class BLM : LONG {
    NIL = 0,
