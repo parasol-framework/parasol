@@ -245,6 +245,7 @@ enum class BLM : LONG {
    NONE = 1,
    SRGB = 2,
    GAMMA = 3,
+   LINEAR = 4,
 };
 
 // Bitmap flags

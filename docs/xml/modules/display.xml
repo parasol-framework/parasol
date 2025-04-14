@@ -875,6 +875,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <constants lookup="BLM" comment="The blending algorithm to use when rendering transparent pixels to this bitmap.">
       <const name="AUTO">The best available algorithm should be chosen by the rendering code.</const>
       <const name="GAMMA">Use gamma correct blending.  This algorithm is slow but produces a high quality result.</const>
+      <const name="LINEAR">Use linear blending.  Applicable if the bitmap is in linear colour space only.</const>
       <const name="NONE">Never blend transparent pixels, just copy as-is.</const>
       <const name="SRGB">Use SRGB linear blending.  This algorithm is efficient but produces poor results.</const>
     </constants>

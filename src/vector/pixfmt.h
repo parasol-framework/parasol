@@ -117,19 +117,39 @@ void cover32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha
 
 //********************************************************************************************************************
 
-static void blend32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+// sRGB blend operations
+
+static void srgb32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<2,1,0,3,srgb_blend32>(p, cr, cg, cb, alpha);
+}
+
+static void srgb32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<0,1,2,3,srgb_blend32>(p,cr,cg,cb,alpha);
+}
+
+static void srgb32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<3,1,2,0,srgb_blend32>(p,cr,cg,cb,alpha);
+}
+
+static void srgb32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<1,2,3,0,srgb_blend32>(p,cr,cg,cb,alpha);
+}
+
+// Gamma correct blend operations
+
+static void gamma32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<2,1,0,3,srgb_blend32_gamma>(p, cr, cg, cb, alpha);
 }
 
-static void blend32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static void gamma32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void blend32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static void gamma32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void blend32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static void gamma32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
@@ -151,37 +171,72 @@ static void linear32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t
    blend32<1,2,3,0,linear_blend32>(p,cr,cg,cb,alpha);
 }
 
-// Direct copy pixel if possible.
+//********************************************************************************************************************
+// sRGB copy and cover operations
 
-static void copy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static void srgbCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   blend32<2,1,0,3,srgb_blend32>(p,cr,cg,cb,alpha);
+}
+
+static void srgbCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<2,1,0,3,srgb_blend32>(p,cr,cg,cb,alpha,cover);
+}
+
+static void srgbCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   copy32<0,1,2,3,srgb_blend32>(p,cr,cg,cb,alpha);
+}
+
+static void srgbCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<0,1,2,3,srgb_blend32>(p,cr,cg,cb,alpha,cover);
+}
+
+static void srgbCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   copy32<3,1,2,0,srgb_blend32>(p,cr,cg,cb,alpha);
+}
+
+static void srgbCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<3,1,2,0,srgb_blend32>(p,cr,cg,cb,alpha,cover);
+}
+
+static void srgbCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+   copy32<1,2,3,0,srgb_blend32>(p,cr,cg,cb,alpha);
+}
+
+static void srgbCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+   cover32<1,2,3,0,srgb_blend32>(p,cr,cg,cb,alpha,cover);
+}
+
+// Gamma correct copy and cover operations
+
+static void gammaCopy32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    blend32<2,1,0,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void cover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static void gammaCover32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
    cover32<2,1,0,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
 }
 
-static void copy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static void gammaCopy32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void cover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static void gammaCover32RGBA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
    cover32<0,1,2,3,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
 }
 
-static void copy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static void gammaCopy32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void cover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static void gammaCover32AGBR(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
    cover32<3,1,2,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
 }
 
-static void copy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
+static void gammaCopy32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
    copy32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha);
 }
 
-static void cover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
+static void gammaCover32ARGB(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t cover) noexcept {
    cover32<1,2,3,0,srgb_blend32_gamma>(p,cr,cg,cb,alpha,cover);
 }
 
@@ -230,21 +285,22 @@ public:
    typedef typename agg::rendering_buffer::row_data row_data;
 
    pixfmt_psl() {}
-   explicit pixfmt_psl(objBitmap &Bitmap, bool Linear = false) {
-      setBitmap(Bitmap, Linear);
+
+   explicit pixfmt_psl(objBitmap &Bitmap, BLM BlendMode = BLM::GAMMA) {
+      setBitmap(Bitmap, BlendMode);
    }
 
-   explicit pixfmt_psl(uint8_t *Data, int Width, int Height, int Stride, int BPP, ColourFormat &Format, bool Linear = false) {
-      rawBitmap(Data, Width, Height, Stride, BPP, Format, Linear);
+   explicit pixfmt_psl(uint8_t *Data, int Width, int Height, int Stride, int BPP, ColourFormat &Format, BLM BlendMode = BLM::GAMMA) {
+      rawBitmap(Data, Width, Height, Stride, BPP, Format, BlendMode);
    }
 
-   void setBitmap(objBitmap &, bool Linear = false) noexcept;
-   void rawBitmap(uint8_t *Data, int Width, int Height, int Stride, int BitsPerPixel, ColourFormat &, bool Linear = false) noexcept;
+   void setBitmap(objBitmap &, BLM BlendMode = BLM::GAMMA) noexcept;
+   void rawBitmap(uint8_t *Data, int Width, int Height, int Stride, int BitsPerPixel, ColourFormat &, BLM BlendMode = BLM::GAMMA) noexcept;
 
    // The setBitmap() code in scene_draw.cpp defines the following functions.
-   void (*fBlendPix)(uint8_t *, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept;
-   void (*fCopyPix)(uint8_t *, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept;
-   void (*fCoverPix)(uint8_t *, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha, uint32_t) noexcept;
+   void (*fBlendPix)(uint8_t *, uint8_t, uint8_t, uint8_t, uint8_t) noexcept;
+   void (*fCopyPix)(uint8_t *, uint8_t, uint8_t, uint8_t, uint8_t) noexcept;
+   void (*fCoverPix)(uint8_t *, uint8_t, uint8_t, uint8_t, uint8_t, uint32_t) noexcept;
    void (*fBlendHLine)(agg::pixfmt_psl *, int x, int y, unsigned len, const agg::rgba8 &c, int8u cover) noexcept;
    void (*fBlendSolidHSpan)(agg::pixfmt_psl *, int x, int y, uint32_t len, const agg::rgba8 &, const uint8_t *covers) noexcept;
    void (*fBlendColorHSpan)(agg::pixfmt_psl *, int x, int y, uint32_t len, const agg::rgba8 *, const uint8_t *covers, uint8_t cover) noexcept;

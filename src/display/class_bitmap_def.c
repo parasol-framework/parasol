@@ -57,6 +57,7 @@ static const struct FieldDef clBitmapBlendMode[] = {
    { "None", 0x00000001 },
    { "SRGB", 0x00000002 },
    { "Gamma", 0x00000003 },
+   { "Linear", 0x00000004 },
    { NULL, 0 }
 };
 

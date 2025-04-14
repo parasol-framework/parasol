@@ -140,7 +140,8 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     "AUTO: The best available algorithm should be chosen by the rendering code.",
     "NONE: Never blend transparent pixels, just copy as-is.",
     "SRGB: Use SRGB linear blending.  This algorithm is efficient but produces poor results.",
-    "GAMMA: Use gamma correct blending.  This algorithm is slow but produces a high quality result."
+    "GAMMA: Use gamma correct blending.  This algorithm is slow but produces a high quality result.",
+    "LINEAR: Use linear blending.  Applicable if the bitmap is in linear colour space only."
   )
 
   flags("BMF", { comment="Bitmap flags" },
