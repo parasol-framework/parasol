@@ -1194,26 +1194,11 @@ void agg::pixfmt_psl::rawBitmap(uint8_t *Data, int Width, int Height, int Stride
       }
    }
    else if (BitsPerPixel IS 24) {
-      fBlendHLine      = &blendHLine24;
-      fBlendSolidHSpan = &blendSolidHSpan24;
-      fBlendColorHSpan = &blendColorHSpan24;
-      fCopyColorHSpan  = &copyColorHSpan24;
-
-      if (ColourFormat.BluePos IS 0) {
-         pixel_order(pxBGR); // BGR
-         fBlendPix = &blend24BGR;
-         fCopyPix  = &copy24BGR;
-         fCoverPix = &cover24BGR;
-      }
-      else {
-         pixel_order(pxRGB); // RGB
-         fBlendPix = &blend24RGB;
-         fCopyPix  = &copy24RGB;
-         fCoverPix = &cover24RGB;
-      }
+      pf::Log log;
+      log.warning("Support for 24-bit bitmaps is deprecated.");
    }
    else if (BitsPerPixel IS 16) {
-      // Deprecated.  16-bit client code should use 24-bit and downscale instead.
+      // Deprecated.  16-bit client code should use 32-bit and downscale instead.
       pf::Log log;
       log.warning("Support for 16-bit bitmaps is deprecated.");
    }
