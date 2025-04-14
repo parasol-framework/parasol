@@ -116,7 +116,6 @@ void cover32(uint8_t *p, uint8_t Red, uint8_t Green, uint8_t Blue, uint8_t Alpha
 }
 
 //********************************************************************************************************************
-
 // sRGB blend operations
 
 static void srgb32BGRA(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t alpha) noexcept {
@@ -286,16 +285,16 @@ public:
 
    pixfmt_psl() {}
 
-   explicit pixfmt_psl(objBitmap &Bitmap, BLM BlendMode = BLM::GAMMA) {
+   explicit pixfmt_psl(objBitmap &Bitmap, BLM BlendMode = BLM::AUTO) {
       setBitmap(Bitmap, BlendMode);
    }
 
-   explicit pixfmt_psl(uint8_t *Data, int Width, int Height, int Stride, int BPP, ColourFormat &Format, BLM BlendMode = BLM::GAMMA) {
+   explicit pixfmt_psl(uint8_t *Data, int Width, int Height, int Stride, int BPP, ColourFormat &Format, BLM BlendMode = BLM::AUTO) {
       rawBitmap(Data, Width, Height, Stride, BPP, Format, BlendMode);
    }
 
-   void setBitmap(objBitmap &, BLM BlendMode = BLM::GAMMA) noexcept;
-   void rawBitmap(uint8_t *Data, int Width, int Height, int Stride, int BitsPerPixel, ColourFormat &, BLM BlendMode = BLM::GAMMA) noexcept;
+   void setBitmap(objBitmap &, BLM BlendMode = BLM::AUTO) noexcept;
+   void rawBitmap(uint8_t *Data, int Width, int Height, int Stride, int BitsPerPixel, ColourFormat &, BLM BlendMode = BLM::AUTO) noexcept;
 
    // The setBitmap() code in scene_draw.cpp defines the following functions.
    void (*fBlendPix)(uint8_t *, uint8_t, uint8_t, uint8_t, uint8_t) noexcept;

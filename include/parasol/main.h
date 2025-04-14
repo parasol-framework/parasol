@@ -552,6 +552,11 @@ template <class T> FieldValue AspectRatio(T Value) {
    return FieldValue(FID_AspectRatio, LONG(Value));
 }
 
+template <class T> FieldValue BlendMode(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "BlendMode value must be numeric");
+   return FieldValue(FID_BlendMode, LONG(Value));
+}
+
 template <class T> FieldValue ColourSpace(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "ColourSpace value must be numeric");
    return FieldValue(FID_ColourSpace, LONG(Value));

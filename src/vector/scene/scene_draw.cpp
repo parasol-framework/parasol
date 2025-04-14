@@ -1149,6 +1149,11 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, double StrokeWidth, OBJECTPTR Str
 
 void agg::pixfmt_psl::setBitmap(objBitmap &Bitmap, BLM BlendMode) noexcept
 {
+   if (BlendMode IS BLM::AUTO) {
+      if (Bitmap.ColourSpace IS CS::LINEAR_RGB) BlendMode = BLM::LINEAR;
+      else BlendMode = Bitmap.BlendMode;
+   }
+
    rawBitmap(Bitmap.Data, Bitmap.Clip.Right, Bitmap.Clip.Bottom, Bitmap.LineWidth, Bitmap.BitsPerPixel, *Bitmap.ColourFormat, BlendMode);
 }
 
@@ -1194,35 +1199,7 @@ void agg::pixfmt_psl::rawBitmap(uint8_t *Data, int Width, int Height, int Stride
             fCoverPix = &linearCover32ARGB;
          }
       }
-      else if (BlendMode IS BLM::GAMMA) {
-         if (ColourFormat.AlphaPos IS 24) {
-            if (ColourFormat.BluePos IS 0) {
-               pixel_order(pxBGRA);
-               fBlendPix = &gamma32BGRA;
-               fCopyPix  = &gammaCopy32BGRA;
-               fCoverPix = &gammaCover32BGRA;
-            }
-            else {
-               pixel_order(pxRGBA);
-               fBlendPix = &gamma32RGBA;
-               fCopyPix  = &gammaCopy32RGBA;
-               fCoverPix = &gammaCover32RGBA;
-            }
-         }
-         else if (ColourFormat.RedPos IS 24) {
-            pixel_order(pxAGBR);
-            fBlendPix = &gamma32AGBR;
-            fCopyPix  = &gammaCopy32AGBR;
-            fCoverPix = &gammaCover32AGBR;
-         }
-         else {
-            pixel_order(pxARGB);
-            fBlendPix = &gamma32ARGB;
-            fCopyPix  = &gammaCopy32ARGB;
-            fCoverPix = &gammaCover32ARGB;
-         }
-      }
-      else {
+      else if (BlendMode IS BLM::SRGB) {
          if (ColourFormat.AlphaPos IS 24) {
             if (ColourFormat.BluePos IS 0) {
                pixel_order(pxBGRA);
@@ -1248,6 +1225,34 @@ void agg::pixfmt_psl::rawBitmap(uint8_t *Data, int Width, int Height, int Stride
             fBlendPix = &srgb32ARGB;
             fCopyPix  = &srgbCopy32ARGB;
             fCoverPix = &srgbCover32ARGB;
+         }
+      }
+      else { // BLM::GAMMA
+         if (ColourFormat.AlphaPos IS 24) {
+            if (ColourFormat.BluePos IS 0) {
+               pixel_order(pxBGRA);
+               fBlendPix = &gamma32BGRA;
+               fCopyPix  = &gammaCopy32BGRA;
+               fCoverPix = &gammaCover32BGRA;
+            }
+            else {
+               pixel_order(pxRGBA);
+               fBlendPix = &gamma32RGBA;
+               fCopyPix  = &gammaCopy32RGBA;
+               fCoverPix = &gammaCover32RGBA;
+            }
+         }
+         else if (ColourFormat.RedPos IS 24) {
+            pixel_order(pxAGBR);
+            fBlendPix = &gamma32AGBR;
+            fCopyPix  = &gammaCopy32AGBR;
+            fCoverPix = &gammaCover32AGBR;
+         }
+         else {
+            pixel_order(pxARGB);
+            fBlendPix = &gamma32ARGB;
+            fCopyPix  = &gammaCopy32ARGB;
+            fCoverPix = &gammaCover32ARGB;
          }
       }
    }

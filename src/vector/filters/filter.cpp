@@ -272,11 +272,15 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    pf::SwitchContext ctx(Self);
 
    if (!Self->SourceGraphic) {
+      // The BlendMode is set to SRGB for the sake of SVG compatibility.  Otherwise the use of filters
+      // like feColorMatrix can produce unexpected results.
+
       if (!(Self->SourceGraphic = objBitmap::create::local(fl::Name("source_graphic"),
          fl::Width(Self->ClientViewport->Scene->PageWidth),
          fl::Height(Self->ClientViewport->Scene->PageHeight),
          fl::BitsPerPixel(32),
          fl::Flags(BMF::ALPHA_CHANNEL),
+         fl::BlendMode(BLM::SRGB),
          fl::ColourSpace(CS::SRGB)))) return nullptr;
    }
    else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
