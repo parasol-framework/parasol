@@ -582,14 +582,13 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    // to be available to the client as a toggle?
 
    transform *= Transform;
-
+   transform.invert();
+   
    if (SampleMethod IS VSM::AUTO) {
       // Using anything more sophisticated than bicubic sampling for tiling is a CPU killer.
       // If the client requires a different method, they will need to set it explicitly.
       SampleMethod = VSM::BILINEAR;
    }
-
-   transform.invert();
 
    if (!State.mClipStack->empty()) {
       agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
