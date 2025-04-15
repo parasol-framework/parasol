@@ -79,7 +79,7 @@ static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds,
 
    double x_scale, y_scale, x_offset, y_offset;
    calc_aspectratio("fill_image", Image.AspectRatio, c_width, c_height,
-      Image.Bitmap->Width, Image.Bitmap->Height, &x_offset, &y_offset, &x_scale, &y_scale);
+      Image.Bitmap->Width, Image.Bitmap->Height, x_offset, y_offset, x_scale, y_scale);
 
    agg::trans_affine transform;
    transform.scale(x_scale, y_scale);

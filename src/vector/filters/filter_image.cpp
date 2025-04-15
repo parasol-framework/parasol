@@ -50,7 +50,7 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 
    // The image's x,y,width,height default to (0,0,100%,100%) of the target region.
 
-   DOUBLE p_x = filter->TargetX, p_y = filter->TargetY, p_width = filter->TargetWidth, p_height = filter->TargetHeight;
+   double p_x = filter->TargetX, p_y = filter->TargetY, p_width = filter->TargetWidth, p_height = filter->TargetHeight;
 
    if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       // In this mode image dimensions typically remain at the default, i.e. (0,0,100%,100%) of the target.
@@ -79,8 +79,8 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
       else if (dmf::hasHeight(Self->Dimensions))  p_height = Self->Height;
    }
 
-   DOUBLE xScale = 1, yScale = 1, align_x = 0, align_y = 0;
-   calc_aspectratio("align_image", Self->AspectRatio, p_width, p_height, Self->Bitmap->Width, Self->Bitmap->Height, &align_x, &align_y, &xScale, &yScale);
+   double xScale = 1, yScale = 1, align_x = 0, align_y = 0;
+   calc_aspectratio("align_image", Self->AspectRatio, p_width, p_height, Self->Bitmap->Width, Self->Bitmap->Height, align_x, align_y, xScale, yScale);
 
    p_x += align_x;
    p_y += align_y;
@@ -294,9 +294,9 @@ static const FieldDef clResampleMethod[] = {
    { "Gaussian",  VSM::GAUSSIAN },
    { "Bessel",    VSM::BESSEL },
    { "Mitchell",  VSM::MITCHELL },
-   { "Sinc",     VSM::SINC },
-   { "Lanczos",  VSM::LANCZOS },
-   { "Blackman", VSM::BLACKMAN },
+   { "Sinc",      VSM::SINC },
+   { "Lanczos",   VSM::LANCZOS },
+   { "Blackman",  VSM::BLACKMAN },
    { NULL, 0 }
 };
 

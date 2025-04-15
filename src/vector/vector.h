@@ -59,7 +59,7 @@ using namespace pf;
 static const double DISPLAY_DPI = 96.0;          // Freetype measurements are based on this DPI.
 static const double DEG2RAD     = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
 static const double RAD2DEG     = 57.295779513082320876798154814105;
-static const double SQRT2       = 1.41421356237; // sqrt(2)
+static const double SQRT2       = 1.414213562373095; // sqrt(2)
 static const double INV_SQRT2   = 1.0 / SQRT2;
 
 extern OBJECTPTR clVectorScene, clVectorViewport, clVectorGroup, clVectorColour;
@@ -92,9 +92,9 @@ public:
 
 class PIXEL_DATA : public PIXEL_ORDER {
 public:
-   const UBYTE *Data;
-   PIXEL_DATA(UBYTE *pData) : Data(pData) { }
-   PIXEL_DATA(UBYTE *pData, const PIXEL_ORDER pPX) : PIXEL_ORDER(pPX), Data(pData) {}
+   const uint8_t *Data;
+   PIXEL_DATA(uint8_t *pData) : Data(pData) { }
+   PIXEL_DATA(uint8_t *pData, const PIXEL_ORDER pPX) : PIXEL_ORDER(pPX), Data(pData) {}
 
    agg::rgba8 getRGB() const {
       return agg::rgba8(Data[Red], Data[Green], Data[Blue], Data[Alpha]);
@@ -223,7 +223,7 @@ public:
    agg::conv_stroke<agg::conv_dash<agg::path_storage>> stroke;
    std::vector<double> values;
 
-   DashedStroke(agg::path_storage &pPath, LONG Elements=2) : path(pPath), stroke(path), values(Elements) { }
+   DashedStroke(agg::path_storage &pPath, int Elements=2) : path(pPath), stroke(path), values(Elements) { }
 };
 
 class filter_state {
@@ -233,8 +233,8 @@ public:
 class filter_bitmap {
 public:
    objBitmap *Bitmap;
-   UBYTE *Data;
-   LONG DataSize;
+   uint8_t *Data;
+   int DataSize;
 
    filter_bitmap() : Bitmap(nullptr), Data(nullptr), DataSize(0) { };
 
@@ -243,7 +243,7 @@ public:
       if (Data) { FreeResource(Data); Data = nullptr; }
    };
 
-   objBitmap * get_bitmap(LONG Width, LONG Height, TClipRectangle<LONG> &Clip, bool Debug) {
+   objBitmap * get_bitmap(int Width, int Height, TClipRectangle<int> &Clip, bool Debug) {
       pf::Log log;
 
       if (Width < Clip.right) Width = Clip.right;
@@ -277,8 +277,8 @@ public:
       if (Bitmap->Clip.Top < 0) Bitmap->Clip.Top = 0;
 
       if (!Debug) {
-         const LONG canvas_width  = Clip.width();
-         const LONG canvas_height = Clip.height();
+         const int canvas_width  = Clip.width();
+         const int canvas_height = Clip.height();
          Bitmap->LineWidth = canvas_width * Bitmap->BytesPerPixel;
 
          if ((Data) and (DataSize < Bitmap->LineWidth * canvas_height)) {
@@ -305,7 +305,7 @@ public:
 
 };
 
-constexpr LONG TB_NOISE = 1;
+constexpr int TB_NOISE = 1;
 
 #include <parasol/modules/vector.h>
 
@@ -327,7 +327,7 @@ class SceneDef {
 
 //********************************************************************************************************************
 
-constexpr LONG MAX_TRANSITION_STOPS = 10;
+constexpr int MAX_TRANSITION_STOPS = 10;
 
 struct TransitionStop { // Passed to the Stops field.
    double Offset;
@@ -337,7 +337,7 @@ struct TransitionStop { // Passed to the Stops field.
 
 class extVectorTransition : public objVectorTransition, public SceneDef {
    public:
-   LONG TotalStops; // Total number of stops registered.
+   int TotalStops; // Total number of stops registered.
 
    TransitionStop Stops[MAX_TRANSITION_STOPS];
    bool Dirty:1;
@@ -354,7 +354,7 @@ class extVectorGradient : public objVectorGradient, public SceneDef {
    FRGB   Colour;
    RGB8   ColourRGB; // A cached conversion of the FRGB value
    STRING ID;
-   LONG   NumericID;
+   int   NumericID;
    double Angle;
    double Length;
    bool   CalcAngle; // True if the Angle/Length values require recalculation.
@@ -387,8 +387,8 @@ class extVectorFilter : public objVectorFilter {
    extFilterEffect *Effects;           // Pointer to the first effect in the chain.
    extFilterEffect *LastEffect;
    std::vector<std::unique_ptr<filter_bitmap>> Bank;
-   TClipRectangle<LONG> VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
-   UBYTE BankIndex;
+   TClipRectangle<int> VectorClip;           // Clipping region of the vector client (reflects the vector bounds)
+   uint8_t BankIndex;
    double BoundWidth, BoundHeight; // Filter boundary, computed on acDraw()
    double TargetX, TargetY, TargetWidth, TargetHeight; // Target boundary, computed on acDraw()
    bool Rendered;
@@ -401,7 +401,7 @@ class extFilterEffect : public objFilterEffect {
    using create = pf::Create<extFilterEffect>;
 
    extVectorFilter *Filter; // Direct reference to the parent filter
-   UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
+   uint16_t UsageCount;        // Total number of other effects utilising this effect to build a pipeline
 };
 
 class extPainter : public VectorPainter {
@@ -436,24 +436,24 @@ class extVector : public objVector {
    extVector           *Morph;
    extVector           *AppendPath;
    DashedStroke        *DashArray;
-   JTYPE  InputMask;
-   LONG   NumericID;
-   LONG   PathLength;
-   VMF    MorphFlags;
-   VFR    FillRule;
-   VFR    ClipRule;
-   RC     Dirty;
-   UWORD  TabOrder;
-   UWORD  Isolated:1;
-   UWORD  DisableFillColour:1;  // Bitmap fonts set this to true in order to disable colour fills
-   UWORD  ButtonLock:1;
-   UWORD  ScaledStrokeWidth:1;
-   UWORD  DisableHitTesting:1;
-   UWORD  ResizeSubscription:1;
-   UWORD  FGFill:1;
-   UWORD  Stroked:1;
-   UWORD  ValidState:1;         // Can be set to false during path generation if the shape is invalid
-   UWORD  RequiresRedraw:1;
+   JTYPE InputMask;
+   int   NumericID;
+   int   PathLength;
+   VMF   MorphFlags;
+   VFR   FillRule;
+   VFR   ClipRule;
+   RC    Dirty;
+   uint16_t  TabOrder;
+   uint16_t  Isolated:1;
+   uint16_t  DisableFillColour:1;  // Bitmap fonts set this to true in order to disable colour fills
+   uint16_t  ButtonLock:1;
+   uint16_t  ScaledStrokeWidth:1;
+   uint16_t  DisableHitTesting:1;
+   uint16_t  ResizeSubscription:1;
+   uint16_t  FGFill:1;
+   uint16_t  Stroked:1;
+   uint16_t  ValidState:1;         // Can be set to false during path generation if the shape is invalid
+   uint16_t  RequiresRedraw:1;
    agg::line_join_e  LineJoin;
    agg::line_cap_e   LineCap;
    agg::inner_join_e InnerJoin;
@@ -495,11 +495,11 @@ class extVectorScene : public objVectorScene {
    std::unordered_map<extVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
-   LONG InputHandle;
+   int InputHandle;
    PTC Cursor; // Current cursor image
    bool RefreshCursor;
    bool ShareModified; // True if a shareable object has been modified (e.g. VectorGradient), requiring a redraw of any vectors that use it.
-   UBYTE BufferCount; // Active tally of viewports that are buffered.
+   uint8_t BufferCount; // Active tally of viewports that are buffered.
 };
 
 //********************************************************************************************************************
@@ -523,9 +523,9 @@ class extVectorViewport : public extVector {
    DMF   vpDimensions;
    ARF   vpAspectRatio;
    VOF   vpOverflowX, vpOverflowY;
-   UBYTE vpDragging:1;
-   UBYTE vpBuffered:1; // True if the client requested that the viewport is buffered.
-   UBYTE vpRefreshBuffer:1;
+   uint8_t vpDragging:1;
+   uint8_t vpBuffered:1; // True if the client requested that the viewport is buffered.
+   uint8_t vpRefreshBuffer:1;
 };
 
 //********************************************************************************************************************
@@ -576,11 +576,11 @@ class GradientColours {
 
          // For a given block of colours, compute the average colour and apply it to the entire block.
 
-         LONG block_size = F2T(resolution * table.size());
-         for (LONG i = 0; i < table.size(); i += block_size) {
+         int block_size = F2T(resolution * table.size());
+         for (int i = 0; i < table.size(); i += block_size) {
 
-            LONG red = 0, green = 0, blue = 0, alpha = 0, total = 0;
-            for (LONG b=i; (b < i + block_size) and (b < table.size()); b++, total++) {
+            int red = 0, green = 0, blue = 0, alpha = 0, total = 0;
+            for (int b=i; (b < i + block_size) and (b < table.size()); b++, total++) {
                red   += table[b].r * table[b].r;
                green += table[b].g * table[b].g;
                blue  += table[b].b * table[b].b;
@@ -588,10 +588,10 @@ class GradientColours {
             }
 
             auto col = agg::rgba8{
-               UBYTE(sqrt(red/total)), UBYTE(sqrt(green/total)), UBYTE(sqrt(blue/total)), UBYTE(sqrt(alpha/total))
+               uint8_t(sqrt(red/total)), uint8_t(sqrt(green/total)), uint8_t(sqrt(blue/total)), uint8_t(sqrt(alpha/total))
             };
 
-            for (LONG b = i; (b < i + block_size) and (b < table.size()); b++) table[b] = col;
+            for (int b = i; (b < i + block_size) and (b < table.size()); b++) table[b] = col;
          }
       }
 };
@@ -647,10 +647,10 @@ extern ERR init_wavefunctionfx(void);
 extern void apply_parent_transforms(extVector *, agg::trans_affine &);
 extern void apply_transition(extVectorTransition *, double, agg::trans_affine &);
 extern void apply_transition_xy(extVectorTransition *, double, double *, double *);
-extern void calc_aspectratio(CSTRING, ARF, double, double, double, double, double *X, double *Y, double *, double *);
+extern void calc_aspectratio(CSTRING, ARF, double, double, double, double, double &X, double &Y, double &, double &);
 extern void calc_full_boundary(extVector *, TClipRectangle<double> &, bool IncludeSiblings = true, bool IncludeTransforms = true, bool IncludeStrokes = false);
 extern void convert_to_aggpath(extVectorPath *, std::vector<PathCommand> &, agg::path_storage &);
-extern void debug_tree(extVector *, LONG &);
+extern void debug_tree(extVector *, int &);
 extern void gen_vector_path(extVector *);
 extern void gen_vector_tree(extVector *);
 extern GRADIENT_TABLE * get_fill_gradient_table(extPainter &, double);
@@ -658,7 +658,7 @@ extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
 extern objBitmap * get_source_graphic(extVectorFilter *);
 extern ERR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
-extern ERR scene_input_events(const InputEvent *, LONG);
+extern ERR scene_input_events(const InputEvent *, int);
 extern void send_feedback(extVector *, FM, OBJECTPTR = nullptr);
 extern void set_filter(agg::image_filter_lut &, VSM, agg::trans_affine &, double Kernel = 0);
 
@@ -671,7 +671,7 @@ extern std::vector<extVector *> glVectorFocusList; // The first reference is the
 //********************************************************************************************************************
 // Generic function for setting the clip region of an AGG rasterizer
 
-template<class T = LONG> void set_raster_rect_path(agg::rasterizer_scanline_aa<> &Raster, T X, T Y, T Width, T Height)
+template<class T = int> void set_raster_rect_path(agg::rasterizer_scanline_aa<> &Raster, T X, T Y, T Width, T Height)
 {
    if (Width < 0) Width = 0;
    if (Height < 0) Height = 0;
@@ -932,9 +932,9 @@ public:
 private:
    unsigned m_offset_x;
    unsigned m_offset_y;
-   UBYTE m_bk_buf[4];
+   uint8_t m_bk_buf[4];
    int m_x, m_x0, m_y;
-   UBYTE *m_pix_ptr;
+   uint8_t *m_pix_ptr;
 };
 
 } // namespace
@@ -1020,8 +1020,8 @@ enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
 
 //********************************************************************************************************************
 
-static constexpr double int26p6_to_dbl(LONG p) { return double(p) * (1.0 / 64.0); }
-static constexpr LONG dbl_to_int26p6(double p) { return LONG(p * 64.0); }
+static constexpr double int26p6_to_dbl(int p) { return double(p) * (1.0 / 64.0); }
+static constexpr int dbl_to_int26p6(double p) { return int(p * 64.0); }
 
 //********************************************************************************************************************
 
@@ -1045,7 +1045,7 @@ inline static void save_bitmap(objBitmap *Bitmap, const std::string Name)
 
 // Raw-copy version of save_bitmap()
 
-inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG Height, LONG BPP = 32)
+inline static void save_bitmap(std::string Name, uint8_t *Data, int Width, int Height, int BPP = 32)
 {
    std::string path = "temp:raw_" + Name + ".png";
 
@@ -1060,14 +1060,14 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
    if (pic.ok()) {
       auto &bmp = pic->Bitmap;
       if (BPP IS 8) {
-         for (ULONG i=0; i < bmp->Palette->AmtColours; i++) {
-            bmp->Palette->Col[i] = { .Red = UBYTE(i), .Green = UBYTE(i), .Blue = UBYTE(i), .Alpha = 255 };
+         for (uint32_t i=0; i < bmp->Palette->AmtColours; i++) {
+            bmp->Palette->Col[i] = { .Red = uint8_t(i), .Green = uint8_t(i), .Blue = uint8_t(i), .Alpha = 255 };
          }
       }
 
-      const LONG byte_width = Width * bmp->BytesPerPixel;
-      UBYTE *out = bmp->Data;
-      for (LONG y=0; y < Height; y++) {
+      const int byte_width = Width * bmp->BytesPerPixel;
+      uint8_t *out = bmp->Data;
+      for (int y=0; y < Height; y++) {
          copymem(Data, out, byte_width);
          out  += bmp->LineWidth;
          Data += Width * bmp->BytesPerPixel;
@@ -1118,7 +1118,7 @@ inline double fastPow(double a, double b) {
 
 //********************************************************************************************************************
 
-inline int isPow2(ULONG x)
+inline int isPow2(uint32_t x)
 {
    return ((x != 0) and !(x & (x - 1)));
 }
@@ -1172,9 +1172,9 @@ void configure_stroke(extVector &Vector, T &Stroke)
 
 //********************************************************************************************************************
 
-static LONG get_utf8(const std::string_view &Value, ULONG &Unicode, std::size_t Index = 0)
+static int get_utf8(const std::string_view &Value, uint32_t &Unicode, std::size_t Index = 0)
 {
-   LONG len, code;
+   int len, code;
 
    if ((Value[Index] & 0x80) != 0x80) {
       Unicode = Value[Index];
@@ -1205,7 +1205,7 @@ static LONG get_utf8(const std::string_view &Value, ULONG &Unicode, std::size_t 
       return 1;
    }
 
-   for (LONG i=1; i < len; ++i) {
+   for (int i=1; i < len; ++i) {
       if ((Value[i] & 0xc0) != 0x80) code = -1;
       code <<= 6;
       code |= Value[i] & 0x3f;
@@ -1223,14 +1223,14 @@ static LONG get_utf8(const std::string_view &Value, ULONG &Unicode, std::size_t 
 
 //********************************************************************************************************************
 
-extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
+extern agg::gamma_lut<uint8_t, uint16_t, 8, 12> glGamma;
 extern double glDisplayVDPI, glDisplayHDPI, glDisplayDPI;
 
 extern void set_text_final_xy(extVectorText *);
 
 namespace vec {
 extern ERR DrawPath(objBitmap * Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern ERR GenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices, APTR *Path);
+extern ERR GenerateEllipse(double CX, double CY, double RX, double RY, int Vertices, APTR *Path);
 extern ERR GeneratePath(CSTRING Sequence, APTR *Path);
 extern ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path);
 extern ERR ReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result);
@@ -1244,7 +1244,7 @@ extern void Curve4(APTR Path, double CtrlX1, double CtrlY1, double CtrlX2, doubl
 extern void Smooth4(APTR Path, double CtrlX, double CtrlY, double X, double Y);
 extern void ClosePath(APTR Path);
 extern void RewindPath(APTR Path);
-extern LONG GetVertex(APTR Path, double * X, double * Y);
+extern int GetVertex(APTR Path, double * X, double * Y);
 extern ERR ApplyPath(APTR Path, objVectorPath * VectorPath);
 extern ERR Rotate(struct VectorMatrix * Matrix, double Angle, double CenterX, double CenterY);
 extern ERR Translate(struct VectorMatrix * Matrix, double X, double Y);
@@ -1254,10 +1254,10 @@ extern ERR MultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * So
 extern ERR Scale(struct VectorMatrix * Matrix, double X, double Y);
 extern ERR ParseTransform(struct VectorMatrix * Matrix, CSTRING Transform);
 extern ERR ResetMatrix(struct VectorMatrix * Matrix);
-extern ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle);
+extern ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle);
 extern ERR GetFontMetrics(APTR Handle, struct FontMetrics * Info);
-extern double CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, double * Kerning);
-extern double StringWidth(APTR FontHandle, CSTRING String, LONG Chars);
+extern double CharWidth(APTR FontHandle, uint32_t Char, uint32_t KChar, double * Kerning);
+extern double StringWidth(APTR FontHandle, CSTRING String, int Chars);
 extern ERR FlushMatrix(struct VectorMatrix * Matrix);
 extern ERR TracePath(APTR Path, FUNCTION *Callback, double Scale);
 }

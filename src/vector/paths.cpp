@@ -77,7 +77,7 @@ void gen_vector_path(extVector *Vector)
    else if (Vector->classID() IS CLASSID::VECTORVIEWPORT) {
       auto view = (extVectorViewport *)Vector;
 
-      DOUBLE parent_width, parent_height;
+      double parent_width, parent_height;
       OBJECTID parent_id;
 
       // vpTargetX/Y are the display position of the viewport, relative to the container that it is inside.
@@ -170,8 +170,8 @@ void gen_vector_path(extVector *Vector)
 
       // Contained vectors are normally scaled to the area defined by the viewport.
 
-      DOUBLE target_width  = view->vpFixedWidth;
-      DOUBLE target_height = view->vpFixedHeight;
+      double target_width  = view->vpFixedWidth;
+      double target_height = view->vpFixedHeight;
 
       // The client can force the top-level viewport to be resized by using VPF::RESIZE and defining PageWidth/PageHeight
 
@@ -191,8 +191,8 @@ void gen_vector_path(extVector *Vector)
       // the position of paths within the viewport and not the position of the viewport itself.
 
       calc_aspectratio(__FUNCTION__, view->vpAspectRatio, target_width, target_height,
-         view->vpViewWidth, view->vpViewHeight, &view->vpAlignX, &view->vpAlignY,
-         &view->vpXScale, &view->vpYScale);
+         view->vpViewWidth, view->vpViewHeight, view->vpAlignX, view->vpAlignY,
+         view->vpXScale, view->vpYScale);
 
       log.trace("AlignXY: %.2f %.2f, ScaleXY: %.2f %.2f", view->vpAlignX, view->vpAlignY, view->vpXScale, view->vpYScale);
 
@@ -291,7 +291,7 @@ void gen_vector_path(extVector *Vector)
                if (morph->dirty()) gen_vector_path(morph);
 
                if (morph->BasePath.total_vertices()) {
-                  DOUBLE bx1, bx2, by1, by2;
+                  double bx1, bx2, by1, by2;
 
                   if ((Vector->MorphFlags & VMF::Y_MID) != VMF::NIL) {
                      bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
@@ -337,7 +337,7 @@ void gen_vector_path(extVector *Vector)
       }
 
       if (Vector->Matrices) {
-         DOUBLE scale = Vector->Transform.scale();
+         double scale = Vector->Transform.scale();
          if (scale > 1.0) Vector->BasePath.angle_tolerance(0.2); // Set in radians.  The less this value is, the more accurate it will be at sharp turns.
          else Vector->BasePath.angle_tolerance(0);
       }
