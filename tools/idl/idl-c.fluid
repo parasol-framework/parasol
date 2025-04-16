@@ -1733,7 +1733,7 @@ function cleanXMLString(str, caller)
          str = '<ROOT>' .. str .. '</ROOT>'
 
          if cleanXMLString_xml == nil then
-            cleanXMLString_xml, err = obj.new('xml', { statement=str, flags='!AllContent' })
+            cleanXMLString_xml, err = obj.new('xml', { statement=str, flags=XMF_INCLUDE_WHITESPACE })
          end
 
          if (cleanXMLString_xml != nil) then

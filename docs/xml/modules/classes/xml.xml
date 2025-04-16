@@ -505,21 +505,22 @@
   </fields>
   <types>
     <constants lookup="XMF" comment="Standard flags for the XML class.">
-      <const name="ALL_CONTENT">By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.</const>
-      <const name="INCLUDE_COMMENTS">By default, comments are stripped from all XML input.  This flag ensures that they are retained.</const>
+      <const name="INCLUDE_COMMENTS">By default, comments are stripped when parsing XML input unless this flag is specified.</const>
       <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (<action>GetXMLString</action> only)</const>
+      <const name="INCLUDE_WHITESPACE">By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.</const>
       <const name="INDENT">Indent the output of serialised XML to improve readability.</const>
       <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
       <const name="LOG_ALL">Print extra log messages.</const>
       <const name="NEW">Creates an empty XML object on initialisation - if the <fl>Path</fl> field has been set, the source file will not be loaded.</const>
       <const name="NO_ESCAPE">Turns off escape code conversion.</const>
+      <const name="OMIT_TAGS">Prevents tags from being output when the XML is serialised (output content only).</const>
       <const name="PARSE_ENTITY">Entity references in the DTD will be parsed automatically.</const>
       <const name="PARSE_HTML">Automatically parse HTML escape codes.</const>
       <const name="READABLE">Indent the output of serialised XML to improve readability.</const>
       <const name="STRIP_CDATA">Do not echo <code>CDATA</code> sections.  Note that this option is used as a parameter, not an object flag.</const>
       <const name="STRIP_CONTENT">Strip all content from incoming XML data.</const>
       <const name="STRIP_HEADERS">XML headers found in the source data will not be included in the parsed results.</const>
-      <const name="WELL_FORMED">By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or an <code>ERR::BadData</code> error will be returned during processing.</const>
+      <const name="WELL_FORMED">By default, the XML class will accept badly structured XML data.  This flag requires that XML statements must be well-formed (tags must balance) or an <code>ERR::BadData</code> error will be returned during processing.</const>
     </constants>
 
     <constants lookup="XMI" comment="Tag insertion options.">

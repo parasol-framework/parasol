@@ -407,7 +407,7 @@ static ERR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       if (Self->Processing) return log.warning(ERR::Recursion);
 
       objXML::create xml = {
-         fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
+         fl::Flags(XMF::INCLUDE_WHITESPACE|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
          fl::Statement(CSTRING(Args->Buffer)),
          fl::ReadOnly(true)
       };
@@ -902,7 +902,7 @@ static ERR DOCUMENT_InsertXML(extDocument *Self, doc::InsertXML *Args)
    if (Self->Stream.data.empty()) return ERR::NoData;
 
    objXML::create xml = {
-      fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS),
+      fl::Flags(XMF::INCLUDE_WHITESPACE|XMF::PARSE_HTML|XMF::STRIP_HEADERS),
       fl::Statement(Args->XML)
    };
 
