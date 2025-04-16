@@ -463,9 +463,9 @@ gui.columnView = function(Options)
                local new_x = col.x + col.px_width
                while scan do
                   scan.x = new_x
-                  scan.resizeVP.x = new_x + scan.width - (MARGIN * 0.5)
+                  scan.resizeVP.x = new_x + scan.px_width - (MARGIN * 0.5)
                   scan.vecViewport.x = new_x
-                  new_x = new_x + scan.width
+                  new_x = new_x + scan.px_width
                   scan = scan.next
                end
 
