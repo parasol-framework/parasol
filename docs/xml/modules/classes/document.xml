@@ -536,7 +536,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The width of the longest document line can be retrieved from this field.  The result includes the left and right page margins.</p>
+<p>The page width indicates the width of the longest document line, including left and right page margins.  Although the PageWidth can be pre-defined by the client, a document can override this value at any time when it is parsed.  If imposing fixed page dimensions is desired, consider setting the <code>Width</code> and <code>Height</code> values of the <fl>View</fl> viewport object instead.</p>
       </description>
     </field>
 
@@ -593,9 +593,12 @@
 
     <field>
       <name>View</name>
-      <comment>An internally created viewport that hosts the Page</comment>
+      <comment>The viewing area of the document.</comment>
       <access read="R">Read</access>
       <type class="VectorViewport">*VectorViewport</type>
+      <description>
+<p>The view is an internally allocated viewport that hosts the document <fl>Page</fl>.  Its main purpose is to enforce a clipping boundary on the page.  By default, the view dimensions will always match that of the parent <fl>Viewport</fl>. If a fixed viewing size is desired, set the <code>Width</code> and <code>Height</code> fields of the View's <class name="VectorViewport">VectorViewport</class> after the initialisation of the document.</p>
+      </description>
     </field>
 
     <field>

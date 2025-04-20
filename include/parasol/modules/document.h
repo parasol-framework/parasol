@@ -124,7 +124,7 @@ class objDocument : public Object {
    STRING   Keywords;               // Includes keywords declared by the source document.
    objVectorViewport * Viewport;    // A client-specific viewport that will host the document graphics.
    objVectorViewport * Focus;       // Refers to the object that will be monitored for user focusing.
-   objVectorViewport * View;        // An internally created viewport that hosts the Page
+   objVectorViewport * View;        // The viewing area of the document.
    objVectorViewport * Page;        // The Page contains the document content and is hosted by the View
    OBJECTID TabFocusID;             // Allows the user to hit the tab key to focus on other GUI objects.
    DEF      EventMask;              // Specifies events that need to be reported from the Document object.

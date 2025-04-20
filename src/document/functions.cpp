@@ -410,7 +410,6 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    Self->Invisible     = 0;
    Self->PageWidth     = 0;
    Self->CalcWidth     = 0;
-   Self->RelPageWidth  = false;
    Self->MinPageWidth  = MIN_PAGE_WIDTH;
    Self->DefaultScript = NULL;
    Self->FocusIndex    = -1;

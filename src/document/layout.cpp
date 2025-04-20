@@ -1257,12 +1257,12 @@ static void layout_doc(extDocument *Self)
 
       double page_width;
 
-      if (Self->PageWidth <= 0) {
+      if (Self->PageWidth.Value <= 0) {
          // No preferred page width; maximise the page width to the available viewing area
          page_width = Self->VPWidth;
       }
-      else if (!Self->RelPageWidth) page_width = Self->PageWidth;
-      else page_width = (Self->PageWidth * Self->VPWidth) * 0.01;
+      else if (!Self->PageWidth.scaled()) page_width = Self->PageWidth.Value;
+      else page_width = Self->PageWidth * Self->VPWidth;
 
       if (page_width < Self->MinPageWidth) page_width = Self->MinPageWidth;
 

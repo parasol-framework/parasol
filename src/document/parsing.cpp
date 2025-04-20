@@ -1535,11 +1535,12 @@ void parser::tag_body(XMLTag &Tag)
          case HASH_page_width:
             [[fallthrough]];
          case HASH_width:
-            Self->PageWidth = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), nullptr), 1.0, 6000.0);
+            Self->PageWidth.read(Tag.Attribs[i].Value);
+            if (Self->PageWidth.scaled()) Self->PageWidth.Value = std::clamp(Self->PageWidth.Value, 0.001, 10.0);
+            else Self->PageWidth.Value = std::clamp(Self->PageWidth.Value, 1.0, 6000.0);
 
-            if (Tag.Attribs[i].Value.find('%') != std::string::npos) Self->RelPageWidth = true;
-            else Self->RelPageWidth = false;
-            log.msg("Page width forced to %g%s.", Self->PageWidth, Self->RelPageWidth ? "%%" : "");
+            if (Self->PageWidth.scaled()) log.msg("Page width forced to %g%%.", Self->PageWidth.Value * 100.0);
+            else log.msg("Page width forced to %gpx", Self->PageWidth.Value);
             break;
 
          default:

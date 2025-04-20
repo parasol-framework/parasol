@@ -69,6 +69,8 @@ gui.dialog.message = function(Options)
          self.viewport.aspectRatio = 'XMin|YMin'
          self.viewport.viewWidth  = page_width
          self.viewport.viewHeight = page_height
+         Document.view.width = page_width
+         Document.view.height = page_height
       end
    end
 

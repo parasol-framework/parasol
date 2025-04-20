@@ -254,14 +254,16 @@ margins.
 -FIELD-
 PageWidth: Measures the page width of the document, in pixels.
 
-The width of the longest document line can be retrieved from this field.  The result includes the left and right page
-margins.
+The page width indicates the width of the longest document line, including left and right page margins.  Although
+the PageWidth can be pre-defined by the client, a document can override this value at any time when it is parsed.  If
+imposing fixed page dimensions is desired, consider setting the `Width` and `Height` values of the #View viewport 
+object instead.
 
 *********************************************************************************************************************/
 
 static ERR GET_PageWidth(extDocument *Self, Unit *Value)
 {
-   DOUBLE value;
+   double value;
 
    // Reading the PageWidth returns the pixel width of the page after parsing.
 
@@ -270,7 +272,7 @@ static ERR GET_PageWidth(extDocument *Self, Unit *Value)
 
       if (Value->scaled()) {
          if (Self->VPWidth <= 0) return ERR::GetField;
-         value = (DOUBLE)(value * Self->VPWidth);
+         value *= Self->VPWidth;
       }
    }
    else value = Self->PageWidth;
@@ -283,13 +285,10 @@ static ERR SET_PageWidth(extDocument *Self, Unit *Value)
 {
    if (Value->Value <= 0) {
       pf::Log log;
-      log.warning("A page width of %g is illegal.", Value->Value);
-      return ERR::OutOfRange;
+      return log.warning(ERR::OutOfRange);
    }
-   Self->PageWidth = Value->Value;
 
-   if (Value->scaled()) Self->RelPageWidth = true;
-   else Self->RelPageWidth = false;
+   Self->PageWidth = *Value;
 
    return ERR::Okay;
 }
@@ -343,6 +342,14 @@ Title: The title of the document.
 
 If a document declares a title under a head tag, the title string will be readable from this field.   This field is
 always `NULL` if a document does not declare a title.
+
+-FIELD-
+View: The viewing area of the document.
+
+The view is an internally allocated viewport that hosts the document #Page.  Its main purpose is to enforce a 
+clipping boundary on the page.  By default, the view dimensions will always match that of the parent #Viewport.
+If a fixed viewing size is desired, set the `Width` and `Height` fields of the View's @VectorViewport after the
+initialisation of the document. 
 
 -FIELD-
 Viewport: A client-specific viewport that will host the document graphics.

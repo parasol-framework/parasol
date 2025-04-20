@@ -811,13 +811,18 @@ static ERR DOCUMENT_Init(extDocument *Self)
    //else return ERR::CreateObject;
 
    Self->Scene = Self->Viewport->Scene;
+   
+   // Note: Initially the view is set to match the size of its container and the document will automatically
+   // adjust the page width if the container is resized.  If the client wants to maintain a fixed size
+   // document, e.g. for scaling, the the Width and Height of the View can be overridden at any time -
+   // this is considered a legitimate approach to enforcing a fixed size document for scaling.
 
    if ((Self->View = objVectorViewport::create::global(
          fl::Name("docView"),
          fl::Owner(Self->Viewport->UID),
          fl::Overflow(VOF::HIDDEN),
          fl::X(0), fl::Y(0),
-         fl::XOffset(0), fl::YOffset(0)))) {
+         fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))))) {
    }
    else return ERR::CreateObject;
 

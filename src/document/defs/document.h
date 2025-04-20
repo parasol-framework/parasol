@@ -1113,7 +1113,7 @@ class extDocument : public objDocument {
    double VPWidth, VPHeight; // Dimensions of the host Viewport
    double FontSize;          // The default font-size, measured in 72 DPI pixels
    double MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
-   double PageWidth;         // width of the widest section of the document page.  Can be pre-defined for a fixed width.
+   Unit   PageWidth;         // Width of the widest section of the document page.  Can be pre-defined by the client for a fixed or relative width
    double LeftMargin, TopMargin, RightMargin, BottomMargin;
    double CalcWidth;         // Final page width calculated from the layout process
    double XPosition, YPosition; // Scrolling offset
@@ -1131,7 +1131,6 @@ class extDocument : public objDocument {
    int16_t  Invisible;          // Incremented for sections within a hidden index
    uint8_t  Processing;         // If > 0, the page layout is being altered
    bool   RefreshTemplates; // True if the template index requires refreshing.
-   bool   RelPageWidth;     // Relative page width
    bool   UpdatingLayout;   // True if the page layout is in the process of being updated
    bool   PageProcessed;    // True if the parsing of page content has been completed
    bool   NoWhitespace;     // True if the parser should stop injecting whitespace characters

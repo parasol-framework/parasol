@@ -18,6 +18,7 @@
 #include <bit>
 #include <atomic>
 #include <array>
+#include <charconv>
 #endif
 
 #if defined(_DEBUG)
@@ -1834,9 +1835,21 @@ struct Unit {
    ULONG  Type;     // Additional type information
    Unit(double pValue, int pType = FD_DOUBLE) : Value(pValue), Type(pType) { }
    Unit() : Value(0), Type(0) { }
+   Unit(std::string_view String) { read(String); }
    operator double() const { return Value; }
    inline void set(const double pValue) { Value = pValue; }
    inline bool scaled() { return (Type & FD_SCALED) ? true : false; }
+   inline void read(std::string_view String) {
+      const auto start = String.find_first_not_of(" \n\r\t");
+      if (start != std::string::npos) String.remove_prefix(start);
+      if (String.starts_with('+')) String.remove_prefix(1);
+      auto [ end, error ] = std::from_chars(String.data(), String.data() + String.size(), Value);  
+      if (error != std::errc()) { Value = 0; return; }
+      
+      String = String.substr(end - String.data());
+      if (String.starts_with("%")) { Value *= 0.01; Type = FD_DOUBLE|FD_SCALED; }
+      else Type = FD_DOUBLE;
+   }
 };
 
 struct ActionArray {
