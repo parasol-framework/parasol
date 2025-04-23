@@ -41,16 +41,16 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 
 class VectorState;
 
-static void fill_image(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage &, VSM,
-   const agg::trans_affine &, DOUBLE, DOUBLE, extVectorImage &, agg::renderer_base<agg::pixfmt_psl> &,
-   agg::rasterizer_scanline_aa<> &, DOUBLE Alpha = 1.0);
+static void fill_image(VectorState &, const TClipRectangle<double> &, agg::path_storage &, VSM,
+   const agg::trans_affine &, double, double, extVectorImage &, agg::renderer_base<agg::pixfmt_psl> &,
+   agg::rasterizer_scanline_aa<> &, double Alpha = 1.0);
 
-static void fill_gradient(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *,
-   const agg::trans_affine &, DOUBLE, DOUBLE, extVectorGradient &, GRADIENT_TABLE *,
+static void fill_gradient(VectorState &, const TClipRectangle<double> &, agg::path_storage *,
+   const agg::trans_affine &, double, double, extVectorGradient &, GRADIENT_TABLE *,
    agg::renderer_base<agg::pixfmt_psl> &, agg::rasterizer_scanline_aa<> &);
 
-static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::path_storage *,
-   VSM, const agg::trans_affine &, DOUBLE ViewWidth, DOUBLE, extVectorPattern &,
+static void fill_pattern(VectorState &, const TClipRectangle<double> &, agg::path_storage *,
+   VSM, const agg::trans_affine &, double ViewWidth, double, extVectorPattern &,
    agg::renderer_base<agg::pixfmt_psl> &, agg::rasterizer_scanline_aa<> &);
 
 //********************************************************************************************************************
@@ -64,7 +64,7 @@ static void fill_pattern(VectorState &, const TClipRectangle<DOUBLE> &, agg::pat
 static ERR VECTORSCENE_Reset(extVectorScene *);
 
 void apply_focus(extVectorScene *, extVector *);
-static void scene_key_event(evKey *, LONG, extVectorScene *);
+static void scene_key_event(evKey *, int, extVectorScene *);
 static void process_resize_msgs(extVectorScene *);
 
 //********************************************************************************************************************
@@ -79,7 +79,7 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
 
    acDraw(Self);
 
-   Self->Bitmap = NULL;
+   Self->Bitmap = nullptr;
 }
 
 //********************************************************************************************************************
@@ -97,7 +97,7 @@ void render_scene_from_viewport(extVectorScene *Self, objBitmap *Bitmap, objVect
 
 // For debugging purposes, draw a boundary around the target area.
 //   static RGB8 highlightA = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 255 };
-//   ULONG highlight = PackPixelRGBA(bmp, &highlightA);
+//   uint32_t highlight = PackPixelRGBA(bmp, &highlightA);
 //   gfx::DrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, BAF::NIL);
 }
 
@@ -153,9 +153,9 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERR Result, 
 static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVectorScene *)CurrentContext();
-   if (Self->KeyHandle) { UnsubscribeEvent(Self->KeyHandle); Self->KeyHandle = NULL; }
+   if (Self->KeyHandle) { UnsubscribeEvent(Self->KeyHandle); Self->KeyHandle = nullptr; }
 
-   apply_focus(Self, NULL);
+   apply_focus(Self, nullptr);
 }
 
 //********************************************************************************************************************
@@ -265,7 +265,7 @@ static ERR VECTORSCENE_Debug(extVectorScene *Self)
 
    pf::vector<ChildEntry> list;
    if ((ListChildren(Self->UID, &list) IS ERR::Okay) and (list.size() > 1)) {
-      log.msg("Scene #%d has %d children:", Self->UID, LONG(std::ssize(list)-1));
+      log.msg("Scene #%d has %d children:", Self->UID, int(std::ssize(list)-1));
       for (auto &rec : list) {
          auto obj = GetObjectPtr(rec.ObjectID);
          if (obj IS Self->Viewport) continue;
@@ -275,7 +275,7 @@ static ERR VECTORSCENE_Debug(extVectorScene *Self)
 
    log.msg("Scene #%d scene graph follows:", Self->UID);
 
-   LONG level = 0;
+   int level = 0;
    debug_tree((extVector *)Self->Viewport, level);
    return ERR::Okay;
 }
@@ -344,7 +344,7 @@ static ERR VECTORSCENE_FindDef(extVectorScene *Self, struct sc::FindDef *Args)
 
    if (*name IS '#') name = name + 1;
    else if (startswith("url(#", name)) {
-      LONG i;
+      int i;
       for (i=5; (name[i] != ')') and name[i]; i++);
       std::string lookup;
       lookup.assign(name, 5, i-5);
@@ -380,19 +380,19 @@ static ERR VECTORSCENE_Flush(extVectorScene *Self)
 
    process_resize_msgs(Self);
 
-   // Send a dummy input event to the mouse cursor to ensure that the movement of underlying
-   // vectors generates the necessary crossing events.
+   // Send a dummy input event to the mouse cursor to ensure that changes to underlying
+   // vector paths will generate the necessary crossing events.
 
    if ((Self->SurfaceID) and (Self->RefreshCursor)) {
-      DOUBLE abs_x, abs_y;
-      LONG s_x, s_y;
+      double abs_x, abs_y;
+      int s_x, s_y;
 
       Self->RefreshCursor = false;
-      gfx::GetSurfaceCoords(Self->SurfaceID, NULL, NULL, &s_x, &s_y, NULL, NULL);
+      gfx::GetSurfaceCoords(Self->SurfaceID, nullptr, nullptr, &s_x, &s_y, nullptr, nullptr);
       gfx::GetCursorPos(&abs_x, &abs_y);
 
       const InputEvent event = {
-         .Next        = NULL,
+         .Next        = nullptr,
          .Value       = 0,
          .Timestamp   = 0,
          .RecipientID = Self->SurfaceID,
@@ -420,8 +420,8 @@ static ERR VECTORSCENE_Free(extVectorScene *Self, APTR Args)
    Self->Defs.clear(); // Required because the standard destructor is lazy and doesn't clear the table size
    Self->~extVectorScene();
 
-   if (Self->Viewport) Self->Viewport->Parent = NULL;
-   if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = NULL; }
+   if (Self->Viewport) Self->Viewport->Parent = nullptr;
+   if (Self->Buffer)   { delete Self->Buffer; Self->Buffer = nullptr; }
    if (Self->InputHandle) { gfx::UnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; }
 
    if (Self->SurfaceID) {
@@ -453,8 +453,8 @@ static ERR VECTORSCENE_Init(extVectorScene *Self)
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
             Self->Flags |= VPF::RESIZE;
-            Self->PageWidth = surface->get<LONG>(FID_Width);
-            Self->PageHeight = surface->get<LONG>(FID_Height);
+            Self->PageWidth = surface->get<int>(FID_Width);
+            Self->PageHeight = surface->get<int>(FID_Height);
          }
 
          SubscribeAction(*surface, AC::Redimension, C_FUNCTION(notify_redimension));
@@ -516,7 +516,7 @@ Reset: Clears all registered definitions and resets field values.  Child vectors
 
 static ERR VECTORSCENE_Reset(extVectorScene *Self)
 {
-   if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = NULL; }
+   if (Self->Buffer)  { delete Self->Buffer; Self->Buffer = nullptr; }
    Self->Defs.clear();
    Self->Gamma = 1.0;
    return ERR::Okay;
@@ -564,7 +564,7 @@ Search: A vector with a matching ID was not found.
 static ERR VECTORSCENE_SearchByID(extVectorScene *Self, struct sc::SearchByID *Args)
 {
    if (!Args) return ERR::NullArgs;
-   Args->Result = NULL;
+   Args->Result = nullptr;
 
    auto vector = (extVector *)Self->Viewport;
    while (vector) {
@@ -617,7 +617,7 @@ static ERR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
       }
       else return ERR::Memory;
    }
-   else Self->Buffer = NULL;
+   else Self->Buffer = nullptr;
 
    return ERR::Okay;
 }
@@ -667,7 +667,7 @@ option is used then the viewport will be scaled to fit within the page.
 
 *********************************************************************************************************************/
 
-static ERR SET_PageHeight(extVectorScene *Self, LONG Value)
+static ERR SET_PageHeight(extVectorScene *Self, int Value)
 {
    if (Value IS Self->PageHeight) return ERR::Okay;
 
@@ -688,7 +688,7 @@ option is used then the viewport will be scaled to fit within the page.
 
 *********************************************************************************************************************/
 
-static ERR SET_PageWidth(extVectorScene *Self, LONG Value)
+static ERR SET_PageWidth(extVectorScene *Self, int Value)
 {
    if (Value IS Self->PageWidth) return ERR::Okay;
 
@@ -855,7 +855,7 @@ static void process_resize_msgs(extVectorScene *Self)
             auto func   = sub.second;
             if (func.isC()) {
                pf::SwitchContext ctx(func.Context);
-               auto callback = (ERR (*)(extVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR))func.Routine;
+               auto callback = (ERR (*)(extVectorViewport *, objVector *, double, double, double, double, APTR))func.Routine;
                result = callback(view, vector, view->FinalX, view->FinalY, view->vpFixedWidth, view->vpFixedHeight, func.Meta);
             }
             else if (func.isScript()) {
@@ -885,15 +885,15 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
       auto &sub = *it;
       if (sub.Callback.isC()) {
          pf::SwitchContext ctx(sub.Callback.Context);
-         auto callback = (ERR (*)(objVector *, KQ, KEY, LONG, APTR))sub.Callback.Routine;
+         auto callback = (ERR (*)(objVector *, KQ, KEY, int, APTR))sub.Callback.Routine;
          result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode, sub.Callback.Meta);
       }
       else if (sub.Callback.isScript()) {
          // In this implementation the script function will receive all the events chained via the Next field
          sc::Call(sub.Callback, std::to_array<ScriptArg>({
             { "Vector",     Vector, FDF_OBJECT },
-            { "Qualifiers", LONG(Event->Qualifiers) },
-            { "Code",       LONG(Event->Code) },
+            { "Qualifiers", int(Event->Qualifiers) },
+            { "Code",       int(Event->Code) },
             { "Unicode",    Event->Unicode }
          }), result);
       }
@@ -908,7 +908,7 @@ static ERR vector_keyboard_events(extVector *Vector, const evKey *Event)
 //********************************************************************************************************************
 // Distribute input events to any vectors that have subscribed and have the focus
 
-static void scene_key_event(evKey *Event, LONG Size, extVectorScene *Self)
+static void scene_key_event(evKey *Event, int Size, extVectorScene *Self)
 {
    const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
 
@@ -966,16 +966,16 @@ static void scene_key_event(evKey *Event, LONG Size, extVectorScene *Self)
 static const FieldArray clSceneFields[] = {
    { "RenderTime",   FDF_LARGE|FDF_R, GET_RenderTime },
    { "Gamma",        FDF_DOUBLE|FDF_RW },
-   { "HostScene",    FDF_OBJECT|FDF_RI,    NULL, NULL, CLASSID::VECTORSCENE },
-   { "Viewport",     FDF_OBJECT|FD_R,      NULL, NULL, CLASSID::VECTORVIEWPORT },
-   { "Bitmap",       FDF_OBJECT|FDF_RW,    NULL, SET_Bitmap, CLASSID::BITMAP },
-   { "Surface",      FDF_OBJECTID|FDF_RI,  NULL, SET_Surface, CLASSID::SURFACE },
-   { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clVectorSceneFlags },
-   { "PageWidth",    FDF_LONG|FDF_RW,      NULL, SET_PageWidth },
-   { "PageHeight",   FDF_LONG|FDF_RW,      NULL, SET_PageHeight },
-   { "SampleMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, SET_SampleMethod, &clVectorSceneSampleMethod },
+   { "HostScene",    FDF_OBJECT|FDF_RI,    nullptr, nullptr, CLASSID::VECTORSCENE },
+   { "Viewport",     FDF_OBJECT|FD_R,      nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "Bitmap",       FDF_OBJECT|FDF_RW,    nullptr, SET_Bitmap, CLASSID::BITMAP },
+   { "Surface",      FDF_OBJECTID|FDF_RI,  nullptr, SET_Surface, CLASSID::SURFACE },
+   { "Flags",        FDF_LONGFLAGS|FDF_RW, nullptr, nullptr, &clVectorSceneFlags },
+   { "PageWidth",    FDF_LONG|FDF_RW,      nullptr, SET_PageWidth },
+   { "PageHeight",   FDF_LONG|FDF_RW,      nullptr, SET_PageHeight },
+   { "SampleMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, SET_SampleMethod, &clVectorSceneSampleMethod },
    // Virtual fields
-   { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R, GET_Defs, NULL },
+   { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R, GET_Defs, nullptr },
    END_FIELD
 };
 

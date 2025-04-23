@@ -331,7 +331,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
             if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
 
             if (bounds.pass_through) {
-               // For pass-through subscriptions input events are ignored, but cursor changes still apply.
+               // For pass-through subscriptions, input events are ignored, but cursor changes still apply.
                continue;
             }
 
@@ -340,23 +340,28 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
                auto invert = ~vector->Transform; // Presume that prior path generation has configured the transform.
                invert.transform(&tx, &ty);
 
-               InputEvent event = *input;
-               event.Next   = NULL;
-               event.OverID = vector->UID;
-               event.AbsX   = input->X; // Absolute coordinates are not translated.
-               event.AbsY   = input->Y;
-               event.X      = tx;
-               event.Y      = ty;
-               send_input_events(vector, &event);
-
-               if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {
-                  pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
-                  if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
+               if ((Self->ActiveVector IS vector->UID) and (tx IS Self->ActiveVectorX) and (ty IS Self->ActiveVectorY)) {
+                  // No change in position
                }
+               else {
+                  InputEvent event = *input;
+                  event.Next   = NULL;
+                  event.OverID = vector->UID;
+                  event.AbsX   = input->X; // Absolute coordinates are not translated.
+                  event.AbsY   = input->Y;
+                  event.X      = tx;
+                  event.Y      = ty;
+                  send_input_events(vector, &event);
 
-               Self->ActiveVector  = vector->UID;
-               Self->ActiveVectorX = tx;
-               Self->ActiveVectorY = ty;
+                  if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {
+                     pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
+                     if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
+                  }
+               
+                  Self->ActiveVector  = vector->UID;
+                  Self->ActiveVectorX = tx;
+                  Self->ActiveVectorY = ty;
+               }
 
                processed = true;
             }
