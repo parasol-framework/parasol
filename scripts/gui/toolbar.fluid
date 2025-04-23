@@ -75,10 +75,25 @@ gui.toolbar = function(Options)
       return item
    end
 
-   local function resetTipTimer()
+   local function cancelTipTimer()
       if self._tipTimer then
          mSys.UpdateTimer(self._tipTimer, 0)
          self._tipTimer = nil
+      end
+   end
+
+   local function startTipTimer()
+      if self._tipTimer then -- Reset existing timer
+         mSys.UpdateTimer(self._tipTimer, lTipDelay)
+      else
+         local err
+         err, self._tipTimer = mSys.SubscribeTimer(lTipDelay, function(Elapsed, CurrentTime)
+            if self._current and nz(self._current.tip) then
+               gui.tooltip({ text=self._current.tip })
+            end
+            self._tipTimer = nil
+            raise(ERR_Terminate)
+         end)
       end
    end
 
@@ -495,14 +510,6 @@ gui.toolbar = function(Options)
       if not found then raise(ERR_Search) end
    end
 
-   local function tipTimer(Elapsed, CurrentTime)
-      if self._current and nz(self._current.tip) then
-         gui.tooltip({ text=self._current.tip })
-      end
-      self._tipTimer = nil
-      raise(ERR_Terminate)
-   end
-
    local function hoverUpdate(Item, StateChanged) -- Highlight items that the user hovers over.
       if (self._current == Item) and (StateChanged != true) then return end
 
@@ -558,31 +565,26 @@ gui.toolbar = function(Options)
          if ev.type == JET_CROSSED_IN then
 
          elseif ev.type == JET_CROSSED_OUT then
-            resetTipTimer()
+            cancelTipTimer()
             if self._current then
                hoverUpdate(nil)
             end
          elseif bit.band(ev.flags, JTYPE_MOVEMENT) != 0 then
-            resetTipTimer()
-
             if self._clicked then return end
 
             local item = getCursorItem(ev.x, ev.y)
-            if item and item.tip then -- Tool-tip management
-               if self._tipTimer then
-                  mSys.UpdateTimer(self._tipTimer, lTipDelay)
-               else
-                  local err
-                  err, self._tipTimer = mSys.SubscribeTimer(lTipDelay, tipTimer)
-               end
-            end
-
             hoverUpdate(item)
+
+            if item and item.tip then
+               startTipTimer()
+            else
+               cancelTipTimer()
+            end
          elseif bit.band(ev.flags, JTYPE_BUTTON) != 0 then
             if ev.value > 0 then
                if self._disabled then return end
 
-               resetTipTimer()
+               cancelTipTimer()
 
                if self._current then
                   if self._current.disabled then return end
