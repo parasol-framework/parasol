@@ -8,9 +8,9 @@ Name: Input
 
 #include "defs.h"
 
-static std::unordered_map<LONG, InputCallback> glInputCallbacks;
-static std::vector<std::pair<LONG, InputCallback>> glNewSubscriptions;
-EventBuffer glInputEvents;
+static std::unordered_map<int, InputCallback> glInputCallbacks;
+static std::vector<std::pair<int, InputCallback>> glNewSubscriptions;
+std::vector<InputEvent> glInputEvents;
 
 namespace gfx {
 
@@ -31,8 +31,8 @@ cstr: A string describing the input `Type` is returned, or `NULL` if the `Type` 
 
 CSTRING GetInputTypeName(JET Type)
 {
-   if ((LONG(Type) < 1) or (LONG(Type) >= LONG(JET::END))) return NULL;
-   return glInputNames[LONG(Type)];
+   if ((int(Type) < 1) or (int(Type) >= int(JET::END))) return nullptr;
+   return glInputNames[int(Type)];
 }
 
 /*********************************************************************************************************************
@@ -53,7 +53,7 @@ A callback is required for receiving the input events.  The following C++ code i
 events in the callback:
 
 <pre>
-ERR consume_input_events(const InputEvent *Events, LONG Handle)
+ERR consume_input_events(const InputEvent *Events, int Handle)
 {
    for (auto e=Events; e; e=e->Next) {
       if (((e->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (e->Value > 0)) {
@@ -91,14 +91,14 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, LONG *Handle)
+ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, int *Handle)
 {
-   static LONG counter = 1;
+   static int counter = 1;
    pf::Log log(__FUNCTION__);
 
    if ((!Callback) or (!Handle)) return log.warning(ERR::NullArgs);
 
-   log.branch("Surface Filter: #%d, Mask: $%.4x", SurfaceFilter, LONG(InputMask));
+   log.branch("Surface Filter: #%d, Mask: $%.4x", SurfaceFilter, int(InputMask));
 
    const std::lock_guard<std::recursive_mutex> lock(glInputLock);
 
@@ -110,8 +110,7 @@ ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, 
       .Callback      = *Callback
    };
 
-   if (glInputEvents.processing) glNewSubscriptions.push_back(std::make_pair(*Handle, is));
-   else glInputCallbacks.emplace(*Handle, is);
+   glInputCallbacks.emplace(*Handle, is);
 
    return ERR::Okay;
 }
@@ -134,7 +133,7 @@ NotFound
 
 *********************************************************************************************************************/
 
-ERR UnsubscribeInput(LONG Handle)
+ERR UnsubscribeInput(int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -146,12 +145,7 @@ ERR UnsubscribeInput(LONG Handle)
 
    auto it = glInputCallbacks.find(Handle);
    if (it IS glInputCallbacks.end()) return log.warning(ERR::NotFound);
-   else {
-      if (glInputEvents.processing) { // Cannot erase during input processing
-         clearmem(&it->second, sizeof(it->second));
-      }
-      else glInputCallbacks.erase(it);
-   }
+   else glInputCallbacks.erase(it);
 
    return ERR::Okay;
 }
@@ -163,65 +157,74 @@ ERR UnsubscribeInput(LONG Handle)
 // that need to be processed.
 //
 // Input events are sent to each subscriber as a dynamically constructed linked-list of filtered input events.
+//
+// The copying of events isn't necessarily optimal in most cases, but it is the safest methodology and prevents
+// issues from arising if the event queue is modified during the callback.
+
+struct input_call {
+   int handle;
+   FUNCTION callback;
+   std::vector<InputEvent> events;
+
+   input_call(int pHandle, FUNCTION pCallback, int pEventCount) :
+      handle(pHandle), callback(pCallback) { events.reserve(pEventCount); }
+};
 
 void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
 {
    glInputLock.lock();
 
-   if ((glInputEvents.empty()) or (glInputEvents.processing)) {
+   if (glInputEvents.empty()) {
       glInputLock.unlock();
       return;
    }
 
-   // retarget() ensures that incoming input events during callback will target a secondary buffer and prevent an
-   // unstable std::vector
+   // Buffer the callbacks that we need to make so that no conflicts occur with the input event queue
+   // or the callback queue.
 
-   auto events = glInputEvents.retarget();
-
-   glInputEvents.processing = true;
+   std::vector<input_call> input_buffer;
+   input_buffer.reserve(glInputCallbacks.size());
 
    for (const auto & [ handle, sub ] : glInputCallbacks) {
-      InputEvent *last = NULL, *first = NULL;
-      for (auto &event : events) {
+      int event_count = 0;
+      for (auto &event : glInputEvents) {
          if (((event.RecipientID IS sub.SurfaceFilter) or (!sub.SurfaceFilter)) and ((event.Flags & sub.InputMask) != JTYPE::NIL)) {
-            if (last) last->Next = &event;
-            else first = &event;
-            last = &event;
+            event_count++;
          }
       }
 
-      if (first) {
-         last->Next = NULL;
-
-         glInputLock.unlock();
-
-         auto &cb = sub.Callback;
-         if (sub.Callback.isC()) {
-            pf::ScopedObjectLock lock(OBJECTPTR(cb.Context), 2000); // Ensure that the object can't be removed until after input processing
-            if (lock.granted()) {
-               pf::SwitchContext ctx(cb.Context);
-               auto func = (ERR (*)(InputEvent *, LONG, APTR))cb.Routine;
-               func(first, handle, cb.Meta);
+      if (event_count) {
+         auto &n = input_buffer.emplace_back(input_call { handle, sub.Callback, event_count });
+         for (auto &event : glInputEvents) {
+            if (((event.RecipientID IS sub.SurfaceFilter) or (!sub.SurfaceFilter)) and ((event.Flags & sub.InputMask) != JTYPE::NIL)) {
+               n.events.push_back(event);
+               n.events.back().Next = &n.events.back() + 1;
             }
          }
-         else if (sub.Callback.isScript()) {
-            sc::Call(sub.Callback, std::to_array<ScriptArg>({
-               { "Events:InputEvent", first, FD_PTR|FDF_STRUCT },
-               { "Handle", handle }
-            }));
-         }
-
-         glInputLock.lock();
+         n.events.back().Next = nullptr;
       }
    }
 
-   glInputEvents.processing = false;
-
-   if (!glNewSubscriptions.empty()) {
-      for (auto &sub : glNewSubscriptions) glInputCallbacks[sub.first] = sub.second;
-      glNewSubscriptions.clear();
-   }
+   glInputEvents.clear();
 
    glInputLock.unlock();
+
+   for (auto &sub : input_buffer) {
+      auto &cb = sub.callback;
+      if (sub.callback.isC()) {
+         pf::ScopedObjectLock lock(OBJECTPTR(cb.Context), 2000); // Ensure that the object can't be removed until after input processing
+         if (lock.granted()) {
+            pf::SwitchContext ctx(cb.Context);
+            auto func = (ERR (*)(InputEvent *, int, APTR))cb.Routine;
+            func(sub.events.data(), sub.handle, cb.Meta);
+         }
+      }
+      else if (sub.callback.isScript()) {
+         sc::Call(sub.callback, std::to_array<ScriptArg>({
+            { "Events:InputEvent", sub.events.data(), FD_PTR|FDF_STRUCT },
+            { "Handle", sub.handle }
+         }));
+      }
+   }
 }
 
