@@ -1159,7 +1159,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>This function can be used by classes that need fine-tuned control over notification events, as managed by the <function>SubscribeAction</function> function.  Normally the Core will automatically notify subscribers after an action is executed.  Using NotifySubscribers(), the client can instead manually notify subscribers during the execution of the action.</p>
 <p>Another useful aspect is that the client can control the parameter values that are passed on to the subscribers.</p>
 <p>NOTE: The use of NotifySubscribers() does not prevent the core from sending out an action notification as it normally would, which will cause duplication.  To prevent this, the client must logical-or the return code of the action function with <code>ERR::Notified</code>, e.g. <code>ERR::Okay|ERR::Notified</code>.</p>
-<p>In the following example you can see how the <class name="Surface">Surface</class> class uses NotifySubscribers() to convert a Move event to a Redimension event.  The parameter values are customised to support this, and the function returns <code>ERR::Notified</code> to prevent the core from sending out a Move notification.</p>
+<p>In the following example the <class name="Surface">Surface</class> class uses NotifySubscribers() to convert a Move event to a Redimension event.  The parameter values are customised to support this, and the function returns <code>ERR::Notified</code> to prevent the core from sending out a Move notification.</p>
 <pre>ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 {
    if (!Args) return ERR::NullArgs|ERR::Notified;

@@ -1375,7 +1375,7 @@ NOTE: The use of NotifySubscribers() does not prevent the core from sending out 
 normally would, which will cause duplication.  To prevent this, the client must logical-or the return code of
 the action function with `ERR::Notified`, e.g. `ERR::Okay|ERR::Notified`.
 
-In the following example you can see how the @Surface class uses NotifySubscribers() to convert a Move event to a
+In the following example the @Surface class uses NotifySubscribers() to convert a Move event to a
 Redimension event.  The parameter values are customised to support this, and the function returns `ERR::Notified` to
 prevent the core from sending out a Move notification.
 

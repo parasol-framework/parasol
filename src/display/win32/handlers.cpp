@@ -12,7 +12,7 @@ Notes
 
 namespace display {
 
-void MsgKeyPress(KQ Flags, KEY Value, LONG Printable)
+void MsgKeyPress(KQ Flags, KEY Value, int Printable)
 {
    if (Value IS KEY::NIL) return;
 
@@ -48,7 +48,7 @@ void MsgKeyRelease(int Flags, int Value) { MsgKeyRelease(KQ(Flags), KEY(Value));
 
 //********************************************************************************************************************
 
-void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG WinY, bool NonClient)
+void MsgMovement(OBJECTID SurfaceID, double AbsX, double AbsY, int WinX, int WinY, bool NonClient)
 {
    if (auto pointer = gfx::AccessPointer(); pointer) {
       pointer->set(FID_Surface, SurfaceID);  // Alter the surface of the pointer so that it refers to the correct root window
@@ -59,15 +59,14 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
          .Flags = NonClient ? JTYPE::SECONDARY : JTYPE::NIL,
          .Type  = JET::ABS_XY
       };
-
-      acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(joy));
+      acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT, &joy, sizeof(joy));
       ReleaseObject(pointer);
    }
 }
 
 //********************************************************************************************************************
 
-void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
+void MsgWheelMovement(OBJECTID SurfaceID, float Wheel)
 {
    if (!glPointerID) {
       if (FindObject("SystemPointer", CLASSID::NIL, FOF::NIL, &glPointerID) != ERR::Okay) return;
@@ -81,14 +80,14 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
          .Type      = JET::WHEEL
       };
 
-      acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(joy));
+      acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT, &joy, sizeof(joy));
       ReleaseObject(pointer);
    }
 }
 
 //********************************************************************************************************************
 
-void MsgFocusState(OBJECTID SurfaceID, LONG State)
+void MsgFocusState(OBJECTID SurfaceID, int State)
 {
    //log.msg("Windows focus state for surface #%d: %d", SurfaceID, State);
 
@@ -106,13 +105,13 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
 // If a button press is incoming from the non-client area (e.g. titlebar, resize edge) then the SECONDARY flag is
 // applied.
 
-void MsgButtonPress(LONG button, LONG State)
+void MsgButtonPress(int button, int State)
 {
    if (auto pointer = gfx::AccessPointer()) {
       struct dcDeviceInput joy[3];
 
-      LONG i = 0;
-      LARGE timestamp = PreciseTime();
+      int i = 0;
+      int64_t timestamp = PreciseTime();
 
       if (button & 0x0001) {
          joy[i].Type  = JET::BUTTON_1;
@@ -138,7 +137,7 @@ void MsgButtonPress(LONG button, LONG State)
          i++;
       }
 
-      if (i) acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &joy, sizeof(struct dcDeviceInput) * i);
+      if (i) acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT, &joy, sizeof(struct dcDeviceInput) * i);
 
       ReleaseObject(pointer);
    }
@@ -146,8 +145,8 @@ void MsgButtonPress(LONG button, LONG State)
 
 //********************************************************************************************************************
 
-void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, LONG WinHeight,
-   LONG ClientX, LONG ClientY, LONG ClientWidth, LONG ClientHeight)
+void MsgResizedWindow(OBJECTID SurfaceID, int WinX, int WinY, int WinWidth, int WinHeight,
+   int ClientX, int ClientY, int ClientWidth, int ClientHeight)
 {
    pf::Log log("ResizedWindow");
    //log.branch("#%d, Window: %dx%d,%dx%d, Client: %dx%d,%dx%d", SurfaceID, WinX, WinY, WinWidth, WinHeight, ClientX, ClientY, ClientWidth, ClientHeight);
@@ -199,16 +198,16 @@ void MsgSetFocus(OBJECTID SurfaceID)
 // Called from WM_SIZE and WM_SIZING events to confirm that the requested window size is within the limits set by the
 // surface object.
 
-void CheckWindowSize(OBJECTID SurfaceID, LONG &Width, LONG &Height, LONG CurrentWidth, LONG CurrentHeight, LONG Axis)
+void CheckWindowSize(OBJECTID SurfaceID, int &Width, int &Height, int CurrentWidth, int CurrentHeight, int Axis)
 {
    if (!SurfaceID) return;
    if ((Width IS CurrentWidth) and (Height IS CurrentHeight)) return;
 
    if (ScopedObjectLock<objSurface> surface(SurfaceID, 3000); surface.granted()) {
-      auto min_width  = surface->get<LONG>(FID_MinWidth);
-      auto min_height = surface->get<LONG>(FID_MinHeight);
-      auto max_width  = surface->get<LONG>(FID_MaxWidth);
-      auto max_height = surface->get<LONG>(FID_MaxHeight);
+      auto min_width  = surface->get<int>(FID_MinWidth);
+      auto min_height = surface->get<int>(FID_MinHeight);
+      auto max_width  = surface->get<int>(FID_MaxWidth);
+      auto max_height = surface->get<int>(FID_MaxHeight);
 
       if ((min_width > 0) and (Width < min_width))    Width  = min_width; 
       if ((min_height > 0) and (Height < min_height)) Height = min_height;
@@ -240,7 +239,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG &Width, LONG &Height, LONG Current
 
 //********************************************************************************************************************
 
-void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
+void RepaintWindow(OBJECTID SurfaceID, int X, int Y, int Width, int Height)
 {
    pf::ScopedObjectLock<objSurface> surface(SurfaceID);
 

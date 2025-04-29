@@ -1710,10 +1710,10 @@ struct FieldValue {
 
 class FloatRect {
    public:
-   double X;    // Left-most coordinate
-   double Y;     // Top coordinate
-   double Width;   // Right-most coordinate
-   double Height;  // Bottom coordinate
+   double X;      // Left-most coordinate
+   double Y;      // Top coordinate
+   double Width;  // Right-most coordinate
+   double Height; // Bottom coordinate
    FloatRect() { }
    FloatRect(double Value) : X(Value), Y(Value), Width(Value), Height(Value) { }
    FloatRect(double pX, double pY, double pWidth, double pHeight) : X(pX), Y(pY), Width(pWidth), Height(pHeight) { }
@@ -1975,9 +1975,9 @@ struct DirInfo {
    STRING prvResolvedPath;  // Resolved folder location
    RDF    prvFlags;         // OpenFolder() RDF flags
    int    prvTotal;         // Total number of items in the folder
-   uint32_t prvVirtualID;     // Unique ID (name hash) for a virtual device
+   uint32_t prvVirtualID;   // Unique ID (name hash) for a virtual device
    union {
-      int prvIndex;        // Current index within the folder when scanning
+      int prvIndex;         // Current index within the folder when scanning
       APTR prvIndexPtr;
    };
    WORD   prvResolveLen;    // Byte length of ResolvedPath

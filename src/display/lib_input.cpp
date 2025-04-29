@@ -11,7 +11,9 @@ Name: Input
 static std::unordered_map<LONG, InputCallback> glInputCallbacks;
 static std::vector<std::pair<LONG, InputCallback>> glNewSubscriptions;
 EventBuffer glInputEvents;
-namespace gfx{
+
+namespace gfx {
+
 /*********************************************************************************************************************
 
 -FUNCTION-
