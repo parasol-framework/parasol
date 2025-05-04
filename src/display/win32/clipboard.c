@@ -101,7 +101,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragEnter(struct rkDropTarget *Self, IData
 void report_windows_clip_text(void *);
 void report_windows_clip_utf16(void *);
 void report_windows_files(LPIDA, int);
-void report_windows_hdrop(LPIDA, int);
+void report_windows_hdrop(LPIDA, int, char);
 
 void winCopyClipboard(void);
 
@@ -882,8 +882,9 @@ void winCopyClipboard(void)
                      ReleaseStgMedium(&effect);
                   }
 
-                  if ((pida = (LPIDA)GlobalLock(stgm.hGlobal))) {
-                     report_windows_hdrop(pida, cut_operation);
+                  DROPFILES *df;
+                  if ((df = (DROPFILES *)GlobalLock(stgm.hGlobal))) {
+                     report_windows_hdrop(((const char *)df) + df->pFiles, cut_operation, df->fWide);
                      GlobalUnlock(stgm.hGlobal);
                   }
                }

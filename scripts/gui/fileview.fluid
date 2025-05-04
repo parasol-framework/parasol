@@ -413,7 +413,7 @@ local function pasteFromClipboard(Folder)
    if not file.isFolder(Folder) then error('Invalid folder target of ' .. Folder) end
 
    local paste_script = obj.new('script', { statement = [[
-   require 'io/filecopy'
+   require 'io/filemgr'
    file.ui.paste(arg('dest'))
 ]] })
    paste_script.acSetKey('dest', Folder)

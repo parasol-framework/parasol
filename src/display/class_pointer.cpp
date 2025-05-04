@@ -141,7 +141,7 @@ static ERR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
             if ((Self->Buttons[i].LastClicked) and (CheckObjectExists(Self->Buttons[i].LastClicked) != ERR::Okay)) Self->Buttons[i].LastClicked = 0;
          }
 
-         for (auto i=sizeof(struct dcDeviceInput); i <= Args->Size; i+=sizeof(struct dcDeviceInput), input++) {
+         for (auto i=sizeof(struct dcDeviceInput); i <= (size_t)Args->Size; i+=sizeof(struct dcDeviceInput), input++) {
             if ((int(input->Type) < 1) or (int(input->Type) >= int(JET::END))) continue;
 
             input->Flags |= glInputType[int(input->Type)].Flags;

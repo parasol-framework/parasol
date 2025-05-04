@@ -85,6 +85,7 @@ file.ui.paste = function(Dest)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- NB: This call can block if it needs a response from the user.  It does not return until the copy is complete.
 
 file.ui.copy = function(Source, Dest, Move)
    if type(Source) == 'string' then Source = { Source } end
@@ -191,8 +192,9 @@ file.ui.copy = function(Source, Dest, Move)
             elseif err == ERR_Permissions then
                message = 'You do not have the necessary permissions to copy this file:\n\n' .. src_file
             else
+               local emsg = mSys.GetErrorMsg(err)
                message = 'An error occurred while copying this file:\n\n'
-                  .. src_file .. '\n\n' .. mSys.GetErrorMsg(err) .. '.  Process cancelled.'
+                  .. src_file .. '\n\n' .. emsg .. '  Process cancelled.'
             end
 
             local dlg = gui.dialog.error('File Paste Failure', message)
