@@ -61,7 +61,7 @@ ERR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
    OBJECTPTR obj;
    if (AccessObject(((OBJECTID *)Message)[0], 10000, &obj) IS ERR::Okay) {
       // Use PermitTerminate to inform object_free() that the object can be terminated safely while the lock is held.
-      obj->PermitTerminate = true;
+      obj->Flags |= NF::PERMIT_TERMINATE;
       FreeResource(obj);
    }
    return ERR::Okay;
@@ -88,7 +88,7 @@ static ERR object_free(Object *Object)
    // If the object is locked then we mark it for collection and return.
    // Collection is achieved via the message queue for maximum safety.
 
-   if ((Object->Queue > 1) and (!Object->PermitTerminate)) {
+   if ((Object->Queue > 1) and (!Object->defined(NF::PERMIT_TERMINATE))) {
       log.detail("Object #%d locked; marking for deletion.", Object->UID);
       if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL; // The Owner pointer is no longer safe to use
       Object->Flags |= NF::FREE_ON_UNLOCK;
@@ -811,12 +811,11 @@ FindObject: Searches for objects by name.
 
 The FindObject() function searches for all objects that match a given name and can filter by class.
 
-The following example is a typical illustration of this function's use.  It finds the most recent object created
-with a given name:
+The following example illustrates typical usage, and finds the most recent object created with a given name:
 
 <pre>
 OBJECTID id;
-FindObject("SystemPointer", CLASSID::POINTER, 0, &id);
+FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &id);
 </pre>
 
 If FindObject() cannot find any matching objects then it will return an error code.
@@ -1376,7 +1375,7 @@ NOTE: The use of NotifySubscribers() does not prevent the core from sending out 
 normally would, which will cause duplication.  To prevent this, the client must logical-or the return code of
 the action function with `ERR::Notified`, e.g. `ERR::Okay|ERR::Notified`.
 
-In the following example you can see how the @Surface class uses NotifySubscribers() to convert a Move event to a
+In the following example the @Surface class uses NotifySubscribers() to convert a Move event to a
 Redimension event.  The parameter values are customised to support this, and the function returns `ERR::Notified` to
 prevent the core from sending out a Move notification.
 

@@ -85,7 +85,7 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     "COMPOSITE|NO_PRECOMPOSITE|POST_COMPOSITE: Do not copy background information into the surface buffer - composite on the fly instead",
     "FULL_SCREEN: Allow the surface to open as a new screen display",
     "IGNORE_FOCUS: Focus is diverted directly to the parent",
-    "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by @Surface.MinWidth and @Surface.MinHeight.",
+    "ASPECT_RATIO: When resizing, enforce the aspect ratio as defined by the diagonal from @Surface.MinWidth, @Surface.MinHeight to @Surface.MaxWidth, @Surface.MaxHeight.",
     { VOLATILE = "PRECOPY|AFTER_COPY|CURSOR" },
     { READ_ONLY = "HAS_FOCUS|CURSOR|AFTER_COPY" },
     { INIT_ONLY = "HOST|TRANSPARENT|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
@@ -136,6 +136,14 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
      "CHUNKY: Chunky pixel mode (default).")
 
+  enum("BLM", { type="int", start=0, comment="Defines the blending algorithm to use when transparent pixels are rendered to the bitmap." },
+    "AUTO: Use the most suitable of the available algorithms.",
+    "NONE: Never blend transparent pixels, just copy as-is.",
+    "SRGB: Use sRGB linear blending.  This algorithm is extremely efficient but produces poor quality results.",
+    "GAMMA: Use gamma correct blending.  This algorithm is slow but produces a high quality result.",
+    "LINEAR: Use linear blending.  Applicable if the bitmap is in linear colour space."
+  )
+
   flags("BMF", { comment="Bitmap flags" },
     "BLANK_PALETTE: Forces a blank/black palette on initialisation.",
     "COMPRESSED: The bitmap data is compressed.",
@@ -152,7 +160,6 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     "NEVER_SHRINK: Ignore resize requests that would shrink the size of the bitmap.",
     "X11_DGA: Private DGA indicator.",
     "FIXED_DEPTH: Prevent changing of bitmap depth after initialisation (e.g. via `Resize()`).",
-    "NO_BLEND: Drawing routines that support this flag will not blend pixels.",
     "PREMUL: The RGB values are premultiplied (32-bit only)."
   )
 
@@ -358,6 +365,7 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     int   BitsPerPixel          # 1, 8, 15, 16, 24, 32
     int   Position              # Current byte position for reading and writing
     int   Opacity               # Opacity setting to use in drawing operations
+    int(BLM) BlendMode          # Preferred method to use when blending pixels
     struct(RGB8) TransColour    # The transparent colour of the bitmap.
     struct(RGB8) Bkgd           # Background colour (for clearing, resizing)
     int BkgdIndex               # Colour index or packed colour of the background.
@@ -550,10 +558,6 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
     oid Buffer            # Buffer bitmap (backing store)
     oid Parent            # Graphical container of the Surface object, if any
     oid PopOver           # Keeps a surface in front of another surface in the Z order.
-    int TopMargin         # Top movement limit
-    int BottomMargin      # Bottom movement limit
-    int LeftMargin        # Left movement limit
-    int RightMargin       # Right movement limit
     int MinWidth          # Minimum width setting
     int MinHeight         # Minimum height setting
     int MaxWidth          # Maximum width setting

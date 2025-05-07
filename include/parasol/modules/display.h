@@ -237,6 +237,17 @@ enum class BMP : LONG {
    CHUNKY = 3,
 };
 
+// Defines the blending algorithm to use when transparent pixels are rendered to the bitmap.
+
+enum class BLM : LONG {
+   NIL = 0,
+   AUTO = 0,
+   NONE = 1,
+   SRGB = 2,
+   GAMMA = 3,
+   LINEAR = 4,
+};
+
 // Bitmap flags
 
 enum class BMF : ULONG {
@@ -256,8 +267,7 @@ enum class BMF : ULONG {
    NEVER_SHRINK = 0x00001000,
    X11_DGA = 0x00002000,
    FIXED_DEPTH = 0x00004000,
-   NO_BLEND = 0x00008000,
-   PREMUL = 0x00010000,
+   PREMUL = 0x00008000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(BMF)
@@ -528,6 +538,7 @@ class objBitmap : public Object {
    LONG    BitsPerPixel;                                             // The number of bits per pixel
    LONG    Position;                                                 // The current read/write data position.
    LONG    Opacity;                                                  // Determines the translucency setting to use in drawing operations.
+   BLM     BlendMode;                                                // Defines the blending algorithm to use when rendering transparent pixels.
    struct RGB8 TransColour;                                          // The transparent colour of the bitmap, in RGB format.
    struct RGB8 Bkgd;                                                 // The bitmap's background colour is defined here in RGB format.
    LONG    BkgdIndex;                                                // The bitmap's background colour is defined here as a colour index.
@@ -797,6 +808,11 @@ class objBitmap : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setBlendMode(const BLM Value) noexcept {
+      this->BlendMode = Value;
+      return ERR::Okay;
+   }
+
    inline ERR setTransColour(const struct RGB8 * Value, LONG Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
@@ -840,7 +856,7 @@ class objBitmap : public Object {
 
    inline ERR setClipTop(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[36];
+      auto field = &this->Class->Dictionary[37];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1350,10 +1366,6 @@ class objSurface : public Object {
    OBJECTID BufferID;   // The ID of the bitmap that manages the surface's graphics.
    OBJECTID ParentID;   // The parent for a surface is defined here.
    OBJECTID PopOverID;  // Keeps a surface in front of another surface in the Z order.
-   LONG     TopMargin;  // Manipulates the top margin of a surface object.
-   LONG     BottomMargin; // Manipulates the bottom margin of a surface object.
-   LONG     LeftMargin; // Manipulates the left margin of a surface object.
-   LONG     RightMargin; // Manipulates the right margin of a surface object.
    LONG     MinWidth;   // Prevents the width of a surface object from shrinking beyond a certain value.
    LONG     MinHeight;  // Prevents the height of a surface object from shrinking beyond a certain value.
    LONG     MaxWidth;   // Prevents the width of a surface object from exceeding a certain value.
@@ -1489,35 +1501,13 @@ class objSurface : public Object {
 
    inline ERR setPopOver(OBJECTID Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[40];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERR setTopMargin(const LONG Value) noexcept {
-      this->TopMargin = Value;
-      return ERR::Okay;
-   }
-
-   inline ERR setBottomMargin(const LONG Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[43];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERR setLeftMargin(const LONG Value) noexcept {
-      this->LeftMargin = Value;
-      return ERR::Okay;
-   }
-
-   inline ERR setRightMargin(const LONG Value) noexcept {
-      auto target = this;
       auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setMinWidth(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[37];
+      auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1553,13 +1543,13 @@ class objSurface : public Object {
 
    inline ERR setTopLimit(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[52];
+      auto field = &this->Class->Dictionary[46];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setBottomLimit(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[50];
+      auto field = &this->Class->Dictionary[44];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1610,7 +1600,7 @@ class objSurface : public Object {
 
    inline ERR setCursor(const PTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[53];
+      auto field = &this->Class->Dictionary[47];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1633,7 +1623,7 @@ class objSurface : public Object {
 
    inline ERR setRootLayer(OBJECTID Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[39];
+      auto field = &this->Class->Dictionary[37];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -1651,19 +1641,7 @@ class objSurface : public Object {
 
    inline ERR setBitsPerPixel(const LONG Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[41];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERR setInsideHeight(const LONG Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[47];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERR setInsideWidth(const LONG Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[36];
+      auto field = &this->Class->Dictionary[39];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 

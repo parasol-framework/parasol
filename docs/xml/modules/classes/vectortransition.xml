@@ -6,7 +6,7 @@
     <name>VectorTransition</name>
     <type>class</type>
     <module>Vector</module>
-    <comment>Transitions are used to gradually apply transforms over distance.</comment>
+    <comment>Transitions are used to incrementally apply transforms over distance.</comment>
     <version>1</version>
     <id>a7c89dc3</id>
     <idstring>VECTORTRANSITION</idstring>

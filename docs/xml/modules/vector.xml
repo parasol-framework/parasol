@@ -914,20 +914,17 @@ Z: Close Path
     <constants lookup="VSM">
       <const name="AUTO">The default option is chosen by the system.  This will typically be <code>BILINEAR</code>, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</const>
       <const name="BESSEL"/>
-      <const name="BICUBIC">Produces a similar result to <code>BILINEAR</code> with a marginally sharper after-effect.</const>
+      <const name="BICUBIC">Produces a similar result to <code>BILINEAR</code> at a slightly higher CPU cost and a marginally sharper after-effect.</const>
       <const name="BILINEAR">Bilinear is a common algorithm that produces a reasonable quality image quickly.</const>
-      <const name="BLACKMAN3">Five times slower than <code>BILINEAR</code>, the final result will lack sharpness when compared to SINC3.</const>
-      <const name="BLACKMAN8">15 times slower than <code>BILINEAR</code>, the final result is of excellent quality and sharpness is well balanced.</const>
+      <const name="BLACKMAN">Five times slower than <code>BILINEAR</code>, the final result will be less sharp than SINC.</const>
       <const name="GAUSSIAN"/>
       <const name="KAISER"/>
-      <const name="LANCZOS3">This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with <code>SINC</code> and <code>BLACKMAN</code>.</const>
-      <const name="LANCZOS8"/>
+      <const name="LANCZOS">This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with <code>SINC</code> and <code>BLACKMAN</code>.</const>
       <const name="MITCHELL"/>
       <const name="NEIGHBOUR">Nearest neighbour is the fastest sampler at the cost of poor quality.</const>
       <const name="QUADRIC"/>
-      <const name="SINC3">Five times slower than <code>BILINEAR</code>, the final result is of very good quality.</const>
-      <const name="SINC8">15 times slower than <code>BILINEAR</code>, the final result is of excellent quality but may be marginally over-sharpened.</const>
-      <const name="SPLINE16">About half the speed of <code>BILINEAR</code>, this method produces a considerably better result.</const>
+      <const name="SINC">Five times slower than <code>BILINEAR</code>, the final result is of very good quality.</const>
+      <const name="SPLINE16">About twice as slow as <code>BILINEAR</code>, this method produces a considerably better result, and is a good choice for enlarging images without producing artifacts when contrasting colours are present.</const>
     </constants>
 
     <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">

@@ -1351,7 +1351,7 @@ int MinWidth: The minimum width of the window.
 int MinHeight: The minimum height of the window.
 int MaxWidth: The maximum width of the window.
 int MaxHeight: The maximum width of the window.
-int EnforceAspect: Set to true to enforce an aspect ratio that is scaled by MinHeight / MinWidth.
+int EnforceAspect: Set to true to enforce an aspect ratio that is scaled from MinWidth,MinHeight to MaxWidth,MaxHeight.
 
 -ERRORS-
 Okay
@@ -1360,7 +1360,7 @@ NoSupport: The host platform does not support this feature.
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SizeHints(extDisplay *Self, struct gfx::SizeHints *Args)
+static ERR DISPLAY_SizeHints(extDisplay *Self, gfx::SizeHints *Args)
 {
 #ifdef __xwindows__
    XSizeHints hints = { .flags = 0 };
@@ -1425,7 +1425,7 @@ Failed: Failed to switch to the requested display mode.
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetDisplay(extDisplay *Self, struct gfx::SetDisplay *Args)
+static ERR DISPLAY_SetDisplay(extDisplay *Self, gfx::SetDisplay *Args)
 {
    pf::Log log;
 
@@ -1526,7 +1526,7 @@ NoSupport: The graphics hardware does not support gamma correction.
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetGamma(extDisplay *Self, struct gfx::SetGamma *Args)
+static ERR DISPLAY_SetGamma(extDisplay *Self, gfx::SetGamma *Args)
 {
 #ifdef __snap__
    pf::Log log;
@@ -1588,7 +1588,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfx::SetGammaLinear *Args)
+static ERR DISPLAY_SetGammaLinear(extDisplay *Self, gfx::SetGammaLinear *Args)
 {
 #ifdef __snap__
    pf::Log log;
@@ -1666,7 +1666,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_SetMonitor(extDisplay *Self, struct gfx::SetMonitor *Args)
+static ERR DISPLAY_SetMonitor(extDisplay *Self, gfx::SetMonitor *Args)
 {
 #ifdef __snap__
    pf::Log log;
@@ -1888,7 +1888,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-static ERR DISPLAY_UpdatePalette(extDisplay *Self, struct gfx::UpdatePalette *Args)
+static ERR DISPLAY_UpdatePalette(extDisplay *Self, gfx::UpdatePalette *Args)
 {
    pf::Log log;
 
@@ -2190,13 +2190,8 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
 
             // Report the new window dimensions
 
-            int winx, winy, winwidth, winheight, cx, cy, cwidth, cheight;
-            winGetCoords(Self->WindowHandle, &winx, &winy, &winwidth, &winheight, &cx, &cy, &cwidth, &cheight);
-
-            Self->X = winx;
-            Self->Y = winy;
-            Self->Width  = winwidth;
-            Self->Height = winheight;
+            int cx, cy, cwidth, cheight;
+            winGetCoords(Self->WindowHandle, Self->X, Self->Y, Self->Width, Self->Height, cx, cy, cwidth, cheight);
 
             resize_feedback(&Self->ResizeFeedback, Self->UID, cx, cy, cwidth, cheight);
 

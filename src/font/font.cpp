@@ -47,7 +47,6 @@ Google Fonts Knowledge page: https://fonts.google.com/knowledge
 #include <parasol/strings.hpp>
 #include "../link/unicode.h"
 
-
 using namespace pf;
 
 //********************************************************************************************************************
@@ -456,7 +455,7 @@ ERR GetList(FontList **Result)
 
       FontList *list, *last_list = NULL;
       if (AllocMemory(size, MEM::DATA, &list) IS ERR::Okay) {
-         STRING buffer = (STRING)(list + groups->size());
+         auto buffer = (STRING)(list + groups->size());
          *Result = list;
 
          for (auto & [group, keys] : groups[0]) {

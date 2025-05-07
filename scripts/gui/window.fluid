@@ -45,6 +45,7 @@ gui.window = function(Options)
       minimiseEnabled = nz(Options.minimise, true),
       maximiseEnabled = nz(Options.maximise, true),
       moveToBackEnabled = nz(Options.moveToBack, true),
+      invertedPalette = Options.invertPalette,
       closeEnabled = nz(Options.close, true),
       focus        = nz(Options.focus, true),
       quit         = nz(Options.quit, true),
@@ -56,12 +57,15 @@ gui.window = function(Options)
       menubar      = Options.menubar, -- Menubar configuration
       margins      = { left, right, top, bottom },
       surface      = nil, -- Client access to the surface is permitted
+      textFill     = gui.style.window.text, -- Recommended fill for overlayed text
       viewport     = nil -- The window's top-level viewport
    }
 
    self.clientViewport = function(self, Options)
       if self._clientViewport then return self._clientViewport end
       if not Options then Options = { } end
+
+      if not Options.aspectRatio then Options.aspectRatio = 'XMin|YMin|Meet' end
 
       if hosted(self) then
          Options.x = 0
@@ -94,8 +98,6 @@ gui.window = function(Options)
          }
       end
    end
-
-   -- Returns the size of the client area.  The (x,y) values
 
    self.getClientSize = function(self)
       if hosted(self) then
@@ -276,7 +278,40 @@ gui.window = function(Options)
       end
    end
 
-   self.show = function(self)
+   self.show = function(self, Center)
+      if Options.center or Center then -- Options.center is obsolete
+         local x, y = (function()
+            if self.surface.popOver then
+               local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popOver)
+               if err == ERR_Okay then
+                  x = x + ((powidth - self.surface.width) / 2)
+                  y = y + ((poheight - self.surface.height) / 2)
+                  local err, _, _, px, py, _, _ = mGfx.GetSurfaceCoords(self.surface.parent)
+                  if err == ERR_Okay then
+                     return x - px, y - py
+                  end
+               end
+            elseif self.surface.parent then
+               local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
+               if (err == ERR_Okay) then
+                  x = vx + ((vwidth - self.surface.width) / 2)
+                  y = vy + ((vheight - self.surface.height) / 2)
+                  --check_overlap(self, x, y, 0, 0)
+                  return x, y
+               end
+            else
+               local err, display = mGfx.GetDisplayInfo(0)
+               if err == ERR_Okay then
+                  return (display.width - self.surface.width) / 2, (display.height - self.surface.height) / 2
+               end
+            end
+         end)()
+
+         if x and y then
+            self.surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
+         end
+      end
+
       self.visible = true
       self.surface.acShow()
       if bit.band(self.surface.flags, RNF_HAS_FOCUS) != 0 then
@@ -303,15 +338,11 @@ gui.window = function(Options)
 
    self._desktop = obj.find('desktop')
 
-   self.surface = obj.new('surface', {
+   local surface_opts = {
       name      = 'winsurface',
       parent    = self._desktop,
       width     = nz(Options.width, DEFAULT_WIDTH),
       height    = nz(Options.height, DEFAULT_HEIGHT),
-      minWidth  = Options.minWidth,
-      minHeight = Options.minHeight,
-      maxWidth  = nz(Options.maxWidth, 4096),
-      maxHeight = nz(Options.maxHeight, 4096),
       type      = RT_ROOT,
       modal     = nz(Options.modal, false),
       popOver   = Options.popOver,
@@ -332,7 +363,14 @@ gui.window = function(Options)
 
          return flags
       end)()
-   })
+   }
+
+   if Options.minWidth  then surface_opts.minWidth  = Options.minWidth end
+   if Options.minHeight then surface_opts.minHeight = Options.minHeight end
+   if Options.maxWidth  then surface_opts.maxWidth  = Options.maxWidth end
+   if Options.maxHeight then surface_opts.maxHeight = Options.maxHeight end
+
+   self.surface = obj.new('surface', surface_opts)
 
    if Options.enableControllers then
       self.surface.display.flags = bit.bor(self.surface.display.flags, SCR_GRAB_CONTROLLERS)
@@ -371,11 +409,6 @@ gui.window = function(Options)
       self.margins = { left = 6, top = 6, right = 6, bottom = 6 }
    end
 
-   self.surface.leftMargin   = self.margins.left
-   self.surface.rightMargin  = self.margins.right
-   self.surface.topMargin    = self.margins.top
-   self.surface.bottomMargin = self.margins.bottom
-
    self.scene = self.surface.new('VectorScene', { flags=VPF_RESIZE, surface=self.surface })
 
    gui.configureScene(self, self.scene) -- Support GUI customisation
@@ -384,12 +417,21 @@ gui.window = function(Options)
       x       = 0,
       y       = 0,
       width   = '100%',
-      height  = '100%'
+      height  = '100%',
+      aspectRatio = 'XMin|YMin|Meet'
    })
 
    if hosted(self) then
+      local fill
+      if Options.invertPalette then
+         fill = gui.palette.base
+         self.textFill = gui.palette.altText
+      else
+         fill = gui.style.window.bkgd
+      end
+
       self.bkgd = self.viewport.new('VectorRectangle', {
-         fill   = gui.style.window.bkgd,
+         fill   = fill,
          x      = 0,
          y      = 0,
          width  = '100%',
@@ -434,39 +476,6 @@ gui.window = function(Options)
       end
    end
 
-   if Options.center then
-      local x, y = (function()
-         if (self.surface.popOver) then
-            local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popOver)
-            if (err == ERR_Okay) then
-               x = x + ((powidth - self.surface.width) / 2)
-               y = y + ((poheight - self.surface.height) / 2)
-               local err, _, _, px, py, _, _ = mGfx.GetSurfaceCoords(self.surface.parent)
-               if (err == ERR_Okay) then
-                  return x - px, y - py
-               end
-            end
-         elseif (self.surface.parent) then
-            local err, vx, vy, _, _, vwidth, vheight = mGfx.GetVisibleArea(self.surface.parent)
-            if (err == ERR_Okay) then
-               x = vx + ((vwidth - self.surface.width) / 2)
-               y = vy + ((vheight - self.surface.height) / 2)
-               --check_overlap(self, x, y, 0, 0)
-               return x, y
-            end
-         else
-            local err, display = mGfx.GetDisplayInfo(0)
-            if (err == ERR_Okay) then
-               return (display.width - self.surface.width) / 2, (display.height - self.surface.height) / 2
-            end
-         end
-      end)()
-
-      if x and y then
-         self.surface.acMoveToPoint(x, y, 0, bit.bor(MTF_X, MTF_Y))
-      end
-   end
-
    self.viewport.mtSubscribeFeedback(bit.bor(FM_HAS_FOCUS, FM_CHILD_HAS_FOCUS, FM_LOST_FOCUS), function(Viewport, Event)
       if (Event == FM_LOST_FOCUS) then
          if self.events and self.events.lostFocus then self.events.lostFocus(self) end
@@ -507,7 +516,7 @@ gui.window = function(Options)
 
    self.surface.subscribe('free', function(Surface, Args, self)
       if self.quit then
-         mSys.SendMessage(MSGID_QUIT, nil, nil, nil);
+         mSys.SendMessage(MSGID_QUIT)
       end
       table.clear(self)
    end, self)

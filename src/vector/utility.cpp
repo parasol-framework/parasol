@@ -1,10 +1,10 @@
 
 agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma(2.2);
-DOUBLE glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
+double glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 static HSV rgb_to_hsl(FRGB Colour) __attribute__((unused));
 static FRGB hsl_to_rgb(HSV Colour) __attribute__((unused));
-static void read_numseq_zero(CSTRING &, std::initializer_list<DOUBLE *>);
+static void read_numseq_zero(CSTRING &, std::initializer_list<double *>);
 
 //********************************************************************************************************************
 
@@ -18,21 +18,21 @@ const FieldDef clAspectRatio[] = {
    { "Meet",  ARF::MEET },
    { "Slice", ARF::SLICE },
    { "None",  ARF::NONE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 //********************************************************************************************************************
 
 static HSV rgb_to_hsl(FRGB Colour)
 {
-   DOUBLE vmax = std::ranges::max({ Colour.Red, Colour.Green, Colour.Blue });
-   DOUBLE vmin = std::ranges::min({ Colour.Red, Colour.Green, Colour.Blue });
-   DOUBLE light = (vmax + vmin) * 0.5;
+   double vmax = std::ranges::max({ Colour.Red, Colour.Green, Colour.Blue });
+   double vmin = std::ranges::min({ Colour.Red, Colour.Green, Colour.Blue });
+   double light = (vmax + vmin) * 0.5;
 
    if (vmax IS vmin) return HSV { 0, 0, light };
 
-   DOUBLE sat = light, hue = light;
-   DOUBLE d = vmax - vmin;
+   double sat = light, hue = light;
+   double d = vmax - vmin;
    sat = light > 0.5 ? d / (2 - vmax - vmin) : d / (vmax + vmin);
    if (vmax IS Colour.Red)   hue = (Colour.Green - Colour.Blue) / d + (Colour.Green < Colour.Blue ? 6.0 : 0.0);
    if (vmax IS Colour.Green) hue = (Colour.Blue  - Colour.Red) / d + 2.0;
@@ -46,26 +46,26 @@ static HSV rgb_to_hsl(FRGB Colour)
 
 static FRGB hsl_to_rgb(HSV Colour)
 {
-   auto hueToRgb = [](FLOAT p, FLOAT q, FLOAT t) -> FLOAT {
+   auto hueToRgb = [](float p, float q, float t) -> float {
       if (t < 0) t += 1;
       if (t > 1) t -= 1;
-      if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
-      if (t < 1.0/2.0) return q;
-      if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+      if (t < 1.0 / 6.0) return p + (q - p) * 6.0 * t;
+      if (t < 1.0 / 2.0) return q;
+      if (t < 2.0 / 3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
       return p;
    };
 
    if (Colour.Saturation == 0) {
-      return { FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Alpha) };
+      return { float(Colour.Value), float(Colour.Value), float(Colour.Value), float(Colour.Alpha) };
    }
    else {
-      const DOUBLE q = (Colour.Value < 0.5) ? Colour.Value * (1.0 + Colour.Saturation) : Colour.Value + Colour.Saturation - Colour.Value * Colour.Saturation;
-      const DOUBLE p = 2.0 * Colour.Value - q;
+      const double q = (Colour.Value < 0.5) ? Colour.Value * (1.0 + Colour.Saturation) : Colour.Value + Colour.Saturation - Colour.Value * Colour.Saturation;
+      const double p = 2.0 * Colour.Value - q;
       return {
          hueToRgb(p, q, Colour.Hue + 1.0/3.0),
          hueToRgb(p, q, Colour.Hue),
          hueToRgb(p, q, Colour.Hue - 1.0/3.0),
-         FLOAT(Colour.Alpha)
+         float(Colour.Alpha)
       };
    }
 }
@@ -74,7 +74,7 @@ static FRGB hsl_to_rgb(HSV Colour)
 
 CSTRING get_name(OBJECTPTR Vector)
 {
-   if (!Vector) return "NULL";
+   if (!Vector) return "nullptr";
 
    switch(Vector->classID()) {
       case CLASSID::VECTORCLIP:      return "Clip";
@@ -107,8 +107,8 @@ CSTRING get_name(OBJECTPTR Vector)
 
 static void update_dpi(void)
 {
-   static LARGE last_update = -0x7fffffff;
-   LARGE current_time = PreciseTime();
+   static int64_t last_update = -0x7fffffff;
+   int64_t current_time = PreciseTime();
 
    if (current_time - last_update > 3000000LL) {
       DISPLAYINFO *display;
@@ -138,7 +138,7 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
    PathCommand path;
 
-   LONG max_cmds = 8192; // Maximum commands per path - this acts as a safety net in case the parser gets stuck.
+   int max_cmds = 8192; // Maximum commands per path - this acts as a safety net in case the parser gets stuck.
    UBYTE cmd = 0;
    while (*Value) {
       if (std::isalpha(*Value)) cmd = *Value++;
@@ -204,7 +204,7 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
             break;
 
          case 'A': case 'a': { // Arc
-            DOUBLE largearc, sweep;
+            double largearc, sweep;
             read_numseq_zero(Value, { &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y });
             path.LargeArc = F2T(largearc);
             path.Sweep = F2T(sweep);
@@ -250,10 +250,8 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 // Source* defines size of the source area (in SVG, the 'viewbox')
 // Target* defines the size of the projection to the display.
 
-void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
-   DOUBLE TargetWidth, DOUBLE TargetHeight,
-   DOUBLE SourceWidth, DOUBLE SourceHeight,
-   DOUBLE *X, DOUBLE *Y, DOUBLE *XScale, DOUBLE *YScale)
+void calc_aspectratio(CSTRING Caller, ARF AspectRatio, double TargetWidth, double TargetHeight,
+   double SourceWidth, double SourceHeight, double &X, double &Y, double &XScale, double &YScale)
 {
    pf::Log log(Caller);
 
@@ -269,8 +267,8 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
    if (SourceHeight <= DBL_MIN) SourceHeight = TargetHeight;
 
    if ((AspectRatio & (ARF::MEET|ARF::SLICE)) != ARF::NIL) {
-      DOUBLE xScale = TargetWidth / SourceWidth;
-      DOUBLE yScale = TargetHeight / SourceHeight;
+      double xScale = TargetWidth / SourceWidth;
+      double yScale = TargetHeight / SourceHeight;
 
       // MEET: Choose the smaller of the two scaling factors, so that the scaled graphics meet the edge of the
       // viewport and do not exceed it.  SLICE: Choose the larger scale, expanding beyond the boundary on one axis.
@@ -282,26 +280,26 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
          xScale = yScale = std::max(xScale, yScale);
       }
 
-      *XScale = xScale;
-      *YScale = yScale;
+      XScale = xScale;
+      YScale = yScale;
 
-      *X = ((AspectRatio & ARF::X_MIN) != ARF::NIL) ? 0 :
-           ((AspectRatio & ARF::X_MID) != ARF::NIL) ? (TargetWidth - (SourceWidth * xScale)) * 0.5 :
-           ((AspectRatio & ARF::X_MAX) != ARF::NIL) ? TargetWidth - (SourceWidth * xScale) : 0;
+      X = ((AspectRatio & ARF::X_MIN) != ARF::NIL) ? 0 :
+          ((AspectRatio & ARF::X_MID) != ARF::NIL) ? (TargetWidth - (SourceWidth * xScale)) * 0.5 :
+          ((AspectRatio & ARF::X_MAX) != ARF::NIL) ? TargetWidth - (SourceWidth * xScale) : 0;
 
-      *Y = ((AspectRatio & ARF::Y_MIN) != ARF::NIL) ? 0 :
-           ((AspectRatio & ARF::Y_MID) != ARF::NIL) ? (TargetHeight - (SourceHeight * yScale)) * 0.5 :
-           ((AspectRatio & ARF::Y_MAX) != ARF::NIL) ? TargetHeight - (SourceHeight * yScale) : 0;
+      Y = ((AspectRatio & ARF::Y_MIN) != ARF::NIL) ? 0 :
+          ((AspectRatio & ARF::Y_MID) != ARF::NIL) ? (TargetHeight - (SourceHeight * yScale)) * 0.5 :
+          ((AspectRatio & ARF::Y_MAX) != ARF::NIL) ? TargetHeight - (SourceHeight * yScale) : 0;
    }
    else { // ARF::NONE
-      *X = 0;
-      *XScale = (TargetWidth >= 1.0 and SourceWidth > 0) ? TargetWidth / SourceWidth : 1.0;
-      *Y = 0;
-      *YScale = (TargetHeight >= 1.0 and SourceHeight > 0) ? TargetHeight / SourceHeight : 1.0;
+      X = 0;
+      XScale = (TargetWidth >= 1.0 and SourceWidth > 0) ? TargetWidth / SourceWidth : 1.0;
+      Y = 0;
+      YScale = (TargetHeight >= 1.0 and SourceHeight > 0) ? TargetHeight / SourceHeight : 1.0;
    }
 
    log.trace("ARF Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
-      LONG(AspectRatio), TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
+      int(AspectRatio), TargetWidth, TargetHeight, SourceWidth, SourceHeight, X, Y, XScale, YScale);
 }
 
 //********************************************************************************************************************
@@ -311,7 +309,7 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
 //
 // See also VECTOR_GetBoundary(), for which this function is intended, and set_clip_region() for filters.
 
-void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool IncludeSiblings, bool IncludeTransforms, bool IncludeStrokes)
+void calc_full_boundary(extVector *Vector, TClipRectangle<double> &Bounds, bool IncludeSiblings, bool IncludeTransforms, bool IncludeStrokes)
 {
    if (!Vector) return;
 
@@ -320,7 +318,7 @@ void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool 
 
       if (Vector->classID() != CLASSID::VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          if (Vector->BasePath.total_vertices()) {
-            DOUBLE stroke = 0;
+            double stroke = 0;
             if (IncludeTransforms) {
                if ((IncludeStrokes) and (Vector->Stroked)) {
                   stroke = Vector->fixed_stroke_width() * Vector->Transform.scale() * 0.5;
@@ -362,7 +360,7 @@ void calc_full_boundary(extVector *Vector, TClipRectangle<DOUBLE> &Bounds, bool 
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-DOUBLE read_unit(CSTRING &Value, bool &Percent)
+double read_unit(CSTRING &Value, bool &Percent)
 {
    Percent = false;
 
@@ -381,8 +379,8 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
          }
       }
 
-      DOUBLE multiplier = 1.0;
-      DOUBLE dpi = DISPLAY_DPI;
+      double multiplier = 1.0;
+      double dpi = DISPLAY_DPI;
 
       if (*str IS '%') {
          Percent = true;
@@ -398,7 +396,7 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
       else if ((str[0] IS 'p') and (str[1] IS 't')) { str += 2; multiplier = (1.0 / 72.0) * dpi; } // Points.  A point is 1/72 of an inch
       else if ((str[0] IS 'p') and (str[1] IS 'c')) { str += 2; multiplier = (12.0 / 72.0) * dpi; } // Pica.  1 Pica is equal to 12 Points
 
-      auto result = strtod(Value, NULL) * multiplier;
+      auto result = strtod(Value, nullptr) * multiplier;
 
       Value = str;
       return result;
@@ -408,7 +406,7 @@ DOUBLE read_unit(CSTRING &Value, bool &Percent)
 
 //********************************************************************************************************************
 
-std::string weight_to_style(CSTRING Style, LONG Weight)
+std::string weight_to_style(CSTRING Style, int Weight)
 {
    std::string weight_name;
 
@@ -427,7 +425,7 @@ std::string weight_to_style(CSTRING Style, LONG Weight)
 
 //********************************************************************************************************************
 
-ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size, common_font **Handle)
+ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, common_font **Handle)
 {
    Log.branch("Family: %s, Style: %s, Weight: %d, Size: %d", Family, Style, Weight, Size);
 
@@ -447,8 +445,8 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
       style = weight_to_style(Style, Weight);
    }
 
-   const LONG point_size = std::round(Size * (72.0 / DISPLAY_DPI));
-   CSTRING location = NULL;
+   const int point_size = std::round(Size * (72.0 / DISPLAY_DPI));
+   CSTRING location = nullptr;
    FMETA meta = FMETA::NIL;
    if (auto error = fnt::SelectFont(family.c_str(), style.c_str(), &location, &meta); error IS ERR::Okay) {
       LocalResource loc(location);
@@ -499,13 +497,13 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
                      if (!FT_Get_Default_Named_Instance(ftface, &index)) {
                         auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
                         for (FT_UInt s=0; s < mvar->num_namedstyles; s++) {
-                           for (LONG n=name_table_size-1; n >= 0; n--) {
+                           for (int n=name_table_size-1; n >= 0; n--) {
                               FT_SfntName sft_name;
                               if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
                                  if (sft_name.name_id IS mvar->namedstyle[s].strid) {
                                     // Decode UTF16 Big Endian
                                     char buffer[100];
-                                    LONG out = 0;
+                                    int out = 0;
                                     auto str = (UWORD *)sft_name.string;
                                     UWORD prev_unicode = 0;
                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
@@ -580,12 +578,12 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, LONG Weight, LONG Size
 //
 // Parsed characters include: 0 - 9 , ( ) - + SPACE
 
-ERR read_numseq(CSTRING &String, std::initializer_list<DOUBLE *> Value)
+ERR read_numseq(CSTRING &String, std::initializer_list<double *> Value)
 {
-   for (DOUBLE *v : Value) {
-      STRING next = NULL;
+   for (double *v : Value) {
+      STRING next = nullptr;
       next_value(String);
-      DOUBLE num = strtod(String, &next);
+      double num = strtod(String, &next);
       if ((!num) and ((!next) or (String IS next))) {  // Invalid character or end-of-stream check.
          String = next;
          return ERR::Syntax;
@@ -597,10 +595,10 @@ ERR read_numseq(CSTRING &String, std::initializer_list<DOUBLE *> Value)
    return ERR::Okay;
 }
 
-void read_numseq_zero(CSTRING &String, std::initializer_list<DOUBLE *> Value)
+void read_numseq_zero(CSTRING &String, std::initializer_list<double *> Value)
 {
-   for (DOUBLE *v : Value) {
-      STRING next = (STRING)String;
+   for (double *v : Value) {
+      auto next = (STRING)String;
       next_value(String);
       *v = strtod(String, &next);
       String = next;

@@ -48,14 +48,12 @@ module({ name="Document", copyright="Paul Manias © 2005-2025", version=1.0, tim
     "UNRESTRICTED: Turn off all security measures - may only be set prior to initialisation.")
 
   flags("FSO", { comment="These are document style flags, as used in the DocStyle structure" },
-    "BOLD: Enable bold styling.",
-    "ITALIC: Enable italic styling.",
     "UNDERLINE: Draw a line under the text.",
     "PREFORMAT: All white-space is taken into account.",
     "ALIGN_RIGHT: Align to the right.",
     "ALIGN_CENTER: Align to the left.",
     "NO_WRAP: Do not wrap the text.",
-    { STYLES = "BOLD|UNDERLINE|ITALIC" })
+    { STYLES = "UNDERLINE" })
 
   methods("Document", "doc", {
     { id=1,  name="FeedParser" },

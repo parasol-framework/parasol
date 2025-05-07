@@ -241,11 +241,11 @@ static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       // Retrieve bounding box, post-transformations.
       // TODO: Would need to account for client defined brush stroke widths and stroke scaling.
 
-      const LONG STROKE_WIDTH = 2;
-      const LONG bx1 = F2T(Self->BX1 - STROKE_WIDTH);
-      const LONG by1 = F2T(Self->BY1 - STROKE_WIDTH);
-      const LONG bx2 = F2T(Self->BX2 + STROKE_WIDTH);
-      const LONG by2 = F2T(Self->BY2 + STROKE_WIDTH);
+      const auto stroke_width = Self->fixed_stroke_width() + 1;
+      const LONG bx1 = F2T(Self->BX1 - stroke_width);
+      const LONG by1 = F2T(Self->BY1 - stroke_width);
+      const LONG bx2 = F2T(Self->BX2 + stroke_width);
+      const LONG by2 = F2T(Self->BY2 + stroke_width);
 
       struct drwScheduleRedraw area = { .X = bx1, .Y = by1, .Width = bx2 - bx1, .Height = by2 - by1 };
 #endif
@@ -1179,6 +1179,7 @@ static ERR VECTOR_GET_ClipRule(extVector *Self, VFR *Value)
 static ERR VECTOR_SET_ClipRule(extVector *Self, VFR Value)
 {
    Self->ClipRule = Value;
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1308,6 +1309,7 @@ static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
       else return ERR::AllocMemory;
    }
 
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1328,6 +1330,7 @@ static ERR VECTOR_SET_DashOffset(extVector *Self, DOUBLE Value)
       if (Self->DashOffset > 0) Self->DashArray->path.dash_start(Self->DashOffset);
       else Self->DashArray->path.dash_start(Self->DashArray->path.dash_length() + Self->DashOffset);
    }
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1406,11 +1409,13 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
       // If the raster filler doesn't exist for this vector then we'll need to regenerate it.
 
       if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
+      else mark_buffers_for_refresh(Self);
 
       return ERR::Okay;
    }
    else {
       Self->Fill[0].reset();
+      mark_buffers_for_refresh(Self);
       return error;
    }
 }
@@ -1447,8 +1452,12 @@ static ERR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
       // If the raster filler doesn't exist for this vector then we'll need to regenerate it.
 
       if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
+      else mark_buffers_for_refresh(Self);
    }
-   else Self->Fill[0].Colour.Alpha = 0;
+   else {
+      Self->Fill[0].Colour.Alpha = 0;
+      mark_buffers_for_refresh(Self);
+   }
 
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
@@ -1479,6 +1488,7 @@ static ERR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
       Self->FillOpacity = Value;
 
       if (!Self->FillRaster) mark_dirty(Self, RC::FINAL_PATH);
+      else mark_buffers_for_refresh(Self);
       return ERR::Okay;
    }
    else return log.warning(ERR::OutOfRange);
@@ -1507,6 +1517,8 @@ static ERR VECTOR_GET_Filter(extVector *Self, CSTRING *Value)
 static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 {
    pf::Log log;
+
+   mark_buffers_for_refresh(Self);
 
    if ((!Value) or (!Value[0])) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
@@ -1554,7 +1566,10 @@ static ERR VECTOR_GET_FillRule(extVector *Self, VFR *Value)
 
 static ERR VECTOR_SET_FillRule(extVector *Self, VFR Value)
 {
-   Self->FillRule = Value;
+   if (Value != Self->FillRule) {
+      Self->FillRule = Value;
+      mark_buffers_for_refresh(Self);
+   }
    return ERR::Okay;
 }
 
@@ -1627,6 +1642,7 @@ static ERR VECTOR_SET_InnerJoin(extVector *Self, VIJ Value)
       case VIJ::INHERIT: Self->InnerJoin = agg::inner_inherit; break;
       default: return ERR::Failed;
    }
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1663,6 +1679,7 @@ static ERR VECTOR_SET_LineCap(extVector *Self, VLC Value)
       case VLC::INHERIT: Self->LineCap = agg::inherit_cap; break;
       default: return ERR::Failed;
    }
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1700,6 +1717,7 @@ static ERR VECTOR_SET_LineJoin(extVector *Self, VLJ Value)
       case VLJ::INHERIT:      Self->LineJoin = agg::inherit_join; break;
       default: return ERR::Failed;
    }
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1734,6 +1752,7 @@ static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
       if (Value->initialised()) { // Ensure that the mask is initialised.
          SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_clipmask));
          Self->ClipMask = Value;
+         mark_buffers_for_refresh(Self);
          return ERR::Okay;
       }
       else return log.warning(ERR::NotInitialised);
@@ -1775,6 +1794,7 @@ static ERR VECTOR_SET_MiterLimit(extVector *Self, DOUBLE Value)
 
    if (Value >= 1.0) {
       Self->MiterLimit = Value;
+      mark_buffers_for_refresh(Self);
       return ERR::Okay;
    }
    else return log.warning(ERR::InvalidValue);
@@ -1815,6 +1835,7 @@ static ERR VECTOR_SET_Morph(extVector *Self, extVector *Value)
       if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_morph));
          Self->Morph = Value;
+         mark_buffers_for_refresh(Self);
          return ERR::Okay;
       }
       else return log.warning(ERR::NotInitialised);
@@ -1838,6 +1859,7 @@ static ERR VECTOR_GET_MorphFlags(extVector *Self, VMF *Value)
 static ERR VECTOR_SET_MorphFlags(extVector *Self, VMF Value)
 {
     Self->MorphFlags = Value;
+    mark_buffers_for_refresh(Self);
     return ERR::Okay;
 }
 
@@ -1882,6 +1904,7 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
       else if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) ((extVector *)Self->Parent)->Child = Self;
    }
 
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -1925,6 +1948,7 @@ static ERR VECTOR_SET_Opacity(extVector *Self, DOUBLE Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->Opacity = Value;
+      mark_buffers_for_refresh(Self);
       return ERR::Okay;
    }
    else return ERR::OutOfRange;
@@ -1999,6 +2023,7 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
    if (Value->Next) Value->Next->Prev = Self;
    Value->Next = Self;
 
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -2199,6 +2224,7 @@ static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
    else Self->Stroke.reset();
 
    Self->Stroked = Self->is_stroked();
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -2233,6 +2259,7 @@ static ERR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Elements)
    else Self->Stroke.Colour.Alpha = 0;
 
    Self->Stroked = Self->is_stroked();
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -2259,6 +2286,7 @@ static ERR VECTOR_SET_StrokeOpacity(extVector *Self, DOUBLE Value)
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->StrokeOpacity = Value;
       Self->Stroked = Self->is_stroked();
+      mark_buffers_for_refresh(Self);
       return ERR::Okay;
    }
    else return ERR::OutOfRange;
@@ -2360,6 +2388,7 @@ static ERR VECTOR_SET_Transition(extVector *Self, extVectorTransition *Value)
       if (Value->initialised()) { // The object must be initialised.
          SubscribeAction(Value, AC::Free, C_FUNCTION(notify_free_transition));
          Self->Transition = Value;
+         mark_buffers_for_refresh(Self);
          return ERR::Okay;
       }
       else return log.warning(ERR::NotInitialised);

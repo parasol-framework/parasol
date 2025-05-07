@@ -399,6 +399,17 @@
     </field>
 
     <field>
+      <name>BlendMode</name>
+      <comment>Defines the blending algorithm to use when rendering transparent pixels.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="BLM">BLM</type>
+      <description>
+<p>The BlendMode field defines the blending algorithm to use when rendering transparent pixels.  The default value is <code>AUTO</code> which will use the best blending algorithm available for the current graphics context.</p>
+<types lookup="BLM"/>
+      </description>
+    </field>
+
+    <field>
       <name>ByteWidth</name>
       <comment>The width of the bitmap, in bytes.</comment>
       <access read="R">Read</access>
@@ -544,7 +555,7 @@ unpackAlpha(Colour)
       <type prototype="void (*DrawUCPixel)(objBitmap *, LONG, LONG, ULONG)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid coordinates that would result in a segfault).</p>
-<p>The prototype of the DrawUCPixel function is <code>Function(*Bitmap, LONG X, LONG Y, ULONG Colour)</code>.</p>
+<p>The prototype of the DrawUCPixel function is <code>Function(*Bitmap, LONG X, LONG Y, uint32_t Colour)</code>.</p>
 <p>The new pixel value must be defined in the <code>Colour</code> parameter.</p>
       </description>
     </field>
@@ -556,7 +567,7 @@ unpackAlpha(Colour)
       <type prototype="void (*DrawUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
-<p>The prototype of the DrawUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, RGB8 *RGB)</code>.</p>
+<p>The prototype of the DrawUCRIndex function is <code>Function(*Bitmap, uint8_t *Data, RGB8 *RGB)</code>.</p>
 <p>The Data parameter must point to a location within the Bitmap's graphical address space. The new pixel value must be defined in the <code>RGB</code> parameter.</p>
 <p>Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is more efficient to index the Bitmap's <fl>Data</fl> field directly.</p>
       </description>
@@ -674,7 +685,7 @@ unpackAlpha(Colour)
       <type prototype="void (*ReadUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
-<p>The prototype of the ReadUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, RGB8 *RGB)</code>.</p>
+<p>The prototype of the ReadUCRIndex function is <code>Function(*Bitmap, uint8_t *Data, RGB8 *RGB)</code>.</p>
 <p>The <code>Data</code> parameter must point to a location within the Bitmap's graphical address space. The pixel value will be returned in the <code>RGB</code> parameter.</p>
 <p>Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is more efficient to index the Bitmap's <fl>Data</fl> field directly.</p>
       </description>
@@ -749,6 +760,14 @@ unpackAlpha(Colour)
       <const name="LINEAR">Use linear interpolation to improve the quality of alpha blending.</const>
     </constants>
 
+    <constants lookup="BLM" comment="Defines the blending algorithm to use when transparent pixels are rendered to the bitmap.">
+      <const name="AUTO">Use the most suitable of the available algorithms.</const>
+      <const name="GAMMA">Use gamma correct blending.  This algorithm is slow but produces a high quality result.</const>
+      <const name="LINEAR">Use linear blending.  Applicable if the bitmap is in linear colour space.</const>
+      <const name="NONE">Never blend transparent pixels, just copy as-is.</const>
+      <const name="SRGB">Use sRGB linear blending.  This algorithm is extremely efficient but produces poor quality results.</const>
+    </constants>
+
     <constants lookup="BMF" comment="Bitmap flags">
       <const name="ACCELERATED_2D">2D video acceleration is available.</const>
       <const name="ACCELERATED_3D">3D video acceleration is available.</const>
@@ -760,7 +779,6 @@ unpackAlpha(Colour)
       <const name="INVERSE_ALPHA">Indicates reverse alpha blending, higher values are transparent.</const>
       <const name="MASK">Declare the <class name="Bitmap">Bitmap</class> as a 1 or 8 bit mask.  Must be set in conjunction with the <class name="Bitmap" field="BitsPerPixel">Bitmap.BitsPerPixel</class> field on initialisation.</const>
       <const name="NEVER_SHRINK">Ignore resize requests that would shrink the size of the bitmap.</const>
-      <const name="NO_BLEND">Drawing routines that support this flag will not blend pixels.</const>
       <const name="NO_DATA">Do not allocate memory in the Data field on initialisation.</const>
       <const name="PREMUL">The RGB values are premultiplied (32-bit only).</const>
       <const name="QUERIED">Automatically set after a <code>Query()</code> on the bitmap.</const>

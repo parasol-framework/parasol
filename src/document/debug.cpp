@@ -38,11 +38,14 @@ static void print_stream(RSTREAM &Stream)
       if (code IS SCODE::FONT) {
          auto &style = Stream.lookup<bc_font>(i);
          out << "[Font";
-         out << ":#" << style.font_index;
+         out << ":#" << style.index();
          if ((style.options & FSO::ALIGN_RIGHT) != FSO::NIL) out << ":A/R";
          if ((style.options & FSO::ALIGN_CENTER) != FSO::NIL) out << ":A/C";
-         if ((style.options & FSO::BOLD) != FSO::NIL) out << ":Bold";
          out << ":" << style.fill << "]";
+      }
+      else if (code IS SCODE::TEXT) {
+         auto &text = Stream.lookup<bc_text>(i);
+         out << "[TEXT:" << text.text.size() << "]";
       }
       else if (code IS SCODE::PARAGRAPH_START) {
          auto &para =  Stream.lookup<bc_paragraph>(i);
@@ -52,7 +55,7 @@ static void print_stream(RSTREAM &Stream)
       else if (code IS SCODE::PARAGRAPH_END) {
          out << "[PE]\n";
       }
-      else out << "[" << strCodes[LONG(code)] << "]";
+      else out << "[" << strCodes[int(code)] << "]";
 
       printpos = true;
    }
@@ -82,7 +85,7 @@ static void print_segments(extDocument *Self)
          auto code = seg.stream[0][i.index].code;
          if (code IS SCODE::FONT) {
             auto &style = seg.stream->lookup<bc_font>(i.index);
-            out << "[E:Font:#" << style.font_index << "]";
+            out << "[E:Font:#" << style.index() << "]";
          }
          else if (code IS SCODE::PARAGRAPH_START) {
             auto &para =  seg.stream->lookup<bc_paragraph>(i.index);

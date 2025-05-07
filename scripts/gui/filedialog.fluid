@@ -5,7 +5,6 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui/fileview'
    require 'gui/columnview'
-   require 'gui/toolbar'
    require 'gui/button'
    require 'gui/combobox'
    require 'gui/input'
@@ -27,14 +26,7 @@ gui.dialog.file = function(Options)
    }
 
    local function processFeedback()
-      local list = self.view.selectedItems()
-
-      if #list == 0 then -- User may have manually entered a filename
-         local filename = self.filebox.text.string
-         if nz(filename) then
-            list = { { filename = filename } }
-         end
-      end
+      local list = self.fileview.view.selectedItems()
 
       if (self.warnExists == true) and (#list > 0) then
          local error, type = mSys.AnalysePath(nz(self.fileview.path,'') .. list[1].filename)
@@ -53,7 +45,7 @@ gui.dialog.file = function(Options)
                options = { { id=-1, text='No', icon='items/cancel' },
                            { id=1, text='Yes', icon='items/checkmark' } },
                title   = 'Confirmation Required',
-               image   = 'items/warning',
+               type    = 'warning',
                message = msg,
                popOver = windowID,
                feedback = function(Dialog, Response, State)
@@ -86,6 +78,7 @@ gui.dialog.file = function(Options)
       minHeight    = 150,
       quit         = false,
       center       = true,
+      invertPalette = true,
       popOver      = Options.popOver,
       parent       = Options.target,
       icon         = nz(Options.icon, 'icons:folders/folder'),
@@ -107,82 +100,25 @@ gui.dialog.file = function(Options)
 
    self.viewport = self.window:clientViewport({ })
 
-   local bkgd = self.viewport.new('VectorRectangle', {
-      x=0, y=0, xOffset=0, height=1, fill=gui.palette.base
-   })
-
-   self.toolbar = gui.toolbar({
-      target    = self.viewport,
-      iconTheme = 'pearl',
-      x         = 0,
-      y         = 0,
-      xOffset   = 0,
-      flush     = true,
-      createItems = function(Bar)
-         Bar.addGroup(1, 'Navigation', 2)
-
-         Bar.addItem(2, 'Root', 'Root Folder', 'devices/harddisk', function()
-            self.fileview.browse(nil)
-         end)
-
-         Bar.addItem(3, 'Parent', 'Parent Folder', 'arrows/arrow_nw', function()
-            self.fileview.parentFolder()
-         end)
-
-         Bar.addGroup(4, 'Clipboard', 3)
-
-         Bar.addItem(5, 'Cut', 'Cut', 'tools/cut', function()
-            self.fileview.cutFiles()
-         end)
-
-         Bar.addItem(6, 'Copy', 'Copy', 'tools/copy', function()
-            self.fileview.copyFiles()
-         end)
-
-         Bar.addItem(7, 'Paste', 'Paste', 'tools/paste', function()
-            self.fileview.pasteFiles()
-         end)
-
-         Bar.addGroup(8, 'Actions', 3)
-
-         Bar.addItem(9, 'Create Folder', 'Create Folder', 'folders/folder_new', function()
-            self.fileview.createFolder()
-         end)
-
-         Bar.addItem(10, 'Rename', 'Rename', 'layout/interface_textbox', function()
-            self.fileview.renameFile()
-         end)
-
-         Bar.addItem(11, 'Delete', 'Delete', 'tools/eraser', function()
-            self.fileview.deleteFiles()
-         end)
-
-         Bar.addGroup(12, 'View', 2)
-
-         Bar.addItem(13, 'Column View', 'Column View', 'layout/column_three', function()
-            self.fileview.view.style = 'column'
-         end)
-
-         Bar.addItem(14, 'List View', 'List View', 'layout/list', function()
-            self.fileview.view.style = 'list'
-         end)
-      end
-   })
-
-   bkgd.height = self.toolbar.viewport.height
-
    self.pathbox = gui.input({
-      target    = self.viewport,
-      x         = 0,
-      y         = self.toolbar.viewport.height,
-      xOffset   = 0,
-      text      = Options.path,
+      target     = self.viewport,
+      x          = 0,
+      y          = 0,
+      xOffset    = 0,
+      text       = Options.path,
+      textFace   = gui.fonts.filesys.face,
+      textFill   = gui.palette.altText,
       flushEdges = true,
+      bkgd       = 'none',
       events = {
          activate = function(Input, Event)
-            self.fileview.browse(nz(Value, ''))
+            self.fileview.browse(Event.text)
          end
       }
+   })
+
+   self.pathbox.viewport.new('VectorRectangle', {
+      x=0, y=self.pathbox.viewport.height-1, height=1, width='100%', fill='rgb(255,255,255,0.3)'
    })
 
    -- Okay and cancel buttons
@@ -223,9 +159,6 @@ gui.dialog.file = function(Options)
 
    local fv_filters = { name='All Files', ext='', selected=false }
    if Options.filterList and (#Options.filterList > 0) then
-      local cmb_items = { }
-      self.filters = { }
-
       -- Pick the first item as being selected if none other is chosen.
 
       local selection = false
@@ -238,49 +171,9 @@ gui.dialog.file = function(Options)
       if not selection then Options.filterList[1].selected = true end
 
       for _, filter in pairs(Options.filterList) do
-         table.insert(cmb_items, { item=filter.name })
-         self.filters[filter.name] = filter.ext -- Can be a string or list of strings
          table.insert(fv_filters, filter)
       end
-
-      self.filter = gui.combobox({
-         target      = self.viewport,
-         label       = 'Filter:',
-         x           = self.window.margins.left,
-         xOffset     = self.window.margins.right,
-         yOffset     = footer,
-         allowCustom = userInput,
-         items       = cmb_items,
-         events = {
-            activate = function(Widget, Text)
-               self.fileview.filter = nz(self.filters[Text], Text)
-            end
-         }
-      })
-
-      footer = footer + self.filter.viewport.height + GAP
    end
-
-   -- Create the file and filter input boxes
-
-   local label_width = 0
-   if self.filter then label_width = self.filter.labelWidth end
-   self.filebox = gui.input({
-      target     = self.viewport,
-      labelWidth = label_width,
-      label      = 'File:',
-      x          = self.window.margins.left,
-      xOffset    = self.window.margins.right,
-      yOffset    = footer,
-      events = {
-         activate = function(Input, Event)
-            self.view.deselectAll()
-            processFeedback()
-         end
-      }
-   })
-
-   footer = footer + self.filebox.viewport.height + GAP
 
    -- File view area
 
@@ -292,48 +185,18 @@ gui.dialog.file = function(Options)
       overflow = VOF_HIDDEN
    })
 
-   self.view = gui.columnView({
-      target      = viewRegion,
-      dragDrop    = true,
-      multiSelect = self.multiSelect,
-      itemSelected = function(View, Reason, Item)
-         -- Display the selected item in the file text box.
-
-         if (self.fileview == nil) then return end
-
-         local selection = self.fileview.selectionPath()
-         if not nz(selection) then
-            --self.filebox.text.string = ''
-            return
-         end
-
-         local err, fileType = mSys.AnalysePath(selection)
-         if (err != ERR_Okay) then
-            self.filebox.text.string = ''
-            return
-         end
-
-         if (fileType == LOC_FILE) then
-            self.filebox.text.string = self.fileview.selection()
-            return
-         end
-
-         if nz(Options.selectFolder) then
-            if (fileType == LOC_FOLDER) then
-               self.filebox.text.string = ''
-            elseif (fileType == LOC_VOLUME) then
-               self.filebox.text.string = ''
-            end
-         end
-      end
-   })
-
-   self.fileview = gui.fileview(self.view, {
+   self.fileview = gui.fileview({
+      target        = viewRegion,
       path          = Options.path,
       filterList    = fv_filters,
       sysKeys       = true,
       fileSelected  = processFeedback,
-      pathChanged   = function(FlieView, Path)
+      style         = 'column', -- column, list, tree
+      toolBar       = { clipboard=true, settings=true },
+      viewOptions = {
+         invertPalette = true
+      },
+      pathChanged = function(FlieView, Path)
          self.currentPath = Path
          self.pathbox.text.string = self.currentPath
       end

@@ -475,10 +475,10 @@ namespace agg
       span_image_filter_rgba(source_type& src, in_type& inter, const image_filter_lut& filter) :
           base_type(src, inter, &filter)
       {
-         oR = src.m_src->oR;
-         oG = src.m_src->oG;
-         oB = src.m_src->oB;
-         oA = src.m_src->oA;
+         oR = src.m_src->mPixelOrder.Red;
+         oG = src.m_src->mPixelOrder.Green;
+         oB = src.m_src->mPixelOrder.Blue;
+         oA = src.m_src->mPixelOrder.Alpha;
       }
 
       void generate(color_type* span, int x, int y, unsigned len) {

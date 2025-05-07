@@ -69,7 +69,7 @@
         <param type="ERR *" name="Error">The error code returned from the script, if any.</param>
       </input>
       <description>
-<p>Private</p>
+<p>Not for client use.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -79,14 +79,14 @@
 
     <method>
       <name>DerefProcedure</name>
-      <comment>Dereferences a function.</comment>
+      <comment>Dereferences an acquired procedure.</comment>
       <prototype>ERR sc::DerefProcedure(OBJECTPTR Object, FUNCTION * Procedure)</prototype>
       <input>
-        <param type="FUNCTION *" name="Procedure">The function to be dereferenced.</param>
+        <param type="FUNCTION *" name="Procedure">The procedure to be dereferenced.</param>
       </input>
       <description>
-<p>This method is applicable to scripting languages that manage function references as a keyed resource.  Fluid is one such language.</p>
-<p>Any routine that accepts a script function as a parameter should call DerefProcedure at a later point in order to ensure that the function reference is released.  Not doing so may leave the reference in memory until the Script that owns the procedure is terminated.</p>
+<p>This method will release a procedure reference that has been acquired through <method>GetProcedureID</method>.  It is only necessary to make this call if the scripting language is managing function references as a keyed resource.  Fluid is one such language.  Languages that do not manage functions as a resource will ignore calls to this method.</p>
+<p>Note that acquiring a procedure reference and then failing to release it can result in the reference remaining in memory until the Script is terminated.  There may also be unforeseen consequences in the garbage collection process.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -145,7 +145,7 @@ struct ScriptArg {
         <param type="LARGE *" name="ProcedureID">The computed ID will be returned in this parameter.</param>
       </input>
       <description>
-<p>This method will convert a procedure name to a unique reference that will be recognised by the script as a direct reference to that procedure.  The ID can be used to create new <code>FUNCTION</code> definitions, for example:</p>
+<p>This method will convert a procedure name to a unique reference within the script, if such a procedure exists.  The ID can be used by the client to create new <code>FUNCTION</code> definitions, for example:</p>
 <pre>FUNCTION callback;
 SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 </pre>

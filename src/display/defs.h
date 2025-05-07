@@ -224,43 +224,7 @@ struct resolution {
    WORD bpp;
 };
 
-// Double-buffered input event system; helps to maintain pointer stability when messages are incoming.
-
-class EventBuffer {
-   public:
-   std::vector<InputEvent> *primary = &buffer_a;
-   bool processing = false;
-
-   // Change the primary pointer for new incoming messages.  Return the current stack of messages for
-   // processing.
-
-   std::vector<InputEvent> & retarget() {
-      if (primary IS &buffer_a) {
-         primary = &buffer_b;
-         primary->clear();
-         return buffer_a;
-      }
-      else {
-         primary = &buffer_a;
-         primary->clear();
-         return buffer_b;
-      }
-   }
-
-   inline bool empty() {
-      return primary->empty();
-   }
-
-   inline void push_back(InputEvent &Event) {
-      primary->push_back(Event);
-   }
-
-   private:
-   std::vector<InputEvent> buffer_a;
-   std::vector<InputEvent> buffer_b;
-};
-
-extern EventBuffer glInputEvents;
+extern std::vector<InputEvent> glInputEvents;
 
 // Each input event subscription is registered as an InputCallback
 

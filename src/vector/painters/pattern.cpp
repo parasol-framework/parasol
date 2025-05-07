@@ -60,10 +60,10 @@ static ERR PATTERN_Free(extVectorPattern *Self)
       next = node->Next;
       FreeResource(node);
    }
-   Self->Matrices = NULL;
+   Self->Matrices = nullptr;
 
-   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Scene)  { FreeResource(Self->Scene); Self->Scene = NULL; }
+   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = nullptr; }
+   if (Self->Scene)  { FreeResource(Self->Scene); Self->Scene = nullptr; }
 
    return ERR::Okay;
 }
@@ -74,12 +74,12 @@ static ERR PATTERN_Init(extVectorPattern *Self)
 {
    pf::Log log;
 
-   if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
+   if ((int(Self->SpreadMethod) <= 0) or (int(Self->SpreadMethod) >= int(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return log.warning(ERR::OutOfRange);
    }
 
-   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
+   if ((int(Self->Units) <= 0) or (int(Self->Units) >= int(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR::OutOfRange);
    }
@@ -172,7 +172,7 @@ static ERR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value)
       }
       else return ERR::InvalidValue;
    }
-   else Self->Inherit = NULL;
+   else Self->Inherit = nullptr;
    return ERR::Okay;
 }
 
@@ -182,6 +182,8 @@ Matrices: A linked list of transform matrices that have been applied to the patt
 
 All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is
 represented by a !VectorMatrix structure, and are linked in the order in which they were applied to the pattern.
+
+Setting this field is always additive unless NULL is passed, in which case all existing matrices are removed.
 
 !VectorMatrix
 
@@ -195,13 +197,13 @@ static ERR VECTORPATTERN_GET_Matrices(extVectorPattern *Self, VectorMatrix **Val
 
 static ERR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Value)
 {
-   if (!Value) {
+   if (Value) {
       auto hook = &Self->Matrices;
       while (Value) {
          VectorMatrix *matrix;
          if (AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix) IS ERR::Okay) {
-            matrix->Vector = NULL;
-            matrix->Next   = NULL;
+            matrix->Vector = nullptr;
+            matrix->Next   = nullptr;
             matrix->ScaleX = Value->ScaleX;
             matrix->ScaleY = Value->ScaleY;
             matrix->ShearX = Value->ShearX;
@@ -222,7 +224,7 @@ static ERR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Valu
          next = node->Next;
          FreeResource(node);
       }
-      Self->Matrices = NULL;
+      Self->Matrices = nullptr;
    }
 
    Self->modified();
@@ -239,7 +241,7 @@ is 1.0.
 
 *********************************************************************************************************************/
 
-static ERR PATTERN_SET_Opacity(extVectorPattern *Self, DOUBLE Value)
+static ERR PATTERN_SET_Opacity(extVectorPattern *Self, double Value)
 {
    if (Value < 0.0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
@@ -291,7 +293,7 @@ static ERR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
    if (!Self->Matrices) {
       VectorMatrix *matrix;
       if (AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix) IS ERR::Okay) {
-         matrix->Vector = NULL;
+         matrix->Vector = nullptr;
          matrix->Next   = Self->Matrices;
          matrix->ScaleX = 1.0;
          matrix->ScaleY = 1.0;
@@ -325,16 +327,6 @@ Viewport: Refers to the viewport that contains the pattern.
 
 The Viewport refers to a @VectorViewport object that is created to host the vectors for the rendered pattern.  If the
 Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.
-
-*********************************************************************************************************************/
-
-static ERR PATTERN_GET_Viewport(extVectorPattern *Self, extVectorViewport **Value)
-{
-   *Value = Self->Viewport;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
 
 -FIELD-
 Width: Width of the pattern tile.
@@ -416,7 +408,7 @@ static const ActionArray clPatternActions[] = {
    { AC::Free,      PATTERN_Free },
    { AC::Init,      PATTERN_Init },
    { AC::NewObject, PATTERN_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const FieldDef clPatternDimensions[] = {
@@ -428,13 +420,13 @@ static const FieldDef clPatternDimensions[] = {
    { "FixedHeight",  DMF::FIXED_HEIGHT },
    { "ScaledWidth",  DMF::SCALED_WIDTH },
    { "ScaledHeight", DMF::SCALED_HEIGHT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clPatternUnits[] = {
    { "BoundingBox", VUNIT::BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
    { "UserSpace",   VUNIT::USERSPACE },    // Coordinates are relative to the current viewport
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clPatternSpread[] = {
@@ -443,7 +435,7 @@ static const FieldDef clPatternSpread[] = {
    { "Repeat",   VSPREAD::REPEAT },
    { "ReflectX", VSPREAD::REFLECT_X },
    { "ReflectY", VSPREAD::REFLECT_Y },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clPatternFields[] = {
@@ -451,18 +443,18 @@ static const FieldArray clPatternFields[] = {
    { "Y",            FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Y, PATTERN_SET_Y },
    { "Width",        FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Width, PATTERN_SET_Width },
    { "Height",       FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Height, PATTERN_SET_Height },
-   { "Opacity",      FDF_DOUBLE|FDF_RW, NULL, PATTERN_SET_Opacity },
-   { "Scene",        FDF_LOCAL|FDF_R },
-   { "Inherit",      FDF_OBJECT|FDF_RW, NULL, PATTERN_SET_Inherit },
-   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, PATTERN_SET_SpreadMethod, &clPatternSpread },
-   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternUnits },
-   { "ContentUnits", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPatternUnits },
-   { "Dimensions",   FDF_LONGFLAGS|FDF_R, NULL, NULL, &clPatternDimensions },
+   { "Opacity",      FDF_DOUBLE|FDF_RW, nullptr, PATTERN_SET_Opacity },
+   { "Scene",        FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::VECTORSCENE },
+   { "Viewport",     FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "Inherit",      FDF_OBJECT|FDF_RW, nullptr, PATTERN_SET_Inherit },
+   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, PATTERN_SET_SpreadMethod, &clPatternSpread },
+   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clPatternUnits },
+   { "ContentUnits", FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clPatternUnits },
+   { "Dimensions",   FDF_LONGFLAGS|FDF_R, nullptr, nullptr, &clPatternDimensions },
    //{ "AspectRatio", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, PATTERN_GET_AspectRatio, PATTERN_SET_AspectRatio, &clAspectRatio },
    // Virtual fields
    { "Matrices",     FDF_VIRTUAL|FDF_POINTER|FDF_STRUCT|FDF_RW, VECTORPATTERN_GET_Matrices, VECTORPATTERN_SET_Matrices, "VectorMatrix" },
-   { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, NULL, PATTERN_SET_Transform },
-   { "Viewport",     FDF_VIRTUAL|FDF_OBJECT|FDF_R, PATTERN_GET_Viewport, NULL, CLASSID::VECTORVIEWPORT },
+   { "Transform",    FDF_VIRTUAL|FDF_STRING|FDF_W, nullptr, PATTERN_SET_Transform },
    END_FIELD
 };
 

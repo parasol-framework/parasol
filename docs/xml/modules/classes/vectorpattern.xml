@@ -60,6 +60,7 @@
       <type>APTR</type>
       <description>
 <p>All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is represented by a <st>VectorMatrix</st> structure, and are linked in the order in which they were applied to the pattern.</p>
+<p>Setting this field is always additive unless NULL is passed, in which case all existing matrices are removed.</p>
 <struct lookup="VectorMatrix"/>
       </description>
     </field>
@@ -87,7 +88,7 @@
     <field>
       <name>SpreadMethod</name>
       <comment>The behaviour to use when the pattern bounds do not match the vector path.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="VSPREAD">VSPREAD</type>
       <description>
 <p>Indicates what happens if the pattern starts or ends inside the bounds of the target vector.  The default value is PAD.</p>
@@ -119,8 +120,8 @@
     <field>
       <name>Viewport</name>
       <comment>Refers to the viewport that contains the pattern.</comment>
-      <access read="G">Get</access>
-      <type>OBJECTPTR</type>
+      <access read="R">Read</access>
+      <type class="VectorViewport">*VectorViewport</type>
       <description>
 <p>The Viewport refers to a <class name="VectorViewport">VectorViewport</class> object that is created to host the vectors for the rendered pattern.  If the Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.</p>
       </description>

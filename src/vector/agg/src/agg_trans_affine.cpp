@@ -122,6 +122,8 @@ namespace agg
                is_equal_eps(ty,  m.ty,  epsilon);
     }
 
+    // Return the angle of rotation, in radians
+
     double trans_affine::rotation() const
     {
         double x1 = 0.0;

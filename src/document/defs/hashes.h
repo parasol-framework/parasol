@@ -120,6 +120,7 @@
 #define HASH_row_span 0x2a89985cUL
 #define HASH_savestyle 0x3a48aec5UL
 #define HASH_script 0x1b600fbaUL
+#define HASH_secret 0x1b7c2bebUL
 #define HASH_select 0x1b80e3c5UL
 #define HASH_select_fill 0x9d771139UL
 #define HASH_set 0x0b88a991UL

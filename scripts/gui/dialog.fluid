@@ -7,25 +7,26 @@ Documentation is available in the Parasol Wiki.
    require 'common'
    require 'gui/window'
 
-   if (gui == nil) then gui = { } end
-   if (gui.dialog == nil) then gui.dialog = { } end
+local LINE_SPACING, FONT_HEIGHT = gui.getFontHeight(gui.fonts.window)
+local MIN_WIDTH = 300
+local MAX_WIDTH = 600
+
+local ICONS = {
+   error     = 'items/error',
+   critical  = 'items/error',
+   warning   = 'items/alert_circle',
+   help      = 'items/question',
+   question  = 'items/question',
+   request   = 'items/request',
+   info      = 'items/info'
+}
+
+   if gui == nil then gui = { } end
+   if gui.dialog == nil then gui.dialog = { } end
 
 local function defaultIcon(self)
-   if nz(self.type) then
-      local icons = {
-         error     = 'error',
-         critical  = 'error',
-         warning   = 'warning',
-         attention = 'info',
-         alarm     = 'alarm',
-         help      = 'question',
-         question  = 'question',
-         request   = 'info',
-         info      = 'info'
-      }
-      for k,v in pairs(icons) do
-         if self.type == k then return 'items/' .. v end
-      end
+   if self.type and ICONS[self.type] then
+      return ICONS[self.type]
    end
    return 'items/question'
 end
@@ -38,28 +39,19 @@ gui.dialog.message = function(Options)
       feedback = Options.feedback,
       inputRequired = Options.inputRequired,
       message    = Options.message,
-      fmtMessage = Options.fmtMessage
+      fmtMessage = Options.fmtMessage,
+      scaleWindow = nz(Options.scale, true)
    }
-
-   -- Change the message in the dialog
-
-   self.setMessage = function(Message, Formatted)
-      if Formatted then
-         self.message = nil
-         self.fmtMessage = Message
-      else
-         self.message = Message
-         self.fmtMessage = nil
-      end
-      lDoc.acClear()
-      lDoc.acDataFeed(0, DATA_XML, buildDocument())
-   end
 
    -- Wait for the user to respond to the dialog.
 
    self.wait = function()
-      processMessages(-1)
+      self.waiting = true
+      processing.sleep(-1, true)
+      self.waiting = nil
    end
+
+   -- Configure the window according to initial doc size
 
    local function matchWindowToDocSize(self, Document)
       local page_width  = Document.pageWidth
@@ -68,12 +60,18 @@ gui.dialog.message = function(Options)
       if (page_width < 100) then page_width = 100 end
       if (page_height < 100) then page_height = 100 end
 
-      self.window:sizeHints(page_width, page_height, page_width * 3, page_height * 3, false)
-      self.window.surface.insideWidth  = page_width
-      self.window.surface.insideHeight = page_height
+      self.window:sizeHints(page_width/4, page_height/4, page_width * 3, page_height * 3, false)
+      self.window.surface.width  = page_width
+      self.window.surface.height = page_height
 
-      self.viewport.viewWidth  = page_width
-      self.viewport.viewHeight = page_height
+      -- If the viewport dimensions are set, the dialog will scale with the window.
+      if self.scaleWindow then
+         self.viewport.aspectRatio = 'XMin|YMin'
+         self.viewport.viewWidth  = page_width
+         self.viewport.viewHeight = page_height
+         Document.view.width = page_width
+         Document.view.height = page_height
+      end
    end
 
    local function docEvent(Document, EventFlag, Parameters)
@@ -100,6 +98,7 @@ gui.dialog.message = function(Options)
             self.feedback(self, response, state)
          end
 
+         if self.waiting then processing.signal() end
          table.clear(self)
       else
          print('Document event received')
@@ -118,7 +117,7 @@ gui.dialog.message = function(Options)
       for i, option in ipairs(self.options) do
          if option['icon'] then
             if nz(option_icons) then option_icons = option_icons .. '\n' end
-            option_icons = option_icons .. '    <image id="' .. option.icon .. '" xlink:href="icons:' .. option.icon .. '" width="16" height="16"/>\n'
+            option_icons = option_icons .. '    <image id="' .. option.icon .. '" xlink:href="icons:' .. option.icon .. '" width="48" height="48"/>\n'
          end
       end
 
@@ -127,7 +126,7 @@ gui.dialog.message = function(Options)
 
 <svg xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <image id="icon" xlink:href="icons:]] .. nz(Options.image, defaultIcon(self)) .. [[" width="48" height="48"/>]]
+    <image id="icon" xlink:href="icons:]] .. nz(Options.image, defaultIcon(self)) .. [[" width="256" height="256"/>]]
     .. option_icons .. [[
   </defs>
 </svg>
@@ -158,15 +157,15 @@ gui.dialog.message = function(Options)
 <page name="Index">
   <table columns="48,0" width="100%">
     <row>
-      <cell><image src="url(#icon)" width="48" height="48" padding="0 8 18 0"/></cell>
+      <cell><image src="url(#icon)" width="5em" height="5em" padding="0 8 18 0"/></cell>
       <cell>
         <p>]] .. msg .. [[</p>
 ]]
 
       if Options.userInput then
-         local inputFlags = '!IgnoreFocus'
+         local inputOptions = ''
          if Options.secret then
-            inputFlags = inputFlags .. '|Secret'
+            inputOptions = 'secret="true"'
          end
 
          local msg
@@ -176,7 +175,7 @@ gui.dialog.message = function(Options)
             msg = ''
          end
 
-         doc = doc .. '<p><input name="input" flags="' .. inputFlags .. '" width="200" value="' .. msg .. '"/></p>\n'
+         doc = doc .. '<p><input name="input" ' .. inputOptions .. ' width="16em" value="' .. msg .. '"/></p>\n'
       end
 
       if Options.checkboxLabel then
@@ -214,46 +213,61 @@ gui.dialog.message = function(Options)
       return doc
    end
 
-   local dlg_width = 320
-   if self.message then
-      local longest = 0
-      for word in self.message:gmatch("%S+") do
-         if (word:len() > longest) then
-            longest = word:len()
-         end
+   -- Change the message in the dialog
+
+   self.setMessage = function(Message, Formatted)
+      if Formatted then
+         self.message = nil
+         self.fmtMessage = Message
+      else
+         self.message = Message
+         self.fmtMessage = nil
       end
-      dlg_width = 120 + (longest * 12)
-      if dlg_width < 300 then
-         dlg_width = 300
-      elseif dlg_width > 480 then
-         dlg_width = 480
-      end
-   elseif self.fmtMessage then
-      if self.fmtMessage:len() > 80 then
-         dlg_width = 390
-      end
+      lDoc.acClear()
+      lDoc.acDataFeed(0, DATA_XML, buildDocument())
    end
+
+   -- Work out the dialog width based on the message.
+
+   local dlg_width = MIN_WIDTH
+   if nz(self.message) then
+      local longest = 10
+      for word in self.message:gmatch("%S+") do
+         if word:len() > longest then longest = word:len() end
+      end
+      dlg_width = 120 + (longest * FONT_HEIGHT)
+   elseif nz(self.fmtMessage) then
+      local xml = obj.new('xml', { statement='<xml>' .. self.fmtMessage .. '</xml>' })
+      local err, content = xml.mtSerialise(0, bit.bor(XMF_OMIT_TAGS, XMF_READABLE))
+      local longest = 10
+      for word in content:gmatch("%S+") do
+         if word:len() > longest then longest = word:len() end
+      end
+      dlg_width = 120 + (longest * FONT_HEIGHT)
+   else
+      error('Dialog requires a message string.')
+   end
+
+   if dlg_width < MIN_WIDTH then dlg_width = MIN_WIDTH end
+   if dlg_width > MAX_WIDTH then dlg_width = MAX_WIDTH end
 
    self.window = gui.window({
       insideWidth  = dlg_width,
-      insideHeight = 102,
-      minWidth     = 190,
-      minHeight    = 102,
+      insideHeight = 300,
       quit         = nz(Options.quit, false),
-      center       = true,
       popover      = Options.popover,
       parent       = Options.target,
       aspectRatio  = true,
       icon         = nz(Options.icon, 'items/question'),
       title        = nz(Options.title, 'Confirmation Required'),
       modal        = nz(Options.modal, false),
-      flags        = 'NoMargins',
       events = {
          close = function(Window)
             if (self.feedback != nil) then
                self.feedback(self, nil, nil)
             end
 
+            if self.waiting then processing.signal() end
             table.clear(self)
          end
       }
@@ -278,11 +292,20 @@ gui.dialog.message = function(Options)
    matchWindowToDocSize(self, lDoc)
 
    self.window:moveToFront()
-   self.window:show()
+   self.window:show(true)
 
    self.document = lDoc
 
    return self
+end
+
+gui.dialog.error = function(Title, Message, Options)
+   if not Options then Options = { } end
+   Options.type = 'error'
+   Options.title = Title
+   Options.message = Message
+   Options.scale   = true
+   return gui.dialog.message(Options)
 end
 
    -- This sub-routine is provided for languages other than Fluid to utilise the module.

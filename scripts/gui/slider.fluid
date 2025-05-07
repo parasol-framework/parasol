@@ -75,13 +75,14 @@ gui.slider = function(Options)
 
       if self.label then
          self.labelText = self.viewport.new('VectorText', {
-            name     = 'Label',
-            x        = 0,
-            y        = FONT_HEIGHT + math.floor((BOX_SIZE - FONT_HEIGHT) * 0.5),
-            face     = gui.fonts.widget.face,
-            fontSize = string.format('%.2fpt', gui.fonts.widget.size),
-            fill     = gui.style.window.text,
-            string   = self.label,
+            name      = 'Label',
+            x         = 0,
+            y         = math.round(FONT_HEIGHT + math.floor((BOX_SIZE - FONT_HEIGHT) * 0.5)),
+            face      = gui.fonts.label.face,
+            fontSize  = string.format('%.2fpt', gui.fonts.label.size),
+            fontStyle = gui.fonts.label.style,
+            fill      = gui.style.window.text,
+            string    = self.label,
             lineLimit = 1
          })
 

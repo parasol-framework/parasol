@@ -1,13 +1,15 @@
 -- Styling for the 'gui/scrollbar' script.
 
-   if (mVec == nil) then mVec = mod.load('vector') end
+   if mVec == nil then mVec = mod.load('vector') end
 
    local glCounter = 0
 
+local ARROW_FILL = 'rgba(0,0,0,.8)'
+local ARROW_FILL_ACTIVE = 'rgba(0,0,0,.95)'
+
 return {
    arrange = function(State)
-      State.slider.border.width  = State.sliderVP.width - 2
-      State.slider.border.height = State.sliderVP.height - 2
+      State.slider.sequence = 'M1,' .. State.slider.viewport.height-1 .. ' L1,1 M' .. State.slider.viewport.width-2 .. ',1'
    end,
    background = function(State, Viewport)
       local gradient = 'scrollbar' .. glCounter
@@ -22,7 +24,7 @@ return {
    slider = function(State, Viewport)
       local gradient = 'slider' .. glCounter
       glCounter = glCounter + 1
-      State.slider = { }
+      State.slider = { viewport = Viewport }
 
       if (State.direction == 'V') then
          gui.simpleGradient(Viewport.scene, gradient, { { r=252,g=251,b=255,a=255 }, { r=205,g=206,b=220,a=255 } }, 0, 0, '100%', 0, 'boundingbox', true)
@@ -31,35 +33,26 @@ return {
       end
 
       State.slider.bkRect = Viewport.new('VectorRectangle', {
-         width = '100%', height = '100%',
-         stroke = 'rgba(148,149,160,1)',
-         strokeWidth = 1,
-         fill = 'url(#' .. gradient .. ')'
+         width = '100%', height = '100%', stroke = 'rgba(148,149,160,1)', strokeWidth = 1, fill = 'url(#' .. gradient .. ')'
       })
 
-      State.slider.border = Viewport.new('VectorRectangle', {
-         x = 1, y = 1,
-         width = Viewport.width-2, height = Viewport.height-2,
-         stroke = 'rgba(255,255,255,.58)'
+      State.slider.border = Viewport.new('VectorPath', {
+         name = 'slider_highlight',
+         sequence = 'M1,' .. Viewport.height-1 .. ' L1,1 M' .. Viewport.width-2 .. ',1',
+         stroke = 'rgba(255,255,255,.8)'
       })
 
       State.slider.decoration = Viewport.new('VectorViewport', {
-         aspectRatio = 'XMid|YMid|Meet',
-         x = 0, y = 0,
-         viewX = 0, viewY = 0,
+         aspectRatio = 'XMid|YMid|Meet', x = 0, y = 0, viewX = 0, viewY = 0,
       })
       local dec = State.slider.decoration
 
       local decA = dec.new('VectorPolygon', {
-         strokeWidth = 1,
-         stroke      = 'rgba(0,0,0,.25)',
-         dashArray   = '3,6'
+         strokeWidth = 1, stroke = 'rgba(0,0,0,.6)', dashArray = '3,6'
       })
 
       local decB = dec.new('VectorPolygon', {
-         strokeWidth = 1,
-         stroke      = 'rgba(255,255,255,.25)',
-         dashArray   = '3,6'
+         strokeWidth = 1, stroke = 'rgba(255,255,255,.6)', dashArray = '3,6'
       })
 
       if (State.direction == 'V') then
@@ -116,7 +109,7 @@ return {
       })
 
       State.negButton.arrow = Viewport.new('VectorPath', { -- Arrow
-         fill = 'rgba(0,0,0,.5)',
+         fill = ARROW_FILL,
          sequence = 'M 37.8516,35.625L 34.6849,38.7917L 23.6016,50.2708L 23.6016,39.9792L 37.8516,24.9375L 52.1016,39.9792L 52.1016,50.2708L 41.0182,38.7917L 37.8516,35.625 Z'
       })
 
@@ -147,7 +140,7 @@ return {
       })
 
       State.posButton.arrow = Viewport.new('VectorPath', {
-         fill = 'rgba(0,0,0,.5)',
+         fill = ARROW_FILL,
          sequence = 'M 37.8516,35.625L 34.6849,38.7917L 23.6016,50.2708L 23.6016,39.9792L 37.8516,24.9375L 52.1016,39.9792L 52.1016,50.2708L 41.0182,38.7917L 37.8516,35.625 Z'
       })
 
@@ -160,17 +153,17 @@ return {
    end,
    negButtonPress = function(State, Value)
       if (Value == 1) then
-         State.negButton.arrow.fill = 'rgba(255,255,255,.63)'
+         State.negButton.arrow.fill = ARROW_FILL_ACTIVE
       else
-         State.negButton.arrow.fill = 'rgba(0,0,0,.5)'
+         State.negButton.arrow.fill = ARROW_FILL
       end
       State.negButton.viewport.acDraw()
    end,
    posButtonPress = function(State, Value)
       if (Value == 1) then
-         State.posButton.arrow.fill = 'rgba(255,255,255,.63)'
+         State.posButton.arrow.fill = ARROW_FILL_ACTIVE
       else
-         State.posButton.arrow.fill = 'rgba(0,0,0,.5)'
+         State.posButton.arrow.fill = ARROW_FILL
       end
       State.posButton.viewport.acDraw()
    end

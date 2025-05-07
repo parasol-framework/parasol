@@ -13,7 +13,7 @@ Documentation is available in the Parasol Wiki.
 local BTNSIZE    = 20
 local BTNGAP     = 3
 local WIDGET_GAP = 6
-local COL_BORDER = { r=0, g=0, b=0,  a=128 }
+local COL_BORDER = { r=0, g=0, b=0, a=160 }
 
 local COMMON = {
   '0,64,64', '0,128,128', '0,192,192', '0,255,255', '64,255,255',  '128,255,255', '192,255,255', '224,255,255', -- Aqua
@@ -139,16 +139,17 @@ local function buildLayout(self, Options)
    local dy = 0
 
    self.txtBasicColours = self.viewport.new('VectorText', {
-      x        = dx,
-      y        = dy + gui.getFontHeight(gui.fonts.widget),
-      string   = 'Basic colours',
-      fill     = 'rgba(0,0,0,1)',
-      face     = gui.fonts.widget.face,
-      fontSize = string.format('%.2fpt', gui.fonts.widget.size),
-      align    = 'left'
+      x         = dx,
+      y         = dy + gui.getFontHeight(gui.fonts.window),
+      string    = 'Basic colours',
+      fill      = 'rgba(0,0,0,1)',
+      face      = gui.fonts.window.face,
+      fontSize  = string.format('%.2fpt', gui.fonts.window.size),
+      fontStyle = gui.fonts.window.style,
+      align     = 'left'
    })
 
-   dy = dy + gui.getFontHeight(gui.fonts.widget) + WIDGET_GAP
+   dy = dy + gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
 
    -- Configure an array of 8x6 buttons representing a pre-selected colour palette
 
@@ -189,18 +190,19 @@ local function buildLayout(self, Options)
    -- Configure an array of 8x2 user customised colours
 
    self.txtPersonalColours = self.viewport.new('VectorText', {
-      x        = dx,
-      y        = dy + gui.getFontHeight(gui.fonts.widget),
-      string   = 'Personal colours',
-      fill     = 'rgba(0,0,0,1)',
-      face     = gui.fonts.widget.face,
-      fontSize = string.format('%.2fpt', gui.fonts.widget.size),
-      align    = 'left'
+      x         = dx,
+      y         = dy + gui.getFontHeight(gui.fonts.window),
+      string    = 'Personal colours',
+      fill      = 'rgba(0,0,0,1)',
+      face      = gui.fonts.window.face,
+      fontSize  = string.format('%.2fpt', gui.fonts.window.size),
+      fontStyle = gui.fonts.window.style,
+      align     = 'left'
    })
 
    self._colourNodes = { }
 
-   dy = dy + gui.getFontHeight(gui.fonts.widget) + WIDGET_GAP
+   dy = dy + gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
    y = dy
    local ci = 1
    for row=1, 2 do
@@ -253,15 +255,7 @@ local function buildLayout(self, Options)
                      refreshColourNodes(self)
                      self.viewport.acDraw()
                   else
-                     gui.dialog.message({
-                        icon    = 'items/error',
-                        image   = 'items/error',
-                        type    = 'error',
-                        buttons = 'okay',
-                        title   = 'Out of Palette Space',
-                        popOver = self._window.surface,
-                        string  = 'You have run out of space for adding new colours to your personal palette.  Please delete some of your existing colours before adding new ones.',
-                     })
+                     gui.dialog.error('Out of Palette Space', 'You have run out of space for adding new colours to your personal palette.  Please delete some of your existing colours before adding new ones.', self._window.surface)
                   end
                end
             }
@@ -296,16 +290,17 @@ local function buildLayout(self, Options)
    dy = 0
 
    self.txtRainbowPalette = self.viewport.new('VectorText', {
-      x        = dx,
-      y        = dy + gui.getFontHeight(gui.fonts.widget),
-      string   = 'Rainbow palette',
-      fill     = 'rgba(0,0,0,1)',
-      face     = gui.fonts.widget.face,
-      fontSize = string.format('%.2fpt', gui.fonts.widget.size),
-      align    = 'left'
+      x         = dx,
+      y         = dy + gui.getFontHeight(gui.fonts.window),
+      string    = 'Rainbow palette',
+      fill      = 'rgba(0,0,0,1)',
+      face      = gui.fonts.window.face,
+      fontSize  = string.format('%.2fpt', gui.fonts.window.size),
+      fontStyle = gui.fonts.window.style,
+      align     = 'left'
    })
 
-   dy = dy + gui.getFontHeight(gui.fonts.widget) + WIDGET_GAP
+   dy = dy + gui.getFontHeight(gui.fonts.window) + WIDGET_GAP
 
    local rainbow = getRainbowBitmap()
 

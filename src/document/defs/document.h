@@ -5,6 +5,16 @@ struct bc_combobox;
 typedef int INDEX;
 using SEGINDEX = int;
 
+static constexpr int MAX_PAGE_WIDTH   = 30000;
+static constexpr int MAX_PAGE_HEIGHT  = 100000;
+static constexpr int MIN_PAGE_WIDTH   = 20;
+static constexpr int MAX_DEPTH        = 40;    // Limits recursion from tables-within-tables
+static constexpr int WIDTH_LIMIT      = 4000;
+static constexpr std::string DEFAULT_FONTSTYLE("Medium");
+static constexpr std::string DEFAULT_FONTFACE("Noto Sans");
+static constexpr std::string DEFAULT_FONTFILL("rgb(0,0,0)");
+static constexpr int DEFAULT_FONTSIZE = 14;    // 72DPI pixel size
+
 enum class TE : char {
    NIL = 0,
    WRAP_TABLE,
@@ -12,7 +22,7 @@ enum class TE : char {
    EXTEND_PAGE
 };
 
-enum class CB : UBYTE { // Cell border options
+enum class CB : uint8_t { // Cell border options
    NIL    = 0x00,
    TOP    = 0x01,
    BOTTOM = 0x02,
@@ -23,14 +33,14 @@ enum class CB : UBYTE { // Cell border options
 
 DEFINE_ENUM_FLAG_OPERATORS(CB)
 
-enum class CELL : UBYTE {
+enum class CELL : uint8_t {
    NIL = 0,
    ABORT,
    WRAP_TABLE_CELL,
    REPASS_ROW_HEIGHT
 };
 
-enum class RTD : UBYTE {
+enum class RTD : uint8_t {
    NIL=0,
    OBJECT_TEMP,         // The object can be removed after parsing has finished
    OBJECT_UNLOAD,       // Default choice for object termination, terminates immediately
@@ -41,7 +51,7 @@ enum class RTD : UBYTE {
 
 DEFINE_ENUM_FLAG_OPERATORS(RTD)
 
-enum class STYLE : UBYTE {
+enum class STYLE : uint8_t {
    NIL           = 0x00,
    INHERIT_STYLE = 0x01, // Inherit whatever font style applies at the insertion point.
    RESET_STYLE   = 0x02  // Current font style will be reset rather than defaulting to the most recent style at the insertion point.
@@ -49,7 +59,7 @@ enum class STYLE : UBYTE {
 
 DEFINE_ENUM_FLAG_OPERATORS(STYLE)
 
-enum class PXF : WORD {
+enum class PXF : int16_t {
    NIL       = 0,
    ARGS      = 0x0001,
    TRANSLATE = 0x0002
@@ -57,7 +67,7 @@ enum class PXF : WORD {
 
 DEFINE_ENUM_FLAG_OPERATORS(PXF)
 
-enum class LINK : UBYTE {
+enum class LINK : uint8_t {
    NIL = 0,
    HREF,
    FUNCTION
@@ -109,7 +119,7 @@ enum class SCODE : char {
 
 DEFINE_ENUM_FLAG_OPERATORS(SCODE)
 
-enum class ULD : UBYTE {
+enum class ULD : uint8_t {
    NIL             = 0,
    TERMINATE       = 0x01,
    KEEP_PARAMETERS = 0x02,
@@ -140,7 +150,7 @@ enum {
    STATE_INSIDE
 };
 
-enum class IPF : ULONG {
+enum class IPF : uint32_t {
    NIL = 0,
    NO_CONTENT   = 0x0001, // XML content data will be ignored
    FILTER_TABLE = 0x0008, // The tag is restricted to use within <table> sections.
@@ -150,7 +160,7 @@ enum class IPF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(IPF)
 
-enum class TRF : ULONG {
+enum class TRF : uint32_t {
    NIL      = 0,
    BREAK    = 0x00000001,
    CONTINUE = 0x00000002
@@ -175,13 +185,13 @@ struct ui_hooks {
 //********************************************************************************************************************
 
 struct padding {
-   DOUBLE left = 0, top = 0, right = 0, bottom = 0;
+   double left = 0, top = 0, right = 0, bottom = 0;
    bool left_scl = false, right_scl = false, top_scl = false, bottom_scl = false;
    bool configured = false;
 
    padding() = default;
 
-   padding(DOUBLE pLeft, DOUBLE pTop, DOUBLE pRight, DOUBLE pBottom) :
+   padding(double pLeft, double pTop, double pRight, double pBottom) :
       left(pLeft), top(pTop), right(pRight), bottom(pBottom), configured(true) { }
 
    void parse(const std::string &Value);
@@ -193,29 +203,29 @@ struct padding {
 
 struct scroll_mgr {
    struct scroll_slider {
-      DOUBLE offset = 0;
-      DOUBLE length = 20;
+      double offset = 0;
+      double length = 20;
    };
 
    struct scroll_bar {
-      scroll_mgr *m_mgr = NULL;
-      objVectorViewport *m_bar_vp = NULL; // Main viewport for managing the scrollbar
-      objVectorViewport *m_slider_host = NULL;
-      objVectorViewport *m_slider_vp = NULL;
-      objVectorRectangle *m_slider_rect = NULL;
+      scroll_mgr *m_mgr = nullptr;
+      objVectorViewport *m_bar_vp = nullptr; // Main viewport for managing the scrollbar
+      objVectorViewport *m_slider_host = nullptr;
+      objVectorViewport *m_slider_vp = nullptr;
+      objVectorRectangle *m_slider_rect = nullptr;
       scroll_slider m_slider_pos;
       char m_direction = 0; // 'V' or 'H'
-      DOUBLE m_breadth = 10;
+      double m_breadth = 10;
 
-      scroll_slider calc_slider(DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+      scroll_slider calc_slider(double, double, double, double);
       void init(scroll_mgr *, char, objVectorViewport *);
       void clear();
    };
 
-   extDocument *m_doc = NULL;
-   objVectorViewport *m_page = NULL; // Monitored page
-   objVectorViewport *m_view = NULL; // Monitored owner of the page
-   DOUBLE m_min_width = 0;    // For dynamic width mode, this is the minimum required width
+   extDocument *m_doc = nullptr;
+   objVectorViewport *m_page = nullptr; // Monitored page
+   objVectorViewport *m_view = nullptr; // Monitored owner of the page
+   double m_min_width = 0;    // For dynamic width mode, this is the minimum required width
    bool m_fixed_mode = false;
    bool m_auto_adjust_view_size = true; // Automatically adjust the view to accomodate the visibility of the scrollbars
 
@@ -225,10 +235,10 @@ struct scroll_mgr {
    scroll_mgr() {}
 
    void   init(extDocument *, objVectorViewport *, objVectorViewport *);
-   void   scroll_page(DOUBLE, DOUBLE);
+   void   scroll_page(double, double);
    void   recalc_sliders_from_view();
-   void   fix_page_size(DOUBLE, DOUBLE);
-   void   dynamic_page_size(DOUBLE, DOUBLE, DOUBLE);
+   void   fix_page_size(double, double);
+   void   dynamic_page_size(double, double, double);
 };
 
 //********************************************************************************************************************
@@ -236,7 +246,7 @@ struct scroll_mgr {
 
 struct tab {
    // The ref is a UID for the Type, so you can use it to find the tab in the document stream
-   std::variant<LONG, ULONG> ref; // For TT::VECTOR: VectorID; TT::LINK: LinkID
+   std::variant<int, uint32_t> ref; // For TT::VECTOR: VectorID; TT::LINK: LinkID
    TT    type;
    bool  active;     // true if the tabbable entity is active/visible
 
@@ -247,7 +257,7 @@ struct tab {
 
 struct edit_cell {
    CELL_ID cell_id;
-   DOUBLE x, y, width, height;
+   double x, y, width, height;
 };
 
 //********************************************************************************************************************
@@ -354,10 +364,10 @@ struct font_entry {
    std::string face;
    std::string style;
    FontMetrics metrics;
-   DOUBLE font_size; // 72 DPI pixel size
+   int font_size; // 72 DPI pixel size
    ALIGN align;
 
-   font_entry(APTR pHandle, const std::string_view pFace, const std::string_view pStyle, DOUBLE pSize) :
+   font_entry(APTR pHandle, const std::string_view pFace, const std::string_view pStyle, double pSize) :
       handle(pHandle), face(pFace), style(pStyle), font_size(pSize), align(ALIGN::NIL) {
       vec::GetFontMetrics(pHandle, &metrics);
    }
@@ -371,7 +381,7 @@ struct font_entry {
       face      = other.face;
       style     = other.style;
       align     = other.align;
-      other.handle = NULL;
+      other.handle = nullptr;
    }
 
    font_entry(const font_entry &other) { // Copy constructor
@@ -391,7 +401,7 @@ struct font_entry {
       face      = other.face;
       style     = other.style;
       align     = other.align;
-      other.handle = NULL;
+      other.handle = nullptr;
       return *this;
    }
 
@@ -411,23 +421,48 @@ struct font_entry {
 // bc_font has a dual purpose - it can maintain current font style information during parsing as well as being embedded
 // in the document stream.
 
+static std::mutex glFontsMutex;
+static std::deque<font_entry> glFonts; // font_entry pointers must be kept stable
+
 struct bc_font : public entity {
-   WORD font_index;     // Font lookup (will reflect the true font face, point size, style)
-   FSO  options;        // Style options, like underline and italics
-   ALIGN valign;        // Vertical alignment of text within the available line height
-   std::string fill;    // Font fill instruction
-   std::string face;    // The font face as requested by the client.  Might not match the font we actually use.
-   DOUBLE font_size;    // The 72 DPI pixel size as requested by the client.  Might not match the font we actually use.
+private:
+   int16_t font_index;    // Font lookup (will reflect the true font face, point size, style)
+public:
+   FSO   options;      // Style options, like underline
+   ALIGN valign;       // Vertical alignment of text within the available line height
+   std::string fill;   // Font fill instruction
+   std::string face;   // The font face as requested by the client.  Might not match the font we actually use.
+   std::string style;  // The font style as requested by the client.  Might not match the font we actually use.
+   DUNIT req_size;     // Original font size as requested by the client.
+   int   pixel_size;   // The font size in pixels, calculated from the req_size during layout
 
-   bc_font(): font_index(-1), options(FSO::NIL), valign(ALIGN::BOTTOM), fill("rgb(0,0,0)"), font_size(0) { code = SCODE::FONT; }
+   bc_font(): font_index(-1), options(FSO::NIL), valign(ALIGN::BOTTOM), fill(DEFAULT_FONTFILL),
+      face(DEFAULT_FONTFACE), style(DEFAULT_FONTSTYLE), pixel_size(0) { code = SCODE::FONT; }
 
-   font_entry * get_font();
+   font_entry * layout_font(layout &);
+
+   // Calling this is only valid after the layout process has completed, i.e. during drawing and UI operations
+
+   font_entry * get_font() const {
+      if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
+    
+      pf::Log log(__FUNCTION__);
+      log.error("A font_index is -1."); // An index of -1 means a call to layout_font() is missing.
+      return &glFonts[0];
+   }
+
+   void apply(const bc_font &Other) {
+      *this = Other;
+      font_index = -1;
+   }
 
    bc_font(const bc_font &Other) {
       // Copy another style and reset the index to -1 so that changes can refreshed
       *this = Other;
       font_index = -1;
    }
+
+   int16_t index() const { return font_index; }
 };
 
 struct bc_font_end : public entity {
@@ -445,7 +480,7 @@ struct stream_char {
    size_t offset;   // Specific character offset within the bc_text.text string
 
    stream_char() : index(-1), offset(-1) { }
-   stream_char(INDEX pIndex, ULONG pOffset) : index(pIndex), offset(pOffset) { }
+   stream_char(INDEX pIndex, uint32_t pOffset) : index(pIndex), offset(pOffset) { }
    stream_char(INDEX pIndex) : index(pIndex), offset(0) { }
 
    bool operator==(const stream_char &Other) const {
@@ -476,14 +511,14 @@ struct stream_char {
       else return false;
    }
 
-   void operator+=(const LONG Value) {
+   void operator+=(const int Value) {
       offset += Value;
    }
 
    inline void reset() { index = -1; offset = -1; }
    inline bool valid() { return index != -1; }
 
-   inline void set(INDEX pIndex, ULONG pOffset = 0) {
+   inline void set(INDEX pIndex, uint32_t pOffset = 0) {
       index  = pIndex;
       offset = pOffset;
    }
@@ -503,10 +538,10 @@ struct stream_char {
 
    // NB: None of these support unicode.
 
-   UBYTE get_char(RSTREAM &);
-   UBYTE get_char(RSTREAM &, LONG Seek);
-   UBYTE get_prev_char(RSTREAM &);
-   UBYTE get_prev_char_or_inline(RSTREAM &);
+   uint8_t get_char(RSTREAM &);
+   uint8_t get_char(RSTREAM &, int);
+   uint8_t get_prev_char(RSTREAM &);
+   uint8_t get_prev_char_or_inline(RSTREAM &);
    void erase_char(RSTREAM &); // Erase a character OR an escape code.
    void next_char(RSTREAM &);
    void prev_char(RSTREAM &);
@@ -522,22 +557,22 @@ struct doc_segment {
    stream_char stop;        // Stop at this index/character
    stream_char trim_stop;   // The stopping point when whitespace is removed
    FloatRect area;          // Dimensions of the segment.
-   DOUBLE  descent;         // The largest descent value after taking into account all fonts used on the line.
-   DOUBLE  align_width;     // Full width of this segment if it were non-breaking
+   double  descent;         // The largest descent value after taking into account all fonts used on the line.
+   double  align_width;     // Full width of this segment if it were non-breaking
    RSTREAM *stream;         // The stream that this segment refers to
    bool    edit;            // true if this segment represents content that can be edited
    bool    allow_merge;     // true if this segment can be merged with siblings that have allow_merge set to true
 
-   inline DOUBLE x(DOUBLE Advance, FSO StyleOptions) {
+   inline double x(double Advance, FSO StyleOptions) {
       if ((StyleOptions & FSO::ALIGN_CENTER) != FSO::NIL) return Advance + ((align_width - area.Width) * 0.5);
       else if ((StyleOptions & FSO::ALIGN_RIGHT) != FSO::NIL) return Advance + (align_width - area.Width);
       else return Advance;
    }
 
-   inline DOUBLE y(ALIGN VAlign, font_entry *Font) {
+   inline double y(ALIGN VAlign, font_entry *Font) {
       if ((VAlign & ALIGN::TOP) != ALIGN::NIL) return area.Y + Font->metrics.Ascent;
       else if ((VAlign & ALIGN::VERTICAL) != ALIGN::NIL) {
-         const DOUBLE avail_space = area.Height - descent;
+         const double avail_space = area.Height - descent;
          return area.Y + avail_space - ((avail_space - Font->metrics.Height) * 0.5);
       }
       else return area.Y + area.Height - descent;
@@ -545,14 +580,14 @@ struct doc_segment {
 };
 
 struct doc_clip {
-   DOUBLE left = 0, top = 0, right = 0, bottom = 0;
+   double left = 0, top = 0, right = 0, bottom = 0;
    INDEX index = 0; // The stream index of the object/table/item that is creating the clip.
    bool transparent = false; // If true, wrapping will not be performed around the clip region.
    std::string name;
 
    doc_clip() = default;
 
-   doc_clip(DOUBLE pLeft, DOUBLE pTop, DOUBLE pRight, DOUBLE pBottom, LONG pIndex, bool pTransparent, const std::string &pName) :
+   doc_clip(double pLeft, double pTop, double pRight, double pBottom, int pIndex, bool pTransparent, const std::string &pName) :
       left(pLeft), top(pTop), right(pRight), bottom(pBottom), index(pIndex), transparent(pTransparent), name(pName) {
 
       if ((right - left > 20000) or (bottom - top > 20000)) {
@@ -565,7 +600,7 @@ struct doc_clip {
 };
 
 struct doc_edit {
-   LONG max_chars;
+   int max_chars;
    std::string name;
    std::string on_enter, on_exit, on_change;
    std::vector<std::pair<std::string, std::string>> args;
@@ -579,14 +614,14 @@ struct bc_cell;
 
 struct mouse_over {
    std::string function; // name of function to call.
-   DOUBLE top, left, bottom, right;
-   LONG element_id;
+   double top, left, bottom, right;
+   int element_id;
 };
 
 struct tablecol {
-   DOUBLE preset_width = 0;
-   DOUBLE min_width = 0;   // For assisting layout
-   DOUBLE width = 0;
+   double preset_width = 0;
+   double min_width = 0;   // For assisting layout
+   double width = 0;
    bool preset_width_rel = false;
 };
 
@@ -599,21 +634,21 @@ struct bc_advance : public entity {
 };
 
 struct bc_index : public entity {
-   ULONG  name_hash = 0;          // The name of the index is held here as a hash
-   LONG   id = 0;                 // UID for matching to the correct bc_index_end
-   DOUBLE y = 0;                  // The cursor's vertical position of when the index was encountered during layout
+   uint32_t name_hash = 0;          // The name of the index is held here as a hash
+   int    id = 0;                 // UID for matching to the correct bc_index_end
+   double y = 0;                  // The cursor's vertical position of when the index was encountered during layout
    bool   visible = false;        // true if the content inside the index is visible (this is the default)
    bool   parent_visible = false; // true if the nearest parent index(es) will allow index content to be visible.  true is the default.  This allows Hide/ShowIndex() to manage themselves correctly
 
-   bc_index(ULONG pName, LONG pID, LONG pY, bool pVisible, bool pParentVisible) :
+   bc_index(uint32_t pName, int pID, int pY, bool pVisible, bool pParentVisible) :
       name_hash(pName), id(pID), y(pY), visible(pVisible), parent_visible(pParentVisible) {
       code = SCODE::INDEX_START;
    }
 };
 
 struct bc_index_end : public entity {
-   LONG id; // UID matching to the correct bc_index
-   bc_index_end(LONG pID) : id(pID) { code = SCODE::INDEX_END; }
+   int id; // UID matching to the correct bc_index
+   bc_index_end(int pID) : id(pID) { code = SCODE::INDEX_END; }
 };
 
 struct bc_link : public entity {
@@ -643,14 +678,14 @@ struct bc_list : public entity {
 
    std::string fill;                   // Fill to use for bullet points (valid for BULLET only).
    std::vector<std::string> buffer;    // Temp buffer, used for ordered lists
-   LONG   start        = 1;            // Starting value for ordered lists (default: 1)
-   DUNIT  item_indent  = DUNIT(1.0, DU::LINE_HEIGHT); // Minimum indentation for text printed for each item
-   DUNIT  block_indent = DUNIT(1.0, DU::LINE_HEIGHT); // Indentation for each set of items
-   LONG   item_num     = 0;
-   LONG   order_insert = 0;
-   DUNIT  v_spacing    = DUNIT(0.5, DU::LINE_HEIGHT);  // Spacing between list items, equivalent to paragraph leading, expressed as a ratio
-   UBYTE  type         = BULLET;
-   bool   repass       = false;
+   int   start        = 1;            // Starting value for ordered lists (default: 1)
+   DUNIT item_indent  = DUNIT(1.0, DU::LINE_HEIGHT); // Minimum indentation for text printed for each item
+   DUNIT block_indent = DUNIT(1.0, DU::LINE_HEIGHT); // Indentation for each set of items
+   int   item_num     = 0;
+   int   order_insert = 0;
+   DUNIT v_spacing    = DUNIT(0.5, DU::LINE_HEIGHT);  // Spacing between list items, equivalent to paragraph leading, expressed as a ratio
+   uint8_t type         = BULLET;
+   bool  repass       = false;
 
    bc_list() { code = SCODE::LIST_START; }
 };
@@ -667,15 +702,15 @@ struct bc_table : public entity {
    std::string fill, stroke;             // SVG stroke and fill instructions
    padding cell_padding;                 // Spacing inside each cell (margins)
    DUNIT  cell_v_spacing, cell_h_spacing; // Spacing between each cell
-   DOUBLE row_width = 0;                 // Assists in the computation of row width
-   DOUBLE x = 0, y = 0, width = 0, height = 0; // Run-time dimensions calculated during layout
+   double row_width = 0;                 // Assists in the computation of row width
+   double x = 0, y = 0, width = 0, height = 0; // Run-time dimensions calculated during layout
    DUNIT  min_width, min_height;         // Client-defined minimum table width/height
-   DOUBLE cursor_x = 0, cursor_y = 0;    // Cursor coordinates
+   double cursor_x = 0, cursor_y = 0;    // Cursor coordinates
    DUNIT  stroke_width;                  // Stroke width
    size_t total_clips = 0;               // Temporary record of Document->Clips.size()
-   LONG   rows = 0;                      // Total number of rows in table
-   LONG   row_index = 0;                 // Current row being processed, generally for debugging
-   UBYTE  compute_columns = 0;
+   int    rows = 0;                      // Total number of rows in table
+   int    row_index = 0;                 // Current row being processed, generally for debugging
+   uint8_t  compute_columns = 0;
    ALIGN  align = ALIGN::NIL;            // Horizontal alignment.  If defined, the table will be floating.
    bool   cells_expanded = false;        // false if the table cells have not been expanded to match the inside table width
    bool   reset_row_height = false;      // true if the height of all rows needs to be reset in the current pass
@@ -731,13 +766,13 @@ class bc_paragraph : public entity {
    GuardedObject<objVector> icon; // Icon representation if this is an item
    bc_font font;         // Default font that applies to this paragraph.  Embedding the font style in this way ensures that vertical placement can be computed immediately without looking for a FONT code.
    std::string value = "";
-   DOUBLE x, y, height;  // Layout dimensions, manipulated at run-time
+   double x, y, height;  // Layout dimensions, manipulated at run-time
    DUNIT  block_indent;  // Indentation; also equivalent to setting a left margin value
    DUNIT  item_indent;   // For list items only.  This value is carried directly from bc_list.item_indent
    DUNIT  indent;        // Client specified indent value
    DUNIT  line_height;   // Spacing between paragraph lines on word-wrap, affects the cursor's vertical advance.  Expressed as a ratio of the m_line.line_height
    DUNIT  leading;       // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
-   //DOUBLE trailing;    // Not implemented: Trailing whitespace
+   //double trailing;    // Not implemented: Trailing whitespace
    // Options
    bool list_item;       // True if this paragraph represents a list item
    bool trim;
@@ -749,8 +784,7 @@ class bc_paragraph : public entity {
       list_item(false), trim(false), aggregate(false) { }
 
    bc_paragraph(const bc_font &Style) : bc_paragraph() {
-      font = Style;
-      font.font_index = -1;
+      font.apply(Style);
    }
 };
 
@@ -760,9 +794,9 @@ struct bc_paragraph_end : public entity {
 
 struct bc_row : public entity {
    GuardedObject<objVectorRectangle> rect_fill;
-   DOUBLE y = 0;
-   DOUBLE row_height = 0; // height of all cells on this row, used when drawing the cells
-   DOUBLE min_height = 0;
+   double y = 0;
+   double row_height = 0; // height of all cells on this row, used when drawing the cells
+   double min_height = 0;
    std::string stroke, fill;
    bool vertical_repass = false;
 
@@ -781,12 +815,12 @@ struct bc_cell : public entity {
    std::vector<doc_segment> segments;
    RSTREAM *stream;               // Internally managed byte code content for the cell
    CELL_ID cell_id = 0;           // UID for the cell
-   LONG column = 0;               // Column number that the cell starts in
-   LONG col_span = 1;             // Number of columns spanned by this cell (normally set to 1)
-   LONG row_span = 1;             // Number of rows spanned by this cell
+   int  column = 0;               // Column number that the cell starts in
+   int  col_span = 1;             // Number of columns spanned by this cell (normally set to 1)
+   int  row_span = 1;             // Number of rows spanned by this cell
    CB border = CB::NIL;           // Border options
-   DOUBLE x = 0, y = 0;           // Cell coordinates, relative to their container
-   DOUBLE width = 0, height = 0;  // Width and height of the cell
+   double x = 0, y = 0;           // Cell coordinates, relative to their container
+   double width = 0, height = 0;  // Width and height of the cell
    DUNIT stroke_width;
    ui_hooks hooks;                // UI hooks defined by the client
    std::string edit_def;          // The edit definition that this cell is linked to (if any)
@@ -797,7 +831,7 @@ struct bc_cell : public entity {
 
    void set_fill(const std::string);
 
-   bc_cell(LONG pCellID, LONG pColumn);
+   bc_cell(int pCellID, int pColumn);
    ~bc_cell();
    bc_cell(const bc_cell &Other);
 };
@@ -841,13 +875,14 @@ struct widget_mgr {
    padding pad, final_pad;             // Padding defines external whitespace around the widget
    DUNIT width, height;                // Client can define a fixed width/height, or leave at 0 for auto-sizing
    DUNIT def_size = DUNIT(1.0, DU::FONT_SIZE); // Default height or width if not otherwise specified.
-   DOUBLE final_width, final_height;   // Final dimensions computed during layout
-   DOUBLE label_width = 0, label_pad = 0;  // If a label is specified, the label_width & pad is in addition to final_width
-   DOUBLE x = 0;                       // For floating widgets only, horizontal position calculated during layout
+   double final_width, final_height;   // Final dimensions computed during layout
+   double label_width = 0;  // If a label is specified, the label_width & pad is in addition to final_width
+   DUNIT label_pad;                    // Note that pad can be declared in relative display units
+   double x = 0;                       // For floating widgets only, horizontal position calculated during layout
    ALIGN align = ALIGN::NIL;           // NB: If horizontal alignment is defined then the widget is treated as floating.
    bool alt_state = false, internal_page = false;
    bool align_to_text = false;         // Widgets with internal text (buttons, input, combobox) can look best if their internal text aligns with the baseline.
-   UBYTE label_pos = 1;                // 0 = left, 1 = right
+   uint8_t label_pos = 1;                // 0 = left, 1 = right
 
    inline bool floating_y() {
       return false;
@@ -857,12 +892,7 @@ struct widget_mgr {
       return (align & (ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL)) != ALIGN::NIL;
    }
 
-   constexpr DOUBLE full_width() const {
-      if (internal_page) return final_width + final_pad.left + final_pad.right;
-      else return final_width + label_width + label_pad + final_pad.left + final_pad.right;
-   }
-
-   constexpr DOUBLE full_height() const { return final_height + final_pad.top + final_pad.bottom; }
+   constexpr double full_height() const { return final_height + final_pad.top + final_pad.bottom; }
 };
 
 //********************************************************************************************************************
@@ -887,12 +917,12 @@ struct doc_menu {
 
    std::string m_font_face;
    std::string m_font_style;
-   DOUBLE m_font_size;
+   int m_font_size;
 
    LARGE m_show_time = 0; // Time of last acShow()
    LARGE m_hide_time = 0; // Time of last acHide()
 
-   objSurface * create(DOUBLE);
+   objSurface * create(double);
    objSurface * get();
    void define_font(font_entry *);
    void toggle(objVectorViewport *);
@@ -992,7 +1022,7 @@ using CODEVAR = std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row
       bc_paragraph_end, bc_cell, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
       bc_font, bc_font_end, bc_xml, bc_image, bc_use, bc_button, bc_checkbox, bc_combobox, bc_input>;
 
-using CODEMAP = std::unordered_map<ULONG, CODEVAR>; // Pointer stability is required and guaranteed by unordered_map
+using CODEMAP = std::unordered_map<uint32_t, CODEVAR>; // Pointer stability is required and guaranteed by unordered_map
 
 class RSTREAM {
 public:
@@ -1035,7 +1065,7 @@ public:
 class sorted_segment { // Efficient lookup to the doc_segment array, sorted by vertical position
 public:
    SEGINDEX segment;
-   DOUBLE y;
+   double y;
 };
 
 //********************************************************************************************************************
@@ -1045,7 +1075,7 @@ class extDocument : public objDocument {
    FUNCTION EventCallback;
    std::unordered_map<std::string, std::string> Vars; // Variables as defined by the client program.  Transparently accessible like URI params.  Names have priority over params.
    std::unordered_map<std::string, std::string> Params; // Incoming parameters provided via the URI
-   std::map<ULONG, XMLTag *>   TemplateIndex;
+   std::map<uint32_t, XMLTag *>   TemplateIndex;
    std::vector<OBJECTID>       UIObjects;    // List of temporary objects in the UI
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
@@ -1070,6 +1100,7 @@ class extDocument : public objDocument {
    std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
    std::string Background;     // Background fill instruction
    std::string CursorStroke;   // Stroke instruction for the text cursor
+   std::string FontStyle;      // Default font style, usually set to Regular
    objXML *Templates;          // All templates for the current document are stored here
    objXML *PretextXML;         // Execute this XML prior to loading a new page.
    objSVG *SVG;                // Allocated by the <svg> tag
@@ -1079,28 +1110,27 @@ class extDocument : public objDocument {
    objScript *DefaultScript;
    doc_edit  *ActiveEditDef; // As for ActiveEditCell, but refers to the active editing definition
    objVectorScene *Scene;    // A document specific scene is required to keep our resources away from the host
-   DOUBLE VPWidth, VPHeight; // Dimensions of the host Viewport
-   DOUBLE FontSize;          // The default font-size, measured in 72 DPI pixels
-   DOUBLE MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
-   DOUBLE PageWidth;         // width of the widest section of the document page.  Can be pre-defined for a fixed width.
-   DOUBLE LeftMargin, TopMargin, RightMargin, BottomMargin;
-   DOUBLE CalcWidth;         // Final page width calculated from the layout process
-   DOUBLE XPosition, YPosition; // Scrolling offset
-   DOUBLE ClickX, ClickY;
-   DOUBLE SelectCharX;        // The x coordinate of the SelectIndex character
-   DOUBLE CursorCharX;        // The x coordinate of the CursorIndex character
-   DOUBLE PointerX, PointerY; // Current pointer coordinates on the document surface
-   LONG   TemplatesModified;  // For tracking modifications to Self->Templates (compared to Self->Templates->Modified)
+   double VPWidth, VPHeight; // Dimensions of the host Viewport
+   double FontSize;          // The default font-size, measured in 72 DPI pixels
+   double MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
+   Unit   PageWidth;         // Width of the widest section of the document page.  Can be pre-defined by the client for a fixed or relative width
+   double LeftMargin, TopMargin, RightMargin, BottomMargin;
+   double CalcWidth;         // Final page width calculated from the layout process
+   double XPosition, YPosition; // Scrolling offset
+   double ClickX, ClickY;
+   double SelectCharX;        // The x coordinate of the SelectIndex character
+   double CursorCharX;        // The x coordinate of the CursorIndex character
+   double PointerX, PointerY; // Current pointer coordinates on the document surface
+   int    TemplatesModified;  // For tracking modifications to Self->Templates (compared to Self->Templates->Modified)
    SEGINDEX ClickSegment;     // The index of the segment that the user clicked on
    SEGINDEX MouseOverSegment; // The index of the segment that the mouse is currently positioned over
    TIMER    FlashTimer;       // For flashing the cursor
    CELL_ID  ActiveEditCellID; // If editing is active, this refers to the ID of the cell being edited
-   ULONG  ActiveEditCRC;      // CRC for cell editing area, used for managing onchange notifications
-   WORD   FocusIndex;         // Tab focus index
-   WORD   Invisible;          // Incremented for sections within a hidden index
-   UBYTE  Processing;         // If > 0, the page layout is being altered
+   uint32_t ActiveEditCRC;      // CRC for cell editing area, used for managing onchange notifications
+   int16_t  FocusIndex;         // Tab focus index
+   int16_t  Invisible;          // Incremented for sections within a hidden index
+   uint8_t  Processing;         // If > 0, the page layout is being altered
    bool   RefreshTemplates; // True if the template index requires refreshing.
-   bool   RelPageWidth;     // Relative page width
    bool   UpdatingLayout;   // True if the page layout is in the process of being updated
    bool   PageProcessed;    // True if the parsing of page content has been completed
    bool   NoWhitespace;     // True if the parser should stop injecting whitespace characters
@@ -1124,7 +1154,7 @@ bc_cell::~bc_cell() {
    delete stream;
 }
 
-bc_cell::bc_cell(LONG pCellID, LONG pColumn)
+bc_cell::bc_cell(int pCellID, int pColumn)
 {
    code    = SCODE::CELL;
    cell_id = pCellID;

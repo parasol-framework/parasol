@@ -449,12 +449,9 @@ enum class VSM : LONG {
    GAUSSIAN = 7,
    BESSEL = 8,
    MITCHELL = 9,
-   SINC3 = 10,
-   LANCZOS3 = 11,
-   BLACKMAN3 = 12,
-   SINC8 = 13,
-   LANCZOS8 = 14,
-   BLACKMAN8 = 15,
+   SINC = 10,
+   LANCZOS = 11,
+   BLACKMAN = 12,
 };
 
 enum class RQ : LONG {
@@ -765,8 +762,9 @@ class objVectorScene : public Object {
    }
 
    inline ERR setSampleMethod(const VSM Value) noexcept {
-      this->SampleMethod = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
 };
@@ -794,13 +792,15 @@ class objVectorImage : public Object {
    // Customised field setting
 
    inline ERR setX(const DOUBLE Value) noexcept {
-      this->X = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setY(const DOUBLE Value) noexcept {
-      this->Y = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
    inline ERR setPicture(objPicture * Value) noexcept {
@@ -826,13 +826,15 @@ class objVectorImage : public Object {
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
-      this->SpreadMethod = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setAspectRatio(const ARF Value) noexcept {
-      this->AspectRatio = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
 };
@@ -848,17 +850,18 @@ class objVectorPattern : public Object {
 
    using create = pf::Create<objVectorPattern>;
 
-   DOUBLE  X;                     // X coordinate for the pattern.
-   DOUBLE  Y;                     // Y coordinate for the pattern.
-   DOUBLE  Width;                 // Width of the pattern tile.
-   DOUBLE  Height;                // Height of the pattern tile.
-   DOUBLE  Opacity;               // The opacity of the pattern.
-   objVectorScene * Scene;        // Refers to the internal VectorScene that will contain the rendered pattern.
-   objVectorPattern * Inherit;    // Inherit attributes from a VectorPattern referenced here.
-   VSPREAD SpreadMethod;          // The behaviour to use when the pattern bounds do not match the vector path.
-   VUNIT   Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
-   VUNIT   ContentUnits;          // Private. Not yet implemented.
-   DMF     Dimensions;            // Dimension flags are stored here.
+   DOUBLE  X;                       // X coordinate for the pattern.
+   DOUBLE  Y;                       // Y coordinate for the pattern.
+   DOUBLE  Width;                   // Width of the pattern tile.
+   DOUBLE  Height;                  // Height of the pattern tile.
+   DOUBLE  Opacity;                 // The opacity of the pattern.
+   objVectorScene * Scene;          // Refers to the internal VectorScene that will contain the rendered pattern.
+   objVectorViewport * Viewport;    // Refers to the viewport that contains the pattern.
+   objVectorPattern * Inherit;      // Inherit attributes from a VectorPattern referenced here.
+   VSPREAD SpreadMethod;            // The behaviour to use when the pattern bounds do not match the vector path.
+   VUNIT   Units;                   // Defines the coordinate system for fields X, Y, Width and Height.
+   VUNIT   ContentUnits;            // Private. Not yet implemented.
+   DMF     Dimensions;              // Dimension flags are stored here.
 
    // Customised field setting
 
@@ -903,8 +906,9 @@ class objVectorPattern : public Object {
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
-      this->SpreadMethod = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setUnits(const VUNIT Value) noexcept {
@@ -953,7 +957,7 @@ class objVectorGradient : public Object {
    DOUBLE  Radius;        // The radius of the gradient.
    DOUBLE  FocalRadius;   // The size of the focal radius for radial gradients.
    DOUBLE  Resolution;    // Affects the rate of change for colours in the gradient.
-   VSPREAD SpreadMethod;  // The behaviour to use when the gradient bounds do not match the vector path.
+   VSPREAD SpreadMethod;  // Determines the rendering behaviour to use when gradient colours are cycled.
    VUNIT   Units;         // Defines the coordinate system for X1, Y1, X2 and Y2.
    VGT     Type;          // Specifies the type of gradient (e.g. RADIAL, LINEAR)
    VGF     Flags;         // Dimension flags are stored here.
@@ -1042,8 +1046,9 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setSpreadMethod(const VSPREAD Value) noexcept {
-      this->SpreadMethod = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setUnits(const VUNIT Value) noexcept {
@@ -1053,8 +1058,9 @@ class objVectorGradient : public Object {
    }
 
    inline ERR setType(const VGT Value) noexcept {
-      this->Type = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERR setFlags(const VGF Value) noexcept {

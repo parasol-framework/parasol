@@ -47,7 +47,7 @@ class freetype_font {
    public:
       struct glyph {
          agg::path_storage path; // AGG vector path generated from the freetype glyph
-         DOUBLE adv_x, adv_y;    // Pixel advances, these values should not be rounded
+         double adv_x, adv_y;    // Pixel advances, these values should not be rounded
          LONG   glyph_index;     // Freetype glyph index; saves having to call a function for conversion
       };
 
@@ -65,10 +65,10 @@ class freetype_font {
             // It is widely acknowledged that the metrics declared by font creators or their tools may not be
             // the precise glyph metrics in reality...
 
-            DOUBLE height;  // Full height from the baseline - including accents
-            DOUBLE ascent;  // Ascent from the baseline - not including accents.  Typically matches the font-size in pixels
-            DOUBLE descent; // Number of pixels allocated below the baseline, not including vertical whitespace
-            DOUBLE line_spacing;
+            double height;  // Full height from the baseline - including accents
+            double ascent;  // Ascent from the baseline - not including accents.  Typically matches the font-size in pixels
+            double descent; // Number of pixels allocated below the baseline, not including vertical whitespace
+            double line_spacing;
             METRIC_GROUP axis;
 
             glyph & get_glyph(ULONG);
@@ -104,6 +104,33 @@ class freetype_font {
                      line_spacing = std::trunc(int26p6_to_dbl(ft_size->face->max_advance_height) * (72.0 / glDisplayVDPI));
                   }
                   else line_spacing = std::trunc(int26p6_to_dbl(ft_size->metrics.height + std::abs(ft_size->metrics.descender)) * 72.0 / glDisplayVDPI * 1.15);
+
+                  // Check if the client has applied a line spacing modifier for this font.
+
+                  if (glFontConfig) {
+                     pf::ScopedObjectLock<objConfig> config(glFontConfig, 500);
+                     if (config.granted()) {
+                        ConfigGroups *groups;
+                        if (glFontConfig->getPtr(FID_Data, &groups) IS ERR::Okay) {
+                           for (auto & [group, keys] : groups[0]) {
+                              if (pf::iequals(group, font->face->family_name)) {
+                                 if (auto it = keys.find("LineSpacing"); it != keys.end()) {
+                                    line_spacing *= std::stod(it->second);
+                                 }
+                                 break;
+                              }
+                              else if (auto it = keys.find("Name"); it != keys.end()) {
+                                 if (pf::iequals(it->second, font->face->family_name)) {
+                                    if (auto it = keys.find("LineSpacing"); it != keys.end()) {
+                                       line_spacing *= std::stod(it->second);
+                                    }
+                                    break;
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
 
                   height  = int26p6_to_dbl(ft_size->metrics.height) * (72.0 / glDisplayVDPI);
                   ascent  = int26p6_to_dbl(ft_size->metrics.ascender) * (72.0 / glDisplayVDPI);

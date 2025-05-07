@@ -36,7 +36,7 @@ static ERR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
    // the start of the content area because leading spaces may be important for content processing (e.g. for <pre> tags)
 
    CSTRING str = State.Pos;
-   if ((Self->Flags & XMF::ALL_CONTENT) IS XMF::NIL) {
+   if ((Self->Flags & XMF::INCLUDE_WHITESPACE) IS XMF::NIL) {
       while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
       if (*str != '<') str = State.Pos;
    }
@@ -349,7 +349,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 //********************************************************************************************************************
 // Serialise XML data into string form.
 
-void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
+static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
 {
    if (Tag.Attribs[0].isContent()) {
       if (!Tag.Attribs[0].Value.empty()) {
@@ -369,6 +369,14 @@ void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
                }
             }
          }
+      }
+   }
+   else if ((Flags & XMF::OMIT_TAGS) != XMF::NIL) {
+      if (!Tag.Children.empty()) {
+         for (auto &child : Tag.Children) {
+            serialise_xml(child, Buffer, Flags);
+         }
+         if ((Flags & XMF::READABLE) != XMF::NIL) Buffer << '\n';
       }
    }
    else {

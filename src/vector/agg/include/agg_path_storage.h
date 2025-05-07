@@ -241,6 +241,7 @@ namespace agg
         // Make path functions
 
         unsigned start_new_path();
+        void rect(double width, double height);
         void move_to(const point_d &);
         void move_rel(point_d);
         void line_to(const point_d &);
@@ -470,6 +471,17 @@ namespace agg
          }
       }
    }
+
+   template<class VC>
+   inline void path_base<VC>::rect(double width, double height) {
+      m_vertices.free_all();
+      m_vertices.add_vertex(0.0, 0.0, path_cmd_move_to);
+      m_vertices.add_vertex(width, 0.0, path_cmd_line_to);
+      m_vertices.add_vertex(width, height, path_cmd_line_to);
+      m_vertices.add_vertex(0.0, height, path_cmd_line_to);
+      m_vertices.add_vertex(0.0, 0.0, path_cmd_end_poly | path_flags_close);
+   }
+
 
    template<class VC>
    inline void path_base<VC>::move_to(const point_d &Point) {

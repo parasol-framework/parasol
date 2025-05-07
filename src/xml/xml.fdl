@@ -14,19 +14,20 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "CHECK_SORT: Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the `Attrib` field.")
 
   flags("XMF", { comment="Standard flags for the XML class." },
-    "WELL_FORMED: By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or an `ERR::BadData` error will be returned during processing.",
-    "INCLUDE_COMMENTS: By default, comments are stripped from all XML input.  This flag ensures that they are retained.",
+    "WELL_FORMED: By default, the XML class will accept badly structured XML data.  This flag requires that XML statements must be well-formed (tags must balance) or an `ERR::BadData` error will be returned during processing.",
+    "INCLUDE_COMMENTS: By default, comments are stripped when parsing XML input unless this flag is specified.",
     "STRIP_CONTENT: Strip all content from incoming XML data.",
     "READABLE|INDENT: Indent the output of serialised XML to improve readability.",
     "LOCK_REMOVE: Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.",
     "STRIP_HEADERS: XML headers found in the source data will not be included in the parsed results.",
     "NEW: Creates an empty XML object on initialisation - if the #Path field has been set, the source file will not be loaded.",
     "NO_ESCAPE: Turns off escape code conversion.",
-    "ALL_CONTENT: By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.",
+    "INCLUDE_WHITESPACE: By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.",
     "PARSE_HTML: Automatically parse HTML escape codes.",
     "STRIP_CDATA: Do not echo `CDATA` sections.  Note that this option is used as a parameter, not an object flag.",
     "LOG_ALL: Print extra log messages.",
     "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
+    "OMIT_TAGS: Prevents tags from being output when the XML is serialised (output content only).",
     { INCLUDE_SIBLINGS = "0x80000000: Include siblings when building an XML string (#GetXMLString() only)" })
 
   enum("XMI", { type="int", start=0, comment="Tag insertion options." },

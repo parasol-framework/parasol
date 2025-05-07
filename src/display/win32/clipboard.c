@@ -101,7 +101,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragEnter(struct rkDropTarget *Self, IData
 void report_windows_clip_text(void *);
 void report_windows_clip_utf16(void *);
 void report_windows_files(LPIDA, int);
-void report_windows_hdrop(LPIDA, int);
+void report_windows_hdrop(LPIDA, int, char);
 
 void winCopyClipboard(void);
 
@@ -695,41 +695,41 @@ void winClearClipboard(void)
 }
 
 //********************************************************************************************************************
-// Called from clipAddFile(), clipAddText() etc
+// Called from clipAddText() etc
 
 int winAddClip(int Datatype, const void *Data, int Size, int Cut)
 {
-   UINT format;
-   HGLOBAL hdata;
-   char * pdata;
-
    MSG("winAddClip()\n");
 
+   UINT format;
    switch(Datatype) {
       case CLIP_DATA:   return ERR_NoSupport; break;
       case CLIP_AUDIO:  format = CF_WAVE; break;
       case CLIP_IMAGE:  format = CF_BITMAP; break;
-      case CLIP_FILE:   format = CF_HDROP; Size += sizeof(DROPFILES); break;
       case CLIP_OBJECT: return ERR_NoSupport; break;
       case CLIP_TEXT:   format = CF_UNICODETEXT; break;
-      default:
-         return ERR_NoSupport;
+      default:          return ERR_NoSupport;
    }
 
    if (OpenClipboard(NULL)) {
       int error;
 
       EmptyClipboard();
-
-      if ((hdata = GlobalAlloc(GMEM_DDESHARE, Size))) {
+      
+      HGLOBAL hdata;
+      if ((hdata = GlobalAlloc(GMEM_FIXED, Size))) {
+         char * pdata;
          if ((pdata = (char *)GlobalLock(hdata))) {
             memcpy(pdata, Data, Size);
             GlobalUnlock(hdata);
 
             glIgnoreClip = GetTickCount();
 
-            SetClipboardData(format, hdata);
-            error = ERR_Okay;
+            if (SetClipboardData(format, hdata) == NULL) {
+               GlobalFree(hdata);
+               error = ERR_Failed;
+            }
+            else error = ERR_Okay;
          }
          else error = ERR_Lock;
       }
@@ -739,8 +739,47 @@ int winAddClip(int Datatype, const void *Data, int Size, int Cut)
       return error;
    }
    else return ERR_Failed;
+}
 
-   return ERR_NoSupport;
+//********************************************************************************************************************
+
+int winAddFileClip(const unsigned short *Path, int Size, int Cut)
+{
+   MSG("winAddFileClip()\n");
+
+   if (OpenClipboard(NULL)) {
+      int error;
+
+      HGLOBAL hdata;
+      if ((hdata = GlobalAlloc(GMEM_MOVEABLE, Size + sizeof(DROPFILES)))) {
+         char * pdata;
+         if ((pdata = (char *)GlobalLock(hdata))) {
+            DROPFILES *df = (DROPFILES*)pdata;
+            df->pFiles = sizeof(DROPFILES);
+            df->pt.x = 0;
+            df->pt.y = 0;
+            df->fNC = 0;
+            df->fWide = 1;
+            memcpy(pdata+sizeof(DROPFILES), Path, Size);
+            GlobalUnlock(hdata);
+            
+            EmptyClipboard();
+            glIgnoreClip = GetTickCount();
+
+            if (SetClipboardData(CF_HDROP, hdata) == NULL) {
+               GlobalFree(hdata);
+               error = ERR_Failed;
+            }
+            else error = ERR_Okay;
+         }
+         else error = ERR_Lock;
+      }
+      else error = ERR_AllocMemory;
+
+      CloseClipboard();
+      return error;
+   }
+   else return ERR_Failed;
 }
 
 //********************************************************************************************************************
@@ -843,8 +882,9 @@ void winCopyClipboard(void)
                      ReleaseStgMedium(&effect);
                   }
 
-                  if ((pida = (LPIDA)GlobalLock(stgm.hGlobal))) {
-                     report_windows_hdrop(pida, cut_operation);
+                  DROPFILES *df;
+                  if ((df = (DROPFILES *)GlobalLock(stgm.hGlobal))) {
+                     report_windows_hdrop(((const char *)df) + df->pFiles, cut_operation, df->fWide);
                      GlobalUnlock(stgm.hGlobal);
                   }
                }

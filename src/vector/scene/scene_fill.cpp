@@ -74,11 +74,12 @@ static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds,
    const double dx = Bounds.left + (dmf::hasScaledX(Image.Dimensions) ? (c_width * Image.X) : Image.X);
    const double dy = Bounds.top + (dmf::hasScaledY(Image.Dimensions) ? (c_height * Image.Y) : Image.Y);
 
-   Path.approximation_scale(Transform.scale());
+   auto t_scale = Transform.scale();
+   Path.approximation_scale(t_scale);
 
    double x_scale, y_scale, x_offset, y_offset;
    calc_aspectratio("fill_image", Image.AspectRatio, c_width, c_height,
-      Image.Bitmap->Width, Image.Bitmap->Height, &x_offset, &y_offset, &x_scale, &y_scale);
+      Image.Bitmap->Width, Image.Bitmap->Height, x_offset, y_offset, x_scale, y_scale);
 
    agg::trans_affine transform;
    transform.scale(x_scale, y_scale);
@@ -86,6 +87,15 @@ static void fill_image(VectorState &State, const TClipRectangle<double> &Bounds,
    transform *= Transform;
 
    transform.invert();
+
+   const double final_x_scale = t_scale * x_scale;
+   const double final_y_scale = t_scale * y_scale;
+
+   if (SampleMethod IS VSM::AUTO) {
+      if ((final_x_scale <= 0.5) or (final_y_scale <= 0.5)) SampleMethod = VSM::BICUBIC;
+      else if ((final_x_scale <= 1.0) or (final_y_scale <= 1.0)) SampleMethod = VSM::SINC;
+      else SampleMethod = VSM::SPLINE16; // Spline works well for enlarging monotone vectors and avoids sharpening artifacts.
+   }
 
    if (!State.mClipStack->empty()) {
       agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);
@@ -474,7 +484,8 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
    const double y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds.top;
    double dx, dy;
 
-   Path->approximation_scale(Transform.scale());
+   auto t_scale = Transform.scale();
+   Path->approximation_scale(t_scale);
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coords in the pattern; equiv. to 'userSpaceOnUse' in SVG
       double target_width, target_height;
@@ -494,11 +505,8 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       else if (dmf::hasY(Pattern.Dimensions)) dy = y_offset + Pattern.Y;
       else dy = y_offset;
 
-      //target_width  *= Transform.sx;
-      //target_height *= Transform.sy;
-
-      LONG page_width = F2T(target_width);
-      LONG page_height = F2T(target_height);
+      int page_width = F2T(target_width);
+      int page_height = F2T(target_height);
 
       if ((page_width != Pattern.Scene->PageWidth) or (page_height != Pattern.Scene->PageHeight)) {
          Pattern.Scene->PageWidth = page_width;
@@ -513,7 +521,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
       double target_width, target_height;
 
-      Pattern.Viewport->vpAspectRatio = ARF::X_MAX|ARF::Y_MAX; // Stretch the 1x1 viewport to match the PageW/H
+      ((extVectorViewport *)Pattern.Viewport)->vpAspectRatio = ARF::X_MAX|ARF::Y_MAX; // Stretch the 1x1 viewport to match the PageW/H
 
       if (Pattern.ContentUnits IS VUNIT::BOUNDING_BOX) {
          Pattern.Viewport->setFields(fl::ViewWidth(Pattern.Width), fl::ViewHeight(Pattern.Height));
@@ -525,14 +533,14 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
       if (dmf::hasScaledHeight(Pattern.Dimensions)) target_height = Pattern.Height * elem_height;
       else target_height = Pattern.Height;
 
-      dx = x_offset + ((elem_width * Pattern.X) * (SCALE_BITMAP ? Transform.sx : 1.0));
-      dy = y_offset + ((elem_height * Pattern.Y) * (SCALE_BITMAP ? Transform.sy : 1.0));
+      dx = x_offset + ((elem_width * Pattern.X) * (SCALE_BITMAP ? t_scale : 1.0));
+      dy = y_offset + ((elem_height * Pattern.Y) * (SCALE_BITMAP ? t_scale : 1.0));
 
       // Scale the bitmap so that it matches the final scale on the display.  This requires a matching inverse
       // adjustment when computing the final transform.
 
-      LONG page_width = F2T(target_width * (SCALE_BITMAP ? Transform.sx : 1.0));
-      LONG page_height = F2T(target_height * (SCALE_BITMAP ? Transform.sy : 1.0));
+      int page_width = F2T(target_width * (SCALE_BITMAP ? t_scale : 1.0));
+      int page_height = F2T(target_height * (SCALE_BITMAP ? t_scale : 1.0));
 
       // Mark the bitmap for recomputation if needed.
 
@@ -558,19 +566,29 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
    agg::trans_affine transform;
 
-   if (Pattern.Matrices) {
+   if (Pattern.Matrices) { // Client used the 'patternTransform' SVG attribute
       auto &m = *Pattern.Matrices;
       transform.load_all(m.ScaleX, m.ShearY, m.ShearX, m.ScaleY, m.TranslateX + dx, m.TranslateY + dy);
    }
    else transform.translate(dx, dy);
 
-   if ((SCALE_BITMAP) and (Pattern.Units IS VUNIT::BOUNDING_BOX)) {
+   if ((SCALE_BITMAP) and (Pattern.Units != VUNIT::USERSPACE)) {
       // Invert any prior bitmap scaling
-      transform.scale(1.0 / Transform.sx, 1.0 / Transform.sy);
+      transform.scale(1.0 / t_scale, 1.0 / t_scale);
    }
+
+   // NB: If the Transform multiplication isn't performed, the pattern tile effectively becomes detached
+   // from the target vector and is drawn as a static background.  Would it a be a useful feature for this
+   // to be available to the client as a toggle?
 
    transform *= Transform;
    transform.invert();
+   
+   if (SampleMethod IS VSM::AUTO) {
+      // Using anything more sophisticated than bicubic sampling for tiling is a CPU killer.
+      // If the client requires a different method, they will need to set it explicitly.
+      SampleMethod = VSM::BILINEAR;
+   }
 
    if (!State.mClipStack->empty()) {
       agg::alpha_mask_gray8 alpha_mask(State.mClipStack->top().m_renderer);

@@ -77,14 +77,12 @@ DEFINE_ENUM_FLAG_OPERATORS(DCF)
 
 enum class FSO : ULONG {
    NIL = 0,
-   BOLD = 0x00000001,
-   ITALIC = 0x00000002,
-   UNDERLINE = 0x00000004,
-   STYLES = 0x00000007,
-   PREFORMAT = 0x00000008,
-   ALIGN_RIGHT = 0x00000010,
-   ALIGN_CENTER = 0x00000020,
-   NO_WRAP = 0x00000040,
+   UNDERLINE = 0x00000001,
+   STYLES = 0x00000001,
+   PREFORMAT = 0x00000002,
+   ALIGN_RIGHT = 0x00000004,
+   ALIGN_CENTER = 0x00000008,
+   NO_WRAP = 0x00000010,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(FSO)
@@ -126,7 +124,7 @@ class objDocument : public Object {
    STRING   Keywords;               // Includes keywords declared by the source document.
    objVectorViewport * Viewport;    // A client-specific viewport that will host the document graphics.
    objVectorViewport * Focus;       // Refers to the object that will be monitored for user focusing.
-   objVectorViewport * View;        // An internally created viewport that hosts the Page
+   objVectorViewport * View;        // The viewing area of the document.
    objVectorViewport * Page;        // The Page contains the document content and is hosted by the View
    OBJECTID TabFocusID;             // Allows the user to hit the tab key to focus on other GUI objects.
    DEF      EventMask;              // Specifies events that need to be reported from the Document object.

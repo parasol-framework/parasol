@@ -734,8 +734,8 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
    }
 
    if (!Self->ParentID) {
-      if (Width  > Self->MaxWidth  + Self->LeftMargin + Self->RightMargin)  Width  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;
-      if (Height > Self->MaxHeight + Self->TopMargin  + Self->BottomMargin) Height = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin;
+      if ((Self->MaxWidth > 0) and (Width > Self->MaxWidth)) Width = Self->MaxWidth;
+      if ((Self->MaxHeight > 0) and (Height > Self->MaxHeight)) Height = Self->MaxHeight;
       if (InsideWidth < Width) InsideWidth = Width;
       if (InsideHeight < Height) InsideHeight = Height;
 

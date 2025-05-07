@@ -128,15 +128,15 @@
 <tr><td>TotalArgs</td><td>The total number of parameters in the Args parameter.</td></tr>
 <tr><td>Error</td><td>The error code returned from the script, if any.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>Private</p>
+<p>Not for client use.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-DerefProcedure" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">DerefProcedure</th><td id="tm-DerefProcedure">Dereferences a function.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-DerefProcedure" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR sc::DerefProcedure(OBJECTPTR Object, FUNCTION * Procedure)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Procedure</td><td>The function to be dereferenced.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-DerefProcedure" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">DerefProcedure</th><td id="tm-DerefProcedure">Dereferences an acquired procedure.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-DerefProcedure" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR sc::DerefProcedure(OBJECTPTR Object, FUNCTION * Procedure)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Procedure</td><td>The procedure to be dereferenced.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>This method is applicable to scripting languages that manage function references as a keyed resource.  Fluid is one such language.</p>
-<p>Any routine that accepts a script function as a parameter should call DerefProcedure at a later point in order to ensure that the function reference is released.  Not doing so may leave the reference in memory until the Script that owns the procedure is terminated.</p>
+<p>This method will release a procedure reference that has been acquired through <a data-bs-toggle="tooltip" title="Converts a procedure name to an ID." href="#tm-GetProcedureID">GetProcedureID()</a>.  It is only necessary to make this call if the scripting language is managing function references as a keyed resource.  Fluid is one such language.  Languages that do not manage functions as a resource will ignore calls to this method.</p>
+<p>Note that acquiring a procedure reference and then failing to release it can result in the reference remaining in memory until the Script is terminated.  There may also be unforeseen consequences in the garbage collection process.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
@@ -177,11 +177,11 @@ struct ScriptArg {
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-GetProcedureID" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">GetProcedureID</th><td id="tm-GetProcedureID">Converts a procedure name to an ID.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-GetProcedureID" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR sc::GetProcedureID(OBJECTPTR Object, CSTRING Procedure, LARGE * ProcedureID)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Procedure</td><td>The name of the procedure.</td></tr>
 <tr><td>ProcedureID</td><td>The computed ID will be returned in this parameter.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>This method will convert a procedure name to a unique reference that will be recognised by the script as a direct reference to that procedure.  The ID can be used to create new <code>FUNCTION</code> definitions, for example:</p>
+<p>This method will convert a procedure name to a unique reference within the script, if such a procedure exists.  The ID can be used by the client to create new <code>FUNCTION</code> definitions, for example:</p>
 <pre>FUNCTION callback;
 SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 </pre>
-<p>Resolving a procedure will often result in the Script maintaining an ongoing reference for it.  To discard the reference, call <a data-bs-toggle="tooltip" title="Dereferences a function." href="#tm-DerefProcedure">DerefProcedure()</a> once access to the procedure is no longer required.  Alternatively, destroying the script will also dereference all procedures.</p>
+<p>Resolving a procedure will often result in the Script maintaining an ongoing reference for it.  To discard the reference, call <a data-bs-toggle="tooltip" title="Dereferences an acquired procedure." href="#tm-DerefProcedure">DerefProcedure()</a> once access to the procedure is no longer required.  Alternatively, destroying the script will also dereference all procedures.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>

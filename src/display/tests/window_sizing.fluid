@@ -1,0 +1,59 @@
+--[[
+Window Sizing Tests
+--]]
+
+   require 'common'
+   require 'gui/window'
+   require 'gui/button'
+
+local INITIAL_WIDTH = 600
+local INITIAL_HEIGHT = 400
+local window, viewport, current_size
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function createRect(Width, Height)
+   viewport.new('VectorText', { x=10, y=Height - 10, string=Width .. ' x ' .. Height, fill='black' })
+
+   viewport.new('VectorRectangle', {
+      width=Width, height = Height, stroke='red', strokeWidth=1, fill='none'
+   })
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+   window = gui.window({
+      insideWidth  = INITIAL_WIDTH,
+      insideHeight = INITIAL_HEIGHT,
+      quit         = true,
+      title        = 'Window Sizing Test',
+      aspectRatio  = true,
+      minWidth     = 300,
+      minHeight    = 200,
+      maxWidth     = 1200,
+      maxHeight    = 800,
+      events = {
+      }
+   })
+
+   viewport = window:clientViewport({
+      resizeEvent = function(Viewport, Vector, X, Y, Width, Height)
+         current_size.string =  Width .. ' x ' .. Height
+         current_size.acDraw()
+      end
+   })
+
+   createRect(300, 200)
+   createRect(600, 400)
+   createRect(900, 600)
+   createRect(1200, 800)
+
+   viewport.new('VectorPolygon', { x1=0, y1=0, x2=1200, y2=800, stroke='red', strokeWidth=1 })
+
+   current_size = viewport.new('VectorText', {
+      x = 10, y = 30, string = INITIAL_WIDTH .. ' x ' .. INITIAL_HEIGHT, fill = 'black', fontStyle='bold'
+   })
+
+   window:show()
+   processing.sleep() -- Will sleep until the window sends MSGID_QUIT
+

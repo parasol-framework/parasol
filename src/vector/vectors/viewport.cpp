@@ -518,6 +518,7 @@ static ERR VIEW_GET_OverflowX(extVectorViewport *Self, VOF &Value)
 static ERR VIEW_SET_OverflowX(extVectorViewport *Self, VOF Value)
 {
    Self->vpOverflowX = Value;
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 
@@ -542,6 +543,7 @@ static ERR VIEW_GET_OverflowY(extVectorViewport *Self, VOF &Value)
 static ERR VIEW_SET_OverflowY(extVectorViewport *Self, VOF Value)
 {
    Self->vpOverflowY = Value;
+   mark_buffers_for_refresh(Self);
    return ERR::Okay;
 }
 

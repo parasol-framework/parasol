@@ -26,7 +26,7 @@
     <field>
       <name>AspectRatio</name>
       <comment>Flags that affect the aspect ratio of the image within its target vector.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="ARF">ARF</type>
       <description>
 <p>Defining an aspect ratio allows finer control over the position and scale of the image within its target vector.</p>
@@ -69,7 +69,7 @@
     <field>
       <name>SpreadMethod</name>
       <comment>Defines image tiling behaviour, if desired.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="VSPREAD">VSPREAD</type>
       <description>
 <p>The SpreadMethod defines the way in which the image is tiled within the target area if it is smaller than the available space.  It is secondary to the application of <fl>AspectRatio</fl>.  The default setting is <code>CLIP</code>, which prevents the image from being tiled.</p>
@@ -91,14 +91,14 @@
     <field>
       <name>X</name>
       <comment>Apply a horizontal offset to the image, the origin of which is determined by the <fl>Units</fl> value.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
     </field>
 
     <field>
       <name>Y</name>
       <comment>Apply a vertical offset to the image, the origin of which is determined by the <fl>Units</fl> value.</comment>
-      <access read="R" write="W">Read/Write</access>
+      <access read="R" write="S">Read/Set</access>
       <type>DOUBLE</type>
     </field>
 

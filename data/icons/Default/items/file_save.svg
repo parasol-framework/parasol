@@ -1,7 +1,1 @@
-<?xml version="1.0" encoding="utf-8"?>
-
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="42.836 0 440.327 512" preserveAspectRatio="xMidyMid meet">
-<polygon fill="none" points="338.99,142.662 338.99,142.663 412.653,142.663 338.99,68.749 "/>
-<path fill="#231F20" d="M339.99,0H42.836v512h440.327V143.662L339.99,0z M263.781,385.157l-62.794-74.566V471.5h-47.098V310.591
-	l-62.792,74.566v-74.566l86.345-98.114l86.339,98.114V385.157z M338.99,142.663L338.99,142.663V68.749l73.663,73.914H338.99z"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" id="mdi-file-upload" viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M13.5,16V19H10.5V16H8L12,12L16,16H13.5M13,9V3.5L18.5,9H13Z" /></svg>

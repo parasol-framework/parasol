@@ -8,6 +8,7 @@ A file viewer for recognised documents like SVG and RIPL
    require 'gui/fileview'
    require 'gui/listview'
    require 'gui/scrollbar'
+   require 'gui/filedialog'
 
    local glBody = [[<body fill="rgb(20,20,40)" font-fill="rgb(255,255,255)" font-size="12pt" margins="2em"/>]]
 
@@ -41,7 +42,7 @@ A file viewer for recognised documents like SVG and RIPL
 </page>
 ]]
 
-   local glWindow, glViewport, glTerminateView, glScrollbar, glViewArea, glStats
+   local glWindow, glFileView, glTerminateView, glScrollbar, glViewArea, glStats, glAppBar
 
    local glScript = obj.find('self')
 
@@ -171,7 +172,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
    glWindow = gui.window({
-      center = true,
       width  = arg('width', 1024),
       height = arg('height', 800),
       title  = 'Vue',
@@ -191,22 +191,20 @@ end
    else
       -- File view on the left
 
-      glView = gui.listView({
-         target       = glViewport,
-         x            = glWindow.margins.left,
-         y            = glWindow.margins.top,
-         width        = 200,
-         yOffset      = glWindow.margins.top,
-         dragDrop     = true,
-         sensitive    = true,
-         multiSelect  = false,
-         borderless   = true
-      })
-
-      glFileview = gui.fileview(glView, {
-         navigationBar = true,
+      glFileView = gui.fileview({
+         viewOptions = {
+            x          = glWindow.margins.left,
+            y          = glWindow.margins.top,
+            width      = 200,
+            yOffset    = glWindow.margins.top,
+            sensitive  = true,
+            borderless = true
+         },
+         target        = glViewport,
+         style         = 'list',
+         toolBar       = { navigation=true, views=true },
          displayPath   = true,
-         path     = arg('path', ':'),
+         path          = arg('path', ':'),
          filterList = {
             { name='SVG Images', ext='.svg' },
             { name='RIPL Documents', ext={ '.ripl', '.rpl' } },
@@ -225,14 +223,64 @@ end
 
       -- Document viewer on the right
 
-      glViewArea = glViewport.new('VectorViewport', {
-        x=glView.viewport.x + glView.viewport.width + 6, y=glWindow.margins.top,
+      glViewManager = glViewport.new('VectorViewport', {
+        x=glFileView.view.viewport.x + glFileView.view.viewport.width + 6, y=glWindow.margins.top,
         xOffset=glWindow.margins.right, yOffset=glWindow.margins.top
       })
 
+      -- Copy, Save As, Info, Zoom, Rotate Left / Right
+
+      local bkgd = glViewManager.new('VectorRectangle', {
+         x=0, y=0, xOffset=0, height=1, fill=gui.palette.base
+      })
+
+      glAppBar = gui.toolbar({
+         iconTheme = 'pearl',
+         target  = glViewManager,
+         x       = 0,
+         y       = 0,
+         xOffset = 0,
+         flush   = true,
+         createItems = function(Bar)
+            Bar.addItem(2, 'Save As', 'Save Image As', 'items/file_saveas', function()
+               gui.dialog.file({
+                  title       = 'Save Image As...',
+                  okText      = 'Save',
+                  cancelText  = 'Cancel',
+                  modal       = true,
+                  popOver     = glWindow.surface,
+                  warnExists  = true,
+                  feedback = function(Dialog, Path, Files)
+                     if (Files == nil) then return end
+
+                     local target_file = Path .. Files[1].filename
+
+                     local bmp = glViewArea.buffer
+                     if bmp then
+                        local pic = obj.new('picture', {
+                           width = bmp.width, height = bmp.height, bitsPerPixel = bmp.bitsPerPixel,
+                           flags = 'New|FORCE_ALPHA_32'
+                        })
+                        bmp.acCopyData(pic.bitmap)
+                        local file = obj.new('file', { flags='NEW|WRITE', path=target_file })
+                        pic.acSaveImage(file)
+                     end
+                  end
+               })
+            end)
+         end
+      })
+
+      bkgd.height = glAppBar.viewport.height
+
+      glViewArea = glViewManager.new('VectorViewport', {
+         x = 0, xOffset = 0, y = glAppBar.viewport.height, yOffset = 0,
+         buffered = true
+      })
+
       gui.divider({
-         left = glView.viewport, right = glViewArea,
-         minA = 100, maxA = glWindow.surface.insideWidth * 0.4, minB = 100
+         left = glFileView.view.viewport, right = glViewManager,
+         minA = 100, maxA = glWindow.surface.width * 0.4, minB = 100
       })
    end
 
@@ -251,7 +299,7 @@ end
 
    collectgarbage()
 
-   glWindow:show()
+   glWindow:show(true)
 
 ----------------------------------------------------------------------------------------------------------------------
 

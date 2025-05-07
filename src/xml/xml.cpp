@@ -608,72 +608,6 @@ static ERR XML_GetContent(extXML *Self, struct xml::GetContent *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-Serialise: Serialise part of the XML tree to an XML string.
-
-The Serialise() method will serialise all or part of the XML data tree to a string.
-
-The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data
-is no longer required.
-
--INPUT-
-int Index: Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.
-int(XMF) Flags: Use `INCLUDE_SIBLINGS` to include siblings of the tag found at Index.
-!str Result: The resulting string is returned in this parameter.
-
--ERRORS-
-Okay: The XML string was retrieved.
-Args:
-NoData: No information has been loaded into the XML object.
-AllocMemory: Failed to allocate an XML string for the result.
-
-*********************************************************************************************************************/
-
-static ERR XML_Serialise(extXML *Self, struct xml::Serialise *Args)
-{
-   pf::Log log;
-
-   if (Self->Tags.empty()) return log.warning(ERR::NoData);
-   if (!Args) return log.warning(ERR::NullArgs);
-
-   log.traceBranch("Tag: %d", Args->Index);
-
-   std::ostringstream buffer;
-
-   auto tag = Args->Index ? Self->getTag(Args->Index) : &Self->Tags[0];
-   if (!tag) return log.warning(ERR::NotFound);
-
-   if ((Args->Flags & XMF::INCLUDE_SIBLINGS) != XMF::NIL) {
-      if (auto parent = Self->getTag(tag->ParentID)) {
-         auto it = parent->Children.begin();
-         for (; it != parent->Children.end(); it++) {
-            if (it->ID IS Args->Index) break;
-         }
-
-         for (; it != parent->Children.end(); it++) {
-            serialise_xml(*it, buffer, Args->Flags);
-         }
-      }
-      else {
-         auto it = Self->Tags.begin();
-         for (; it != Self->Tags.end(); it++) {
-            if (it IS tag) break;
-         }
-
-         for (; it != Self->Tags.end(); it++) {
-            serialise_xml(*it, buffer, Args->Flags);
-         }
-      }
-   }
-   else serialise_xml(*tag, buffer, Args->Flags);
-
-   pf::SwitchContext ctx(ParentContext());
-   if ((Args->Result = pf::strclone(buffer.str()))) return ERR::Okay;
-   else return log.warning(ERR::AllocMemory);
-}
-
-/*********************************************************************************************************************
-
--METHOD-
 GetTag: Returns a pointer to the !XMLTag structure for a given tag index.
 
 This method will return the !XMLTag structure for a given tag `Index`.  The `Index` is checked to ensure it is valid
@@ -1204,6 +1138,72 @@ static ERR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
       return error;
    }
    else return error;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+Serialise: Serialise part of the XML tree to an XML string.
+
+The Serialise() method will serialise all or part of the XML data tree to a string.
+
+The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data
+is no longer required.
+
+-INPUT-
+int Index: Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.
+int(XMF) Flags: Use `INCLUDE_SIBLINGS` to include siblings of the tag found at Index.
+!str Result: The resulting string is returned in this parameter.
+
+-ERRORS-
+Okay: The XML string was retrieved.
+Args:
+NoData: No information has been loaded into the XML object.
+AllocMemory: Failed to allocate an XML string for the result.
+
+*********************************************************************************************************************/
+
+static ERR XML_Serialise(extXML *Self, struct xml::Serialise *Args)
+{
+   pf::Log log;
+
+   if (Self->Tags.empty()) return log.warning(ERR::NoData);
+   if (!Args) return log.warning(ERR::NullArgs);
+
+   log.traceBranch("Tag: %d", Args->Index);
+
+   std::ostringstream buffer;
+
+   auto tag = Args->Index ? Self->getTag(Args->Index) : &Self->Tags[0];
+   if (!tag) return log.warning(ERR::NotFound);
+
+   if ((Args->Flags & XMF::INCLUDE_SIBLINGS) != XMF::NIL) {
+      if (auto parent = Self->getTag(tag->ParentID)) {
+         auto it = parent->Children.begin();
+         for (; it != parent->Children.end(); it++) {
+            if (it->ID IS Args->Index) break;
+         }
+
+         for (; it != parent->Children.end(); it++) {
+            serialise_xml(*it, buffer, Args->Flags);
+         }
+      }
+      else {
+         auto it = Self->Tags.begin();
+         for (; it != Self->Tags.end(); it++) {
+            if (it IS tag) break;
+         }
+
+         for (; it != Self->Tags.end(); it++) {
+            serialise_xml(*it, buffer, Args->Flags);
+         }
+      }
+   }
+   else serialise_xml(*tag, buffer, Args->Flags);
+
+   pf::SwitchContext ctx(ParentContext());
+   if ((Args->Result = pf::strclone(buffer.str()))) return ERR::Okay;
+   else return log.warning(ERR::AllocMemory);
 }
 
 /*********************************************************************************************************************

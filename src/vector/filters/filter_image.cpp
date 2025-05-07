@@ -50,7 +50,7 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 
    // The image's x,y,width,height default to (0,0,100%,100%) of the target region.
 
-   DOUBLE p_x = filter->TargetX, p_y = filter->TargetY, p_width = filter->TargetWidth, p_height = filter->TargetHeight;
+   double p_x = filter->TargetX, p_y = filter->TargetY, p_width = filter->TargetWidth, p_height = filter->TargetHeight;
 
    if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       // In this mode image dimensions typically remain at the default, i.e. (0,0,100%,100%) of the target.
@@ -79,8 +79,8 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
       else if (dmf::hasHeight(Self->Dimensions))  p_height = Self->Height;
    }
 
-   DOUBLE xScale = 1, yScale = 1, align_x = 0, align_y = 0;
-   calc_aspectratio("align_image", Self->AspectRatio, p_width, p_height, Self->Bitmap->Width, Self->Bitmap->Height, &align_x, &align_y, &xScale, &yScale);
+   double xScale = 1, yScale = 1, align_x = 0, align_y = 0;
+   calc_aspectratio("align_image", Self->AspectRatio, p_width, p_height, Self->Bitmap->Width, Self->Bitmap->Height, align_x, align_y, xScale, yScale);
 
    p_x += align_x;
    p_y += align_y;
@@ -107,7 +107,7 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
       agg::span_interpolator_linear<> interpolator(img_transform);
 
       agg::image_filter_lut ifilter;
-      set_filter(ifilter, Self->ResampleMethod);
+      set_filter(ifilter, Self->ResampleMethod, img_transform);
 
       agg::span_once<agg::pixfmt_psl> source(pixSource, 0, 0);
       agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
@@ -294,12 +294,9 @@ static const FieldDef clResampleMethod[] = {
    { "Gaussian",  VSM::GAUSSIAN },
    { "Bessel",    VSM::BESSEL },
    { "Mitchell",  VSM::MITCHELL },
-   { "Sinc3",     VSM::SINC3 },
-   { "Lanczos3",  VSM::LANCZOS3 },
-   { "Blackman3", VSM::BLACKMAN3 },
-   { "Sinc8",     VSM::SINC8 },
-   { "Lanczos8",  VSM::LANCZOS8 },
-   { "Blackman8", VSM::BLACKMAN8 },
+   { "Sinc",      VSM::SINC },
+   { "Lanczos",   VSM::LANCZOS },
+   { "Blackman",  VSM::BLACKMAN },
    { NULL, 0 }
 };
 

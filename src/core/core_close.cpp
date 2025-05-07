@@ -8,8 +8,10 @@ void CloseCore(void)
    pf::Log log("Shutdown");
 
    if (glCodeIndex IS CP_FINISHED) return;
-
+   
    log.msg("PROGRAM TERMINATING");
+   
+   AdjustLogLevel(1); 
 
    #ifdef __unix__
       log.msg("UID: %d, EUID: %d, CrashStatus: %d", getuid(), geteuid(), glCrashStatus);

@@ -4,8 +4,8 @@
    require 'gui'
    require 'gui/scrollbar'
 
-   if (not mGfx) then mGfx = mod.load('display') end
-   if (not mVec) then mVec = mod.load('vector') end
+   if not mGfx then mGfx = mod.load('display') end
+   if not mVec then mVec = mod.load('vector') end
 
    local lItemCounter   = 1
 
@@ -193,12 +193,18 @@ gui.initView = function(Options, BuildUI, NewItems)
       viewport   = nil,
       page       = nil,
       window     = nil, -- Host of the page
+      fontFace   = nz(Options.fontFace, gui.fonts.page.face),
+      fontSize   = nz(Options.fontSize, gui.fonts.page.size),
+      fontStyle  = nz(Options.fontStyle, gui.fonts.page.style),
       noIcons    = Options.noIcons,
-      itemSelected   = Options.itemSelected,
-      itemDeselected = Options.itemDeselected,
-      itemActivated  = Options.itemActivated,
-      activeChange   = Options.activeChange,
-      events     = nz(Options.events, {})
+      itemSelected    = Options.itemSelected,
+      itemDeselected  = Options.itemDeselected,
+      itemActivated   = Options.itemActivated,
+      invertedPalette = Options.invertPalette,
+      activeChange    = Options.activeChange,
+      events          = nz(Options.events, {}),
+      top             = { },
+      totalTop        = 0
    }
 
    vw.addItem = function(Item)
@@ -451,6 +457,13 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.scene.surface.mtScheduleRedraw()
    end
 
+   vw.free = function()
+      vw.clear()
+      vw.viewport.free()
+      for k,v in pairs(vw) do vw[k] = nil end
+      collectgarbage()
+   end
+
    -- TODO: Changes the underlying attributes of any item in the view.
 
    vw.setItem = function(XPath, TagIndex, Key, Value)
@@ -533,10 +546,20 @@ gui.initView = function(Options, BuildUI, NewItems)
       vw.page.x = 0 -- Reset the page position
       vw.page.y = 0
 
-      BuildUI(vw, vw.scene, vw.window, vw.page)
+      BuildUI(vw)
       cursorActivity() -- Reset the cursor
       if vw.border then vw.border.acMoveToFront() end
       vw.scene.surface.mtScheduleRedraw()
+   end
+
+   -- Internal function for offsetting the frame, e.g. to accommodate a toolbar.
+
+   vw.reserveTop = function(ID, Height)
+      if vw.top[ID] then return end
+      vw.top[ID] = { y=vw.totalTop, height=Height }
+      vw.totalTop = vw.totalTop + Height
+      if vw.frame then vw.frame.y = vw.totalTop end
+      if vw.scrollbar then vw.scrollbar.vbar.viewport.y = vw.totalTop end
    end
 
    -- Initialisation --
@@ -546,15 +569,16 @@ gui.initView = function(Options, BuildUI, NewItems)
    vw.scene    = vw.parentViewport.scene
    vw.viewport = vw.parentViewport.new('VectorViewport', { name='view_main', overflow='hidden' }) -- Main viewport for vector graphics.
 
-   vw.bkgd = vw.viewport.new('VectorRectangle', {
+   vw.frame = vw.viewport.new('VectorViewport', { name='view_frame', x=0, xOffset=0, y=0, yOffset=0, overflow=VOF_HIDDEN })
+
+   vw.bkgd = vw.frame.new('VectorRectangle', {
       name   = 'view_bkgd',
       fill   = gui.style.page.bkgd,
       width  = '100%',
       height = '100%'
    })
 
-   vw.window = vw.viewport.new('VectorViewport', { name='view_view', x=0, xOffset=0, y=0, yOffset=0, overflow=VOF_HIDDEN })
-   vw.page = vw.window.new('VectorViewport', { name='view_page', width='100%', height='100%', buffered=true })
+   vw.page = vw.frame.new('VectorViewport', { name='view_page', width='100%', height='100%', buffered=true })
 
    if not Options.borderless then
       vw.border = vw.viewport.new('VectorRectangle', {
@@ -587,12 +611,12 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    vw.scrollbar = gui.scrollbar({
       target = vw.viewport,
-      view   = vw.window,
+      view   = vw.frame,
       page   = vw.page,
       direction = 'all'
    })
 
-   if not Options.borderless then
+   if not Options.borderless and vw.scrollbar then
       vw.scrollbar.hbar.viewport.x = 1
       vw.scrollbar.vbar.viewport.y = 1
    end

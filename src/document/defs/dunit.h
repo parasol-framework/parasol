@@ -4,7 +4,7 @@
 
 enum class DU : UBYTE {
    NIL = 0,
-   PIXEL,             // px
+   PIXEL,             // px in 72DPI
    SCALED,            // %: Scale to fill empty space
    FONT_SIZE,         // em
    CHAR,              // ch: The advance (width) of the '0' character
@@ -28,7 +28,7 @@ struct DUNIT {
 
    DUNIT(const std::string_view pValue, DU pDefaultType = DU::PIXEL, DOUBLE pMin = std::numeric_limits<DOUBLE>::min());
 
-   DOUBLE px(class layout &Layout);
+   double px(class layout &) const;
    
    constexpr bool empty() { return (type IS DU::NIL) or (!value); }
    constexpr void clear() { value = 0; type = DU::PIXEL; }

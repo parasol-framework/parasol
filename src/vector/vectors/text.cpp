@@ -25,7 +25,7 @@ fast `1:1` rendering without transforms.  The user is otherwise better served th
 Some notes about font rendering:
 
 * Font glyphs should always be positioned with a rounded vertical baseline when drawn.  That is to say a Y coordinate of
-  385 is fine, but a value of 385.76 is not.  The Freetype glyphs are hinted based on this assumption.  If a glyph's
+  385 is fine and 385.76 is not.  The Freetype glyphs are hinted based on this assumption.  If a glyph's
   baseline can adopt any position, the hinting may as well be turned off.
 
 * Whether or not a glyph's X coordinate should be rounded is a matter of preference.  An aligned glyph will be less
@@ -61,6 +61,7 @@ where large glyphs were oriented around sharp corners.  The process would look s
 const LONG DEFAULT_WEIGHT = 400;
 
 static FIELD FID_FreetypeFace;
+objConfig *glFontConfig = NULL;
 
 //********************************************************************************************************************
 
@@ -202,7 +203,7 @@ class extVectorText : public extVector {
    LONG  txWeight; // 100 - 300 (Light), 400 (Normal), 700 (Bold), 900 (Boldest)
    ALIGN txAlignFlags;
    VTXF  txFlags;
-   char  txFontStyle[20];
+   char  txFontStyle[30];
    bool txScaledFontSize;
    bool txXScaled:1;
    bool txYScaled:1;
@@ -1393,10 +1394,10 @@ static ERR TEXT_SET_Weight(extVectorText *Self, LONG Value)
 // Calculate the cursor that would be displayed at this character position and save it to the
 // line's chars array.
 
-static void calc_caret_position(TextLine &Line, agg::trans_affine &transform, DOUBLE FontSize, DOUBLE PathScale = 1.0)
+static void calc_caret_position(TextLine &Line, agg::trans_affine &transform, double FontSize, double PathScale = 1.0)
 {
    agg::path_storage cursor_path;
-   DOUBLE cx1, cy1, cx2, cy2;
+   double cx1, cy1, cx2, cy2;
 
    cursor_path.move_to(0, -(FontSize * PathScale) - (FontSize * 0.2));
    cursor_path.line_to(0, FontSize * 0.1);
@@ -1407,10 +1408,10 @@ static void calc_caret_position(TextLine &Line, agg::trans_affine &transform, DO
    Line.chars.emplace_back(cx1, cy1, cx2, cy2);
 }
 
-static void calc_caret_position(TextLine &Line, DOUBLE FontSize, DOUBLE PathScale = 1.0)
+static void calc_caret_position(TextLine &Line, double FontSize, double PathScale = 1.0)
 {
    agg::path_storage cursor_path;
-   DOUBLE cx1, cy1, cx2, cy2;
+   double cx1, cy1, cx2, cy2;
 
    cursor_path.move_to(0, -(FontSize * PathScale) - (FontSize * 0.2));
    cursor_path.line_to(0, FontSize * 0.1);
@@ -1423,7 +1424,7 @@ static void calc_caret_position(TextLine &Line, DOUBLE FontSize, DOUBLE PathScal
 
 extern void set_text_final_xy(extVectorText *Vector)
 {
-   DOUBLE x = Vector->txX, y = Vector->txY;
+   double x = Vector->txX, y = Vector->txY;
 
    if (Vector->txXScaled) x *= get_parent_width(Vector);
    if (Vector->txYScaled) y *= get_parent_height(Vector);
@@ -1452,7 +1453,7 @@ static ERR reset_font(extVectorText *Vector, bool Force)
    if (auto error = get_font(log, Vector->txFamily, Vector->txFontStyle, Vector->txWeight, Vector->txFontSize, &Vector->txHandle); error IS ERR::Okay) {
       if (Vector->txHandle->type IS CF_BITMAP) {
          Vector->txBitmapFont = ((bmp_font *)Vector->txHandle)->font;
-         Vector->txFontSize = std::trunc(DOUBLE(Vector->txBitmapFont->Height) * (DISPLAY_DPI / 72.0));
+         Vector->txFontSize = std::trunc(double(Vector->txBitmapFont->Height) * (DISPLAY_DPI / 72.0));
       }
       mark_dirty(Vector, RC::DIRTY);
       return ERR::Okay;
@@ -1568,7 +1569,7 @@ static ERR text_input_events(extVector *Vector, const InputEvent *Events)
             apply_parent_transforms(Self, transform);
          }
 
-         DOUBLE shortest_dist = 100000000000;
+         double shortest_dist = 100000000000;
          LONG nearest_row = 0, nearest_col = 0;
          LONG row = 0;
 
@@ -1579,9 +1580,9 @@ static ERR text_input_events(extVector *Vector, const InputEvent *Events)
          auto find_insertion = [&](TextLine &line) {
             LONG coli = 0;
             for (auto &col : line.chars) {
-               DOUBLE mx = Self->FinalX + ((col.x1 + col.x2) * 0.5); // Calculate the caret midpoint
-               DOUBLE my = Self->FinalY + ((col.y1 + col.y2) * 0.5);
-               DOUBLE d = std::abs(dist(Events->X, Events->Y, mx, my)); // Distance to the midpoint.
+               double mx = Self->FinalX + ((col.x1 + col.x2) * 0.5); // Calculate the caret midpoint
+               double my = Self->FinalY + ((col.y1 + col.y2) * 0.5);
+               double d = std::abs(dist(Events->X, Events->Y, mx, my)); // Distance to the midpoint.
 
                if (d < shortest_dist) {
                   shortest_dist = d;
@@ -1601,7 +1602,7 @@ static ERR text_input_events(extVector *Vector, const InputEvent *Events)
                agg::path_storage path;
 
                if (Self->txBitmapFont) {
-                  DOUBLE offset = Self->txBitmapFont->LineSpacing * row;
+                  double offset = Self->txBitmapFont->LineSpacing * row;
                   path.move_to(0, -Self->txBitmapFont->LineSpacing + offset);
                   path.line_to(Self->txWidth, -Self->txBitmapFont->LineSpacing + offset);
                   path.line_to(Self->txWidth, offset);
@@ -1611,7 +1612,7 @@ static ERR text_input_events(extVector *Vector, const InputEvent *Events)
                else if (Self->txHandle->type IS CF_FREETYPE) {
                   auto pt = (freetype_font::ft_point *)Self->txHandle;
 
-                  DOUBLE offset = pt->line_spacing * row;
+                  double offset = pt->line_spacing * row;
                   path.move_to(0, -pt->line_spacing + offset);
                   path.line_to(Self->txWidth, -pt->line_spacing + offset);
                   path.line_to(Self->txWidth, offset);
@@ -1621,7 +1622,7 @@ static ERR text_input_events(extVector *Vector, const InputEvent *Events)
 
                path.transform(transform);
 
-               DOUBLE bx1, bx2, by1, by2;
+               double bx1, bx2, by1, by2;
                bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
 
                if ((Events->AbsX >= bx1) and (Events->AbsY >= by1) and (Events->AbsX < bx2) and (Events->AbsX < by2)) {
@@ -1943,15 +1944,15 @@ void TextCursor::reset_vector(extVectorText *Vector) const
 
          if ((not Vector->Morph) and (Vector->ParentView)) {
             auto p_width = Vector->ParentView->vpFixedWidth;
-            DOUBLE xo = 0;
-            const DOUBLE CURSOR_MARGIN = Vector->txFontSize * 0.5;
+            double xo = 0;
+            const double CURSOR_MARGIN = Vector->txFontSize * 0.5;
             if (p_width > 8) {
                if (Vector->txX + line.chars[col].x1 <= 0) xo = Vector->txX + line.chars[col].x1;
                else if (Vector->txX + line.chars[col].x1 + CURSOR_MARGIN > p_width) xo = -(Vector->txX + line.chars[col].x1 + CURSOR_MARGIN - p_width);
             }
 
             auto p_height = Vector->ParentView->vpFixedHeight;
-            DOUBLE yo = 0;
+            double yo = 0;
             if ((mRow > 0) and (p_height > Vector->txFontSize)) {
                if (Vector->txY + line.chars[col].y1 <= 0) yo = Vector->txY + line.chars[col].y1;
                else if (Vector->txY + line.chars[col].y2 > p_height) yo = -(Vector->txY + line.chars[col].y2 - p_height + CURSOR_MARGIN);
@@ -2094,6 +2095,11 @@ static const FieldArray clTextFields[] = {
 static ERR init_text(void)
 {
    FID_FreetypeFace = strihash("FreetypeFace");
+   
+   OBJECTID id;
+   if (FindObject("cfgSystemFonts", CLASSID::CONFIG, FOF::NIL, &id) IS ERR::Okay) {
+      glFontConfig = (objConfig *)GetObjectPtr(id);
+   }
 
    clVectorText = objMetaClass::create::global(
       fl::BaseClassID(CLASSID::VECTOR),

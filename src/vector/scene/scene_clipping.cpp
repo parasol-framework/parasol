@@ -52,7 +52,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                      agg::pixfmt_psl pixf;
                      agg::renderer_base<agg::pixfmt_psl> rb(pixf);
                      ColourFormat cf; // Dummy, not required
-                     pixf.rawBitmap(m_bitmap.data(), m_width, m_height, m_width, 8, cf, true);
+                     pixf.rawBitmap(m_bitmap.data(), m_width, m_height, m_width, 8, cf, BLM::LINEAR);
                      rb.attach(pixf);
 
                      agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(node->BasePath, t);

@@ -434,7 +434,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>This function will delete a file or folder when given a valid file location.  The current user must have delete access to the given file. When deleting folders, all content will be scanned and deleted recursively. Individual deletion failures are ignored, although an error will be returned if the top-level folder still contains content on its deletion.</p>
 <p>This function does not allow for the approximation of file names.  To approximate a file location, open it as a File object or use <a href="?page=ResolvePath">ResolvePath()</a> first.</p>
 <p>The <code>Callback</code> parameter can be set with a function that matches the prototype <code>LONG Callback(struct FileFeedback *)</code>.</p>
-<p>Prior to the deletion of any file, a &amp;FileFeedback structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR::Okay</code> (delete the file), <code>FFR::Skip</code> (do not delete the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
+<p>Prior to the deletion of any file, a <a data-toggle="tooltip" title="" href="?page=struct-FileFeedback">FileFeedback</a> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR::Okay</code> (delete the file), <code>FFR::Skip</code> (do not delete the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The file or folder was deleted successfully.</td></tr>
 <tr><th class="col-md-1">File</th><td>The location could not be opened for deletion.</td></tr>
 <tr><th class="col-md-1">FileNotFound</th><td>File not found.</td></tr>
@@ -454,9 +454,10 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>Resolves a field identifier to its name.  For this to work successfully, the field must have been registered with the internal dictionary.  This is handled automatically when a new class is added to the system.</p>
 <p>If the <code>FieldID</code> is not registered, the value is returned back as a hex string.  The inclusion of this feature guarantees that an empty string will never be returned.</p>
     <h3>Result</h3><p>The name of the field is returned.</p><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="FindClass"><h2>FindClass()</h2><p class="lead">Returns all class objects for a given class ID.</p><div class="card card-info mb-3"><div class="card-header"><samp>objMetaClass * FindClass(CLASSID ClassID)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>ClassID</td><td>A class ID such as one retrieved from <a href="?page=ResolveClassName">ResolveClassName()</a>.</td></tr>
+<div class="docs-content" style="display:none;" id="FindClass"><h2>FindClass()</h2><p class="lead">Returns the internal MetaClass for a given class ID.</p><div class="card card-info mb-3"><div class="card-header"><samp>objMetaClass * FindClass(CLASSID ClassID)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>ClassID</td><td>A class ID such as one retrieved from <a href="?page=ResolveClassName">ResolveClassName()</a>.</td></tr>
 </tbody></table></div></div>
-<p>This function will find a specific class by ID and return its MetaClass.  If the class is not in memory, the internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded into memory and the class will be returned.  In any event of failure, <code>NULL</code> is returned.</p>
+<p>This function will find a specific class by ID and return its MetaClass.  If the class is not already loaded, the internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded into memory and the correct MetaClass will be returned.</p>
+<p>In any event of failure, <code>NULL</code> is returned.</p>
 <p>If the ID of a named class is not known, call <a href="?page=ResolveClassName">ResolveClassName()</a> first and pass the resulting ID to this function.</p>
     <h3>Result</h3><p>Returns a pointer to the MetaClass structure that has been found as a result of the search, or <code>NULL</code> if no matching class was found.</p><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="FindField"><h2>FindField()</h2><p class="lead">Finds field descriptors for any class, by ID.</p><div class="card card-info mb-3"><div class="card-header"><samp>struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Target)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Object</td><td>The target object.</td></tr>
@@ -477,9 +478,9 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <tr><td>ObjectID</td><td>An object id variable for storing the result.</td></tr>
 </tbody></table></div></div>
 <p>The FindObject() function searches for all objects that match a given name and can filter by class.</p>
-<p>The following example is a typical illustration of this function's use.  It finds the most recent object created with a given name:</p>
+<p>The following example illustrates typical usage, and finds the most recent object created with a given name:</p>
 <pre>OBJECTID id;
-FindObject("SystemPointer", CLASSID::POINTER, 0, &amp;id);
+FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 </pre>
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>At least one matching object was found and stored in the <code>ObjectID</code>.</td></tr>
@@ -752,14 +753,26 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="NotifySubscribers"><h2>NotifySubscribers()</h2><p class="lead">Used to send notification messages to action subscribers.</p><div class="card card-info mb-3"><div class="card-header"><samp>void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Object</td><td>Pointer to the object that is to receive the notification message.</td></tr>
+<div class="docs-content" style="display:none;" id="NotifySubscribers"><h2>NotifySubscribers()</h2><p class="lead">Send a notification event to action subscribers.</p><div class="card card-info mb-3"><div class="card-header"><samp>void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Object</td><td>Pointer to the object that is to receive the notification message.</td></tr>
 <tr><td><a onclick="showPage('AC');">Action</a></td><td>The action ID for notification.</td></tr>
 <tr><td>Args</td><td>Pointer to an action parameter structure that is relevant to the <code>Action</code> ID.</td></tr>
 <tr><td>Error</td><td>The error code that is associated with the action result.</td></tr>
 </tbody></table></div></div>
-<p>This function can be used by classes that need total control over notification management.  It allows an action to notify its subscribers manually, rather than deferring to the system default of notifying on return.</p>
-<p>Another useful feature is that parameter values can be customised for the recipients.</p>
-<p>NOTE: Calling NotifySubscribers() does nothing to prevent the core from sending out an action notification as it normally would, thus causing duplication.  To prevent this, the client must logical-or the return code of the action function with <code>ERR::Notified</code>, e.g. <code>ERR::Okay|ERR::Notified</code>.</p>
+<p>This function can be used by classes that need fine-tuned control over notification events, as managed by the <a href="?page=SubscribeAction">SubscribeAction()</a> function.  Normally the Core will automatically notify subscribers after an action is executed.  Using NotifySubscribers(), the client can instead manually notify subscribers during the execution of the action.</p>
+<p>Another useful aspect is that the client can control the parameter values that are passed on to the subscribers.</p>
+<p>NOTE: The use of NotifySubscribers() does not prevent the core from sending out an action notification as it normally would, which will cause duplication.  To prevent this, the client must logical-or the return code of the action function with <code>ERR::Notified</code>, e.g. <code>ERR::Okay|ERR::Notified</code>.</p>
+<p>In the following example you can see how the Surface class uses NotifySubscribers() to convert a Move event to a Redimension event.  The parameter values are customised to support this, and the function returns <code>ERR::Notified</code> to prevent the core from sending out a Move notification.</p>
+<pre>ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
+{
+   if (!Args) return ERR::NullArgs|ERR::Notified;
+
+   ...
+
+   struct acRedimension redimension = { Self-&gt;X, Self-&gt;Y, 0, Self-&gt;Width, Self-&gt;Height, 0 };
+   NotifySubscribers(Self, AC::Redimension, &amp;redimension, ERR::Okay);
+   return ERR::Okay|ERR::Notified;
+}
+</pre>
     <div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="OpenDir"><h2>OpenDir()</h2><p class="lead">Opens a folder for content scanning.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Path</td><td>The folder location to be scanned.  Using an empty string will scan for volume names.</td></tr>
 <tr><td><a onclick="showPage('RDF');">Flags</a></td><td>Optional flags.</td></tr>
@@ -1187,16 +1200,17 @@ SetField(Object, FID_Statement|TSTR, "string");
 <tr><th class="col-md-1">SystemLocked</th><td>Part of the system is unreachable due to a persistent lock.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="WaitForObjects"><h2>WaitForObjects()</h2><p class="lead">Process incoming messages while waiting on objects to complete their activities.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('PMF');">Flags</a></td><td>Optional flags are specified here (clients should set a value of zero).</td></tr>
+<div class="docs-content" style="display:none;" id="WaitForObjects"><h2>WaitForObjects()</h2><p class="lead">Process incoming messages while waiting on objects to complete their activities.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('PMF');">Flags</a></td><td>Optional flags are specified here.</td></tr>
 <tr><td>TimeOut</td><td>A time-out value measured in milliseconds.  If this value is negative then no time-out applies and the function will not return until an incoming message or signal breaks it.</td></tr>
 <tr><td>ObjectSignals</td><td>A null-terminated array of objects to monitor for signals.</td></tr>
 </tbody></table></div></div>
-<p>The WaitForObjects() function acts as a front-end to <a href="?page=ProcessMessages">ProcessMessages()</a>, with the capability of being able to wait for a series of objects that must signal an end to their activities.  An object can be signalled via the Signal() action. Termination of a monitored object is also treated as a signal.  The function will return once ALL of the objects are signalled or a time-out occurs.</p>
+<p>WaitForObjects() acts as a front-end to <a href="?page=ProcessMessages">ProcessMessages()</a>, with an ability to wait for a list of objects that are expected to signal an end to their activities.  An object can be signalled via the Signal() action, or via termination. This function will only return once ALL of the objects are signalled or a time-out occurs.</p>
 <p>Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the object will not be monitored.</p>
+<p>If this function is called recursively, the state of the earlier call will be preserved so that it will not be affected by subsequent calls.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
+<tr><th class="col-md-1">TimeOut</th><td>Function timed-out before successful completion.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-<tr><th class="col-md-1">Recursion</th><td>Detected a recursive function call.</td></tr>
 <tr><th class="col-md-1">OutsideMainThread</th><td>An operation has been attempted that is only possible from within the main thread.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="WaitTime"><h2>WaitTime()</h2><p class="lead">Waits for a specified amount of seconds and/or microseconds.</p><div class="card card-info mb-3"><div class="card-header"><samp>void WaitTime(LONG Seconds, LONG MicroSeconds)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Seconds</td><td>The number of seconds to wait for.</td></tr>

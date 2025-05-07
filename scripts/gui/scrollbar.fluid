@@ -295,6 +295,7 @@ gui.scrollbar = function(Options)
          end
       end)
    end
+
    self.scrollPage = function(DeltaX, DeltaY)
       local current_x = lPage.x
       local current_y = lPage.y

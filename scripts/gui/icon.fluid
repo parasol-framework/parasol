@@ -144,12 +144,13 @@ gui.icon = function(Options)
 
       for _, line in ipairs(lLines) do
          local vText = lTextGroup.new('VectorText', {
-            x        = math.floor(lIconSize * 0.5),
-            face     = gui.fonts.icon.face,
-            fontSize = string.format('%.2fpt', lFontSize),
-            fill     = gui.style.widget.text,
-            align    = 'horizontal',
-            string   = line
+            x         = math.floor(lIconSize * 0.5),
+            face      = gui.fonts.icon.face,
+            fontSize  = string.format('%.2fpt', lFontSize),
+            fontStyle = gui.fonts.icon.style,
+            fill      = gui.style.widget.text,
+            align     = 'horizontal',
+            string    = line
          })
 
          y = y + lLineHeight

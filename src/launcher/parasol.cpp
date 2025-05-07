@@ -23,7 +23,7 @@ extern struct CoreBase *CoreBase;
 static std::string glProcedure;
 static objSurface *glTarget = nullptr;
 pf::vector<std::string> *glArgs;
-static LONG glArgsIndex = 0;
+static int glArgsIndex = 0;
 //static STRING glAllow = nullptr;
 static std::string glTargetFile;
 static OBJECTPTR glTask = nullptr;
@@ -33,7 +33,7 @@ static bool glRelaunched = false;
 static bool glTime = false;
 static bool glDialog = false;
 
-static ERR exec_source(CSTRING, LONG, const std::string);
+static ERR exec_source(CSTRING, int, const std::string);
 
 static const char glHelp[] = {
 "This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.\n\
@@ -153,7 +153,7 @@ extern "C" int main(int argc, char **argv)
          }
          else glDialogScript.replace(start, 8, "parasol:");
 
-         result = LONG(exec_source(glDialogScript.c_str(), glTime, glProcedure));
+         result = int(exec_source(glDialogScript.c_str(), glTime, glProcedure));
       }
       else if (!glTargetFile.empty()) {
          STRING path;
@@ -164,7 +164,7 @@ extern "C" int main(int argc, char **argv)
          if ((AnalysePath(glTargetFile.c_str(), &type) != ERR::Okay) or (type != LOC::FILE)) {
             printf("File '%s' does not exist.\n", glTargetFile.c_str());
          }
-         else result = LONG(exec_source(glTargetFile.c_str(), glTime, glProcedure));
+         else result = int(exec_source(glTargetFile.c_str(), glTime, glProcedure));
       }
       else {
          // Check for the presence of package.zip or main.fluid files in the working directory
@@ -185,13 +185,13 @@ extern "C" int main(int argc, char **argv)
             if ((glPackageArchive = objCompression::create::local(fl::Path(pkg_path), fl::ArchiveName("package"), fl::Flags(CMF::READ_ONLY)))) {
                if (SetVolume("package", "archive:package/", "filetypes/archive", nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return -1;
 
-               result = (LONG)exec_source("package:main.fluid", glTime, glProcedure);
+               result = (int)exec_source("package:main.fluid", glTime, glProcedure);
             }
             else return -1;
          }
          else { // Check for main.fluid
             if ((AnalysePath("main.fluid", &type) IS ERR::Okay) and (type IS LOC::FILE)) {
-               result = (LONG)exec_source("main.fluid", glTime, glProcedure);
+               result = (int)exec_source("main.fluid", glTime, glProcedure);
             }
             else printf(glHelp);
          }

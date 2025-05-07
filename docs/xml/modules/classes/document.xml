@@ -536,7 +536,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The width of the longest document line can be retrieved from this field.  The result includes the left and right page margins.</p>
+<p>The page width indicates the width of the longest document line, including left and right page margins.  Although the PageWidth can be pre-defined by the client, a document can override this value at any time when it is parsed.  If imposing fixed page dimensions is desired, consider setting the <code>Width</code> and <code>Height</code> values of the <fl>View</fl> viewport object instead.</p>
       </description>
     </field>
 
@@ -565,7 +565,7 @@
       <access write="S">Set</access>
       <type>STRING</type>
       <description>
-<p>Use the Pretext field to execute document code prior to the loading of a new document.  This feature is commonly used to set configure a document in advance, such as setting default font values and background graphics.  It is functionally equivalent to embedding an <code>
+<p>Use the Pretext field to execute document code prior to the loading of a new document.  This feature is commonly used to configure a document in advance, such as setting default font values and background graphics.  It is functionally equivalent to embedding an <code>
 <include/></code> statement at the top of a document, but with the benefit of guaranteeing continued execution if the user navigates away from the first page.</p>
 <p>A Pretext will always survive document unloading and resets.  It can be removed only by setting this field with <code>NULL</code>.</p>
       </description>
@@ -593,9 +593,12 @@
 
     <field>
       <name>View</name>
-      <comment>An internally created viewport that hosts the Page</comment>
+      <comment>The viewing area of the document.</comment>
       <access read="R">Read</access>
       <type class="VectorViewport">*VectorViewport</type>
+      <description>
+<p>The view is an internally allocated viewport that hosts the document <fl>Page</fl>.  Its main purpose is to enforce a clipping boundary on the page.  By default, the view dimensions will always match that of the parent <fl>Viewport</fl>. If a fixed viewing size is desired, set the <code>Width</code> and <code>Height</code> fields of the View's <class name="VectorViewport">VectorViewport</class> after the initialisation of the document.</p>
+      </description>
     </field>
 
     <field>
@@ -614,9 +617,9 @@
       <access read="G">Get</access>
       <type>STRING</type>
       <description>
-<p>The working path for a document is defined here.  By default this is defined as the location from which the document was loaded, without the file name.  If this cannot be determined then the working path for the parent task is used (this is usually set to the location of the parasol executable).</p>
-<p>The working path is always fully qualified with a slash or colon at the end of the string unless the path cannot be determined - in which case an empty string is returned.</p>
-<p>You can manually change the working path by setting the <fl>Origin</fl> field without affecting the loaded document.</p>
+<p>The working path for a document is defined here.  By default this is defined as the location from which the document was loaded, without the file name.  If this cannot be determined, the working path for the parent task is used (this is usually set to the location of the parasol executable).</p>
+<p>The working path is always fully qualified with a slash or colon at the end of the string.</p>
+<p>The client can manually change the working path by setting the <fl>Origin</fl> field without affecting the loaded document.</p>
       </description>
     </field>
 
