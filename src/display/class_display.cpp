@@ -1365,15 +1365,19 @@ static ERR DISPLAY_SizeHints(extDisplay *Self, gfx::SizeHints *Args)
 #ifdef __xwindows__
    XSizeHints hints = { .flags = 0 };
 
-   if ((Args->MaxWidth >= 0) or (Args->MaxHeight >= 0)) hints.flags |= PMaxSize;
-   if ((Args->MinWidth >= 0) or (Args->MinHeight >= 0)) hints.flags |= PMinSize;
+   if ((Args->MaxWidth > 0) and (Args->MaxHeight > 0)) {
+      hints.max_width  = Args->MaxWidth;
+      hints.max_height = Args->MaxHeight;
+      hints.flags |= PMaxSize;
+   }
 
-   if (Args->MaxWidth > 0)  hints.max_width  = Args->MaxWidth;  else hints.max_width  = 0;
-   if (Args->MaxHeight > 0) hints.max_height = Args->MaxHeight; else hints.max_height = 0;
-   if (Args->MinWidth > 0)  hints.min_width  = Args->MinWidth;  else hints.min_width  = 0;
-   if (Args->MinHeight > 0) hints.min_height = Args->MinHeight; else hints.min_height = 0;
+   if ((Args->MinWidth > 0) and (Args->MinHeight > 0)) {
+      hints.min_width  = Args->MinWidth;
+      hints.min_height = Args->MinHeight;
+      hints.flags |= PMinSize;
+   }
 
-   if (Args->EnforceAspect) {
+   if ((Args->EnforceAspect) and (hints.flags & PMaxSize) and (hints.flags & PMinSize)) {
       hints.flags |= PAspect;
       hints.min_aspect.x = Args->MinWidth;
       hints.max_aspect.x = Args->MinWidth;

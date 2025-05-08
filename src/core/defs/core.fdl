@@ -20,9 +20,9 @@ module({ name="Core", copyright="Paul Manias 1996-2025", timestamp=20241015 }, f
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef int16_t type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef int type; };
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef LARGE type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef int64_t type; };
 // used as an approximation of std::underlying_type<T>
 template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
 
@@ -627,7 +627,7 @@ struct OpenTag {
    TOI Tag;
    union {
       int Long;
-      LARGE Large;
+      int64_t Large;
       APTR Pointer;
       CSTRING String;
    } Value;
@@ -745,14 +745,14 @@ struct FieldValue {
       CPTR    CPointer;
       double  Double;
       SCALE   Percent;
-      LARGE   Large;
+      int64_t   Large;
       int    Long;
    };
 
    //std::string not included as not compatible with constexpr
    constexpr FieldValue(uint32_t pFID, CSTRING pValue)   : FieldID(pFID), Type(FD_STRING), String(pValue) { };
    constexpr FieldValue(uint32_t pFID, int pValue)      : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
-   constexpr FieldValue(uint32_t pFID, LARGE pValue)     : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
+   constexpr FieldValue(uint32_t pFID, int64_t pValue)     : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
    constexpr FieldValue(uint32_t pFID, size_t pValue)    : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
    constexpr FieldValue(uint32_t pFID, double pValue)    : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
    constexpr FieldValue(uint32_t pFID, SCALE pValue)     : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
@@ -908,9 +908,9 @@ inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF
       const auto start = String.find_first_not_of(" \n\r\t");
       if (start != std::string::npos) String.remove_prefix(start);
       if (String.starts_with('+')) String.remove_prefix(1);
-      auto [ end, error ] = std::from_chars(String.data(), String.data() + String.size(), Value);  
+      auto [ end, error ] = std::from_chars(String.data(), String.data() + String.size(), Value);
       if (error != std::errc()) { Value = 0; return; }
-      
+
       String = String.substr(end - String.data());
       if (String.starts_with("%")) { Value *= 0.01; Type = FD_DOUBLE|FD_SCALED; }
       else Type = FD_DOUBLE;
@@ -1095,7 +1095,7 @@ struct ScriptArg { // For use with sc::Exec
    union {
       APTR   Address;
       int   Long;
-      LARGE  Large;
+      int64_t  Large;
       double Double;
    };
 
@@ -1106,7 +1106,7 @@ struct ScriptArg { // For use with sc::Exec
    ScriptArg(CSTRING pName, APTR pValue, uint32_t pType = FD_PTR) : Name(pName), Type(pType), Address(pValue) { }
    ScriptArg(CSTRING pName, int pValue, uint32_t pType = FD_LONG) : Name(pName), Type(pType), Long(pValue) { }
    ScriptArg(CSTRING pName, uint32_t pValue, uint32_t pType = FD_LONG) : Name(pName), Type(pType), Long(pValue) { }
-   ScriptArg(CSTRING pName, LARGE pValue, uint32_t pType = FD_LARGE) : Name(pName), Type(pType), Large(pValue) { }
+   ScriptArg(CSTRING pName, int64_t pValue, uint32_t pType = FD_LARGE) : Name(pName), Type(pType), Large(pValue) { }
    ScriptArg(CSTRING pName, double pValue, uint32_t pType = FD_DOUBLE) : Name(pName), Type(pType), Double(pValue) { }
 };
 ]])
@@ -1232,7 +1232,7 @@ inline ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION Callback) {
    return SubscribeAction(Object,Action,&Callback);
 }
 
-inline ERR SubscribeEvent(LARGE Event, FUNCTION Callback, APTR *Handle) {
+inline ERR SubscribeEvent(int64_t Event, FUNCTION Callback, APTR *Handle) {
    return SubscribeEvent(Event,&Callback,Handle);
 }
 
@@ -1468,16 +1468,17 @@ class LogLevel {
 //********************************************************************************************************************
 // Refer to Object->get() to see what this is about...
 
-template <class T> inline LARGE FIELD_TAG()     { return 0; }
-template <> inline LARGE FIELD_TAG<double>()    { return TDOUBLE; }
-template <> inline LARGE FIELD_TAG<int>()      { return TLONG; }
-template <> inline LARGE FIELD_TAG<FLOAT>()     { return TFLOAT; }
-template <> inline LARGE FIELD_TAG<OBJECTPTR>() { return TPTR; }
-template <> inline LARGE FIELD_TAG<APTR>()      { return TPTR; }
-template <> inline LARGE FIELD_TAG<LARGE>()     { return TLARGE; }
-template <> inline LARGE FIELD_TAG<CSTRING>()   { return TSTRING; }
-template <> inline LARGE FIELD_TAG<STRING>()    { return TSTRING; }
-template <> inline LARGE FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
+template <class T> inline int64_t FIELD_TAG()     { return 0; }
+template <> inline int64_t FIELD_TAG<double>()    { return TDOUBLE; }
+template <> inline int64_t FIELD_TAG<int>()       { return TLONG; }
+template <> inline int64_t FIELD_TAG<int64_t>()   { return TLARGE; }
+template <> inline int64_t FIELD_TAG<uint64_t>()  { return TLARGE; }
+template <> inline int64_t FIELD_TAG<float>()     { return TFLOAT; }
+template <> inline int64_t FIELD_TAG<OBJECTPTR>() { return TPTR; }
+template <> inline int64_t FIELD_TAG<APTR>()      { return TPTR; }
+template <> inline int64_t FIELD_TAG<CSTRING>()   { return TSTRING; }
+template <> inline int64_t FIELD_TAG<STRING>()    { return TSTRING; }
+template <> inline int64_t FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
 
 //********************************************************************************************************************
 // Header used for all objects.
@@ -1556,7 +1557,7 @@ struct Object { // Must be 64-bit aligned
    inline ERR set(FIELD FieldID, int Value)             { return SetField(this, FieldID|TLONG, Value); }
    inline ERR set(FIELD FieldID, long Value)            { return SetField(this, FieldID|TLONG, Value); }
    inline ERR set(FIELD FieldID, unsigned int Value)    { return SetField(this, FieldID|TLONG, Value); }
-   inline ERR set(FIELD FieldID, LARGE Value)           { return SetField(this, FieldID|TLARGE, Value); }
+   inline ERR set(FIELD FieldID, int64_t Value)         { return SetField(this, FieldID|TLARGE, Value); }
    inline ERR set(FIELD FieldID, double Value)          { return SetField(this, FieldID|TDOUBLE, Value); }
    inline ERR set(FIELD FieldID, const FUNCTION *Value) { return SetField(this, FieldID|TFUNCTION, Value); }
    inline ERR set(FIELD FieldID, const char *Value)     { return SetField(this, FieldID|TSTRING, Value); }
@@ -1571,8 +1572,8 @@ struct Object { // Must be 64-bit aligned
    // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
    // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
 
-   inline ERR get(FIELD FieldID, int *Value)     { return GetField(this, FieldID|TLONG, Value); }
-   inline ERR get(FIELD FieldID, LARGE *Value)    { return GetField(this, FieldID|TLARGE, Value); }
+   inline ERR get(FIELD FieldID, int *Value)      { return GetField(this, FieldID|TLONG, Value); }
+   inline ERR get(FIELD FieldID, int64_t *Value)  { return GetField(this, FieldID|TLARGE, Value); }
    inline ERR get(FIELD FieldID, double *Value)   { return GetField(this, FieldID|TDOUBLE, Value); }
    inline ERR get(FIELD FieldID, STRING *Value)   { return GetField(this, FieldID|TSTRING, Value); }
    inline ERR get(FIELD FieldID, CSTRING *Value)  { return GetField(this, FieldID|TSTRING, Value); }
@@ -2113,7 +2114,7 @@ inline CLASSID Object::baseClassID() { return Class->BaseClassID; }
     int LineOffset       # An optional offset to use when reporting line numbers
   ]],
   [[
-   LARGE    ProcedureID;          // For callbacks
+   int64_t    ProcedureID;          // For callbacks
    KEYVALUE Vars; // Global parameters
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
@@ -2399,7 +2400,7 @@ template<class T> ERR ReadLE(OBJECTPTR Object, T *Result)
             switch(sizeof(T)) {
                case 2:  *Result = (data[1]<<8) | data[0]; break;
                case 4:  *Result = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|(data[3]); break;
-               case 8:  *Result = ((LARGE)data[0]<<56)|((LARGE)data[1]<<48)|((LARGE)data[2]<<40)|((LARGE)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7]); break;
+               case 8:  *Result = ((int64_t)data[0]<<56)|((int64_t)data[1]<<48)|((int64_t)data[2]<<40)|((int64_t)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7]); break;
                default: *Result = ((T *)data)[0];
             }
          }
@@ -2420,7 +2421,7 @@ template<class T> ERR ReadBE(OBJECTPTR Object, T *Result)
             switch(sizeof(T)) {
                case 2:  *Result = (data[1]<<8) | data[0]; break;
                case 4:  *Result = (data[0]<<24)|(data[1]<<16)|(data[2]<<8)|(data[3]); break;
-               case 8:  *Result = ((LARGE)data[0]<<56)|((LARGE)data[1]<<48)|((LARGE)data[2]<<40)|((LARGE)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7]); break;
+               case 8:  *Result = ((int64_t)data[0]<<56)|((int64_t)data[1]<<48)|((int64_t)data[2]<<40)|((int64_t)data[3]<<32)|(data[4]<<24)|(data[5]<<16)|(data[6]<<8)|(data[7]); break;
                default: *Result = ((T *)data)[0];
             }
          }
