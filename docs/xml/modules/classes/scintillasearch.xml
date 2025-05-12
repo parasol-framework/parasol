@@ -21,9 +21,9 @@
     <method>
       <name>Find</name>
       <comment>Searches for a specific text string.</comment>
-      <prototype>ERR ss::Find(OBJECTPTR Object, LONG * Pos, STF Flags)</prototype>
+      <prototype>ERR ss::Find(OBJECTPTR Object, INT * Pos, STF Flags)</prototype>
       <input>
-        <param type="LONG *" name="Pos">The position to start searching from.  Set to -1 to start from the cursor position.  This parameter is updated with the byte position of the discovered string sequence.</param>
+        <param type="INT *" name="Pos">The position to start searching from.  Set to -1 to start from the cursor position.  This parameter is updated with the byte position of the discovered string sequence.</param>
         <param type="STF" name="Flags" lookup="STF">Optional flags.</param>
       </input>
       <description>
@@ -35,9 +35,9 @@
     <method>
       <name>Next</name>
       <comment>Continues a text search.</comment>
-      <prototype>ERR ss::Next(OBJECTPTR Object, LONG * Pos)</prototype>
+      <prototype>ERR ss::Next(OBJECTPTR Object, INT * Pos)</prototype>
       <input>
-        <param type="LONG *" name="Pos">The byte-position of the discovered string sequence is returned here.</param>
+        <param type="INT *" name="Pos">The byte-position of the discovered string sequence is returned here.</param>
       </input>
       <description>
 <p>Use Next to continue a search after calling the <method>Find</method> method.  If a string sequence matching that of <fl>Text</fl> is discovered, its byte position will be returned in the <code>Pos</code> parameter.  If a new match is not discovered then <code>ERR::Search</code> is returned to indicate an end to the search.</p>
@@ -47,9 +47,9 @@
     <method>
       <name>Prev</name>
       <comment>Continues a text search in reverse.</comment>
-      <prototype>ERR ss::Prev(OBJECTPTR Object, LONG * Pos)</prototype>
+      <prototype>ERR ss::Prev(OBJECTPTR Object, INT * Pos)</prototype>
       <input>
-        <param type="LONG *" name="Pos">The byte-position of the discovered string is returned here.</param>
+        <param type="INT *" name="Pos">The byte-position of the discovered string is returned here.</param>
       </input>
       <description>
 <p>The Prev() method operates under the same circumstances as <method>Next</method>, except that the search will be in reverse.  Please refer to <method>Next</method> for further information.</p>

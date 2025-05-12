@@ -245,7 +245,7 @@ Okay
 
 *********************************************************************************************************************/
 
-ERR SetHostOption(HOST Option, LARGE Value)
+ERR SetHostOption(HOST Option, int64_t Value)
 {
 #if defined(_WIN32) || defined(__xwindows__)
    pf::Log log(__FUNCTION__);

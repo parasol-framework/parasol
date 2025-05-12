@@ -136,7 +136,7 @@
       <name>ClientData</name>
       <comment>Optional user data storage</comment>
       <access read="R" write="W">Read/Write</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
     </field>
 
     <field>

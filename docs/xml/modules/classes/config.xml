@@ -128,9 +128,9 @@ print('The Action class is located at ' .. str)
     <method>
       <name>GetGroupFromIndex</name>
       <comment>Converts an index number into its matching group string.</comment>
-      <prototype>ERR cfg::GetGroupFromIndex(OBJECTPTR Object, LONG Index, CSTRING * Group)</prototype>
+      <prototype>ERR cfg::GetGroupFromIndex(OBJECTPTR Object, INT Index, CSTRING * Group)</prototype>
       <input>
-        <param type="LONG" name="Index">The group index that you want to identify.</param>
+        <param type="INT" name="Index">The group index that you want to identify.</param>
         <param type="CSTRING *" name="Group">Points to the group string that matches the index number.</param>
       </input>
       <description>
@@ -220,10 +220,10 @@ print('The Action class is located at ' .. str)
     <method>
       <name>SortByKey</name>
       <comment>Sorts config data using a sequence of sort instructions.</comment>
-      <prototype>ERR cfg::SortByKey(OBJECTPTR Object, CSTRING Key, LONG Descending)</prototype>
+      <prototype>ERR cfg::SortByKey(OBJECTPTR Object, CSTRING Key, INT Descending)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of the key to sort on.</param>
-        <param type="LONG" name="Descending">Set to true if a descending sort is required.</param>
+        <param type="INT" name="Descending">Set to true if a descending sort is required.</param>
       </input>
       <description>
 <p>The SortByKey() method sorts the groups of a config object by key values (the named key value should be present in every group).</p>

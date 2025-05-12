@@ -38,10 +38,10 @@
     <method>
       <name>AddCommand</name>
       <comment>Add one or more commands to the end of the path sequence.</comment>
-      <prototype>ERR vp::AddCommand(OBJECTPTR Object, struct PathCommand * Commands, LONG Size)</prototype>
+      <prototype>ERR vp::AddCommand(OBJECTPTR Object, struct PathCommand * Commands, INT Size)</prototype>
       <input>
         <param type="struct PathCommand *" name="Commands">Array of commands to add to the path.</param>
-        <param type="LONG" name="Size">The size of the <code>Commands</code> buffer, in bytes.</param>
+        <param type="INT" name="Size">The size of the <code>Commands</code> buffer, in bytes.</param>
       </input>
       <description>
 <p>This method will add a series of commands to the end of a Vector's existing path sequence.  The commands must be provided as a sequential array.  No checks will be performed to confirm the validity of the sequence.</p>
@@ -52,9 +52,9 @@
     <method>
       <name>GetCommand</name>
       <comment>Retrieve a specific command from the path sequence.</comment>
-      <prototype>ERR vp::GetCommand(OBJECTPTR Object, LONG Index, struct PathCommand ** Command)</prototype>
+      <prototype>ERR vp::GetCommand(OBJECTPTR Object, INT Index, struct PathCommand ** Command)</prototype>
       <input>
-        <param type="LONG" name="Index">The index of the command to retrieve.</param>
+        <param type="INT" name="Index">The index of the command to retrieve.</param>
         <param type="struct PathCommand **" name="Command">The requested command will be returned in this parameter.</param>
       </input>
       <description>
@@ -65,10 +65,10 @@
     <method>
       <name>RemoveCommand</name>
       <comment>Remove at least one command from the path sequence.</comment>
-      <prototype>ERR vp::RemoveCommand(OBJECTPTR Object, LONG Index, LONG Total)</prototype>
+      <prototype>ERR vp::RemoveCommand(OBJECTPTR Object, INT Index, INT Total)</prototype>
       <input>
-        <param type="LONG" name="Index">The index of the command to remove.</param>
-        <param type="LONG" name="Total">The total number of commands to remove, starting from the given Index.</param>
+        <param type="INT" name="Index">The index of the command to remove.</param>
+        <param type="INT" name="Total">The total number of commands to remove, starting from the given Index.</param>
       </input>
       <description>
 <p>This method will remove a series of commands from the current path, starting at the given <code>Index</code>.  The total number of commands to remove is indicated by the <code>Total</code> parameter.</p>
@@ -78,11 +78,11 @@
     <method>
       <name>SetCommand</name>
       <comment>Copies one or more commands into an existing path.</comment>
-      <prototype>ERR vp::SetCommand(OBJECTPTR Object, LONG Index, struct PathCommand * Command, LONG Size)</prototype>
+      <prototype>ERR vp::SetCommand(OBJECTPTR Object, INT Index, struct PathCommand * Command, INT Size)</prototype>
       <input>
-        <param type="LONG" name="Index">The index of the command that is to be set.</param>
+        <param type="INT" name="Index">The index of the command that is to be set.</param>
         <param type="struct PathCommand *" name="Command">An array of commands to set in the path.</param>
-        <param type="LONG" name="Size">The size of the <code>Command</code> buffer, in bytes.</param>
+        <param type="INT" name="Size">The size of the <code>Command</code> buffer, in bytes.</param>
       </input>
       <description>
 <p>Use SetCommand() to copy one or more commands into an existing path.</p>
@@ -92,10 +92,10 @@
     <method>
       <name>SetCommandList</name>
       <comment>The fastest available mechanism for setting a series of path instructions.</comment>
-      <prototype>ERR vp::SetCommandList(OBJECTPTR Object, APTR Commands, LONG Size)</prototype>
+      <prototype>ERR vp::SetCommandList(OBJECTPTR Object, APTR Commands, INT Size)</prototype>
       <input>
         <param type="APTR" name="Commands">An array of <st>PathCommand</st> structures.</param>
-        <param type="LONG" name="Size">The byte size of the <code>Commands</code> buffer.</param>
+        <param type="INT" name="Size">The byte size of the <code>Commands</code> buffer.</param>
       </input>
       <description>
 <p>Use SetCommandList() to copy a series of path commands to a <class name="VectorPath">VectorPath</class> object.  All existing commands will be cleared as a result of this process.</p>

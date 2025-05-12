@@ -37,7 +37,7 @@ static ERR wake_task(void);
 static ERR sleep_task(LONG, BYTE);
 #else
 static ERR sleep_task(LONG);
-ERR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime);
+ERR write_nonblock(LONG Handle, APTR Data, LONG Size, int64_t EndTime);
 #endif
 
 template <class T> inline APTR ResolveAddress(T *Pointer, LONG Offset) {
@@ -296,9 +296,9 @@ ERR ProcessMessages(PMF Flags, LONG TimeOut)
 
    tlMsgRecursion++;
 
-   LARGE timeout_end;
+   int64_t timeout_end;
    if (TimeOut IS -1) timeout_end = 0x7fffffffffffffffLL; // Infinite loop
-   else timeout_end = PreciseTime() + ((LARGE)TimeOut * 1000LL);
+   else timeout_end = PreciseTime() + ((int64_t)TimeOut * 1000LL);
 
    log.traceBranch("Flags: $%.8x, TimeOut: %d", LONG(Flags), TimeOut);
 
@@ -318,12 +318,12 @@ ERR ProcessMessages(PMF Flags, LONG TimeOut)
 timer_cycle:
       if ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL));
       else if (glmTimer.try_lock_for(200ms)) {
-         LARGE current_time = PreciseTime();
+         int64_t current_time = PreciseTime();
          for (auto timer=glTimers.begin(); timer != glTimers.end(); ) {
             if (current_time < timer->NextCall) { timer++; continue; }
             if (timer->Cycle IS glTimerCycle) { timer++; continue; }
 
-            LARGE elapsed = current_time - timer->LastCall;
+            int64_t elapsed = current_time - timer->LastCall;
 
             timer->NextCall += timer->Interval;
             if (timer->NextCall < current_time) timer->NextCall = current_time;
@@ -338,7 +338,7 @@ timer_cycle:
             if (timer->Routine.isC()) {
                OBJECTPTR subscriber;
                if (!timer->SubscriberID) { // Internal subscriptions like process_janitor() don't have a subscriber
-                  auto routine = (ERR (*)(OBJECTPTR, LARGE, LARGE, APTR))timer->Routine.Routine;
+                  auto routine = (ERR (*)(OBJECTPTR, int64_t, int64_t, APTR))timer->Routine.Routine;
                   glmTimer.unlock();
                   relock = true;
                   error = routine(NULL, elapsed, current_time, timer->Routine.Meta);
@@ -346,7 +346,7 @@ timer_cycle:
                else if (AccessObject(timer->SubscriberID, 50, &subscriber) IS ERR::Okay) {
                   pf::SwitchContext context(subscriber);
 
-                  auto routine = (ERR (*)(OBJECTPTR, LARGE, LARGE, APTR))timer->Routine.Routine;
+                  auto routine = (ERR (*)(OBJECTPTR, int64_t, int64_t, APTR))timer->Routine.Routine;
                   glmTimer.unlock();
                   relock = true;
 
@@ -449,12 +449,12 @@ timer_cycle:
          }
       #endif
 
-      LARGE wait = 0;
+      int64_t wait = 0;
       if ((!glQueue.empty()) or (breaking) or ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)));
       else if (timeout_end > 0) {
          // Wait for someone to communicate with us, or stall until an interrupt is due.
 
-         LARGE sleep_time = timeout_end;
+         int64_t sleep_time = timeout_end;
          if (auto lock = std::unique_lock{glmTimer, 200ms}) {
             for (const auto &timer : glTimers) {
                if (timer.NextCall < sleep_time) sleep_time = timer.NextCall;
@@ -789,7 +789,7 @@ ERR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
    }
    else error = ERR::Write;
 #else
-   LARGE end_time = (PreciseTime() / 1000LL) + 10000LL;
+   int64_t end_time = (PreciseTime() / 1000LL) + 10000LL;
    error = write_nonblock(Handle, &msg, sizeof(msg), end_time);
    if ((error IS ERR::Okay) and (Data) and (Size > 0)) { // Write the main message.
       error = write_nonblock(Handle, Data, Size, end_time);
@@ -805,7 +805,7 @@ ERR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
 // end-time is required so that a timeout will be signalled if the reader isn't keeping the buffer clear.
 
 #ifdef __unix__
-ERR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
+ERR write_nonblock(LONG Handle, APTR Data, LONG Size, int64_t EndTime)
 {
    LONG offset = 0;
    ERR error = ERR::Okay;
@@ -1096,7 +1096,7 @@ ERR sleep_task(LONG Timeout, BYTE SystemOnly)
 
    //log.traceBranch("Time-out: %d, TotalFDs: %d", Timeout, glTotalFDs);
 
-   LARGE time_end;
+   int64_t time_end;
    if (Timeout < 0) {
       Timeout = -1; // A value of -1 means to wait indefinitely
       time_end = 0x7fffffffffffffffLL;
@@ -1127,7 +1127,7 @@ ERR sleep_task(LONG Timeout, BYTE SystemOnly)
                handles[total++] = fd.FD;
             }
             else {
-               log.warning("FD %" PF64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (LARGE)fd.FD);
+               log.warning("FD %" PF64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (int64_t)fd.FD);
                it = glFDTable.erase(it);
                continue;
             }
@@ -1174,7 +1174,7 @@ ERR sleep_task(LONG Timeout, BYTE SystemOnly)
          break;
       }
       else if (i IS -2) {
-         log.warning("WaitForObjects() failed, bad handle %" PF64 ".  Deregistering automatically.", (LARGE)handles[0]);
+         log.warning("WaitForObjects() failed, bad handle %" PF64 ".  Deregistering automatically.", (int64_t)handles[0]);
          RegisterFD((HOSTHANDLE)handles[0], RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, NULL, NULL);
       }
       else if (i IS -4) {
@@ -1189,7 +1189,7 @@ ERR sleep_task(LONG Timeout, BYTE SystemOnly)
          break; // Message in windows message queue that needs to be processed, so break
       }
 
-      LARGE systime = (PreciseTime() / 1000LL);
+      int64_t systime = (PreciseTime() / 1000LL);
       if (systime < time_end) Timeout = time_end - systime;
       else break;
    }

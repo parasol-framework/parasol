@@ -214,7 +214,7 @@ ERR process_commands(extAudio *Self, SAMPLE Elements)
 
 //********************************************************************************************************************
 
-static ERR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR audio_timer(extAudio *Self, int64_t Elapsed, int64_t CurrentTime)
 {
 #ifdef ALSA_ENABLED
 
@@ -694,7 +694,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
 
    // Calculate resampling step (16.16 fixed point)
 
-   LONG step = ((LARGE(Channel.Frequency / Self->OutputRate) << 16) + (LARGE(Channel.Frequency % Self->OutputRate) << 16) / Self->OutputRate);
+   LONG step = ((int64_t(Channel.Frequency / Self->OutputRate) << 16) + (int64_t(Channel.Frequency % Self->OutputRate) << 16) / Self->OutputRate);
 
    DOUBLE stereo_mul = 1.0;
    if (!Self->Stereo) {

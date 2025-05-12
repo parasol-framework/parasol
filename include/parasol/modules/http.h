@@ -115,7 +115,7 @@ enum class HTS : LONG {
 
 // HTTP flags
 
-enum class HTF : ULONG {
+enum class HTF : uint32_t {
    NIL = 0,
    RESUME = 0x00000001,
    MESSAGE = 0x00000002,
@@ -145,9 +145,9 @@ class objHTTP : public Object {
 
    DOUBLE   DataTimeout;     // The data timeout value, relevant when receiving or sending data.
    DOUBLE   ConnectTimeout;  // The initial connection timeout value, measured in seconds.
-   LARGE    Index;           // Indicates download progress in terms of bytes received.
-   LARGE    ContentLength;   // The byte length of incoming or outgoing content.
-   LARGE    Size;            // Set this field to define the length of a data transfer when issuing a POST command.
+   int64_t  Index;           // Indicates download progress in terms of bytes received.
+   int64_t  ContentLength;   // The byte length of incoming or outgoing content.
+   int64_t  Size;            // Set this field to define the length of a data transfer when issuing a POST command.
    STRING   Host;            // The targeted HTTP server is specified here, either by name or IP address.
    STRING   Path;            // The HTTP path targeted at the host server.
    STRING   OutputFile;      // To download HTTP content to a file, set a file path here.
@@ -172,7 +172,7 @@ class objHTTP : public Object {
 
    inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
    inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
-   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+   inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
@@ -183,7 +183,7 @@ class objHTTP : public Object {
       struct acSetKey args = { FieldName, Value };
       return Action(AC::SetKey, this, &args);
    }
-   inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
+   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
@@ -194,8 +194,8 @@ class objHTTP : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
+      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -205,7 +205,7 @@ class objHTTP : public Object {
          return error;
       }
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
+   inline int writeResult(CPTR Buffer, int Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
@@ -223,17 +223,17 @@ class objHTTP : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setIndex(const LARGE Value) noexcept {
+   inline ERR setIndex(const int64_t Value) noexcept {
       this->Index = Value;
       return ERR::Okay;
    }
 
-   inline ERR setContentLength(const LARGE Value) noexcept {
+   inline ERR setContentLength(const int64_t Value) noexcept {
       this->ContentLength = Value;
       return ERR::Okay;
    }
 
-   inline ERR setSize(const LARGE Value) noexcept {
+   inline ERR setSize(const int64_t Value) noexcept {
       this->Size = Value;
       return ERR::Okay;
    }

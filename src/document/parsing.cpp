@@ -3897,7 +3897,7 @@ void parser::tag_trigger(XMLTag &Tag)
    pf::Log log(__FUNCTION__);
    DRT trigger_code;
    objScript *script;
-   LARGE function_id;
+   int64_t function_id;
 
    std::string event, function_name;
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {

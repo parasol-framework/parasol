@@ -59,10 +59,10 @@ if (thread.ok()) thread-&gt;activate(thread);
     <method>
       <name>SetData</name>
       <comment>Attaches data to the thread.</comment>
-      <prototype>ERR th::SetData(OBJECTPTR Object, APTR Data, LONG Size)</prototype>
+      <prototype>ERR th::SetData(OBJECTPTR Object, APTR Data, INT Size)</prototype>
       <input>
         <param type="APTR" name="Data">Pointer to the data buffer.</param>
-        <param type="LONG" name="Size">Size of the data buffer.  If zero, the pointer is stored directly, with no copy operation taking place.</param>
+        <param type="INT" name="Size">Size of the data buffer.  If zero, the pointer is stored directly, with no copy operation taking place.</param>
       </input>
       <description>
 <p>Use the SetData() method prior to activating a thread so that it can be initialised with user data.  The thread will be able to read the data from the <fl>Data</fl> field.</p>

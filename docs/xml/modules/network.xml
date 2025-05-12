@@ -33,40 +33,40 @@
   <function>
     <name>HostToLong</name>
     <comment>Converts a 32 bit (unsigned) long from host to network byte order.</comment>
-    <prototype>ULONG net::HostToLong(ULONG Value)</prototype>
+    <prototype>UINT net::HostToLong(ULONG Value)</prototype>
     <input>
-      <param type="ULONG" name="Value">Data in host byte order to be converted to network byte order</param>
+      <param type="UINT" name="Value">Data in host byte order to be converted to network byte order</param>
     </input>
     <description>
 <p>Converts a 32 bit (unsigned) long from host to network byte order.</p>
     </description>
-    <result type="ULONG">The long in network byte order</result>
+    <result type="UINT">The long in network byte order</result>
   </function>
 
   <function>
     <name>HostToShort</name>
     <comment>Converts a 16 bit (unsigned) word from host to network byte order.</comment>
-    <prototype>ULONG net::HostToShort(ULONG Value)</prototype>
+    <prototype>UINT net::HostToShort(ULONG Value)</prototype>
     <input>
-      <param type="ULONG" name="Value">Data in host byte order to be converted to network byte order</param>
+      <param type="UINT" name="Value">Data in host byte order to be converted to network byte order</param>
     </input>
     <description>
 <p>Converts a 16 bit (unsigned) word from host to network byte order.</p>
     </description>
-    <result type="ULONG">The word in network byte order</result>
+    <result type="UINT">The word in network byte order</result>
   </function>
 
   <function>
     <name>LongToHost</name>
     <comment>Converts a 32 bit (unsigned) long from network to host byte order.</comment>
-    <prototype>ULONG net::LongToHost(ULONG Value)</prototype>
+    <prototype>UINT net::LongToHost(ULONG Value)</prototype>
     <input>
-      <param type="ULONG" name="Value">Data in network byte order to be converted to host byte order</param>
+      <param type="UINT" name="Value">Data in network byte order to be converted to host byte order</param>
     </input>
     <description>
 <p>Converts a 32 bit (unsigned) long from network to host byte order.</p>
     </description>
-    <result type="ULONG">The Value in host byte order.</result>
+    <result type="UINT">The Value in host byte order.</result>
   </function>
 
   <function>
@@ -90,14 +90,14 @@
   <function>
     <name>ShortToHost</name>
     <comment>Converts a 16 bit (unsigned) word from network to host byte order.</comment>
-    <prototype>ULONG net::ShortToHost(ULONG Value)</prototype>
+    <prototype>UINT net::ShortToHost(ULONG Value)</prototype>
     <input>
-      <param type="ULONG" name="Value">Data in network byte order to be converted to host byte order</param>
+      <param type="UINT" name="Value">Data in network byte order to be converted to host byte order</param>
     </input>
     <description>
 <p>Converts a 16 bit (unsigned) word from network to host byte order.</p>
     </description>
-    <result type="ULONG">The Value in host byte order</result>
+    <result type="UINT">The Value in host byte order</result>
   </function>
 
   <function>
@@ -191,9 +191,9 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
   </types>
   <structs>
     <struct name="IPAddress">
-      <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
+      <field name="Data" type="INT" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
       <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
-      <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
+      <field name="Pad" type="INT">Unused padding for 64-bit alignment</field>
     </struct>
 
     <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
@@ -203,7 +203,7 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
       <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
       <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
       <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalSockets" type="LONG">Count of all created sockets</field>
+      <field name="TotalSockets" type="INT">Count of all created sockets</field>
     </struct>
 
   </structs>

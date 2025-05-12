@@ -39,11 +39,11 @@
     <method>
       <name>SelectDiscrete</name>
       <comment>Apply the discrete function to a pixel component.</comment>
-      <prototype>ERR rf::SelectDiscrete(OBJECTPTR Object, CMP Component, DOUBLE * Values, LONG Size)</prototype>
+      <prototype>ERR rf::SelectDiscrete(OBJECTPTR Object, CMP Component, DOUBLE * Values, INT Size)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the discrete function must be applied.</param>
         <param type="DOUBLE *" name="Values">A list of values for the discrete function.</param>
-        <param type="LONG" name="Size">Total number of elements in the <code>Values</code> list.</param>
+        <param type="INT" name="Size">Total number of elements in the <code>Values</code> list.</param>
       </input>
       <description>
 <p>This method will apply the table function to a selected RGBA pixel component.  A list of values is required with a minimum size of 1.</p>
@@ -107,10 +107,10 @@
     <method>
       <name>SelectMask</name>
       <comment>Apply the mask function to a pixel component.</comment>
-      <prototype>ERR rf::SelectMask(OBJECTPTR Object, CMP Component, LONG Mask)</prototype>
+      <prototype>ERR rf::SelectMask(OBJECTPTR Object, CMP Component, INT Mask)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the function must be applied.</param>
-        <param type="LONG" name="Mask">The bit mask to be AND'd with each value.</param>
+        <param type="INT" name="Mask">The bit mask to be AND'd with each value.</param>
       </input>
       <description>
 <p>This method will apply the mask function to a selected RGBA pixel component.  The function is written as <code>C' = C &amp; Mask</code>.  This algorithm is particularly useful for lowering the bit depth of colours, e.g. a value of <code>0xf0</code> will reduce 8 bit colours to 4 bit.</p>
@@ -121,11 +121,11 @@
     <method>
       <name>SelectTable</name>
       <comment>Apply the table function to a pixel component.</comment>
-      <prototype>ERR rf::SelectTable(OBJECTPTR Object, CMP Component, DOUBLE * Values, LONG Size)</prototype>
+      <prototype>ERR rf::SelectTable(OBJECTPTR Object, CMP Component, DOUBLE * Values, INT Size)</prototype>
       <input>
         <param type="CMP" name="Component" lookup="CMP">The pixel component to which the table function must be applied.</param>
         <param type="DOUBLE *" name="Values">A list of values for the table function.</param>
-        <param type="LONG" name="Size">Total number of elements in the value list.</param>
+        <param type="INT" name="Size">Total number of elements in the value list.</param>
       </input>
       <description>
 <p>This method will apply the table function to a selected RGBA pixel component.  A list of values is required with a minimum size of 1.</p>

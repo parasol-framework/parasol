@@ -695,7 +695,7 @@ function docClass(Class)
                   local ref = ''
                   if nz(param.lookup) then ref = ' lookup="' .. param.lookup .. '"' end
                   if (param.comment == nil) then error('No comment provided for ' .. Class.name .. '.' .. a.name .. '()\'s parameter "' .. param.name .. '"') end
-                  out = out .. "        <param type=\"" .. param.type:escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
+                  out = out .. "        <param type=\"" .. nz(param.docType,param.type):escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
                end
                out = out .. '      </input>\n'
             end
@@ -747,7 +747,7 @@ function docClass(Class)
                   local ref = ''
                   if nz(param.ref) then ref = " lookup=\"" .. param.lookup .. '"' end
                   if (param.comment == nil) then error('No comment provided for ' .. Class.name .. '.' .. method.name .. '()\'s parameter "' .. param.name .. '"') end
-                  out = out .. "        <param type=\"" .. param.type:escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
+                  out = out .. "        <param type=\"" .. param.docType:escXML() .. "\" name=\"" .. param.name .. '"' .. ref .. ">" .. substituteReferences(param.comment:escXML(), Class) .. "</param>\n"
                end
                out = out .. '      </input>\n'
             end
@@ -810,14 +810,14 @@ function docClass(Class)
                   typeName = 'RGB8'
                elseif (typeName == 'LONG') then
                   typeName = 'INT'
-               elseif (typeName == 'LARGE') then
-                  typeName = 'BIGINT'
+               elseif (typeName == 'LARGE') or (typeName == 'int64_t') then
+                  typeName = 'INT64'
                elseif (f.className) then
                   typeName = '*' .. f.className
                   lookup = ' class="' .. f.className .. '"'
                elseif (f.isFunctionPtr) then
                   typeName = 'FUNCTION *'
-                  prototype = ' prototype="' .. f.type .. '"'
+                  prototype = ' prototype="' .. f.docType .. '"'
                end
 
                out = out .. '      <type' .. lookup .. prototype .. '>' .. typeName:escXML() .. '</type>\n'
@@ -944,7 +944,7 @@ function docFunction(Function)
                fa.name, substituteReferences(fa.comment:escXML()))
          else
             args = args .. string.format("      <param type=\"%s\" name=\"%s\"" .. ref .. ">%s</param>\n",
-               fa.type:escXML(), fa.name, substituteReferences(fa.comment:escXML()))
+               fa.docType:escXML(), fa.name, substituteReferences(fa.comment:escXML()))
          end
 
          if (fa.comment == 'Undocumented') then
@@ -982,7 +982,7 @@ function docFunction(Function)
             ref = " lookup=\"" .. Function.result.lookup .. '"'
          end
 
-         out = out .. "    <result type=\"" .. Function.result.type:escXML() .. '"' .. ref .. ">" .. substituteReferences(Function.result.comment:escXML()) .. "</result>\n"
+         out = out .. "    <result type=\"" .. Function.result.docType:escXML() .. '"' .. ref .. ">" .. substituteReferences(Function.result.comment:escXML()) .. "</result>\n"
       end
    end
 
@@ -1083,11 +1083,11 @@ function docStructures(References)
             local arraySize = ''
             if (f.arraySize) then arraySize = " size=\"" .. f.arraySize .. '"' end
 
-            local type = nz(f.type, 'NIL')
+            local type = nz(f.docType, 'NIL')
             local prototype = ''
             if (f.isFunctionPtr) then
                type = 'FUNCTION *'
-               prototype = ' prototype="' .. f.type:escXML() .. '"'
+               prototype = ' prototype="' .. f.docType:escXML() .. '"'
             end
 
             out = out .. "      <field name=\"" .. f.name .. "\" type=\"" .. type:escXML() .. '"' .. prototype .. ref .. arraySize .. ">"

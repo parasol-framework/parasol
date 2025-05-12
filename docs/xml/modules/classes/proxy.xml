@@ -69,10 +69,10 @@
     <method>
       <name>Find</name>
       <comment>Search for a proxy that matches a set of filters.</comment>
-      <prototype>ERR prx::Find(OBJECTPTR Object, LONG Port, LONG Enabled)</prototype>
+      <prototype>ERR prx::Find(OBJECTPTR Object, INT Port, INT Enabled)</prototype>
       <input>
-        <param type="LONG" name="Port">The port number  to access.  If zero, all proxies will be returned if you perform a looped search.</param>
-        <param type="LONG" name="Enabled">Set to <code>true</code> to return only enabled proxies, <code>false</code> for disabled proxies or <code>-1</code> for all proxies.</param>
+        <param type="INT" name="Port">The port number  to access.  If zero, all proxies will be returned if you perform a looped search.</param>
+        <param type="INT" name="Enabled">Set to <code>true</code> to return only enabled proxies, <code>false</code> for disabled proxies or <code>-1</code> for all proxies.</param>
       </input>
       <description>
 <p>The following example searches for all proxies available for use on port 80 (HTTP).</p>

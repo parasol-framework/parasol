@@ -112,10 +112,10 @@
     <method>
       <name>GetFiles</name>
       <comment>Retrieve the most recently clipped data as a list of files.</comment>
-      <prototype>ERR clip::GetFiles(OBJECTPTR Object, CLIPTYPE Filter, LONG Index, CLIPTYPE * Datatype, CSTRING ** Files, CEF * Flags)</prototype>
+      <prototype>ERR clip::GetFiles(OBJECTPTR Object, CLIPTYPE Filter, INT Index, CLIPTYPE * Datatype, CSTRING ** Files, CEF * Flags)</prototype>
       <input>
         <param type="CLIPTYPE" name="Filter" lookup="CLIPTYPE">Filter down to the specified data type.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
-        <param type="LONG" name="Index">If the <code>Filter</code> parameter is zero and clipboard history is enabled, this parameter refers to a historical clipboard item, with zero being the most recent.</param>
+        <param type="INT" name="Index">If the <code>Filter</code> parameter is zero and clipboard history is enabled, this parameter refers to a historical clipboard item, with zero being the most recent.</param>
         <param type="CLIPTYPE *" name="Datatype" lookup="CLIPTYPE">The resulting datatype of the requested clip data.</param>
         <param type="CSTRING **" name="Files">The resulting location(s) of the requested clip data are returned in this parameter; terminated with a <code>NULL</code> entry.  The client must free the returned array with <function module="Core">FreeResource</function>.</param>
         <param type="CEF *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If <code>DELETE</code> is defined, the client must delete the files after use in order to support the 'cut' operation.</param>
@@ -172,7 +172,7 @@
       <description>
 <p>Applications can request data from a clipboard if it is in drag-and-drop mode by sending a <code>DATA::REQUEST</code> to the Clipboard's DataFeed action.  Doing so will result in a callback to the function that is referenced in the RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this template:</p>
 <p>
-<code>ERR RequestHandler(*Clipboard, OBJECTPTR Requester, LONG Item, BYTE Datatypes[4])</code></p>
+<code>ERR RequestHandler(*Clipboard, OBJECTPTR Requester, int Item, BYTE Datatypes[4])</code></p>
 <p>The function will be expected to send a <code>DATA::RECEIPT</code> to the object referenced in the Requester paramter.  The receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format. If this cannot be achieved then <code>ERR::NoSupport</code> should be returned by the function.</p>
       </description>
     </field>

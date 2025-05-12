@@ -93,13 +93,13 @@
     <method>
       <name>Render</name>
       <comment>Render the scene to a target Bitmap.</comment>
-      <prototype>ERR svg::Render(OBJECTPTR Object, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
+      <prototype>ERR svg::Render(OBJECTPTR Object, objBitmap * Bitmap, INT X, INT Y, INT Width, INT Height)</prototype>
       <input>
         <param type="objBitmap *" name="Bitmap">The target <class name="Bitmap">Bitmap</class>.</param>
-        <param type="LONG" name="X">Target X coordinate.</param>
-        <param type="LONG" name="Y">Target Y coordinate.</param>
-        <param type="LONG" name="Width">Target page width.</param>
-        <param type="LONG" name="Height">Target page height.</param>
+        <param type="INT" name="X">Target X coordinate.</param>
+        <param type="INT" name="Y">Target Y coordinate.</param>
+        <param type="INT" name="Width">Target page width.</param>
+        <param type="INT" name="Height">Target page height.</param>
       </input>
       <description>
 <p>This method will render the vector scene directly to a target bitmap at coordinates <code>(X,Y)</code> and scaled to the desired <code>(Width,Height)</code>.</p>

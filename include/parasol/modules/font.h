@@ -14,7 +14,7 @@ class objFont;
 
 // Font flags
 
-enum class FTF : ULONG {
+enum class FTF : uint32_t {
    NIL = 0,
    HEAVY_LINE = 0x00000001,
    BASE_LINE = 0x00000002,
@@ -26,7 +26,7 @@ DEFINE_ENUM_FLAG_OPERATORS(FTF)
 
 // Result flags for the SelectFont() function.
 
-enum class FMETA : ULONG {
+enum class FMETA : uint32_t {
    NIL = 0,
    SCALED = 0x00000001,
    VARIABLE = 0x00000002,
@@ -107,7 +107,7 @@ class objFont : public Object {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }

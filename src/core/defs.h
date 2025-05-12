@@ -133,7 +133,7 @@ enum class SBF    : ULONG;
 enum class SMF    : ULONG;
 enum class VLF    : ULONG;
 enum class MFF    : ULONG;
-enum class DEVICE : LARGE;
+enum class DEVICE : int64_t;
 enum class PERMIT : ULONG;
 enum class CCF    : ULONG;
 enum class MEM    : ULONG;
@@ -150,7 +150,7 @@ struct THREADID : strong_typedef<THREADID, LONG> { // Internal thread ID, unrela
 };
 
 struct rkWatchPath {
-   LARGE      Custom;    // User's custom data pointer or value
+   int64_t      Custom;    // User's custom data pointer or value
    HOSTHANDLE Handle;    // The handle for the file being monitored, can be a special reference for virtual paths
    FUNCTION   Routine;   // Routine to call on event trigger
    MFF        Flags;     // Event mask (original flags supplied to Watch)
@@ -325,9 +325,9 @@ enum {
 
 class CoreTimer {
 public:
-   LARGE     NextCall;       // Cycle when PreciseTime() reaches this value (us)
-   LARGE     LastCall;       // PreciseTime() recorded at the last call (us)
-   LARGE     Interval;       // The amount of microseconds to wait at each interval
+   int64_t     NextCall;       // Cycle when PreciseTime() reaches this value (us)
+   int64_t     LastCall;       // PreciseTime() recorded at the last call (us)
+   int64_t     Interval;       // The amount of microseconds to wait at each interval
    OBJECTPTR Subscriber;     // The object that is subscribed (pointer, if private)
    OBJECTID  SubscriberID;   // The object that is subscribed
    FUNCTION  Routine;        // Routine to call if not using AC::Timer - ERR Routine(OBJECTID, LONG, LONG);
@@ -381,8 +381,8 @@ class extFile : public objFile {
    #ifdef __unix__
       std::string prvLink;
    #endif
-   LARGE Size;
-   LARGE ProgressTime;
+   int64_t Size;
+   int64_t ProgressTime;
    #ifdef _WIN32
       LONG  Stream;
    #else
@@ -465,7 +465,7 @@ class extTask : public objTask {
 //********************************************************************************************************************
 
 struct TaskRecord {
-   LARGE    CreationTime;  // Time at which the task slot was created
+   int64_t    CreationTime;  // Time at which the task slot was created
    LONG     ProcessID;     // Core process ID
    OBJECTID TaskID;        // Representative task object.
    LONG     ReturnCode;    // Return code
@@ -671,7 +671,7 @@ extern bool glJanitorActive;
 extern bool glLogThreads;
 extern WORD glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
-extern LARGE glTimeLog;
+extern int64_t glTimeLog;
 extern RootModule *glModuleList;    // Locked with glmGeneric.  Maintained as a linked-list; hashmap unsuitable.
 extern OpenInfo *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern extTask *glCurrentTask;
@@ -782,7 +782,7 @@ extern struct MsgHandler *glMsgHandlers, *glLastMsgHandler;
 class TaskMessage {
    public:
    // struct Message - START
-   LARGE Time;
+   int64_t Time;
    LONG  UID;
    LONG  Type;
    LONG  Size;
@@ -1012,7 +1012,7 @@ const virtual_drive * get_fs(std::string_view Path);
 void  free_storage_class(void);
 
 ERR    convert_zip_error(struct z_stream_s *, LONG);
-ERR    check_cache(OBJECTPTR, LARGE, LARGE);
+ERR    check_cache(OBJECTPTR, int64_t, int64_t);
 ERR    fs_copy(std::string_view, std::string_view, FUNCTION *, bool);
 ERR    fs_copydir(std::string &, std::string &, FileFeedback *, FUNCTION *, BYTE);
 PERMIT get_parent_permissions(std::string_view, LONG *, LONG *);
@@ -1111,7 +1111,7 @@ extern "C" LONG winGetExitCodeProcess(WINHANDLE, LONG *Code);
 extern "C" long long winGetFileSize(STRING);
 extern "C" APTR winGetProcAddress(WINHANDLE, CSTRING);
 extern "C" WINHANDLE winGetStdInput(void);
-extern "C" LARGE winGetTickCount(void);
+extern "C" int64_t winGetTickCount(void);
 extern "C" void winInitialise(int *, void *);
 extern "C" void winInitializeCriticalSection(APTR Lock);
 extern "C" LONG winIsDebuggerPresent(void);
@@ -1148,7 +1148,7 @@ extern "C" void winFindClose(WINHANDLE);
 extern "C" void winFindNextChangeNotification(WINHANDLE);
 extern "C" void winGetAttrib(CSTRING, LONG *);
 extern "C" BYTE winGetCommand(char *, char *, LONG);
-extern "C" LONG winGetFreeDiskSpace(char, LARGE *, LARGE *);
+extern "C" LONG winGetFreeDiskSpace(char, int64_t *, int64_t *);
 extern "C" LONG winGetLogicalDrives(void);
 extern "C" LONG winGetLogicalDriveStrings(STRING, LONG);
 extern ERR winGetVolumeInformation(STRING Volume, std::string &Label, std::string &FileSystem, int &Type);
@@ -1161,9 +1161,9 @@ extern "C" LONG winReadChanges(WINHANDLE, APTR, LONG NotifyFlags, char *, LONG, 
 extern "C" LONG winReadKey(CSTRING, CSTRING, STRING, LONG);
 extern "C" LONG winReadRootKey(CSTRING, STRING, STRING, LONG);
 extern "C" LONG winReadStdInput(WINHANDLE FD, APTR Buffer, LONG BufferSize, LONG *Size);
-extern "C" LONG winScan(APTR *, STRING, STRING, LARGE *, struct DateTime *, struct DateTime *, BYTE *, BYTE *, BYTE *, BYTE *);
+extern "C" LONG winScan(APTR *, STRING, STRING, int64_t *, struct DateTime *, struct DateTime *, BYTE *, BYTE *, BYTE *, BYTE *);
 extern "C" LONG winSetAttrib(CSTRING, LONG);
-extern "C" LONG winSetEOF(CSTRING, LARGE);
+extern "C" LONG winSetEOF(CSTRING, int64_t);
 extern "C" LONG winTestLocation(CSTRING, BYTE);
 extern "C" ERR winWatchFile(LONG, CSTRING, APTR, WINHANDLE *, LONG *);
 extern "C" void winFindCloseChangeNotification(WINHANDLE);
@@ -1213,13 +1213,13 @@ class ScopedObjectAccess {
 
 //********************************************************************************************************************
 
-inline LARGE calc_timestamp(struct DateTime *Date) {
+inline int64_t calc_timestamp(struct DateTime *Date) {
    return(Date->Second +
-          ((LARGE)Date->Minute * 60LL) +
-          ((LARGE)Date->Hour * 60LL * 60LL) +
-          ((LARGE)Date->Day * 60LL * 60LL * 24LL) +
-          ((LARGE)Date->Month * 60LL * 60LL * 24LL * 31LL) +
-          ((LARGE)Date->Year * 60LL * 60LL * 24LL * 31LL * 12LL));
+          ((int64_t)Date->Minute * 60LL) +
+          ((int64_t)Date->Hour * 60LL * 60LL) +
+          ((int64_t)Date->Day * 60LL * 60LL * 24LL) +
+          ((int64_t)Date->Month * 60LL * 60LL * 24LL * 31LL) +
+          ((int64_t)Date->Year * 60LL * 60LL * 24LL * 31LL * 12LL));
 }
 
 inline UWORD reverse_word(UWORD Value) {

@@ -54,7 +54,7 @@ glActionStubs = {
       return Action(AC::CopyData, this, &args);
    }]],
    DragDrop = [[
-   inline ERR dragDrop(OBJECTPTR Source, LONG Item, CSTRING Datatype) noexcept {
+   inline ERR dragDrop(OBJECTPTR Source, int Item, CSTRING Datatype) noexcept {
       struct acDragDrop args = { .Source = Source, .Item = Item, .Datatype = Datatype };
       return Action(AC::DragDrop, this, &args);
    }]],
@@ -65,17 +65,17 @@ glActionStubs = {
    }]],
    Draw = [[
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }]],
    DataFeed = [[
-   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }]],
    Move = [[
-   inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
+   inline ERR move(double X, double Y, double Z) noexcept {
       struct acMove args = { X, Y, Z };
       return Action(AC::Move, this, &args);
    }]],
@@ -83,7 +83,7 @@ glActionStubs = {
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
+      const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
@@ -93,21 +93,21 @@ glActionStubs = {
    }
    template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
+      const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC::Read, this, &read);
    }]],
    Redo = [[
-   inline ERR redo(LONG Steps) noexcept {
+   inline ERR redo(int Steps) noexcept {
       struct acRedo args = { Steps };
       return Action(AC::Redo, this, &args);
    }]],
    Redimension = [[
-   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
+   inline ERR redimension(double X, double Y, double Z, double Width, double Height, double Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC::Redimension, this, &args);
    }
-   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
+   inline ERR redimension(double X, double Y, double Width, double Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
       return Action(AC::Redimension, this, &args);
    }]],
@@ -117,24 +117,24 @@ glActionStubs = {
       return Action(AC::Rename, this, &args);
    }]],
    Resize = [[
-   inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
+   inline ERR resize(double Width, double Height, double Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC::Resize, this, &args);
    }]],
    Undo = [[
-   inline ERR undo(LONG Steps) noexcept {
+   inline ERR undo(int Steps) noexcept {
       struct acUndo args = { Steps };
       return Action(AC::Undo, this, &args);
    }]],
    GetKey = [[
-   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+   inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }]],
    MoveToPoint = [[
-   inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
+   inline ERR moveToPoint(double X, double Y, double Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC::MoveToPoint, this, &moveto);
    }]],
@@ -149,13 +149,13 @@ glActionStubs = {
       return Action(AC::SaveToObject, this, &args);
    }]],
    Seek = [[
-   inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
+   inline ERR seek(double Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC::Seek, this, &args);
    }
-   inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
-   inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
-   inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
+   inline ERR seekStart(double Offset) noexcept { return seek(Offset, SEEK::START); }
+   inline ERR seekEnd(double Offset) noexcept { return seek(Offset, SEEK::END); }
+   inline ERR seekCurrent(double Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
    ]],
    SetKeys = [[
    inline ERR setKeys(CSTRING tags, ...) noexcept {
@@ -173,7 +173,7 @@ glActionStubs = {
       return ERR::Okay;
    }]],
    Write = [[
-   inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
+   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
@@ -184,8 +184,8 @@ glActionStubs = {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
+      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -195,13 +195,13 @@ glActionStubs = {
          return error;
       }
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
+   inline int writeResult(CPTR Buffer, int Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }]],
    SelectArea = [[
-   inline ERR acSelectArea(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
+   inline ERR acSelectArea(double X, double Y, double Width, double Height) noexcept {
       struct acSelectArea area = { X, Y, Width, Height };
       return Action(AC::SelectArea, this, &area);
    }]],
@@ -419,13 +419,13 @@ function flags(Prefix, Options, ...)
    end
 
    if (not Options.weak) then
-      local type_size = 'ULONG'
+      local type_size = 'uint32_t'
       if (Options.bits == 64) then
-         type_size = 'LARGE'
+         type_size = 'int64_t'
       elseif (Options.bits == 16) then
-         type_size = 'UWORD'
+         type_size = 'uint16_t'
       elseif (Options.bits == 8) then
-         type_size = 'UBYTE'
+         type_size = 'uint8_t'
       end
       table.insert(out, string.format('enum class %s : ' .. type_size .. ' {', Prefix))
       table.insert(out, '   NIL = 0,')
@@ -1411,7 +1411,7 @@ function outputLookup(Name, List)
         if (v.name:upper() != 'PRIVATE') and (v.name:upper() != 'END') then
             -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
             local hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
-            if hash_id:match('^0x[8f][%dabcdef]+') != nil then hash_id = '(LONG)' .. hash_id end
+            if hash_id:match('^0x[8f][%dabcdef]+') != nil then hash_id = '(int)' .. hash_id end
             list = list .. string.format("   { \"%s\", %s },\n", shortName(v.name), hash_id)
         end
     end
@@ -1639,12 +1639,12 @@ function outputClassHeader(class, Private, Custom)
 
             if (field_type:sub(-2) == '[]') then
                field_type = field_type:sub(1,-3) .. '*'
-               output(string.format('   inline ERR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
+               output(string.format('   inline ERR set%s(%s Value, int Elements) noexcept {', fid_name, field_type))
             elseif (bit.band(f.flags, FD_ARRAY) != 0) then
                if bit.band(f.flags, FD_CPP) != 0 then
                   output(string.format('   inline ERR set%s(%s *Value) noexcept {', fid_name, field_type))
                else
-                  output(string.format('   inline ERR set%s(%s Value, LONG Elements) noexcept {', fid_name, field_type))
+                  output(string.format('   inline ERR set%s(%s Value, int Elements) noexcept {', fid_name, field_type))
                end
             elseif (field_type == 'T &&') then
                output(string.format('   template <class T> inline ERR set%s(%s Value) noexcept {', fid_name, field_type))
@@ -1681,7 +1681,7 @@ function outputClassHeader(class, Private, Custom)
             elseif bit.band(f.flags, FD_ARRAY) != 0 then
                if bit.band(f.flags, FD_CPP) != 0 then
                   local flags = string.format('%08x', f.flags):sub(-8)
-                  output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, LONG(Value->size()));')
+                  output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, int(Value->size()));')
                else
                   local flags = string.format('%08x', f.flags):sub(-8)
                   output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Elements);')
@@ -2188,9 +2188,9 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                if not nz(outValues) then
                   // This special case is required when '...' is the first parameter.
                   if (param.fullType.fd == "FD_VARTAGS") then
-                     proto = "LARGE," .. proto
+                     proto = "int64_t," .. proto
                   else
-                     proto = "LONG," .. proto
+                     proto = "int," .. proto
                   end
                end
                outValues = outValues .. "Tags..."
@@ -2231,6 +2231,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    func.c_proto = proto
    func.doc_proto = doc_proto
    func.c_response = response.type
+   func.doc_response = response.docType
 
    if (variadic) then
       func.macro = function()
@@ -2387,7 +2388,7 @@ function buildPrototypes()
                local proto = "OBJECTPTR Object"
                if nz(method.params) then
                   for _, param in ipairs(method.params) do
-                     proto = proto .. ", " .. nz(param.extType, param.type) .. " " .. param.name
+                     proto = proto .. ", " .. nz(param.extType, param.docType) .. " " .. param.name
                   end
                end
                method.prototype = "ERR " .. cl.methodPrefix:lower() .. '::' .. method.name .. "(" .. proto .. ")"
@@ -2413,7 +2414,7 @@ function buildPrototypes()
          end
 
          func.prototype = nz(func.c_response,"void") .. " " .. func.name .. "(" .. nz(func.c_proto,"") .. ")"
-         func.docPrototype = nz(func.c_response,"void") .. " " .. prefix .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
+         func.docPrototype = nz(func.doc_response,"void") .. " " .. prefix .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
 
          if nz(glFunctionPrefix) then
             proto = proto .. 'extern ' .. func.prototype .. ";\n"

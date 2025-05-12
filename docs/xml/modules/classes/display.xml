@@ -212,17 +212,17 @@
     <method>
       <name>SetDisplay</name>
       <comment>Changes the current display mode.</comment>
-      <prototype>ERR gfx::SetDisplay(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags)</prototype>
+      <prototype>ERR gfx::SetDisplay(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height, INT InsideWidth, INT InsideHeight, INT BitsPerPixel, DOUBLE RefreshRate, INT Flags)</prototype>
       <input>
-        <param type="LONG" name="X">Horizontal offset of the display, relative to its default position.</param>
-        <param type="LONG" name="Y">Vertical offset of the display, relative to its default position.</param>
-        <param type="LONG" name="Width">Width of the display.</param>
-        <param type="LONG" name="Height">Height of the display.</param>
-        <param type="LONG" name="InsideWidth">Internal display width (must be equal to or greater than the display width).</param>
-        <param type="LONG" name="InsideHeight">Internal display height (must be equal to or greater than the display height).</param>
-        <param type="LONG" name="BitsPerPixel">The desired display depth (15, 16, 24 or 32).</param>
+        <param type="INT" name="X">Horizontal offset of the display, relative to its default position.</param>
+        <param type="INT" name="Y">Vertical offset of the display, relative to its default position.</param>
+        <param type="INT" name="Width">Width of the display.</param>
+        <param type="INT" name="Height">Height of the display.</param>
+        <param type="INT" name="InsideWidth">Internal display width (must be equal to or greater than the display width).</param>
+        <param type="INT" name="InsideHeight">Internal display height (must be equal to or greater than the display height).</param>
+        <param type="INT" name="BitsPerPixel">The desired display depth (15, 16, 24 or 32).</param>
         <param type="DOUBLE" name="RefreshRate">Refresh rate, measured in floating point format for precision.</param>
-        <param type="LONG" name="Flags">Optional flags.</param>
+        <param type="INT" name="Flags">Optional flags.</param>
       </input>
       <description>
 <p>The SetDisplay method changes the current display settings for the screen. It can alter the position and screen dimensions and the display refresh rate. The new settings are applied immediately, although minor delays are possible while the graphics card and monitor adjust to the changes.</p>
@@ -281,13 +281,13 @@
     <method>
       <name>SetMonitor</name>
       <comment>Changes the default monitor settings.</comment>
-      <prototype>ERR gfx::SetMonitor(OBJECTPTR Object, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags)</prototype>
+      <prototype>ERR gfx::SetMonitor(OBJECTPTR Object, CSTRING Name, INT MinH, INT MaxH, INT MinV, INT MaxV, MON Flags)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the display.</param>
-        <param type="LONG" name="MinH">The minimum horizontal scan rate.  Usually set to 31.</param>
-        <param type="LONG" name="MaxH">The maximum horizontal scan rate.</param>
-        <param type="LONG" name="MinV">The minimum vertical scan rate.  Usually set to 50.</param>
-        <param type="LONG" name="MaxV">The maximum vertical scan rate.</param>
+        <param type="INT" name="MinH">The minimum horizontal scan rate.  Usually set to 31.</param>
+        <param type="INT" name="MaxH">The maximum horizontal scan rate.</param>
+        <param type="INT" name="MinV">The minimum vertical scan rate.  Usually set to 50.</param>
+        <param type="INT" name="MaxV">The maximum vertical scan rate.</param>
         <param type="MON" name="Flags" lookup="MON">Set to <code>AUTO_DETECT</code> if the monitor settings should be auto-detected on startup.  Set <code>BIT_6</code> if the device is limited to 6-bit colour output.</param>
       </input>
       <description>
@@ -304,13 +304,13 @@
     <method>
       <name>SizeHints</name>
       <comment>Sets the width and height restrictions for the host window (hosted environments only).</comment>
-      <prototype>ERR gfx::SizeHints(OBJECTPTR Object, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect)</prototype>
+      <prototype>ERR gfx::SizeHints(OBJECTPTR Object, INT MinWidth, INT MinHeight, INT MaxWidth, INT MaxHeight, INT EnforceAspect)</prototype>
       <input>
-        <param type="LONG" name="MinWidth">The minimum width of the window.</param>
-        <param type="LONG" name="MinHeight">The minimum height of the window.</param>
-        <param type="LONG" name="MaxWidth">The maximum width of the window.</param>
-        <param type="LONG" name="MaxHeight">The maximum width of the window.</param>
-        <param type="LONG" name="EnforceAspect">Set to true to enforce an aspect ratio that is scaled from MinWidth,MinHeight to MaxWidth,MaxHeight.</param>
+        <param type="INT" name="MinWidth">The minimum width of the window.</param>
+        <param type="INT" name="MinHeight">The minimum height of the window.</param>
+        <param type="INT" name="MaxWidth">The maximum width of the window.</param>
+        <param type="INT" name="MaxHeight">The maximum width of the window.</param>
+        <param type="INT" name="EnforceAspect">Set to true to enforce an aspect ratio that is scaled from MinWidth,MinHeight to MaxWidth,MaxHeight.</param>
       </input>
       <description>
 <p>If a display is hosted in a desktop window, it may be possible to enforce size restrictions that prevent the window from being shrunk or expanded beyond a certain size.  This feature is platform dependent and <code>ERR::NoSupport</code> will be returned if it is not implemented.</p>

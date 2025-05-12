@@ -25,14 +25,14 @@
       <name>BytesFree</name>
       <comment>Total amount of storage space that is available, measured in bytes.</comment>
       <access read="R">Read</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
     </field>
 
     <field>
       <name>BytesUsed</name>
       <comment>Total amount of storage space in use.</comment>
       <access read="R">Read</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>The total amount of storage space used by the device is indicated in this field.</p>
 <p>Please note that storage usage is typically measured in terms of blocks.  For instance a block size of 512 bytes will mean that this field will be a multiple of 512.  Two files of 1 byte each on such a file system would take up 1024 bytes of space and not 2.</p>
@@ -63,7 +63,7 @@
       <name>DeviceSize</name>
       <comment>The storage size of the device in bytes, without accounting for the file system format.</comment>
       <access read="R">Read</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>This field indicates the storage size of the device.  It does not reflect the available space determined by the device's file system, which will typically be measurably smaller than this value.</p>
       </description>

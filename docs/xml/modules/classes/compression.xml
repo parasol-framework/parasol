@@ -52,13 +52,13 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>CompressBuffer</name>
       <comment>Compresses a plain memory area into an empty buffer.</comment>
-      <prototype>ERR cmp::CompressBuffer(OBJECTPTR Object, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result)</prototype>
+      <prototype>ERR cmp::CompressBuffer(OBJECTPTR Object, APTR Input, INT InputSize, APTR Output, INT OutputSize, INT * Result)</prototype>
       <input>
         <param type="APTR" name="Input">Pointer to the source data.</param>
-        <param type="LONG" name="InputSize">Byte length of the source data.</param>
+        <param type="INT" name="InputSize">Byte length of the source data.</param>
         <param type="APTR" name="Output">Pointer to a destination buffer.</param>
-        <param type="LONG" name="OutputSize">Available space in the destination buffer.</param>
-        <param type="LONG *" name="Result">The size of the compressed data will be returned in this parameter.</param>
+        <param type="INT" name="OutputSize">Available space in the destination buffer.</param>
+        <param type="INT *" name="Result">The size of the compressed data will be returned in this parameter.</param>
       </input>
       <description>
 <p>This method provides a simple way of compressing a memory area into a buffer.  It requires a reference to the source data and a buffer large enough to accept the compressed information.  Generally the destination buffer should be no smaller than 75% of the size of the source data.  If the destination buffer is not large enough, an error of <code>ERR::BufferOverflow</code> will be returned.  The size of the compressed data will be returned in the Result parameter.</p>
@@ -99,13 +99,13 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>CompressStream</name>
       <comment>Compresses streamed data into a buffer.</comment>
-      <prototype>ERR cmp::CompressStream(OBJECTPTR Object, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
+      <prototype>ERR cmp::CompressStream(OBJECTPTR Object, APTR Input, INT Length, FUNCTION * Callback, APTR Output, INT OutputSize)</prototype>
       <input>
         <param type="APTR" name="Input">Pointer to the source data.</param>
-        <param type="LONG" name="Length">Amount of data to compress, in bytes.</param>
+        <param type="INT" name="Length">Amount of data to compress, in bytes.</param>
         <param type="FUNCTION *" name="Callback">This callback function will be called with a pointer to the compressed data.</param>
         <param type="APTR" name="Output">Optional.  Points to a buffer that will receive the compressed data.  Must be equal to or larger than the <fl>MinOutputSize</fl> field.</param>
-        <param type="LONG" name="OutputSize">Indicates the size of the <code>Output</code> buffer, otherwise set to zero.</param>
+        <param type="INT" name="OutputSize">Indicates the size of the <code>Output</code> buffer, otherwise set to zero.</param>
       </input>
       <description>
 <p>Use the CompressStream method to compress incoming streams of data whilst using a minimal amount of memory.  The compression process is handled in three phases of Start, Compress and End.  The methods provided for each phase are <method>CompressStreamStart</method>, <method>CompressStream</method> and <method>CompressStreamEnd</method>.</p>
@@ -151,11 +151,11 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>CompressStreamEnd</name>
       <comment>Ends the compression of an open stream.</comment>
-      <prototype>ERR cmp::CompressStreamEnd(OBJECTPTR Object, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
+      <prototype>ERR cmp::CompressStreamEnd(OBJECTPTR Object, FUNCTION * Callback, APTR Output, INT OutputSize)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">Refers to a function that will be called for each compressed block of data.</param>
         <param type="APTR" name="Output">Optional pointer to a buffer that will receive the compressed data.  If not set, the compression object will use its own buffer.</param>
-        <param type="LONG" name="OutputSize">Size of the <code>Output</code> buffer (ignored if Output is <code>NULL</code>).</param>
+        <param type="INT" name="OutputSize">Size of the <code>Output</code> buffer (ignored if Output is <code>NULL</code>).</param>
       </input>
       <description>
 <p>To end the compression process, this method must be called to write any final blocks of data and remove the resources that were allocated.</p>
@@ -184,12 +184,12 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>DecompressBuffer</name>
       <comment>Decompresses data originating from the <method>CompressBuffer</method> method.</comment>
-      <prototype>ERR cmp::DecompressBuffer(OBJECTPTR Object, APTR Input, APTR Output, LONG OutputSize, LONG * Result)</prototype>
+      <prototype>ERR cmp::DecompressBuffer(OBJECTPTR Object, APTR Input, APTR Output, INT OutputSize, INT * Result)</prototype>
       <input>
         <param type="APTR" name="Input">Pointer to the compressed data.</param>
         <param type="APTR" name="Output">Pointer to the decompression buffer.</param>
-        <param type="LONG" name="OutputSize">Size of the decompression buffer.</param>
-        <param type="LONG *" name="Result">The amount of bytes decompressed will be returned in this parameter.</param>
+        <param type="INT" name="OutputSize">Size of the decompression buffer.</param>
+        <param type="INT *" name="Result">The amount of bytes decompressed will be returned in this parameter.</param>
       </input>
       <description>
 <p>This method is used to decompress data that has been packed using the <method>CompressBuffer</method> method.  A pointer to the compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer is not large enough to contain the data, the method will write out as much information as it can and then return with an error code of <code>ERR::BufferOverflow</code>.</p>
@@ -204,11 +204,11 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>DecompressFile</name>
       <comment>Extracts one or more files from a compression object.</comment>
-      <prototype>ERR cmp::DecompressFile(OBJECTPTR Object, CSTRING Path, CSTRING Dest, LONG Flags)</prototype>
+      <prototype>ERR cmp::DecompressFile(OBJECTPTR Object, CSTRING Path, CSTRING Dest, INT Flags)</prototype>
       <input>
         <param type="CSTRING" name="Path">The full path name of the file to extract from the archive.</param>
         <param type="CSTRING" name="Dest">The destination to extract the file to.</param>
-        <param type="LONG" name="Flags">Optional flags.  Currently unused.</param>
+        <param type="INT" name="Flags">Optional flags.  Currently unused.</param>
       </input>
       <description>
 <p>Use the DecompressFile() method to decompress a file or files to a destination folder.  The exact path name of the compressed file is required for extraction unless using wildcards.  A single asterisk in the Path parameter will extract all files in a compression object.</p>
@@ -255,13 +255,13 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>DecompressStream</name>
       <comment>Decompresses streamed data to an output buffer.</comment>
-      <prototype>ERR cmp::DecompressStream(OBJECTPTR Object, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
+      <prototype>ERR cmp::DecompressStream(OBJECTPTR Object, APTR Input, INT Length, FUNCTION * Callback, APTR Output, INT OutputSize)</prototype>
       <input>
         <param type="APTR" name="Input">Pointer to data to decompress.</param>
-        <param type="LONG" name="Length">Amount of data to decompress from the Input parameter.</param>
+        <param type="INT" name="Length">Amount of data to decompress from the Input parameter.</param>
         <param type="FUNCTION *" name="Callback">Refers to a function that will be called for each decompressed block of information.</param>
         <param type="APTR" name="Output">Optional pointer to a buffer that will receive the decompressed data.  If not set, the compression object will use its own buffer.</param>
-        <param type="LONG" name="OutputSize">Size of the buffer specified in Output (value ignored if <code>Output</code> is <code>NULL</code>).</param>
+        <param type="INT" name="OutputSize">Size of the buffer specified in Output (value ignored if <code>Output</code> is <code>NULL</code>).</param>
       </input>
       <description>
 <p>Call DecompressStream repeatedly to decompress a data stream and process the results in a callback routine.  The client will need to provide a pointer to the data in the <code>Input</code> parameter and indicate its size in <code>Length</code>.  The decompression routine will call the routine that was specified in <code>Callback</code> for each block that is decompressed.</p>
@@ -312,11 +312,11 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
     <method>
       <name>Find</name>
       <comment>Find the first item that matches a given filter.</comment>
-      <prototype>ERR cmp::Find(OBJECTPTR Object, CSTRING Path, LONG CaseSensitive, LONG Wildcard, struct CompressedItem ** Item)</prototype>
+      <prototype>ERR cmp::Find(OBJECTPTR Object, CSTRING Path, INT CaseSensitive, INT Wildcard, struct CompressedItem ** Item)</prototype>
       <input>
         <param type="CSTRING" name="Path">Search for a specific item or items, using wildcards.</param>
-        <param type="LONG" name="CaseSensitive">Set to <code>true</code> if <code>Path</code> comparisons are case-sensitive.</param>
-        <param type="LONG" name="Wildcard">Set to <code>true</code> if <code>Path</code> uses wildcards.</param>
+        <param type="INT" name="CaseSensitive">Set to <code>true</code> if <code>Path</code> comparisons are case-sensitive.</param>
+        <param type="INT" name="Wildcard">Set to <code>true</code> if <code>Path</code> uses wildcards.</param>
         <param type="struct CompressedItem **" name="Item">The discovered item is returned in this parameter, or <code>NULL</code> if the search failed.</param>
       </input>
       <description>
@@ -475,21 +475,21 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       <name>Size</name>
       <comment>Indicates the size of the source archive, in bytes.</comment>
       <access read="G">Get</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
     </field>
 
     <field>
       <name>TotalOutput</name>
       <comment>The total number of bytes that have been output during the compression or decompression of streamed data.</comment>
       <access read="R">Read</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
     </field>
 
     <field>
       <name>UncompressedSize</name>
       <comment>The total decompressed size of all files in an archive.</comment>
       <access read="G">Get</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>If you would like to know the total number of bytes that have been compressed into a compression object, read this field.  This will tell you the maximum byte count used if every file were to be decompressed.  Header and tail information that may identify the compressed data is not included in the total.</p>
       </description>
@@ -560,14 +560,14 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
   </types>
   <structs>
     <struct name="CompressedItem">
-      <field name="OriginalSize" type="LARGE">Original size of the file</field>
-      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
+      <field name="OriginalSize" type="INT64">Original size of the file</field>
+      <field name="CompressedSize" type="INT64">Compressed size of the file</field>
       <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
       <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
       <field name="Permissions" type="PERMIT" lookup="PERMIT">Original permissions - see <code>PERMIT</code> flags.</field>
-      <field name="UserID" type="LONG">Original user ID</field>
-      <field name="GroupID" type="LONG">Original group ID</field>
-      <field name="OthersID" type="LONG">Original others ID</field>
+      <field name="UserID" type="INT">Original user ID</field>
+      <field name="GroupID" type="INT">Original group ID</field>
+      <field name="OthersID" type="INT">Original others ID</field>
       <field name="Flags" type="FL" lookup="FL"><code>FL</code> flags</field>
       <field name="Created" type="struct DateTime">Date and time of the file's creation.</field>
       <field name="Modified" type="struct DateTime">Date and time last modified.</field>
@@ -575,18 +575,18 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 
     <struct name="CompressionFeedback">
       <field name="FeedbackID" type="FDB" lookup="FDB">Set to one of the FDB event indicators</field>
-      <field name="Index" type="LONG">Index of the current file</field>
+      <field name="Index" type="INT">Index of the current file</field>
       <field name="Path" type="CSTRING">Name of the current file/path in the archive</field>
       <field name="Dest" type="CSTRING">Destination file/path during decompression</field>
-      <field name="Progress" type="LARGE">Progress indicator (byte position for the file being de/compressed).</field>
-      <field name="OriginalSize" type="LARGE">Original size of the file</field>
-      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
-      <field name="Year" type="WORD">Year of the original file's datestamp.</field>
-      <field name="Month" type="WORD">Month of the original file's datestamp.</field>
-      <field name="Day" type="WORD">Day of the original file's datestamp.</field>
-      <field name="Hour" type="WORD">Hour of the original file's datestamp.</field>
-      <field name="Minute" type="WORD">Minute of the original file's datestamp.</field>
-      <field name="Second" type="WORD">Second of the original file's datestamp.</field>
+      <field name="Progress" type="INT64">Progress indicator (byte position for the file being de/compressed).</field>
+      <field name="OriginalSize" type="INT64">Original size of the file</field>
+      <field name="CompressedSize" type="INT64">Compressed size of the file</field>
+      <field name="Year" type="INT16">Year of the original file's datestamp.</field>
+      <field name="Month" type="INT16">Month of the original file's datestamp.</field>
+      <field name="Day" type="INT16">Day of the original file's datestamp.</field>
+      <field name="Hour" type="INT16">Hour of the original file's datestamp.</field>
+      <field name="Minute" type="INT16">Minute of the original file's datestamp.</field>
+      <field name="Second" type="INT16">Second of the original file's datestamp.</field>
     </struct>
 
   </structs>

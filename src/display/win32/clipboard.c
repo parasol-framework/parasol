@@ -868,7 +868,6 @@ void winCopyClipboard(void)
             else if (fmt.cfFormat IS CF_HDROP) {
                FORMATETC fmt = { CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
                STGMEDIUM stgm, effect;
-               LPIDA pida;
                DWORD *effect_data;
                char cut_operation = 0;
 
@@ -884,7 +883,7 @@ void winCopyClipboard(void)
 
                   DROPFILES *df;
                   if ((df = (DROPFILES *)GlobalLock(stgm.hGlobal))) {
-                     report_windows_hdrop(((const char *)df) + df->pFiles, cut_operation, df->fWide);
+                     report_windows_hdrop((LPIDA)(((const char *)df) + (ptrdiff_t)df->pFiles), cut_operation, df->fWide);
                      GlobalUnlock(stgm.hGlobal);
                   }
                }

@@ -135,7 +135,7 @@ std::atomic_int glUniqueMsgID = 1;
 
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()
 
-LARGE glTimeLog      = 0;
+int64_t glTimeLog    = 0;
 WORD glCrashStatus   = 0;
 WORD glCodeIndex     = CP_FINISHED;
 WORD glLastCodeIndex = 0;

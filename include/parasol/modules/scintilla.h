@@ -44,7 +44,7 @@ enum class SCLEX : LONG {
 
 // Optional flags.
 
-enum class SCIF : ULONG {
+enum class SCIF : uint32_t {
    NIL = 0,
    DISABLED = 0x00000001,
    DETECT_LEXER = 0x00000002,
@@ -56,7 +56,7 @@ DEFINE_ENUM_FLAG_OPERATORS(SCIF)
 
 // Flags for EventCallback and EventFlags
 
-enum class SEF : ULONG {
+enum class SEF : uint32_t {
    NIL = 0,
    MODIFIED = 0x00000001,
    CURSOR_POS = 0x00000002,
@@ -68,7 +68,7 @@ DEFINE_ENUM_FLAG_OPERATORS(SEF)
 
 // Scintilla search flags.
 
-enum class STF : ULONG {
+enum class STF : uint32_t {
    NIL = 0,
    CASE = 0x00000001,
    MOVE_CURSOR = 0x00000002,
@@ -136,13 +136,13 @@ class objScintilla : public Object {
       struct acClipboard args = { Mode };
       return Action(AC::Clipboard, this, &args);
    }
-   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
    inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -150,7 +150,7 @@ class objScintilla : public Object {
    inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }
    inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR redo(LONG Steps) noexcept {
+   inline ERR redo(int Steps) noexcept {
       struct acRedo args = { Steps };
       return Action(AC::Redo, this, &args);
    }
@@ -159,7 +159,7 @@ class objScintilla : public Object {
       return Action(AC::SaveToObject, this, &args);
    }
    inline ERR show() noexcept { return Action(AC::Show, this, NULL); }
-   inline ERR undo(LONG Steps) noexcept {
+   inline ERR undo(int Steps) noexcept {
       struct acUndo args = { Steps };
       return Action(AC::Undo, this, &args);
    }
@@ -261,37 +261,37 @@ class objScintilla : public Object {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setLineHighlight(const struct RGB8 * Value, LONG Elements) noexcept {
+   inline ERR setLineHighlight(const struct RGB8 * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERR setSelectFore(const struct RGB8 * Value, LONG Elements) noexcept {
+   inline ERR setSelectFore(const struct RGB8 * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x01081500, Value, Elements);
    }
 
-   inline ERR setSelectBkgd(const struct RGB8 * Value, LONG Elements) noexcept {
+   inline ERR setSelectBkgd(const struct RGB8 * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[33];
       return field->WriteValue(target, field, 0x01081500, Value, Elements);
    }
 
-   inline ERR setBkgdColour(const struct RGB8 * Value, LONG Elements) noexcept {
+   inline ERR setBkgdColour(const struct RGB8 * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERR setCursorColour(const struct RGB8 * Value, LONG Elements) noexcept {
+   inline ERR setCursorColour(const struct RGB8 * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERR setTextColour(const struct RGB8 * Value, LONG Elements) noexcept {
+   inline ERR setTextColour(const struct RGB8 * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);

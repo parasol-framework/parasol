@@ -12,7 +12,7 @@ class objSVG;
 
 // SVG flags.
 
-enum class SVF : ULONG {
+enum class SVF : uint32_t {
    NIL = 0,
    AUTOSCALE = 0x00000001,
    ALPHA = 0x00000002,
@@ -51,7 +51,7 @@ class objSVG : public Object {
    // Action stubs
 
    inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }

@@ -38,7 +38,7 @@
     <input>
       <param type="MEMORYID" name="Memory">The ID of the memory block to access.</param>
       <param type="MEM" name="Flags" lookup="MEM">Set to <code>READ</code>, <code>WRITE</code> or <code>READ_WRITE</code>.</param>
-      <param type="LONG" name="MilliSeconds">The millisecond interval to wait before a timeout occurs.  Use at least 40ms for best results.</param>
+      <param type="INT" name="MilliSeconds">The millisecond interval to wait before a timeout occurs.  Use at least 40ms for best results.</param>
       <param type="APTR *" name="Result">Must refer to an <code>APTR</code> for storing the resolved address.</param>
     </input>
     <description>
@@ -62,7 +62,7 @@
     <prototype>ERR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The unique ID of the target object.</param>
-      <param type="LONG" name="MilliSeconds">The limit in milliseconds before a timeout occurs.  The maximum limit is <code>60000</code>, and <code>100</code> is recommended.</param>
+      <param type="INT" name="MilliSeconds">The limit in milliseconds before a timeout occurs.  The maximum limit is <code>60000</code>, and <code>100</code> is recommended.</param>
       <param type="OBJECTPTR *" name="Result">A pointer storage variable that will store the resulting object address.</param>
     </input>
     <description>
@@ -130,7 +130,7 @@
     <prototype>void ActionList(struct ActionTable ** Actions, LONG * Size)</prototype>
     <input>
       <param type="struct ActionTable **" name="Actions">A pointer to the Core's action table <code>struct ActionTable *</code> is returned. Please note that the first entry in the <code>ActionTable</code> list has all fields driven to <code>NULL</code>, because valid action ID's start from one, not zero.  The final action in the list is also terminated with <code>NULL</code> fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.</param>
-      <param type="LONG *" name="Size">Total number of elements in the returned list.</param>
+      <param type="INT *" name="Size">Total number of elements in the returned list.</param>
     </input>
     <description>
 <p>This function returns an array of all actions supported by the Core, including name, arguments and structure size.  The ID of each action is indicated by its index within the array.</p>
@@ -187,7 +187,7 @@ struct FunctionField argsResize[] = {
     <prototype>ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle)</prototype>
     <input>
       <param type="APTR" name="Custom">A custom pointer that will be passed to the message handler when messages are received.</param>
-      <param type="LONG" name="MsgType">The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.</param>
+      <param type="INT" name="MsgType">The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.</param>
       <param type="FUNCTION *" name="Routine">Refers to the function that will handle incoming messages.</param>
       <param type="struct MsgHandler **" name="Handle">The resulting handle of the new message handler - retain for <function>FreeResource</function>.</param>
     </input>
@@ -210,16 +210,16 @@ struct FunctionField argsResize[] = {
     <name>AdjustLogLevel</name>
     <category>System</category>
     <comment>Adjusts the base-line of all log messages.</comment>
-    <prototype>LONG AdjustLogLevel(LONG Delta)</prototype>
+    <prototype>INT AdjustLogLevel(LONG Delta)</prototype>
     <input>
-      <param type="LONG" name="Delta">The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 6.</param>
+      <param type="INT" name="Delta">The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 6.</param>
     </input>
     <description>
 <p>This function adjusts the detail level of all outgoing log messages.  To illustrate, setting the <code>Delta</code> value to 1 would result in level 5 (API) log messages being bumped to level 6.  If the user's maximum log level output is 5, no further API messages will be output until the base-line is reduced to normal.</p>
 <p>The main purpose of AdjustLogLevel() is to reduce log noise.  For instance, creating a new desktop window will result in a large number of new log messages.  Raising the base-line by 2 before creating the window would eliminate the noise if the user has the log level set to 5 (API).  Re-running the program with a log level of 7 or more would make the messages visible again.</p>
 <p>Adjustments to the base-line are accumulative, so small increments of 1 or 2 are encouraged.  To revert logging to the previous base-line, call this function again with a negation of the previously passed value.</p>
     </description>
-    <result type="LONG">Returns the absolute base-line value that was active prior to calling this function.</result>
+    <result type="INT">Returns the absolute base-line value that was active prior to calling this function.</result>
   </function>
 
   <function>
@@ -228,7 +228,7 @@ struct FunctionField argsResize[] = {
     <comment>Allocates a new memory block on the heap.</comment>
     <prototype>ERR AllocMemory(LONG Size, MEM Flags, APTR * Address, MEMORYID * ID)</prototype>
     <input>
-      <param type="LONG" name="Size">The size of the memory block.</param>
+      <param type="INT" name="Size">The size of the memory block.</param>
       <param type="MEM" name="Flags" lookup="MEM">Optional flags.</param>
       <param type="APTR *" name="Address">Refer to an <code>APTR</code> to store the address of the allocated memory block.</param>
       <param type="MEMORYID *" name="ID">Refer to a <code>MEMORYID</code> to store the UID of the allocated memory block.</param>
@@ -261,7 +261,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>AllocateID</name>
     <category>System</category>
     <comment>Generates unique ID's for general purposes.</comment>
-    <prototype>LONG AllocateID(IDTYPE Type)</prototype>
+    <prototype>INT AllocateID(IDTYPE Type)</prototype>
     <input>
       <param type="IDTYPE" name="Type" lookup="IDTYPE">The type of ID that is required.</param>
     </input>
@@ -269,7 +269,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <p>This function generates unique ID's that can be used in other Core functions.  A <code>Type</code> indicator is required and the resulting number will be unique to that <code>Type</code> only.</p>
 <p>ID allocations are permanent, so there is no need to free the allocated ID once it is no longer required.</p>
     </description>
-    <result type="LONG">A unique ID matching the requested type will be returned.  This function can return zero if the Type is unrecognised, or if an internal error occurred.</result>
+    <result type="INT">A unique ID matching the requested type will be returned.  This function can return zero if the Type is unrecognised, or if an internal error occurred.</result>
   </function>
 
   <function>
@@ -330,7 +330,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <prototype>ERR BroadcastEvent(APTR Event, LONG EventSize)</prototype>
     <input>
       <param type="APTR" name="Event">Pointer to an event structure.</param>
-      <param type="LONG" name="EventSize">The size of the <code>Event</code> structure, in bytes.</param>
+      <param type="INT" name="EventSize">The size of the <code>Event</code> structure, in bytes.</param>
     </input>
     <description>
 <p>Use BroadcastEvent() to broadcast an event to all listeners for that event in the system.  An event structure is required that must start with a 64-bit <code>EventID</code> acquired from <function>GetEventID</function>, followed by any required data that is relevant to that event.  Here are some examples:</p>
@@ -577,7 +577,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <comment>Resolves a field ID to its registered name.</comment>
     <prototype>CSTRING FieldName(ULONG FieldID)</prototype>
     <input>
-      <param type="ULONG" name="FieldID">The unique field hash to resolve.</param>
+      <param type="UINT" name="FieldID">The unique field hash to resolve.</param>
     </input>
     <description>
 <p>Resolves a field identifier to its name.  For this to work successfully, the field must have been registered with the internal dictionary.  This is handled automatically when a new class is added to the system.</p>
@@ -609,7 +609,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <prototype>struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Target)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
-      <param type="ULONG" name="FieldID">The 'FID' number to lookup.</param>
+      <param type="UINT" name="FieldID">The 'FID' number to lookup.</param>
       <param type="OBJECTPTR *" name="Target">(Optional) The object that represents the field is returned here (in case a field belongs to an integrated child object).</param>
     </input>
     <description>
@@ -678,16 +678,16 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
     <name>GenCRC32</name>
     <category>System</category>
     <comment>Generates 32-bit CRC checksum values.</comment>
-    <prototype>ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length)</prototype>
+    <prototype>UINT GenCRC32(ULONG CRC, APTR Data, ULONG Length)</prototype>
     <input>
-      <param type="ULONG" name="CRC">If streaming data to this function, this value should reflect the most recently returned CRC integer.  Otherwise set to zero.</param>
+      <param type="UINT" name="CRC">If streaming data to this function, this value should reflect the most recently returned CRC integer.  Otherwise set to zero.</param>
       <param type="APTR" name="Data">The data to generate a CRC value for.</param>
-      <param type="ULONG" name="Length">The length of the <code>Data</code> buffer.</param>
+      <param type="UINT" name="Length">The length of the <code>Data</code> buffer.</param>
     </input>
     <description>
 <p>This function is used internally for the generation of 32-bit CRC checksums.  You may use it for your own purposes to generate CRC values over a length of buffer space.  This function may be called repeatedly by feeding it previous CRC values, making it ideal for processing streamed data.</p>
     </description>
-    <result type="ULONG">Returns the computed 32 bit CRC value for the given data.</result>
+    <result type="UINT">Returns the computed 32 bit CRC value for the given data.</result>
   </function>
 
   <function>
@@ -735,7 +735,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
     <name>GetEventID</name>
     <category>Events</category>
     <comment>Generates unique event ID's suitable for event broadcasting.</comment>
-    <prototype>LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)</prototype>
+    <prototype>INT64 GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)</prototype>
     <input>
       <param type="EVG" name="Group" lookup="EVG">The group to which the event belongs.</param>
       <param type="CSTRING" name="SubGroup">The sub-group to which the event belongs (case-sensitive).</param>
@@ -747,7 +747,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 <types lookup="EVG"/>
 <p>The <code>SubGroup</code> and <code>Event</code> parameters are string-based and there are no restrictions on naming.  If a <code>SubGroup</code> or <code>Event</code> name is <code>NULL</code>, this will act as a wildcard for subscribing to multiple events.  For example, subscribing to the network group with <code>SubGroup</code> and <code>Event</code> set to <code>NULL</code> will allow for a subscription to all network events that are broadcast.  A <code>Group</code> setting of zero is not allowed.</p>
     </description>
-    <result type="LARGE">The event ID is returned as a 64-bit integer.</result>
+    <result type="INT64">The event ID is returned as a 64-bit integer.</result>
   </function>
 
   <function>
@@ -794,7 +794,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
       <param type="FIELD" name="Field">The ID of the field that will be read.</param>
       <param type="APTR *" name="Result">A direct pointer to the array values will be returned in this parameter.</param>
-      <param type="LONG *" name="Elements">The total number of elements in the array will be returned in this parameter.</param>
+      <param type="INT *" name="Elements">The total number of elements in the array will be returned in this parameter.</param>
     </input>
     <description>
 <p>Use the GetFieldArray() function to read an array field from an object, including the length of that array.  This supplements the <function>GetField</function> function, which does not support returning the array length.</p>
@@ -819,7 +819,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
       <param type="CSTRING" name="Field">The name of the field that is to be retrieved.</param>
       <param type="STRING" name="Buffer">Pointer to a buffer space large enough to hold the expected field value.  If the buffer is not large enough, the result will be truncated.  A buffer of 256 bytes is considered large enough for most occasions.  For generic field reading purposes, a buffer as large as 64kb may be desired.</param>
-      <param type="LONG" name="Size">The size of the <code>Buffer</code> that has been provided, in bytes.</param>
+      <param type="INT" name="Size">The size of the <code>Buffer</code> that has been provided, in bytes.</param>
     </input>
     <description>
 <p>The GetFieldVariable() function is used to retrieve the value of a field without any advance knowledge of the field's type or details.  It also supports some advanced features such as flag name lookups and the retrieval of values from array indexes.  Although this function is simple to use, it is the slowest of the field retrieval instructions as it relies on string-based field names and converts all results into a string buffer that you must provide.</p>
@@ -844,10 +844,10 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <comment>Reads messages from message queues.</comment>
     <prototype>ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size)</prototype>
     <input>
-      <param type="LONG" name="Type">Filter down to this message type or set to zero to receive the next message on the queue.</param>
+      <param type="INT" name="Type">Filter down to this message type or set to zero to receive the next message on the queue.</param>
       <param type="MSF" name="Flags" lookup="MSF">This argument is reserved for future use.  Set it to zero.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that is large enough to hold the incoming message information.  If set to <code>NULL</code> then all accompanying message data will be destroyed.</param>
-      <param type="LONG" name="Size">The byte-size of the buffer that you have supplied.</param>
+      <param type="INT" name="Size">The byte-size of the buffer that you have supplied.</param>
     </input>
     <description>
 <p>The GetMessage() function is used to read messages that have been stored in the local message queue.  You can use this function to read the next immediate message stored on the queue, or the first message on the queue that matches a particular Type.  It is also possible to call this function in a loop to clear out all messages, until an error code other than <code>ERR::Okay</code> is returned.</p>
@@ -895,7 +895,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>GetResource</name>
     <category>System</category>
     <comment>Retrieves miscellaneous resource identifiers.</comment>
-    <prototype>LARGE GetResource(RES Resource)</prototype>
+    <prototype>INT64 GetResource(RES Resource)</prototype>
     <input>
       <param type="RES" name="Resource" lookup="RES">The ID of the resource that you want to obtain.</param>
     </input>
@@ -903,7 +903,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the Resource identifier for the full list of available resource codes and their meaning.</p>
 <p>C++ developers should use the <code>GetResourcePtr()</code> macro if a resource identifier is known to return a pointer.</p>
     </description>
-    <result type="LARGE">Returns the value of the resource that you have requested.  If the resource ID is not known by the Core, <code>NULL</code> is returned.</result>
+    <result type="INT64">Returns the value of the resource that you have requested.  If the resource ID is not known by the Core, <code>NULL</code> is returned.</result>
   </function>
 
   <function>
@@ -1015,7 +1015,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <prototype>ERR LockObject(OBJECTPTR Object, LONG MilliSeconds)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The address of the object to lock.</param>
-      <param type="LONG" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If <code>-1</code>, the function will wait indefinitely.</param>
+      <param type="INT" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If <code>-1</code>, the function will wait indefinitely.</param>
     </input>
     <description>
 <p>Use LockObject() to gain exclusive access to an object at thread-level.  This function provides identical behaviour to that of <function>AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to <function>ReleaseObject</function> to unlock the object.</p>
@@ -1039,7 +1039,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <input>
       <param type="MEMORYID" name="ID">Pointer to a valid memory ID.</param>
       <param type="struct MemInfo *" name="MemInfo">Pointer to a <st>MemInfo</st> structure.</param>
-      <param type="LONG" name="Size">Size of the <st>MemInfo</st> structure.</param>
+      <param type="INT" name="Size">Size of the <st>MemInfo</st> structure.</param>
     </input>
     <description>
 <p>This function returns the attributes of a memory block, including the start address, parent object, memory ID, size and flags.  The following example illustrates correct use of this function:</p>
@@ -1067,7 +1067,7 @@ if (!MemoryIDInfo(memid, &amp;info)) {
     <input>
       <param type="APTR" name="Address">Pointer to a valid memory area.</param>
       <param type="struct MemInfo *" name="MemInfo">Pointer to a <st>MemInfo</st> structure to be populated.</param>
-      <param type="LONG" name="Size">Size of the <st>MemInfo</st> structure.</param>
+      <param type="INT" name="Size">Size of the <st>MemInfo</st> structure.</param>
     </input>
     <description>
 <p>This function can be used to get details on the attributes of a memory block.  It will return information on the start address, parent object, memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates correct use of this function:</p>
@@ -1213,11 +1213,11 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>PreciseTime</name>
     <category>System</category>
     <comment>Returns the current system time, in microseconds.</comment>
-    <prototype>LARGE PreciseTime()</prototype>
+    <prototype>INT64 PreciseTime()</prototype>
     <description>
 <p>This function returns the current 'system time' in microseconds (1 millionth of a second).  The value is monotonic if the host platform allows it (typically expressed as the amount of time that has elapsed since the system was switched on).  The benefit of monotonic time is that it is unaffected by changes to the system clock, such as daylight savings adjustments or manual changes by the user.</p>
     </description>
-    <result type="LARGE">Returns the system time in microseconds.  Could return zero in the extremely unlikely event of an error.</result>
+    <result type="INT64">Returns the system time in microseconds.  Could return zero in the extremely unlikely event of an error.</result>
   </function>
 
   <function>
@@ -1227,7 +1227,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <prototype>ERR ProcessMessages(PMF Flags, LONG TimeOut)</prototype>
     <input>
       <param type="PMF" name="Flags" lookup="PMF">Optional flags are specified here (clients should set a value of zero).</param>
-      <param type="LONG" name="TimeOut">A TimeOut value, measured in milliseconds.  If zero, the function will return as soon as all messages on the queue are processed.  If less than zero, the function does not return until a request for termination is received or a user message requires processing.</param>
+      <param type="INT" name="TimeOut">A TimeOut value, measured in milliseconds.  If zero, the function will return as soon as all messages on the queue are processed.  If less than zero, the function does not return until a request for termination is received or a user message requires processing.</param>
     </input>
     <description>
 <p>The ProcessMessages() function is used to process the task's message queue.  Messages are dispatched to message handlers in the order in which they arrived and the queue is emptied so that space is available for more messages.</p>
@@ -1275,8 +1275,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <input>
       <param type="CSTRING" name="Path">The path of the file.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that will receive the file content.</param>
-      <param type="LONG" name="BufferSize">The byte size of the <code>Buffer</code>.</param>
-      <param type="LONG *" name="Result">The total number of bytes read into the <code>Buffer</code> will be returned here (optional).</param>
+      <param type="INT" name="BufferSize">The byte size of the <code>Buffer</code>.</param>
+      <param type="INT *" name="Result">The total number of bytes read into the <code>Buffer</code> will be returned here (optional).</param>
     </input>
     <description>
 <p>This function provides a simple method for reading file content into a <code>Buffer</code>.  In some cases this procedure may be optimised for the host platform, which makes it the fastest way to read file content in simple cases.</p>
@@ -1320,7 +1320,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <prototype>ERR ReallocMemory(APTR Memory, ULONG Size, APTR * Address, MEMORYID * ID)</prototype>
     <input>
       <param type="APTR" name="Memory">Pointer to a memory block obtained from <function>AllocMemory</function>.</param>
-      <param type="ULONG" name="Size">The size of the new memory block.</param>
+      <param type="UINT" name="Size">The size of the new memory block.</param>
       <param type="APTR *" name="Address">Point to an <code>APTR</code> variable to store the resulting pointer to the new memory block.</param>
       <param type="MEMORYID *" name="ID">Point to a <code>MEMORYID</code> variable to store the resulting memory block's unique ID.</param>
     </input>
@@ -1429,7 +1429,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <comment>Converts a group ID to its corresponding name.</comment>
     <prototype>CSTRING ResolveGroupID(LONG Group)</prototype>
     <input>
-      <param type="LONG" name="Group">The group ID.</param>
+      <param type="INT" name="Group">The group ID.</param>
     </input>
     <description>
 <p>This function converts group ID's obtained from the file system into their corresponding names.  If the <code>Group</code> ID is invalid then <code>NULL</code> will be returned.</p>
@@ -1474,7 +1474,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <comment>Converts a user ID to its corresponding name.</comment>
     <prototype>CSTRING ResolveUserID(LONG User)</prototype>
     <input>
-      <param type="LONG" name="User">The user ID.</param>
+      <param type="INT" name="User">The user ID.</param>
     </input>
     <description>
 <p>This function converts user ID's obtained from the file system into their corresponding names.  If the <code>User</code> ID is invalid then <code>NULL</code> will be returned.</p>
@@ -1517,10 +1517,10 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <comment>Scans a message queue for multiple occurrences of a message type.</comment>
     <prototype>ERR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size)</prototype>
     <input>
-      <param type="LONG *" name="Handle">Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.</param>
-      <param type="LONG" name="Type">The message type to filter for, or zero to scan all messages in the queue.</param>
+      <param type="INT *" name="Handle">Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.</param>
+      <param type="INT" name="Type">The message type to filter for, or zero to scan all messages in the queue.</param>
       <param type="APTR" name="Buffer">Optional pointer to a buffer that is large enough to hold any message data.</param>
-      <param type="LONG" name="Size">The byte-size of the supplied <code>Buffer</code>.</param>
+      <param type="INT" name="Size">The byte-size of the supplied <code>Buffer</code>.</param>
     </input>
     <description>
 <p>Use the ScanMessages() function to scan the local message queue for information without affecting the state of the queue.  To use this function effectively, make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR::Okay</code>.</p>
@@ -1547,7 +1547,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
       <param type="LONG" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function>AllocateID</function>.</param>
       <param type="MSF" name="Flags" lookup="MSF">Optional flags.</param>
       <param type="APTR" name="Data">Pointer to the data that will be written to the queue.  Set to <code>NULL</code> if there is no data to write.</param>
-      <param type="LONG" name="Size">The byte-size of the <code>Data</code> being written to the message queue.</param>
+      <param type="INT" name="Size">The byte-size of the <code>Data</code> being written to the message queue.</param>
     </input>
     <description>
 <p>The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated with a <code>Type</code> identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined, such as <code>MSGID_QUIT</code>.  Custom messages should use a unique type ID obtained from <function>AllocateID</function>.</p>
@@ -1567,7 +1567,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
       <param type="OBJECTPTR" name="Object">Pointer to the target object.</param>
       <param type="FIELD" name="Field">The universal ID of the field you wish to write to, OR'd with a type indicator.</param>
       <param type="APTR" name="Array">Pointer to the array values.</param>
-      <param type="LONG" name="Elements">The number of elements listed in the <code>Array</code>.</param>
+      <param type="INT" name="Elements">The number of elements listed in the <code>Array</code>.</param>
     </input>
     <description>
 <p>The SetArray() function is used as an alternative to <function>SetField</function> for the purpose of writing arrays to objects.</p>
@@ -1629,8 +1629,8 @@ FreeResource(memory);  // Reference is no longer valid
     <comment>Forces the user and group permissions to be applied to new files and folders.</comment>
     <prototype>void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions)</prototype>
     <input>
-      <param type="LONG" name="User">User ID to apply to new files.</param>
-      <param type="LONG" name="Group">Group ID to apply to new files.</param>
+      <param type="INT" name="User">User ID to apply to new files.</param>
+      <param type="INT" name="Group">Group ID to apply to new files.</param>
       <param type="PERMIT" name="Permissions" lookup="PERMIT">Permission flags to be applied to new files.</param>
     </input>
     <description>
@@ -1731,10 +1731,10 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetResource</name>
     <category>System</category>
     <comment>Sets miscellaneous resource identifiers.</comment>
-    <prototype>LARGE SetResource(RES Resource, LARGE Value)</prototype>
+    <prototype>INT64 SetResource(RES Resource, int64_t Value)</prototype>
     <input>
       <param type="RES" name="Resource" lookup="RES">The ID of the resource to be set.</param>
-      <param type="LARGE" name="Value">The new value to set for the resource.</param>
+      <param type="INT64" name="Value">The new value to set for the resource.</param>
     </input>
     <description>
 <p>The SetResource() function is used to manipulate miscellaneous system resources.  Currently the following resources are supported:</p>
@@ -1744,7 +1744,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <type name="PRIVILEGED_USER">If the <code>Value</code> is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</type>
 </types>
     </description>
-    <result type="LARGE">Returns the previous value of the <code>Resource</code>.  If the <code>Resource</code> value is invalid, <code>NULL</code> is returned.</result>
+    <result type="INT64">Returns the previous value of the <code>Resource</code>.  If the <code>Resource</code> value is invalid, <code>NULL</code> is returned.</result>
   </function>
 
   <function>
@@ -1833,9 +1833,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SubscribeEvent</name>
     <category>Events</category>
     <comment>Subscribe to a system event.</comment>
-    <prototype>ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR * Handle)</prototype>
+    <prototype>ERR SubscribeEvent(int64_t Event, FUNCTION * Callback, APTR * Handle)</prototype>
     <input>
-      <param type="LARGE" name="Event">An event identifier.</param>
+      <param type="INT64" name="Event">An event identifier.</param>
       <param type="FUNCTION *" name="Callback">The function that will be subscribed to the event.</param>
       <param type="APTR *" name="Handle">Pointer to an address that will receive the event handle.</param>
     </input>
@@ -1863,7 +1863,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>This function creates a new timer subscription that will be called at regular intervals for the calling object.</p>
-<p>A callback function must be provided that follows this prototype: <code>ERR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)</code></p>
+<p>A callback function must be provided that follows this prototype: <code>ERR Function(OBJECTPTR Subscriber, INT64 Elapsed, INT64 CurrentTime)</code></p>
 <p>The <code>Elapsed</code> parameter is the total number of microseconds that have elapsed since the last call.  The <code>CurrentTime</code> parameter is set to the <function>PreciseTime</function> value just prior to the <code>Callback</code> being called.  The callback function can return <code>ERR::Terminate</code> at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks should call <code>check(ERR::Terminate)</code> to perform the equivalent of this behaviour.</p>
 <p>To change the interval, call <function>UpdateTimer</function> with the new value.  To release a timer subscription, call <function>UpdateTimer</function> with the resulting SubscriptionID and an Interval of zero.</p>
 <p>Timer management is provisioned by the <function>ProcessMessages</function> function.  Failure to regularly process incoming messages will lead to unreliable timer cycles.  It should be noted that the smaller the Interval that has been used, the more imperative regular message checking becomes.  Prolonged processing inside a timer routine can also impact on other timer subscriptions that are waiting to be processed.</p>
@@ -1930,10 +1930,10 @@ SetField(Object, FID_Statement|TSTR, "string");
     <comment>Updates the data of any message that is queued.</comment>
     <prototype>ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size)</prototype>
     <input>
-      <param type="LONG" name="Message">The ID of the message that will be updated.</param>
-      <param type="LONG" name="Type">Defines the type of the message.  If set to <code>-1</code>, the message will be deleted.</param>
+      <param type="INT" name="Message">The ID of the message that will be updated.</param>
+      <param type="INT" name="Type">Defines the type of the message.  If set to <code>-1</code>, the message will be deleted.</param>
       <param type="APTR" name="Data">Pointer to a buffer that contains the new data for the message.</param>
-      <param type="LONG" name="Size">The byte-size of the <code>Data</code> that has been supplied.  It must not exceed the size of the message that is being updated.</param>
+      <param type="INT" name="Size">The byte-size of the <code>Data</code> that has been supplied.  It must not exceed the size of the message that is being updated.</param>
     </input>
     <description>
 <p>The UpdateMessage() function provides a facility for updating the content of existing messages on the local queue. The client must provide the ID of the message to update and the new message Type and/or Data to set against the message.</p>
@@ -1975,7 +1975,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <prototype>ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals)</prototype>
     <input>
       <param type="PMF" name="Flags" lookup="PMF">Optional flags are specified here.</param>
-      <param type="LONG" name="TimeOut">A time-out value measured in milliseconds.  If this value is negative then no time-out applies and the function will not return until an incoming message or signal breaks it.</param>
+      <param type="INT" name="TimeOut">A time-out value measured in milliseconds.  If this value is negative then no time-out applies and the function will not return until an incoming message or signal breaks it.</param>
       <param type="struct ObjectSignal *" name="ObjectSignals">A null-terminated array of objects to monitor for signals.</param>
     </input>
     <description>
@@ -1998,8 +1998,8 @@ SetField(Object, FID_Statement|TSTR, "string");
     <comment>Waits for a specified amount of seconds and/or microseconds.</comment>
     <prototype>void WaitTime(LONG Seconds, LONG MicroSeconds)</prototype>
     <input>
-      <param type="LONG" name="Seconds">The number of seconds to wait for.</param>
-      <param type="LONG" name="MicroSeconds">The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - <code>1/1000000</code>.  The value cannot exceed <code>999999</code>.</param>
+      <param type="INT" name="Seconds">The number of seconds to wait for.</param>
+      <param type="INT" name="MicroSeconds">The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - <code>1/1000000</code>.  The value cannot exceed <code>999999</code>.</param>
     </input>
     <description>
 <p>This function waits for a period of time as specified by the <code>Seconds</code> and <code>MicroSeconds</code> parameters.  While waiting, your process will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
@@ -2989,8 +2989,8 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="ActionTable" comment="Structure for ActionList">
-      <field name="Hash" type="ULONG">Hash of the action name.</field>
-      <field name="Size" type="LONG">Byte-size of the structure for this action.</field>
+      <field name="Hash" type="UINT">Hash of the action name.</field>
+      <field name="Size" type="INT">Byte-size of the structure for this action.</field>
       <field name="Name" type="CSTRING">Name of the action.</field>
       <field name="Args" type="const struct FunctionField *">List of fields that are passed to this action.</field>
     </struct>
@@ -3001,10 +3001,10 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="ClipRectangle" comment="Generic structure for rectangular clipping.">
-      <field name="Left" type="LONG">Left-most coordinate</field>
-      <field name="Top" type="LONG">Top coordinate</field>
-      <field name="Right" type="LONG">Right-most coordinate</field>
-      <field name="Bottom" type="LONG">Bottom coordinate</field>
+      <field name="Left" type="INT">Left-most coordinate</field>
+      <field name="Top" type="INT">Top coordinate</field>
+      <field name="Right" type="INT">Right-most coordinate</field>
+      <field name="Bottom" type="INT">Bottom coordinate</field>
     </struct>
 
     <struct name="ColourFormat" typeName="COLOURFORMAT">
@@ -3024,14 +3024,14 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="CompressedItem">
-      <field name="OriginalSize" type="LARGE">Original size of the file</field>
-      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
+      <field name="OriginalSize" type="INT64">Original size of the file</field>
+      <field name="CompressedSize" type="INT64">Compressed size of the file</field>
       <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
       <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
       <field name="Permissions" type="PERMIT" lookup="PERMIT">Original permissions - see <code>PERMIT</code> flags.</field>
-      <field name="UserID" type="LONG">Original user ID</field>
-      <field name="GroupID" type="LONG">Original group ID</field>
-      <field name="OthersID" type="LONG">Original others ID</field>
+      <field name="UserID" type="INT">Original user ID</field>
+      <field name="GroupID" type="INT">Original group ID</field>
+      <field name="OthersID" type="INT">Original others ID</field>
       <field name="Flags" type="FL" lookup="FL"><code>FL</code> flags</field>
       <field name="Created" type="struct DateTime">Date and time of the file's creation.</field>
       <field name="Modified" type="struct DateTime">Date and time last modified.</field>
@@ -3039,22 +3039,22 @@ SetField(Object, FID_Statement|TSTR, "string");
 
     <struct name="CompressionFeedback">
       <field name="FeedbackID" type="FDB" lookup="FDB">Set to one of the FDB event indicators</field>
-      <field name="Index" type="LONG">Index of the current file</field>
+      <field name="Index" type="INT">Index of the current file</field>
       <field name="Path" type="CSTRING">Name of the current file/path in the archive</field>
       <field name="Dest" type="CSTRING">Destination file/path during decompression</field>
-      <field name="Progress" type="LARGE">Progress indicator (byte position for the file being de/compressed).</field>
-      <field name="OriginalSize" type="LARGE">Original size of the file</field>
-      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
-      <field name="Year" type="WORD">Year of the original file's datestamp.</field>
-      <field name="Month" type="WORD">Month of the original file's datestamp.</field>
-      <field name="Day" type="WORD">Day of the original file's datestamp.</field>
-      <field name="Hour" type="WORD">Hour of the original file's datestamp.</field>
-      <field name="Minute" type="WORD">Minute of the original file's datestamp.</field>
-      <field name="Second" type="WORD">Second of the original file's datestamp.</field>
+      <field name="Progress" type="INT64">Progress indicator (byte position for the file being de/compressed).</field>
+      <field name="OriginalSize" type="INT64">Original size of the file</field>
+      <field name="CompressedSize" type="INT64">Compressed size of the file</field>
+      <field name="Year" type="INT16">Year of the original file's datestamp.</field>
+      <field name="Month" type="INT16">Month of the original file's datestamp.</field>
+      <field name="Day" type="INT16">Day of the original file's datestamp.</field>
+      <field name="Hour" type="INT16">Hour of the original file's datestamp.</field>
+      <field name="Minute" type="INT16">Minute of the original file's datestamp.</field>
+      <field name="Second" type="INT16">Second of the original file's datestamp.</field>
     </struct>
 
     <struct name="DateTime" comment="Generic structure for date-time management.">
-      <field name="Year" type="WORD">Year</field>
+      <field name="Year" type="INT16">Year</field>
       <field name="Month" type="BYTE">Month 1 to 12</field>
       <field name="Day" type="BYTE">Day 1 to 31</field>
       <field name="Hour" type="BYTE">Hour 0 to 23</field>
@@ -3068,10 +3068,10 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="Edges" comment="Generic structure for declaring edge coordinates.">
-      <field name="Left" type="LONG">Left-most coordinate</field>
-      <field name="Top" type="LONG">Top coordinate</field>
-      <field name="Right" type="LONG">Right-most coordinate</field>
-      <field name="Bottom" type="LONG">Bottom coordinate</field>
+      <field name="Left" type="INT">Left-most coordinate</field>
+      <field name="Top" type="INT">Top coordinate</field>
+      <field name="Right" type="INT">Right-most coordinate</field>
+      <field name="Bottom" type="INT">Bottom coordinate</field>
     </struct>
 
     <struct name="FRGB" comment="32-bit floating point RGB colour components.">
@@ -3087,10 +3087,10 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
       <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
       <field name="Name" type="CSTRING">The English name for the field, e.g. <code>Width</code></field>
-      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. <code>FID_Width</code></field>
-      <field name="Offset" type="UWORD">Field offset within the object</field>
-      <field name="Index" type="UWORD">Field array index</field>
-      <field name="Flags" type="ULONG">Special flags that describe the field</field>
+      <field name="FieldID" type="UINT">Provides a fast way of finding fields, e.g. <code>FID_Width</code></field>
+      <field name="Offset" type="UINT16">Field offset within the object</field>
+      <field name="Index" type="UINT16">Field array index</field>
+      <field name="Flags" type="UINT">Special flags that describe the field</field>
     </struct>
 
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
@@ -3098,17 +3098,17 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="GetField" type="APTR"><code>void GetField(*Object, APTR Result);</code></field>
       <field name="SetField" type="APTR"><code>ERR SetField(*Object, APTR Value);</code></field>
       <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
-      <field name="Flags" type="ULONG">Special flags that describe the field</field>
+      <field name="Flags" type="UINT">Special flags that describe the field</field>
     </struct>
 
     <struct name="FieldDef" comment="Used to define constants for field references.">
       <field name="Name" type="CSTRING">The name of the constant.</field>
-      <field name="Value" type="LONG">The value of the constant.</field>
+      <field name="Value" type="INT">The value of the constant.</field>
     </struct>
 
     <struct name="FileFeedback">
-      <field name="Size" type="LARGE">Size of the file</field>
-      <field name="Position" type="LARGE">Current seek position within the file if moving or copying</field>
+      <field name="Size" type="INT64">Size of the file</field>
+      <field name="Position" type="INT64">Current seek position within the file if moving or copying</field>
       <field name="Path" type="STRING">Path to the file</field>
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
       <field name="FeedbackID" type="FBK" lookup="FBK">Set to one of the <code>FBK</code> values</field>
@@ -3116,14 +3116,14 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="FileInfo" comment="Metadata for describing a file.">
-      <field name="Size" type="LARGE">The size of the file's content.</field>
-      <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
+      <field name="Size" type="INT64">The size of the file's content.</field>
+      <field name="TimeStamp" type="INT64">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or <code>NULL</code>.</field>
       <field name="Name" type="STRING">The name of the file.</field>
       <field name="Flags" type="RDF" lookup="RDF">Additional flags to describe the file.</field>
       <field name="Permissions" type="PERMIT" lookup="PERMIT">Standard permission flags.</field>
-      <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
-      <field name="GroupID" type="LONG">Group ID (Unix systems only).</field>
+      <field name="UserID" type="INT">User  ID (Unix systems only).</field>
+      <field name="GroupID" type="INT">Group ID (Unix systems only).</field>
       <field name="Created" type="struct DateTime">The date/time of the file's creation.</field>
       <field name="Modified" type="struct DateTime">The date/time of the last file modification.</field>
     </struct>
@@ -3136,7 +3136,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 
     <struct name="FunctionField" comment="Used by ActionTable and Function structures to declare lists of parameters.">
       <field name="Name" type="CSTRING">Name of the field</field>
-      <field name="Type" type="ULONG">Type of the field</field>
+      <field name="Type" type="UINT">Type of the field</field>
     </struct>
 
     <struct name="HSV" comment="Colour structure for Hue, Saturation and Value/Light components.">
@@ -3149,7 +3149,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <struct name="InputEvent">
       <field name="Next" type="const struct InputEvent *">Next event in the chain</field>
       <field name="Value" type="DOUBLE">The value associated with the Type</field>
-      <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
+      <field name="Timestamp" type="INT64">PreciseTime() of the recorded input</field>
       <field name="RecipientID" type="OBJECTID">Surface that the input message is being conveyed to</field>
       <field name="OverID" type="OBJECTID">Surface that is directly under the mouse pointer at the time of the event</field>
       <field name="AbsX" type="DOUBLE">Absolute horizontal position of mouse cursor (relative to the top left of the display)</field>
@@ -3165,17 +3165,17 @@ SetField(Object, FID_Statement|TSTR, "string");
     <struct name="MemInfo" typeName="MEMINFO">
       <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
       <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
-      <field name="Size" type="ULONG">The size of the memory block.</field>
+      <field name="Size" type="UINT">The size of the memory block.</field>
       <field name="Flags" type="MEM" lookup="MEM">The type of memory.</field>
       <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
-      <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
+      <field name="AccessCount" type="INT16">Total number of active locks on this block.</field>
     </struct>
 
     <struct name="Message" comment="Message header.">
-      <field name="Time" type="LARGE">A timestamp acquired from <function module="Core">PreciseTime</function> when the message was first passed to <function module="Core">SendMessage</function>.</field>
-      <field name="UID" type="LONG">A unique identifier automatically created by <function module="Core">SendMessage</function>.</field>
-      <field name="Type" type="LONG">A message type identifier as defined by the client.</field>
-      <field name="Size" type="LONG">The byte-size of the message data, or zero if no data is provided.</field>
+      <field name="Time" type="INT64">A timestamp acquired from <function module="Core">PreciseTime</function> when the message was first passed to <function module="Core">SendMessage</function>.</field>
+      <field name="UID" type="INT">A unique identifier automatically created by <function module="Core">SendMessage</function>.</field>
+      <field name="Type" type="INT">A message type identifier as defined by the client.</field>
+      <field name="Size" type="INT">The byte-size of the message data, or zero if no data is provided.</field>
     </struct>
 
     <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
@@ -3183,17 +3183,17 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="RGB16" comment="16-bit RGB colour value.">
-      <field name="Red" type="UWORD">Red component value</field>
-      <field name="Green" type="UWORD">Green component value</field>
-      <field name="Blue" type="UWORD">Blue component value</field>
-      <field name="Alpha" type="UWORD">Alpha component value</field>
+      <field name="Red" type="UINT16">Red component value</field>
+      <field name="Green" type="UINT16">Green component value</field>
+      <field name="Blue" type="UINT16">Blue component value</field>
+      <field name="Alpha" type="UINT16">Alpha component value</field>
     </struct>
 
     <struct name="RGB32" comment="32-bit RGB colour value.">
-      <field name="Red" type="ULONG">Red component value</field>
-      <field name="Green" type="ULONG">Green component value</field>
-      <field name="Blue" type="ULONG">Blue component value</field>
-      <field name="Alpha" type="ULONG">Alpha component value</field>
+      <field name="Red" type="UINT">Red component value</field>
+      <field name="Green" type="UINT">Green component value</field>
+      <field name="Blue" type="UINT">Blue component value</field>
+      <field name="Alpha" type="UINT">Alpha component value</field>
     </struct>
 
     <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
@@ -3204,43 +3204,43 @@ SetField(Object, FID_Statement|TSTR, "string");
     </struct>
 
     <struct name="RGBPalette">
-      <field name="AmtColours" type="LONG">Total colours</field>
+      <field name="AmtColours" type="INT">Total colours</field>
       <field name="Col" type="struct RGB8" size="256">RGB Palette</field>
     </struct>
 
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
       <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns <code>Native</code>, <code>Windows</code>, <code>OSX</code> or <code>Linux</code>.</field>
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
-      <field name="Stage" type="LONG">The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</field>
+      <field name="Stage" type="INT">The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</field>
     </struct>
 
     <struct name="Unit">
       <field name="Value" type="DOUBLE">The unit value.</field>
-      <field name="Type" type="ULONG">Additional type information</field>
+      <field name="Type" type="UINT">Additional type information</field>
     </struct>
 
     <struct name="dcAudio" comment="Data feed structure for Audio">
-      <field name="Size" type="LONG">Byte size of this structure</field>
-      <field name="Format" type="LONG">Format of the audio data</field>
+      <field name="Size" type="INT">Byte size of this structure</field>
+      <field name="Format" type="INT">Format of the audio data</field>
     </struct>
 
     <struct name="dcDeviceInput">
       <field name="Values" type="DOUBLE" size="2">The value(s) associated with the Type</field>
-      <field name="Timestamp" type="LARGE"><function module="Core">PreciseTime</function> of the recorded input</field>
+      <field name="Timestamp" type="INT64"><function module="Core">PreciseTime</function> of the recorded input</field>
       <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)</field>
       <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given <code>Type</code>.  Automatically defined when delivered to the pointer object</field>
       <field name="Type" type="JET" lookup="JET"><code>JET</code> constant</field>
     </struct>
 
     <struct name="dcKeyEntry" comment="Data feed structure for Keypress">
-      <field name="Flags" type="LONG">Shift/Control/CapsLock...</field>
-      <field name="Value" type="LONG">ASCII value of the key A/B/C/D...</field>
-      <field name="Timestamp" type="LARGE"><function module="Core">PreciseTime</function> at which the keypress was recorded</field>
-      <field name="Unicode" type="LONG">Unicode value for pre-calculated key translations</field>
+      <field name="Flags" type="INT">Shift/Control/CapsLock...</field>
+      <field name="Value" type="INT">ASCII value of the key A/B/C/D...</field>
+      <field name="Timestamp" type="INT64"><function module="Core">PreciseTime</function> at which the keypress was recorded</field>
+      <field name="Unicode" type="INT">Unicode value for pre-calculated key translations</field>
     </struct>
 
     <struct name="dcRequest" comment="Data feed item request">
-      <field name="Item" type="LONG">Identifier for retrieval from the source</field>
+      <field name="Item" type="INT">Identifier for retrieval from the source</field>
       <field name="Preference" type="char" size="4">Data preferences for the returned item(s)</field>
     </struct>
 

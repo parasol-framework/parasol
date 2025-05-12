@@ -578,8 +578,8 @@ ERR svgState::parse_fe_offset(objVectorFilter *Filter, XMLTag &Tag) noexcept
       if (val.empty()) continue;
 
       switch(strihash(Tag.Attribs[a].Name)) {
-         case SVF_DX: fx->set(FID_XOffset, strtol(val.c_str(), NULL, 0)); break;
-         case SVF_DY: fx->set(FID_YOffset, strtol(val.c_str(), NULL, 0)); break;
+         case SVF_DX: fx->set(FID_XOffset, (int64_t)strtol(val.c_str(), NULL, 0)); break;
+         case SVF_DY: fx->set(FID_YOffset, (int64_t)strtol(val.c_str(), NULL, 0)); break;
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_RESULT: result_name = val; break;
       }
@@ -797,9 +797,9 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XMLTag &Tag) noe
             break;
          }
 
-         case SVF_TARGETX: fx->set(FID_TargetX, strtol(val.c_str(), NULL, 0)); break;
+         case SVF_TARGETX: fx->set(FID_TargetX, (int64_t)strtol(val.c_str(), NULL, 0)); break;
 
-         case SVF_TARGETY: fx->set(FID_TargetY, strtol(val.c_str(), NULL, 0)); break;
+         case SVF_TARGETY: fx->set(FID_TargetY, (int64_t)strtol(val.c_str(), NULL, 0)); break;
 
          case SVF_EDGEMODE:
             if (iequals("duplicate", val)) fx->set(FID_EdgeMode, LONG(EM::DUPLICATE));
@@ -1331,9 +1331,9 @@ ERR svgState::parse_fe_turbulence(objVectorFilter *Filter, XMLTag &Tag) noexcept
             break;
          }
 
-         case SVF_NUMOCTAVES: fx->set(FID_Octaves, strtol(val.c_str(), NULL, 0)); break;
+         case SVF_NUMOCTAVES: fx->set(FID_Octaves, (int64_t)strtol(val.c_str(), NULL, 0)); break;
 
-         case SVF_SEED: fx->set(FID_Seed, strtol(val.c_str(), NULL, 0)); break;
+         case SVF_SEED: fx->set(FID_Seed, (int64_t)strtol(val.c_str(), NULL, 0)); break;
 
          case SVF_STITCHTILES:
             if (iequals("stitch", val)) fx->set(FID_Stitch, TRUE);

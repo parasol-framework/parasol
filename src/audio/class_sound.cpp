@@ -73,7 +73,7 @@ static OBJECTPTR clSound = NULL;
 
 static ERR find_chunk(extSound *, objFile *, std::string_view);
 #ifdef USE_WIN32_PLAYBACK
-static ERR win32_audio_stream(extSound *, LARGE, LARGE);
+static ERR win32_audio_stream(extSound *, int64_t, int64_t);
 #endif
 
 //********************************************************************************************************************
@@ -120,7 +120,7 @@ static void onstop_event(LONG SampleHandle)
 // Called when the estimated time for playback is over.
 
 #ifdef _WIN32
-static ERR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR timer_playback_ended(extSound *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    pf::Log log;
    log.trace("Sound streaming completed.");
@@ -242,7 +242,7 @@ static ERR SOUND_Activate(extSound *Self)
 {
    pf::Log log;
 
-   log.traceBranch("Position: %" PF64, Self->Position);
+   log.traceBranch("Position: %" PF64, (long long)Self->Position);
 
    if (!Self->Length) return log.warning(ERR::FieldNotSet);
 
@@ -573,7 +573,7 @@ static ERR SOUND_Enable(extSound *Self)
 
 #ifdef USE_WIN32_PLAYBACK
    if (!Self->Handle) {
-      log.msg("Playing back from position %" PF64, Self->Position);
+      log.msg("Playing back from position %" PF64, (long long)Self->Position);
       if ((Self->Flags & SDF::LOOP) != SDF::NIL) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
       else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
    }
@@ -927,7 +927,7 @@ static ERR SOUND_Read(extSound *Self, struct acRead *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   log.traceBranch("Length: %d, Offset: %" PF64, Args->Length, Self->Position);
+   log.traceBranch("Length: %d, Offset: %" PF64, Args->Length, (long long)Self->Position);
 
    if (Args->Length <= 0) {
       Args->Result = 0;
@@ -1013,7 +1013,7 @@ static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
       Self->Position &= ~align;
    }
 
-   log.traceBranch("Seek to %" PF64 " + %d", Self->Position, Self->DataOffset);
+   log.traceBranch("Seek to %" PF64 " + %d", (long long)Self->Position, Self->DataOffset);
 
    pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
@@ -1582,7 +1582,7 @@ playback position, either when the sample is next played, or immediately if it i
 
 *********************************************************************************************************************/
 
-static ERR SOUND_SET_Position(extSound *Self, LARGE Value)
+static ERR SOUND_SET_Position(extSound *Self, int64_t Value)
 {
    return Self->seekStart(Value);
 }
@@ -1669,7 +1669,7 @@ static ERR find_chunk(extSound *Self, objFile *File, std::string_view ChunkName)
 //********************************************************************************************************************
 
 #ifdef USE_WIN32_PLAYBACK
-static ERR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR win32_audio_stream(extSound *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 

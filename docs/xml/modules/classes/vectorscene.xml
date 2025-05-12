@@ -139,9 +139,9 @@
     <method>
       <name>SearchByID</name>
       <comment>Search for a vector by numeric ID.</comment>
-      <prototype>ERR sc::SearchByID(OBJECTPTR Object, LONG ID, OBJECTPTR * Result)</prototype>
+      <prototype>ERR sc::SearchByID(OBJECTPTR Object, INT ID, OBJECTPTR * Result)</prototype>
       <input>
-        <param type="LONG" name="ID">The ID to search for.</param>
+        <param type="INT" name="ID">The ID to search for.</param>
         <param type="OBJECTPTR *" name="Result">This parameter will be updated with the discovered vector, or <code>NULL</code> if not found.</param>
       </input>
       <description>
@@ -213,7 +213,7 @@
       <name>RenderTime</name>
       <comment>Returns the rendering time of the last scene.</comment>
       <access read="G">Get</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>RenderTime returns the rendering time of the last scene that was drawn, measured in microseconds.  This value can also be used to compute frames-per-second with <code>1000000 / RenderTime</code>.</p>
 <p>The <code>RENDER_TIME</code> flag must be set before fetching this value, as it is required to enable the timing feature.  If <code>RENDER_TIME</code> is not set, it will be set automatically so that subsequent calls return a correct value.</p>

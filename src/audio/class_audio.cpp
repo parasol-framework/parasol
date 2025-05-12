@@ -779,7 +779,7 @@ static ERR AUDIO_SetSampleLength(extAudio *Self, struct snd::SetSampleLength *Ar
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   log.msg("Sample: #%d, Length: %" PF64, Args->Sample, Args->Length);
+   log.msg("Sample: #%d, Length: %" PF64, Args->Sample, (long long)Args->Length);
 
    if ((Args->Sample < 0) or (Args->Sample >= std::ssize(Self->Samples))) return log.warning(ERR::Args);
 

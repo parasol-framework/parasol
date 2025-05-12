@@ -279,14 +279,14 @@
     <method>
       <name>SetDate</name>
       <comment>Sets the date on a file.</comment>
-      <prototype>ERR fl::SetDate(OBJECTPTR Object, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type)</prototype>
+      <prototype>ERR fl::SetDate(OBJECTPTR Object, INT Year, INT Month, INT Day, INT Hour, INT Minute, INT Second, FDT Type)</prototype>
       <input>
-        <param type="LONG" name="Year">Year (-ve for BC, +ve for AD).</param>
-        <param type="LONG" name="Month">Month (1 - 12)</param>
-        <param type="LONG" name="Day">Day (1 - 31)</param>
-        <param type="LONG" name="Hour">Hour (0 - 23</param>
-        <param type="LONG" name="Minute">Minute (0 - 59)</param>
-        <param type="LONG" name="Second">Second (0 - 59)</param>
+        <param type="INT" name="Year">Year (-ve for BC, +ve for AD).</param>
+        <param type="INT" name="Month">Month (1 - 12)</param>
+        <param type="INT" name="Day">Day (1 - 31)</param>
+        <param type="INT" name="Hour">Hour (0 - 23</param>
+        <param type="INT" name="Minute">Minute (0 - 59)</param>
+        <param type="INT" name="Second">Second (0 - 59)</param>
         <param type="FDT" name="Type" lookup="FDT">The type of date to set (filesystem dependent).</param>
       </input>
       <description>
@@ -307,11 +307,11 @@
     <method>
       <name>StartStream</name>
       <comment>Starts streaming data from a file source.</comment>
-      <prototype>ERR fl::StartStream(OBJECTPTR Object, OBJECTID Subscriber, FL Flags, LONG Length)</prototype>
+      <prototype>ERR fl::StartStream(OBJECTPTR Object, OBJECTID Subscriber, FL Flags, INT Length)</prototype>
       <input>
         <param type="OBJECTID" name="Subscriber">Reference to an object that will receive streamed data notifications.</param>
         <param type="FL" name="Flags" lookup="FL">Use <code>READ</code> for incoming data, <code>WRITE</code> for outgoing data.</param>
-        <param type="LONG" name="Length">Limits the total amount of data to be streamed.</param>
+        <param type="INT" name="Length">Limits the total amount of data to be streamed.</param>
       </input>
       <description>
 <p>If a file object is a stream (indicated by the <code>STREAM</code> flag), the StartStream method should be used for reading or writing data to the file object.  Although it is possible to call the Read and Write actions on streamed files, they will be limited to returning only the amount of data that is cached locally (if any), or writing as much as buffers will allow in software.</p>
@@ -345,17 +345,17 @@
     <method>
       <name>Watch</name>
       <comment>Monitors files and folders for file system events.</comment>
-      <prototype>ERR fl::Watch(OBJECTPTR Object, FUNCTION * Callback, LARGE Custom, MFF Flags)</prototype>
+      <prototype>ERR fl::Watch(OBJECTPTR Object, FUNCTION * Callback, INT64 Custom, MFF Flags)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">The routine that will be called when a file change is triggered by the system.</param>
-        <param type="LARGE" name="Custom">A custom 64-bit value that will passed to the Callback routine as a parameter.</param>
+        <param type="INT64" name="Custom">A custom 64-bit value that will passed to the Callback routine as a parameter.</param>
         <param type="MFF" name="Flags" lookup="MFF">Filter events to those indicated in these flags.</param>
       </input>
       <description>
 <p>The Watch() method configures event based reporting for changes to any file or folder in the file system. The capabilities of this method are dependent on the host platform, with Windows and Linux systems being able to support most of the current feature set.</p>
 <p>The path that will be monitored is determined by the File object's <fl>Path</fl> field.  Both files and folders are supported as targets.</p>
 <p>The optional <lk>MFF</lk> Flags are used to filter events to those that are desired for monitoring.</p>
-<p>The client must provide a <code>Callback</code> that will be triggered when a monitored event is triggered.  The <code>Callback</code> must follow the format <code>ERR Routine(*File, STRING Path, LARGE Custom, LONG Flags)</code></p>
+<p>The client must provide a <code>Callback</code> that will be triggered when a monitored event is triggered.  The <code>Callback</code> must follow the format <code>ERR Routine(*File, STRING Path, INT64 Custom, LONG Flags)</code></p>
 <p>Each event will be delivered in the sequence that they are originally raised.  The <code>Flags</code> parameter will reflect the specific event that has occurred.  The <code>Custom</code> parameter is identical to the <code>Custom</code> argument originally passed to this method.  The <code>Path</code> is a string that is relative to the File's <fl>Path</fl> field.</p>
 <p>If the callback routine returns <code>ERR::Terminate</code>, the watch will be disabled.  It is also possible to disable an existing watch by calling this method with no parameters, or by setting the <code>Flags</code> parameter to <code>0</code>.</p>
       </description>
@@ -427,7 +427,7 @@
       <name>Handle</name>
       <comment>The native system handle for the file opened by the file object.</comment>
       <access read="G">Get</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>This field returns the native file system handle for the file opened by the file object.  The native handle may be an integer or pointer value in 32 or 64-bit format.  In order to manage this issue in a multi-platform manner, the value is returned as a 64-bit integer.</p>
       </description>
@@ -481,7 +481,7 @@
       <name>Position</name>
       <comment>The current read/write byte position in a file.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>This field indicates the current byte position of an open file (this affects read and write operations).  Writing to this field performs a <action>Seek</action> operation.</p>
 <p>The Position will always remain at zero if the file object represents a folder.</p>
@@ -502,7 +502,7 @@
       <name>Size</name>
       <comment>The byte size of a file.</comment>
       <access read="G" write="S">Get/Set</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>The current byte size of a file is indicated by this field.  If the file object represents a folder, the Size value will be zero.  You can also truncate a file by setting the Size; this will result in the current read/write position being set to the end of the file.</p>
       </description>
@@ -533,7 +533,7 @@
       <name>TimeStamp</name>
       <comment>The last modification time set on a file, represented as a 64-bit integer.</comment>
       <access read="G">Get</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>The TimeStamp field is a 64-bit representation of the last modification date/time set on a file.  It is not guaranteed that the value represents seconds from the epoch, so it should only be used for purposes such as sorting, or for comparison to the time stamps of other files.  For a parsed time structure, refer to the <fl>Date</fl> field.</p>
       </description>
@@ -638,7 +638,7 @@
   </types>
   <structs>
     <struct name="DateTime" comment="Generic structure for date-time management.">
-      <field name="Year" type="WORD">Year</field>
+      <field name="Year" type="INT16">Year</field>
       <field name="Month" type="BYTE">Month 1 to 12</field>
       <field name="Day" type="BYTE">Day 1 to 31</field>
       <field name="Hour" type="BYTE">Hour 0 to 23</field>

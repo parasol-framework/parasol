@@ -115,7 +115,7 @@ static std::string write_calc(double Value, WORD Precision)
 {
    if (!Precision) return std::to_string(F2T(Value));
 
-   LARGE wholepart = F2T(Value);
+   int64_t wholepart = F2T(Value);
    auto out = std::to_string(wholepart);
 
    double fraction = std::abs(Value) - std::abs(wholepart);

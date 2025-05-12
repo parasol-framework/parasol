@@ -49,7 +49,7 @@ class objVectorViewport;
 
 // Options for drawing arcs.
 
-enum class ARC : ULONG {
+enum class ARC : uint32_t {
    NIL = 0,
    LARGE = 0x00000001,
    SWEEP = 0x00000002,
@@ -59,7 +59,7 @@ DEFINE_ENUM_FLAG_OPERATORS(ARC)
 
 // Options for VectorClip.
 
-enum class VCLF : ULONG {
+enum class VCLF : uint32_t {
    NIL = 0,
    APPLY_FILLS = 0x00000001,
    APPLY_STROKES = 0x00000002,
@@ -69,7 +69,7 @@ DEFINE_ENUM_FLAG_OPERATORS(VCLF)
 
 // Optional flags and indicators for the Vector class.
 
-enum class VF : ULONG {
+enum class VF : uint32_t {
    NIL = 0,
    DISABLED = 0x00000001,
    HAS_FOCUS = 0x00000002,
@@ -298,7 +298,7 @@ enum class OP : LONG {
 
 // VectorText flags.
 
-enum class VTXF : ULONG {
+enum class VTXF : uint32_t {
    NIL = 0,
    UNDERLINE = 0x00000001,
    OVERLINE = 0x00000002,
@@ -317,7 +317,7 @@ DEFINE_ENUM_FLAG_OPERATORS(VTXF)
 
 // Morph flags
 
-enum class VMF : ULONG {
+enum class VMF : uint32_t {
    NIL = 0,
    STRETCH = 0x00000001,
    AUTO_SPACING = 0x00000002,
@@ -392,7 +392,7 @@ enum class CM : LONG {
 
 // Gradient flags
 
-enum class VGF : ULONG {
+enum class VGF : uint32_t {
    NIL = 0,
    SCALED_X1 = 0x00000001,
    SCALED_Y1 = 0x00000002,
@@ -421,7 +421,7 @@ DEFINE_ENUM_FLAG_OPERATORS(VGF)
 
 // Optional flags for the VectorScene object.
 
-enum class VPF : ULONG {
+enum class VPF : uint32_t {
    NIL = 0,
    BITMAP_SIZED = 0x00000001,
    RENDER_TIME = 0x00000002,
@@ -463,7 +463,7 @@ enum class RQ : LONG {
    BEST = 4,
 };
 
-enum class RC : UBYTE {
+enum class RC : uint8_t {
    NIL = 0,
    FINAL_PATH = 0x00000001,
    BASE_PATH = 0x00000002,
@@ -476,7 +476,7 @@ DEFINE_ENUM_FLAG_OPERATORS(RC)
 
 // Aspect ratios control alignment, scaling and clipping.
 
-enum class ARF : ULONG {
+enum class ARF : uint32_t {
    NIL = 0,
    X_MIN = 0x00000001,
    X_MID = 0x00000002,
@@ -493,7 +493,7 @@ DEFINE_ENUM_FLAG_OPERATORS(ARF)
 
 // Options for vecGetBoundary().
 
-enum class VBF : ULONG {
+enum class VBF : uint32_t {
    NIL = 0,
    INCLUSIVE = 0x00000001,
    NO_TRANSFORM = 0x00000002,
@@ -503,7 +503,7 @@ DEFINE_ENUM_FLAG_OPERATORS(VBF)
 
 // Mask for controlling feedback events that are received.
 
-enum class FM : ULONG {
+enum class FM : uint32_t {
    NIL = 0,
    PATH_CHANGED = 0x00000001,
    HAS_FOCUS = 0x00000002,
@@ -637,7 +637,7 @@ class objVectorTransition : public Object {
 
    // Customised field setting
 
-   inline ERR setStops(const APTR Value, LONG Elements) noexcept {
+   inline ERR setStops(const APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x00001218, Value, Elements);
@@ -666,7 +666,7 @@ class objVectorScene : public Object {
 
    using create = pf::Create<objVectorScene>;
 
-   LARGE    RenderTime;           // Returns the rendering time of the last scene.
+   int64_t  RenderTime;           // Returns the rendering time of the last scene.
    DOUBLE   Gamma;                // Private. Not currently implemented.
    objVectorScene * HostScene;    // Refers to a top-level VectorScene object, if applicable.
    objVectorViewport * Viewport;  // References the first object in the scene, which must be a VectorViewport object.
@@ -680,22 +680,22 @@ class objVectorScene : public Object {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
    inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
+   inline ERR redimension(double X, double Y, double Z, double Width, double Height, double Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC::Redimension, this, &args);
    }
-   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
+   inline ERR redimension(double X, double Y, double Width, double Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
       return Action(AC::Redimension, this, &args);
    }
    inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }
-   inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
+   inline ERR resize(double Width, double Height, double Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC::Resize, this, &args);
    }
@@ -1074,7 +1074,7 @@ class objVectorGradient : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setColour(const FLOAT * Value, LONG Elements) noexcept {
+   inline ERR setColour(const FLOAT * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
@@ -1104,7 +1104,7 @@ class objVectorGradient : public Object {
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
-   inline ERR setStops(const APTR Value, LONG Elements) noexcept {
+   inline ERR setStops(const APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
@@ -1237,7 +1237,7 @@ class objImageFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1279,7 +1279,7 @@ class objSourceFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1321,7 +1321,7 @@ class objBlurFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1357,7 +1357,7 @@ class objColourFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1371,7 +1371,7 @@ class objColourFX : public objFilterEffect {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setValues(const DOUBLE * Value, LONG Elements) noexcept {
+   inline ERR setValues(const DOUBLE * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x80001508, Value, Elements);
@@ -1393,7 +1393,7 @@ class objCompositeFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1447,7 +1447,7 @@ class objConvolveFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1485,7 +1485,7 @@ class objConvolveFX : public objFilterEffect {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setMatrix(const DOUBLE * Value, LONG Elements) noexcept {
+   inline ERR setMatrix(const DOUBLE * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x80001508, Value, Elements);
@@ -1537,7 +1537,7 @@ class objDisplacementFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1579,7 +1579,7 @@ class objFloodFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1587,7 +1587,7 @@ class objFloodFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setColour(const FLOAT * Value, LONG Elements) noexcept {
+   inline ERR setColour(const FLOAT * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
@@ -1624,7 +1624,7 @@ class objLightingFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1644,7 +1644,7 @@ class objLightingFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setColour(const FLOAT * Value, LONG Elements) noexcept {
+   inline ERR setColour(const FLOAT * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
@@ -1702,7 +1702,7 @@ class objMergeFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1710,7 +1710,7 @@ class objMergeFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setSourceList(const APTR Value, LONG Elements) noexcept {
+   inline ERR setSourceList(const APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
@@ -1732,7 +1732,7 @@ class objMorphologyFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1774,7 +1774,7 @@ class objOffsetFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1823,7 +1823,7 @@ class objRemapFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1875,7 +1875,7 @@ class objTurbulenceFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1935,7 +1935,7 @@ class objWaveFunctionFX : public objFilterEffect {
    // Action stubs
 
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1973,7 +1973,7 @@ class objWaveFunctionFX : public objFilterEffect {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setStops(const APTR Value, LONG Elements) noexcept {
+   inline ERR setStops(const APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
@@ -2168,7 +2168,7 @@ class objVector : public Object {
 
    inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -2308,7 +2308,7 @@ class objVector : public Object {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setDashArray(const DOUBLE * Value, LONG Elements) noexcept {
+   inline ERR setDashArray(const DOUBLE * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
@@ -2362,7 +2362,7 @@ class objVector : public Object {
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
-   inline ERR setStrokeColour(const FLOAT * Value, LONG Elements) noexcept {
+   inline ERR setStrokeColour(const FLOAT * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
@@ -2387,7 +2387,7 @@ class objVector : public Object {
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
-   inline ERR setFillColour(const FLOAT * Value, LONG Elements) noexcept {
+   inline ERR setFillColour(const FLOAT * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
@@ -2501,7 +2501,7 @@ class objVectorPath : public objVector {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setCommands(const APTR Value, LONG Elements) noexcept {
+   inline ERR setCommands(const APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
@@ -2593,13 +2593,13 @@ class objVectorText : public objVector {
       return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
    }
 
-   inline ERR setDX(const DOUBLE * Value, LONG Elements) noexcept {
+   inline ERR setDX(const DOUBLE * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
    }
 
-   inline ERR setDY(const DOUBLE * Value, LONG Elements) noexcept {
+   inline ERR setDY(const DOUBLE * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
@@ -2617,7 +2617,7 @@ class objVectorText : public objVector {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setRotate(const DOUBLE * Value, LONG Elements) noexcept {
+   inline ERR setRotate(const DOUBLE * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
@@ -2822,7 +2822,7 @@ class objVectorRectangle : public objVector {
 
    // Customised field setting
 
-   inline ERR setRounding(const DOUBLE * Value, LONG Elements) noexcept {
+   inline ERR setRounding(const DOUBLE * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
@@ -2917,7 +2917,7 @@ class objVectorPolygon : public objVector {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setPointsArray(APTR * Value, LONG Elements) noexcept {
+   inline ERR setPointsArray(APTR * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08001308, Value, Elements);
@@ -3244,23 +3244,23 @@ class objVectorViewport : public objVector {
 
    inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
+   inline ERR move(double X, double Y, double Z) noexcept {
       struct acMove args = { X, Y, Z };
       return Action(AC::Move, this, &args);
    }
-   inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
+   inline ERR moveToPoint(double X, double Y, double Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC::MoveToPoint, this, &moveto);
    }
-   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
+   inline ERR redimension(double X, double Y, double Z, double Width, double Height, double Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC::Redimension, this, &args);
    }
-   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
+   inline ERR redimension(double X, double Y, double Width, double Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
       return Action(AC::Redimension, this, &args);
    }
-   inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
+   inline ERR resize(double Width, double Height, double Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC::Resize, this, &args);
    }

@@ -185,7 +185,7 @@ Size: Indicates the size of the source archive, in bytes.
 
 *********************************************************************************************************************/
 
-static ERR GET_Size(extCompression *Self, LARGE *Value)
+static ERR GET_Size(extCompression *Self, int64_t *Value)
 {
    *Value = 0;
    if (Self->FileIO) return Self->FileIO->get(FID_Size, Value);
@@ -209,9 +209,9 @@ information that may identify the compressed data is not included in the total.
 
 *********************************************************************************************************************/
 
-static ERR GET_UncompressedSize(extCompression *Self, LARGE *Value)
+static ERR GET_UncompressedSize(extCompression *Self, int64_t *Value)
 {
-   LARGE size = 0;
+   int64_t size = 0;
    for (auto &f : Self->Files) {
       size += f.OriginalSize;
    }

@@ -15,16 +15,16 @@
   <function>
     <name>CharWidth</name>
     <comment>Returns the width of a character.</comment>
-    <prototype>LONG fnt::CharWidth(objFont * Font, ULONG Char)</prototype>
+    <prototype>INT fnt::CharWidth(objFont * Font, ULONG Char)</prototype>
     <input>
       <param type="objFont *" name="Font">The font to use for calculating the character width.</param>
-      <param type="ULONG" name="Char">A unicode character.</param>
+      <param type="UINT" name="Char">A unicode character.</param>
     </input>
     <description>
 <p>This function will return the pixel width of a bitmap font character.  The character is specified as a unicode value in the Char parameter.</p>
 <p>The font's GlyphSpacing value is not used in calculating the character width.</p>
     </description>
-    <result type="LONG">The pixel width of the character will be returned.</result>
+    <result type="INT">The pixel width of the character will be returned.</result>
   </function>
 
   <function>
@@ -104,17 +104,17 @@
   <function>
     <name>StringWidth</name>
     <comment>Returns the pixel width of any given string in relation to a font's settings.</comment>
-    <prototype>LONG fnt::StringWidth(objFont * Font, CSTRING String, LONG Chars)</prototype>
+    <prototype>INT fnt::StringWidth(objFont * Font, CSTRING String, LONG Chars)</prototype>
     <input>
       <param type="objFont *" name="Font">An initialised font object.</param>
       <param type="CSTRING" name="String">The string to be calculated.</param>
-      <param type="LONG" name="Chars">The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length, or -1 to use the entire string.</param>
+      <param type="INT" name="Chars">The number of characters (not bytes, so consider UTF-8 serialisation) to be used in calculating the string length, or -1 to use the entire string.</param>
     </input>
     <description>
 <p>This function calculates the pixel width of any string in relation to a font's object definition.  The routine takes into account any line feeds that might be specified in the String, so if the String contains 8 lines, then the width of the longest line will be returned.</p>
 <p>Word wrapping will not be taken into account, even if it has been enabled in the font object.</p>
     </description>
-    <result type="LONG">The pixel width of the string is returned - this will be zero if there was an error or the string is empty.</result>
+    <result type="INT">The pixel width of the string is returned - this will be zero if there was an error or the string is empty.</result>
   </function>
 
   <types>
@@ -162,7 +162,7 @@
       <field name="Next" type="struct FontList *">Pointer to the next entry in the list.</field>
       <field name="Name" type="STRING">The name of the font face.</field>
       <field name="Alias" type="STRING">Reference to another font Name if this is an alias.</field>
-      <field name="Points" type="LONG *" size="0">Pointer to an array of fixed point sizes supported by the font.</field>
+      <field name="Points" type="INT *" size="0">Pointer to an array of fixed point sizes supported by the font.</field>
       <field name="Styles" type="STRING">Supported styles are listed here in CSV format.</field>
       <field name="Axes" type="STRING">For variable fonts, lists all supported axis codes in CSV format</field>
       <field name="Scalable" type="BYTE"><code>TRUE</code> if the font is scalable.</field>

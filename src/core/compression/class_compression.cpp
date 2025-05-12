@@ -217,7 +217,7 @@ static ERR send_feedback(extCompression *, CompressionFeedback *);
 static void write_eof(extCompression *);
 void zipfile_to_item(ZipFile &, CompressedItem &);
 
-static ERR GET_Size(extCompression *, LARGE *);
+static ERR GET_Size(extCompression *, int64_t *);
 
 //********************************************************************************************************************
 // Special definitions.
@@ -507,7 +507,7 @@ static ERR COMPRESSION_CompressFile(extCompression *Self, struct cmp::CompressFi
    }
 
    if (Self->OutputID) {
-      LARGE size;
+      int64_t size;
       GET_Size(Self, &size);
       std::ostringstream out;
       out << "\nCompression complete.  Archive is " << size <<  " bytes in size.";
@@ -688,7 +688,7 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::Compress
             if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
                   { "Compression",  Self, FD_OBJECTPTR },
                   { "Output",       output, FD_BUFFER },
-                  { "OutputLength", LARGE(len), FD_LARGE|FD_BUFSIZE }
+                  { "OutputLength", int64_t(len), FD_LARGE|FD_BUFSIZE }
                }), error) != ERR::Okay) error = ERR::Failed;
          }
          else {
@@ -777,7 +777,7 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::Compr
          if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
             { "Compression",  Self,   FD_OBJECTPTR },
             { "Output",       output, FD_BUFFER },
-            { "OutputLength", LARGE(outputsize - Self->DeflateStream.avail_out), FD_LARGE|FD_BUFSIZE }
+            { "OutputLength", int64_t(outputsize - Self->DeflateStream.avail_out), FD_LARGE|FD_BUFSIZE }
          }), error) != ERR::Okay) error = ERR::Failed;
       }
       else error = ERR::Okay;

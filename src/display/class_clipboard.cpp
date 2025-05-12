@@ -117,7 +117,7 @@ static std::string get_datatype(CLIPTYPE Datatype)
 
 //********************************************************************************************************************
 
-static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
+static void notify_script_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, nullptr_t Args)
 {
    auto Self = (objClipboard *)CurrentContext();
    Self->RequestHandler.clear();

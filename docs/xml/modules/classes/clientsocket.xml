@@ -60,12 +60,12 @@
     <method>
       <name>ReadClientMsg</name>
       <comment>Read a message from the socket.</comment>
-      <prototype>ERR cs::ReadClientMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
+      <prototype>ERR cs::ReadClientMsg(OBJECTPTR Object, APTR * Message, INT * Length, INT * Progress, INT * CRC)</prototype>
       <input>
         <param type="APTR *" name="Message">A pointer to the message buffer will be placed here if a message has been received.</param>
-        <param type="LONG *" name="Length">The length of the message is returned here.</param>
-        <param type="LONG *" name="Progress">The number of bytes that have been read for the incoming message.</param>
-        <param type="LONG *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
+        <param type="INT *" name="Length">The length of the message is returned here.</param>
+        <param type="INT *" name="Progress">The number of bytes that have been read for the incoming message.</param>
+        <param type="INT *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
       </input>
       <description>
 <p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the <method>WriteClientMsg</method> method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
@@ -85,10 +85,10 @@
     <method>
       <name>WriteClientMsg</name>
       <comment>Writes a message to the socket.</comment>
-      <prototype>ERR cs::WriteClientMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
+      <prototype>ERR cs::WriteClientMsg(OBJECTPTR Object, APTR Message, INT Length)</prototype>
       <input>
         <param type="APTR" name="Message">Pointer to the message to send.</param>
-        <param type="LONG" name="Length">The length of the <code>Message</code>.</param>
+        <param type="INT" name="Length">The length of the <code>Message</code>.</param>
       </input>
       <description>
 <p>Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with <method>ReadClientMsg</method>. The message data is sent through the <action>Write</action> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
@@ -121,7 +121,7 @@
       <name>ConnectTime</name>
       <comment>System time for the creation of this socket</comment>
       <access read="R">Read</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
     </field>
 
     <field>
@@ -175,7 +175,7 @@
       <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
       <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
       <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalSockets" type="LONG">Count of all created sockets</field>
+      <field name="TotalSockets" type="INT">Count of all created sockets</field>
     </struct>
 
   </structs>

@@ -248,7 +248,7 @@ large: Returns the value of the resource that you have requested.  If the resour
 
 *********************************************************************************************************************/
 
-LARGE GetResource(RES Resource)
+int64_t GetResource(RES Resource)
 {
 #ifdef __linux__
    struct sysinfo sys;
@@ -279,18 +279,18 @@ LARGE GetResource(RES Resource)
       // change during runtime.
 
       case RES::TOTAL_MEMORY: {
-         if (!sysinfo(&sys)) return (LARGE)sys.totalram * (LARGE)sys.mem_unit;
+         if (!sysinfo(&sys)) return (int64_t)sys.totalram * (int64_t)sys.mem_unit;
          else return -1;
       }
 
       case RES::FREE_MEMORY: {
    #if 0
          // Unfortunately sysinfo() does not report on cached ram, which can be significant
-         if (!sysinfo(&sys)) return (LARGE)(sys.freeram + sys.bufferram) * (LARGE)sys.mem_unit; // Buffer RAM is considered as 'free'
+         if (!sysinfo(&sys)) return (int64_t)(sys.freeram + sys.bufferram) * (int64_t)sys.mem_unit; // Buffer RAM is considered as 'free'
    #else
          char str[2048];
          LONG result;
-         LARGE freemem = 0;
+         int64_t freemem = 0;
          if (ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result) IS ERR::Okay) {
             LONG i = 0;
             while (i < result) {
@@ -308,15 +308,15 @@ LARGE GetResource(RES Resource)
       }
 
       case RES::TOTAL_SHARED_MEMORY:
-         if (!sysinfo(&sys)) return (LARGE)sys.sharedram * (LARGE)sys.mem_unit;
+         if (!sysinfo(&sys)) return (int64_t)sys.sharedram * (int64_t)sys.mem_unit;
          else return -1;
 
       case RES::TOTAL_SWAP:
-         if (!sysinfo(&sys)) return (LARGE)sys.totalswap * (LARGE)sys.mem_unit;
+         if (!sysinfo(&sys)) return (int64_t)sys.totalswap * (int64_t)sys.mem_unit;
          else return -1;
 
       case RES::FREE_SWAP:
-         if (!sysinfo(&sys)) return (LARGE)sys.freeswap * (LARGE)sys.mem_unit;
+         if (!sysinfo(&sys)) return (int64_t)sys.freeswap * (int64_t)sys.mem_unit;
          else return -1;
 
       case RES::CPU_SPEED: {
@@ -397,13 +397,13 @@ large: Returns the system time in microseconds.  Could return zero in the extrem
 
 *********************************************************************************************************************/
 
-LARGE PreciseTime(void)
+int64_t PreciseTime(void)
 {
 #ifdef __unix__
    struct timespec time;
 
    if (!clock_gettime(CLOCK_MONOTONIC, &time)) {
-      return ((LARGE)time.tv_sec * 1000000LL) + ((LARGE)time.tv_nsec / 1000LL);
+      return ((int64_t)time.tv_sec * 1000000LL) + ((int64_t)time.tv_nsec / 1000LL);
    }
    else return 0;
 #else
@@ -601,7 +601,7 @@ large: Returns the previous value of the `Resource`.  If the `Resource` value is
 
 *********************************************************************************************************************/
 
-LARGE SetResource(RES Resource, LARGE Value)
+int64_t SetResource(RES Resource, int64_t Value)
 {
    pf::Log log(__FUNCTION__);
 
@@ -609,7 +609,7 @@ LARGE SetResource(RES Resource, LARGE Value)
    static WORD privileged = 0;
 #endif
 
-   LARGE oldvalue = 0;
+   int64_t oldvalue = 0;
 
    switch(Resource) {
       case RES::CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
@@ -640,10 +640,10 @@ LARGE SetResource(RES Resource, LARGE Value)
 #ifdef __unix__
          log.trace("Privileged User: %s, Current UID: %d, Depth: %d", (Value) ? "TRUE" : "FALSE", geteuid(), privileged);
 
-         if (glPrivileged) return LARGE(ERR::Okay); // In privileged mode, the user is always an admin
+         if (glPrivileged) return int64_t(ERR::Okay); // In privileged mode, the user is always an admin
 
          if (Value) { // Enable admin privileges
-            oldvalue = LARGE(ERR::Okay);
+            oldvalue = int64_t(ERR::Okay);
             if (!privileged) {
                if (glUID) {
                   if (glUID != glEUID) {
@@ -652,7 +652,7 @@ LARGE SetResource(RES Resource, LARGE Value)
                   }
                   else {
                      log.msg("Admin privileges not available.");
-                     oldvalue = LARGE(ERR::Failed); // Admin privileges are not available
+                     oldvalue = int64_t(ERR::Failed); // Admin privileges are not available
                   }
                }
                else privileged++;; // The user already has admin privileges
@@ -669,12 +669,12 @@ LARGE SetResource(RES Resource, LARGE Value)
             }
          }
 #else
-         return LARGE(ERR::Okay);
+         return int64_t(ERR::Okay);
 #endif
          break;
 
       default:
-         log.warning("Unrecognised resource ID: %d, Value: %" PF64, LONG(Resource), Value);
+         log.warning("Unrecognised resource ID: %d, Value: %" PF64, int(Resource), (long long)Value);
    }
 
    return oldvalue;
@@ -687,7 +687,7 @@ SubscribeTimer: Subscribes an object or function to the timer service.
 
 This function creates a new timer subscription that will be called at regular intervals for the calling object.
 
-A callback function must be provided that follows this prototype: `ERR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)`
+A callback function must be provided that follows this prototype: `ERR Function(OBJECTPTR Subscriber, INT64 Elapsed, INT64 CurrentTime)`
 
 The `Elapsed` parameter is the total number of microseconds that have elapsed since the last call.  The `CurrentTime`
 parameter is set to the ~PreciseTime() value just prior to the `Callback` being called.  The callback function
@@ -731,7 +731,7 @@ ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Callback: %p, Interval: %.3fs", Callback->Routine, Interval);
 
    if (auto lock = std::unique_lock{glmTimer, 200ms}) {
-      auto usInterval = LARGE(Interval * 1000000.0); // Scale the interval to microseconds
+      auto usInterval = int64_t(Interval * 1000000.0); // Scale the interval to microseconds
       if (usInterval <= 40000) {
          // TODO: Rapid timers should be synchronised with other existing timers to limit the number of
          // interruptions that occur per second.
@@ -792,12 +792,12 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
       auto timer = (CoreTimer *)Subscription;
       if (Interval < 0) {
          // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
-         auto usInterval = -(LARGE(Interval * 1000000.0));
+         auto usInterval = -(int64_t(Interval * 1000000.0));
          if (usInterval < timer->Interval) timer->Interval = usInterval;
          return ERR::Okay;
       }
       else if (Interval > 0) {
-         auto usInterval = LARGE(Interval * 1000000.0);
+         auto usInterval = int64_t(Interval * 1000000.0);
          timer->Interval = usInterval;
          timer->NextCall = PreciseTime() + usInterval;
          return ERR::Okay;
@@ -871,8 +871,8 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
    }
 
    if (process_msg) {
-      LARGE current = PreciseTime() / 1000LL;
-      LARGE end = current + (Seconds * 1000) + (MicroSeconds / 1000);
+      int64_t current = PreciseTime() / 1000LL;
+      int64_t end = current + (Seconds * 1000) + (MicroSeconds / 1000);
       do {
          if (ProcessMessages(PMF::NIL, end - current) IS ERR::Terminate) break;
          current = (PreciseTime() / 1000LL);
