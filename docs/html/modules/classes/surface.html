@@ -68,13 +68,6 @@
 <p>Limits only apply to movement, as induced through the <a data-bs-toggle="tooltip" title="Moves a surface object to a new display position." href="#ta-Move">Move()</a> action.  This means that limits can be over-ridden by setting the coordinate fields directly (which can be useful in certain cases).</p>
       
 </div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-BottomMargin" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-BottomMargin"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
-                           
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">BottomMargin</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Manipulates the bottom margin of a surface object.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-BottomMargin" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window script uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
-      
-</div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Buffer" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Buffer"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Buffer</th><td class="col-md-1"><span class="text-nowrap">OBJECTID</span></td><td>The ID of the bitmap that manages the surface's graphics.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Buffer" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
@@ -228,20 +221,6 @@
 <p>If a value less than zero is passed to an initialised surface, the height will be 'turned off' - this is convenient for pairing the <a data-bs-toggle="tooltip" title="Determines the vertical position of a surface object." href="#tf-Y">Y</a> and <a data-bs-toggle="tooltip" title="Determines the vertical offset of a surface object." href="#tf-YOffset">YOffset</a> fields together for dynamic height adjustment.</p>
       
 </div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-InsideHeight" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-InsideHeight"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
-                           
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">InsideHeight</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Defines the amount of space between the vertical margins.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-InsideHeight" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the result of calculating this formula: <code>Height - TopMargin - BottomMargin</code>.</p>
-<p>If the <a data-bs-toggle="tooltip" title="Manipulates the top margin of a surface object." href="#tf-TopMargin">TopMargin</a> and <a data-bs-toggle="tooltip" title="Manipulates the bottom margin of a surface object." href="#tf-BottomMargin">BottomMargin</a> fields are not set, the returned value will be equal to the surface object's height.</p>
-      
-</div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-InsideWidth" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-InsideWidth"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
-                           
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">InsideWidth</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Defines the amount of space between the horizontal margins.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-InsideWidth" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>A client can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the result of calculating this formula: <code>Width - LeftMargin - RightMargin</code>.</p>
-<p>If the <a data-bs-toggle="tooltip" title="Manipulates the left margin of a surface object." href="#tf-LeftMargin">LeftMargin</a> and <a data-bs-toggle="tooltip" title="Manipulates the right margin of a surface object." href="#tf-RightMargin">RightMargin</a> fields are not set, the returned value will be equal to the surface object's width.</p>
-      
-</div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-LeftLimit" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-LeftLimit"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">LeftLimit</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Prevents a surface object from moving beyond a given point on the left-hand side.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-LeftLimit" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
@@ -249,25 +228,18 @@
 <p>Limits only apply to movement, as induced through the <a data-bs-toggle="tooltip" title="Moves a surface object to a new display position." href="#ta-Move">Move()</a> action.  This means it is possible to override limits by setting the coordinate fields directly.</p>
       
 </div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-LeftMargin" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-LeftMargin"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
-                           
-                          <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">LeftMargin</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Manipulates the left margin of a surface object.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-LeftMargin" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
-      
-</div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-MaxHeight" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-MaxHeight"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">MaxHeight</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Prevents the height of a surface object from exceeding a certain value.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-MaxHeight" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>A client can limit the maximum height of a surface object by setting this field.  Limiting the height affects resizing, making it impossible to use the Resize() action to extend beyond the height you specify.</p>
-<p>It is possible to circumvent the MaxHeight by setting the Height field directly.  Note that the MaxHeight value refers to the inside-height of the surface area, thus the overall maximum height will include both the <a data-bs-toggle="tooltip" title="Manipulates the top margin of a surface object." href="#tf-TopMargin">TopMargin</a> and <a data-bs-toggle="tooltip" title="Manipulates the bottom margin of a surface object." href="#tf-BottomMargin">BottomMargin</a> values.</p>
+<p>It is possible to circumvent the MaxHeight by setting the Height field directly.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-MaxWidth" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-MaxWidth"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">MaxWidth</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Prevents the width of a surface object from exceeding a certain value.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-MaxWidth" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>A client can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making it impossible to use the <a data-bs-toggle="tooltip" title="Alters the dimensions of a surface object." href="#ta-Resize">Resize()</a> action to extend beyond the width you specify.</p>
-<p>It is possible to circumvent the MaxWidth by setting the Width field directly.  Note that the MaxWidth value refers to the inside-width of the surface area, thus the overall maximum width will include both the <a data-bs-toggle="tooltip" title="Manipulates the left margin of a surface object." href="#tf-LeftMargin">LeftMargin</a> and <a data-bs-toggle="tooltip" title="Manipulates the right margin of a surface object." href="#tf-RightMargin">RightMargin</a> values.</p>
+<p>It is possible to circumvent the MaxWidth by setting the Width field directly.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-MinHeight" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-MinHeight"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
@@ -330,13 +302,6 @@
 <p>Limits only apply to movement, as induced through the <a data-bs-toggle="tooltip" title="Moves a surface object to a new display position." href="#ta-Move">Move()</a> action.  This means that limits can be over-ridden by setting the coordinate fields directly (which can be useful in certain cases).</p>
       
 </div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-RightMargin" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-RightMargin"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
-                           
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">RightMargin</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Manipulates the right margin of a surface object.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-RightMargin" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
-      
-</div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Root" style="scroll-margin:3em;"><td class="col-md-1" id="tf-Root"><i class="bi bi-dash-circle text-secondary" data-bs-toggle="tooltip" title="Not readable"></i>
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Root</th><td class="col-md-1"><span class="text-nowrap">OBJECTID</span></td><td>Surface that is acting as a root for many surface children (useful when applying translucency)</td></tr>
@@ -345,13 +310,6 @@
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">TopLimit</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Prevents a surface object from moving beyond a given point at the top of its container.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-TopLimit" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>A client can prevent a surface object from moving beyond a given point at the top of its container by setting this field. If for example you were to set the TopLimit to 10, then any attempt to move the surface object into or beyond the 10 units at the top of its container would fail.</p>
 <p>Limits only apply to movement, as induced through the <a data-bs-toggle="tooltip" title="Moves a surface object to a new display position." href="#ta-Move">Move()</a> action.  This means that limits can be over-ridden by setting the coordinate fields directly (which can be useful in certain cases).</p>
-      
-</div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-TopMargin" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-TopMargin"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
-                           
-                          <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">TopMargin</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Manipulates the top margin of a surface object.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-TopMargin" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The Surface class supports margin settings, which are similar to the concept of margins on printed paper.  Margin values have no significant meaning or effect on a surface object itself, but they are often used by other objects and can be helpful in interface construction.  For instance, the Window template uses margins to indicate the space available for placing graphics and other surface objects inside of it.</p>
-<p>By default, all margins are set to zero when a new surface object is created.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-UserFocus" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-UserFocus"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
@@ -525,7 +483,7 @@ the surface area first).</li>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 <tr><th class="col-md-1">ExecViolation</th><td>The call was not made from the process that owns the object.</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-ExposeToDisplay" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">ExposeToDisplay</th><td id="tm-ExposeToDisplay">Redraws a surface region to the display, preferably from its graphics buffer.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-ExposeToDisplay" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR drw::ExposeToDisplay(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>X</td><td>X coordinate of the expose area.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-ExposeToDisplay" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">ExposeToDisplay</th><td id="tm-ExposeToDisplay">Redraws a surface region to the display, preferably from its graphics buffer.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-ExposeToDisplay" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR drw::ExposeToDisplay(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height, EXF Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>X</td><td>X coordinate of the expose area.</td></tr>
 <tr><td>Y</td><td>Y coordinate of the expose area.</td></tr>
 <tr><td>Width</td><td>Width of the expose area.</td></tr>
 <tr><td>Height</td><td>Height of the expose area.</td></tr>
@@ -535,7 +493,7 @@ the surface area first).</li>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-InvalidateRegion" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">InvalidateRegion</th><td id="tm-InvalidateRegion">Redraws all of the content in a surface object.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-InvalidateRegion" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR drw::InvalidateRegion(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>X</td><td>X coordinate of the region to invalidate.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-InvalidateRegion" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">InvalidateRegion</th><td id="tm-InvalidateRegion">Redraws all of the content in a surface object.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-InvalidateRegion" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR drw::InvalidateRegion(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>X</td><td>X coordinate of the region to invalidate.</td></tr>
 <tr><td>Y</td><td>Y coordinate of the region to invalidate.</td></tr>
 <tr><td>Width</td><td>Width of the region to invalidate.</td></tr>
 <tr><td>Height</td><td>Height of the region to invalidate.</td></tr>
@@ -582,7 +540,7 @@ the surface area first).</li>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-SetDisplay" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">SetDisplay</th><td id="tm-SetDisplay">Changes the screen resolution (applies to top-level surface objects only).</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-SetDisplay" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR drw::SetDisplay(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth, LONG InsideHeight, LONG BitsPerPixel, DOUBLE RefreshRate, LONG Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>X</td><td>The horizontal coordinate/offset for the display.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-SetDisplay" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">SetDisplay</th><td id="tm-SetDisplay">Changes the screen resolution (applies to top-level surface objects only).</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-SetDisplay" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR drw::SetDisplay(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height, INT InsideWidth, INT InsideHeight, INT BitsPerPixel, DOUBLE RefreshRate, INT Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>X</td><td>The horizontal coordinate/offset for the display.</td></tr>
 <tr><td>Y</td><td>The vertical coordinate/offset for the display.</td></tr>
 <tr><td>Width</td><td>The width of the display.</td></tr>
 <tr><td>Height</td><td>The height of the display.</td></tr>
@@ -790,17 +748,17 @@ the surface area first).</li>
 <div class="docs-content" style="display:none;" id="WH"><h1>WH Type</h1><p class="lead">Events for WindowHook()</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>WH::CLOSE</th><td></td></tr>
 </tbody></table><div class="footer copyright text-right">Surface module documentation © Paul Manias 2003-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-BitmapSurface"><h1>BitmapSurface Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Data</th><td><span class="text-nowrap">APTR</span></td><td>Pointer to the bitmap graphics data.</td></tr>
-<tr><th>Width</th><td><span class="text-nowrap">WORD</span></td><td>Pixel width of the bitmap.</td></tr>
-<tr><th>Height</th><td><span class="text-nowrap">WORD</span></td><td>Pixel height of the bitmap.</td></tr>
-<tr><th>LineWidth</th><td><span class="text-nowrap">LONG</span></td><td>The distance between bitmap lines, measured in bytes.</td></tr>
+<tr><th>Width</th><td><span class="text-nowrap">INT16</span></td><td>Pixel width of the bitmap.</td></tr>
+<tr><th>Height</th><td><span class="text-nowrap">INT16</span></td><td>Pixel height of the bitmap.</td></tr>
+<tr><th>LineWidth</th><td><span class="text-nowrap">INT</span></td><td>The distance between bitmap lines, measured in bytes.</td></tr>
 <tr><th>BitsPerPixel</th><td><span class="text-nowrap">UBYTE</span></td><td>The number of bits per pixel (8, 15, 16, 24, 32).</td></tr>
 <tr><th>BytesPerPixel</th><td><span class="text-nowrap">UBYTE</span></td><td>The number of bytes per pixel (1, 2, 3, 4).</td></tr>
 <tr><th>Opacity</th><td><span class="text-nowrap">UBYTE</span></td><td>Opacity level of the source if <code>CSRF::TRANSLUCENT</code> is used.</td></tr>
 <tr><th>Version</th><td><span class="text-nowrap">UBYTE</span></td><td>Version of this structure.</td></tr>
-<tr><th>Colour</th><td><span class="text-nowrap">LONG</span></td><td>Colour index to use if <code>CSRF::TRANSPARENT</code> is used.</td></tr>
+<tr><th>Colour</th><td><span class="text-nowrap">INT</span></td><td>Colour index to use if <code>CSRF::TRANSPARENT</code> is used.</td></tr>
 <tr><th>Clip</th><td><span class="text-nowrap">struct ClipRectangle</span></td><td>A clipping rectangle will restrict drawing operations to this region if <code>CSRF::CLIP</code> is used.</td></tr>
-<tr><th>XOffset</th><td><span class="text-nowrap">WORD</span></td><td>Offset all X coordinate references by the given value.</td></tr>
-<tr><th>YOffset</th><td><span class="text-nowrap">WORD</span></td><td>Offset all Y coordinate references by the given value.</td></tr>
+<tr><th>XOffset</th><td><span class="text-nowrap">INT16</span></td><td>Offset all X coordinate references by the given value.</td></tr>
+<tr><th>YOffset</th><td><span class="text-nowrap">INT16</span></td><td>Offset all Y coordinate references by the given value.</td></tr>
 <tr><th>Format</th><td><span class="text-nowrap">struct ColourFormat</span></td><td>The colour format of this bitmap's pixels, or alternatively use <code>CSRF::DEFAULT_FORMAT</code>.</td></tr>
 </tbody></table><div class="footer copyright text-right">Surface class documentation © Paul Manias 2003-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-ColourFormat"><h1>ColourFormat Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>RedShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for red (15/16 bit formats only)</td></tr>
@@ -817,30 +775,30 @@ the surface area first).</li>
 <tr><th>AlphaPos</th><td><span class="text-nowrap">UBYTE</span></td><td>Left shift/positional value for alpha</td></tr>
 <tr><th>BitsPerPixel</th><td><span class="text-nowrap">UBYTE</span></td><td>Number of bits per pixel for this format.</td></tr>
 </tbody></table><div class="footer copyright text-right">Surface class documentation © Paul Manias 2003-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-CursorInfo"><h1>CursorInfo Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Width</th><td><span class="text-nowrap">LONG</span></td><td>Maximum cursor width for custom cursors</td></tr>
-<tr><th>Height</th><td><span class="text-nowrap">LONG</span></td><td>Maximum cursor height for custom cursors</td></tr>
-<tr><th>Flags</th><td><span class="text-nowrap">LONG</span></td><td>Currently unused</td></tr>
-<tr><th>BitsPerPixel</th><td><span class="text-nowrap">WORD</span></td><td>Preferred bits-per-pixel setting for custom cursors</td></tr>
+<div class="docs-content" style="display:none;" id="struct-CursorInfo"><h1>CursorInfo Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Width</th><td><span class="text-nowrap">INT</span></td><td>Maximum cursor width for custom cursors</td></tr>
+<tr><th>Height</th><td><span class="text-nowrap">INT</span></td><td>Maximum cursor height for custom cursors</td></tr>
+<tr><th>Flags</th><td><span class="text-nowrap">INT</span></td><td>Currently unused</td></tr>
+<tr><th>BitsPerPixel</th><td><span class="text-nowrap">INT16</span></td><td>Preferred bits-per-pixel setting for custom cursors</td></tr>
 </tbody></table><div class="footer copyright text-right">Surface class documentation © Paul Manias 2003-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-DisplayInfo"><h1>DisplayInfo Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Display</th><td><span class="text-nowrap">OBJECTID</span></td><td>Object ID related to the display</td></tr>
 <tr><th>Flags</th><td><span class="text-nowrap">SCR</span></td><td>Display flags</td></tr>
-<tr><th>Width</th><td><span class="text-nowrap">WORD</span></td><td>Pixel width of the display</td></tr>
-<tr><th>Height</th><td><span class="text-nowrap">WORD</span></td><td>Pixel height of the display</td></tr>
-<tr><th>BitsPerPixel</th><td><span class="text-nowrap">WORD</span></td><td>Bits per pixel</td></tr>
-<tr><th>BytesPerPixel</th><td><span class="text-nowrap">WORD</span></td><td>Bytes per pixel</td></tr>
+<tr><th>Width</th><td><span class="text-nowrap">INT16</span></td><td>Pixel width of the display</td></tr>
+<tr><th>Height</th><td><span class="text-nowrap">INT16</span></td><td>Pixel height of the display</td></tr>
+<tr><th>BitsPerPixel</th><td><span class="text-nowrap">INT16</span></td><td>Bits per pixel</td></tr>
+<tr><th>BytesPerPixel</th><td><span class="text-nowrap">INT16</span></td><td>Bytes per pixel</td></tr>
 <tr><th>AccelFlags</th><td><span class="text-nowrap">ACF</span></td><td>Flags describing supported hardware features.</td></tr>
-<tr><th>AmtColours</th><td><span class="text-nowrap">LONG</span></td><td>Total number of supported colours.</td></tr>
+<tr><th>AmtColours</th><td><span class="text-nowrap">INT</span></td><td>Total number of supported colours.</td></tr>
 <tr><th>PixelFormat</th><td><span class="text-nowrap">struct PixelFormat</span></td><td>The colour format to use for each pixel.</td></tr>
 <tr><th>MinRefresh</th><td><span class="text-nowrap">FLOAT</span></td><td>Minimum refresh rate</td></tr>
 <tr><th>MaxRefresh</th><td><span class="text-nowrap">FLOAT</span></td><td>Maximum refresh rate</td></tr>
 <tr><th>RefreshRate</th><td><span class="text-nowrap">FLOAT</span></td><td>Recommended refresh rate</td></tr>
-<tr><th>Index</th><td><span class="text-nowrap">LONG</span></td><td>Display mode ID (internal)</td></tr>
-<tr><th>HDensity</th><td><span class="text-nowrap">LONG</span></td><td>Horizontal pixel density per inch.</td></tr>
-<tr><th>VDensity</th><td><span class="text-nowrap">LONG</span></td><td>Vertical pixel density per inch.</td></tr>
+<tr><th>Index</th><td><span class="text-nowrap">INT</span></td><td>Display mode ID (internal)</td></tr>
+<tr><th>HDensity</th><td><span class="text-nowrap">INT</span></td><td>Horizontal pixel density per inch.</td></tr>
+<tr><th>VDensity</th><td><span class="text-nowrap">INT</span></td><td>Vertical pixel density per inch.</td></tr>
 </tbody></table><div class="footer copyright text-right">Surface class documentation © Paul Manias 2003-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-InputEvent"><h1>InputEvent Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Next</th><td><span class="text-nowrap">const struct InputEvent *</span></td><td>Next event in the chain</td></tr>
 <tr><th>Value</th><td><span class="text-nowrap">DOUBLE</span></td><td>The value associated with the Type</td></tr>
-<tr><th>Timestamp</th><td><span class="text-nowrap">LARGE</span></td><td>PreciseTime() of the recorded input</td></tr>
+<tr><th>Timestamp</th><td><span class="text-nowrap">INT64</span></td><td>PreciseTime() of the recorded input</td></tr>
 <tr><th>RecipientID</th><td><span class="text-nowrap">OBJECTID</span></td><td>Surface that the input message is being conveyed to</td></tr>
 <tr><th>OverID</th><td><span class="text-nowrap">OBJECTID</span></td><td>Surface that is directly under the mouse pointer at the time of the event</td></tr>
 <tr><th>AbsX</th><td><span class="text-nowrap">DOUBLE</span></td><td>Absolute horizontal position of mouse cursor (relative to the top left of the display)</td></tr>
@@ -857,16 +815,16 @@ the surface area first).</li>
 <tr><th>BitmapID</th><td><span class="text-nowrap">OBJECTID</span></td><td>Surface bitmap buffer</td></tr>
 <tr><th>DisplayID</th><td><span class="text-nowrap">OBJECTID</span></td><td>Refers to the display if this object is at root level</td></tr>
 <tr><th>Flags</th><td><span class="text-nowrap">RNF</span></td><td>Surface flags</td></tr>
-<tr><th>X</th><td><span class="text-nowrap">LONG</span></td><td>Horizontal coordinate</td></tr>
-<tr><th>Y</th><td><span class="text-nowrap">LONG</span></td><td>Vertical coordinate</td></tr>
-<tr><th>Width</th><td><span class="text-nowrap">LONG</span></td><td>Width of the surface area</td></tr>
-<tr><th>Height</th><td><span class="text-nowrap">LONG</span></td><td>Height of the surface area</td></tr>
-<tr><th>AbsX</th><td><span class="text-nowrap">LONG</span></td><td>Absolute X coordinate</td></tr>
-<tr><th>AbsY</th><td><span class="text-nowrap">LONG</span></td><td>Absolute Y coordinate</td></tr>
-<tr><th>Level</th><td><span class="text-nowrap">WORD</span></td><td>Branch level within the tree</td></tr>
+<tr><th>X</th><td><span class="text-nowrap">INT</span></td><td>Horizontal coordinate</td></tr>
+<tr><th>Y</th><td><span class="text-nowrap">INT</span></td><td>Vertical coordinate</td></tr>
+<tr><th>Width</th><td><span class="text-nowrap">INT</span></td><td>Width of the surface area</td></tr>
+<tr><th>Height</th><td><span class="text-nowrap">INT</span></td><td>Height of the surface area</td></tr>
+<tr><th>AbsX</th><td><span class="text-nowrap">INT</span></td><td>Absolute X coordinate</td></tr>
+<tr><th>AbsY</th><td><span class="text-nowrap">INT</span></td><td>Absolute Y coordinate</td></tr>
+<tr><th>Level</th><td><span class="text-nowrap">INT16</span></td><td>Branch level within the tree</td></tr>
 <tr><th>BitsPerPixel</th><td><span class="text-nowrap">BYTE</span></td><td>Bits per pixel of the bitmap</td></tr>
 <tr><th>BytesPerPixel</th><td><span class="text-nowrap">BYTE</span></td><td>Bytes per pixel of the bitmap</td></tr>
-<tr><th>LineWidth</th><td><span class="text-nowrap">LONG</span></td><td>Line width of the bitmap, in bytes</td></tr>
+<tr><th>LineWidth</th><td><span class="text-nowrap">INT</span></td><td>Line width of the bitmap, in bytes</td></tr>
 </tbody></table><div class="footer copyright text-right">Surface class documentation © Paul Manias 2003-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

@@ -38,7 +38,7 @@
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Colour" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Colour"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Colour</th><td class="col-md-1"><span class="text-nowrap">FLOAT []</span></td><td>The default background colour to use when clipping is enabled.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Colour" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The colour value in this field is applicable only when a gradient is in clip-mode - by specifying the <code>VSPREAD::CLIP</code> flag in <a data-bs-toggle="tooltip" title="The behaviour to use when the gradient bounds do not match the vector path." href="#tf-SpreadMethod">SpreadMethod</a>.  By default, this field has an alpha value of 0 to ensure that nothing is drawn outside the initial bounds of the gradient.  Setting any other colour value here will otherwise fill-in those areas.</p>
+<p>The colour value in this field is applicable only when a gradient is in clip-mode - by specifying the <code>VSPREAD::CLIP</code> flag in <a data-bs-toggle="tooltip" title="Determines the rendering behaviour to use when gradient colours are cycled." href="#tf-SpreadMethod">SpreadMethod</a>.  By default, this field has an alpha value of 0 to ensure that nothing is drawn outside the initial bounds of the gradient.  Setting any other colour value here will otherwise fill-in those areas.</p>
 <p>The Colour value is defined in floating-point RGBA format, using a range of 0 - 1.0 per component.</p>
       
 </div></div></td></tr>
@@ -125,7 +125,7 @@
 <tr><th class="col-md-1">ScaleY</th><td>DOUBLE</td><td>Matrix value D</td></tr>
 <tr><th class="col-md-1">TranslateX</th><td>DOUBLE</td><td>Matrix value E</td></tr>
 <tr><th class="col-md-1">TranslateY</th><td>DOUBLE</td><td>Matrix value F</td></tr>
-<tr><th class="col-md-1">Tag</th><td>LONG</td><td>An optional tag value defined by the client for matrix identification.</td></tr>
+<tr><th class="col-md-1">Tag</th><td>INT</td><td>An optional tag value defined by the client for matrix identification.</td></tr>
 </tbody></table>
       
 </div></div></td></tr>
@@ -153,8 +153,8 @@
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-SpreadMethod" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-SpreadMethod"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">SpreadMethod</th><td class="col-md-1"><span class="text-nowrap">VSPREAD</span></td><td>The behaviour to use when the gradient bounds do not match the vector path.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-SpreadMethod" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD::PAD</code>.  Other valid options for gradients are <code>REFLECT</code>, <code>REPEAT</code> and <code>CLIP</code>.</p>
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">SpreadMethod</th><td class="col-md-1"><span class="text-nowrap">VSPREAD</span></td><td>Determines the rendering behaviour to use when gradient colours are cycled.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-SpreadMethod" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+<p>SpreadMethod determines what happens when the first cycle of gradient colours is exhausted and needs to begin again. The default setting is <code>VSPREAD::PAD</code>.</p>
 <table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">VSPREAD::CLIP</th><td>Do not scale the graphic.  Clip it if it extends past imposed boundaries.</td></tr>
 <tr><th class="col-md-1">VSPREAD::PAD</th><td>Scale the graphic to the object bounds.</td></tr>
 <tr><th class="col-md-1">VSPREAD::REFLECT</th><td>Tile the graphic, reflecting the image alternately on the X and Y axis.</td></tr>
@@ -185,7 +185,7 @@
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Type" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Type"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">Type</th><td class="col-md-1"><span class="text-nowrap">VGT</span></td><td>Specifies the type of gradient (e.g. <code>RADIAL</code>, <code>LINEAR</code>)</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Type" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Type</th><td class="col-md-1"><span class="text-nowrap">VGT</span></td><td>Specifies the type of gradient (e.g. <code>RADIAL</code>, <code>LINEAR</code>)</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Type" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The type of the gradient to be drawn is specified here.</p>
 <table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">VGT::CONIC</th><td>The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.</td></tr>
 <tr><th class="col-md-1">VGT::CONTOUR</th><td>Contoured gradients follow the contours of the vector path in which they are rendered.</td></tr>
@@ -285,7 +285,7 @@
 <tr><th>ScaleY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value D</td></tr>
 <tr><th>TranslateX</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value E</td></tr>
 <tr><th>TranslateY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value F</td></tr>
-<tr><th>Tag</th><td><span class="text-nowrap">LONG</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
+<tr><th>Tag</th><td><span class="text-nowrap">INT</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
 </tbody></table><div class="footer copyright text-right">VectorGradient class documentation © Paul Manias © 2010-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

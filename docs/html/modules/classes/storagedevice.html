@@ -24,10 +24,10 @@
 <p>Following initialisation, all meta fields describing the volume are readable for further information.</p>
 <h3>Structure</h3><p>The StorageDevice class consists of the following fields:</p><table class="table"><thead><th class="col-md-1"><div data-bs-toggle="tooltip" title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead><tbody><tr data-bs-toggle="collapse" data-bs-target="#fl-BytesFree" style="scroll-margin:3em;"><td class="col-md-1" id="tf-BytesFree"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">BytesFree</th><td class="col-md-1"><span class="text-nowrap">BIGINT</span></td><td>Total amount of storage space that is available, measured in bytes.</td></tr>
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">BytesFree</th><td class="col-md-1"><span class="text-nowrap">INT64</span></td><td>Total amount of storage space that is available, measured in bytes.</td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-BytesUsed" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-BytesUsed"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">BytesUsed</th><td class="col-md-1"><span class="text-nowrap">BIGINT</span></td><td>Total amount of storage space in use.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-BytesUsed" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">BytesUsed</th><td class="col-md-1"><span class="text-nowrap">INT64</span></td><td>Total amount of storage space in use.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-BytesUsed" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The total amount of storage space used by the device is indicated in this field.</p>
 <p>Please note that storage usage is typically measured in terms of blocks.  For instance a block size of 512 bytes will mean that this field will be a multiple of 512.  Two files of 1 byte each on such a file system would take up 1024 bytes of space and not 2.</p>
       
@@ -66,7 +66,7 @@
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-DeviceSize" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-DeviceSize"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">DeviceSize</th><td class="col-md-1"><span class="text-nowrap">BIGINT</span></td><td>The storage size of the device in bytes, without accounting for the file system format.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-DeviceSize" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">DeviceSize</th><td class="col-md-1"><span class="text-nowrap">INT64</span></td><td>The storage size of the device in bytes, without accounting for the file system format.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-DeviceSize" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>This field indicates the storage size of the device.  It does not reflect the available space determined by the device's file system, which will typically be measurably smaller than this value.</p>
       
 </div></div></td></tr>

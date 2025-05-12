@@ -47,6 +47,18 @@
 <p>The bitmap's background colour is defined in this field as a colour index.  It is recommended that the <a data-bs-toggle="tooltip" title="The bitmap's background colour is defined here in RGB format." href="#tf-Bkgd">Bkgd</a> field is used for altering the bitmap background unless efficiency requires that the colour index is calculated and set directly.</p>
       
 </div></div></td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-BlendMode" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-BlendMode"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
+                           
+                          <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">BlendMode</th><td class="col-md-1"><span class="text-nowrap">BLM</span></td><td>Defines the blending algorithm to use when rendering transparent pixels.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-BlendMode" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+<p>The BlendMode field defines the blending algorithm to use when rendering transparent pixels.  The default value is <code>AUTO</code> which will use the best blending algorithm available for the current graphics context.</p>
+<table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">BLM::AUTO</th><td>Use the most suitable of the available algorithms.</td></tr>
+<tr><th class="col-md-1">BLM::GAMMA</th><td>Use gamma correct blending.  This algorithm is slow but produces a high quality result.</td></tr>
+<tr><th class="col-md-1">BLM::LINEAR</th><td>Use linear blending.  Applicable if the bitmap is in linear colour space.</td></tr>
+<tr><th class="col-md-1">BLM::NONE</th><td>Never blend transparent pixels, just copy as-is.</td></tr>
+<tr><th class="col-md-1">BLM::SRGB</th><td>Use sRGB linear blending.  This algorithm is extremely efficient but produces poor quality results.</td></tr>
+</tbody></table>
+      
+</div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-ByteWidth" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-ByteWidth"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">ByteWidth</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>The width of the bitmap, in bytes.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-ByteWidth" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
@@ -163,7 +175,7 @@ unpackAlpha(Colour)
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">DrawUCPixel</th><td class="col-md-1"><span class="text-nowrap">FUNCTION *</span></td><td>Points to a C function that draws pixels to the bitmap using colour indexes.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-DrawUCPixel" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid coordinates that would result in a segfault).</p>
-<p>The prototype of the DrawUCPixel function is <code>Function(*Bitmap, LONG X, LONG Y, ULONG Colour)</code>.</p>
+<p>The prototype of the DrawUCPixel function is <code>Function(*Bitmap, LONG X, LONG Y, uint32_t Colour)</code>.</p>
 <p>The new pixel value must be defined in the <code>Colour</code> parameter.</p>
       
 </div></div></td></tr>
@@ -171,7 +183,7 @@ unpackAlpha(Colour)
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">DrawUCRIndex</th><td class="col-md-1"><span class="text-nowrap">FUNCTION *</span></td><td>Points to a C function that draws pixels to the bitmap in RGB format.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-DrawUCRIndex" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
-<p>The prototype of the DrawUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, RGB8 *RGB)</code>.</p>
+<p>The prototype of the DrawUCRIndex function is <code>Function(*Bitmap, uint8_t *Data, RGB8 *RGB)</code>.</p>
 <p>The Data parameter must point to a location within the Bitmap's graphical address space. The new pixel value must be defined in the <code>RGB</code> parameter.</p>
 <p>Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is more efficient to index the Bitmap's <a data-bs-toggle="tooltip" title="Pointer to a bitmap's data area." href="#tf-Data">Data</a> field directly.</p>
       
@@ -197,7 +209,6 @@ unpackAlpha(Colour)
 <tr><th class="col-md-1">BMF::INVERSE_ALPHA</th><td>Indicates reverse alpha blending, higher values are transparent.</td></tr>
 <tr><th class="col-md-1">BMF::MASK</th><td>Declare the <a href="bitmap.html">Bitmap</a> as a 1 or 8 bit mask.  Must be set in conjunction with the <a href="bitmap.html#tf-BitsPerPixel">Bitmap⇒BitsPerPixel</a> field on initialisation.</td></tr>
 <tr><th class="col-md-1">BMF::NEVER_SHRINK</th><td>Ignore resize requests that would shrink the size of the bitmap.</td></tr>
-<tr><th class="col-md-1">BMF::NO_BLEND</th><td>Drawing routines that support this flag will not blend pixels.</td></tr>
 <tr><th class="col-md-1">BMF::NO_DATA</th><td>Do not allocate memory in the Data field on initialisation.</td></tr>
 <tr><th class="col-md-1">BMF::PREMUL</th><td>The RGB values are premultiplied (32-bit only).</td></tr>
 <tr><th class="col-md-1">BMF::QUERIED</th><td>Automatically set after a <code>Query()</code> on the bitmap.</td></tr>
@@ -265,7 +276,7 @@ unpackAlpha(Colour)
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">ReadUCRIndex</th><td class="col-md-1"><span class="text-nowrap">FUNCTION *</span></td><td>Points to a C function that reads pixels from the bitmap in RGB format.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-ReadUCRIndex" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
-<p>The prototype of the ReadUCRIndex function is <code>Function(*Bitmap, UBYTE *Data, RGB8 *RGB)</code>.</p>
+<p>The prototype of the ReadUCRIndex function is <code>Function(*Bitmap, uint8_t *Data, RGB8 *RGB)</code>.</p>
 <p>The <code>Data</code> parameter must point to a location within the Bitmap's graphical address space. The pixel value will be returned in the <code>RGB</code> parameter.</p>
 <p>Note that a colour indexing equivalent of this function is not available in the Bitmap class - this is because it is more efficient to index the Bitmap's <a data-bs-toggle="tooltip" title="Pointer to a bitmap's data area." href="#tf-Data">Data</a> field directly.</p>
       
@@ -366,7 +377,7 @@ unpackAlpha(Colour)
 <tr><td>Length</td><td>The total number of bytes to write to the object.</td></tr>
 <tr><td>Result</td><td>This parameter with be updated with the total number of bytes written from the Buffer.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;"></div></div></td></tr>
-</tbody></table><h3>Methods</h3><p>The following methods are currently supported:</p><table class="table"><tbody><tr data-bs-toggle="collapse" data-bs-target="#tmx-Compress" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Compress</th><td id="tm-Compress">Compresses bitmap data to save memory.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Compress" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::Compress(OBJECTPTR Object, LONG Level)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Level</td><td>Level of compression.  Zero uses a default setting (recommended), the maximum is 10.</td></tr>
+</tbody></table><h3>Methods</h3><p>The following methods are currently supported:</p><table class="table"><tbody><tr data-bs-toggle="collapse" data-bs-target="#tmx-Compress" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Compress</th><td id="tm-Compress">Compresses bitmap data to save memory.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Compress" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::Compress(OBJECTPTR Object, INT Level)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Level</td><td>Level of compression.  Zero uses a default setting (recommended), the maximum is 10.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>A bitmap can be compressed with the CompressBitmap() method to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
 <p>Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely result in a memory access fault.  The image data will remain invalid until the <a data-bs-toggle="tooltip" title="Decompresses a compressed bitmap." href="#tm-Decompress">Decompress()</a> method is called to restore the bitmap to its original state.</p>
@@ -398,7 +409,7 @@ unpackAlpha(Colour)
 <tr><th class="col-md-1">InvalidDimension</th><td>The clipping region is invalid.</td></tr>
 <tr><th class="col-md-1">InvalidState</th><td>The bitmap is not in the expected state.</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-CopyArea" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">CopyArea</th><td id="tm-CopyArea">Copies a rectangular area from one bitmap to another.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-CopyArea" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::CopyArea(OBJECTPTR Object, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>DestBitmap</td><td>The target bitmap.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-CopyArea" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">CopyArea</th><td id="tm-CopyArea">Copies a rectangular area from one bitmap to another.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-CopyArea" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::CopyArea(OBJECTPTR Object, objBitmap * DestBitmap, BAF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>DestBitmap</td><td>The target bitmap.</td></tr>
 <tr><td><a href="?page=BAF">Flags</a></td><td>Optional flags.</td></tr>
 <tr><td>X</td><td>The horizontal position of the area to be copied.</td></tr>
 <tr><td>Y</td><td>The vertical position of the area to be copied.</td></tr>
@@ -413,7 +424,7 @@ unpackAlpha(Colour)
 <tr><th class="col-md-1">Mismatch</th><td>The target bitmap is not a close enough match to the source bitmap in order to perform the operation.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-Decompress" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Decompress</th><td id="tm-Decompress">Decompresses a compressed bitmap.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Decompress" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::Decompress(OBJECTPTR Object, LONG RetainData)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>RetainData</td><td>Retains the compression data if <code>true</code>.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-Decompress" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Decompress</th><td id="tm-Decompress">Decompresses a compressed bitmap.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Decompress" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::Decompress(OBJECTPTR Object, INT RetainData)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>RetainData</td><td>Retains the compression data if <code>true</code>.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>The Decompress() method is used to restore a compressed bitmap to its original state.  If the bitmap is not compressed, the method does nothing.</p>
 <p>The compressed data will be terminated unless <code>RetainData</code> is <code>true</code>.  Retaining the data will allow the client to repeatedly restore the content of the most recent <a data-bs-toggle="tooltip" title="Compresses bitmap data to save memory." href="#tm-Compress">Compress()</a> call.</p>
@@ -429,7 +440,7 @@ unpackAlpha(Colour)
 <tr><th class="col-md-1">InvalidDimension</th><td>The clipping region is invalid.</td></tr>
 <tr><th class="col-md-1">InvalidState</th><td>The Bitmap is not in the expected state (32-bit with an alpha channel).</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-DrawRectangle" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">DrawRectangle</th><td id="tm-DrawRectangle">Draws rectangles, both filled and unfilled.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-DrawRectangle" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::DrawRectangle(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>X</td><td>The left-most coordinate of the rectangle.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-DrawRectangle" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">DrawRectangle</th><td id="tm-DrawRectangle">Draws rectangles, both filled and unfilled.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-DrawRectangle" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::DrawRectangle(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height, UINT Colour, BAF Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>X</td><td>The left-most coordinate of the rectangle.</td></tr>
 <tr><td>Y</td><td>The top-most coordinate of the rectangle.</td></tr>
 <tr><td>Width</td><td>The width of the rectangle.</td></tr>
 <tr><td>Height</td><td>The height of the rectangle.</td></tr>
@@ -441,7 +452,7 @@ unpackAlpha(Colour)
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-GetColour" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">GetColour</th><td id="tm-GetColour">Converts Red, Green, Blue components into a single colour value.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-GetColour" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::GetColour(OBJECTPTR Object, LONG Red, LONG Green, LONG Blue, LONG Alpha, ULONG * Colour)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Red</td><td>Red component from 0 - 255.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-GetColour" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">GetColour</th><td id="tm-GetColour">Converts Red, Green, Blue components into a single colour value.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-GetColour" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::GetColour(OBJECTPTR Object, INT Red, INT Green, INT Blue, INT Alpha, UINT * Colour)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Red</td><td>Red component from 0 - 255.</td></tr>
 <tr><td>Green</td><td>Green component from 0 - 255.</td></tr>
 <tr><td>Blue</td><td>Blue component value from 0 - 255.</td></tr>
 <tr><td>Alpha</td><td>Alpha component value from 0 - 255.</td></tr>
@@ -462,7 +473,7 @@ unpackAlpha(Colour)
 <tr><th class="col-md-1">InvalidDimension</th><td>The clipping region is invalid.</td></tr>
 <tr><th class="col-md-1">InvalidState</th><td>The Bitmap is not in the expected state (32-bit with an alpha channel)</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-SetClipRegion" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">SetClipRegion</th><td id="tm-SetClipRegion">Sets a clipping region for a bitmap object.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-SetClipRegion" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::SetClipRegion(OBJECTPTR Object, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Number</td><td>The number of the clip region to set.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-SetClipRegion" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">SetClipRegion</th><td id="tm-SetClipRegion">Sets a clipping region for a bitmap object.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-SetClipRegion" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR bmp::SetClipRegion(OBJECTPTR Object, INT Number, INT Left, INT Top, INT Right, INT Bottom, INT Terminate)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Number</td><td>The number of the clip region to set.</td></tr>
 <tr><td>Left</td><td>The horizontal start of the clip region.</td></tr>
 <tr><td>Top</td><td>The vertical start of the clip region.</td></tr>
 <tr><td>Right</td><td>The right-most edge of the clip region.</td></tr>
@@ -480,6 +491,12 @@ unpackAlpha(Colour)
 <tr><th>BAF::FILL</th><td>For primitive operations such as <a href="display.html?page=DrawRectangle">DrawRectangle()</a>, this will fill the shape with a solid colour or texture.</td></tr>
 <tr><th>BAF::LINEAR</th><td>Use linear interpolation to improve the quality of alpha blending.</td></tr>
 </tbody></table><div class="footer copyright text-right">Bitmap module documentation © Paul Manias 2003-2025</div></div>
+<div class="docs-content" style="display:none;" id="BLM"><h1>BLM Type</h1><p class="lead">Defines the blending algorithm to use when transparent pixels are rendered to the bitmap.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>BLM::AUTO</th><td>Use the most suitable of the available algorithms.</td></tr>
+<tr><th>BLM::GAMMA</th><td>Use gamma correct blending.  This algorithm is slow but produces a high quality result.</td></tr>
+<tr><th>BLM::LINEAR</th><td>Use linear blending.  Applicable if the bitmap is in linear colour space.</td></tr>
+<tr><th>BLM::NONE</th><td>Never blend transparent pixels, just copy as-is.</td></tr>
+<tr><th>BLM::SRGB</th><td>Use sRGB linear blending.  This algorithm is extremely efficient but produces poor quality results.</td></tr>
+</tbody></table><div class="footer copyright text-right">Bitmap module documentation © Paul Manias 2003-2025</div></div>
 <div class="docs-content" style="display:none;" id="BMF"><h1>BMF Type</h1><p class="lead">Bitmap flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>BMF::ACCELERATED_2D</th><td>2D video acceleration is available.</td></tr>
 <tr><th>BMF::ACCELERATED_3D</th><td>3D video acceleration is available.</td></tr>
 <tr><th>BMF::ALPHA_CHANNEL</th><td>For 32-bit images, indicates that an alpha channel is present.</td></tr>
@@ -490,7 +507,6 @@ unpackAlpha(Colour)
 <tr><th>BMF::INVERSE_ALPHA</th><td>Indicates reverse alpha blending, higher values are transparent.</td></tr>
 <tr><th>BMF::MASK</th><td>Declare the <a href="bitmap.html">Bitmap</a> as a 1 or 8 bit mask.  Must be set in conjunction with the <a href="bitmap.html#tf-BitsPerPixel">Bitmap⇒BitsPerPixel</a> field on initialisation.</td></tr>
 <tr><th>BMF::NEVER_SHRINK</th><td>Ignore resize requests that would shrink the size of the bitmap.</td></tr>
-<tr><th>BMF::NO_BLEND</th><td>Drawing routines that support this flag will not blend pixels.</td></tr>
 <tr><th>BMF::NO_DATA</th><td>Do not allocate memory in the Data field on initialisation.</td></tr>
 <tr><th>BMF::PREMUL</th><td>The RGB values are premultiplied (32-bit only).</td></tr>
 <tr><th>BMF::QUERIED</th><td>Automatically set after a <code>Query()</code> on the bitmap.</td></tr>

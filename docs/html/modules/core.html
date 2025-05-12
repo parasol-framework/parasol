@@ -244,7 +244,7 @@ struct FunctionField argsResize[] = {
 <tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="AdjustLogLevel"><h2>AdjustLogLevel()</h2><p class="lead">Adjusts the base-line of all log messages.</p><div class="card card-info mb-3"><div class="card-header"><samp>LONG AdjustLogLevel(LONG Delta)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Delta</td><td>The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 6.</td></tr>
+<div class="docs-content" style="display:none;" id="AdjustLogLevel"><h2>AdjustLogLevel()</h2><p class="lead">Adjusts the base-line of all log messages.</p><div class="card card-info mb-3"><div class="card-header"><samp>INT AdjustLogLevel(LONG Delta)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Delta</td><td>The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 6.</td></tr>
 </tbody></table></div></div>
 <p>This function adjusts the detail level of all outgoing log messages.  To illustrate, setting the <code>Delta</code> value to 1 would result in level 5 (API) log messages being bumped to level 6.  If the user's maximum log level output is 5, no further API messages will be output until the base-line is reduced to normal.</p>
 <p>The main purpose of AdjustLogLevel() is to reduce log noise.  For instance, creating a new desktop window will result in a large number of new log messages.  Raising the base-line by 2 before creating the window would eliminate the noise if the user has the log level set to 5 (API).  Re-running the program with a log level of 7 or more would make the messages visible again.</p>
@@ -293,7 +293,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <tr><th class="col-md-1">ArrayFull</th><td>Although memory space for the block was available, all available memory records are in use.</td></tr>
 <tr><th class="col-md-1">AccessMemory</th><td>The block was allocated but access to it was not granted, causing failure.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="AllocateID"><h2>AllocateID()</h2><p class="lead">Generates unique ID's for general purposes.</p><div class="card card-info mb-3"><div class="card-header"><samp>LONG AllocateID(IDTYPE Type)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('IDTYPE');">Type</a></td><td>The type of ID that is required.</td></tr>
+<div class="docs-content" style="display:none;" id="AllocateID"><h2>AllocateID()</h2><p class="lead">Generates unique ID's for general purposes.</p><div class="card card-info mb-3"><div class="card-header"><samp>INT AllocateID(IDTYPE Type)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('IDTYPE');">Type</a></td><td>The type of ID that is required.</td></tr>
 </tbody></table></div></div>
 <p>This function generates unique ID's that can be used in other Core functions.  A <code>Type</code> indicator is required and the resulting number will be unique to that <code>Type</code> only.</p>
 <p>ID allocations are permanent, so there is no need to free the allocated ID once it is no longer required.</p>
@@ -500,7 +500,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 <tr><th class="col-md-1">MemoryDoesNotExist</th><td>Memory block does not exist.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="GenCRC32"><h2>GenCRC32()</h2><p class="lead">Generates 32-bit CRC checksum values.</p><div class="card card-info mb-3"><div class="card-header"><samp>ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>CRC</td><td>If streaming data to this function, this value should reflect the most recently returned CRC integer.  Otherwise set to zero.</td></tr>
+<div class="docs-content" style="display:none;" id="GenCRC32"><h2>GenCRC32()</h2><p class="lead">Generates 32-bit CRC checksum values.</p><div class="card card-info mb-3"><div class="card-header"><samp>UINT GenCRC32(ULONG CRC, APTR Data, ULONG Length)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>CRC</td><td>If streaming data to this function, this value should reflect the most recently returned CRC integer.  Otherwise set to zero.</td></tr>
 <tr><td>Data</td><td>The data to generate a CRC value for.</td></tr>
 <tr><td>Length</td><td>The length of the <code>Data</code> buffer.</td></tr>
 </tbody></table></div></div>
@@ -519,7 +519,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 </tbody></table></div></div>
 <p>The GetErrorMsg() function converts error codes into human readable strings.  If the <code>Error</code> is invalid, a string of "Unknown error code" is returned.</p>
     <h3>Result</h3><p>A human readable string for the error code is returned.  By default error codes are returned in English, however if a translation table exists for the user's own language, the string will be translated.</p><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="GetEventID"><h2>GetEventID()</h2><p class="lead">Generates unique event ID's suitable for event broadcasting.</p><div class="card card-info mb-3"><div class="card-header"><samp>LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('EVG');">Group</a></td><td>The group to which the event belongs.</td></tr>
+<div class="docs-content" style="display:none;" id="GetEventID"><h2>GetEventID()</h2><p class="lead">Generates unique event ID's suitable for event broadcasting.</p><div class="card card-info mb-3"><div class="card-header"><samp>INT64 GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('EVG');">Group</a></td><td>The group to which the event belongs.</td></tr>
 <tr><td>SubGroup</td><td>The sub-group to which the event belongs (case-sensitive).</td></tr>
 <tr><td>Event</td><td>The name of the event (case-sensitive).</td></tr>
 </tbody></table></div></div>
@@ -617,7 +617,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 <p>This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the owner of an object if only the ID is known.</p>
 <p>If the object address is already known then the fastest means of retrieval is via the <code>ownerID()</code> C++ class method.</p>
     <h3>Result</h3><p>Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return NULL.</p><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="GetResource"><h2>GetResource()</h2><p class="lead">Retrieves miscellaneous resource identifiers.</p><div class="card card-info mb-3"><div class="card-header"><samp>LARGE GetResource(RES Resource)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('RES');">Resource</a></td><td>The ID of the resource that you want to obtain.</td></tr>
+<div class="docs-content" style="display:none;" id="GetResource"><h2>GetResource()</h2><p class="lead">Retrieves miscellaneous resource identifiers.</p><div class="card card-info mb-3"><div class="card-header"><samp>INT64 GetResource(RES Resource)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('RES');">Resource</a></td><td>The ID of the resource that you want to obtain.</td></tr>
 </tbody></table></div></div>
 <p>The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the Resource identifier for the full list of available resource codes and their meaning.</p>
 <p>C++ developers should use the <code>GetResourcePtr()</code> macro if a resource identifier is known to return a pointer.</p>
@@ -761,7 +761,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>This function can be used by classes that need fine-tuned control over notification events, as managed by the <a href="?page=SubscribeAction">SubscribeAction()</a> function.  Normally the Core will automatically notify subscribers after an action is executed.  Using NotifySubscribers(), the client can instead manually notify subscribers during the execution of the action.</p>
 <p>Another useful aspect is that the client can control the parameter values that are passed on to the subscribers.</p>
 <p>NOTE: The use of NotifySubscribers() does not prevent the core from sending out an action notification as it normally would, which will cause duplication.  To prevent this, the client must logical-or the return code of the action function with <code>ERR::Notified</code>, e.g. <code>ERR::Okay|ERR::Notified</code>.</p>
-<p>In the following example you can see how the Surface class uses NotifySubscribers() to convert a Move event to a Redimension event.  The parameter values are customised to support this, and the function returns <code>ERR::Notified</code> to prevent the core from sending out a Move notification.</p>
+<p>In the following example the Surface class uses NotifySubscribers() to convert a Move event to a Redimension event.  The parameter values are customised to support this, and the function returns <code>ERR::Notified</code> to prevent the core from sending out a Move notification.</p>
 <pre>ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 {
    if (!Args) return ERR::NullArgs|ERR::Notified;
@@ -790,7 +790,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>This function is used to return the context of the caller (the client), as opposed to <a href="?page=CurrentContext">CurrentContext()</a>, which returns the operating context.  This feature is commonly used by methods that need to acquire a reference to the client for resource management reasons.</p>
 <p>Note that this function can return <code>NULL</code> if called when running at process-level, although this would never be the case when called from an action or method.</p>
     <h3>Result</h3><p>An object reference is returned, or <code>NULL</code> if there is no parent context.</p><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="PreciseTime"><h2>PreciseTime()</h2><p class="lead">Returns the current system time, in microseconds.</p><div class="card card-info mb-3"><div class="card-header"><samp>LARGE PreciseTime()</samp></div></div>
+<div class="docs-content" style="display:none;" id="PreciseTime"><h2>PreciseTime()</h2><p class="lead">Returns the current system time, in microseconds.</p><div class="card card-info mb-3"><div class="card-header"><samp>INT64 PreciseTime()</samp></div></div>
 <p>This function returns the current 'system time' in microseconds (1 millionth of a second).  The value is monotonic if the host platform allows it (typically expressed as the amount of time that has elapsed since the system was switched on).  The benefit of monotonic time is that it is unaffected by changes to the system clock, such as daylight savings adjustments or manual changes by the user.</p>
     <h3>Result</h3><p>Returns the system time in microseconds.  Could return zero in the extremely unlikely event of an error.</p><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="ProcessMessages"><h2>ProcessMessages()</h2><p class="lead">Processes system messages that are queued in the task's message buffer.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR ProcessMessages(PMF Flags, LONG TimeOut)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('PMF');">Flags</a></td><td>Optional flags are specified here (clients should set a value of zero).</td></tr>
@@ -1072,7 +1072,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 <tr><th class="col-md-1">Recursion</th><td>Detected a recursive function call.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="SetResource"><h2>SetResource()</h2><p class="lead">Sets miscellaneous resource identifiers.</p><div class="card card-info mb-3"><div class="card-header"><samp>LARGE SetResource(RES Resource, LARGE Value)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('RES');">Resource</a></td><td>The ID of the resource to be set.</td></tr>
+<div class="docs-content" style="display:none;" id="SetResource"><h2>SetResource()</h2><p class="lead">Sets miscellaneous resource identifiers.</p><div class="card card-info mb-3"><div class="card-header"><samp>INT64 SetResource(RES Resource, int64_t Value)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('RES');">Resource</a></td><td>The ID of the resource to be set.</td></tr>
 <tr><td>Value</td><td>The new value to set for the resource.</td></tr>
 </tbody></table></div></div>
 <p>The SetResource() function is used to manipulate miscellaneous system resources.  Currently the following resources are supported:</p>
@@ -1134,7 +1134,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <tr><th class="col-md-1">OutOfRange</th><td>The Action parameter is invalid.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="SubscribeEvent"><h2>SubscribeEvent()</h2><p class="lead">Subscribe to a system event.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR * Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Event</td><td>An event identifier.</td></tr>
+<div class="docs-content" style="display:none;" id="SubscribeEvent"><h2>SubscribeEvent()</h2><p class="lead">Subscribe to a system event.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR SubscribeEvent(int64_t Event, FUNCTION * Callback, APTR * Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Event</td><td>An event identifier.</td></tr>
 <tr><td>Callback</td><td>The function that will be subscribed to the event.</td></tr>
 <tr><td>Handle</td><td>Pointer to an address that will receive the event handle.</td></tr>
 </tbody></table></div></div>
@@ -1150,7 +1150,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <tr><td>Subscription</td><td>Optional.  The subscription will be assigned an identifier that is returned in this parameter.</td></tr>
 </tbody></table></div></div>
 <p>This function creates a new timer subscription that will be called at regular intervals for the calling object.</p>
-<p>A callback function must be provided that follows this prototype: <code>ERR Function(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)</code></p>
+<p>A callback function must be provided that follows this prototype: <code>ERR Function(OBJECTPTR Subscriber, INT64 Elapsed, INT64 CurrentTime)</code></p>
 <p>The <code>Elapsed</code> parameter is the total number of microseconds that have elapsed since the last call.  The <code>CurrentTime</code> parameter is set to the <a href="?page=PreciseTime">PreciseTime()</a> value just prior to the <code>Callback</code> being called.  The callback function can return <code>ERR::Terminate</code> at any time to cancel the subscription.  All other error codes are ignored.  Fluid callbacks should call <code>check(ERR::Terminate)</code> to perform the equivalent of this behaviour.</p>
 <p>To change the interval, call <a href="?page=UpdateTimer">UpdateTimer()</a> with the new value.  To release a timer subscription, call <a href="?page=UpdateTimer">UpdateTimer()</a> with the resulting SubscriptionID and an Interval of zero.</p>
 <p>Timer management is provisioned by the <a href="?page=ProcessMessages">ProcessMessages()</a> function.  Failure to regularly process incoming messages will lead to unreliable timer cycles.  It should be noted that the smaller the Interval that has been used, the more imperative regular message checking becomes.  Prolonged processing inside a timer routine can also impact on other timer subscriptions that are waiting to be processed.</p>
@@ -2071,18 +2071,18 @@ SetField(Object, FID_Statement|TSTR, "string");
 <div class="docs-content" style="display:none;" id="struct-ActionArray"><h1>ActionArray Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Routine</th><td><span class="text-nowrap">APTR</span></td><td>Pointer to the function entry point</td></tr>
 <tr><th>ActionCode</th><td><span class="text-nowrap">AC</span></td><td>Action identifier</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-ActionTable"><h1>ActionTable Structure</h1><p class="lead">Structure for ActionList</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Hash</th><td><span class="text-nowrap">ULONG</span></td><td>Hash of the action name.</td></tr>
-<tr><th>Size</th><td><span class="text-nowrap">LONG</span></td><td>Byte-size of the structure for this action.</td></tr>
+<div class="docs-content" style="display:none;" id="struct-ActionTable"><h1>ActionTable Structure</h1><p class="lead">Structure for ActionList</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Hash</th><td><span class="text-nowrap">UINT</span></td><td>Hash of the action name.</td></tr>
+<tr><th>Size</th><td><span class="text-nowrap">INT</span></td><td>Byte-size of the structure for this action.</td></tr>
 <tr><th>Name</th><td><span class="text-nowrap">CSTRING</span></td><td>Name of the action.</td></tr>
 <tr><th>Args</th><td><span class="text-nowrap">const struct FunctionField *</span></td><td>List of fields that are passed to this action.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-ChildEntry"><h1>ChildEntry Structure</h1><p class="lead">Structure for ListChildren() function</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>ObjectID</th><td><span class="text-nowrap">OBJECTID</span></td><td>Object ID</td></tr>
 <tr><th>ClassID</th><td><span class="text-nowrap">CLASSID</span></td><td>The class ID of the referenced object.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-ClipRectangle"><h1>ClipRectangle Structure</h1><p class="lead">Generic structure for rectangular clipping.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Left</th><td><span class="text-nowrap">LONG</span></td><td>Left-most coordinate</td></tr>
-<tr><th>Top</th><td><span class="text-nowrap">LONG</span></td><td>Top coordinate</td></tr>
-<tr><th>Right</th><td><span class="text-nowrap">LONG</span></td><td>Right-most coordinate</td></tr>
-<tr><th>Bottom</th><td><span class="text-nowrap">LONG</span></td><td>Bottom coordinate</td></tr>
+<div class="docs-content" style="display:none;" id="struct-ClipRectangle"><h1>ClipRectangle Structure</h1><p class="lead">Generic structure for rectangular clipping.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Left</th><td><span class="text-nowrap">INT</span></td><td>Left-most coordinate</td></tr>
+<tr><th>Top</th><td><span class="text-nowrap">INT</span></td><td>Top coordinate</td></tr>
+<tr><th>Right</th><td><span class="text-nowrap">INT</span></td><td>Right-most coordinate</td></tr>
+<tr><th>Bottom</th><td><span class="text-nowrap">INT</span></td><td>Bottom coordinate</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-ColourFormat"><h1>ColourFormat Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>RedShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for red (15/16 bit formats only)</td></tr>
 <tr><th>GreenShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for green</td></tr>
@@ -2098,33 +2098,33 @@ SetField(Object, FID_Statement|TSTR, "string");
 <tr><th>AlphaPos</th><td><span class="text-nowrap">UBYTE</span></td><td>Left shift/positional value for alpha</td></tr>
 <tr><th>BitsPerPixel</th><td><span class="text-nowrap">UBYTE</span></td><td>Number of bits per pixel for this format.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-CompressedItem"><h1>CompressedItem Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>OriginalSize</th><td><span class="text-nowrap">LARGE</span></td><td>Original size of the file</td></tr>
-<tr><th>CompressedSize</th><td><span class="text-nowrap">LARGE</span></td><td>Compressed size of the file</td></tr>
+<div class="docs-content" style="display:none;" id="struct-CompressedItem"><h1>CompressedItem Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>OriginalSize</th><td><span class="text-nowrap">INT64</span></td><td>Original size of the file</td></tr>
+<tr><th>CompressedSize</th><td><span class="text-nowrap">INT64</span></td><td>Compressed size of the file</td></tr>
 <tr><th>Next</th><td><span class="text-nowrap">struct CompressedItem *</span></td><td>Used only if this is a linked-list.</td></tr>
 <tr><th>Path</th><td><span class="text-nowrap">CSTRING</span></td><td>Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</td></tr>
 <tr><th>Permissions</th><td><span class="text-nowrap">PERMIT</span></td><td>Original permissions - see <code>PERMIT</code> flags.</td></tr>
-<tr><th>UserID</th><td><span class="text-nowrap">LONG</span></td><td>Original user ID</td></tr>
-<tr><th>GroupID</th><td><span class="text-nowrap">LONG</span></td><td>Original group ID</td></tr>
-<tr><th>OthersID</th><td><span class="text-nowrap">LONG</span></td><td>Original others ID</td></tr>
+<tr><th>UserID</th><td><span class="text-nowrap">INT</span></td><td>Original user ID</td></tr>
+<tr><th>GroupID</th><td><span class="text-nowrap">INT</span></td><td>Original group ID</td></tr>
+<tr><th>OthersID</th><td><span class="text-nowrap">INT</span></td><td>Original others ID</td></tr>
 <tr><th>Flags</th><td><span class="text-nowrap">FL</span></td><td><code>FL</code> flags</td></tr>
 <tr><th>Created</th><td><span class="text-nowrap">struct DateTime</span></td><td>Date and time of the file's creation.</td></tr>
 <tr><th>Modified</th><td><span class="text-nowrap">struct DateTime</span></td><td>Date and time last modified.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-CompressionFeedback"><h1>CompressionFeedback Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>FeedbackID</th><td><span class="text-nowrap">FDB</span></td><td>Set to one of the FDB event indicators</td></tr>
-<tr><th>Index</th><td><span class="text-nowrap">LONG</span></td><td>Index of the current file</td></tr>
+<tr><th>Index</th><td><span class="text-nowrap">INT</span></td><td>Index of the current file</td></tr>
 <tr><th>Path</th><td><span class="text-nowrap">CSTRING</span></td><td>Name of the current file/path in the archive</td></tr>
 <tr><th>Dest</th><td><span class="text-nowrap">CSTRING</span></td><td>Destination file/path during decompression</td></tr>
-<tr><th>Progress</th><td><span class="text-nowrap">LARGE</span></td><td>Progress indicator (byte position for the file being de/compressed).</td></tr>
-<tr><th>OriginalSize</th><td><span class="text-nowrap">LARGE</span></td><td>Original size of the file</td></tr>
-<tr><th>CompressedSize</th><td><span class="text-nowrap">LARGE</span></td><td>Compressed size of the file</td></tr>
-<tr><th>Year</th><td><span class="text-nowrap">WORD</span></td><td>Year of the original file's datestamp.</td></tr>
-<tr><th>Month</th><td><span class="text-nowrap">WORD</span></td><td>Month of the original file's datestamp.</td></tr>
-<tr><th>Day</th><td><span class="text-nowrap">WORD</span></td><td>Day of the original file's datestamp.</td></tr>
-<tr><th>Hour</th><td><span class="text-nowrap">WORD</span></td><td>Hour of the original file's datestamp.</td></tr>
-<tr><th>Minute</th><td><span class="text-nowrap">WORD</span></td><td>Minute of the original file's datestamp.</td></tr>
-<tr><th>Second</th><td><span class="text-nowrap">WORD</span></td><td>Second of the original file's datestamp.</td></tr>
+<tr><th>Progress</th><td><span class="text-nowrap">INT64</span></td><td>Progress indicator (byte position for the file being de/compressed).</td></tr>
+<tr><th>OriginalSize</th><td><span class="text-nowrap">INT64</span></td><td>Original size of the file</td></tr>
+<tr><th>CompressedSize</th><td><span class="text-nowrap">INT64</span></td><td>Compressed size of the file</td></tr>
+<tr><th>Year</th><td><span class="text-nowrap">INT16</span></td><td>Year of the original file's datestamp.</td></tr>
+<tr><th>Month</th><td><span class="text-nowrap">INT16</span></td><td>Month of the original file's datestamp.</td></tr>
+<tr><th>Day</th><td><span class="text-nowrap">INT16</span></td><td>Day of the original file's datestamp.</td></tr>
+<tr><th>Hour</th><td><span class="text-nowrap">INT16</span></td><td>Hour of the original file's datestamp.</td></tr>
+<tr><th>Minute</th><td><span class="text-nowrap">INT16</span></td><td>Minute of the original file's datestamp.</td></tr>
+<tr><th>Second</th><td><span class="text-nowrap">INT16</span></td><td>Second of the original file's datestamp.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-DateTime"><h1>DateTime Structure</h1><p class="lead">Generic structure for date-time management.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Year</th><td><span class="text-nowrap">WORD</span></td><td>Year</td></tr>
+<div class="docs-content" style="display:none;" id="struct-DateTime"><h1>DateTime Structure</h1><p class="lead">Generic structure for date-time management.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Year</th><td><span class="text-nowrap">INT16</span></td><td>Year</td></tr>
 <tr><th>Month</th><td><span class="text-nowrap">BYTE</span></td><td>Month 1 to 12</td></tr>
 <tr><th>Day</th><td><span class="text-nowrap">BYTE</span></td><td>Day 1 to 31</td></tr>
 <tr><th>Hour</th><td><span class="text-nowrap">BYTE</span></td><td>Hour 0 to 23</td></tr>
@@ -2134,10 +2134,10 @@ SetField(Object, FID_Statement|TSTR, "string");
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-DirInfo"><h1>DirInfo Structure</h1><p class="lead">Used by OpenDir() only</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Info</th><td><span class="text-nowrap">struct FileInfo *</span></td><td>Pointer to a <a data-toggle="tooltip" title="" href="?page=struct-FileInfo">FileInfo</a> structure</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-Edges"><h1>Edges Structure</h1><p class="lead">Generic structure for declaring edge coordinates.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Left</th><td><span class="text-nowrap">LONG</span></td><td>Left-most coordinate</td></tr>
-<tr><th>Top</th><td><span class="text-nowrap">LONG</span></td><td>Top coordinate</td></tr>
-<tr><th>Right</th><td><span class="text-nowrap">LONG</span></td><td>Right-most coordinate</td></tr>
-<tr><th>Bottom</th><td><span class="text-nowrap">LONG</span></td><td>Bottom coordinate</td></tr>
+<div class="docs-content" style="display:none;" id="struct-Edges"><h1>Edges Structure</h1><p class="lead">Generic structure for declaring edge coordinates.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Left</th><td><span class="text-nowrap">INT</span></td><td>Left-most coordinate</td></tr>
+<tr><th>Top</th><td><span class="text-nowrap">INT</span></td><td>Top coordinate</td></tr>
+<tr><th>Right</th><td><span class="text-nowrap">INT</span></td><td>Right-most coordinate</td></tr>
+<tr><th>Bottom</th><td><span class="text-nowrap">INT</span></td><td>Bottom coordinate</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-FRGB"><h1>FRGB Structure</h1><p class="lead">32-bit floating point RGB colour components.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Red</th><td><span class="text-nowrap">FLOAT</span></td><td>Red component value</td></tr>
 <tr><th>Green</th><td><span class="text-nowrap">FLOAT</span></td><td>Green component value</td></tr>
@@ -2149,35 +2149,35 @@ SetField(Object, FID_Statement|TSTR, "string");
 <tr><th>SetValue</th><td><span class="text-nowrap">APTR</span></td><td>A virtual function that will set the value for this field.</td></tr>
 <tr><th>WriteValue</th><td><span class="text-nowrap">FUNCTION *</span></td><td>An internal function for writing to this field.</td></tr>
 <tr><th>Name</th><td><span class="text-nowrap">CSTRING</span></td><td>The English name for the field, e.g. <code>Width</code></td></tr>
-<tr><th>FieldID</th><td><span class="text-nowrap">ULONG</span></td><td>Provides a fast way of finding fields, e.g. <code>FID_Width</code></td></tr>
-<tr><th>Offset</th><td><span class="text-nowrap">UWORD</span></td><td>Field offset within the object</td></tr>
-<tr><th>Index</th><td><span class="text-nowrap">UWORD</span></td><td>Field array index</td></tr>
-<tr><th>Flags</th><td><span class="text-nowrap">ULONG</span></td><td>Special flags that describe the field</td></tr>
+<tr><th>FieldID</th><td><span class="text-nowrap">UINT</span></td><td>Provides a fast way of finding fields, e.g. <code>FID_Width</code></td></tr>
+<tr><th>Offset</th><td><span class="text-nowrap">UINT16</span></td><td>Field offset within the object</td></tr>
+<tr><th>Index</th><td><span class="text-nowrap">UINT16</span></td><td>Field array index</td></tr>
+<tr><th>Flags</th><td><span class="text-nowrap">UINT</span></td><td>Special flags that describe the field</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-FieldArray"><h1>FieldArray Structure</h1><p class="lead">Used to construct class blueprints for the MetaClass.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Name</th><td><span class="text-nowrap">CSTRING</span></td><td>The name of the field, e.g. <code>Width</code></td></tr>
 <tr><th>GetField</th><td><span class="text-nowrap">APTR</span></td><td><code>void GetField(*Object, APTR Result);</code></td></tr>
 <tr><th>SetField</th><td><span class="text-nowrap">APTR</span></td><td><code>ERR SetField(*Object, APTR Value);</code></td></tr>
 <tr><th>Arg</th><td><span class="text-nowrap">MAXINT</span></td><td>Can be a pointer or an integer value</td></tr>
-<tr><th>Flags</th><td><span class="text-nowrap">ULONG</span></td><td>Special flags that describe the field</td></tr>
+<tr><th>Flags</th><td><span class="text-nowrap">UINT</span></td><td>Special flags that describe the field</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-FieldDef"><h1>FieldDef Structure</h1><p class="lead">Used to define constants for field references.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Name</th><td><span class="text-nowrap">CSTRING</span></td><td>The name of the constant.</td></tr>
-<tr><th>Value</th><td><span class="text-nowrap">LONG</span></td><td>The value of the constant.</td></tr>
+<tr><th>Value</th><td><span class="text-nowrap">INT</span></td><td>The value of the constant.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-FileFeedback"><h1>FileFeedback Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Size</th><td><span class="text-nowrap">LARGE</span></td><td>Size of the file</td></tr>
-<tr><th>Position</th><td><span class="text-nowrap">LARGE</span></td><td>Current seek position within the file if moving or copying</td></tr>
+<div class="docs-content" style="display:none;" id="struct-FileFeedback"><h1>FileFeedback Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Size</th><td><span class="text-nowrap">INT64</span></td><td>Size of the file</td></tr>
+<tr><th>Position</th><td><span class="text-nowrap">INT64</span></td><td>Current seek position within the file if moving or copying</td></tr>
 <tr><th>Path</th><td><span class="text-nowrap">STRING</span></td><td>Path to the file</td></tr>
 <tr><th>Dest</th><td><span class="text-nowrap">STRING</span></td><td>Destination file/path if moving or copying</td></tr>
 <tr><th>FeedbackID</th><td><span class="text-nowrap">FBK</span></td><td>Set to one of the <code>FBK</code> values</td></tr>
 <tr><th>Reserved</th><td><span class="text-nowrap">char</span></td><td>Reserved in case of future expansion</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-FileInfo"><h1>FileInfo Structure</h1><p class="lead">Metadata for describing a file.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Size</th><td><span class="text-nowrap">LARGE</span></td><td>The size of the file's content.</td></tr>
-<tr><th>TimeStamp</th><td><span class="text-nowrap">LARGE</span></td><td>64-bit time stamp - usable only for comparison (e.g. sorting).</td></tr>
+<div class="docs-content" style="display:none;" id="struct-FileInfo"><h1>FileInfo Structure</h1><p class="lead">Metadata for describing a file.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Size</th><td><span class="text-nowrap">INT64</span></td><td>The size of the file's content.</td></tr>
+<tr><th>TimeStamp</th><td><span class="text-nowrap">INT64</span></td><td>64-bit time stamp - usable only for comparison (e.g. sorting).</td></tr>
 <tr><th>Next</th><td><span class="text-nowrap">struct FileInfo *</span></td><td>Next structure in the list, or <code>NULL</code>.</td></tr>
 <tr><th>Name</th><td><span class="text-nowrap">STRING</span></td><td>The name of the file.</td></tr>
 <tr><th>Flags</th><td><span class="text-nowrap">RDF</span></td><td>Additional flags to describe the file.</td></tr>
 <tr><th>Permissions</th><td><span class="text-nowrap">PERMIT</span></td><td>Standard permission flags.</td></tr>
-<tr><th>UserID</th><td><span class="text-nowrap">LONG</span></td><td>User  ID (Unix systems only).</td></tr>
-<tr><th>GroupID</th><td><span class="text-nowrap">LONG</span></td><td>Group ID (Unix systems only).</td></tr>
+<tr><th>UserID</th><td><span class="text-nowrap">INT</span></td><td>User  ID (Unix systems only).</td></tr>
+<tr><th>GroupID</th><td><span class="text-nowrap">INT</span></td><td>Group ID (Unix systems only).</td></tr>
 <tr><th>Created</th><td><span class="text-nowrap">struct DateTime</span></td><td>The date/time of the file's creation.</td></tr>
 <tr><th>Modified</th><td><span class="text-nowrap">struct DateTime</span></td><td>The date/time of the last file modification.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
@@ -2186,7 +2186,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <tr><th>Args</th><td><span class="text-nowrap">const struct FunctionField *</span></td><td>A list of parameters accepted by the function</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-FunctionField"><h1>FunctionField Structure</h1><p class="lead">Used by ActionTable and Function structures to declare lists of parameters.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Name</th><td><span class="text-nowrap">CSTRING</span></td><td>Name of the field</td></tr>
-<tr><th>Type</th><td><span class="text-nowrap">ULONG</span></td><td>Type of the field</td></tr>
+<tr><th>Type</th><td><span class="text-nowrap">UINT</span></td><td>Type of the field</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-HSV"><h1>HSV Structure</h1><p class="lead">Colour structure for Hue, Saturation and Value/Light components.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Hue</th><td><span class="text-nowrap">DOUBLE</span></td><td>Between 0 and 359.999</td></tr>
 <tr><th>Saturation</th><td><span class="text-nowrap">DOUBLE</span></td><td>Between 0 and 1.0</td></tr>
@@ -2195,7 +2195,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-InputEvent"><h1>InputEvent Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Next</th><td><span class="text-nowrap">const struct InputEvent *</span></td><td>Next event in the chain</td></tr>
 <tr><th>Value</th><td><span class="text-nowrap">DOUBLE</span></td><td>The value associated with the Type</td></tr>
-<tr><th>Timestamp</th><td><span class="text-nowrap">LARGE</span></td><td>PreciseTime() of the recorded input</td></tr>
+<tr><th>Timestamp</th><td><span class="text-nowrap">INT64</span></td><td>PreciseTime() of the recorded input</td></tr>
 <tr><th>RecipientID</th><td><span class="text-nowrap">OBJECTID</span></td><td>Surface that the input message is being conveyed to</td></tr>
 <tr><th>OverID</th><td><span class="text-nowrap">OBJECTID</span></td><td>Surface that is directly under the mouse pointer at the time of the event</td></tr>
 <tr><th>AbsX</th><td><span class="text-nowrap">DOUBLE</span></td><td>Absolute horizontal position of mouse cursor (relative to the top left of the display)</td></tr>
@@ -2209,58 +2209,58 @@ SetField(Object, FID_Statement|TSTR, "string");
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-MemInfo"><h1>MemInfo Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Start</th><td><span class="text-nowrap">APTR</span></td><td>The starting address of the memory block (does not apply to shared blocks).</td></tr>
 <tr><th>ObjectID</th><td><span class="text-nowrap">OBJECTID</span></td><td>The object that owns the memory block.</td></tr>
-<tr><th>Size</th><td><span class="text-nowrap">ULONG</span></td><td>The size of the memory block.</td></tr>
+<tr><th>Size</th><td><span class="text-nowrap">UINT</span></td><td>The size of the memory block.</td></tr>
 <tr><th>Flags</th><td><span class="text-nowrap">MEM</span></td><td>The type of memory.</td></tr>
 <tr><th>MemoryID</th><td><span class="text-nowrap">MEMORYID</span></td><td>The unique ID for this block.</td></tr>
-<tr><th>AccessCount</th><td><span class="text-nowrap">WORD</span></td><td>Total number of active locks on this block.</td></tr>
+<tr><th>AccessCount</th><td><span class="text-nowrap">INT16</span></td><td>Total number of active locks on this block.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-Message"><h1>Message Structure</h1><p class="lead">Message header.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Time</th><td><span class="text-nowrap">LARGE</span></td><td>A timestamp acquired from <a href="core.html?page=PreciseTime">PreciseTime()</a> when the message was first passed to <a href="core.html?page=SendMessage">SendMessage()</a>.</td></tr>
-<tr><th>UID</th><td><span class="text-nowrap">LONG</span></td><td>A unique identifier automatically created by <a href="core.html?page=SendMessage">SendMessage()</a>.</td></tr>
-<tr><th>Type</th><td><span class="text-nowrap">LONG</span></td><td>A message type identifier as defined by the client.</td></tr>
-<tr><th>Size</th><td><span class="text-nowrap">LONG</span></td><td>The byte-size of the message data, or zero if no data is provided.</td></tr>
+<div class="docs-content" style="display:none;" id="struct-Message"><h1>Message Structure</h1><p class="lead">Message header.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Time</th><td><span class="text-nowrap">INT64</span></td><td>A timestamp acquired from <a href="core.html?page=PreciseTime">PreciseTime()</a> when the message was first passed to <a href="core.html?page=SendMessage">SendMessage()</a>.</td></tr>
+<tr><th>UID</th><td><span class="text-nowrap">INT</span></td><td>A unique identifier automatically created by <a href="core.html?page=SendMessage">SendMessage()</a>.</td></tr>
+<tr><th>Type</th><td><span class="text-nowrap">INT</span></td><td>A message type identifier as defined by the client.</td></tr>
+<tr><th>Size</th><td><span class="text-nowrap">INT</span></td><td>The byte-size of the message data, or zero if no data is provided.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-ObjectSignal"><h1>ObjectSignal Structure</h1><p class="lead">Required in calls to WaitForObjects().</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Object</th><td><span class="text-nowrap">OBJECTPTR</span></td><td>Reference to an object to monitor.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-RGB16"><h1>RGB16 Structure</h1><p class="lead">16-bit RGB colour value.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Red</th><td><span class="text-nowrap">UWORD</span></td><td>Red component value</td></tr>
-<tr><th>Green</th><td><span class="text-nowrap">UWORD</span></td><td>Green component value</td></tr>
-<tr><th>Blue</th><td><span class="text-nowrap">UWORD</span></td><td>Blue component value</td></tr>
-<tr><th>Alpha</th><td><span class="text-nowrap">UWORD</span></td><td>Alpha component value</td></tr>
+<div class="docs-content" style="display:none;" id="struct-RGB16"><h1>RGB16 Structure</h1><p class="lead">16-bit RGB colour value.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Red</th><td><span class="text-nowrap">UINT16</span></td><td>Red component value</td></tr>
+<tr><th>Green</th><td><span class="text-nowrap">UINT16</span></td><td>Green component value</td></tr>
+<tr><th>Blue</th><td><span class="text-nowrap">UINT16</span></td><td>Blue component value</td></tr>
+<tr><th>Alpha</th><td><span class="text-nowrap">UINT16</span></td><td>Alpha component value</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-RGB32"><h1>RGB32 Structure</h1><p class="lead">32-bit RGB colour value.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Red</th><td><span class="text-nowrap">ULONG</span></td><td>Red component value</td></tr>
-<tr><th>Green</th><td><span class="text-nowrap">ULONG</span></td><td>Green component value</td></tr>
-<tr><th>Blue</th><td><span class="text-nowrap">ULONG</span></td><td>Blue component value</td></tr>
-<tr><th>Alpha</th><td><span class="text-nowrap">ULONG</span></td><td>Alpha component value</td></tr>
+<div class="docs-content" style="display:none;" id="struct-RGB32"><h1>RGB32 Structure</h1><p class="lead">32-bit RGB colour value.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Red</th><td><span class="text-nowrap">UINT</span></td><td>Red component value</td></tr>
+<tr><th>Green</th><td><span class="text-nowrap">UINT</span></td><td>Green component value</td></tr>
+<tr><th>Blue</th><td><span class="text-nowrap">UINT</span></td><td>Blue component value</td></tr>
+<tr><th>Alpha</th><td><span class="text-nowrap">UINT</span></td><td>Alpha component value</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-RGB8"><h1>RGB8 Structure</h1><p class="lead">8-bit RGB colour value.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Red</th><td><span class="text-nowrap">UBYTE</span></td><td>Red component value</td></tr>
 <tr><th>Green</th><td><span class="text-nowrap">UBYTE</span></td><td>Green component value</td></tr>
 <tr><th>Blue</th><td><span class="text-nowrap">UBYTE</span></td><td>Blue component value</td></tr>
 <tr><th>Alpha</th><td><span class="text-nowrap">UBYTE</span></td><td>Alpha component value</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-RGBPalette"><h1>RGBPalette Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>AmtColours</th><td><span class="text-nowrap">LONG</span></td><td>Total colours</td></tr>
+<div class="docs-content" style="display:none;" id="struct-RGBPalette"><h1>RGBPalette Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>AmtColours</th><td><span class="text-nowrap">INT</span></td><td>Total colours</td></tr>
 <tr><th>Col</th><td><span class="text-nowrap">struct RGB8</span></td><td>RGB Palette</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-SystemState"><h1>SystemState Structure</h1><p class="lead">Returned by the GetSystemState() function.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Platform</th><td><span class="text-nowrap">CSTRING</span></td><td>String-based field indicating the user's platform.  Currently returns <code>Native</code>, <code>Windows</code>, <code>OSX</code> or <code>Linux</code>.</td></tr>
 <tr><th>ConsoleFD</th><td><span class="text-nowrap">HOSTHANDLE</span></td><td>Internal</td></tr>
-<tr><th>Stage</th><td><span class="text-nowrap">LONG</span></td><td>The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</td></tr>
+<tr><th>Stage</th><td><span class="text-nowrap">INT</span></td><td>The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-Unit"><h1>Unit Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Value</th><td><span class="text-nowrap">DOUBLE</span></td><td>The unit value.</td></tr>
-<tr><th>Type</th><td><span class="text-nowrap">ULONG</span></td><td>Additional type information</td></tr>
+<tr><th>Type</th><td><span class="text-nowrap">UINT</span></td><td>Additional type information</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-dcAudio"><h1>dcAudio Structure</h1><p class="lead">Data feed structure for Audio</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Size</th><td><span class="text-nowrap">LONG</span></td><td>Byte size of this structure</td></tr>
-<tr><th>Format</th><td><span class="text-nowrap">LONG</span></td><td>Format of the audio data</td></tr>
+<div class="docs-content" style="display:none;" id="struct-dcAudio"><h1>dcAudio Structure</h1><p class="lead">Data feed structure for Audio</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Size</th><td><span class="text-nowrap">INT</span></td><td>Byte size of this structure</td></tr>
+<tr><th>Format</th><td><span class="text-nowrap">INT</span></td><td>Format of the audio data</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-dcDeviceInput"><h1>dcDeviceInput Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Values</th><td><span class="text-nowrap">DOUBLE</span></td><td>The value(s) associated with the Type</td></tr>
-<tr><th>Timestamp</th><td><span class="text-nowrap">LARGE</span></td><td><a href="core.html?page=PreciseTime">PreciseTime()</a> of the recorded input</td></tr>
+<tr><th>Timestamp</th><td><span class="text-nowrap">INT64</span></td><td><a href="core.html?page=PreciseTime">PreciseTime()</a> of the recorded input</td></tr>
 <tr><th>DeviceID</th><td><span class="text-nowrap">OBJECTID</span></td><td>The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)</td></tr>
 <tr><th>Flags</th><td><span class="text-nowrap">JTYPE</span></td><td>Broad descriptors for the given <code>Type</code>.  Automatically defined when delivered to the pointer object</td></tr>
 <tr><th>Type</th><td><span class="text-nowrap">JET</span></td><td><code>JET</code> constant</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-dcKeyEntry"><h1>dcKeyEntry Structure</h1><p class="lead">Data feed structure for Keypress</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Flags</th><td><span class="text-nowrap">LONG</span></td><td>Shift/Control/CapsLock...</td></tr>
-<tr><th>Value</th><td><span class="text-nowrap">LONG</span></td><td>ASCII value of the key A/B/C/D...</td></tr>
-<tr><th>Timestamp</th><td><span class="text-nowrap">LARGE</span></td><td><a href="core.html?page=PreciseTime">PreciseTime()</a> at which the keypress was recorded</td></tr>
-<tr><th>Unicode</th><td><span class="text-nowrap">LONG</span></td><td>Unicode value for pre-calculated key translations</td></tr>
+<div class="docs-content" style="display:none;" id="struct-dcKeyEntry"><h1>dcKeyEntry Structure</h1><p class="lead">Data feed structure for Keypress</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Flags</th><td><span class="text-nowrap">INT</span></td><td>Shift/Control/CapsLock...</td></tr>
+<tr><th>Value</th><td><span class="text-nowrap">INT</span></td><td>ASCII value of the key A/B/C/D...</td></tr>
+<tr><th>Timestamp</th><td><span class="text-nowrap">INT64</span></td><td><a href="core.html?page=PreciseTime">PreciseTime()</a> at which the keypress was recorded</td></tr>
+<tr><th>Unicode</th><td><span class="text-nowrap">INT</span></td><td>Unicode value for pre-calculated key translations</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-dcRequest"><h1>dcRequest Structure</h1><p class="lead">Data feed item request</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Item</th><td><span class="text-nowrap">LONG</span></td><td>Identifier for retrieval from the source</td></tr>
+<div class="docs-content" style="display:none;" id="struct-dcRequest"><h1>dcRequest Structure</h1><p class="lead">Data feed item request</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Item</th><td><span class="text-nowrap">INT</span></td><td>Identifier for retrieval from the source</td></tr>
 <tr><th>Preference</th><td><span class="text-nowrap">char</span></td><td>Data preferences for the returned item(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 </div></div></div><script type="text/javascript" src="../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../js/base.js"></script><script type="text/javascript">

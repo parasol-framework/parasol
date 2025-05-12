@@ -72,6 +72,7 @@
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Matrices</th><td class="col-md-1"><span class="text-nowrap">APTR</span></td><td>A linked list of transform matrices that have been applied to the pattern.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Matrices" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is represented by a <a data-bs-toggle="tooltip" title="" href="?page=struct-VectorMatrix">VectorMatrix</a> structure, and are linked in the order in which they were applied to the pattern.</p>
+<p>Setting this field is always additive unless NULL is passed, in which case all existing matrices are removed.</p>
 <table class="table"><thead><tr><th class="col-md-1">Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">Next</th><td>struct VectorMatrix *</td><td>The next transform in the list.</td></tr>
 <tr><th class="col-md-1">Vector</th><td>objVector *</td><td>The vector associated with the transform.</td></tr>
 <tr><th class="col-md-1">ScaleX</th><td>DOUBLE</td><td>Matrix value A</td></tr>
@@ -80,7 +81,7 @@
 <tr><th class="col-md-1">ScaleY</th><td>DOUBLE</td><td>Matrix value D</td></tr>
 <tr><th class="col-md-1">TranslateX</th><td>DOUBLE</td><td>Matrix value E</td></tr>
 <tr><th class="col-md-1">TranslateY</th><td>DOUBLE</td><td>Matrix value F</td></tr>
-<tr><th class="col-md-1">Tag</th><td>LONG</td><td>An optional tag value defined by the client for matrix identification.</td></tr>
+<tr><th class="col-md-1">Tag</th><td>INT</td><td>An optional tag value defined by the client for matrix identification.</td></tr>
 </tbody></table>
       
 </div></div></td></tr>
@@ -98,7 +99,7 @@
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-SpreadMethod" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-SpreadMethod"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">SpreadMethod</th><td class="col-md-1"><span class="text-nowrap">VSPREAD</span></td><td>The behaviour to use when the pattern bounds do not match the vector path.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-SpreadMethod" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">SpreadMethod</th><td class="col-md-1"><span class="text-nowrap">VSPREAD</span></td><td>The behaviour to use when the pattern bounds do not match the vector path.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-SpreadMethod" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>Indicates what happens if the pattern starts or ends inside the bounds of the target vector.  The default value is PAD.</p>
 <table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">VSPREAD::CLIP</th><td>Do not scale the graphic.  Clip it if it extends past imposed boundaries.</td></tr>
 <tr><th class="col-md-1">VSPREAD::PAD</th><td>Scale the graphic to the object bounds.</td></tr>
@@ -126,9 +127,9 @@
 </tbody></table>
       
 </div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-Viewport" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Viewport"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-Viewport" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Viewport"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Viewport</th><td class="col-md-1"><span class="text-nowrap">OBJECTPTR</span></td><td>Refers to the viewport that contains the pattern.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Viewport" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Viewport</th><td class="col-md-1"><span class="text-nowrap"><a href="vectorviewport.html">*VectorViewport</a></span></td><td>Refers to the viewport that contains the pattern.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Viewport" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The Viewport refers to a <a href="vectorviewport.html">VectorViewport</a> object that is created to host the vectors for the rendered pattern.  If the Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.</p>
       
 </div></div></td></tr>
@@ -197,7 +198,7 @@
 <tr><th>ScaleY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value D</td></tr>
 <tr><th>TranslateX</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value E</td></tr>
 <tr><th>TranslateY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value F</td></tr>
-<tr><th>Tag</th><td><span class="text-nowrap">LONG</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
+<tr><th>Tag</th><td><span class="text-nowrap">INT</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
 </tbody></table><div class="footer copyright text-right">VectorPattern class documentation © Paul Manias © 2010-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

@@ -287,7 +287,7 @@ Charter:120%::255,128,255
 <div class="docs-content" style="display:none;" id="struct-FontList"><h1>FontList Structure</h1><p class="lead">For GetList(), describes a system font.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Next</th><td><span class="text-nowrap">struct FontList *</span></td><td>Pointer to the next entry in the list.</td></tr>
 <tr><th>Name</th><td><span class="text-nowrap">STRING</span></td><td>The name of the font face.</td></tr>
 <tr><th>Alias</th><td><span class="text-nowrap">STRING</span></td><td>Reference to another font Name if this is an alias.</td></tr>
-<tr><th>Points</th><td><span class="text-nowrap">LONG *</span></td><td>Pointer to an array of fixed point sizes supported by the font.</td></tr>
+<tr><th>Points</th><td><span class="text-nowrap">INT *</span></td><td>Pointer to an array of fixed point sizes supported by the font.</td></tr>
 <tr><th>Styles</th><td><span class="text-nowrap">STRING</span></td><td>Supported styles are listed here in CSV format.</td></tr>
 <tr><th>Axes</th><td><span class="text-nowrap">STRING</span></td><td>For variable fonts, lists all supported axis codes in CSV format</td></tr>
 <tr><th>Scalable</th><td><span class="text-nowrap">BYTE</span></td><td><code>TRUE</code> if the font is scalable.</td></tr>

@@ -188,7 +188,7 @@
 <tr><th class="col-md-1">ScaleY</th><td>DOUBLE</td><td>Matrix value D</td></tr>
 <tr><th class="col-md-1">TranslateX</th><td>DOUBLE</td><td>Matrix value E</td></tr>
 <tr><th class="col-md-1">TranslateY</th><td>DOUBLE</td><td>Matrix value F</td></tr>
-<tr><th class="col-md-1">Tag</th><td>LONG</td><td>An optional tag value defined by the client for matrix identification.</td></tr>
+<tr><th class="col-md-1">Tag</th><td>INT</td><td>An optional tag value defined by the client for matrix identification.</td></tr>
 </tbody></table>
       
 </div></div></td></tr>
@@ -387,7 +387,7 @@ Z: Close Path
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 <tr><th class="col-md-1">NotPossible</th><td>The vector does not support path generation.</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-NewMatrix" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">NewMatrix</th><td id="tm-NewMatrix">Returns a VectorMatrix structure that allows transformations to be applied to the vector.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-NewMatrix" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR vec::NewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform, LONG End)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Transform</td><td>A reference to the new transform structure is returned here.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-NewMatrix" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">NewMatrix</th><td id="tm-NewMatrix">Returns a VectorMatrix structure that allows transformations to be applied to the vector.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-NewMatrix" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR vec::NewMatrix(OBJECTPTR Object, struct VectorMatrix ** Transform, INT End)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Transform</td><td>A reference to the new transform structure is returned here.</td></tr>
 <tr><td>End</td><td>If <code>true</code>, the matrix priority is lowered by inserting it at the end of the transform list.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>Call NewMatrix() to allocate a transformation matrix that allows transforms to be applied to a vector.  Manipulating the transformation matrix is supported by functions in the Vector module, such as <a href="vector.html?page=Scale">Scale()</a> and <a href="vector.html?page=Rotate">Rotate()</a>.</p>
@@ -408,7 +408,7 @@ Z: Close Path
 <tr><th class="col-md-1">NoSupport</th><td>The vector type does not support path generation.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-Push" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Push</th><td id="tm-Push">Push a vector to a new position within its area of the vector stack.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Push" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR vec::Push(OBJECTPTR Object, LONG Position)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Position</td><td>Specify a relative position index here (-ve to move backwards, +ve to move forwards)</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-Push" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Push</th><td id="tm-Push">Push a vector to a new position within its area of the vector stack.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Push" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR vec::Push(OBJECTPTR Object, INT Position)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Position</td><td>Specify a relative position index here (-ve to move backwards, +ve to move forwards)</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>This method moves the position of a vector within its branch of the vector stack.  Repositioning is relative to the current position of the vector.  Every unit specified in the Position parameter will move the vector by one index in the stack frame.  Negative values will move the vector backwards; positive values move it forward.</p>
 <p>It is not possible for an vector to move outside of its branch, i.e. it cannot change its parent.  If the vector reaches the edge of its branch with excess units remaining, the method will return immediately with an <code>ERR::Okay</code> error code.</p>
@@ -455,7 +455,7 @@ Z: Close Path
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 <tr><th class="col-md-1">Function</th><td>A call to <a href="display.html?page=SubscribeInput">SubscribeInput()</a> failed.</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-Trace" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Trace</th><td id="tm-Trace">Returns the coordinates for a vector path, using callbacks.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Trace" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR vec::Trace(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, LONG Transform)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Callback</td><td>A function to call with the path coordinates.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-Trace" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Trace</th><td id="tm-Trace">Returns the coordinates for a vector path, using callbacks.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Trace" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR vec::Trace(OBJECTPTR Object, FUNCTION * Callback, DOUBLE Scale, INT Transform)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Callback</td><td>A function to call with the path coordinates.</td></tr>
 <tr><td>Scale</td><td>Set to <code>1.0</code> (recommended) to trace the path at a scale of 1 to 1.</td></tr>
 <tr><td>Transform</td><td>Set to <code>true</code> if all transforms applicable to the vector should be applied to the path.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
@@ -525,7 +525,7 @@ Z: Close Path
 <tr><th>ScaleY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value D</td></tr>
 <tr><th>TranslateX</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value E</td></tr>
 <tr><th>TranslateY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value F</td></tr>
-<tr><th>Tag</th><td><span class="text-nowrap">LONG</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
+<tr><th>Tag</th><td><span class="text-nowrap">INT</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector class documentation © Paul Manias © 2010-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

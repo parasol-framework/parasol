@@ -142,7 +142,7 @@ Z: Close Path
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
-<div class="docs-content" style="display:none;" id="GetVertex"><h2>GetVertex()</h2><p class="lead">Retrieve the coordinates of the current vertex.</p><div class="card card-info mb-3"><div class="card-header"><samp>LONG vec::GetVertex(APTR Path, DOUBLE * X, DOUBLE * Y)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Path</td><td>The vector path to query.</td></tr>
+<div class="docs-content" style="display:none;" id="GetVertex"><h2>GetVertex()</h2><p class="lead">Retrieve the coordinates of the current vertex.</p><div class="card card-info mb-3"><div class="card-header"><samp>INT vec::GetVertex(APTR Path, DOUBLE * X, DOUBLE * Y)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Path</td><td>The vector path to query.</td></tr>
 <tr><td>X</td><td>Pointer to a double that will receive the X coordinate value.</td></tr>
 <tr><td>Y</td><td>Pointer to a double that will receive the Y coordinate value.</td></tr>
 </tbody></table></div></div>
@@ -527,20 +527,17 @@ Z: Close Path
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="VSM"><h1>VSM Type</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VSM::AUTO</th><td>The default option is chosen by the system.  This will typically be <code>BILINEAR</code>, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</td></tr>
 <tr><th>VSM::BESSEL</th><td></td></tr>
-<tr><th>VSM::BICUBIC</th><td>Produces a similar result to <code>BILINEAR</code> with a marginally sharper after-effect.</td></tr>
+<tr><th>VSM::BICUBIC</th><td>Produces a similar result to <code>BILINEAR</code> at a slightly higher CPU cost and a marginally sharper after-effect.</td></tr>
 <tr><th>VSM::BILINEAR</th><td>Bilinear is a common algorithm that produces a reasonable quality image quickly.</td></tr>
-<tr><th>VSM::BLACKMAN3</th><td>Five times slower than <code>BILINEAR</code>, the final result will lack sharpness when compared to SINC3.</td></tr>
-<tr><th>VSM::BLACKMAN8</th><td>15 times slower than <code>BILINEAR</code>, the final result is of excellent quality and sharpness is well balanced.</td></tr>
+<tr><th>VSM::BLACKMAN</th><td>Five times slower than <code>BILINEAR</code>, the final result will be less sharp than SINC.</td></tr>
 <tr><th>VSM::GAUSSIAN</th><td></td></tr>
 <tr><th>VSM::KAISER</th><td></td></tr>
-<tr><th>VSM::LANCZOS3</th><td>This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with <code>SINC</code> and <code>BLACKMAN</code>.</td></tr>
-<tr><th>VSM::LANCZOS8</th><td></td></tr>
+<tr><th>VSM::LANCZOS</th><td>This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with <code>SINC</code> and <code>BLACKMAN</code>.</td></tr>
 <tr><th>VSM::MITCHELL</th><td></td></tr>
 <tr><th>VSM::NEIGHBOUR</th><td>Nearest neighbour is the fastest sampler at the cost of poor quality.</td></tr>
 <tr><th>VSM::QUADRIC</th><td></td></tr>
-<tr><th>VSM::SINC3</th><td>Five times slower than <code>BILINEAR</code>, the final result is of very good quality.</td></tr>
-<tr><th>VSM::SINC8</th><td>15 times slower than <code>BILINEAR</code>, the final result is of excellent quality but may be marginally over-sharpened.</td></tr>
-<tr><th>VSM::SPLINE16</th><td>About half the speed of <code>BILINEAR</code>, this method produces a considerably better result.</td></tr>
+<tr><th>VSM::SINC</th><td>Five times slower than <code>BILINEAR</code>, the final result is of very good quality.</td></tr>
+<tr><th>VSM::SPLINE16</th><td>About twice as slow as <code>BILINEAR</code>, this method produces a considerably better result, and is a good choice for enlarging images without producing artifacts when contrasting colours are present.</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="VSPREAD"><h1>VSPREAD Type</h1><p class="lead">Spread method options define the method to use for tiling filled graphics.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>VSPREAD::CLIP</th><td>Do not scale the graphic.  Clip it if it extends past imposed boundaries.</td></tr>
 <tr><th>VSPREAD::PAD</th><td>Scale the graphic to the object bounds.</td></tr>
@@ -587,10 +584,10 @@ Z: Close Path
 <tr><th>WVS::CURVED</th><td>Standard sine-wave curvature, this is the default.</td></tr>
 <tr><th>WVS::SAWTOOTH</th><td>Sawtooth patterns rise at 45 degrees to the peak, then direct 90 degrees to the bottom.</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-FontMetrics"><h1>FontMetrics Structure</h1><p class="lead">Font metrics, measured in pixels relative to the display</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Height</th><td><span class="text-nowrap">LONG</span></td><td>Capitalised font height</td></tr>
-<tr><th>LineSpacing</th><td><span class="text-nowrap">LONG</span></td><td>Vertical advance from one line to the next</td></tr>
-<tr><th>Ascent</th><td><span class="text-nowrap">LONG</span></td><td>Height from the baseline to the top of the font, including accents.</td></tr>
-<tr><th>Descent</th><td><span class="text-nowrap">LONG</span></td><td>Height from the baseline to the bottom of the font</td></tr>
+<div class="docs-content" style="display:none;" id="struct-FontMetrics"><h1>FontMetrics Structure</h1><p class="lead">Font metrics, measured in pixels relative to the display</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Height</th><td><span class="text-nowrap">INT</span></td><td>Capitalised font height</td></tr>
+<tr><th>LineSpacing</th><td><span class="text-nowrap">INT</span></td><td>Vertical advance from one line to the next</td></tr>
+<tr><th>Ascent</th><td><span class="text-nowrap">INT</span></td><td>Height from the baseline to the top of the font, including accents.</td></tr>
+<tr><th>Descent</th><td><span class="text-nowrap">INT</span></td><td>Height from the baseline to the bottom of the font</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-GradientStop"><h1>GradientStop Structure</h1><p class="lead">Describes a colour stop for the VectorGradient Stops field.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Offset</th><td><span class="text-nowrap">DOUBLE</span></td><td>An offset in the range of 0 - 1.0</td></tr>
 <tr><th>RGB</th><td><span class="text-nowrap">struct FRGB</span></td><td>A floating point RGB value.</td></tr>
@@ -623,7 +620,7 @@ Z: Close Path
 <tr><th>ScaleY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value D</td></tr>
 <tr><th>TranslateX</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value E</td></tr>
 <tr><th>TranslateY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value F</td></tr>
-<tr><th>Tag</th><td><span class="text-nowrap">LONG</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
+<tr><th>Tag</th><td><span class="text-nowrap">INT</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-VectorPainter"><h1>VectorPainter Structure</h1><p class="lead">Deserialised painter information; compliant with SVG painter definitions.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Pattern</th><td><span class="text-nowrap">objVectorPattern *</span></td><td>A VectorPattern object, suitable for pattern based fills.</td></tr>
 <tr><th>Image</th><td><span class="text-nowrap">objVectorImage *</span></td><td>A VectorImage object, suitable for image fills.</td></tr>

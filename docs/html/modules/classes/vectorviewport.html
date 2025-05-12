@@ -252,10 +252,10 @@
 <tr><th>DMF::STATUS_CHANGE_H</th><td></td></tr>
 <tr><th>DMF::STATUS_CHANGE_V</th><td></td></tr>
 </tbody></table><div class="footer copyright text-right">VectorViewport module documentation © Paul Manias © 2010-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-FontMetrics"><h1>FontMetrics Structure</h1><p class="lead">Font metrics, measured in pixels relative to the display</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Height</th><td><span class="text-nowrap">LONG</span></td><td>Capitalised font height</td></tr>
-<tr><th>LineSpacing</th><td><span class="text-nowrap">LONG</span></td><td>Vertical advance from one line to the next</td></tr>
-<tr><th>Ascent</th><td><span class="text-nowrap">LONG</span></td><td>Height from the baseline to the top of the font, including accents.</td></tr>
-<tr><th>Descent</th><td><span class="text-nowrap">LONG</span></td><td>Height from the baseline to the bottom of the font</td></tr>
+<div class="docs-content" style="display:none;" id="struct-FontMetrics"><h1>FontMetrics Structure</h1><p class="lead">Font metrics, measured in pixels relative to the display</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Height</th><td><span class="text-nowrap">INT</span></td><td>Capitalised font height</td></tr>
+<tr><th>LineSpacing</th><td><span class="text-nowrap">INT</span></td><td>Vertical advance from one line to the next</td></tr>
+<tr><th>Ascent</th><td><span class="text-nowrap">INT</span></td><td>Height from the baseline to the top of the font, including accents.</td></tr>
+<tr><th>Descent</th><td><span class="text-nowrap">INT</span></td><td>Height from the baseline to the bottom of the font</td></tr>
 </tbody></table><div class="footer copyright text-right">VectorViewport class documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-VectorMatrix"><h1>VectorMatrix Structure</h1><p class="lead">Vector transformation matrix.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Next</th><td><span class="text-nowrap">struct VectorMatrix *</span></td><td>The next transform in the list.</td></tr>
 <tr><th>Vector</th><td><span class="text-nowrap">objVector *</span></td><td>The vector associated with the transform.</td></tr>
@@ -265,7 +265,7 @@
 <tr><th>ScaleY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value D</td></tr>
 <tr><th>TranslateX</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value E</td></tr>
 <tr><th>TranslateY</th><td><span class="text-nowrap">DOUBLE</span></td><td>Matrix value F</td></tr>
-<tr><th>Tag</th><td><span class="text-nowrap">LONG</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
+<tr><th>Tag</th><td><span class="text-nowrap">INT</span></td><td>An optional tag value defined by the client for matrix identification.</td></tr>
 </tbody></table><div class="footer copyright text-right">VectorViewport class documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-VectorPainter"><h1>VectorPainter Structure</h1><p class="lead">Deserialised painter information; compliant with SVG painter definitions.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Pattern</th><td><span class="text-nowrap">objVectorPattern *</span></td><td>A <a href="vectorpattern.html">VectorPattern</a> object, suitable for pattern based fills.</td></tr>
 <tr><th>Image</th><td><span class="text-nowrap">objVectorImage *</span></td><td>A <a href="vectorimage.html">VectorImage</a> object, suitable for image fills.</td></tr>

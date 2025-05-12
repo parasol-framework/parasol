@@ -48,14 +48,14 @@
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Size" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Size"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Size</th><td class="col-md-1"><span class="text-nowrap">BIGINT</span></td><td>The uncompressed size of the input source, if known.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Size" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Size</th><td class="col-md-1"><span class="text-nowrap">INT64</span></td><td>The uncompressed size of the input source, if known.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Size" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The Size field will reflect the uncompressed size of the input source, if this can be determined from the header. In the case of GZIP decompression, the size will not be known until the parser has consumed the header. This means that at least one call to the <a data-bs-toggle="tooltip" title="" href="#ta-Read">Read()</a> action is required before the Size is known.</p>
 <p>If the size is unknown, a value of <code>-1</code> is returned.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-TotalOutput" style="scroll-margin:3em;"><td class="col-md-1" id="tf-TotalOutput"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">TotalOutput</th><td class="col-md-1"><span class="text-nowrap">BIGINT</span></td><td>A live counter of total bytes that have been output by the stream.</td></tr>
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">TotalOutput</th><td class="col-md-1"><span class="text-nowrap">INT64</span></td><td>A live counter of total bytes that have been output by the stream.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2025</div></div><div class="docs-content" style="display:none;" id="AC"><h1>AC Type</h1><p class="lead">Action identifiers.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>AC::Activate</th><td></td></tr>
 <tr><th>AC::Clear</th><td></td></tr>
 <tr><th>AC::Clipboard</th><td></td></tr>
@@ -300,8 +300,8 @@
 <tr><th>VOLUME::REPLACE</th><td>If the volume already exists, all paths that are attached to it will be replaced with the new path setting.</td></tr>
 <tr><th>VOLUME::SYSTEM</th><td>Identifies the volume as being created by the system (this flag is not for client use).</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-ActionTable"><h1>ActionTable Structure</h1><p class="lead">Structure for ActionList</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Hash</th><td><span class="text-nowrap">ULONG</span></td><td>Hash of the action name.</td></tr>
-<tr><th>Size</th><td><span class="text-nowrap">LONG</span></td><td>Byte-size of the structure for this action.</td></tr>
+<div class="docs-content" style="display:none;" id="struct-ActionTable"><h1>ActionTable Structure</h1><p class="lead">Structure for ActionList</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Hash</th><td><span class="text-nowrap">UINT</span></td><td>Hash of the action name.</td></tr>
+<tr><th>Size</th><td><span class="text-nowrap">INT</span></td><td>Byte-size of the structure for this action.</td></tr>
 <tr><th>Name</th><td><span class="text-nowrap">CSTRING</span></td><td>Name of the action.</td></tr>
 <tr><th>Args</th><td><span class="text-nowrap">const struct FunctionField *</span></td><td>List of fields that are passed to this action.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2025</div></div>
@@ -315,39 +315,39 @@
 <tr><th>SetValue</th><td><span class="text-nowrap">APTR</span></td><td>A virtual function that will set the value for this field.</td></tr>
 <tr><th>WriteValue</th><td><span class="text-nowrap">FUNCTION *</span></td><td>An internal function for writing to this field.</td></tr>
 <tr><th>Name</th><td><span class="text-nowrap">CSTRING</span></td><td>The English name for the field, e.g. <code>Width</code></td></tr>
-<tr><th>FieldID</th><td><span class="text-nowrap">ULONG</span></td><td>Provides a fast way of finding fields, e.g. <code>FID_Width</code></td></tr>
-<tr><th>Offset</th><td><span class="text-nowrap">UWORD</span></td><td>Field offset within the object</td></tr>
-<tr><th>Index</th><td><span class="text-nowrap">UWORD</span></td><td>Field array index</td></tr>
-<tr><th>Flags</th><td><span class="text-nowrap">ULONG</span></td><td>Special flags that describe the field</td></tr>
+<tr><th>FieldID</th><td><span class="text-nowrap">UINT</span></td><td>Provides a fast way of finding fields, e.g. <code>FID_Width</code></td></tr>
+<tr><th>Offset</th><td><span class="text-nowrap">UINT16</span></td><td>Field offset within the object</td></tr>
+<tr><th>Index</th><td><span class="text-nowrap">UINT16</span></td><td>Field array index</td></tr>
+<tr><th>Flags</th><td><span class="text-nowrap">UINT</span></td><td>Special flags that describe the field</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-FileInfo"><h1>FileInfo Structure</h1><p class="lead">Metadata for describing a file.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Size</th><td><span class="text-nowrap">LARGE</span></td><td>The size of the file's content.</td></tr>
-<tr><th>TimeStamp</th><td><span class="text-nowrap">LARGE</span></td><td>64-bit time stamp - usable only for comparison (e.g. sorting).</td></tr>
+<div class="docs-content" style="display:none;" id="struct-FileInfo"><h1>FileInfo Structure</h1><p class="lead">Metadata for describing a file.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Size</th><td><span class="text-nowrap">INT64</span></td><td>The size of the file's content.</td></tr>
+<tr><th>TimeStamp</th><td><span class="text-nowrap">INT64</span></td><td>64-bit time stamp - usable only for comparison (e.g. sorting).</td></tr>
 <tr><th>Next</th><td><span class="text-nowrap">struct FileInfo *</span></td><td>Next structure in the list, or <code>NULL</code>.</td></tr>
 <tr><th>Name</th><td><span class="text-nowrap">STRING</span></td><td>The name of the file.</td></tr>
 <tr><th>Flags</th><td><span class="text-nowrap">RDF</span></td><td>Additional flags to describe the file.</td></tr>
 <tr><th>Permissions</th><td><span class="text-nowrap">PERMIT</span></td><td>Standard permission flags.</td></tr>
-<tr><th>UserID</th><td><span class="text-nowrap">LONG</span></td><td>User  ID (Unix systems only).</td></tr>
-<tr><th>GroupID</th><td><span class="text-nowrap">LONG</span></td><td>Group ID (Unix systems only).</td></tr>
+<tr><th>UserID</th><td><span class="text-nowrap">INT</span></td><td>User  ID (Unix systems only).</td></tr>
+<tr><th>GroupID</th><td><span class="text-nowrap">INT</span></td><td>Group ID (Unix systems only).</td></tr>
 <tr><th>Created</th><td><span class="text-nowrap">struct DateTime</span></td><td>The date/time of the file's creation.</td></tr>
 <tr><th>Modified</th><td><span class="text-nowrap">struct DateTime</span></td><td>The date/time of the last file modification.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-MemInfo"><h1>MemInfo Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Start</th><td><span class="text-nowrap">APTR</span></td><td>The starting address of the memory block (does not apply to shared blocks).</td></tr>
 <tr><th>ObjectID</th><td><span class="text-nowrap">OBJECTID</span></td><td>The object that owns the memory block.</td></tr>
-<tr><th>Size</th><td><span class="text-nowrap">ULONG</span></td><td>The size of the memory block.</td></tr>
+<tr><th>Size</th><td><span class="text-nowrap">UINT</span></td><td>The size of the memory block.</td></tr>
 <tr><th>Flags</th><td><span class="text-nowrap">MEM</span></td><td>The type of memory.</td></tr>
 <tr><th>MemoryID</th><td><span class="text-nowrap">MEMORYID</span></td><td>The unique ID for this block.</td></tr>
-<tr><th>AccessCount</th><td><span class="text-nowrap">WORD</span></td><td>Total number of active locks on this block.</td></tr>
+<tr><th>AccessCount</th><td><span class="text-nowrap">INT16</span></td><td>Total number of active locks on this block.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-Message"><h1>Message Structure</h1><p class="lead">Message header.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Time</th><td><span class="text-nowrap">LARGE</span></td><td>A timestamp acquired from <a href="core.html?page=PreciseTime">PreciseTime()</a> when the message was first passed to <a href="core.html?page=SendMessage">SendMessage()</a>.</td></tr>
-<tr><th>UID</th><td><span class="text-nowrap">LONG</span></td><td>A unique identifier automatically created by <a href="core.html?page=SendMessage">SendMessage()</a>.</td></tr>
-<tr><th>Type</th><td><span class="text-nowrap">LONG</span></td><td>A message type identifier as defined by the client.</td></tr>
-<tr><th>Size</th><td><span class="text-nowrap">LONG</span></td><td>The byte-size of the message data, or zero if no data is provided.</td></tr>
+<div class="docs-content" style="display:none;" id="struct-Message"><h1>Message Structure</h1><p class="lead">Message header.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Time</th><td><span class="text-nowrap">INT64</span></td><td>A timestamp acquired from <a href="core.html?page=PreciseTime">PreciseTime()</a> when the message was first passed to <a href="core.html?page=SendMessage">SendMessage()</a>.</td></tr>
+<tr><th>UID</th><td><span class="text-nowrap">INT</span></td><td>A unique identifier automatically created by <a href="core.html?page=SendMessage">SendMessage()</a>.</td></tr>
+<tr><th>Type</th><td><span class="text-nowrap">INT</span></td><td>A message type identifier as defined by the client.</td></tr>
+<tr><th>Size</th><td><span class="text-nowrap">INT</span></td><td>The byte-size of the message data, or zero if no data is provided.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-ObjectSignal"><h1>ObjectSignal Structure</h1><p class="lead">Required in calls to WaitForObjects().</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Object</th><td><span class="text-nowrap">OBJECTPTR</span></td><td>Reference to an object to monitor.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-SystemState"><h1>SystemState Structure</h1><p class="lead">Returned by the GetSystemState() function.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Platform</th><td><span class="text-nowrap">CSTRING</span></td><td>String-based field indicating the user's platform.  Currently returns <code>Native</code>, <code>Windows</code>, <code>OSX</code> or <code>Linux</code>.</td></tr>
 <tr><th>ConsoleFD</th><td><span class="text-nowrap">HOSTHANDLE</span></td><td>Internal</td></tr>
-<tr><th>Stage</th><td><span class="text-nowrap">LONG</span></td><td>The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</td></tr>
+<tr><th>Stage</th><td><span class="text-nowrap">INT</span></td><td>The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);
