@@ -113,7 +113,7 @@ static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG
       else return ERR::BufferOverflow;
    }
    else if (auto farray = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array")) {
-      return SetArray(Object, ((LARGE)Field->FieldID)|((LARGE)farray->Type<<32), farray->ptrPointer, farray->Total);
+      return SetArray(Object, ((int64_t)Field->FieldID)|((int64_t)farray->Type<<32), farray->ptrPointer, farray->Total);
    }
    else return ERR::SetValueNotArray;
 }
@@ -239,7 +239,7 @@ static ERR object_set_number(lua_State *Lua, OBJECTPTR Object, Field *Field, LON
          return Object->set(Field->FieldID, lua_toboolean(Lua, ValueIndex));
 
       case LUA_TNUMBER:
-         return Object->set(Field->FieldID, (LARGE)lua_tointeger(Lua, ValueIndex));
+         return Object->set(Field->FieldID, (int64_t)lua_tointeger(Lua, ValueIndex));
 
       case LUA_TSTRING: // Allow internal string parsing to do its thing - important if the field is variable
          return Object->set(Field->FieldID, lua_tostring(Lua, ValueIndex));
@@ -433,7 +433,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
             else return ERR::BufferOverflow;
          }
          else if ((farray = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array"))) {
-            return SetArray(target, ((LARGE)field->FieldID)|((LARGE)farray->Type<<32), farray->ptrPointer, farray->Total);
+            return SetArray(target, ((int64_t)field->FieldID)|((int64_t)farray->Type<<32), farray->ptrPointer, farray->Total);
          }
          else return ERR::SetValueNotArray;
       }
@@ -553,7 +553,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
                return target->set(field->FieldID, lua_toboolean(Lua, ValueIndex));
 
             case LUA_TNUMBER:
-               return target->set(field->FieldID, (LARGE)lua_tointeger(Lua, ValueIndex));
+               return target->set(field->FieldID, (int64_t)lua_tointeger(Lua, ValueIndex));
 
             case LUA_TSTRING: // Allow internal string parsing to do its thing - important if the field is variable
                return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
@@ -732,7 +732,7 @@ static int object_get_large(lua_State *Lua, const obj_read &Handle, object *Def)
    ERR error;
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
-      LARGE result;
+      int64_t result;
       if ((error = obj->get(field->FieldID, &result)) IS ERR::Okay) lua_pushnumber(Lua, result);
       release_object(Def);
    }

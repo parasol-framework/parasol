@@ -140,7 +140,7 @@ static void error_dialog(const std::string, ERR);
 static const Field * find_field(OBJECTPTR, std::string_view, OBJECTPTR *);
 static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
 static int  find_tabfocus(extDocument *, TT, BYTECODE);
-static ERR  flash_cursor(extDocument *, LARGE, LARGE);
+static ERR  flash_cursor(extDocument *, int64_t, int64_t);
 static int getutf8(CSTRING, int *);
 static ERR  insert_text(extDocument *, RSTREAM *, stream_char &, const std::string_view, bool);
 static ERR  insert_xml(extDocument *, RSTREAM *, objXML *, objXML::TAGS &, int, STYLE = STYLE::NIL, IPF = IPF::NIL);

@@ -52,8 +52,8 @@ struct prvMP3 {
    LONG   OverflowSize;        // Number of bytes used in the overflow buffer.
    LONG   SamplesPerFrame;     // Last known frame size, measured in samples: 384, 576 or 1152
    LONG   SeekOffset;          // Offset to apply when performing seek operations.
-   LARGE  WriteOffset;         // Current stream offset in bytes, relative to Sound.Length.
-   LARGE  ReadOffset;          // Current seek position for the Read() action.  Max value is Sound.Length
+   int64_t  WriteOffset;         // Current stream offset in bytes, relative to Sound.Length.
+   int64_t  ReadOffset;          // Current seek position for the Read() action.  Max value is Sound.Length
    LONG   CompressedOffset;    // Next byte position for reading compressed input
    LONG   FramesProcessed;     // Count of frames processed by the decoder.
    LONG   TotalFrames;         // Total frames for the entire stream (known if CBR data, or VBR header is present).
@@ -133,7 +133,7 @@ static const LONG bitrate_table[5][15] = {
 
 static const LONG samplerate_table[3] = { 44100, 48000, 32000 };
 
-static LARGE calc_length(objSound *, LONG);
+static int64_t calc_length(objSound *, LONG);
 
 //********************************************************************************************************************
 // The ID3v1 tag can be located at the end of the MP3 file.
@@ -274,7 +274,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
 
    // Calculate the total no of samples for the entire stream, adjusted for padding at both the start and end.
 
-   LARGE detected_samples = prv->info.samples * (LARGE)prv->TotalFrames;
+   int64_t detected_samples = prv->info.samples * (int64_t)prv->TotalFrames;
    if (detected_samples >= prv->PaddingStart) detected_samples -= prv->PaddingStart;
    if (detected_samples >= prv->PaddingEnd) detected_samples -= prv->PaddingEnd;
 
@@ -284,8 +284,8 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
 
    // Compute byte length with adjustment for padding at the end, but not the start.
 
-   LARGE len = prv->TotalFrames * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
-   len -= LARGE(prv->PaddingEnd * prv->info.channels) * sizeof(WORD);
+   int64_t len = prv->TotalFrames * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
+   len -= int64_t(prv->PaddingEnd * prv->info.channels) * sizeof(WORD);
    Self->setLength(len);
 
    log.msg("Info header detected.  Total Frames: %d, Samples: %d, Track Time: %.2fs, Byte Length: %" PF64 ", Padding: %d/%d", prv->TotalFrames, prv->TotalSamples, seconds_len, len, prv->PaddingStart, prv->PaddingEnd);
@@ -558,7 +558,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
 
    auto prv = (prvMP3 *)Self->ChildPrivate;
 
-   LARGE offset;
+   int64_t offset;
    if (Args->Position IS SEEK::START)         offset = F2T(Args->Offset);
    else if (Args->Position IS SEEK::END)      offset = Self->Length - F2T(Args->Offset);
    else if (Args->Position IS SEEK::CURRENT)  offset = prv->ReadOffset + F2T(Args->Offset);
@@ -600,7 +600,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
 
             log.detail("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
 
-            prv->WriteOffset     = LARGE(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(WORD);
+            prv->WriteOffset     = int64_t(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(WORD);
             prv->ReadOffset      = prv->WriteOffset;
             prv->FramesProcessed = frame;
             Self->Position = prv->WriteOffset;
@@ -612,7 +612,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
             // computations.
 
             if (!prv->StreamSize) {
-               LARGE size;
+               int64_t size;
                prv->File->get(FID_Size, &size);
                prv->StreamSize = size - prv->SeekOffset;
             }
@@ -625,7 +625,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
 
             log.detail("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
 
-            prv->WriteOffset     = LARGE(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(WORD);
+            prv->WriteOffset     = int64_t(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(WORD);
             prv->ReadOffset      = prv->WriteOffset;
             prv->FramesProcessed = frame;
             Self->Position = prv->WriteOffset;
@@ -657,7 +657,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
 #define SIZE_BUFFER     256000  // Load up to this many bytes to determine if the file is in variable bit-rate
 #define SIZE_CBR_BUFFER 51200   // Load at least this many bytes to determine if the file is in constant bit-rate
 
-static LARGE calc_length(objSound *Self, LONG ReduceEnd)
+static int64_t calc_length(objSound *Self, LONG ReduceEnd)
 {
    pf::Log log(__FUNCTION__);
    LONG buffer_size;
@@ -785,7 +785,7 @@ static LARGE calc_length(objSound *Self, LONG ReduceEnd)
    if (filesize > buffer_size) {
       if (prv->VBR) {
          prv->TotalFrames = F2T((filesize - prv->SeekOffset - frame_start - ReduceEnd) / avg_frame_len);
-         return LARGE(prv->TotalFrames * frame_samples * channels) * sizeof(WORD);
+         return int64_t(prv->TotalFrames * frame_samples * channels) * sizeof(WORD);
       }
       else {
          // For CBR we guess the total frames from the file size.

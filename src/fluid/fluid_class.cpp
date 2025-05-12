@@ -207,8 +207,8 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
          Buffer += sizeof(DOUBLE);
       }
       else if (args[i].Type & FD_LARGE) {
-         lua_pushnumber(Lua, ((LARGE *)Buffer)[0]);
-         Buffer += sizeof(LARGE);
+         lua_pushnumber(Lua, ((int64_t *)Buffer)[0]);
+         Buffer += sizeof(int64_t);
       }
       else {
          log.warning("Unsupported arg %s, flags $%.8x, aborting now.", args[i].Name, args[i].Type);
@@ -280,7 +280,7 @@ static ERR FLUID_Activate(objScript *Self)
 
    if ((!Self->String) or (!Self->String[0])) return log.warning(ERR::FieldNotSet);
 
-   log.trace("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
+   log.trace("Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", (long long)Self->ProcedureID);
 
    ERR error = ERR::Failed;
 
@@ -598,7 +598,7 @@ static ERR FLUID_DerefProcedure(objScript *Self, struct sc::DerefProcedure *Args
          auto prv = (prvFluid *)Self->ChildPrivate;
          if (!prv) return log.warning(ERR::ObjectCorrupt);
 
-         log.trace("Dereferencing procedure #%" PF64, Args->Procedure->ProcedureID);
+         log.trace("Dereferencing procedure #%" PF64, (long long)Args->Procedure->ProcedureID);
 
          if (Args->Procedure->ProcedureID) {
             luaL_unref(prv->Lua, LUA_REGISTRYINDEX, Args->Procedure->ProcedureID);
@@ -671,7 +671,7 @@ static ERR FLUID_Init(objScript *Self)
    LONG loaded_size = 0;
    objFile *src_file = nullptr;
    if ((!Self->String) and (Self->Path)) {
-      LARGE src_ts, src_size;
+      int64_t src_ts, src_size;
 
       if ((src_file = objFile::create::local(fl::Path(Self->Path)))) {
          error = src_file->get(FID_TimeStamp, &src_ts);
@@ -684,7 +684,7 @@ static ERR FLUID_Init(objScript *Self)
          // analysing the original location (i.e. the original location does not exist) then the cache file is loaded
          // instead of the original source code.
 
-         LARGE cache_ts = -1, cache_size;
+         int64_t cache_ts = -1, cache_size;
 
          {
             objFile::create cache_file = { fl::Path(Self->CacheFile) };
@@ -722,7 +722,7 @@ static ERR FLUID_Init(objScript *Self)
                if (Self->CacheFile) compile = true; // Saving a compilation of the source is desired
             }
             else {
-               log.trace("Failed to read %" PF64 " bytes from '%s'", src_size, Self->Path);
+               log.trace("Failed to read %" PF64 " bytes from '%s'", (long long)src_size, Self->Path);
                FreeResource(Self->String);
                Self->String = nullptr;
                error = ERR::ReadFileToBuffer;
@@ -998,7 +998,7 @@ static ERR run_script(objScript *Self)
                   }
                   else lua_pushinteger(prv->Lua, args->Long);
                }
-               else if (type & FD_LARGE)  { log.trace("Setting arg '%s', Value: %" PF64, args->Name, args->Large); lua_pushnumber(prv->Lua, args->Large); }
+               else if (type & FD_LARGE)  { log.trace("Setting arg '%s', Value: %" PF64, args->Name, (long long)args->Large); lua_pushnumber(prv->Lua, args->Large); }
                else if (type & FD_DOUBLE) { log.trace("Setting arg '%s', Value: %.2f", args->Name, args->Double); lua_pushnumber(prv->Lua, args->Double); }
                else { lua_pushnil(prv->Lua); log.warning("Arg '%s' uses unrecognised type $%.8x", args->Name, type); }
                count++;

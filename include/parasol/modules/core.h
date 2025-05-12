@@ -2671,7 +2671,6 @@ struct Object { // Must be 64-bit aligned
 
    inline ERR set(FIELD FieldID, const FRGB &Value)     { return SetArray(this, FieldID|TFLOAT, (FLOAT *)&Value, 4); }
    inline ERR set(FIELD FieldID, int Value)             { return SetField(this, FieldID|TLONG, Value); }
-   inline ERR set(FIELD FieldID, long Value)            { return SetField(this, FieldID|TLONG, Value); }
    inline ERR set(FIELD FieldID, unsigned int Value)    { return SetField(this, FieldID|TLONG, Value); }
    inline ERR set(FIELD FieldID, int64_t Value)         { return SetField(this, FieldID|TLARGE, Value); }
    inline ERR set(FIELD FieldID, double Value)          { return SetField(this, FieldID|TDOUBLE, Value); }

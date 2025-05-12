@@ -107,12 +107,12 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
             }
          }
          else if (Self->Index < Self->ContentLength) {
-            log.warning("Disconnected before all content was downloaded (%" PF64 " of %" PF64 ")", Self->Index, Self->ContentLength);
+            log.warning("Disconnected before all content was downloaded (%" PF64 " of %" PF64 ")", (long long)Self->Index, (long long)Self->ContentLength);
             SET_ERROR(log, Self, Socket->Error != ERR::Okay ? Socket->Error : ERR::Disconnected);
             SetField(Self, FID_CurrentState, HGS::TERMINATED);
          }
          else {
-            log.trace("Orderly shutdown, received %" PF64 " of the expected %" PF64 " bytes.", Self->Index, Self->ContentLength);
+            log.trace("Orderly shutdown, received %" PF64 " of the expected %" PF64 " bytes.", (long long)Self->Index, (long long)Self->ContentLength);
             SetField(Self, FID_CurrentState, HGS::COMPLETED);
          }
       }
@@ -192,7 +192,7 @@ redo_upload:
                { "BufferSize", Self->WriteSize }
             }), error) != ERR::Okay) error = ERR::Failed;
          if (error > ERR::ExceptionThreshold) {
-            log.warning("Procedure %" PF64 " failed, aborting HTTP call.", Self->Outgoing.ProcedureID);
+            log.warning("Procedure %" PF64 " failed, aborting HTTP call.", (long long)Self->Outgoing.ProcedureID);
          }
          else len = Self->WriteOffset;
       }
@@ -212,7 +212,7 @@ redo_upload:
 
       if (error != ERR::Okay) log.warning("Input file read error: %s", GetErrorMsg(error));
 
-      LARGE size;
+      int64_t size;
       Self->flInput->get(FID_Size, &size);
 
       if ((Self->flInput->Position IS size) or (len IS 0)) {
@@ -241,7 +241,7 @@ redo_upload:
       LONG result, csize;
       ERR writeerror;
 
-      log.trace("Writing %d bytes (of expected %" PF64 ") to socket.  Chunked: %d", len, Self->ContentLength, Self->Chunked);
+      log.trace("Writing %d bytes (of expected %" PF64 ") to socket.  Chunked: %d", len, (long long)Self->ContentLength, Self->Chunked);
 
       if (Self->Chunked) {
          if (len & 0xf000)      { csize = 4+2; snprintf((char *)Self->WriteBuffer-6, 5, "%.4x", len); }
@@ -279,7 +279,7 @@ redo_upload:
          error = writeerror;
       }
 
-      log.trace("Outgoing index now %" PF64 " of %" PF64, Self->Index, Self->ContentLength);
+      log.trace("Outgoing index now %" PF64 " of %" PF64, (long long)Self->Index, (long long)Self->ContentLength);
    }
    else log.trace("Finishing (an error occurred (%d), or there is no more content to write to socket).", error);
 
@@ -295,7 +295,7 @@ redo_upload:
       // Check for multiple input files
 
       if ((Self->MultipleInput) and (!Self->flInput)) {
-         /*if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL)*/ log.msg("Sequential input stream has uploaded %" PF64 "/%" PF64 " bytes.", Self->Index, Self->ContentLength);
+         /*if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL)*/ log.msg("Sequential input stream has uploaded %" PF64 "/%" PF64 " bytes.", (long long)Self->Index, (long long)Self->ContentLength);
 
          // Open the next file
 
@@ -319,12 +319,12 @@ redo_upload:
 
          if (Self->Chunked) write_socket(Self, (UBYTE *)"0\r\n\r\n", 5, &result);
 
-         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Transfer complete - sent %" PF64 " bytes.", Self->TotalSent);
+         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Transfer complete - sent %" PF64 " bytes.", (long long)Self->TotalSent);
          Self->setCurrentState(HGS::SEND_COMPLETE);
          return ERR::Terminate;
       }
       else {
-         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sent %" PF64 " bytes of %" PF64, Self->Index, Self->ContentLength);
+         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sent %" PF64 " bytes of %" PF64, (long long)Self->Index, (long long)Self->ContentLength);
       }
    }
 
@@ -367,10 +367,10 @@ static ERR socket_incoming(objNetSocket *Socket)
 
    if (Self->CurrentState IS HGS::SENDING_CONTENT) {
       if (Self->ContentLength IS -1) {
-         log.warning("Incoming data while streaming content - %" PF64 " bytes already written.", Self->Index);
+         log.warning("Incoming data while streaming content - %" PF64 " bytes already written.", (long long)Self->Index);
       }
       else if (Self->Index < Self->ContentLength) {
-         log.warning("Incoming data while sending content - only %" PF64 "/%" PF64 " bytes written!", Self->Index, Self->ContentLength);
+         log.warning("Incoming data while sending content - only %" PF64 "/%" PF64 " bytes written!", (long long)Self->Index, (long long)Self->ContentLength);
       }
    }
 
@@ -479,7 +479,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   return ERR::Terminate;
                }
 
-               log.msg("Complete response header has been received.  Incoming Content: %" PF64, Self->ContentLength);
+               log.msg("Complete response header has been received.  Incoming Content: %" PF64, (long long)Self->ContentLength);
 
                if (Self->CurrentState != HGS::READING_CONTENT) {
                   Self->setCurrentState(HGS::READING_CONTENT);
@@ -593,7 +593,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   Self->SearchIndex = 0;
                }
                else {
-                  log.trace("%" PF64 " bytes of content is incoming.  Bytes Buffered: %d, Index: %" PF64, Self->ContentLength, len, Self->Index);
+                  log.trace("%" PF64 " bytes of content is incoming.  Bytes Buffered: %d, Index: %" PF64, (long long)Self->ContentLength, len, (long long)Self->Index);
 
                   if (len > 0) process_data(Self, Self->Response.data() + Self->SearchIndex + 4, len);
                }
@@ -762,7 +762,7 @@ static ERR socket_incoming(objNetSocket *Socket)
          // A limit of 64K per read session is acceptable with a time limit of 1/200 frames.
 
          LONG looplimit = (64 * 1024) / BUFFER_READ_SIZE;
-         LARGE timelimit = PreciseTime() + 5000000LL;
+         int64_t timelimit = PreciseTime() + 5000000LL;
 
          while (true) {
             len = BUFFER_READ_SIZE;
@@ -905,7 +905,7 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
    if (!Length) return ERR::Okay;
 
-   Self->setIndex((LARGE)Self->Index + (LARGE)Length); // Use Set() so that field subscribers can track progress with field monitoring
+   Self->setIndex((int64_t)Self->Index + (int64_t)Length); // Use Set() so that field subscribers can track progress with field monitoring
 
    if ((!Self->flOutput) and (Self->OutputFile)) {
       FL flags;
@@ -947,7 +947,7 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       else if (Self->Incoming.isScript()) {
          // For speed, the client will receive a direct pointer to the buffer memory via the 'mem' interface.
 
-         log.trace("Calling script procedure %" PF64, Self->Incoming.ProcedureID);
+         log.trace("Calling script procedure %" PF64, (long long)Self->Incoming.ProcedureID);
 
          if (sc::Call(Self->Incoming, std::to_array<ScriptArg>({
                { "HTTP",       Self,   FD_OBJECTPTR },
@@ -1166,7 +1166,7 @@ static ERR write_socket(extHTTP *Self, CPTR Buffer, LONG Length, LONG *Result)
 ** the client should check if the content is streamed in the event of a timeout and not necessarily assume failure.
 */
 
-static ERR timeout_manager(extHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR timeout_manager(extHTTP *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 

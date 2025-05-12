@@ -1104,7 +1104,7 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
 
 //********************************************************************************************************************
 
-static ERR flash_cursor(extDocument *Self, LARGE TimeElapsed, LARGE CurrentTime)
+static ERR flash_cursor(extDocument *Self, int64_t TimeElapsed, int64_t CurrentTime)
 {
    Self->CursorState ^= 1;
 

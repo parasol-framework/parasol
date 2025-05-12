@@ -141,7 +141,7 @@ large: The event ID is returned as a 64-bit integer.
 
 *********************************************************************************************************************/
 
-LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
+int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
 {
    pf::Log log(__FUNCTION__);
 
@@ -150,8 +150,8 @@ LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
    auto hash_subgroup = strhash(SubGroup) & 0x00ffffff;
    auto hash_event = strhash(Event);
 
-   LARGE event_id = LARGE(UBYTE(Group))<<56;
-   if ((SubGroup) and (SubGroup[0] != '*')) event_id |= LARGE(hash_subgroup)<<32;
+   int64_t event_id = int64_t(UBYTE(Group))<<56;
+   if ((SubGroup) and (SubGroup[0] != '*')) event_id |= int64_t(hash_subgroup)<<32;
    if ((Event) and (Event[0] != '*')) event_id |= hash_event;
 
    glEventNames[hash_subgroup] = SubGroup;
@@ -189,7 +189,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR *Handle)
+ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -204,7 +204,7 @@ ERR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR *Handle)
    }
 
    if (auto event = (struct eventsub *)malloc(sizeof(struct eventsub))) {
-      LARGE mask = 0xff00000000000000LL;
+      int64_t mask = 0xff00000000000000LL;
       if (EventID & 0x00ffffff00000000LL) mask |= 0x00ffffff00000000LL;
       if (EventID & 0x00000000ffffffffLL) mask |= 0x00000000ffffffffLL;
 

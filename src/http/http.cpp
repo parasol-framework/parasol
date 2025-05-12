@@ -162,8 +162,8 @@ class extHTTP : public objHTTP {
    LONG   ChunkLen;         // Length of the current chunk being processed (applies when reading the chunk data)
    LONG   ChunkIndex;
    TIMER  TimeoutManager;
-   LARGE  LastReceipt;      // Last time (microseconds) at which data was received
-   LARGE  TotalSent;        // Total number of bytes sent - exists for assisting debugging only
+   int64_t  LastReceipt;      // Last time (microseconds) at which data was received
+   int64_t  TotalSent;        // Total number of bytes sent - exists for assisting debugging only
    OBJECTID DialogWindow;
    LONG   ResponseIndex;    // Next element to write to in 'Buffer'
    LONG   SearchIndex;      // Current position of the CRLFCRLF search.
@@ -253,7 +253,7 @@ static ERR  write_socket(extHTTP *, CPTR, LONG, LONG *);
 static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &);
 static ERR  SET_Path(extHTTP *, CSTRING);
 static ERR  SET_Location(extHTTP *, CSTRING);
-static ERR  timeout_manager(extHTTP *, LARGE, LARGE);
+static ERR  timeout_manager(extHTTP *, int64_t, int64_t);
 static void socket_feedback(objNetSocket *, objClientSocket *, NTC);
 static ERR  socket_incoming(objNetSocket *);
 static ERR  socket_outgoing(objNetSocket *);

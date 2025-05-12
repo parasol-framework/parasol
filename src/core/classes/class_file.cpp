@@ -104,7 +104,7 @@ static ERR FILE_Init(extFile *);
 static ERR FILE_Watch(extFile *, struct fl::Watch *);
 
 static ERR SET_Path(extFile *, CSTRING);
-static ERR SET_Size(extFile *, LARGE);
+static ERR SET_Size(extFile *, int64_t);
 
 static ERR GET_ResolvedPath(extFile *, CSTRING *);
 
@@ -324,7 +324,7 @@ static ERR FILE_BufferContent(extFile *Self)
       }
    }
 
-   log.msg("File content now buffered in a %" PF64 " byte memory block.", Self->Size);
+   log.msg("File content now buffered in a %" PF64 " byte memory block.", (long long)Self->Size);
 
    close(Self->Handle);
    Self->Handle = -1;
@@ -1189,18 +1189,18 @@ static ERR FILE_Seek(extFile *Self, struct acSeek *Args)
 {
    pf::Log log;
 
-   LARGE oldpos = Self->Position;
+   int64_t oldpos = Self->Position;
 
    // Set the new setting for the Self->Position field
 
    if (Args->Position IS SEEK::START) {
-      Self->Position = (LARGE)Args->Offset;
+      Self->Position = (int64_t)Args->Offset;
    }
    else if (Args->Position IS SEEK::END) {
-      Self->Position = Self->get<LARGE>(FID_Size) - (LARGE)Args->Offset;
+      Self->Position = Self->get<int64_t>(FID_Size) - (int64_t)Args->Offset;
    }
    else if (Args->Position IS SEEK::CURRENT) {
-      Self->Position = Self->Position + (LARGE)Args->Offset;
+      Self->Position = Self->Position + (int64_t)Args->Offset;
    }
    else return log.warning(ERR::Args);
 
@@ -1216,9 +1216,9 @@ static ERR FILE_Seek(extFile *Self, struct acSeek *Args)
 
    if (Self->Handle IS -1) return log.warning(ERR::ObjectCorrupt);
 
-   LARGE ret;
+   int64_t ret;
    if ((ret = lseek64(Self->Handle, Self->Position, SEEK_SET)) != Self->Position) {
-      log.warning("Failed to Seek to new position of %" PF64 " (return %" PF64 ").", Self->Position, ret);
+      log.warning("Failed to Seek to new position of %" PF64 " (return %" PF64 ").", (long long)Self->Position, (long long)ret);
       Self->Position = oldpos;
       return ERR::SystemCall;
    }
@@ -1406,7 +1406,7 @@ are supported as targets.
 The optional !MFF Flags are used to filter events to those that are desired for monitoring.
 
 The client must provide a `Callback` that will be triggered when a monitored event is triggered.  The `Callback` must
-follow the format `ERR Routine(*File, STRING Path, LARGE Custom, LONG Flags)`
+follow the format `ERR Routine(*File, STRING Path, INT64 Custom, LONG Flags)`
 
 Each event will be delivered in the sequence that they are originally raised.  The `Flags` parameter will reflect the
 specific event that has occurred.  The `Custom` parameter is identical to the `Custom` argument originally passed to this
@@ -1880,7 +1880,7 @@ is returned as a 64-bit integer.
 
 *********************************************************************************************************************/
 
-static ERR GET_Handle(extFile *Self, LARGE *Value)
+static ERR GET_Handle(extFile *Self, int64_t *Value)
 {
    *Value = Self->Handle;
    return ERR::Okay;
@@ -2302,7 +2302,7 @@ The Position will always remain at zero if the file object represents a folder.
 
 *********************************************************************************************************************/
 
-static ERR SET_Position(extFile *Self, LARGE Value)
+static ERR SET_Position(extFile *Self, int64_t Value)
 {
    if (Self->initialised()) {
       return acSeekStart(Self, Value);
@@ -2345,7 +2345,7 @@ position being set to the end of the file.
 
 *********************************************************************************************************************/
 
-static ERR GET_Size(extFile *Self, LARGE *Size)
+static ERR GET_Size(extFile *Self, int64_t *Size)
 {
    pf::Log log;
 
@@ -2371,7 +2371,7 @@ static ERR GET_Size(extFile *Self, LARGE *Size)
       struct stat64 stats;
       if (!stat64(path, &stats)) {
          *Size = stats.st_size;
-         log.trace("The file size is %" PF64, *Size);
+         log.trace("The file size is %" PF64, (long long)*Size);
          return ERR::Okay;
       }
       else return convert_errno(errno, ERR::SystemCall);
@@ -2379,7 +2379,7 @@ static ERR GET_Size(extFile *Self, LARGE *Size)
    else return log.warning(ERR::ResolvePath);
 }
 
-static ERR SET_Size(extFile *Self, LARGE Size)
+static ERR SET_Size(extFile *Self, int64_t Size)
 {
    pf::Log log;
 
@@ -2411,7 +2411,7 @@ static ERR SET_Size(extFile *Self, LARGE Size)
          return ERR::Okay;
       }
       else {
-         log.warning("Failed to set file size to %" PF64, Size);
+         log.warning("Failed to set file size to %" PF64, (long long)Size);
          return ERR::SystemCall;
       }
    }
@@ -2433,7 +2433,7 @@ static ERR SET_Size(extFile *Self, LARGE Size)
       // Some filesystem drivers do not support truncation for the purpose of
       // enlarging files.  In this case, we have to write to the end of the file.
 
-      log.warning("%" PF64 " bytes, ftruncate: %s", Size, strerror(errno));
+      log.warning("%" PF64 " bytes, ftruncate: %s", (long long)Size, strerror(errno));
 
       if (Size > Self->Size) {
          CSTRING path;
@@ -2444,7 +2444,7 @@ static ERR SET_Size(extFile *Self, LARGE Size)
          if ((error = GET_ResolvedPath(Self, &path)) IS ERR::Okay) {
             struct statfs fstat;
             if (statfs(path, &fstat) != -1) {
-               if (Size < (LARGE)fstat.f_bavail * (LARGE)fstat.f_bsize) {
+               if (Size < (int64_t)fstat.f_bavail * (int64_t)fstat.f_bsize) {
                   log.msg("Attempting to use the write-past-boundary method.");
 
                   if (lseek64(Self->Handle, Size - 1, SEEK_SET) != -1) {
@@ -2500,7 +2500,7 @@ for comparison to the time stamps of other files.  For a parsed time structure, 
 
 *********************************************************************************************************************/
 
-static ERR GET_TimeStamp(extFile *Self, LARGE *Value)
+static ERR GET_TimeStamp(extFile *Self, int64_t *Value)
 {
    pf::Log log;
 

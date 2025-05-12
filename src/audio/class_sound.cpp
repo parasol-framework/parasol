@@ -73,7 +73,7 @@ static OBJECTPTR clSound = NULL;
 
 static ERR find_chunk(extSound *, objFile *, std::string_view);
 #ifdef USE_WIN32_PLAYBACK
-static ERR win32_audio_stream(extSound *, LARGE, LARGE);
+static ERR win32_audio_stream(extSound *, int64_t, int64_t);
 #endif
 
 //********************************************************************************************************************
@@ -120,7 +120,7 @@ static void onstop_event(LONG SampleHandle)
 // Called when the estimated time for playback is over.
 
 #ifdef _WIN32
-static ERR timer_playback_ended(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR timer_playback_ended(extSound *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    pf::Log log;
    log.trace("Sound streaming completed.");
@@ -1582,7 +1582,7 @@ playback position, either when the sample is next played, or immediately if it i
 
 *********************************************************************************************************************/
 
-static ERR SOUND_SET_Position(extSound *Self, LARGE Value)
+static ERR SOUND_SET_Position(extSound *Self, int64_t Value)
 {
    return Self->seekStart(Value);
 }
@@ -1669,7 +1669,7 @@ static ERR find_chunk(extSound *Self, objFile *File, std::string_view ChunkName)
 //********************************************************************************************************************
 
 #ifdef USE_WIN32_PLAYBACK
-static ERR win32_audio_stream(extSound *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR win32_audio_stream(extSound *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 

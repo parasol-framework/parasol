@@ -103,7 +103,7 @@ struct extCacheFile : public CacheFile {
 
    extCacheFile() {}
 
-   extCacheFile(std::string_view pPath, LARGE pSize, LARGE pTimestamp) {
+   extCacheFile(std::string_view pPath, int64_t pSize, int64_t pTimestamp) {
       FullPath  = pPath;
       Path      = FullPath.c_str();
       Locks     = 1;
@@ -122,10 +122,10 @@ struct extCacheFile : public CacheFile {
 class CacheFileIndex {
 public:
    std::string path;
-   LARGE timestamp;
-   LARGE size;
+   int64_t timestamp;
+   int64_t size;
 
-   CacheFileIndex(std::string Path, LARGE Timestamp, LARGE Size) {
+   CacheFileIndex(std::string Path, int64_t Timestamp, int64_t Size) {
       path      = Path;
       timestamp = Timestamp;
       size      = Size;
@@ -141,8 +141,8 @@ namespace std {
    struct hash<CacheFileIndex> {
       std::size_t operator()(const CacheFileIndex& k) const {
          return ((std::hash<std::string>()(k.path)
-            ^ (std::hash<LARGE>()(k.timestamp) << 1)) >> 1)
-            ^ (std::hash<LARGE>()(k.size) << 1);
+            ^ (std::hash<int64_t>()(k.timestamp) << 1)) >> 1)
+            ^ (std::hash<int64_t>()(k.size) << 1);
       }
    };
 }
@@ -235,7 +235,7 @@ const virtual_drive * get_fs(std::string_view Path)
 //********************************************************************************************************************
 // Assigned to a timer for the purpose of checking up on the expiry of cached files.
 
-ERR check_cache(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
+ERR check_cache(OBJECTPTR Subscriber, int64_t Elapsed, int64_t CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 
@@ -873,8 +873,8 @@ ERR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
    auto file = objFile::create { fl::Path(path), fl::Flags(FL::READ|FL::FILE) };
 
    if (file.ok()) {
-      auto file_size = file->get<LARGE>(FID_Size);
-      auto timestamp = file->get<LARGE>(FID_TimeStamp);
+      auto file_size = file->get<int64_t>(FID_Size);
+      auto timestamp = file->get<int64_t>(FID_TimeStamp);
 
       CacheFileIndex index(path, timestamp, file_size);
 
@@ -1537,8 +1537,8 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
       std::vector<BYTE> data(bufsize);
       error = ERR::Okay;
-      const LARGE STREAM_TIMEOUT = 10000LL;
-      LARGE time = PreciseTime() / 1000LL;
+      const int64_t STREAM_TIMEOUT = 10000LL;
+      int64_t time = PreciseTime() / 1000LL;
       while (srcfile->Position < srcfile->Size) {
          LONG len;
          error = srcfile->read(data.data(), bufsize, &len);
@@ -1551,10 +1551,10 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
          if (len) time = PreciseTime() / 1000LL;
          else {
-            log.msg("Failed to read any data, position %" PF64 " / %" PF64 ".", srcfile->Position, srcfile->Size);
+            log.msg("Failed to read any data, position %" PF64 " / %" PF64 ".", (long long)srcfile->Position, (long long)srcfile->Size);
 
             if ((PreciseTime() / 1000LL) - time > STREAM_TIMEOUT) {
-               log.warning("Timeout - stopped reading at offset %" PF64 " of %" PF64 "", srcfile->Position, srcfile->Size);
+               log.warning("Timeout - stopped reading at offset %" PF64 " of %" PF64 "", (long long)srcfile->Position, (long long)srcfile->Size);
                return ERR::TimeOut;
             }
          }
@@ -1803,7 +1803,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       objStorageDevice::create device = { fl::Volume(dest) };
       if (device.ok()) {
          if ((device->BytesFree >= 0) and (device->BytesFree - 1024LL <= feedback.Size)) {
-            log.warning("Not enough space on device (%" PF64 "/%" PF64 " < %" PF64 ")", device->BytesFree, device->DeviceSize, (LARGE)feedback.Size);
+            log.warning("Not enough space on device (%" PF64 "/%" PF64 " < %" PF64 ")", (long long)device->BytesFree, (long long)device->DeviceSize, (long long)feedback.Size);
             return ERR::OutOfSpace;
          }
       }
@@ -2491,7 +2491,7 @@ restart:
 
 #ifdef _WIN32
 
-   LARGE bytes_avail, total_size;
+   int64_t bytes_avail, total_size;
 
    if (location.empty()) error = ResolvePath(Path, RSF::NO_FILE_CHECK, &location);
    else error = ERR::Okay;

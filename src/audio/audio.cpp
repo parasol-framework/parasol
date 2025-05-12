@@ -71,7 +71,7 @@ static void audio_stopped_event(extAudio &, LONG);
 static ERR set_channel_volume(extAudio *, struct AudioChannel *);
 static void load_config(extAudio *);
 static ERR init_audio(extAudio *);
-static ERR audio_timer(extAudio *, LARGE, LARGE);
+static ERR audio_timer(extAudio *, int64_t, int64_t);
 
 #include "audio.h"
 

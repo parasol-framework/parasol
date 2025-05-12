@@ -213,7 +213,7 @@ static ERR load_file(extScintilla *, CSTRING);
 static void calc_longest_line(extScintilla *);
 static void key_event(evKey *, LONG, extScintilla *);
 static void report_event(extScintilla *, SEF Event);
-static ERR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime);
+static ERR idle_timer(extScintilla *Self, int64_t Elapsed, int64_t CurrentTime);
 extern ERR init_search(void);
 
 //********************************************************************************************************************
@@ -1858,7 +1858,7 @@ EventCallback: Provides callbacks for global state changes.
 Set this field with a function reference to receive event notifications.  It must be set in conjunction with
 #EventFlags so that you can select the type of notifications that will be received.
 
-The callback function must be in the format `Function(*Scintilla, LARGE EventFlag)`.
+The callback function must be in the format `Function(*Scintilla, int64_t EventFlag)`.
 
 The EventFlag value will indicate the event that occurred.  Please see the #EventFlags field for a list of
 supported events and additional details.
@@ -2365,7 +2365,7 @@ static void report_event(extScintilla *Self, SEF Event)
          routine(Self, Event, Self->EventCallback.Meta);
       }
       else if (Self->EventCallback.isScript()) {
-         sc::Call(Self->EventCallback, std::to_array<ScriptArg>({ { "Scintilla", Self, FD_OBJECTPTR }, { "EventFlags", LARGE(Event) } }));
+         sc::Call(Self->EventCallback, std::to_array<ScriptArg>({ { "Scintilla", Self, FD_OBJECTPTR }, { "EventFlags", int64_t(Event) } }));
       }
    }
 }
@@ -2428,7 +2428,7 @@ static void calc_longest_line(extScintilla *Self)
 
 //********************************************************************************************************************
 
-static ERR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR idle_timer(extScintilla *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    AdjustLogLevel(3);
    Self->API->panIdleEvent();
