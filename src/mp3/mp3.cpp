@@ -288,7 +288,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
    len -= int64_t(prv->PaddingEnd * prv->info.channels) * sizeof(WORD);
    Self->setLength(len);
 
-   log.msg("Info header detected.  Total Frames: %d, Samples: %d, Track Time: %.2fs, Byte Length: %" PF64 ", Padding: %d/%d", prv->TotalFrames, prv->TotalSamples, seconds_len, len, prv->PaddingStart, prv->PaddingEnd);
+   log.msg("Info header detected.  Total Frames: %d, Samples: %d, Track Time: %.2fs, Byte Length: %" PF64 ", Padding: %d/%d", prv->TotalFrames, prv->TotalSamples, seconds_len, (long long)len, prv->PaddingStart, prv->PaddingEnd);
 
    return 1;
 }
@@ -437,7 +437,7 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
 
       // Read as much input as possible.
 
-      log.trace("Writing %" PF64 " max bytes to %d, Avail. Compressed: %d bytes", Args->Length-pos, prv->WriteOffset, prv->CompressedOffset);
+      log.trace("Writing %" PF64 " max bytes to %d, Avail. Compressed: %d bytes", (long long)Args->Length-pos, prv->WriteOffset, prv->CompressedOffset);
 
       if ((prv->CompressedOffset < (LONG)prv->Input.size()) and (!prv->EndOfFile) and (!no_more_input)) {
          LONG result;
@@ -534,10 +534,10 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
       // at the correct position.
 
       if (Self->Length != prv->WriteOffset) {
-         log.detail("Decode complete, changing sample length from %d to %" PF64 " bytes.  Decoded %d frames.", Self->Length, prv->WriteOffset, prv->FramesProcessed);
+         log.detail("Decode complete, changing sample length from %d to %" PF64 " bytes.  Decoded %d frames.", Self->Length, (long long)prv->WriteOffset, prv->FramesProcessed);
          Self->setLength(prv->WriteOffset);
       }
-      else log.detail("Decoding of %d MP3 frames complete, output %" PF64 " bytes.", prv->FramesProcessed, prv->WriteOffset);
+      else log.detail("Decoding of %d MP3 frames complete, output %" PF64 " bytes.", prv->FramesProcessed, (long long)prv->WriteOffset);
    }
 
    Self->Position = prv->WriteOffset;
@@ -635,7 +635,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
       LONG active;
       if (Self->get(FID_Active, &active) IS ERR::Okay) {
          if (active) {
-            log.branch("Resetting state of active sample, seek to byte %" PF64, prv->WriteOffset);
+            log.branch("Resetting state of active sample, seek to byte %" PF64, (long long)prv->WriteOffset);
             Self->deactivate();
             Self->Position = prv->WriteOffset;
             Self->activate();

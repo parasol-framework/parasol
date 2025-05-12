@@ -242,7 +242,7 @@ static ERR SOUND_Activate(extSound *Self)
 {
    pf::Log log;
 
-   log.traceBranch("Position: %" PF64, Self->Position);
+   log.traceBranch("Position: %" PF64, (long long)Self->Position);
 
    if (!Self->Length) return log.warning(ERR::FieldNotSet);
 
@@ -573,7 +573,7 @@ static ERR SOUND_Enable(extSound *Self)
 
 #ifdef USE_WIN32_PLAYBACK
    if (!Self->Handle) {
-      log.msg("Playing back from position %" PF64, Self->Position);
+      log.msg("Playing back from position %" PF64, (long long)Self->Position);
       if ((Self->Flags & SDF::LOOP) != SDF::NIL) sndPlay((PlatformData *)Self->PlatformData, TRUE, Self->Position);
       else sndPlay((PlatformData *)Self->PlatformData, FALSE, Self->Position);
    }
@@ -927,7 +927,7 @@ static ERR SOUND_Read(extSound *Self, struct acRead *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   log.traceBranch("Length: %d, Offset: %" PF64, Args->Length, Self->Position);
+   log.traceBranch("Length: %d, Offset: %" PF64, Args->Length, (long long)Self->Position);
 
    if (Args->Length <= 0) {
       Args->Result = 0;
@@ -1013,7 +1013,7 @@ static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
       Self->Position &= ~align;
    }
 
-   log.traceBranch("Seek to %" PF64 " + %d", Self->Position, Self->DataOffset);
+   log.traceBranch("Seek to %" PF64 " + %d", (long long)Self->Position, Self->DataOffset);
 
    pf::ScopedObjectLock<extAudio> audio(Self->AudioID, 2000);
    if (audio.granted()) {
