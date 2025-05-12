@@ -355,7 +355,7 @@
 <p>The Watch() method configures event based reporting for changes to any file or folder in the file system. The capabilities of this method are dependent on the host platform, with Windows and Linux systems being able to support most of the current feature set.</p>
 <p>The path that will be monitored is determined by the File object's <fl>Path</fl> field.  Both files and folders are supported as targets.</p>
 <p>The optional <lk>MFF</lk> Flags are used to filter events to those that are desired for monitoring.</p>
-<p>The client must provide a <code>Callback</code> that will be triggered when a monitored event is triggered.  The <code>Callback</code> must follow the format <code>ERR Routine(*File, STRING Path, LARGE Custom, LONG Flags)</code></p>
+<p>The client must provide a <code>Callback</code> that will be triggered when a monitored event is triggered.  The <code>Callback</code> must follow the format <code>ERR Routine(*File, STRING Path, INT64 Custom, LONG Flags)</code></p>
 <p>Each event will be delivered in the sequence that they are originally raised.  The <code>Flags</code> parameter will reflect the specific event that has occurred.  The <code>Custom</code> parameter is identical to the <code>Custom</code> argument originally passed to this method.  The <code>Path</code> is a string that is relative to the File's <fl>Path</fl> field.</p>
 <p>If the callback routine returns <code>ERR::Terminate</code>, the watch will be disabled.  It is also possible to disable an existing watch by calling this method with no parameters, or by setting the <code>Flags</code> parameter to <code>0</code>.</p>
       </description>
