@@ -106,9 +106,9 @@
     <method>
       <name>DeleteLine</name>
       <comment>Deletes a line.</comment>
-      <prototype>ERR sci::DeleteLine(OBJECTPTR Object, LONG Line)</prototype>
+      <prototype>ERR sci::DeleteLine(OBJECTPTR Object, INT Line)</prototype>
       <input>
-        <param type="LONG" name="Line">The number of the line to delete.  Indexing starts from 0.</param>
+        <param type="INT" name="Line">The number of the line to delete.  Indexing starts from 0.</param>
       </input>
       <description>
 <p>This method will delete a single line at the position indicated by the Line parameter.  If no parameters are provided or the Line parameter is less than zero, the line at the current cursor position will be deleted.  If the index exceeds the total number of available lines, the last available line will be targeted.</p>
@@ -118,11 +118,11 @@
     <method>
       <name>GetLine</name>
       <comment>Copies the text content of any line to a user-supplied buffer.</comment>
-      <prototype>ERR sci::GetLine(OBJECTPTR Object, LONG Line, STRING Buffer, LONG Length)</prototype>
+      <prototype>ERR sci::GetLine(OBJECTPTR Object, INT Line, STRING Buffer, INT Length)</prototype>
       <input>
-        <param type="LONG" name="Line">The index of the line to retrieve.</param>
+        <param type="INT" name="Line">The index of the line to retrieve.</param>
         <param type="STRING" name="Buffer">The destination buffer.</param>
-        <param type="LONG" name="Length">The byte size of the <code>Buffer</code>.</param>
+        <param type="INT" name="Length">The byte size of the <code>Buffer</code>.</param>
       </input>
       <description>
 <p>This method will retrieve the string for a <code>Line</code> at a given index.  The string is copied to a user supplied <code>Buffer</code> of the indicated <code>Length</code> (in bytes).</p>
@@ -132,11 +132,11 @@
     <method>
       <name>GetPos</name>
       <comment>Returns the byte position of a given line and column number.</comment>
-      <prototype>ERR sci::GetPos(OBJECTPTR Object, LONG Line, LONG Column, LONG * Pos)</prototype>
+      <prototype>ERR sci::GetPos(OBJECTPTR Object, INT Line, INT Column, INT * Pos)</prototype>
       <input>
-        <param type="LONG" name="Line">Line index</param>
-        <param type="LONG" name="Column">Column index</param>
-        <param type="LONG *" name="Pos">The byte position is returned in this parameter.</param>
+        <param type="INT" name="Line">Line index</param>
+        <param type="INT" name="Column">Column index</param>
+        <param type="INT *" name="Pos">The byte position is returned in this parameter.</param>
       </input>
       <description>
 <p>This method converts a <code>Line</code> and <code>Column</code> index to the equivalent byte position within the text document.</p>
@@ -146,9 +146,9 @@
     <method>
       <name>GotoLine</name>
       <comment>Moves the cursor to any line in the document.</comment>
-      <prototype>ERR sci::GotoLine(OBJECTPTR Object, LONG Line)</prototype>
+      <prototype>ERR sci::GotoLine(OBJECTPTR Object, INT Line)</prototype>
       <input>
-        <param type="LONG" name="Line">The line index to move to.</param>
+        <param type="INT" name="Line">The line index to move to.</param>
       </input>
       <description>
 <p>This method moves the cursor to a given line index.  If the index is greater than the total number of available lines, the cursor is moved to the last line in the document.  A line index of less than zero is invalid.</p>
@@ -158,10 +158,10 @@
     <method>
       <name>InsertText</name>
       <comment>Inserts text into a document.</comment>
-      <prototype>ERR sci::InsertText(OBJECTPTR Object, CSTRING String, LONG Pos)</prototype>
+      <prototype>ERR sci::InsertText(OBJECTPTR Object, CSTRING String, INT Pos)</prototype>
       <input>
         <param type="CSTRING" name="String">A text string to add.</param>
-        <param type="LONG" name="Pos">-1 inserts at the current cursor position, -2 replaces currently selected text, zero or above inserts at the character index indicated.</param>
+        <param type="INT" name="Pos">-1 inserts at the current cursor position, -2 replaces currently selected text, zero or above inserts at the character index indicated.</param>
       </input>
       <description>
 <p>Use InsertText to insert a string at any point in the document (if adding text to the end of the document, we recommend using data channels instead).</p>
@@ -172,11 +172,11 @@
     <method>
       <name>ReplaceLine</name>
       <comment>Replaces a line with new text content.</comment>
-      <prototype>ERR sci::ReplaceLine(OBJECTPTR Object, LONG Line, CSTRING String, LONG Length)</prototype>
+      <prototype>ERR sci::ReplaceLine(OBJECTPTR Object, INT Line, CSTRING String, INT Length)</prototype>
       <input>
-        <param type="LONG" name="Line">Index of the line being targeted.</param>
+        <param type="INT" name="Line">Index of the line being targeted.</param>
         <param type="CSTRING" name="String">The new string that will replace the line.</param>
-        <param type="LONG" name="Length">The number of characters to replace the target with, or -1 for the entire source string.</param>
+        <param type="INT" name="Length">The number of characters to replace the target with, or -1 for the entire source string.</param>
       </input>
       <description>
 <p>This method will replace an entire line with a new text string.  If the new string contains line feeds, then multiple lines will be inserted at the target position.  It is possible to limit the number of characters inserted from the source string by setting the Length parameter.  To insert all characters from the source string, set a Length of -1.</p>
@@ -186,13 +186,13 @@
     <method>
       <name>ReplaceText</name>
       <comment>Replaces all text within an entire document or limited range.</comment>
-      <prototype>ERR sci::ReplaceText(OBJECTPTR Object, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End)</prototype>
+      <prototype>ERR sci::ReplaceText(OBJECTPTR Object, CSTRING Find, CSTRING Replace, STF Flags, INT Start, INT End)</prototype>
       <input>
         <param type="CSTRING" name="Find">The keyword string to find.</param>
         <param type="CSTRING" name="Replace">The string that will replace the keyword.</param>
         <param type="STF" name="Flags" lookup="STF">Optional flags.</param>
-        <param type="LONG" name="Start">The start of the search - set to zero if covering the entire document.  If -1, starts from the current cursor position.</param>
-        <param type="LONG" name="End">The end of the search - set to -1 if covering the entire document.</param>
+        <param type="INT" name="Start">The start of the search - set to zero if covering the entire document.  If -1, starts from the current cursor position.</param>
+        <param type="INT" name="End">The end of the search - set to -1 if covering the entire document.</param>
       </input>
       <description>
 <p>The ReplaceText method will replace all instances of the Find string with the content of the Replace string, between a given Start and End point.  The <code>STF::CASE</code>, <code>STF::SCAN_SELECTION</code> and <code>STF::EXPRESSION</code> are valid flag options for this method (see FindText for details).</p>
@@ -202,10 +202,10 @@
     <method>
       <name>ScrollToPoint</name>
       <comment>Scrolls text by moving the Page.</comment>
-      <prototype>ERR sci::ScrollToPoint(OBJECTPTR Object, LONG X, LONG Y)</prototype>
+      <prototype>ERR sci::ScrollToPoint(OBJECTPTR Object, INT X, INT Y)</prototype>
       <input>
-        <param type="LONG" name="X">New horizontal position.</param>
-        <param type="LONG" name="Y">New vertical position.</param>
+        <param type="INT" name="X">New horizontal position.</param>
+        <param type="INT" name="Y">New vertical position.</param>
       </input>
       <description>
 <p>This method will scroll text in the Scintilla document by moving the page position.</p>
@@ -215,10 +215,10 @@
     <method>
       <name>SelectRange</name>
       <comment>Selects a range of text, can also deselect all text.</comment>
-      <prototype>ERR sci::SelectRange(OBJECTPTR Object, LONG Start, LONG End)</prototype>
+      <prototype>ERR sci::SelectRange(OBJECTPTR Object, INT Start, INT End)</prototype>
       <input>
-        <param type="LONG" name="Start">The character at which the selection will start.</param>
-        <param type="LONG" name="End">The character at which the selection will end.  If negative, the last character in the document will be targeted.</param>
+        <param type="INT" name="Start">The character at which the selection will start.</param>
+        <param type="INT" name="End">The character at which the selection will end.  If negative, the last character in the document will be targeted.</param>
       </input>
       <description>
 <p>This method will select an area of text between a start and end point, measured in characters.  It can also deselect all text if no arguments are provided.</p>

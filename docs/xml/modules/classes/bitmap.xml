@@ -170,9 +170,9 @@
     <method>
       <name>Compress</name>
       <comment>Compresses bitmap data to save memory.</comment>
-      <prototype>ERR bmp::Compress(OBJECTPTR Object, LONG Level)</prototype>
+      <prototype>ERR bmp::Compress(OBJECTPTR Object, INT Level)</prototype>
       <input>
-        <param type="LONG" name="Level">Level of compression.  Zero uses a default setting (recommended), the maximum is 10.</param>
+        <param type="INT" name="Level">Level of compression.  Zero uses a default setting (recommended), the maximum is 10.</param>
       </input>
       <description>
 <p>A bitmap can be compressed with the CompressBitmap() method to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
@@ -225,16 +225,16 @@
     <method>
       <name>CopyArea</name>
       <comment>Copies a rectangular area from one bitmap to another.</comment>
-      <prototype>ERR bmp::CopyArea(OBJECTPTR Object, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+      <prototype>ERR bmp::CopyArea(OBJECTPTR Object, objBitmap * DestBitmap, BAF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</prototype>
       <input>
         <param type="objBitmap *" name="DestBitmap">The target bitmap.</param>
         <param type="BAF" name="Flags" lookup="BAF">Optional flags.</param>
-        <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
-        <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
-        <param type="LONG" name="Width">The width of the area.</param>
-        <param type="LONG" name="Height">The height of the area.</param>
-        <param type="LONG" name="XDest">The horizontal position to copy the area to.</param>
-        <param type="LONG" name="YDest">The vertical position to copy the area to.</param>
+        <param type="INT" name="X">The horizontal position of the area to be copied.</param>
+        <param type="INT" name="Y">The vertical position of the area to be copied.</param>
+        <param type="INT" name="Width">The width of the area.</param>
+        <param type="INT" name="Height">The height of the area.</param>
+        <param type="INT" name="XDest">The horizontal position to copy the area to.</param>
+        <param type="INT" name="YDest">The vertical position to copy the area to.</param>
       </input>
       <description>
 <p>This method is a proxy for <function module="Display">CopyArea</function>.</p>
@@ -249,9 +249,9 @@
     <method>
       <name>Decompress</name>
       <comment>Decompresses a compressed bitmap.</comment>
-      <prototype>ERR bmp::Decompress(OBJECTPTR Object, LONG RetainData)</prototype>
+      <prototype>ERR bmp::Decompress(OBJECTPTR Object, INT RetainData)</prototype>
       <input>
-        <param type="LONG" name="RetainData">Retains the compression data if <code>true</code>.</param>
+        <param type="INT" name="RetainData">Retains the compression data if <code>true</code>.</param>
       </input>
       <description>
 <p>The Decompress() method is used to restore a compressed bitmap to its original state.  If the bitmap is not compressed, the method does nothing.</p>
@@ -281,13 +281,13 @@
     <method>
       <name>DrawRectangle</name>
       <comment>Draws rectangles, both filled and unfilled.</comment>
-      <prototype>ERR bmp::DrawRectangle(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
+      <prototype>ERR bmp::DrawRectangle(OBJECTPTR Object, INT X, INT Y, INT Width, INT Height, UINT Colour, BAF Flags)</prototype>
       <input>
-        <param type="LONG" name="X">The left-most coordinate of the rectangle.</param>
-        <param type="LONG" name="Y">The top-most coordinate of the rectangle.</param>
-        <param type="LONG" name="Width">The width of the rectangle.</param>
-        <param type="LONG" name="Height">The height of the rectangle.</param>
-        <param type="ULONG" name="Colour">The colour index to use for the rectangle.</param>
+        <param type="INT" name="X">The left-most coordinate of the rectangle.</param>
+        <param type="INT" name="Y">The top-most coordinate of the rectangle.</param>
+        <param type="INT" name="Width">The width of the rectangle.</param>
+        <param type="INT" name="Height">The height of the rectangle.</param>
+        <param type="UINT" name="Colour">The colour index to use for the rectangle.</param>
         <param type="BAF" name="Flags" lookup="BAF">Supports <code>FILL</code> and <code>BLEND</code>.</param>
       </input>
       <description>
@@ -302,13 +302,13 @@
     <method>
       <name>GetColour</name>
       <comment>Converts Red, Green, Blue components into a single colour value.</comment>
-      <prototype>ERR bmp::GetColour(OBJECTPTR Object, LONG Red, LONG Green, LONG Blue, LONG Alpha, ULONG * Colour)</prototype>
+      <prototype>ERR bmp::GetColour(OBJECTPTR Object, INT Red, INT Green, INT Blue, INT Alpha, UINT * Colour)</prototype>
       <input>
-        <param type="LONG" name="Red">Red component from 0 - 255.</param>
-        <param type="LONG" name="Green">Green component from 0 - 255.</param>
-        <param type="LONG" name="Blue">Blue component value from 0 - 255.</param>
-        <param type="LONG" name="Alpha">Alpha component value from 0 - 255.</param>
-        <param type="ULONG *" name="Colour">The resulting colour value will be returned here.</param>
+        <param type="INT" name="Red">Red component from 0 - 255.</param>
+        <param type="INT" name="Green">Green component from 0 - 255.</param>
+        <param type="INT" name="Blue">Blue component value from 0 - 255.</param>
+        <param type="INT" name="Alpha">Alpha component value from 0 - 255.</param>
+        <param type="UINT *" name="Colour">The resulting colour value will be returned here.</param>
       </input>
       <description>
 <p>The GetColour() method is used to convert <code>Red</code>, <code>Green</code>, <code>Blue</code> and <code>Alpha</code> colour components into a single colour index that can be used for directly writing colours to the bitmap.  The result is returned in the <code>Colour</code> parameter.</p>
@@ -339,14 +339,14 @@
     <method>
       <name>SetClipRegion</name>
       <comment>Sets a clipping region for a bitmap object.</comment>
-      <prototype>ERR bmp::SetClipRegion(OBJECTPTR Object, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
+      <prototype>ERR bmp::SetClipRegion(OBJECTPTR Object, INT Number, INT Left, INT Top, INT Right, INT Bottom, INT Terminate)</prototype>
       <input>
-        <param type="LONG" name="Number">The number of the clip region to set.</param>
-        <param type="LONG" name="Left">The horizontal start of the clip region.</param>
-        <param type="LONG" name="Top">The vertical start of the clip region.</param>
-        <param type="LONG" name="Right">The right-most edge of the clip region.</param>
-        <param type="LONG" name="Bottom">The bottom-most edge of the clip region.</param>
-        <param type="LONG" name="Terminate">Set to <code>true</code> if this is the last clip region in the list, otherwise <code>false</code>.</param>
+        <param type="INT" name="Number">The number of the clip region to set.</param>
+        <param type="INT" name="Left">The horizontal start of the clip region.</param>
+        <param type="INT" name="Top">The vertical start of the clip region.</param>
+        <param type="INT" name="Right">The right-most edge of the clip region.</param>
+        <param type="INT" name="Bottom">The bottom-most edge of the clip region.</param>
+        <param type="INT" name="Terminate">Set to <code>true</code> if this is the last clip region in the list, otherwise <code>false</code>.</param>
       </input>
       <description>
 <p>This method is a proxy for <function module="Display">SetClipRegion</function>.</p>

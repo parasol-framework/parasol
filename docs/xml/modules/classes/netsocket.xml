@@ -91,10 +91,10 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>Connect</name>
       <comment>Connects a NetSocket to an address.</comment>
-      <prototype>ERR ns::Connect(OBJECTPTR Object, CSTRING Address, LONG Port)</prototype>
+      <prototype>ERR ns::Connect(OBJECTPTR Object, CSTRING Address, INT Port)</prototype>
       <input>
         <param type="CSTRING" name="Address">String containing either a domain name (e.g. <code>www.google.com</code>) or an IP address (e.g. <code>123.123.123.123</code>)</param>
-        <param type="LONG" name="Port">Remote port to connect to.</param>
+        <param type="INT" name="Port">Remote port to connect to.</param>
       </input>
       <description>
 <p>This method initiates the connection process with a target IP address.  The address to connect to can be specified either as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in standard IP notation.</p>
@@ -164,12 +164,12 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>ReadMsg</name>
       <comment>Read a message from the socket.</comment>
-      <prototype>ERR ns::ReadMsg(OBJECTPTR Object, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC)</prototype>
+      <prototype>ERR ns::ReadMsg(OBJECTPTR Object, APTR * Message, INT * Length, INT * Progress, INT * CRC)</prototype>
       <input>
         <param type="APTR *" name="Message">A pointer to the message buffer will be placed here if a message has been received.</param>
-        <param type="LONG *" name="Length">The length of the message is returned here.</param>
-        <param type="LONG *" name="Progress">The number of bytes that have been read for the incoming message.</param>
-        <param type="LONG *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
+        <param type="INT *" name="Length">The length of the message is returned here.</param>
+        <param type="INT *" name="Progress">The number of bytes that have been read for the incoming message.</param>
+        <param type="INT *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
       </input>
       <description>
 <p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the <method>WriteMsg</method> method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
@@ -189,10 +189,10 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>WriteMsg</name>
       <comment>Writes a message to the socket.</comment>
-      <prototype>ERR ns::WriteMsg(OBJECTPTR Object, APTR Message, LONG Length)</prototype>
+      <prototype>ERR ns::WriteMsg(OBJECTPTR Object, APTR Message, INT Length)</prototype>
       <input>
         <param type="APTR" name="Message">Pointer to the message to send.</param>
-        <param type="LONG" name="Length">The length of the message.</param>
+        <param type="INT" name="Length">The length of the message.</param>
       </input>
       <description>
 <p>Messages can be written to sockets with the WriteMsg method and read back by the receiver with <method>ReadMsg</method>.  The message data is sent through the <action>Write</action> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
@@ -403,9 +403,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
   </types>
   <structs>
     <struct name="IPAddress">
-      <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
+      <field name="Data" type="INT" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
       <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
-      <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
+      <field name="Pad" type="INT">Unused padding for 64-bit alignment</field>
     </struct>
 
     <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
@@ -415,7 +415,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
       <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
       <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalSockets" type="LONG">Count of all created sockets</field>
+      <field name="TotalSockets" type="INT">Count of all created sockets</field>
     </struct>
 
   </structs>

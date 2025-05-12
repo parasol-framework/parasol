@@ -180,11 +180,11 @@
     <method>
       <name>CallFunction</name>
       <comment>Executes any registered function in the currently open document.</comment>
-      <prototype>ERR doc::CallFunction(OBJECTPTR Object, CSTRING Function, struct ScriptArg * Args, LONG TotalArgs)</prototype>
+      <prototype>ERR doc::CallFunction(OBJECTPTR Object, CSTRING Function, struct ScriptArg * Args, INT TotalArgs)</prototype>
       <input>
         <param type="CSTRING" name="Function">The name of the function that will be called.</param>
         <param type="struct ScriptArg *" name="Args">Pointer to an optional list of parameters to pass to the procedure.</param>
-        <param type="LONG" name="TotalArgs">The total number of entries in the <code>Args</code> array.</param>
+        <param type="INT" name="TotalArgs">The total number of entries in the <code>Args</code> array.</param>
       </input>
       <description>
 <p>This method will execute any registered function in the currently open document.  The name of the function must be specified in the first parameter and that function must exist in the document's default script.  If the document contains multiple scripts, then a specific script can be referenced by using the name format <code>script.function</code> where <code>script</code> is the name of the script that contains the function.</p>
@@ -199,10 +199,10 @@
     <method>
       <name>Edit</name>
       <comment>Activates a user editing section within a document.</comment>
-      <prototype>ERR doc::Edit(OBJECTPTR Object, CSTRING Name, LONG Flags)</prototype>
+      <prototype>ERR doc::Edit(OBJECTPTR Object, CSTRING Name, INT Flags)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the edit cell that will be activated.</param>
-        <param type="LONG" name="Flags">Optional flags.</param>
+        <param type="INT" name="Flags">Optional flags.</param>
       </input>
       <description>
 <p>The Edit() method will manually activate an editable section in the document.  This results in the text cursor being placed at the start of the editable section, where the user may immediately begin editing the section via the keyboard.</p>
@@ -218,11 +218,11 @@
     <method>
       <name>FindIndex</name>
       <comment>Searches the document stream for an index, returning the start and end points if found.</comment>
-      <prototype>ERR doc::FindIndex(OBJECTPTR Object, CSTRING Name, LONG * Start, LONG * End)</prototype>
+      <prototype>ERR doc::FindIndex(OBJECTPTR Object, CSTRING Name, INT * Start, INT * End)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the index to search for.</param>
-        <param type="LONG *" name="Start">The byte position of the index is returned in this parameter.</param>
-        <param type="LONG *" name="End">The byte position at which the index ends is returned in this parameter.</param>
+        <param type="INT *" name="Start">The byte position of the index is returned in this parameter.</param>
+        <param type="INT *" name="End">The byte position at which the index ends is returned in this parameter.</param>
       </input>
       <description>
 <p>Use the FindIndex() method to search for indexes that have been declared in a loaded document.  Indexes are declared using the <code>&lt;index/&gt;</code> tag and must be given a unique name.  They are useful for marking areas of interest - such as a section of content that may change during run-time viewing, or as place-markers for rapid scrolling to an exact document position.</p>
@@ -256,12 +256,12 @@
     <method>
       <name>InsertText</name>
       <comment>Inserts new content into a loaded document (raw text format).</comment>
-      <prototype>ERR doc::InsertText(OBJECTPTR Object, CSTRING Text, LONG Index, LONG Char, LONG Preformat)</prototype>
+      <prototype>ERR doc::InsertText(OBJECTPTR Object, CSTRING Text, INT Index, INT Char, INT Preformat)</prototype>
       <input>
         <param type="CSTRING" name="Text">A UTF-8 text string.</param>
-        <param type="LONG" name="Index">Reference to a <code>TEXT</code> control code that will receive the content.  If <code>-1</code>, the text will be inserted at the end of the document stream.</param>
-        <param type="LONG" name="Char">A character offset within the <code>TEXT</code> control code that will be injected with content.  If <code>-1</code>, the text will be injected at the end of the target string.</param>
-        <param type="LONG" name="Preformat">If <code>true</code>, the text will be treated as pre-formatted (all whitespace, including consecutive whitespace will be recognised).</param>
+        <param type="INT" name="Index">Reference to a <code>TEXT</code> control code that will receive the content.  If <code>-1</code>, the text will be inserted at the end of the document stream.</param>
+        <param type="INT" name="Char">A character offset within the <code>TEXT</code> control code that will be injected with content.  If <code>-1</code>, the text will be injected at the end of the target string.</param>
+        <param type="INT" name="Preformat">If <code>true</code>, the text will be treated as pre-formatted (all whitespace, including consecutive whitespace will be recognised).</param>
       </input>
       <description>
 <p>Use the InsertText() method to insert new content into an initialised document.</p>
@@ -279,10 +279,10 @@
     <method>
       <name>InsertXML</name>
       <comment>Inserts new content into a loaded document (XML format).</comment>
-      <prototype>ERR doc::InsertXML(OBJECTPTR Object, CSTRING XML, LONG Index)</prototype>
+      <prototype>ERR doc::InsertXML(OBJECTPTR Object, CSTRING XML, INT Index)</prototype>
       <input>
         <param type="CSTRING" name="XML">An XML string in RIPL format.</param>
-        <param type="LONG" name="Index">The byte position at which to insert the new content.</param>
+        <param type="INT" name="Index">The byte position at which to insert the new content.</param>
       </input>
       <description>
 <p>Use the InsertXML() method to insert new content into an initialised document.</p>
@@ -301,11 +301,11 @@
     <method>
       <name>ReadContent</name>
       <comment>Returns selected content from the document, either as plain text or original byte code.</comment>
-      <prototype>ERR doc::ReadContent(OBJECTPTR Object, DATA Format, LONG Start, LONG End, STRING * Result)</prototype>
+      <prototype>ERR doc::ReadContent(OBJECTPTR Object, DATA Format, INT Start, INT End, STRING * Result)</prototype>
       <input>
         <param type="DATA" name="Format" lookup="DATA">Set to <code>TEXT</code> to receive plain-text, or <code>RAW</code> to receive the original byte-code.</param>
-        <param type="LONG" name="Start">An index in the document stream from which data will be extracted.</param>
-        <param type="LONG" name="End">An index in the document stream at which extraction will stop.</param>
+        <param type="INT" name="Start">An index in the document stream from which data will be extracted.</param>
+        <param type="INT" name="End">An index in the document stream at which extraction will stop.</param>
         <param type="STRING *" name="Result">The data is returned in this parameter as an allocated string.</param>
       </input>
       <description>
@@ -324,10 +324,10 @@
     <method>
       <name>RemoveContent</name>
       <comment>Removes content from a loaded document.</comment>
-      <prototype>ERR doc::RemoveContent(OBJECTPTR Object, LONG Start, LONG End)</prototype>
+      <prototype>ERR doc::RemoveContent(OBJECTPTR Object, INT Start, INT End)</prototype>
       <input>
-        <param type="LONG" name="Start">The byte position at which to start the removal.</param>
-        <param type="LONG" name="End">The byte position at which the removal ends.</param>
+        <param type="INT" name="Start">The byte position at which to start the removal.</param>
+        <param type="INT" name="End">The byte position at which the removal ends.</param>
       </input>
       <description>
 <p>This method will remove all document content between the <code>Start</code> and <code>End</code> indexes provided as parameters.  The document layout will also be marked for an update for the next redraw.</p>
@@ -343,9 +343,9 @@
     <method>
       <name>RemoveListener</name>
       <comment>Removes a previously configured listener from the document.</comment>
-      <prototype>ERR doc::RemoveListener(OBJECTPTR Object, LONG Trigger, FUNCTION * Function)</prototype>
+      <prototype>ERR doc::RemoveListener(OBJECTPTR Object, INT Trigger, FUNCTION * Function)</prototype>
       <input>
-        <param type="LONG" name="Trigger">The unique identifier for the trigger.</param>
+        <param type="INT" name="Trigger">The unique identifier for the trigger.</param>
         <param type="FUNCTION *" name="Function">The function that is called when the trigger activates.</param>
       </input>
       <description>
@@ -360,9 +360,9 @@
     <method>
       <name>SelectLink</name>
       <comment>Selects links in the document.</comment>
-      <prototype>ERR doc::SelectLink(OBJECTPTR Object, LONG Index, CSTRING Name)</prototype>
+      <prototype>ERR doc::SelectLink(OBJECTPTR Object, INT Index, CSTRING Name)</prototype>
       <input>
-        <param type="LONG" name="Index">Index to a link (links are in the order in which they are created in the document, zero being the first link).  Ignored if the <code>Name</code> parameter is set.</param>
+        <param type="INT" name="Index">Index to a link (links are in the order in which they are created in the document, zero being the first link).  Ignored if the <code>Name</code> parameter is set.</param>
         <param type="CSTRING" name="Name">The name of the link to select (set to <code>NULL</code> if an <code>Index</code> is defined).</param>
       </input>
       <description>

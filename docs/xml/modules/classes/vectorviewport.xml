@@ -343,10 +343,10 @@
   </types>
   <structs>
     <struct name="FontMetrics" comment="Font metrics, measured in pixels relative to the display">
-      <field name="Height" type="LONG">Capitalised font height</field>
-      <field name="LineSpacing" type="LONG">Vertical advance from one line to the next</field>
-      <field name="Ascent" type="LONG">Height from the baseline to the top of the font, including accents.</field>
-      <field name="Descent" type="LONG">Height from the baseline to the bottom of the font</field>
+      <field name="Height" type="INT">Capitalised font height</field>
+      <field name="LineSpacing" type="INT">Vertical advance from one line to the next</field>
+      <field name="Ascent" type="INT">Height from the baseline to the top of the font, including accents.</field>
+      <field name="Descent" type="INT">Height from the baseline to the bottom of the font</field>
     </struct>
 
     <struct name="VectorMatrix" comment="Vector transformation matrix.">
@@ -358,7 +358,7 @@
       <field name="ScaleY" type="DOUBLE">Matrix value D</field>
       <field name="TranslateX" type="DOUBLE">Matrix value E</field>
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
-      <field name="Tag" type="LONG">An optional tag value defined by the client for matrix identification.</field>
+      <field name="Tag" type="INT">An optional tag value defined by the client for matrix identification.</field>
     </struct>
 
     <struct name="VectorPainter" comment="Deserialised painter information; compliant with SVG painter definitions.">

@@ -16,7 +16,7 @@ static const struct FieldDef clXMLFlags[] = {
    { "LogAll", 0x00000800 },
    { "ParseEntity", 0x00001000 },
    { "OmitTags", 0x00002000 },
-   { "IncludeSiblings", (LONG)0x80000000 },
+   { "IncludeSiblings", (int)0x80000000 },
    { NULL, 0 }
 };
 

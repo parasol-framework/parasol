@@ -14,7 +14,7 @@ class objPicture;
 
 // Flags for the Picture class.
 
-enum class PCF : ULONG {
+enum class PCF : uint32_t {
    NIL = 0,
    NO_PALETTE = 0x00000001,
    SCALABLE = 0x00000002,
@@ -54,7 +54,7 @@ class objPicture : public Object {
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
+      const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
@@ -64,7 +64,7 @@ class objPicture : public Object {
    }
    template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
+      const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC::Read, this, &read);
    }
@@ -77,14 +77,14 @@ class objPicture : public Object {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC::SaveToObject, this, &args);
    }
-   inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
+   inline ERR seek(double Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC::Seek, this, &args);
    }
-   inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
-   inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
-   inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
-   inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
+   inline ERR seekStart(double Offset) noexcept { return seek(Offset, SEEK::START); }
+   inline ERR seekEnd(double Offset) noexcept { return seek(Offset, SEEK::END); }
+   inline ERR seekCurrent(double Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
+   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
@@ -95,8 +95,8 @@ class objPicture : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
+      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -106,7 +106,7 @@ class objPicture : public Object {
          return error;
       }
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
+   inline int writeResult(CPTR Buffer, int Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;

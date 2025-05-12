@@ -161,7 +161,7 @@ http.acActivate()
       <name>ContentLength</name>
       <comment>The byte length of incoming or outgoing content.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>HTTP servers will return a ContentLength value in their response headers when retrieving information.  This value is defined here once the response header is processed.  The ContentLength may be set to <code>-1</code> if the content is being streamed from the server.</p>
 <p>Note that if posting data to a server with an <fl>InputFile</fl> or <fl>InputObject</fl> as the source, the <fl>Size</fl> field will have priority and override any existing value in ContentLength.  In all other cases the ContentLength can be set directly and a setting of <code>-1</code> can be used for streaming.</p>
@@ -259,7 +259,7 @@ http.acActivate()
       <name>Index</name>
       <comment>Indicates download progress in terms of bytes received.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>If an HTTP <code>GET</code> request is executed, the Index field will reflect the number of bytes that have been received. This field is updated continuously until either the download is complete or cancelled.</p>
 <p>The Index value will always start from zero when downloading, even in resume mode.</p>
@@ -430,7 +430,7 @@ http.acActivate()
       <name>Size</name>
       <comment>Set this field to define the length of a data transfer when issuing a <code>POST</code> command.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>Prior to the execution of a <code>POST</code> command it is recommended that you set the Size field to explicitly define the length of the data transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of the transfer by reading the size from the source file or object.</p>
       </description>

@@ -34,7 +34,7 @@ extern void SetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, 
 extern ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
 extern ERR SetCursorPos(DOUBLE X, DOUBLE Y);
 extern ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
-extern ERR SetHostOption(HOST Option, LARGE Value);
+extern ERR SetHostOption(HOST Option, int64_t Value);
 extern OBJECTID SetModalSurface(OBJECTID Surface);
 extern ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
 extern ERR SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle);

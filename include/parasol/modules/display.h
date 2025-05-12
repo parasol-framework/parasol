@@ -48,7 +48,7 @@ enum class CS : LONG {
 
 // Optional flags for the ExposeSurface() function.
 
-enum class EXF : ULONG {
+enum class EXF : uint32_t {
    NIL = 0,
    CHILDREN = 0x00000001,
    REDRAW_VOLATILE = 0x00000002,
@@ -60,7 +60,7 @@ enum class EXF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(EXF)
 
-enum class RT : ULONG {
+enum class RT : uint32_t {
    NIL = 0,
    ROOT = 0x00000001,
 };
@@ -69,7 +69,7 @@ DEFINE_ENUM_FLAG_OPERATORS(RT)
 
 // drwLockBitmap() result flags
 
-enum class LVF : ULONG {
+enum class LVF : uint32_t {
    NIL = 0,
    EXPOSE_CHANGES = 0x00000001,
 };
@@ -78,7 +78,7 @@ DEFINE_ENUM_FLAG_OPERATORS(LVF)
 
 // Flags for RedrawSurface().
 
-enum class IRF : ULONG {
+enum class IRF : uint32_t {
    NIL = 0,
    IGNORE_NV_CHILDREN = 0x00000001,
    IGNORE_CHILDREN = 0x00000002,
@@ -92,7 +92,7 @@ DEFINE_ENUM_FLAG_OPERATORS(IRF)
 
 // CopySurface() flags
 
-enum class BDF : ULONG {
+enum class BDF : uint32_t {
    NIL = 0,
    REDRAW = 0x00000001,
    DITHER = 0x00000002,
@@ -100,7 +100,7 @@ enum class BDF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(BDF)
 
-enum class DSF : ULONG {
+enum class DSF : uint32_t {
    NIL = 0,
    NO_DRAW = 0x00000001,
    NO_EXPOSE = 0x00000002,
@@ -120,7 +120,7 @@ enum class SWIN : LONG {
 
 // Switches for the Surface class' Flags field.
 
-enum class RNF : ULONG {
+enum class RNF : uint32_t {
    NIL = 0,
    TRANSPARENT = 0x00000001,
    STICK_TO_BACK = 0x00000002,
@@ -169,7 +169,7 @@ enum class HOST : LONG {
 
 // Flags for the Pointer class.
 
-enum class PF : ULONG {
+enum class PF : uint32_t {
    NIL = 0,
    UNUSED = 0x00000001,
    VISIBLE = 0x00000002,
@@ -180,7 +180,7 @@ DEFINE_ENUM_FLAG_OPERATORS(PF)
 
 // Acceleration flags for GetDisplayInfo().
 
-enum class ACF : ULONG {
+enum class ACF : uint32_t {
    NIL = 0,
    VIDEO_BLIT = 0x00000001,
    SOFTWARE_BLIT = 0x00000002,
@@ -190,7 +190,7 @@ DEFINE_ENUM_FLAG_OPERATORS(ACF)
 
 // Flags for the SetCursor() function.
 
-enum class CRF : ULONG {
+enum class CRF : uint32_t {
    NIL = 0,
    LMB = 0x00000001,
    MMB = 0x00000002,
@@ -204,7 +204,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CRF)
 
 // Instructions for basic graphics operations.
 
-enum class BAF : ULONG {
+enum class BAF : uint32_t {
    NIL = 0,
    DITHER = 0x00000001,
    FILL = 0x00000001,
@@ -217,7 +217,7 @@ DEFINE_ENUM_FLAG_OPERATORS(BAF)
 
 // Flags for CopySurface().
 
-enum class CSRF : ULONG {
+enum class CSRF : uint32_t {
    NIL = 0,
    TRANSPARENT = 0x00000001,
    ALPHA = 0x00000002,
@@ -250,7 +250,7 @@ enum class BLM : LONG {
 
 // Bitmap flags
 
-enum class BMF : ULONG {
+enum class BMF : uint32_t {
    NIL = 0,
    BLANK_PALETTE = 0x00000001,
    COMPRESSED = 0x00000002,
@@ -274,7 +274,7 @@ DEFINE_ENUM_FLAG_OPERATORS(BMF)
 
 // Display flags.
 
-enum class SCR : ULONG {
+enum class SCR : uint32_t {
    NIL = 0,
    READ_ONLY = 0xfe300019,
    VISIBLE = 0x00000001,
@@ -301,7 +301,7 @@ DEFINE_ENUM_FLAG_OPERATORS(SCR)
 
 // Flags for the Display class SetMonitor() method.
 
-enum class MON : ULONG {
+enum class MON : uint32_t {
    NIL = 0,
    AUTO_DETECT = 0x00000001,
    BIT_6 = 0x00000002,
@@ -311,7 +311,7 @@ DEFINE_ENUM_FLAG_OPERATORS(MON)
 
 // Flags for gamma operations.
 
-enum class GMF : ULONG {
+enum class GMF : uint32_t {
    NIL = 0,
    SAVE = 0x00000001,
 };
@@ -351,7 +351,7 @@ enum class CT : LONG {
 
 // Clipboard types
 
-enum class CLIPTYPE : ULONG {
+enum class CLIPTYPE : uint32_t {
    NIL = 0,
    DATA = 0x00000001,
    AUDIO = 0x00000002,
@@ -365,7 +365,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CLIPTYPE)
 
 // Clipboard flags
 
-enum class CPF : ULONG {
+enum class CPF : uint32_t {
    NIL = 0,
    DRAG_DROP = 0x00000001,
    HOST = 0x00000002,
@@ -374,7 +374,7 @@ enum class CPF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(CPF)
 
-enum class CEF : ULONG {
+enum class CEF : uint32_t {
    NIL = 0,
    DELETE = 0x00000001,
    EXTEND = 0x00000002,
@@ -622,7 +622,7 @@ class objBitmap : public Object {
       return Action(AC::CopyData, this, &args);
    }
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -633,7 +633,7 @@ class objBitmap : public Object {
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
+      const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
@@ -643,11 +643,11 @@ class objBitmap : public Object {
    }
    template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
+      const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC::Read, this, &read);
    }
-   inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
+   inline ERR resize(double Width, double Height, double Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC::Resize, this, &args);
    }
@@ -655,15 +655,15 @@ class objBitmap : public Object {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC::SaveImage, this, &args);
    }
-   inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
+   inline ERR seek(double Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC::Seek, this, &args);
    }
-   inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
-   inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
-   inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
+   inline ERR seekStart(double Offset) noexcept { return seek(Offset, SEEK::START); }
+   inline ERR seekEnd(double Offset) noexcept { return seek(Offset, SEEK::END); }
+   inline ERR seekCurrent(double Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
    inline ERR unlock() noexcept { return Action(AC::Unlock, this, NULL); }
-   inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
+   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
@@ -674,8 +674,8 @@ class objBitmap : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
+      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -685,7 +685,7 @@ class objBitmap : public Object {
          return error;
       }
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
+   inline int writeResult(CPTR Buffer, int Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
@@ -813,13 +813,13 @@ class objBitmap : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setTransColour(const struct RGB8 * Value, LONG Elements) noexcept {
+   inline ERR setTransColour(const struct RGB8 * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERR setBkgd(const struct RGB8 * Value, LONG Elements) noexcept {
+   inline ERR setBkgd(const struct RGB8 * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x01081300, Value, Elements);
@@ -921,20 +921,20 @@ class objDisplay : public Object {
 
    inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
    inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
-   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
    inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
    inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
    inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
    inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }
-   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+   inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
@@ -942,25 +942,25 @@ class objDisplay : public Object {
    }
    inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
+   inline ERR move(double X, double Y, double Z) noexcept {
       struct acMove args = { X, Y, Z };
       return Action(AC::Move, this, &args);
    }
    inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
    inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
-   inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
+   inline ERR moveToPoint(double X, double Y, double Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC::MoveToPoint, this, &moveto);
    }
-   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
+   inline ERR redimension(double X, double Y, double Z, double Width, double Height, double Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC::Redimension, this, &args);
    }
-   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
+   inline ERR redimension(double X, double Y, double Width, double Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
       return Action(AC::Redimension, this, &args);
    }
-   inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
+   inline ERR resize(double Width, double Height, double Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC::Resize, this, &args);
    }
@@ -1063,7 +1063,7 @@ class objDisplay : public Object {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setGamma(const DOUBLE * Value, LONG Elements) noexcept {
+   inline ERR setGamma(const DOUBLE * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x80001508, Value, Elements);
@@ -1138,7 +1138,7 @@ class objClipboard : public Object {
    // Action stubs
 
    inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
-   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
@@ -1410,7 +1410,7 @@ class objSurface : public Object {
    inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
    inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
@@ -1419,25 +1419,25 @@ class objSurface : public Object {
    inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR lostFocus() noexcept { return Action(AC::LostFocus, this, NULL); }
-   inline ERR move(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
+   inline ERR move(double X, double Y, double Z) noexcept {
       struct acMove args = { X, Y, Z };
       return Action(AC::Move, this, &args);
    }
    inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
    inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
-   inline ERR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) noexcept {
+   inline ERR moveToPoint(double X, double Y, double Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC::MoveToPoint, this, &moveto);
    }
-   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE Width, DOUBLE Height, DOUBLE Depth) noexcept {
+   inline ERR redimension(double X, double Y, double Z, double Width, double Height, double Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
       return Action(AC::Redimension, this, &args);
    }
-   inline ERR redimension(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) noexcept {
+   inline ERR redimension(double X, double Y, double Width, double Height) noexcept {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
       return Action(AC::Redimension, this, &args);
    }
-   inline ERR resize(DOUBLE Width, DOUBLE Height, DOUBLE Depth = 0) noexcept {
+   inline ERR resize(double Width, double Height, double Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC::Resize, this, &args);
    }
@@ -1738,7 +1738,7 @@ struct DisplayBase {
    ERR (*_SetCursor)(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
    ERR (*_SetCursorPos)(DOUBLE X, DOUBLE Y);
    ERR (*_SetCustomCursor)(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
-   ERR (*_SetHostOption)(HOST Option, LARGE Value);
+   ERR (*_SetHostOption)(HOST Option, int64_t Value);
    OBJECTID (*_SetModalSurface)(OBJECTID Surface);
    ERR (*_StartCursorDrag)(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
    ERR (*_SubscribeInput)(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG *Handle);
@@ -1786,7 +1786,7 @@ inline void SetClipRegion(objBitmap *Bitmap, LONG Number, LONG Left, LONG Top, L
 inline ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
 inline ERR SetCursorPos(DOUBLE X, DOUBLE Y) { return DisplayBase->_SetCursorPos(X,Y); }
 inline ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
-inline ERR SetHostOption(HOST Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
+inline ERR SetHostOption(HOST Option, int64_t Value) { return DisplayBase->_SetHostOption(Option,Value); }
 inline OBJECTID SetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
 inline ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
 inline ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG *Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
@@ -1830,7 +1830,7 @@ extern void SetClipRegion(objBitmap *Bitmap, LONG Number, LONG Left, LONG Top, L
 extern ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
 extern ERR SetCursorPos(DOUBLE X, DOUBLE Y);
 extern ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
-extern ERR SetHostOption(HOST Option, LARGE Value);
+extern ERR SetHostOption(HOST Option, int64_t Value);
 extern OBJECTID SetModalSurface(OBJECTID Surface);
 extern ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
 extern ERR SubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG *Handle);

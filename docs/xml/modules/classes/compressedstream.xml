@@ -59,7 +59,7 @@
       <name>Size</name>
       <comment>The uncompressed size of the input source, if known.</comment>
       <access read="G">Get</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
       <description>
 <p>The Size field will reflect the uncompressed size of the input source, if this can be determined from the header. In the case of GZIP decompression, the size will not be known until the parser has consumed the header. This means that at least one call to the <action>Read</action> action is required before the Size is known.</p>
 <p>If the size is unknown, a value of <code>-1</code> is returned.</p>
@@ -70,7 +70,7 @@
       <name>TotalOutput</name>
       <comment>A live counter of total bytes that have been output by the stream.</comment>
       <access read="R">Read</access>
-      <type>BIGINT</type>
+      <type>INT64</type>
     </field>
 
   </fields>
@@ -362,8 +362,8 @@
   </types>
   <structs>
     <struct name="ActionTable" comment="Structure for ActionList">
-      <field name="Hash" type="ULONG">Hash of the action name.</field>
-      <field name="Size" type="LONG">Byte-size of the structure for this action.</field>
+      <field name="Hash" type="UINT">Hash of the action name.</field>
+      <field name="Size" type="INT">Byte-size of the structure for this action.</field>
       <field name="Name" type="CSTRING">Name of the action.</field>
       <field name="Args" type="const struct FunctionField *">List of fields that are passed to this action.</field>
     </struct>
@@ -383,21 +383,21 @@
       <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
       <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
       <field name="Name" type="CSTRING">The English name for the field, e.g. <code>Width</code></field>
-      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. <code>FID_Width</code></field>
-      <field name="Offset" type="UWORD">Field offset within the object</field>
-      <field name="Index" type="UWORD">Field array index</field>
-      <field name="Flags" type="ULONG">Special flags that describe the field</field>
+      <field name="FieldID" type="UINT">Provides a fast way of finding fields, e.g. <code>FID_Width</code></field>
+      <field name="Offset" type="UINT16">Field offset within the object</field>
+      <field name="Index" type="UINT16">Field array index</field>
+      <field name="Flags" type="UINT">Special flags that describe the field</field>
     </struct>
 
     <struct name="FileInfo" comment="Metadata for describing a file.">
-      <field name="Size" type="LARGE">The size of the file's content.</field>
-      <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
+      <field name="Size" type="INT64">The size of the file's content.</field>
+      <field name="TimeStamp" type="INT64">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or <code>NULL</code>.</field>
       <field name="Name" type="STRING">The name of the file.</field>
       <field name="Flags" type="RDF" lookup="RDF">Additional flags to describe the file.</field>
       <field name="Permissions" type="PERMIT" lookup="PERMIT">Standard permission flags.</field>
-      <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
-      <field name="GroupID" type="LONG">Group ID (Unix systems only).</field>
+      <field name="UserID" type="INT">User  ID (Unix systems only).</field>
+      <field name="GroupID" type="INT">Group ID (Unix systems only).</field>
       <field name="Created" type="struct DateTime">The date/time of the file's creation.</field>
       <field name="Modified" type="struct DateTime">The date/time of the last file modification.</field>
     </struct>
@@ -405,17 +405,17 @@
     <struct name="MemInfo" typeName="MEMINFO">
       <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
       <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
-      <field name="Size" type="ULONG">The size of the memory block.</field>
+      <field name="Size" type="UINT">The size of the memory block.</field>
       <field name="Flags" type="MEM" lookup="MEM">The type of memory.</field>
       <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
-      <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
+      <field name="AccessCount" type="INT16">Total number of active locks on this block.</field>
     </struct>
 
     <struct name="Message" comment="Message header.">
-      <field name="Time" type="LARGE">A timestamp acquired from <function module="Core">PreciseTime</function> when the message was first passed to <function module="Core">SendMessage</function>.</field>
-      <field name="UID" type="LONG">A unique identifier automatically created by <function module="Core">SendMessage</function>.</field>
-      <field name="Type" type="LONG">A message type identifier as defined by the client.</field>
-      <field name="Size" type="LONG">The byte-size of the message data, or zero if no data is provided.</field>
+      <field name="Time" type="INT64">A timestamp acquired from <function module="Core">PreciseTime</function> when the message was first passed to <function module="Core">SendMessage</function>.</field>
+      <field name="UID" type="INT">A unique identifier automatically created by <function module="Core">SendMessage</function>.</field>
+      <field name="Type" type="INT">A message type identifier as defined by the client.</field>
+      <field name="Size" type="INT">The byte-size of the message data, or zero if no data is provided.</field>
     </struct>
 
     <struct name="ObjectSignal" comment="Required in calls to WaitForObjects().">
@@ -425,7 +425,7 @@
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
       <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns <code>Native</code>, <code>Windows</code>, <code>OSX</code> or <code>Linux</code>.</field>
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
-      <field name="Stage" type="LONG">The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</field>
+      <field name="Stage" type="INT">The current operating stage.  <code>-1</code> = Initialising, <code>0</code> indicates normal operating status; <code>1</code> means that the program is shutting down; <code>2</code> indicates a program restart; <code>3</code> is for mode switches.</field>
     </struct>
 
   </structs>

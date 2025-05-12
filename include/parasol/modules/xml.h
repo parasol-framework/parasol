@@ -27,7 +27,7 @@ class objXML;
 
 // Options for the Sort method.
 
-enum class XSF : ULONG {
+enum class XSF : uint32_t {
    NIL = 0,
    DESC = 0x00000001,
    CHECK_SORT = 0x00000002,
@@ -37,7 +37,7 @@ DEFINE_ENUM_FLAG_OPERATORS(XSF)
 
 // Standard flags for the XML class.
 
-enum class XMF : ULONG {
+enum class XMF : uint32_t {
    NIL = 0,
    WELL_FORMED = 0x00000001,
    INCLUDE_COMMENTS = 0x00000002,
@@ -73,7 +73,7 @@ enum class XMI : LONG {
 
 // Standard flags for XMLTag.
 
-enum class XTF : ULONG {
+enum class XTF : uint32_t {
    NIL = 0,
    CDATA = 0x00000001,
    INSTRUCTION = 0x00000002,
@@ -209,11 +209,11 @@ class objXML : public Object {
    // Action stubs
 
    inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
-   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
-   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+   inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;

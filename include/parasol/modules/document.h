@@ -28,7 +28,7 @@ enum class TT : BYTE {
 
 // Event flags for selectively receiving events from the Document object.
 
-enum class DEF : ULONG {
+enum class DEF : uint32_t {
    NIL = 0,
    PATH = 0x00000001,
    ON_CLICK = 0x00000002,
@@ -61,7 +61,7 @@ enum class DRT : LONG {
 
 // Document flags
 
-enum class DCF : ULONG {
+enum class DCF : uint32_t {
    NIL = 0,
    EDIT = 0x00000001,
    OVERWRITE = 0x00000002,
@@ -75,7 +75,7 @@ DEFINE_ENUM_FLAG_OPERATORS(DCF)
 
 // These are document style flags, as used in the DocStyle structure
 
-enum class FSO : ULONG {
+enum class FSO : uint32_t {
    NIL = 0,
    UNDERLINE = 0x00000001,
    STYLES = 0x00000001,
@@ -140,19 +140,19 @@ class objDocument : public Object {
       struct acClipboard args = { Mode };
       return Action(AC::Clipboard, this, &args);
    }
-   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
    inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
    inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
-   inline ERR drawArea(LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
    inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
    inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }
-   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+   inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;

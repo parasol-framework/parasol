@@ -61,7 +61,7 @@ class objCompressedStream;
 
 // Clipboard modes
 
-enum class CLIPMODE : ULONG {
+enum class CLIPMODE : uint32_t {
    NIL = 0,
    CUT = 0x00000001,
    COPY = 0x00000002,
@@ -80,7 +80,7 @@ enum class SEEK : LONG {
    RELATIVE = 3,
 };
 
-enum class DEVICE : LARGE {
+enum class DEVICE : int64_t {
    NIL = 0,
    COMPACT_DISC = 0x00000001,
    HARD_DISK = 0x00000002,
@@ -108,7 +108,7 @@ DEFINE_ENUM_FLAG_OPERATORS(DEVICE)
 
 // Class categories
 
-enum class CCF : ULONG {
+enum class CCF : uint32_t {
    NIL = 0,
    COMMAND = 0x00000001,
    FILESYSTEM = 0x00000002,
@@ -183,7 +183,7 @@ enum class AC : LONG {
 
 // Permission flags
 
-enum class PERMIT : ULONG {
+enum class PERMIT : uint32_t {
    NIL = 0,
    READ = 0x00000001,
    USER_READ = 0x00000001,
@@ -227,7 +227,7 @@ DEFINE_ENUM_FLAG_OPERATORS(PERMIT)
 
 // Special qualifier flags
 
-enum class KQ : ULONG {
+enum class KQ : uint32_t {
    NIL = 0,
    L_SHIFT = 0x00000001,
    R_SHIFT = 0x00000002,
@@ -264,7 +264,7 @@ DEFINE_ENUM_FLAG_OPERATORS(KQ)
 
 // Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.
 
-enum class MEM : ULONG {
+enum class MEM : uint32_t {
    NIL = 0,
    DATA = 0x00000000,
    MANAGED = 0x00000001,
@@ -332,7 +332,7 @@ enum class DATA : LONG {
 
 // JTYPE flags are used to categorise input types.
 
-enum class JTYPE : ULONG {
+enum class JTYPE : uint32_t {
    NIL = 0,
    SECONDARY = 0x00000001,
    ANCHORED = 0x00000002,
@@ -352,7 +352,7 @@ DEFINE_ENUM_FLAG_OPERATORS(JTYPE)
 
 // Gamepad controller buttons.
 
-enum class CON : ULONG {
+enum class CON : uint32_t {
    NIL = 0,
    GAMEPAD_S = 0x00000001,
    GAMEPAD_E = 0x00000002,
@@ -498,7 +498,7 @@ enum class PTC : LONG {
    END = 25,
 };
 
-enum class DMF : ULONG {
+enum class DMF : uint32_t {
    NIL = 0,
    SCALED_X = 0x00000001,
    SCALED_Y = 0x00000002,
@@ -550,7 +550,7 @@ enum class DRL : LONG {
 
 // Generic flags for controlling movement.
 
-enum class MOVE : ULONG {
+enum class MOVE : uint32_t {
    NIL = 0,
    DOWN = 0x00000001,
    UP = 0x00000002,
@@ -563,7 +563,7 @@ DEFINE_ENUM_FLAG_OPERATORS(MOVE)
 
 // Edge flags
 
-enum class EDGE : ULONG {
+enum class EDGE : uint32_t {
    NIL = 0,
    TOP = 0x00000001,
    LEFT = 0x00000002,
@@ -580,7 +580,7 @@ DEFINE_ENUM_FLAG_OPERATORS(EDGE)
 
 // Universal values for alignment of graphics and text
 
-enum class ALIGN : ULONG {
+enum class ALIGN : uint32_t {
    NIL = 0,
    LEFT = 0x00000001,
    RIGHT = 0x00000002,
@@ -596,7 +596,7 @@ DEFINE_ENUM_FLAG_OPERATORS(ALIGN)
 
 // Universal values for alignment of graphic layouts in documents.
 
-enum class LAYOUT : ULONG {
+enum class LAYOUT : uint32_t {
    NIL = 0,
    SQUARE = 0x00000000,
    TIGHT = 0x00000001,
@@ -615,7 +615,7 @@ DEFINE_ENUM_FLAG_OPERATORS(LAYOUT)
 
 // Script flags
 
-enum class SCF : ULONG {
+enum class SCF : uint32_t {
    NIL = 0,
    EXIT_ON_ERROR = 0x00000001,
    LOG_ALL = 0x00000002,
@@ -623,7 +623,7 @@ enum class SCF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(SCF)
 
-enum class STR : ULONG {
+enum class STR : uint32_t {
    NIL = 0,
    MATCH_CASE = 0x00000001,
    CASE = 0x00000001,
@@ -634,7 +634,7 @@ DEFINE_ENUM_FLAG_OPERATORS(STR)
 
 // Message flags.
 
-enum class MSF : ULONG {
+enum class MSF : uint32_t {
    NIL = 0,
    WAIT = 0x00000001,
    UPDATE = 0x00000002,
@@ -648,7 +648,7 @@ DEFINE_ENUM_FLAG_OPERATORS(MSF)
 
 // Flags for ProcessMessages
 
-enum class PMF : ULONG {
+enum class PMF : uint32_t {
    NIL = 0,
    SYSTEM_NO_BREAK = 0x00000001,
 };
@@ -657,7 +657,7 @@ DEFINE_ENUM_FLAG_OPERATORS(PMF)
 
 // Flags for RegisterFD()
 
-enum class RFD : ULONG {
+enum class RFD : uint32_t {
    NIL = 0,
    WRITE = 0x00000001,
    EXCEPT = 0x00000002,
@@ -674,7 +674,7 @@ DEFINE_ENUM_FLAG_OPERATORS(RFD)
 
 // Task flags
 
-enum class TSF : ULONG {
+enum class TSF : uint32_t {
    NIL = 0,
    WAIT = 0x00000001,
    RESET_PATH = 0x00000002,
@@ -691,7 +691,7 @@ DEFINE_ENUM_FLAG_OPERATORS(TSF)
 
 // Internal options for requesting function tables from modules.
 
-enum class MHF : ULONG {
+enum class MHF : uint32_t {
    NIL = 0,
    STATIC = 0x00000001,
    STRUCTURE = 0x00000002,
@@ -702,7 +702,7 @@ DEFINE_ENUM_FLAG_OPERATORS(MHF)
 
 // MoveToPoint flags
 
-enum class MTF : ULONG {
+enum class MTF : uint32_t {
    NIL = 0,
    X = 0x00000001,
    Y = 0x00000002,
@@ -715,7 +715,7 @@ DEFINE_ENUM_FLAG_OPERATORS(MTF)
 
 // VlogF flags
 
-enum class VLF : ULONG {
+enum class VLF : uint32_t {
    NIL = 0,
    BRANCH = 0x00000001,
    ERROR = 0x00000002,
@@ -732,7 +732,7 @@ DEFINE_ENUM_FLAG_OPERATORS(VLF)
 
 // Module flags
 
-enum class MOF : ULONG {
+enum class MOF : uint32_t {
    NIL = 0,
    LINK_LIBRARY = 0x00000001,
    STATIC = 0x00000002,
@@ -743,7 +743,7 @@ DEFINE_ENUM_FLAG_OPERATORS(MOF)
 
 // Thread flags
 
-enum class THF : ULONG {
+enum class THF : uint32_t {
    NIL = 0,
    AUTO_FREE = 0x00000001,
 };
@@ -762,7 +762,7 @@ enum class FDT : LONG {
 
 // Options for SetVolume()
 
-enum class VOLUME : ULONG {
+enum class VOLUME : uint32_t {
    NIL = 0,
    REPLACE = 0x00000001,
    PRIORITY = 0x00000002,
@@ -774,7 +774,7 @@ DEFINE_ENUM_FLAG_OPERATORS(VOLUME)
 
 // Options for the File Delete() method.
 
-enum class FDL : ULONG {
+enum class FDL : uint32_t {
    NIL = 0,
    FEEDBACK = 0x00000001,
 };
@@ -783,7 +783,7 @@ DEFINE_ENUM_FLAG_OPERATORS(FDL)
 
 // Compression flags
 
-enum class CMF : ULONG {
+enum class CMF : uint32_t {
    NIL = 0,
    PASSWORD = 0x00000001,
    NEW = 0x00000002,
@@ -797,7 +797,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CMF)
 
 // Flags for ResolvePath()
 
-enum class RSF : ULONG {
+enum class RSF : uint32_t {
    NIL = 0,
    NO_FILE_CHECK = 0x00000001,
    CHECK_VIRTUAL = 0x00000002,
@@ -811,7 +811,7 @@ DEFINE_ENUM_FLAG_OPERATORS(RSF)
 
 // Flags for the File Watch() method.
 
-enum class MFF : ULONG {
+enum class MFF : uint32_t {
    NIL = 0,
    READ = 0x00000001,
    MODIFY = 0x00000002,
@@ -842,7 +842,7 @@ enum class STT : LONG {
    STRING = 4,
 };
 
-enum class OPF : ULONG {
+enum class OPF : uint32_t {
    NIL = 0,
    OPTIONS = 0x00000001,
    MAX_DEPTH = 0x00000002,
@@ -872,7 +872,7 @@ enum class TOI : LONG {
 
 // Flags for the OpenDir() function.
 
-enum class RDF : ULONG {
+enum class RDF : uint32_t {
    NIL = 0,
    SIZE = 0x00000001,
    DATE = 0x00000002,
@@ -900,7 +900,7 @@ DEFINE_ENUM_FLAG_OPERATORS(RDF)
 
 // File flags
 
-enum class FL : ULONG {
+enum class FL : uint32_t {
    NIL = 0,
    WRITE = 0x00000001,
    NEW = 0x00000002,
@@ -933,7 +933,7 @@ enum class LOC : LONG {
 
 // Flags for LoadFile()
 
-enum class LDF : ULONG {
+enum class LDF : uint32_t {
    NIL = 0,
    CHECK_EXISTS = 0x00000001,
 };
@@ -1004,7 +1004,7 @@ enum class CF : LONG {
 
 // Flags that can be passed to FindObject()
 
-enum class FOF : ULONG {
+enum class FOF : uint32_t {
    NIL = 0,
    SMART_NAMES = 0x00000001,
 };
@@ -1013,7 +1013,7 @@ DEFINE_ENUM_FLAG_OPERATORS(FOF)
 
 // Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.
 
-enum class NF : ULONG {
+enum class NF : uint32_t {
    NIL = 0,
    PRIVATE = 0x00000000,
    UNTRACKED = 0x00000001,
@@ -1109,7 +1109,7 @@ enum class RP : LONG {
 
 // Flags for the MetaClass.
 
-enum class CLF : ULONG {
+enum class CLF : uint32_t {
    NIL = 0,
    INHERIT_LOCAL = 0x00000001,
    NO_OWNERSHIP = 0x00000002,
@@ -1119,7 +1119,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CLF)
 
 // Flags for the Config class.
 
-enum class CNF : ULONG {
+enum class CNF : uint32_t {
    NIL = 0,
    STRIP_QUOTES = 0x00000001,
    AUTO_SAVE = 0x00000002,
@@ -1291,7 +1291,7 @@ enum class KEY : LONG {
 struct InputEvent {
    const struct InputEvent * Next;    // Next event in the chain
    DOUBLE   Value;                    // The value associated with the Type
-   LARGE    Timestamp;                // PreciseTime() of the recorded input
+   int64_t  Timestamp;                // PreciseTime() of the recorded input
    OBJECTID RecipientID;              // Surface that the input message is being conveyed to
    OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
    DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor (relative to the top left of the display)
@@ -1315,15 +1315,15 @@ struct dcAudio {
 };
 
 struct dcKeyEntry {
-   LONG  Flags;        // Shift/Control/CapsLock...
-   LONG  Value;        // ASCII value of the key A/B/C/D...
-   LARGE Timestamp;    // ~Core.PreciseTime() at which the keypress was recorded
-   LONG  Unicode;      // Unicode value for pre-calculated key translations
+   LONG    Flags;        // Shift/Control/CapsLock...
+   LONG    Value;        // ASCII value of the key A/B/C/D...
+   int64_t Timestamp;    // ~Core.PreciseTime() at which the keypress was recorded
+   LONG    Unicode;      // Unicode value for pre-calculated key translations
 };
 
 struct dcDeviceInput {
    DOUBLE   Values[2];  // The value(s) associated with the Type
-   LARGE    Timestamp;  // ~Core.PreciseTime() of the recorded input
+   int64_t  Timestamp;  // ~Core.PreciseTime() of the recorded input
    OBJECTID DeviceID;   // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
    JTYPE    Flags;      // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
    JET      Type;       // JET constant
@@ -1882,10 +1882,10 @@ struct ChildEntry {
 };
 
 struct Message {
-   LARGE Time;    // A timestamp acquired from ~Core.PreciseTime() when the message was first passed to ~Core.SendMessage().
-   LONG  UID;     // A unique identifier automatically created by ~Core.SendMessage().
-   LONG  Type;    // A message type identifier as defined by the client.
-   LONG  Size;    // The byte-size of the message data, or zero if no data is provided.
+   int64_t Time;    // A timestamp acquired from ~Core.PreciseTime() when the message was first passed to ~Core.SendMessage().
+   LONG    UID;     // A unique identifier automatically created by ~Core.SendMessage().
+   LONG    Type;    // A message type identifier as defined by the client.
+   LONG    Size;    // The byte-size of the message data, or zero if no data is provided.
 };
 
 typedef struct MemInfo {
@@ -1906,27 +1906,27 @@ struct MsgHandler {
 };
 
 struct CacheFile {
-   LARGE   TimeStamp;  // The file's last-modified timestamp.
-   LARGE   Size;       // Byte size of the cached data.
-   LARGE   LastUse;    // The last time that this file was requested.
-   CSTRING Path;       // Pointer to the resolved file path.
-   APTR    Data;       // Pointer to the cached data.
+   int64_t TimeStamp;    // The file's last-modified timestamp.
+   int64_t Size;         // Byte size of the cached data.
+   int64_t LastUse;      // The last time that this file was requested.
+   CSTRING Path;         // Pointer to the resolved file path.
+   APTR    Data;         // Pointer to the cached data.
 };
 
 struct CompressionFeedback {
-   FDB     FeedbackID;    // Set to one of the FDB event indicators
-   LONG    Index;         // Index of the current file
-   CSTRING Path;          // Name of the current file/path in the archive
-   CSTRING Dest;          // Destination file/path during decompression
-   LARGE   Progress;      // Progress indicator (byte position for the file being de/compressed).
-   LARGE   OriginalSize;  // Original size of the file
-   LARGE   CompressedSize; // Compressed size of the file
-   WORD    Year;          // Year of the original file's datestamp.
-   WORD    Month;         // Month of the original file's datestamp.
-   WORD    Day;           // Day of the original file's datestamp.
-   WORD    Hour;          // Hour of the original file's datestamp.
-   WORD    Minute;        // Minute of the original file's datestamp.
-   WORD    Second;        // Second of the original file's datestamp.
+   FDB     FeedbackID;      // Set to one of the FDB event indicators
+   LONG    Index;           // Index of the current file
+   CSTRING Path;            // Name of the current file/path in the archive
+   CSTRING Dest;            // Destination file/path during decompression
+   int64_t Progress;        // Progress indicator (byte position for the file being de/compressed).
+   int64_t OriginalSize;    // Original size of the file
+   int64_t CompressedSize;  // Compressed size of the file
+   WORD    Year;            // Year of the original file's datestamp.
+   WORD    Month;           // Month of the original file's datestamp.
+   WORD    Day;             // Day of the original file's datestamp.
+   WORD    Hour;            // Hour of the original file's datestamp.
+   WORD    Minute;          // Minute of the original file's datestamp.
+   WORD    Second;          // Second of the original file's datestamp.
    CompressionFeedback() : FeedbackID(FDB::NIL), Index(0), Path(NULL), Dest(NULL),
       Progress(0), OriginalSize(0), CompressedSize(0),
       Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
@@ -1938,8 +1938,8 @@ struct CompressionFeedback {
 };
 
 struct CompressedItem {
-   LARGE   OriginalSize;            // Original size of the file
-   LARGE   CompressedSize;          // Compressed size of the file
+   int64_t OriginalSize;            // Original size of the file
+   int64_t CompressedSize;          // Compressed size of the file
    struct CompressedItem * Next;    // Used only if this is a linked-list.
    CSTRING Path;                    // Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
    PERMIT  Permissions;             // Original permissions - see PERMIT flags.
@@ -1953,14 +1953,14 @@ struct CompressedItem {
 };
 
 struct FileInfo {
-   LARGE  Size;               // The size of the file's content.
-   LARGE  TimeStamp;          // 64-bit time stamp - usable only for comparison (e.g. sorting).
+   int64_t Size;              // The size of the file's content.
+   int64_t TimeStamp;         // 64-bit time stamp - usable only for comparison (e.g. sorting).
    struct FileInfo * Next;    // Next structure in the list, or NULL.
-   STRING Name;               // The name of the file.
-   RDF    Flags;              // Additional flags to describe the file.
-   PERMIT Permissions;        // Standard permission flags.
-   LONG   UserID;             // User  ID (Unix systems only).
-   LONG   GroupID;            // Group ID (Unix systems only).
+   STRING  Name;              // The name of the file.
+   RDF     Flags;             // Additional flags to describe the file.
+   PERMIT  Permissions;       // Standard permission flags.
+   LONG    UserID;            // User  ID (Unix systems only).
+   LONG    GroupID;           // Group ID (Unix systems only).
    struct DateTime Created;   // The date/time of the file's creation.
    struct DateTime Modified;  // The date/time of the last file modification.
     std::unordered_map<std::string, std::string> *Tags;
@@ -1985,12 +1985,12 @@ struct DirInfo {
 };
 
 struct FileFeedback {
-   LARGE  Size;          // Size of the file
-   LARGE  Position;      // Current seek position within the file if moving or copying
-   STRING Path;          // Path to the file
-   STRING Dest;          // Destination file/path if moving or copying
-   FBK    FeedbackID;    // Set to one of the FBK values
-   char   Reserved[32];  // Reserved in case of future expansion
+   int64_t Size;        // Size of the file
+   int64_t Position;    // Current seek position within the file if moving or copying
+   STRING  Path;        // Path to the file
+   STRING  Dest;        // Destination file/path if moving or copying
+   FBK     FeedbackID;  // Set to one of the FBK values
+   char    Reserved[32]; // Reserved in case of future expansion
   FileFeedback() : Size(0), Position(0), Path(NULL), Dest(NULL), FeedbackID(FBK::NIL) { }
 };
 
@@ -2085,17 +2085,17 @@ struct CoreBase {
    ERR (*_SetName)(OBJECTPTR Object, CSTRING Name);
    void (*_LogReturn)(void);
    ERR (*_SubscribeAction)(OBJECTPTR Object, AC Action, FUNCTION *Callback);
-   ERR (*_SubscribeEvent)(LARGE Event, FUNCTION *Callback, APTR *Handle);
+   ERR (*_SubscribeEvent)(int64_t Event, FUNCTION *Callback, APTR *Handle);
    ERR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription);
    ERR (*_UpdateTimer)(APTR Subscription, DOUBLE Interval);
    ERR (*_UnsubscribeAction)(OBJECTPTR Object, AC Action);
    void (*_UnsubscribeEvent)(APTR Handle);
    ERR (*_BroadcastEvent)(APTR Event, LONG EventSize);
    void (*_WaitTime)(LONG Seconds, LONG MicroSeconds);
-   LARGE (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
+   int64_t (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
    ULONG (*_GenCRC32)(ULONG CRC, APTR Data, ULONG Length);
-   LARGE (*_GetResource)(RES Resource);
-   LARGE (*_SetResource)(RES Resource, LARGE Value);
+   int64_t (*_GetResource)(RES Resource);
+   int64_t (*_SetResource)(RES Resource, int64_t Value);
    ERR (*_ScanMessages)(LONG *Handle, LONG Type, APTR Buffer, LONG Size);
    ERR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal *ObjectSignals);
    void (*_UnloadFile)(struct CacheFile *Cache);
@@ -2107,7 +2107,7 @@ struct CoreBase {
    ERR (*_UpdateMessage)(LONG Message, LONG Type, APTR Data, LONG Size);
    ERR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
    ERR (*_QueueAction)(AC Action, OBJECTID Object, APTR Args);
-   LARGE (*_PreciseTime)(void);
+   int64_t (*_PreciseTime)(void);
    ERR (*_OpenDir)(CSTRING Path, RDF Flags, struct DirInfo **Info);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID Object);
    struct Field * (*_FindField)(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target);
@@ -2184,17 +2184,17 @@ inline ERR ScanDir(struct DirInfo *Info) { return CoreBase->_ScanDir(Info); }
 inline ERR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
 inline ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION *Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
-inline ERR SubscribeEvent(LARGE Event, FUNCTION *Callback, APTR *Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Handle); }
+inline ERR SubscribeEvent(int64_t Event, FUNCTION *Callback, APTR *Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Handle); }
 inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
 inline ERR UpdateTimer(APTR Subscription, DOUBLE Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
 inline ERR UnsubscribeAction(OBJECTPTR Object, AC Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
 inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
 inline ERR BroadcastEvent(APTR Event, LONG EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
 inline void WaitTime(LONG Seconds, LONG MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
-inline LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
+inline int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
 inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
-inline LARGE GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
-inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
+inline int64_t GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
+inline int64_t SetResource(RES Resource, int64_t Value) { return CoreBase->_SetResource(Resource,Value); }
 inline ERR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Handle,Type,Buffer,Size); }
 inline ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal *ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 inline void UnloadFile(struct CacheFile *Cache) { return CoreBase->_UnloadFile(Cache); }
@@ -2206,7 +2206,7 @@ inline ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return C
 inline ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Message,Type,Data,Size); }
 inline ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
 inline ERR QueueAction(AC Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
-inline LARGE PreciseTime(void) { return CoreBase->_PreciseTime(); }
+inline int64_t PreciseTime(void) { return CoreBase->_PreciseTime(); }
 inline ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
 inline OBJECTPTR GetObjectPtr(OBJECTID Object) { return CoreBase->_GetObjectPtr(Object); }
 inline struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) { return CoreBase->_FindField(Object,FieldID,Target); }
@@ -2277,17 +2277,17 @@ extern "C" ERR ScanDir(struct DirInfo *Info);
 extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);
 extern "C" void LogReturn(void);
 extern "C" ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION *Callback);
-extern "C" ERR SubscribeEvent(LARGE Event, FUNCTION *Callback, APTR *Handle);
+extern "C" ERR SubscribeEvent(int64_t Event, FUNCTION *Callback, APTR *Handle);
 extern "C" ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription);
 extern "C" ERR UpdateTimer(APTR Subscription, DOUBLE Interval);
 extern "C" ERR UnsubscribeAction(OBJECTPTR Object, AC Action);
 extern "C" void UnsubscribeEvent(APTR Handle);
 extern "C" ERR BroadcastEvent(APTR Event, LONG EventSize);
 extern "C" void WaitTime(LONG Seconds, LONG MicroSeconds);
-extern "C" LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
+extern "C" int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
 extern "C" ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length);
-extern "C" LARGE GetResource(RES Resource);
-extern "C" LARGE SetResource(RES Resource, LARGE Value);
+extern "C" int64_t GetResource(RES Resource);
+extern "C" int64_t SetResource(RES Resource, int64_t Value);
 extern "C" ERR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG Size);
 extern "C" ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal *ObjectSignals);
 extern "C" void UnloadFile(struct CacheFile *Cache);
@@ -2299,7 +2299,7 @@ extern "C" ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size);
 extern "C" ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
 extern "C" ERR QueueAction(AC Action, OBJECTID Object, APTR Args);
-extern "C" LARGE PreciseTime(void);
+extern "C" int64_t PreciseTime(void);
 extern "C" ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info);
 extern "C" OBJECTPTR GetObjectPtr(OBJECTID Object);
 extern "C" struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target);
@@ -3123,7 +3123,7 @@ class objMetaClass : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setFields(const struct FieldArray * Value, LONG Elements) noexcept {
+   inline ERR setFields(const struct FieldArray * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
@@ -3189,7 +3189,7 @@ class objMetaClass : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setMethods(const APTR Value, LONG Elements) noexcept {
+   inline ERR setMethods(const APTR Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
@@ -3225,10 +3225,10 @@ class objStorageDevice : public Object {
 
    using create = pf::Create<objStorageDevice>;
 
-   DEVICE DeviceFlags;    // These read-only flags identify the type of device and its features.
-   LARGE  DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
-   LARGE  BytesFree;      // Total amount of storage space that is available, measured in bytes.
-   LARGE  BytesUsed;      // Total amount of storage space in use.
+   DEVICE  DeviceFlags;   // These read-only flags identify the type of device and its features.
+   int64_t DeviceSize;    // The storage size of the device in bytes, without accounting for the file system format.
+   int64_t BytesFree;     // Total amount of storage space that is available, measured in bytes.
+   int64_t BytesUsed;     // Total amount of storage space in use.
 
    // Customised field setting
 
@@ -3256,7 +3256,7 @@ struct SetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG S
 struct ReadLine { STRING Result; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct BufferContent { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Next { objFile * File; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Watch { FUNCTION * Callback; LARGE Custom; MFF Flags; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Watch { FUNCTION * Callback; int64_t Custom; MFF Flags; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3267,11 +3267,11 @@ class objFile : public Object {
 
    using create = pf::Create<objFile>;
 
-   LARGE    Position; // The current read/write byte position in a file.
-   FL       Flags;    // File flags and options.
-   LONG     Static;   // Set to true if a file object should be static.
-   OBJECTID TargetID; // Specifies a surface ID to target for user feedback and dialog boxes.
-   BYTE *   Buffer;   // Points to the internal data buffer if the file content is held in memory.
+   int64_t  Position;   // The current read/write byte position in a file.
+   FL       Flags;      // File flags and options.
+   LONG     Static;     // Set to true if a file object should be static.
+   OBJECTID TargetID;   // Specifies a surface ID to target for user feedback and dialog boxes.
+   BYTE *   Buffer;     // Points to the internal data buffer if the file content is held in memory.
    public:
    inline CSTRING readLine() {
       struct fl::ReadLine args;
@@ -3282,7 +3282,7 @@ class objFile : public Object {
    // Action stubs
 
    inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
@@ -3291,7 +3291,7 @@ class objFile : public Object {
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
+      const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
@@ -3301,7 +3301,7 @@ class objFile : public Object {
    }
    template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
-      const LONG bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
+      const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC::Read, this, &read);
    }
@@ -3310,14 +3310,14 @@ class objFile : public Object {
       return Action(AC::Rename, this, &args);
    }
    inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }
-   inline ERR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) noexcept {
+   inline ERR seek(double Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC::Seek, this, &args);
    }
-   inline ERR seekStart(DOUBLE Offset) noexcept { return seek(Offset, SEEK::START); }
-   inline ERR seekEnd(DOUBLE Offset) noexcept { return seek(Offset, SEEK::END); }
-   inline ERR seekCurrent(DOUBLE Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
-   inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
+   inline ERR seekStart(double Offset) noexcept { return seek(Offset, SEEK::START); }
+   inline ERR seekEnd(double Offset) noexcept { return seek(Offset, SEEK::END); }
+   inline ERR seekCurrent(double Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
+   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
@@ -3328,8 +3328,8 @@ class objFile : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
+      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -3339,7 +3339,7 @@ class objFile : public Object {
          return error;
       }
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
+   inline int writeResult(CPTR Buffer, int Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
@@ -3382,14 +3382,14 @@ class objFile : public Object {
       if (File) *File = args.File;
       return(error);
    }
-   inline ERR watch(FUNCTION Callback, LARGE Custom, MFF Flags) noexcept {
+   inline ERR watch(FUNCTION Callback, int64_t Custom, MFF Flags) noexcept {
       struct fl::Watch args = { &Callback, Custom, Flags };
       return(Action(AC(-10), this, &args));
    }
 
    // Customised field setting
 
-   inline ERR setPosition(const LARGE Value) noexcept {
+   inline ERR setPosition(const int64_t Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
@@ -3551,7 +3551,7 @@ class objConfig : public Object {
    // Action stubs
 
    inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
-   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
@@ -3639,8 +3639,8 @@ class objConfig : public Object {
 namespace sc {
 struct Exec { CSTRING Procedure; const struct ScriptArg * Args; LONG TotalArgs; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DerefProcedure { FUNCTION * Procedure; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Callback { LARGE ProcedureID; const struct ScriptArg * Args; LONG TotalArgs; ERR Error; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetProcedureID { CSTRING Procedure; LARGE ProcedureID; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Callback { int64_t ProcedureID; const struct ScriptArg * Args; LONG TotalArgs; ERR Error; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetProcedureID { CSTRING Procedure; int64_t ProcedureID; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3679,11 +3679,11 @@ class objScript : public Object {
    // Action stubs
 
    inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) noexcept {
+   inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
-   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+   inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
@@ -3703,14 +3703,14 @@ class objScript : public Object {
       struct sc::DerefProcedure args = { &Procedure };
       return(Action(AC(-2), this, &args));
    }
-   inline ERR callback(LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error) noexcept {
+   inline ERR callback(int64_t ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error) noexcept {
       struct sc::Callback args = { ProcedureID, Args, TotalArgs, (ERR)0 };
       ERR error = Action(AC(-3), this, &args);
       if (Error) *Error = args.Error;
       return(error);
    }
-   inline ERR getProcedureID(CSTRING Procedure, LARGE * ProcedureID) noexcept {
-      struct sc::GetProcedureID args = { Procedure, (LARGE)0 };
+   inline ERR getProcedureID(CSTRING Procedure, int64_t * ProcedureID) noexcept {
+      struct sc::GetProcedureID args = { Procedure, (int64_t)0 };
       ERR error = Action(AC(-4), this, &args);
       if (ProcedureID) *ProcedureID = args.ProcedureID;
       return(error);
@@ -3776,7 +3776,7 @@ class objScript : public Object {
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERR setResults(STRING * Value, LONG Elements) noexcept {
+   inline ERR setResults(STRING * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08801300, Value, Elements);
@@ -3849,7 +3849,7 @@ class objTask : public Object {
    // Action stubs
 
    inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR getKey(CSTRING Key, STRING Value, LONG Size) noexcept {
+   inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
@@ -3860,7 +3860,7 @@ class objTask : public Object {
       struct acSetKey args = { FieldName, Value };
       return Action(AC::SetKey, this, &args);
    }
-   inline ERR write(CPTR Buffer, LONG Size, LONG *Result = NULL) noexcept {
+   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
@@ -3871,8 +3871,8 @@ class objTask : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, LONG *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), LONG(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
+      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -3882,7 +3882,7 @@ class objTask : public Object {
          return error;
       }
    }
-   inline LONG writeResult(CPTR Buffer, LONG Size) noexcept {
+   inline int writeResult(CPTR Buffer, int Size) noexcept {
       struct acWrite write = { (BYTE *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
@@ -3942,7 +3942,7 @@ class objTask : public Object {
    inline ERR setParameters(pf::vector<std::string> *Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
-      return field->WriteValue(target, field, 0x08805300, Value, LONG(Value->size()));
+      return field->WriteValue(target, field, 0x08805300, Value, int(Value->size()));
    }
 
    inline ERR setErrorCallback(FUNCTION Value) noexcept {
@@ -4160,17 +4160,17 @@ class objTime : public Object {
 
    using create = pf::Create<objTime>;
 
-   LARGE SystemTime;    // Represents the system time when the time object was last queried.
-   LONG  Year;          // Year (-ve for BC, +ve for AD).
-   LONG  Month;         // Month (1 - 12)
-   LONG  Day;           // Day (1 - 31)
-   LONG  Hour;          // Hour (0 - 23)
-   LONG  Minute;        // Minute (0 - 59)
-   LONG  Second;        // Second (0 - 59)
-   LONG  TimeZone;      // No information.
-   LONG  DayOfWeek;     // Day of week (0 - 6) starting from Sunday.
-   LONG  MilliSecond;   // A millisecond is one thousandth of a second (0 - 999)
-   LONG  MicroSecond;   // A microsecond is one millionth of a second (0 - 999999)
+   int64_t SystemTime;    // Represents the system time when the time object was last queried.
+   LONG    Year;          // Year (-ve for BC, +ve for AD).
+   LONG    Month;         // Month (1 - 12)
+   LONG    Day;           // Day (1 - 31)
+   LONG    Hour;          // Hour (0 - 23)
+   LONG    Minute;        // Minute (0 - 59)
+   LONG    Second;        // Second (0 - 59)
+   LONG    TimeZone;      // No information.
+   LONG    DayOfWeek;     // Day of week (0 - 6) starting from Sunday.
+   LONG    MilliSecond;   // A millisecond is one thousandth of a second (0 - 999)
+   LONG    MicroSecond;   // A microsecond is one millionth of a second (0 - 999999)
 
    // Action stubs
 
@@ -4182,7 +4182,7 @@ class objTime : public Object {
 
    // Customised field setting
 
-   inline ERR setSystemTime(const LARGE Value) noexcept {
+   inline ERR setSystemTime(const int64_t Value) noexcept {
       this->SystemTime = Value;
       return ERR::Okay;
    }
@@ -4270,14 +4270,14 @@ class objCompression : public Object {
 
    using create = pf::Create<objCompression>;
 
-   LARGE    TotalOutput;     // The total number of bytes that have been output during the compression or decompression of streamed data.
-   OBJECTID OutputID;        // Resulting messages will be sent to the object referred to in this field.
+   int64_t  TotalOutput;   // The total number of bytes that have been output during the compression or decompression of streamed data.
+   OBJECTID OutputID;      // Resulting messages will be sent to the object referred to in this field.
    LONG     CompressionLevel; // The compression level to use when compressing data.
-   CMF      Flags;           // Optional flags.
-   LONG     SegmentSize;     // Private. Splits the compressed file if it surpasses a set byte limit.
-   PERMIT   Permissions;     // Default permissions for decompressed files are defined here.
-   LONG     MinOutputSize;   // Indicates the minimum output buffer size that will be needed during de/compression.
-   LONG     WindowBits;      // Special option for certain compression formats.
+   CMF      Flags;         // Optional flags.
+   LONG     SegmentSize;   // Private. Splits the compressed file if it surpasses a set byte limit.
+   PERMIT   Permissions;   // Default permissions for decompressed files are defined here.
+   LONG     MinOutputSize; // Indicates the minimum output buffer size that will be needed during de/compression.
+   LONG     WindowBits;    // Special option for certain compression formats.
 
    // Action stubs
 
@@ -4416,10 +4416,10 @@ class objCompressedStream : public Object {
 
    using create = pf::Create<objCompressedStream>;
 
-   LARGE     TotalOutput; // A live counter of total bytes that have been output by the stream.
-   OBJECTPTR Input;      // An input object that will supply data for decompression.
-   OBJECTPTR Output;     // A target object that will receive data compressed by the stream.
-   CF        Format;     // The format of the compressed stream.  The default is GZIP.
+   int64_t   TotalOutput;  // A live counter of total bytes that have been output by the stream.
+   OBJECTPTR Input;        // An input object that will supply data for decompression.
+   OBJECTPTR Output;       // A target object that will receive data compressed by the stream.
+   CF        Format;       // The format of the compressed stream.  The default is GZIP.
 
    // Customised field setting
 

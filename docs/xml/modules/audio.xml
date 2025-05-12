@@ -19,7 +19,7 @@
     <prototype>ERR snd::MixContinue(objAudio * Audio, LONG Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="INT" name="Handle">The target channel.</param>
     </input>
     <description>
 <p>This function will continue playback on a channel that has previously been stopped.</p>
@@ -36,7 +36,7 @@
     <prototype>ERR snd::MixEndSequence(objAudio * Audio, LONG Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="INT" name="Handle">The target channel.</param>
     </input>
     <description>
 <p>Use this function to end a buffered command sequence that was started by <function>MixStartSequence</function>.</p>
@@ -53,8 +53,8 @@
     <prototype>ERR snd::MixFrequency(objAudio * Audio, LONG Handle, LONG Frequency)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
-      <param type="LONG" name="Frequency">The desired frequency.</param>
+      <param type="INT" name="Handle">The target channel.</param>
+      <param type="INT" name="Frequency">The desired frequency.</param>
     </input>
     <description>
 <p>Use this function to set the playback rate of a mixer channel.</p>
@@ -71,8 +71,8 @@
     <prototype>ERR snd::MixMute(objAudio * Audio, LONG Handle, LONG Mute)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
-      <param type="LONG" name="Mute">Set to true to mute the channel.  A value of 0 will undo the mute setting.</param>
+      <param type="INT" name="Handle">The target channel.</param>
+      <param type="INT" name="Mute">Set to true to mute the channel.  A value of 0 will undo the mute setting.</param>
     </input>
     <description>
 <p>Use this function to mute the audio of a mixer channel.</p>
@@ -89,7 +89,7 @@
     <prototype>ERR snd::MixPan(objAudio * Audio, LONG Handle, DOUBLE Pan)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="INT" name="Handle">The target channel.</param>
       <param type="DOUBLE" name="Pan">The desired pan value between -1.0 and 1.0.</param>
     </input>
     <description>
@@ -107,8 +107,8 @@
     <prototype>ERR snd::MixPlay(objAudio * Audio, LONG Handle, LONG Position)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
-      <param type="LONG" name="Position">The new playing position, measured in bytes.</param>
+      <param type="INT" name="Handle">The target channel.</param>
+      <param type="INT" name="Position">The new playing position, measured in bytes.</param>
     </input>
     <description>
 <p>This function will start playback of the sound sample associated with the target mixer channel.  If the channel is already in playback mode, it will be stopped to facilitate the new playback request.</p>
@@ -125,8 +125,8 @@
     <prototype>ERR snd::MixRate(objAudio * Audio, LONG Handle, LONG Rate)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The channel set allocated from OpenChannels().</param>
-      <param type="LONG" name="Rate">The new update rate in milliseconds.</param>
+      <param type="INT" name="Handle">The channel set allocated from OpenChannels().</param>
+      <param type="INT" name="Rate">The new update rate in milliseconds.</param>
     </input>
     <description>
 <p>This function will set a new update rate for all channels, measured in milliseconds.  The default update rate is 125, which is equivalent to 5000Hz.</p>
@@ -143,8 +143,8 @@
     <prototype>ERR snd::MixSample(objAudio * Audio, LONG Handle, LONG Sample)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
-      <param type="LONG" name="Sample">A sample handle allocated from <class name="Audio" method="AddSample">Audio.AddSample()</class> or <class name="Audio" method="AddStream">Audio.AddStream()</class>.</param>
+      <param type="INT" name="Handle">The target channel.</param>
+      <param type="INT" name="Sample">A sample handle allocated from <class name="Audio" method="AddSample">Audio.AddSample()</class> or <class name="Audio" method="AddStream">Audio.AddStream()</class>.</param>
     </input>
     <description>
 <p>This function will associate a sound sample with the channel identified by Handle.  The client should follow this by setting configuration details (e.g. volume and pan values).</p>
@@ -162,7 +162,7 @@
     <prototype>ERR snd::MixStartSequence(objAudio * Audio, LONG Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="INT" name="Handle">The target channel.</param>
     </input>
     <description>
 <p>Use this function to initiate the buffering of mix commands, up until a call to <function>MixEndSequence</function> is made.  The buffering of mix commands makes it possible to create batches of commands that are executed at timed intervals as determined by <function>MixRate</function>.</p>
@@ -180,7 +180,7 @@
     <prototype>ERR snd::MixStop(objAudio * Audio, LONG Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="INT" name="Handle">The target channel.</param>
     </input>
     <description>
 <p>This function will stop a channel that is currently playing.</p>
@@ -197,7 +197,7 @@
     <prototype>ERR snd::MixStopLoop(objAudio * Audio, LONG Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="INT" name="Handle">The target channel.</param>
     </input>
     <description>
 <p>This function will cancel the loop that is associated with the channel identified by Handle if in playback mode. The existing loop configuration will remain intact if playback is restarted.</p>
@@ -214,7 +214,7 @@
     <prototype>ERR snd::MixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
-      <param type="LONG" name="Handle">The target channel.</param>
+      <param type="INT" name="Handle">The target channel.</param>
       <param type="DOUBLE" name="Volume">The new volume for the channel.</param>
     </input>
     <description>
@@ -324,10 +324,10 @@
       <field name="LoopMode" type="LOOP" lookup="LOOP">Loop mode (single, double)</field>
       <field name="Loop1Type" type="LTYPE" lookup="LTYPE">First loop type (unidirectional, bidirectional)</field>
       <field name="Loop2Type" type="LTYPE" lookup="LTYPE">Second loop type (unidirectional, bidirectional)</field>
-      <field name="Loop1Start" type="LONG">Start of the first loop</field>
-      <field name="Loop1End" type="LONG">End of the first loop</field>
-      <field name="Loop2Start" type="LONG">Start of the second loop</field>
-      <field name="Loop2End" type="LONG">End of the second loop</field>
+      <field name="Loop1Start" type="INT">Start of the first loop</field>
+      <field name="Loop1End" type="INT">End of the first loop</field>
+      <field name="Loop2Start" type="INT">Start of the second loop</field>
+      <field name="Loop2End" type="INT">End of the second loop</field>
     </struct>
 
   </structs>
