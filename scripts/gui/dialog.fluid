@@ -60,7 +60,7 @@ gui.dialog.message = function(Options)
       if (page_width < 100) then page_width = 100 end
       if (page_height < 100) then page_height = 100 end
 
-      self.window:sizeHints(page_width/4, page_height/4, page_width * 3, page_height * 3, false)
+      self.window:sizeHints(page_width/4, page_height/4, page_width * 3, page_height * 3, self.scaleWindow)
       self.window.surface.width  = page_width
       self.window.surface.height = page_height
 
