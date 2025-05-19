@@ -266,7 +266,7 @@ ERR SetHostOption(HOST Option, int64_t Value)
          break;
 
       default:
-         log.warning("Invalid option %d, Data %" PF64, LONG(Option), Value);
+         log.warning("Invalid option %d, Data %" PF64, int(Option), (long long)Value);
    }
 #endif
 
