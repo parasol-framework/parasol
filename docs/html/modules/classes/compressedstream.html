@@ -340,7 +340,7 @@
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-Message"><h1>Message Structure</h1><p class="lead">Message header.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Time</th><td><span class="text-nowrap">INT64</span></td><td>A timestamp acquired from <a href="core.html?page=PreciseTime">PreciseTime()</a> when the message was first passed to <a href="core.html?page=SendMessage">SendMessage()</a>.</td></tr>
 <tr><th>UID</th><td><span class="text-nowrap">INT</span></td><td>A unique identifier automatically created by <a href="core.html?page=SendMessage">SendMessage()</a>.</td></tr>
-<tr><th>Type</th><td><span class="text-nowrap">INT</span></td><td>A message type identifier as defined by the client.</td></tr>
+<tr><th>Type</th><td><span class="text-nowrap">MSGID</span></td><td>A message type identifier as defined by the client.</td></tr>
 <tr><th>Size</th><td><span class="text-nowrap">INT</span></td><td>The byte-size of the message data, or zero if no data is provided.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream class documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-ObjectSignal"><h1>ObjectSignal Structure</h1><p class="lead">Required in calls to WaitForObjects().</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Object</th><td><span class="text-nowrap">OBJECTPTR</span></td><td>Reference to an object to monitor.</td></tr>

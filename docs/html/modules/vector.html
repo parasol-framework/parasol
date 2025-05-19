@@ -28,7 +28,7 @@
 </tbody></table></div></div>
 <p>This function will set an arc-to command at the current vertex.  It then increments the vertex position for the next path command.</p>
     <div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
-<div class="docs-content" style="display:none;" id="CharWidth"><h2>CharWidth()</h2><p class="lead">Returns the width of a character.</p><div class="card card-info mb-3"><div class="card-header"><samp>DOUBLE vec::CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>FontHandle</td><td>The font to use for calculating the character width.</td></tr>
+<div class="docs-content" style="display:none;" id="CharWidth"><h2>CharWidth()</h2><p class="lead">Returns the width of a character.</p><div class="card card-info mb-3"><div class="card-header"><samp>DOUBLE vec::CharWidth(APTR FontHandle, UINT Char, UINT KChar, DOUBLE * Kerning)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>FontHandle</td><td>The font to use for calculating the character width.</td></tr>
 <tr><td>Char</td><td>A 32-bit unicode character.</td></tr>
 <tr><td>KChar</td><td>A unicode character to use for calculating the font kerning (optional).</td></tr>
 <tr><td>Kerning</td><td>The resulting kerning value (optional).</td></tr>
@@ -77,7 +77,7 @@
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
-<div class="docs-content" style="display:none;" id="GenerateEllipse"><h2>GenerateEllipse()</h2><p class="lead">Generates an elliptical path.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR vec::GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR * Path)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>CX</td><td>Horizontal center point of the ellipse.</td></tr>
+<div class="docs-content" style="display:none;" id="GenerateEllipse"><h2>GenerateEllipse()</h2><p class="lead">Generates an elliptical path.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR vec::GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, INT Vertices, APTR * Path)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>CX</td><td>Horizontal center point of the ellipse.</td></tr>
 <tr><td>CY</td><td>Vertical center point of the ellipse.</td></tr>
 <tr><td>RX</td><td>Horizontal radius of the ellipse.</td></tr>
 <tr><td>RY</td><td>Vertical radius of the ellipse.</td></tr>
@@ -123,7 +123,7 @@ Z: Close Path
 <tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
-<div class="docs-content" style="display:none;" id="GetFontHandle"><h2>GetFontHandle()</h2><p class="lead">Returns a handle for a given font family.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR vec::GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR * Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Family</td><td>The name of the font family to access.</td></tr>
+<div class="docs-content" style="display:none;" id="GetFontHandle"><h2>GetFontHandle()</h2><p class="lead">Returns a handle for a given font family.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR vec::GetFontHandle(CSTRING Family, CSTRING Style, INT Weight, INT Size, APTR * Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Family</td><td>The name of the font family to access.</td></tr>
 <tr><td>Style</td><td>The preferred style to choose from the family.  Use <code>Regular</code> or <code>NULL</code> for the default.</td></tr>
 <tr><td>Weight</td><td>Equivalent to CSS font-weight; a value of 400 or 0 will equate to normal.</td></tr>
 <tr><td>Size</td><td>The font-size, measured in pixels @ 72 DPI.</td></tr>
@@ -258,7 +258,7 @@ Z: Close Path
 <p>This function will set a cubic bezier curve command at the current vertex.  It then increments the vertex position for the next path command.</p>
 <p>The control point from the previous curve will be used in addition to the CtrlX and CtrlY points, hence the name 'smoothed curve'.</p>
     <div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
-<div class="docs-content" style="display:none;" id="StringWidth"><h2>StringWidth()</h2><p class="lead">Calculate the pixel width of a UTF-8 string, for a given font.</p><div class="card card-info mb-3"><div class="card-header"><samp>DOUBLE vec::StringWidth(APTR FontHandle, CSTRING String, LONG Chars)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>FontHandle</td><td>A font handle obtained from <a href="?page=GetFontHandle">GetFontHandle()</a>.</td></tr>
+<div class="docs-content" style="display:none;" id="StringWidth"><h2>StringWidth()</h2><p class="lead">Calculate the pixel width of a UTF-8 string, for a given font.</p><div class="card card-info mb-3"><div class="card-header"><samp>DOUBLE vec::StringWidth(APTR FontHandle, CSTRING String, INT Chars)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>FontHandle</td><td>A font handle obtained from <a href="?page=GetFontHandle">GetFontHandle()</a>.</td></tr>
 <tr><td>String</td><td>Pointer to a null-terminated string.</td></tr>
 <tr><td>Chars</td><td>The maximum number of unicode characters to process in calculating the string width.  Set to <code>-1</code> for all chars.</td></tr>
 </tbody></table></div></div>
