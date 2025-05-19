@@ -40,11 +40,11 @@ class objPicture : public Object {
 
    objBitmap * Bitmap;    // Represents a picture's image data.
    objBitmap * Mask;      // Refers to a Bitmap that imposes a mask on the image.
-   PCF  Flags;            // Optional initialisation flags.
-   LONG DisplayHeight;    // The preferred height to use when displaying the image.
-   LONG DisplayWidth;     // The preferred width to use when displaying the image.
-   LONG Quality;          // Defines the quality level to use when saving the image.
-   LONG FrameRate;        // Refresh & redraw the picture X times per second.  Used by pictures that have an animation refresh rate
+   PCF Flags;             // Optional initialisation flags.
+   int DisplayHeight;     // The preferred height to use when displaying the image.
+   int DisplayWidth;      // The preferred width to use when displaying the image.
+   int Quality;           // Defines the quality level to use when saving the image.
+   int FrameRate;         // Refresh & redraw the picture X times per second.  Used by pictures that have an animation refresh rate
 
    // Action stubs
 
@@ -119,17 +119,17 @@ class objPicture : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setDisplayHeight(const LONG Value) noexcept {
+   inline ERR setDisplayHeight(const int Value) noexcept {
       this->DisplayHeight = Value;
       return ERR::Okay;
    }
 
-   inline ERR setDisplayWidth(const LONG Value) noexcept {
+   inline ERR setDisplayWidth(const int Value) noexcept {
       this->DisplayWidth = Value;
       return ERR::Okay;
    }
 
-   inline ERR setQuality(const LONG Value) noexcept {
+   inline ERR setQuality(const int Value) noexcept {
       this->Quality = Value;
       return ERR::Okay;
    }

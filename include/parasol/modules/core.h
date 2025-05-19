@@ -72,7 +72,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CLIPMODE)
 
 // Seek positions
 
-enum class SEEK : LONG {
+enum class SEEK : int {
    NIL = 0,
    START = 0,
    CURRENT = 1,
@@ -128,7 +128,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CCF)
 
 // Action identifiers.
 
-enum class AC : LONG {
+enum class AC : int {
    NIL = 0,
    Signal = 1,
    Activate = 2,
@@ -294,7 +294,7 @@ DEFINE_ENUM_FLAG_OPERATORS(MEM)
 
 // Event categories.
 
-enum class EVG : LONG {
+enum class EVG : int {
    NIL = 0,
    FILESYSTEM = 1,
    NETWORK = 2,
@@ -314,7 +314,7 @@ enum class EVG : LONG {
 
 // Data codes
 
-enum class DATA : LONG {
+enum class DATA : int {
    NIL = 0,
    TEXT = 1,
    RAW = 2,
@@ -376,7 +376,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CON)
 
 // JET constants are documented in GetInputEvent()
 
-enum class JET : LONG {
+enum class JET : int {
    NIL = 0,
    BUTTON_1 = 1,
    LMB = 1,
@@ -468,7 +468,7 @@ enum class JET : LONG {
 
 // Predefined cursor styles
 
-enum class PTC : LONG {
+enum class PTC : int {
    NIL = 0,
    NO_CHANGE = 0,
    DEFAULT = 1,
@@ -532,7 +532,7 @@ DEFINE_ENUM_FLAG_OPERATORS(DMF)
 
 // Compass directions.
 
-enum class DRL : LONG {
+enum class DRL : int {
    NIL = 0,
    NORTH = 0,
    UP = 0,
@@ -752,7 +752,7 @@ DEFINE_ENUM_FLAG_OPERATORS(THF)
 
 // Flags for the SetDate() file method.
 
-enum class FDT : LONG {
+enum class FDT : int {
    NIL = 0,
    MODIFIED = 0,
    CREATED = 1,
@@ -834,7 +834,7 @@ DEFINE_ENUM_FLAG_OPERATORS(MFF)
 
 // Types for StrDatatype().
 
-enum class STT : LONG {
+enum class STT : int {
    NIL = 0,
    NUMBER = 1,
    FLOAT = 2,
@@ -861,7 +861,7 @@ enum class OPF : uint32_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(OPF)
 
-enum class TOI : LONG {
+enum class TOI : int {
    NIL = 0,
    LOCAL_CACHE = 0,
    LOCAL_STORAGE = 1,
@@ -923,7 +923,7 @@ DEFINE_ENUM_FLAG_OPERATORS(FL)
 
 // AnalysePath() values
 
-enum class LOC : LONG {
+enum class LOC : int {
    NIL = 0,
    DIRECTORY = 1,
    FOLDER = 1,
@@ -942,7 +942,7 @@ DEFINE_ENUM_FLAG_OPERATORS(LDF)
 
 // Flags for file feedback.
 
-enum class FBK : LONG {
+enum class FBK : int {
    NIL = 0,
    MOVE_FILE = 1,
    COPY_FILE = 2,
@@ -951,7 +951,7 @@ enum class FBK : LONG {
 
 // Return codes available to the feedback routine
 
-enum class FFR : LONG {
+enum class FFR : int {
    NIL = 0,
    OKAY = 0,
    CONTINUE = 0,
@@ -961,7 +961,7 @@ enum class FFR : LONG {
 
 // For use by VirtualVolume()
 
-enum class VAS : LONG {
+enum class VAS : int {
    NIL = 0,
    DEREGISTER = 1,
    SCAN_DIR = 2,
@@ -985,7 +985,7 @@ enum class VAS : LONG {
 
 // Feedback event indicators.
 
-enum class FDB : LONG {
+enum class FDB : int {
    NIL = 0,
    DECOMPRESS_FILE = 1,
    COMPRESS_FILE = 2,
@@ -995,7 +995,7 @@ enum class FDB : LONG {
 
 // Compression stream formats
 
-enum class CF : LONG {
+enum class CF : int {
    NIL = 0,
    GZIP = 1,
    ZLIB = 2,
@@ -1039,22 +1039,25 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 // Reserved message ID's that are handled internally.
 
-#define MSGID_WAIT_FOR_OBJECTS 90
-#define MSGID_THREAD_ACTION 91
-#define MSGID_THREAD_CALLBACK 92
-#define MSGID_VALIDATE_PROCESS 93
-#define MSGID_EVENT 94
-#define MSGID_DEBUG 95
-#define MSGID_FREE 98
-#define MSGID_ACTION 99
-#define MSGID_BREAK 100
-#define MSGID_CORE_END 100
-#define MSGID_COMMAND 101
-#define MSGID_QUIT 1000
+enum class MSGID : int {
+   NIL = 0,
+   WAIT_FOR_OBJECTS = 90,
+   THREAD_ACTION = 91,
+   THREAD_CALLBACK = 92,
+   VALIDATE_PROCESS = 93,
+   EVENT = 94,
+   DEBUG = 95,
+   FREE = 98,
+   ACTION = 99,
+   BREAK = 100,
+   CORE_END = 100,
+   COMMAND = 101,
+   QUIT = 1000,
+};
 
 // Types for AllocateID()
 
-enum class IDTYPE : LONG {
+enum class IDTYPE : int {
    NIL = 0,
    MESSAGE = 1,
    GLOBAL = 2,
@@ -1071,7 +1074,7 @@ enum class TSTATE : BYTE {
    TERMINATED = 3,
 };
 
-enum class RES : LONG {
+enum class RES : int {
    NIL = 0,
    FREE_SWAP = 1,
    CONSOLE_FD = 2,
@@ -1100,7 +1103,7 @@ enum class RES : LONG {
 
 // Path types for SetResourcePath()
 
-enum class RP : LONG {
+enum class RP : int {
    NIL = 0,
    MODULE_PATH = 1,
    SYSTEM_PATH = 2,
@@ -1131,7 +1134,7 @@ DEFINE_ENUM_FLAG_OPERATORS(CNF)
 
 // Raw key codes
 
-enum class KEY : LONG {
+enum class KEY : int {
    NIL = 0,
    A = 1,
    B = 2,
@@ -1305,20 +1308,20 @@ struct InputEvent {
 };
 
 struct dcRequest {
-   LONG Item;             // Identifier for retrieval from the source
+   int  Item;             // Identifier for retrieval from the source
    char Preference[4];    // Data preferences for the returned item(s)
 };
 
 struct dcAudio {
-   LONG Size;    // Byte size of this structure
-   LONG Format;  // Format of the audio data
+   int Size;    // Byte size of this structure
+   int Format;  // Format of the audio data
 };
 
 struct dcKeyEntry {
-   LONG    Flags;        // Shift/Control/CapsLock...
-   LONG    Value;        // ASCII value of the key A/B/C/D...
+   int     Flags;        // Shift/Control/CapsLock...
+   int     Value;        // ASCII value of the key A/B/C/D...
    int64_t Timestamp;    // ~Core.PreciseTime() at which the keypress was recorded
-   LONG    Unicode;      // Unicode value for pre-calculated key translations
+   int     Unicode;      // Unicode value for pre-calculated key translations
 };
 
 struct dcDeviceInput {
@@ -1377,7 +1380,7 @@ struct RGB32 {
 };
 
 struct RGBPalette {
-   LONG AmtColours;         // Total colours
+   int AmtColours;          // Total colours
    struct RGB8 Col[256];    // RGB Palette
 };
 
@@ -1398,10 +1401,10 @@ typedef struct ColourFormat {
 } COLOURFORMAT;
 
 struct ClipRectangle {
-   LONG Left;    // Left-most coordinate
-   LONG Top;     // Top coordinate
-   LONG Right;   // Right-most coordinate
-   LONG Bottom;  // Bottom coordinate
+   int Left;    // Left-most coordinate
+   int Top;     // Top coordinate
+   int Right;   // Right-most coordinate
+   int Bottom;  // Bottom coordinate
   ClipRectangle() { }
   ClipRectangle(LONG Value) : Left(Value), Top(Value), Right(Value), Bottom(Value) { }
   ClipRectangle(LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
@@ -1410,10 +1413,10 @@ struct ClipRectangle {
 };
 
 struct Edges {
-   LONG Left;    // Left-most coordinate
-   LONG Top;     // Top coordinate
-   LONG Right;   // Right-most coordinate
-   LONG Bottom;  // Bottom coordinate
+   int Left;    // Left-most coordinate
+   int Top;     // Top coordinate
+   int Right;   // Right-most coordinate
+   int Bottom;  // Bottom coordinate
 };
 
 #define AHASH_ACTIVATE 0xdbaf4876
@@ -1820,14 +1823,14 @@ struct FieldArray {
 
 struct FieldDef {
    CSTRING Name;    // The name of the constant.
-   LONG    Value;   // The value of the constant.
+   int     Value;   // The value of the constant.
    template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(int(pValue)) { }
 };
 
 struct SystemState {
    CSTRING Platform;        // String-based field indicating the user's platform.  Currently returns Native, Windows, OSX or Linux.
    HOSTHANDLE ConsoleFD;    // Internal
-   LONG    Stage;           // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
+   int     Stage;           // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
 };
 
 struct Unit {
@@ -1863,7 +1866,7 @@ struct MethodEntry {
    APTR    Routine;                      // The method entry point, defined as ERR (*Routine)(OBJECTPTR, APTR);
    CSTRING Name;                         // Name of the method
    const struct FunctionField * Args;    // List of parameters accepted by the method
-   LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
+   int     Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
    MethodEntry() : MethodID(AC::NIL), Routine(NULL), Name(NULL) { }
    MethodEntry(AC pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, int pSize) :
       MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
@@ -1871,7 +1874,7 @@ struct MethodEntry {
 
 struct ActionTable {
    ULONG   Hash;                         // Hash of the action name.
-   LONG    Size;                         // Byte-size of the structure for this action.
+   int     Size;                         // Byte-size of the structure for this action.
    CSTRING Name;                         // Name of the action.
    const struct FunctionField * Args;    // List of fields that are passed to this action.
 };
@@ -1883,9 +1886,9 @@ struct ChildEntry {
 
 struct Message {
    int64_t Time;    // A timestamp acquired from ~Core.PreciseTime() when the message was first passed to ~Core.SendMessage().
-   LONG    UID;     // A unique identifier automatically created by ~Core.SendMessage().
-   LONG    Type;    // A message type identifier as defined by the client.
-   LONG    Size;    // The byte-size of the message data, or zero if no data is provided.
+   int     UID;     // A unique identifier automatically created by ~Core.SendMessage().
+   MSGID   Type;    // A message type identifier as defined by the client.
+   int     Size;    // The byte-size of the message data, or zero if no data is provided.
 };
 
 typedef struct MemInfo {
@@ -1902,7 +1905,7 @@ struct MsgHandler {
    struct MsgHandler * Next;    // Next message handler in the chain
    APTR     Custom;             // Custom pointer to send to the message handler
    FUNCTION Function;           // Call this function
-   LONG     MsgType;            // Type of message being filtered
+   MSGID    MsgType;            // Type of message being filtered
 };
 
 struct CacheFile {
@@ -1915,7 +1918,7 @@ struct CacheFile {
 
 struct CompressionFeedback {
    FDB     FeedbackID;      // Set to one of the FDB event indicators
-   LONG    Index;           // Index of the current file
+   int     Index;           // Index of the current file
    CSTRING Path;            // Name of the current file/path in the archive
    CSTRING Dest;            // Destination file/path during decompression
    int64_t Progress;        // Progress indicator (byte position for the file being de/compressed).
@@ -1943,9 +1946,9 @@ struct CompressedItem {
    struct CompressedItem * Next;    // Used only if this is a linked-list.
    CSTRING Path;                    // Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
    PERMIT  Permissions;             // Original permissions - see PERMIT flags.
-   LONG    UserID;                  // Original user ID
-   LONG    GroupID;                 // Original group ID
-   LONG    OthersID;                // Original others ID
+   int     UserID;                  // Original user ID
+   int     GroupID;                 // Original group ID
+   int     OthersID;                // Original others ID
    FL      Flags;                   // FL flags
    struct DateTime Created;         // Date and time of the file's creation.
    struct DateTime Modified;        // Date and time last modified.
@@ -1959,8 +1962,8 @@ struct FileInfo {
    STRING  Name;              // The name of the file.
    RDF     Flags;             // Additional flags to describe the file.
    PERMIT  Permissions;       // Standard permission flags.
-   LONG    UserID;            // User  ID (Unix systems only).
-   LONG    GroupID;           // Group ID (Unix systems only).
+   int     UserID;            // User  ID (Unix systems only).
+   int     GroupID;           // Group ID (Unix systems only).
    struct DateTime Created;   // The date/time of the file's creation.
    struct DateTime Modified;  // The date/time of the last file modification.
     std::unordered_map<std::string, std::string> *Tags;
@@ -1995,15 +1998,15 @@ struct FileFeedback {
 };
 
 struct Field {
-   MAXINT  Arg;                                                                // An option to complement the field type.  Can be a pointer or an integer value
-   ERR (*GetValue)(APTR, APTR);                                                // A virtual function that will retrieve the value for this field.
-   APTR    SetValue;                                                           // A virtual function that will set the value for this field.
-   ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG);     // An internal function for writing to this field.
-   CSTRING Name;                                                               // The English name for the field, e.g. Width
-   ULONG   FieldID;                                                            // Provides a fast way of finding fields, e.g. FID_Width
-   UWORD   Offset;                                                             // Field offset within the object
-   UWORD   Index;                                                              // Field array index
-   ULONG   Flags;                                                              // Special flags that describe the field
+   MAXINT  Arg;                                                              // An option to complement the field type.  Can be a pointer or an integer value
+   ERR (*GetValue)(APTR, APTR);                                              // A virtual function that will retrieve the value for this field.
+   APTR    SetValue;                                                         // A virtual function that will set the value for this field.
+   ERR (*WriteValue)(OBJECTPTR, struct Field *, int, const void *, int);     // An internal function for writing to this field.
+   CSTRING Name;                                                             // The English name for the field, e.g. Width
+   ULONG   FieldID;                                                          // Provides a fast way of finding fields, e.g. FID_Width
+   UWORD   Offset;                                                           // Field offset within the object
+   UWORD   Index;                                                            // Field array index
+   ULONG   Flags;                                                            // Special flags that describe the field
 };
 
 struct ScriptArg { // For use with sc::Exec
@@ -2035,23 +2038,23 @@ struct ScriptArg { // For use with sc::Exec
 
 struct CoreBase {
 #ifndef PARASOL_STATIC
-   ERR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR *Result);
+   ERR (*_AccessMemory)(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
    ERR (*_Action)(AC Action, OBJECTPTR Object, APTR Parameters);
-   void (*_ActionList)(struct ActionTable **Actions, LONG *Size);
+   void (*_ActionList)(struct ActionTable **Actions, int *Size);
    ERR (*_DeleteFile)(CSTRING Path, FUNCTION *Callback);
    CSTRING (*_ResolveClassID)(CLASSID ID);
-   LONG (*_AllocateID)(IDTYPE Type);
-   ERR (*_AllocMemory)(LONG Size, MEM Flags, APTR *Address, MEMORYID *ID);
-   ERR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, OBJECTPTR *Result);
+   int (*_AllocateID)(IDTYPE Type);
+   ERR (*_AllocMemory)(int Size, MEM Flags, APTR *Address, MEMORYID *ID);
+   ERR (*_AccessObject)(OBJECTID Object, int MilliSeconds, OBJECTPTR *Result);
    ERR (*_CheckAction)(OBJECTPTR Object, AC Action);
    ERR (*_CheckMemoryExists)(MEMORYID ID);
    ERR (*_CheckObjectExists)(OBJECTID Object);
    ERR (*_InitObject)(OBJECTPTR Object);
    ERR (*_VirtualVolume)(CSTRING Name, ...);
    OBJECTPTR (*_CurrentContext)(void);
-   ERR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR *Result, LONG *Elements);
-   LONG (*_AdjustLogLevel)(LONG Delta);
-   ERR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *Result);
+   ERR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR *Result, int *Elements);
+   int (*_AdjustLogLevel)(int Delta);
+   ERR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, int BufferSize, int *Result);
    ERR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
    ERR (*_AnalysePath)(CSTRING Path, LOC *Type);
@@ -2059,24 +2062,24 @@ struct CoreBase {
    CLASSID (*_GetClassID)(OBJECTID Object);
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
    ERR (*_GetField)(OBJECTPTR Object, FIELD Field, APTR Result);
-   ERR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
+   ERR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size);
    ERR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
    const struct SystemState * (*_GetSystemState)(void);
    ERR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> *List);
    ERR (*_RegisterFD)(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
    ERR (*_ResolvePath)(const std::string_view & Path, RSF Flags, std::string *Result);
-   ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo *MemInfo, LONG Size);
-   ERR (*_MemoryPtrInfo)(APTR Address, struct MemInfo *MemInfo, LONG Size);
+   ERR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo *MemInfo, int Size);
+   ERR (*_MemoryPtrInfo)(APTR Address, struct MemInfo *MemInfo, int Size);
    ERR (*_NewObject)(CLASSID ClassID, NF Flags, OBJECTPTR *Object);
    void (*_NotifySubscribers)(OBJECTPTR Object, AC Action, APTR Args, ERR Error);
    ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
-   ERR (*_ProcessMessages)(PMF Flags, LONG TimeOut);
+   ERR (*_ProcessMessages)(PMF Flags, int TimeOut);
    ERR (*_IdentifyFile)(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
    ERR (*_ReallocMemory)(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID);
-   ERR (*_GetMessage)(LONG Type, MSF Flags, APTR Buffer, LONG Size);
+   ERR (*_GetMessage)(MSGID Type, MSF Flags, APTR Buffer, int Size);
    ERR (*_ReleaseMemory)(MEMORYID MemoryID);
    CLASSID (*_ResolveClassName)(CSTRING Name);
-   ERR (*_SendMessage)(LONG Type, MSF Flags, APTR Data, LONG Size);
+   ERR (*_SendMessage)(MSGID Type, MSF Flags, APTR Data, int Size);
    ERR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
    ERR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
@@ -2090,22 +2093,22 @@ struct CoreBase {
    ERR (*_UpdateTimer)(APTR Subscription, DOUBLE Interval);
    ERR (*_UnsubscribeAction)(OBJECTPTR Object, AC Action);
    void (*_UnsubscribeEvent)(APTR Handle);
-   ERR (*_BroadcastEvent)(APTR Event, LONG EventSize);
-   void (*_WaitTime)(LONG Seconds, LONG MicroSeconds);
+   ERR (*_BroadcastEvent)(APTR Event, int EventSize);
+   void (*_WaitTime)(int Seconds, int MicroSeconds);
    int64_t (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
    ULONG (*_GenCRC32)(ULONG CRC, APTR Data, ULONG Length);
    int64_t (*_GetResource)(RES Resource);
    int64_t (*_SetResource)(RES Resource, int64_t Value);
-   ERR (*_ScanMessages)(LONG *Handle, LONG Type, APTR Buffer, LONG Size);
-   ERR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal *ObjectSignals);
+   ERR (*_ScanMessages)(int *Handle, MSGID Type, APTR Buffer, int Size);
+   ERR (*_WaitForObjects)(PMF Flags, int TimeOut, struct ObjectSignal *ObjectSignals);
    void (*_UnloadFile)(struct CacheFile *Cache);
    ERR (*_CreateFolder)(CSTRING Path, PERMIT Permissions);
    ERR (*_LoadFile)(CSTRING Path, LDF Flags, struct CacheFile **Cache);
    ERR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
    ERR (*_DeleteVolume)(CSTRING Name);
    ERR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
-   ERR (*_UpdateMessage)(LONG Message, LONG Type, APTR Data, LONG Size);
-   ERR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
+   ERR (*_UpdateMessage)(int Message, MSGID Type, APTR Data, int Size);
+   ERR (*_AddMsgHandler)(APTR Custom, MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
    ERR (*_QueueAction)(AC Action, OBJECTID Object, APTR Args);
    int64_t (*_PreciseTime)(void);
    ERR (*_OpenDir)(CSTRING Path, RDF Flags, struct DirInfo **Info);
@@ -2114,18 +2117,18 @@ struct CoreBase {
    CSTRING (*_GetErrorMsg)(ERR Error);
    struct Message * (*_GetActionMsg)(void);
    ERR (*_FuncError)(CSTRING Header, ERR Error);
-   ERR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
-   ERR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
+   ERR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, int Elements);
+   ERR (*_LockObject)(OBJECTPTR Object, int MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
    ERR (*_AsyncAction)(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback);
    ERR (*_AddInfoTag)(struct FileInfo *Info, CSTRING Name, CSTRING Value);
-   void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
+   void (*_SetDefaultPermissions)(int User, int Group, PERMIT Permissions);
    void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
    ERR (*_ReadInfoTag)(struct FileInfo *Info, CSTRING Name, CSTRING *Value);
    ERR (*_SetResourcePath)(RP PathType, CSTRING Path);
    objTask * (*_CurrentTask)(void);
-   CSTRING (*_ResolveGroupID)(LONG Group);
-   CSTRING (*_ResolveUserID)(LONG User);
+   CSTRING (*_ResolveGroupID)(int Group);
+   CSTRING (*_ResolveUserID)(int User);
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
    OBJECTPTR (*_ParentContext)(void);
 #endif // PARASOL_STATIC
@@ -2134,23 +2137,23 @@ struct CoreBase {
 #ifndef PRV_CORE_MODULE
 #ifndef PARASOL_STATIC
 extern struct CoreBase *CoreBase;
-inline ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR *Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
+inline ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERR Action(AC Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
-inline void ActionList(struct ActionTable **Actions, LONG *Size) { return CoreBase->_ActionList(Actions,Size); }
+inline void ActionList(struct ActionTable **Actions, int *Size) { return CoreBase->_ActionList(Actions,Size); }
 inline ERR DeleteFile(CSTRING Path, FUNCTION *Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
-inline LONG AllocateID(IDTYPE Type) { return CoreBase->_AllocateID(Type); }
-inline ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
-inline ERR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR *Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
+inline int AllocateID(IDTYPE Type) { return CoreBase->_AllocateID(Type); }
+inline ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
+inline ERR AccessObject(OBJECTID Object, int MilliSeconds, OBJECTPTR *Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
 inline ERR CheckAction(OBJECTPTR Object, AC Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
 inline ERR InitObject(OBJECTPTR Object) { return CoreBase->_InitObject(Object); }
 template<class... Args> ERR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
-inline ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR *Result, LONG *Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
-inline LONG AdjustLogLevel(LONG Delta) { return CoreBase->_AdjustLogLevel(Delta); }
-inline ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
+inline ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR *Result, int *Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
+inline int AdjustLogLevel(int Delta) { return CoreBase->_AdjustLogLevel(Delta); }
+inline ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 inline ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
 inline ERR AnalysePath(CSTRING Path, LOC *Type) { return CoreBase->_AnalysePath(Path,Type); }
@@ -2158,24 +2161,24 @@ inline ERR FreeResource(MEMORYID ID) { return CoreBase->_FreeResource(ID); }
 inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object); }
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
 inline ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreBase->_GetField(Object,Field,Result); }
-inline ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
+inline ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
 inline ERR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List) { return CoreBase->_ListChildren(Object,List); }
 inline ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
 inline ERR ResolvePath(const std::string_view & Path, RSF Flags, std::string *Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
-inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
-inline ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
+inline ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, int Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
+inline ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, int Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
 inline ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
 inline void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
-inline ERR ProcessMessages(PMF Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
+inline ERR ProcessMessages(PMF Flags, int TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass) { return CoreBase->_IdentifyFile(Path,Filter,Class,SubClass); }
 inline ERR ReallocMemory(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
-inline ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Type,Flags,Buffer,Size); }
+inline ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, int Size) { return CoreBase->_GetMessage(Type,Flags,Buffer,Size); }
 inline ERR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
-inline ERR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
+inline ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
 inline ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
 template<class... Args> ERR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
@@ -2189,22 +2192,22 @@ inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscriptio
 inline ERR UpdateTimer(APTR Subscription, DOUBLE Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
 inline ERR UnsubscribeAction(OBJECTPTR Object, AC Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
 inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
-inline ERR BroadcastEvent(APTR Event, LONG EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
-inline void WaitTime(LONG Seconds, LONG MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
+inline ERR BroadcastEvent(APTR Event, int EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
+inline void WaitTime(int Seconds, int MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
 inline int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
 inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
 inline int64_t GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
 inline int64_t SetResource(RES Resource, int64_t Value) { return CoreBase->_SetResource(Resource,Value); }
-inline ERR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Handle,Type,Buffer,Size); }
-inline ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal *ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
+inline ERR ScanMessages(int *Handle, MSGID Type, APTR Buffer, int Size) { return CoreBase->_ScanMessages(Handle,Type,Buffer,Size); }
+inline ERR WaitForObjects(PMF Flags, int TimeOut, struct ObjectSignal *ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 inline void UnloadFile(struct CacheFile *Cache) { return CoreBase->_UnloadFile(Cache); }
 inline ERR CreateFolder(CSTRING Path, PERMIT Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERR LoadFile(CSTRING Path, LDF Flags, struct CacheFile **Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 inline ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
 inline ERR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
-inline ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Message,Type,Data,Size); }
-inline ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
+inline ERR UpdateMessage(int Message, MSGID Type, APTR Data, int Size) { return CoreBase->_UpdateMessage(Message,Type,Data,Size); }
+inline ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
 inline ERR QueueAction(AC Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 inline int64_t PreciseTime(void) { return CoreBase->_PreciseTime(); }
 inline ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
@@ -2213,37 +2216,37 @@ inline struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Targ
 inline CSTRING GetErrorMsg(ERR Error) { return CoreBase->_GetErrorMsg(Error); }
 inline struct Message * GetActionMsg(void) { return CoreBase->_GetActionMsg(); }
 inline ERR FuncError(CSTRING Header, ERR Error) { return CoreBase->_FuncError(Header,Error); }
-inline ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
-inline ERR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
+inline ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, int Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
+inline ERR LockObject(OBJECTPTR Object, int MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
 inline ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback) { return CoreBase->_AsyncAction(Action,Object,Args,Callback); }
 inline ERR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
-inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
+inline void SetDefaultPermissions(int User, int Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
 inline ERR ReadInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING *Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
 inline ERR SetResourcePath(RP PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
 inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
-inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
-inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
+inline CSTRING ResolveGroupID(int Group) { return CoreBase->_ResolveGroupID(Group); }
+inline CSTRING ResolveUserID(int User) { return CoreBase->_ResolveUserID(User); }
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
 inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
 #else
-extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR *Result);
+extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
-extern "C" void ActionList(struct ActionTable **Actions, LONG *Size);
+extern "C" void ActionList(struct ActionTable **Actions, int *Size);
 extern "C" ERR DeleteFile(CSTRING Path, FUNCTION *Callback);
 extern "C" CSTRING ResolveClassID(CLASSID ID);
-extern "C" LONG AllocateID(IDTYPE Type);
-extern "C" ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *ID);
-extern "C" ERR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR *Result);
+extern "C" int AllocateID(IDTYPE Type);
+extern "C" ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *ID);
+extern "C" ERR AccessObject(OBJECTID Object, int MilliSeconds, OBJECTPTR *Result);
 extern "C" ERR CheckAction(OBJECTPTR Object, AC Action);
 extern "C" ERR CheckMemoryExists(MEMORYID ID);
 extern "C" ERR CheckObjectExists(OBJECTID Object);
 extern "C" ERR InitObject(OBJECTPTR Object);
 extern "C" OBJECTPTR CurrentContext(void);
-extern "C" ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR *Result, LONG *Elements);
-extern "C" LONG AdjustLogLevel(LONG Delta);
-extern "C" ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *Result);
+extern "C" ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR *Result, int *Elements);
+extern "C" int AdjustLogLevel(int Delta);
+extern "C" ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *Result);
 extern "C" ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
 extern "C" objMetaClass * FindClass(CLASSID ClassID);
 extern "C" ERR AnalysePath(CSTRING Path, LOC *Type);
@@ -2251,24 +2254,24 @@ extern "C" ERR FreeResource(MEMORYID ID);
 extern "C" CLASSID GetClassID(OBJECTID Object);
 extern "C" OBJECTID GetOwnerID(OBJECTID Object);
 extern "C" ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
-extern "C" ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
+extern "C" ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size);
 extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState(void);
 extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List);
 extern "C" ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
 extern "C" ERR ResolvePath(const std::string_view & Path, RSF Flags, std::string *Result);
-extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, LONG Size);
-extern "C" ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, LONG Size);
+extern "C" ERR MemoryIDInfo(MEMORYID ID, struct MemInfo *MemInfo, int Size);
+extern "C" ERR MemoryPtrInfo(APTR Address, struct MemInfo *MemInfo, int Size);
 extern "C" ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object);
 extern "C" void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error);
 extern "C" ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
-extern "C" ERR ProcessMessages(PMF Flags, LONG TimeOut);
+extern "C" ERR ProcessMessages(PMF Flags, int TimeOut);
 extern "C" ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
 extern "C" ERR ReallocMemory(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID);
-extern "C" ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size);
+extern "C" ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, int Size);
 extern "C" ERR ReleaseMemory(MEMORYID MemoryID);
 extern "C" CLASSID ResolveClassName(CSTRING Name);
-extern "C" ERR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size);
+extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);
 extern "C" ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 extern "C" OBJECTPTR SetContext(OBJECTPTR Object);
 extern "C" ERR SetField(OBJECTPTR Object, FIELD Field, ...);
@@ -2282,22 +2285,22 @@ extern "C" ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscri
 extern "C" ERR UpdateTimer(APTR Subscription, DOUBLE Interval);
 extern "C" ERR UnsubscribeAction(OBJECTPTR Object, AC Action);
 extern "C" void UnsubscribeEvent(APTR Handle);
-extern "C" ERR BroadcastEvent(APTR Event, LONG EventSize);
-extern "C" void WaitTime(LONG Seconds, LONG MicroSeconds);
+extern "C" ERR BroadcastEvent(APTR Event, int EventSize);
+extern "C" void WaitTime(int Seconds, int MicroSeconds);
 extern "C" int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
 extern "C" ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length);
 extern "C" int64_t GetResource(RES Resource);
 extern "C" int64_t SetResource(RES Resource, int64_t Value);
-extern "C" ERR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG Size);
-extern "C" ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal *ObjectSignals);
+extern "C" ERR ScanMessages(int *Handle, MSGID Type, APTR Buffer, int Size);
+extern "C" ERR WaitForObjects(PMF Flags, int TimeOut, struct ObjectSignal *ObjectSignals);
 extern "C" void UnloadFile(struct CacheFile *Cache);
 extern "C" ERR CreateFolder(CSTRING Path, PERMIT Permissions);
 extern "C" ERR LoadFile(CSTRING Path, LDF Flags, struct CacheFile **Cache);
 extern "C" ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
 extern "C" ERR DeleteVolume(CSTRING Name);
 extern "C" ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
-extern "C" ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size);
-extern "C" ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
+extern "C" ERR UpdateMessage(int Message, MSGID Type, APTR Data, int Size);
+extern "C" ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
 extern "C" ERR QueueAction(AC Action, OBJECTID Object, APTR Args);
 extern "C" int64_t PreciseTime(void);
 extern "C" ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info);
@@ -2306,18 +2309,18 @@ extern "C" struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *
 extern "C" CSTRING GetErrorMsg(ERR Error);
 extern "C" struct Message * GetActionMsg(void);
 extern "C" ERR FuncError(CSTRING Header, ERR Error);
-extern "C" ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
-extern "C" ERR LockObject(OBJECTPTR Object, LONG MilliSeconds);
+extern "C" ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, int Elements);
+extern "C" ERR LockObject(OBJECTPTR Object, int MilliSeconds);
 extern "C" void ReleaseObject(OBJECTPTR Object);
 extern "C" ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback);
 extern "C" ERR AddInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING Value);
-extern "C" void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
+extern "C" void SetDefaultPermissions(int User, int Group, PERMIT Permissions);
 extern "C" void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args);
 extern "C" ERR ReadInfoTag(struct FileInfo *Info, CSTRING Name, CSTRING *Value);
 extern "C" ERR SetResourcePath(RP PathType, CSTRING Path);
 extern "C" objTask * CurrentTask(void);
-extern "C" CSTRING ResolveGroupID(LONG Group);
-extern "C" CSTRING ResolveUserID(LONG User);
+extern "C" CSTRING ResolveGroupID(int Group);
+extern "C" CSTRING ResolveUserID(int User);
 extern "C" ERR CreateLink(CSTRING From, CSTRING To);
 extern "C" OBJECTPTR ParentContext(void);
 #endif // PARASOL_STATIC
@@ -3080,7 +3083,7 @@ inline ERR acSetKey(OBJECTPTR Object, CSTRING Key, CSTRING Value) {
 // MetaClass methods
 
 namespace mc {
-struct FindField { LONG ID; struct Field * Field; objMetaClass * Source; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindField { int ID; struct Field * Field; objMetaClass * Source; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -3100,13 +3103,13 @@ class objMetaClass : public Object {
    CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
    CSTRING Path;                        // The path to the module binary that represents the class.
    CSTRING Icon;                        // Associates an icon with the file data for this class.
-   LONG    Size;                        // The total size of the object structure represented by the MetaClass.
+   int     Size;                        // The total size of the object structure represented by the MetaClass.
    CLF     Flags;                       // Optional flag settings.
    CLASSID ClassID;                     // Specifies the ID of a class object.
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
-   LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
+   int     OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
    CCF     Category;                    // The system category that a class belongs to.
-   inline ERR findField(LONG ID, struct Field ** Field, objMetaClass ** Source) noexcept {
+   inline ERR findField(int ID, struct Field ** Field, objMetaClass ** Source) noexcept {
       struct mc::FindField args = { ID, (struct Field *)0, (objMetaClass *)0 };
       ERR error = Action(AC(-1), this, &args);
       if (Field) *Field = args.Field;
@@ -3158,7 +3161,7 @@ class objMetaClass : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setSize(const LONG Value) noexcept {
+   inline ERR setSize(const int Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->Size = Value;
       return ERR::Okay;
@@ -3246,12 +3249,12 @@ class objStorageDevice : public Object {
 // File methods
 
 namespace fl {
-struct StartStream { OBJECTID SubscriberID; FL Flags; LONG Length; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct StartStream { OBJECTID SubscriberID; FL Flags; int Length; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct StopStream { static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Delete { FUNCTION * Callback; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Move { CSTRING Dest; FUNCTION * Callback; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Copy { CSTRING Dest; FUNCTION * Callback; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; FDT Type; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetDate { int Year; int Month; int Day; int Hour; int Minute; int Second; FDT Type; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ReadLine { STRING Result; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct BufferContent { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Next { objFile * File; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
@@ -3268,7 +3271,7 @@ class objFile : public Object {
 
    int64_t  Position;   // The current read/write byte position in a file.
    FL       Flags;      // File flags and options.
-   LONG     Static;     // Set to true if a file object should be static.
+   int      Static;     // Set to true if a file object should be static.
    OBJECTID TargetID;   // Specifies a surface ID to target for user feedback and dialog boxes.
    BYTE *   Buffer;     // Points to the internal data buffer if the file content is held in memory.
    public:
@@ -3343,7 +3346,7 @@ class objFile : public Object {
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
-   inline ERR startStream(OBJECTID SubscriberID, FL Flags, LONG Length) noexcept {
+   inline ERR startStream(OBJECTID SubscriberID, FL Flags, int Length) noexcept {
       struct fl::StartStream args = { SubscriberID, Flags, Length };
       return(Action(AC(-1), this, &args));
    }
@@ -3362,7 +3365,7 @@ class objFile : public Object {
       struct fl::Copy args = { Dest, &Callback };
       return(Action(AC(-5), this, &args));
    }
-   inline ERR setDate(LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type) noexcept {
+   inline ERR setDate(int Year, int Month, int Day, int Hour, int Minute, int Second, FDT Type) noexcept {
       struct fl::SetDate args = { Year, Month, Day, Hour, Minute, Second, Type };
       return(Action(AC(-6), this, &args));
    }
@@ -3400,7 +3403,7 @@ class objFile : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setStatic(const LONG Value) noexcept {
+   inline ERR setStatic(const int Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->Static = Value;
       return ERR::Okay;
@@ -3429,13 +3432,13 @@ class objFile : public Object {
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERR setPermissions(const LONG Value) noexcept {
+   inline ERR setPermissions(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setSize(const LARGE Value) noexcept {
+   inline ERR setSize(const int64_t Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
@@ -3447,13 +3450,13 @@ class objFile : public Object {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERR setUser(const LONG Value) noexcept {
+   inline ERR setUser(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setGroup(const LONG Value) noexcept {
+   inline ERR setGroup(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -3473,8 +3476,8 @@ struct Set { CSTRING Group; CSTRING Key; CSTRING Data; static const AC id = AC(-
 struct WriteValue { CSTRING Group; CSTRING Key; CSTRING Data; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DeleteKey { CSTRING Group; CSTRING Key; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DeleteGroup { CSTRING Group; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetGroupFromIndex { LONG Index; CSTRING Group; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SortByKey { CSTRING Key; LONG Descending; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetGroupFromIndex { int Index; CSTRING Group; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SortByKey { CSTRING Key; int Descending; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct MergeFile { CSTRING Path; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Merge { OBJECTPTR Source; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
@@ -3583,13 +3586,13 @@ class objConfig : public Object {
       struct cfg::DeleteGroup args = { Group };
       return(Action(AC(-5), this, &args));
    }
-   inline ERR getGroupFromIndex(LONG Index, CSTRING * Group) noexcept {
+   inline ERR getGroupFromIndex(int Index, CSTRING * Group) noexcept {
       struct cfg::GetGroupFromIndex args = { Index, (CSTRING)0 };
       ERR error = Action(AC(-6), this, &args);
       if (Group) *Group = args.Group;
       return(error);
    }
-   inline ERR sortByKey(CSTRING Key, LONG Descending) noexcept {
+   inline ERR sortByKey(CSTRING Key, int Descending) noexcept {
       struct cfg::SortByKey args = { Key, Descending };
       return(Action(AC(-7), this, &args));
    }
@@ -3636,9 +3639,9 @@ class objConfig : public Object {
 // Script methods
 
 namespace sc {
-struct Exec { CSTRING Procedure; const struct ScriptArg * Args; LONG TotalArgs; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Exec { CSTRING Procedure; const struct ScriptArg * Args; int TotalArgs; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DerefProcedure { FUNCTION * Procedure; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Callback { int64_t ProcedureID; const struct ScriptArg * Args; LONG TotalArgs; ERR Error; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Callback { int64_t ProcedureID; const struct ScriptArg * Args; int TotalArgs; ERR Error; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetProcedureID { CSTRING Procedure; int64_t ProcedureID; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
@@ -3653,8 +3656,8 @@ class objScript : public Object {
    OBJECTID TargetID;  // Reference to the default container that new script objects will be initialised to.
    SCF      Flags;     // Optional flags.
    ERR      Error;     // If a script fails during execution, an error code may be readable here.
-   LONG     CurrentLine; // Indicates the current line being executed when in debug mode.
-   LONG     LineOffset; // For debugging purposes, this value is added to any message referencing a line number.
+   int      CurrentLine; // Indicates the current line being executed when in debug mode.
+   int      LineOffset; // For debugging purposes, this value is added to any message referencing a line number.
 
 #ifdef PRV_SCRIPT
    int64_t    ProcedureID;          // For callbacks
@@ -3694,7 +3697,7 @@ class objScript : public Object {
       struct acSetKey args = { FieldName, Value };
       return Action(AC::SetKey, this, &args);
    }
-   inline ERR exec(CSTRING Procedure, const struct ScriptArg * Args, LONG TotalArgs) noexcept {
+   inline ERR exec(CSTRING Procedure, const struct ScriptArg * Args, int TotalArgs) noexcept {
       struct sc::Exec args = { Procedure, Args, TotalArgs };
       return(Action(AC(-1), this, &args));
    }
@@ -3702,7 +3705,7 @@ class objScript : public Object {
       struct sc::DerefProcedure args = { &Procedure };
       return(Action(AC(-2), this, &args));
    }
-   inline ERR callback(int64_t ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, ERR * Error) noexcept {
+   inline ERR callback(int64_t ProcedureID, const struct ScriptArg * Args, int TotalArgs, ERR * Error) noexcept {
       struct sc::Callback args = { ProcedureID, Args, TotalArgs, (ERR)0 };
       ERR error = Action(AC(-3), this, &args);
       if (Error) *Error = args.Error;
@@ -3728,7 +3731,7 @@ class objScript : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setLineOffset(const LONG Value) noexcept {
+   inline ERR setLineOffset(const int Value) noexcept {
       this->LineOffset = Value;
       return ERR::Okay;
    }
@@ -3842,8 +3845,8 @@ class objTask : public Object {
 
    DOUBLE TimeOut;    // Limits the amount of time to wait for a launched process to return.
    TSF    Flags;      // Optional flags.
-   LONG   ReturnCode; // The task's return code can be retrieved following execution.
-   LONG   ProcessID;  // Reflects the process ID when an executable is launched.
+   int    ReturnCode; // The task's return code can be retrieved following execution.
+   int    ProcessID;  // Reflects the process ID when an executable is launched.
 
    // Action stubs
 
@@ -3920,13 +3923,13 @@ class objTask : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setReturnCode(const LONG Value) noexcept {
+   inline ERR setReturnCode(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setProcess(const LONG Value) noexcept {
+   inline ERR setProcess(const int Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->ProcessID = Value;
       return ERR::Okay;
@@ -3992,7 +3995,7 @@ class objTask : public Object {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERR setPriority(const LONG Value) noexcept {
+   inline ERR setPriority(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -4007,7 +4010,7 @@ class objTask : public Object {
 // Thread methods
 
 namespace th {
-struct SetData { APTR Data; LONG Size; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetData { APTR Data; int Size; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -4018,25 +4021,25 @@ class objThread : public Object {
 
    using create = pf::Create<objThread>;
 
-   APTR Data;        // Pointer to initialisation data for the thread.
-   LONG DataSize;    // The size of the buffer referenced in the Data field.
-   LONG StackSize;   // The stack size to allocate for the thread.
-   ERR  Error;       // Reflects the error code returned by the thread routine.
-   THF  Flags;       // Optional flags can be defined here.
+   APTR Data;       // Pointer to initialisation data for the thread.
+   int  DataSize;   // The size of the buffer referenced in the Data field.
+   int  StackSize;  // The stack size to allocate for the thread.
+   ERR  Error;      // Reflects the error code returned by the thread routine.
+   THF  Flags;      // Optional flags can be defined here.
 
    // Action stubs
 
    inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
    inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR setData(APTR Data, LONG Size) noexcept {
+   inline ERR setData(APTR Data, int Size) noexcept {
       struct th::SetData args = { Data, Size };
       return(Action(AC(-1), this, &args));
    }
 
    // Customised field setting
 
-   inline ERR setStackSize(const LONG Value) noexcept {
+   inline ERR setStackSize(const int Value) noexcept {
       this->StackSize = Value;
       return ERR::Okay;
    }
@@ -4160,16 +4163,16 @@ class objTime : public Object {
    using create = pf::Create<objTime>;
 
    int64_t SystemTime;    // Represents the system time when the time object was last queried.
-   LONG    Year;          // Year (-ve for BC, +ve for AD).
-   LONG    Month;         // Month (1 - 12)
-   LONG    Day;           // Day (1 - 31)
-   LONG    Hour;          // Hour (0 - 23)
-   LONG    Minute;        // Minute (0 - 59)
-   LONG    Second;        // Second (0 - 59)
-   LONG    TimeZone;      // No information.
-   LONG    DayOfWeek;     // Day of week (0 - 6) starting from Sunday.
-   LONG    MilliSecond;   // A millisecond is one thousandth of a second (0 - 999)
-   LONG    MicroSecond;   // A microsecond is one millionth of a second (0 - 999999)
+   int     Year;          // Year (-ve for BC, +ve for AD).
+   int     Month;         // Month (1 - 12)
+   int     Day;           // Day (1 - 31)
+   int     Hour;          // Hour (0 - 23)
+   int     Minute;        // Minute (0 - 59)
+   int     Second;        // Second (0 - 59)
+   int     TimeZone;      // No information.
+   int     DayOfWeek;     // Day of week (0 - 6) starting from Sunday.
+   int     MilliSecond;   // A millisecond is one thousandth of a second (0 - 999)
+   int     MicroSecond;   // A microsecond is one millionth of a second (0 - 999999)
 
    // Action stubs
 
@@ -4186,52 +4189,52 @@ class objTime : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setYear(const LONG Value) noexcept {
+   inline ERR setYear(const int Value) noexcept {
       this->Year = Value;
       return ERR::Okay;
    }
 
-   inline ERR setMonth(const LONG Value) noexcept {
+   inline ERR setMonth(const int Value) noexcept {
       this->Month = Value;
       return ERR::Okay;
    }
 
-   inline ERR setDay(const LONG Value) noexcept {
+   inline ERR setDay(const int Value) noexcept {
       this->Day = Value;
       return ERR::Okay;
    }
 
-   inline ERR setHour(const LONG Value) noexcept {
+   inline ERR setHour(const int Value) noexcept {
       this->Hour = Value;
       return ERR::Okay;
    }
 
-   inline ERR setMinute(const LONG Value) noexcept {
+   inline ERR setMinute(const int Value) noexcept {
       this->Minute = Value;
       return ERR::Okay;
    }
 
-   inline ERR setSecond(const LONG Value) noexcept {
+   inline ERR setSecond(const int Value) noexcept {
       this->Second = Value;
       return ERR::Okay;
    }
 
-   inline ERR setTimeZone(const LONG Value) noexcept {
+   inline ERR setTimeZone(const int Value) noexcept {
       this->TimeZone = Value;
       return ERR::Okay;
    }
 
-   inline ERR setDayOfWeek(const LONG Value) noexcept {
+   inline ERR setDayOfWeek(const int Value) noexcept {
       this->DayOfWeek = Value;
       return ERR::Okay;
    }
 
-   inline ERR setMilliSecond(const LONG Value) noexcept {
+   inline ERR setMilliSecond(const int Value) noexcept {
       this->MilliSecond = Value;
       return ERR::Okay;
    }
 
-   inline ERR setMicroSecond(const LONG Value) noexcept {
+   inline ERR setMicroSecond(const int Value) noexcept {
       this->MicroSecond = Value;
       return ERR::Okay;
    }
@@ -4245,20 +4248,20 @@ class objTime : public Object {
 // Compression methods
 
 namespace cmp {
-struct CompressBuffer { APTR Input; LONG InputSize; APTR Output; LONG OutputSize; LONG Result; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CompressBuffer { APTR Input; int InputSize; APTR Output; int OutputSize; int Result; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct CompressFile { CSTRING Location; CSTRING Path; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DecompressBuffer { APTR Input; APTR Output; LONG OutputSize; LONG Result; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DecompressFile { CSTRING Path; CSTRING Dest; LONG Flags; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DecompressBuffer { APTR Input; APTR Output; int OutputSize; int Result; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DecompressFile { CSTRING Path; CSTRING Dest; int Flags; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RemoveFile { CSTRING Path; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct CompressStream { APTR Input; LONG Length; FUNCTION * Callback; APTR Output; LONG OutputSize; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DecompressStream { APTR Input; LONG Length; FUNCTION * Callback; APTR Output; LONG OutputSize; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CompressStream { APTR Input; int Length; FUNCTION * Callback; APTR Output; int OutputSize; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DecompressStream { APTR Input; int Length; FUNCTION * Callback; APTR Output; int OutputSize; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct CompressStreamStart { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct CompressStreamEnd { FUNCTION * Callback; APTR Output; LONG OutputSize; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CompressStreamEnd { FUNCTION * Callback; APTR Output; int OutputSize; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DecompressStreamEnd { FUNCTION * Callback; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DecompressStreamStart { static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DecompressObject { CSTRING Path; OBJECTPTR Object; static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Scan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback; static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Find { CSTRING Path; LONG CaseSensitive; LONG Wildcard; struct CompressedItem * Item; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Find { CSTRING Path; int CaseSensitive; int Wildcard; struct CompressedItem * Item; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -4271,19 +4274,19 @@ class objCompression : public Object {
 
    int64_t  TotalOutput;   // The total number of bytes that have been output during the compression or decompression of streamed data.
    OBJECTID OutputID;      // Resulting messages will be sent to the object referred to in this field.
-   LONG     CompressionLevel; // The compression level to use when compressing data.
+   int      CompressionLevel; // The compression level to use when compressing data.
    CMF      Flags;         // Optional flags.
-   LONG     SegmentSize;   // Private. Splits the compressed file if it surpasses a set byte limit.
+   int      SegmentSize;   // Private. Splits the compressed file if it surpasses a set byte limit.
    PERMIT   Permissions;   // Default permissions for decompressed files are defined here.
-   LONG     MinOutputSize; // Indicates the minimum output buffer size that will be needed during de/compression.
-   LONG     WindowBits;    // Special option for certain compression formats.
+   int      MinOutputSize; // Indicates the minimum output buffer size that will be needed during de/compression.
+   int      WindowBits;    // Special option for certain compression formats.
 
    // Action stubs
 
    inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR compressBuffer(APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) noexcept {
-      struct cmp::CompressBuffer args = { Input, InputSize, Output, OutputSize, (LONG)0 };
+   inline ERR compressBuffer(APTR Input, int InputSize, APTR Output, int OutputSize, int * Result) noexcept {
+      struct cmp::CompressBuffer args = { Input, InputSize, Output, OutputSize, (int)0 };
       ERR error = Action(AC(-1), this, &args);
       if (Result) *Result = args.Result;
       return(error);
@@ -4292,13 +4295,13 @@ class objCompression : public Object {
       struct cmp::CompressFile args = { Location, Path };
       return(Action(AC(-2), this, &args));
    }
-   inline ERR decompressBuffer(APTR Input, APTR Output, LONG OutputSize, LONG * Result) noexcept {
-      struct cmp::DecompressBuffer args = { Input, Output, OutputSize, (LONG)0 };
+   inline ERR decompressBuffer(APTR Input, APTR Output, int OutputSize, int * Result) noexcept {
+      struct cmp::DecompressBuffer args = { Input, Output, OutputSize, (int)0 };
       ERR error = Action(AC(-3), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR decompressFile(CSTRING Path, CSTRING Dest, LONG Flags) noexcept {
+   inline ERR decompressFile(CSTRING Path, CSTRING Dest, int Flags) noexcept {
       struct cmp::DecompressFile args = { Path, Dest, Flags };
       return(Action(AC(-4), this, &args));
    }
@@ -4306,18 +4309,18 @@ class objCompression : public Object {
       struct cmp::RemoveFile args = { Path };
       return(Action(AC(-5), this, &args));
    }
-   inline ERR compressStream(APTR Input, LONG Length, FUNCTION Callback, APTR Output, LONG OutputSize) noexcept {
+   inline ERR compressStream(APTR Input, int Length, FUNCTION Callback, APTR Output, int OutputSize) noexcept {
       struct cmp::CompressStream args = { Input, Length, &Callback, Output, OutputSize };
       return(Action(AC(-6), this, &args));
    }
-   inline ERR decompressStream(APTR Input, LONG Length, FUNCTION Callback, APTR Output, LONG OutputSize) noexcept {
+   inline ERR decompressStream(APTR Input, int Length, FUNCTION Callback, APTR Output, int OutputSize) noexcept {
       struct cmp::DecompressStream args = { Input, Length, &Callback, Output, OutputSize };
       return(Action(AC(-7), this, &args));
    }
    inline ERR compressStreamStart() noexcept {
       return(Action(AC(-8), this, NULL));
    }
-   inline ERR compressStreamEnd(FUNCTION Callback, APTR Output, LONG OutputSize) noexcept {
+   inline ERR compressStreamEnd(FUNCTION Callback, APTR Output, int OutputSize) noexcept {
       struct cmp::CompressStreamEnd args = { &Callback, Output, OutputSize };
       return(Action(AC(-9), this, &args));
    }
@@ -4336,7 +4339,7 @@ class objCompression : public Object {
       struct cmp::Scan args = { Folder, Filter, &Callback };
       return(Action(AC(-13), this, &args));
    }
-   inline ERR find(CSTRING Path, LONG CaseSensitive, LONG Wildcard, struct CompressedItem ** Item) noexcept {
+   inline ERR find(CSTRING Path, int CaseSensitive, int Wildcard, struct CompressedItem ** Item) noexcept {
       struct cmp::Find args = { Path, CaseSensitive, Wildcard, (struct CompressedItem *)0 };
       ERR error = Action(AC(-14), this, &args);
       if (Item) *Item = args.Item;
@@ -4351,7 +4354,7 @@ class objCompression : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setCompressionLevel(const LONG Value) noexcept {
+   inline ERR setCompressionLevel(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -4362,7 +4365,7 @@ class objCompression : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setSegmentSize(const LONG Value) noexcept {
+   inline ERR setSegmentSize(const int Value) noexcept {
       this->SegmentSize = Value;
       return ERR::Okay;
    }
@@ -4372,7 +4375,7 @@ class objCompression : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setWindowBits(const LONG Value) noexcept {
+   inline ERR setWindowBits(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);

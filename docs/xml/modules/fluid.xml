@@ -15,11 +15,11 @@
   <function>
     <name>SetVariable</name>
     <comment>Sets any variable in a loaded Fluid script.</comment>
-    <prototype>ERR fl::SetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...)</prototype>
+    <prototype>ERR fl::SetVariable(OBJECTPTR Script, CSTRING Name, INT Type, ...)</prototype>
     <input>
       <param type="OBJECTPTR" name="Script">Pointer to a Fluid script.</param>
       <param type="CSTRING" name="Name">The name of the variable to set.</param>
-      <param type="LONG" name="Type" lookup="FD">A valid field type must be indicated, e.g. <code>FD_STRING</code>, <code>FD_POINTER</code>, <code>FD_LONG</code>, <code>FD_DOUBLE</code>, <code>FD_LARGE</code>.</param>
+      <param type="INT" name="Type">A valid field type must be indicated, e.g. <code>FD_STRING</code>, <code>FD_POINTER</code>, <code>FD_LONG</code>, <code>FD_DOUBLE</code>, <code>FD_LARGE</code>.</param>
       <param type="..." name="Variable">A variable that matches the indicated <code>Type</code>.</param>
     </input>
     <description>

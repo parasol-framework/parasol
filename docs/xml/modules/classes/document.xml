@@ -54,12 +54,12 @@
     <action>
       <name>DataFeed</name>
       <comment>Document data can be sent and consumed via feeds.</comment>
-      <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, LONG Size)</prototype>
+      <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, INT Size)</prototype>
       <input>
         <param type="OBJECTID" name="Object">Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.</param>
         <param type="DATA" name="Datatype" lookup="DATA">The type of data being sent.</param>
         <param type="APTR" name="Buffer">The data being sent to the target object.</param>
-        <param type="LONG" name="Size">The size of the data in Buffer.</param>
+        <param type="INT" name="Size">The size of the data in Buffer.</param>
       </input>
       <description>
 <p>Appending content to an active document can be achieved via the data feed feature.  The Document class currently supports the <code>DATA::TEXT</code> and <code>DATA::XML</code> types for this purpose.</p>
@@ -83,10 +83,10 @@
       <comment>Force a page layout update (if changes are pending) and redraw to the display.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <input>
-        <param type="LONG" name="X">The X position of the region to be drawn.</param>
-        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
-        <param type="LONG" name="Width">The width of the region to be drawn.</param>
-        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+        <param type="INT" name="X">The X position of the region to be drawn.</param>
+        <param type="INT" name="Y">The Y position of the region to be drawn.</param>
+        <param type="INT" name="Width">The width of the region to be drawn.</param>
+        <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
     </action>
 
@@ -105,11 +105,11 @@
     <action>
       <name>GetKey</name>
       <comment>Retrieves global variables and URI parameters.</comment>
-      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
-        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+        <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
       <description>
 <p>Use GetKey() to access the global variables and URI parameters of a document.  Priority is given to global variables if there is a name clash.</p>

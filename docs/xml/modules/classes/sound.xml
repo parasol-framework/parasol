@@ -63,11 +63,11 @@ proc.sleep()
     <action>
       <name>GetKey</name>
       <comment>Retrieve custom key values.</comment>
-      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
-        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+        <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
       <description>
 <p>The following custom key values are formally recognised and may be defined automatically when loading sample files:</p>
@@ -86,11 +86,11 @@ proc.sleep()
     <action>
       <name>Read</name>
       <comment>Read decoded audio from the sound sample.</comment>
-      <prototype>ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)</prototype>
+      <prototype>ERR acRead(*Object, APTR Buffer, INT Length, INT *Result)</prototype>
       <input>
         <param type="APTR" name="Buffer">Points a buffer that will receive the data.</param>
-        <param type="LONG" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
-        <param type="LONG" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
+        <param type="INT" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
+        <param type="INT" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
       </input>
       <description>
 <p>This action will read decoded audio from the sound sample.  Decoding is a live process and it may take some time for all data to be returned if the requested amount of data is considerable.  The starting point for the decoded data is determined by the <fl>Position</fl> value.</p>
@@ -110,7 +110,7 @@ proc.sleep()
     <action>
       <name>Seek</name>
       <comment>Moves the cursor position for reading data.</comment>
-      <prototype>ERR acSeek(*Object, DOUBLE Offset, LONG Position)</prototype>
+      <prototype>ERR acSeek(*Object, DOUBLE Offset, INT Position)</prototype>
       <input>
         <param type="DOUBLE" name="Offset">The desired offset to seek to, relative to the Position parameter.</param>
         <param type="POS" name="Position">The position that defines the starting point for Offset.</param>

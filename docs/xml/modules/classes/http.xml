@@ -96,11 +96,11 @@ http.acActivate()
     <action>
       <name>GetKey</name>
       <comment>Entries in the HTTP response header can be read as key-values.</comment>
-      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
-        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+        <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
     </action>
 
@@ -117,11 +117,11 @@ http.acActivate()
     <action>
       <name>Write</name>
       <comment>Writes data to objects that provide storage or output services.</comment>
-      <prototype>ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)</prototype>
+      <prototype>ERR acWrite(*Object, APTR Buffer, INT Length, INT Result)</prototype>
       <input>
         <param type="APTR" name="Buffer">A buffer containing the data that will be written to the object.</param>
-        <param type="LONG" name="Length">The total number of bytes to write to the object.</param>
-        <param type="LONG" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
+        <param type="INT" name="Length">The total number of bytes to write to the object.</param>
+        <param type="INT" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
       </input>
     </action>
 

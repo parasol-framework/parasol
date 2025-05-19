@@ -33,11 +33,11 @@
     <action>
       <name>GetKey</name>
       <comment>Retrieves data from an xml object.</comment>
-      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
-        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+        <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
       <description>
 <p>The XML class uses key-values for the execution of XPath queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate the majority of uses for this query language and a number of special instructions that we support:</p>
@@ -368,10 +368,10 @@
     <method>
       <name>SetAttrib</name>
       <comment>Adds, updates and removes XML attributes.</comment>
-      <prototype>ERR xml::SetAttrib(OBJECTPTR Object, INT Index, LONG Attrib, CSTRING Name, CSTRING Value)</prototype>
+      <prototype>ERR xml::SetAttrib(OBJECTPTR Object, INT Index, XMS Attrib, CSTRING Name, CSTRING Value)</prototype>
       <input>
         <param type="INT" name="Index">Identifies the tag that is to be updated.</param>
-        <param type="LONG" name="Attrib" lookup="XMS">Either the index number of the attribute that is to be updated, or set to <code>NEW</code>, <code>UPDATE</code> or <code>UPDATE_ONLY</code>.</param>
+        <param type="XMS" name="Attrib" lookup="XMS">Either the index number of the attribute that is to be updated, or set to <code>NEW</code>, <code>UPDATE</code> or <code>UPDATE_ONLY</code>.</param>
         <param type="CSTRING" name="Name">String containing the new name for the attribute.  If <code>NULL</code>, the name will not be changed.  If Attrib is <code>UPDATE</code> or <code>UPDATE_ONLY</code>, the <code>Name</code> is used to find the attribute.</param>
         <param type="CSTRING" name="Value">String containing the new value for the attribute.  If <code>NULL</code>, the attribute is removed.</param>
       </input>

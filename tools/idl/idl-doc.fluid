@@ -55,12 +55,12 @@ setAction('CopyData', {
 
 setAction('DataFeed', {
    comment   = 'Provides a mechanism for feeding data to objects.',
-   prototype = 'ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, LONG Size)',
+   prototype = 'ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, INT Size)',
    params    = {
       { name='Object', type='OBJECTID', comment='Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.' },
       { name='Datatype', type='DATA', lookup='DATA', comment='The type of data being sent.' },
       { name='Buffer', type='APTR', comment='The data being sent to the target object.' },
-      { name='Size', type='LONG', comment='The size of the data in Buffer.' }
+      { name='Size', type='INT', comment='The size of the data in Buffer.' }
    }
 })
 
@@ -76,10 +76,10 @@ setAction('Disable', {
 
 setAction('DragDrop', {
    comment   = 'Manages drag and drop from one object to another.',
-   prototype = 'ERR acDragDrop(*Object, OBJECTID Source, LONG Item, DATA Datatype)',
+   prototype = 'ERR acDragDrop(*Object, OBJECTID Source, INT Item, DATA Datatype)',
    params    = {
       { name='Source', type='OBJECTID', comment='Refers to the object containing the source data.' },
-      { name='Item', type='LONG', comment='An item ID, relevant to the source object.' },
+      { name='Item', type='INT', comment='An item ID, relevant to the source object.' },
       { name='Datatype', type='DATA', lookup='DATA', comment='The type of data represented by the source item.' }
    }
 })
@@ -88,10 +88,10 @@ setAction('Draw', {
    comment   = 'Draws object graphics to drawable areas.',
    prototype = 'ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)',
    params    = {
-      { name='X', type='LONG', comment='The X position of the region to be drawn.' },
-      { name='Y', type='LONG', comment='The Y position of the region to be drawn.' },
-      { name='Width', type='LONG', comment='The width of the region to be drawn.' },
-      { name='Height', type='LONG', comment='The height of the region to be drawn.' }
+      { name='X', type='INT', comment='The X position of the region to be drawn.' },
+      { name='Y', type='INT', comment='The Y position of the region to be drawn.' },
+      { name='Width', type='INT', comment='The width of the region to be drawn.' },
+      { name='Height', type='INT', comment='The height of the region to be drawn.' }
    }
 })
 
@@ -121,11 +121,11 @@ setAction('Free', {
 
 setAction('GetKey', {
    comment   = 'Retrieves custom key values that are not defined by an object\'s structure.',
-   prototype = 'ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)',
+   prototype = 'ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)',
    params    = {
       { name='Key', type='CSTRING', comment='The name of a key value.' },
       { name='Value', type='STRING', comment='Pointer to a buffer space large enough to hold the retrieved value.' },
-      { name='Size', type='LONG', comment='Indicates the byte size of the Buffer.' }
+      { name='Size', type='INT', comment='Indicates the byte size of the Buffer.' }
    }
 })
 
@@ -209,11 +209,11 @@ setAction('Query', {
 
 setAction('Read', {
    comment   = 'Reads raw data information from objects.',
-   prototype = 'ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)',
+   prototype = 'ERR acRead(*Object, APTR Buffer, INT Length, INT *Result)',
    params    = {
       { name='Buffer', type='APTR', comment='Points a buffer that will receive the data.' },
-      { name='Length', type='LONG', comment='The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.' },
-      { name='Result', type='LONG', comment='The Read action will write this parameter with the total number of bytes read into the Buffer.' }
+      { name='Length', type='INT', comment='The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.' },
+      { name='Result', type='INT', comment='The Read action will write this parameter with the total number of bytes read into the Buffer.' }
    }
 })
 
@@ -288,7 +288,7 @@ setAction('SaveToObject', {
 
 setAction('Seek', {
    comment   = 'Move the read/write marker to a new position.',
-   prototype = 'ERR acSeek(*Object, DOUBLE Offset, LONG Position)',
+   prototype = 'ERR acSeek(*Object, DOUBLE Offset, INT Position)',
    params    = {
       { name='Offset', type='DOUBLE', comment='The desired offset to seek to, relative to the Position parameter.' },
       { name='Position', type='POS', comment='The position that defines the starting point for Offset.' }
@@ -325,11 +325,11 @@ setAction('Unlock', {
 
 setAction('Write', {
    comment   = 'Writes data to objects that provide storage or output services.',
-   prototype = 'ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)',
+   prototype = 'ERR acWrite(*Object, APTR Buffer, INT Length, INT Result)',
    params    = {
       { name='Buffer', type='APTR', comment='A buffer containing the data that will be written to the object.' },
-      { name='Length', type='LONG', comment='The total number of bytes to write to the object.' },
-      { name='Result', type='LONG', comment='This parameter with be updated with the total number of bytes written from the Buffer.' }
+      { name='Length', type='INT', comment='The total number of bytes to write to the object.' },
+      { name='Result', type='INT', comment='This parameter with be updated with the total number of bytes written from the Buffer.' }
    }
 })
 
@@ -805,10 +805,10 @@ function docClass(Class)
                local lookup = ''
                local prototype = ''
                if (f.lookup != nil) then lookup = ' lookup="' .. f.lookup .. '"' end
-               local typeName = nz(f.type,'NIL')
+               local typeName = nz(f.docType,nz(f.type,'NIL'))
                if (typeName == 'struct RGB8') then
                   typeName = 'RGB8'
-               elseif (typeName == 'LONG') then
+               elseif (typeName == 'LONG') or (typeName == 'int') then
                   typeName = 'INT'
                elseif (typeName == 'LARGE') or (typeName == 'int64_t') then
                   typeName = 'INT64'

@@ -140,6 +140,7 @@ enum class MEM    : ULONG;
 enum class ALF    : UWORD;
 enum class EVG    : LONG;
 enum class AC     : LONG;
+enum class MSGID  : LONG;
 
 #define STAT_FOLDER 0x0001
 
@@ -784,7 +785,7 @@ class TaskMessage {
    // struct Message - START
    int64_t Time;
    LONG  UID;
-   LONG  Type;
+   MSGID Type;
    LONG  Size;
    // struct Message - END
    private:
@@ -796,7 +797,7 @@ class TaskMessage {
    public:
    TaskMessage() : Size(0), ExtBuffer(NULL) { }
 
-   TaskMessage(LONG pType, APTR pData = NULL, LONG pSize = 0) {
+   TaskMessage(MSGID pType, APTR pData = NULL, LONG pSize = 0) {
       Time = PreciseTime();
       UID  = ++glUniqueMsgID;
       Type = pType;

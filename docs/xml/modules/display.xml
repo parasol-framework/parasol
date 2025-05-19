@@ -61,7 +61,7 @@
     <name>CopyArea</name>
     <category>Bitmap</category>
     <comment>Copies a rectangular area from one bitmap to another.</comment>
-    <prototype>ERR gfx::CopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfx::CopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The source bitmap.</param>
       <param type="objBitmap *" name="Dest">Pointer to the destination bitmap.</param>
@@ -91,7 +91,7 @@
     <name>CopyRawBitmap</name>
     <category>Bitmap</category>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
-    <prototype>ERR gfx::CopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Dest, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfx::CopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Dest, CSRF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</prototype>
     <input>
       <param type="struct BitmapSurfaceV2 *" name="Surface">Description of the surface source.</param>
       <param type="objBitmap *" name="Dest">Destination bitmap.</param>
@@ -118,7 +118,7 @@
     <name>CopySurface</name>
     <category>Surfaces</category>
     <comment>Copies surface graphics data into any bitmap object</comment>
-    <prototype>ERR gfx::CopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERR gfx::CopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, INT X, INT Y, INT Width, INT Height, INT XDest, INT YDest)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object to copy from.</param>
       <param type="objBitmap *" name="Bitmap">Must reference a target <class name="Bitmap">Bitmap</class> object.</param>
@@ -145,7 +145,7 @@
     <name>DrawPixel</name>
     <category>Bitmap</category>
     <comment>Draws a single pixel to a bitmap.</comment>
-    <prototype>void gfx::DrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour)</prototype>
+    <prototype>void gfx::DrawPixel(objBitmap * Bitmap, INT X, INT Y, UINT Colour)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap object.</param>
       <param type="INT" name="X">The horizontal coordinate of the pixel.</param>
@@ -161,7 +161,7 @@
     <name>DrawRGBPixel</name>
     <category>Bitmap</category>
     <comment>Draws a 24 bit pixel to a <class name="Bitmap">Bitmap</class>.</comment>
-    <prototype>void gfx::DrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB)</prototype>
+    <prototype>void gfx::DrawRGBPixel(objBitmap * Bitmap, INT X, INT Y, struct RGB8 * RGB)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap object.</param>
       <param type="INT" name="X">Horizontal coordinate of the pixel.</param>
@@ -177,7 +177,7 @@
     <name>DrawRectangle</name>
     <category>Bitmap</category>
     <comment>Draws rectangles, both filled and unfilled.</comment>
-    <prototype>void gfx::DrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
+    <prototype>void gfx::DrawRectangle(objBitmap * Bitmap, INT X, INT Y, INT Width, INT Height, UINT Colour, BAF Flags)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to the target <class name="Bitmap">Bitmap</class>.</param>
       <param type="INT" name="X">The left-most coordinate of the rectangle.</param>
@@ -196,7 +196,7 @@
     <name>ExposeSurface</name>
     <category>Surfaces</category>
     <comment>Exposes the content of a surface to the display.</comment>
-    <prototype>ERR gfx::ExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
+    <prototype>ERR gfx::ExposeSurface(OBJECTID Surface, INT X, INT Y, INT Width, INT Height, EXF Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object that will be exposed.</param>
       <param type="INT" name="X">The horizontal coordinate of the area to expose.</param>
@@ -219,7 +219,7 @@
     <name>GetColourFormat</name>
     <category>Bitmap</category>
     <comment>Generates the values for a <st>ColourFormat</st> structure for a given bit depth.</comment>
-    <prototype>void gfx::GetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask)</prototype>
+    <prototype>void gfx::GetColourFormat(struct ColourFormat * Format, INT BitsPerPixel, INT RedMask, INT GreenMask, INT BlueMask, INT AlphaMask)</prototype>
     <input>
       <param type="struct ColourFormat *" name="Format">Pointer to an empty <st>ColourFormat</st> structure.</param>
       <param type="INT" name="BitsPerPixel">The depth that you would like to generate colour values for.  Ignored if mask values are set.</param>
@@ -246,7 +246,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetCursorInfo</name>
     <category>Cursor</category>
     <comment>Retrieves graphics information from the active mouse cursor.</comment>
-    <prototype>ERR gfx::GetCursorInfo(struct CursorInfo * Info, LONG Size)</prototype>
+    <prototype>ERR gfx::GetCursorInfo(struct CursorInfo * Info, INT Size)</prototype>
     <input>
       <param type="struct CursorInfo *" name="Info">Pointer to a <st>CursorInfo</st> structure.</param>
       <param type="INT" name="Size">The byte-size of the <code>Info</code> structure.</param>
@@ -362,7 +362,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetSurfaceCoords</name>
     <category>Surfaces</category>
     <comment>Returns the dimensions of a surface.</comment>
-    <prototype>ERR gfx::GetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
+    <prototype>ERR gfx::GetSurfaceCoords(OBJECTID Surface, INT * X, INT * Y, INT * AbsX, INT * AbsY, INT * Width, INT * Height)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display is queried.</param>
       <param type="INT *" name="X">The X coordinate of the surface is returned here.</param>
@@ -435,7 +435,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetVisibleArea</name>
     <category>Surfaces</category>
     <comment>Returns the visible region of a <class name="Surface">Surface</class>.</comment>
-    <prototype>ERR gfx::GetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height)</prototype>
+    <prototype>ERR gfx::GetVisibleArea(OBJECTID Surface, INT * X, INT * Y, INT * AbsX, INT * AbsY, INT * Width, INT * Height)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level display will be queried.</param>
       <param type="INT *" name="X">The X coordinate of the visible area.</param>
@@ -479,7 +479,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>ReadPixel</name>
     <category>Bitmap</category>
     <comment>Reads a pixel's colour from the target bitmap.</comment>
-    <prototype>UINT gfx::ReadPixel(objBitmap * Bitmap, LONG X, LONG Y)</prototype>
+    <prototype>UINT gfx::ReadPixel(objBitmap * Bitmap, INT X, INT Y)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
       <param type="INT" name="X">The horizontal coordinate of the pixel.</param>
@@ -495,7 +495,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>ReadRGBPixel</name>
     <category>Bitmap</category>
     <comment>Reads a pixel's colour from the target bitmap.</comment>
-    <prototype>void gfx::ReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB)</prototype>
+    <prototype>void gfx::ReadRGBPixel(objBitmap * Bitmap, INT X, INT Y, struct RGB8 ** RGB)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
       <param type="INT" name="X">The horizontal coordinate of the pixel.</param>
@@ -565,7 +565,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetClipRegion</name>
     <category>Bitmap</category>
     <comment>Sets a clipping region for a bitmap object.</comment>
-    <prototype>void gfx::SetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate)</prototype>
+    <prototype>void gfx::SetClipRegion(objBitmap * Bitmap, INT Number, INT Left, INT Top, INT Right, INT Bottom, INT Terminate)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The target bitmap.</param>
       <param type="INT" name="Number">The number of the clip region to set.</param>
@@ -634,7 +634,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCustomCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor to a customised bitmap image.</comment>
-    <prototype>ERR gfx::SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
+    <prototype>ERR gfx::SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, INT HotX, INT HotY, OBJECTID Owner)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the <class name="Surface">Surface</class> object that the pointer should restrict itself to, if the <code>RESTRICT</code> flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="CRF" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
@@ -676,7 +676,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetHostOption</name>
     <category>Display</category>
     <comment>Alter options associated with the host display system.</comment>
-    <prototype>ERR gfx::SetHostOption(HOST Option, int64_t Value)</prototype>
+    <prototype>ERR gfx::SetHostOption(HOST Option, INT64 Value)</prototype>
     <input>
       <param type="HOST" name="Option" lookup="HOST">One of TRAY_ICON, TASKBAR or STICK_TO_FRONT.</param>
       <param type="INT64" name="Value">The value to be applied to the option.</param>
@@ -709,7 +709,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>StartCursorDrag</name>
     <category>Cursor</category>
     <comment>Attaches an item to the cursor for the purpose of drag and drop.</comment>
-    <prototype>ERR gfx::StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
+    <prototype>ERR gfx::StartCursorDrag(OBJECTID Source, INT Item, CSTRING Datatypes, OBJECTID Surface)</prototype>
     <input>
       <param type="OBJECTID" name="Source">Refers to an object that is managing the source data.</param>
       <param type="INT" name="Item">A custom number that represents the item being dragged from the source.</param>
@@ -736,7 +736,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SubscribeInput</name>
     <category>Input</category>
     <comment>Subscribe to incoming input messages for any active surface object.</comment>
-    <prototype>ERR gfx::SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
+    <prototype>ERR gfx::SubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, INT * Handle)</prototype>
     <input>
       <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       <param type="OBJECTID" name="SurfaceFilter">Optional.  Only the input messages that match the given <class name="Surface">Surface</class> ID will be received.</param>
@@ -809,7 +809,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>UnsubscribeInput</name>
     <category>Input</category>
     <comment>Removes an input subscription.</comment>
-    <prototype>ERR gfx::UnsubscribeInput(LONG Handle)</prototype>
+    <prototype>ERR gfx::UnsubscribeInput(INT Handle)</prototype>
     <input>
       <param type="INT" name="Handle">Reference to a handle returned by <function>SubscribeInput</function>.</param>
     </input>

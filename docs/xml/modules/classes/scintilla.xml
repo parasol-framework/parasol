@@ -47,10 +47,10 @@
       <comment>Draws the Scintilla object's graphics.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <input>
-        <param type="LONG" name="X">The X position of the region to be drawn.</param>
-        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
-        <param type="LONG" name="Width">The width of the region to be drawn.</param>
-        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+        <param type="INT" name="X">The X position of the region to be drawn.</param>
+        <param type="INT" name="Y">The Y position of the region to be drawn.</param>
+        <param type="INT" name="Width">The width of the region to be drawn.</param>
+        <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
     </action>
 
@@ -306,7 +306,7 @@
       <type>FUNCTION</type>
       <description>
 <p>Set this field with a function reference to receive event notifications.  It must be set in conjunction with <fl>EventFlags</fl> so that you can select the type of notifications that will be received.</p>
-<p>The callback function must be in the format <code>Function(*Scintilla, LARGE EventFlag)</code>.</p>
+<p>The callback function must be in the format <code>Function(*Scintilla, INT64 EventFlag)</code>.</p>
 <p>The EventFlag value will indicate the event that occurred.  Please see the <fl>EventFlags</fl> field for a list of supported events and additional details.</p>
       </description>
     </field>

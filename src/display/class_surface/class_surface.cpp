@@ -958,7 +958,7 @@ static ERR SURFACE_Free(extSurface *Self)
    if ((Self->Flags & RNF::AUTO_QUIT) != RNF::NIL) {
       pf::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
-      SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
+      SendMessage(MSGID::QUIT, MSF::NIL, NULL, 0);
    }
 
    if (Self->InputHandle) gfx::UnsubscribeInput(Self->InputHandle);
@@ -1588,7 +1588,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 
    LONG index = 0;
    UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
-   while (ScanMessages(&index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
+   while (ScanMessages(&index, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
       if ((action->ActionID IS AC::MoveToPoint) and (action->ObjectID IS Self->UID)) {
@@ -1601,7 +1601,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
          msgmove->DeltaY += Args->DeltaY;
          msgmove->DeltaZ += Args->DeltaZ;
 
-         UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct acMove));
+         UpdateMessage(((Message *)msgbuffer)->UID, MSGID::NIL, action, sizeof(ActionMessage) + sizeof(struct acMove));
 
          return ERR::Okay|ERR::Notified;
       }

@@ -160,7 +160,7 @@ void remove_threadpool(void)
 }
 
 //********************************************************************************************************************
-// Called whenever a MSGID_THREAD_ACTION message is caught by ProcessMessages().  See thread_action() for usage.
+// Called whenever a MSGID::THREAD_ACTION message is caught by ProcessMessages().  See thread_action() for usage.
 
 ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -188,7 +188,7 @@ ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG M
 }
 
 //********************************************************************************************************************
-// Called whenever a MSGID_THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
+// Called whenever a MSGID::THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
 
 ERR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -273,7 +273,7 @@ static void * thread_entry(extThread *Self)
    // if the client routine is persistently running during shutdown.
 
    // See msg_threadcallback()
-   if (!pooled) SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
+   if (!pooled) SendMessage(MSGID::THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
 
    // Reset the crash indicators and invoke the cleanup code.
    tlThreadRef     = NULL;

@@ -15,7 +15,7 @@
   <function>
     <name>CharWidth</name>
     <comment>Returns the width of a character.</comment>
-    <prototype>INT fnt::CharWidth(objFont * Font, ULONG Char)</prototype>
+    <prototype>INT fnt::CharWidth(objFont * Font, UINT Char)</prototype>
     <input>
       <param type="objFont *" name="Font">The font to use for calculating the character width.</param>
       <param type="UINT" name="Char">A unicode character.</param>
@@ -104,7 +104,7 @@
   <function>
     <name>StringWidth</name>
     <comment>Returns the pixel width of any given string in relation to a font's settings.</comment>
-    <prototype>INT fnt::StringWidth(objFont * Font, CSTRING String, LONG Chars)</prototype>
+    <prototype>INT fnt::StringWidth(objFont * Font, CSTRING String, INT Chars)</prototype>
     <input>
       <param type="objFont *" name="Font">An initialised font object.</param>
       <param type="CSTRING" name="String">The string to be calculated.</param>

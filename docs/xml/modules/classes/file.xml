@@ -30,12 +30,12 @@
     <action>
       <name>DataFeed</name>
       <comment>Data can be streamed to any file as a method of writing content.</comment>
-      <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, LONG Size)</prototype>
+      <prototype>ERR acDataFeed(*Object, OBJECTID Object, DATA Datatype, APTR Buffer, INT Size)</prototype>
       <input>
         <param type="OBJECTID" name="Object">Must refer to the unique ID of the object that you represent. If you do not represent an object, set this parameter to the current task ID.</param>
         <param type="DATA" name="Datatype" lookup="DATA">The type of data being sent.</param>
         <param type="APTR" name="Buffer">The data being sent to the target object.</param>
-        <param type="LONG" name="Size">The size of the data in Buffer.</param>
+        <param type="INT" name="Size">The size of the data in Buffer.</param>
       </input>
       <description>
 <p>Streaming data of any type to a file will result in the content being written to the file at the current seek <fl>Position</fl>.</p>
@@ -74,11 +74,11 @@
     <action>
       <name>Read</name>
       <comment>Reads data from a file.</comment>
-      <prototype>ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)</prototype>
+      <prototype>ERR acRead(*Object, APTR Buffer, INT Length, INT *Result)</prototype>
       <input>
         <param type="APTR" name="Buffer">Points a buffer that will receive the data.</param>
-        <param type="LONG" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
-        <param type="LONG" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
+        <param type="INT" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
+        <param type="INT" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
       </input>
       <description>
 <p>Reads data from a file into the given buffer.  Increases the value in the <fl>Position</fl> field by the amount of bytes read from the file data.  The <code>FL::READ</code> bit in the <fl>Flags</fl> field must have been set on file initialisation, or the call will fail.</p>
@@ -114,7 +114,7 @@
     <action>
       <name>Seek</name>
       <comment>Seeks to a new read/write position within a file.</comment>
-      <prototype>ERR acSeek(*Object, DOUBLE Offset, LONG Position)</prototype>
+      <prototype>ERR acSeek(*Object, DOUBLE Offset, INT Position)</prototype>
       <input>
         <param type="DOUBLE" name="Offset">The desired offset to seek to, relative to the Position parameter.</param>
         <param type="POS" name="Position">The position that defines the starting point for Offset.</param>
@@ -124,11 +124,11 @@
     <action>
       <name>Write</name>
       <comment>Writes data to a file.</comment>
-      <prototype>ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)</prototype>
+      <prototype>ERR acWrite(*Object, APTR Buffer, INT Length, INT Result)</prototype>
       <input>
         <param type="APTR" name="Buffer">A buffer containing the data that will be written to the object.</param>
-        <param type="LONG" name="Length">The total number of bytes to write to the object.</param>
-        <param type="LONG" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
+        <param type="INT" name="Length">The total number of bytes to write to the object.</param>
+        <param type="INT" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
       </input>
       <description>
 <p>Writes data from the provided buffer into the file, then updates the <fl>Position</fl> field to reflect the new read/write position.  You must have set the <code>FL::WRITE</code> bit in the <fl>Flags</fl> field when you initialised the file, or the call will fail.</p>

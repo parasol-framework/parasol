@@ -110,7 +110,7 @@ enum class LTYPE : BYTE {
 
 // Streaming options
 
-enum class STREAM : LONG {
+enum class STREAM : int {
    NIL = 0,
    NEVER = 1,
    SMART = 2,
@@ -148,10 +148,10 @@ struct AudioLoop {
    LOOP  LoopMode;   // Loop mode (single, double)
    LTYPE Loop1Type;  // First loop type (unidirectional, bidirectional)
    LTYPE Loop2Type;  // Second loop type (unidirectional, bidirectional)
-   LONG  Loop1Start; // Start of the first loop
-   LONG  Loop1End;   // End of the first loop
-   LONG  Loop2Start; // Start of the second loop
-   LONG  Loop2End;   // End of the second loop
+   int   Loop1Start; // Start of the first loop
+   int   Loop1End;   // End of the first loop
+   int   Loop2Start; // Start of the second loop
+   int   Loop2End;   // End of the second loop
 };
 
 // Audio class definition
@@ -161,14 +161,14 @@ struct AudioLoop {
 // Audio methods
 
 namespace snd {
-struct OpenChannels { LONG Total; LONG Result; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct CloseChannels { LONG Handle; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct AddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveSample { LONG Handle; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetSampleLength { LONG Sample; int64_t Length; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct AddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Beep { LONG Pitch; LONG Duration; LONG Volume; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct OpenChannels { int Total; int Result; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CloseChannels { int Handle; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; int DataSize; struct AudioLoop * Loop; int LoopSize; int Result; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveSample { int Handle; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetSampleLength { int Sample; int64_t Length; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; int SampleLength; int PlayOffset; struct AudioLoop * Loop; int LoopSize; int Result; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Beep { int Pitch; int Duration; int Volume; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetVolume { int Index; CSTRING Name; SVF Flags; int Channel; DOUBLE Volume; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -179,13 +179,13 @@ class objAudio : public Object {
 
    using create = pf::Create<objAudio>;
 
-   LONG OutputRate;    // Determines the frequency to use for the output of audio data.
-   LONG InputRate;     // Determines the frequency to use when recording audio data.
-   LONG Quality;       // Determines the quality of the audio mixing.
-   ADF  Flags;         // Special audio flags can be set here.
-   LONG BitDepth;      // The bit depth affects the overall quality of audio input and output.
-   LONG Periods;       // Defines the number of periods that make up the internal audio buffer.
-   LONG PeriodSize;    // Defines the byte size of each period allocated to the internal audio buffer.
+   int OutputRate;    // Determines the frequency to use for the output of audio data.
+   int InputRate;     // Determines the frequency to use when recording audio data.
+   int Quality;       // Determines the quality of the audio mixing.
+   ADF Flags;         // Special audio flags can be set here.
+   int BitDepth;      // The bit depth affects the overall quality of audio input and output.
+   int Periods;       // Defines the number of periods that make up the internal audio buffer.
+   int PeriodSize;    // Defines the byte size of each period allocated to the internal audio buffer.
 
    // Action stubs
 
@@ -197,60 +197,60 @@ class objAudio : public Object {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC::SaveToObject, this, &args);
    }
-   inline ERR openChannels(LONG Total, LONG * Result) noexcept {
-      struct snd::OpenChannels args = { Total, (LONG)0 };
+   inline ERR openChannels(int Total, int * Result) noexcept {
+      struct snd::OpenChannels args = { Total, (int)0 };
       ERR error = Action(AC(-1), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR closeChannels(LONG Handle) noexcept {
+   inline ERR closeChannels(int Handle) noexcept {
       struct snd::CloseChannels args = { Handle };
       return(Action(AC(-2), this, &args));
    }
-   inline ERR addSample(FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
-      struct snd::AddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
+   inline ERR addSample(FUNCTION OnStop, SFM SampleFormat, APTR Data, int DataSize, struct AudioLoop * Loop, int LoopSize, int * Result) noexcept {
+      struct snd::AddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (int)0 };
       ERR error = Action(AC(-3), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR removeSample(LONG Handle) noexcept {
+   inline ERR removeSample(int Handle) noexcept {
       struct snd::RemoveSample args = { Handle };
       return(Action(AC(-4), this, &args));
    }
-   inline ERR setSampleLength(LONG Sample, int64_t Length) noexcept {
+   inline ERR setSampleLength(int Sample, int64_t Length) noexcept {
       struct snd::SetSampleLength args = { Sample, Length };
       return(Action(AC(-5), this, &args));
    }
-   inline ERR addStream(FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) noexcept {
-      struct snd::AddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
+   inline ERR addStream(FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, int SampleLength, int PlayOffset, struct AudioLoop * Loop, int LoopSize, int * Result) noexcept {
+      struct snd::AddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (int)0 };
       ERR error = Action(AC(-6), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR beep(LONG Pitch, LONG Duration, LONG Volume) noexcept {
+   inline ERR beep(int Pitch, int Duration, int Volume) noexcept {
       struct snd::Beep args = { Pitch, Duration, Volume };
       return(Action(AC(-7), this, &args));
    }
-   inline ERR setVolume(LONG Index, CSTRING Name, SVF Flags, LONG Channel, DOUBLE Volume) noexcept {
+   inline ERR setVolume(int Index, CSTRING Name, SVF Flags, int Channel, DOUBLE Volume) noexcept {
       struct snd::SetVolume args = { Index, Name, Flags, Channel, Volume };
       return(Action(AC(-8), this, &args));
    }
 
    // Customised field setting
 
-   inline ERR setOutputRate(const LONG Value) noexcept {
+   inline ERR setOutputRate(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setInputRate(const LONG Value) noexcept {
+   inline ERR setInputRate(const int Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->InputRate = Value;
       return ERR::Okay;
    }
 
-   inline ERR setQuality(const LONG Value) noexcept {
+   inline ERR setQuality(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -262,19 +262,19 @@ class objAudio : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setBitDepth(const LONG Value) noexcept {
+   inline ERR setBitDepth(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setPeriods(const LONG Value) noexcept {
+   inline ERR setPeriods(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setPeriodSize(const LONG Value) noexcept {
+   inline ERR setPeriodSize(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -292,13 +292,13 @@ class objAudio : public Object {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setMute(const LONG Value) noexcept {
+   inline ERR setMute(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setStereo(const LONG Value) noexcept {
+   inline ERR setStereo(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -317,24 +317,24 @@ class objSound : public Object {
 
    using create = pf::Create<objSound>;
 
-   DOUBLE   Volume;        // The volume to use when playing the sound sample.
-   DOUBLE   Pan;           // Determines the horizontal position of a sound when played through stereo speakers.
-   int64_t  Position;      // The current playback position.
-   LONG     Priority;      // The priority of a sound in relation to other sound samples being played.
-   LONG     Length;        // Indicates the total byte-length of sample data.
-   LONG     Octave;        // The octave to use for sample playback.
-   SDF      Flags;         // Optional initialisation flags.
-   LONG     Frequency;     // The frequency of a sampled sound is specified here.
-   LONG     Playback;      // The playback frequency of the sound sample can be defined here.
-   LONG     Compression;   // Determines the amount of compression used when saving an audio sample.
-   LONG     BytesPerSecond; // The flow of bytes-per-second when the sample is played at normal frequency.
-   LONG     BitsPerSample; // Indicates the sample rate of the audio sample, typically 8 or 16 bit.
-   OBJECTID AudioID;       // Refers to the audio object/device to use for playback.
-   LONG     LoopStart;     // The byte position at which sample looping begins.
-   LONG     LoopEnd;       // The byte position at which sample looping will end.
-   STREAM   Stream;        // Defines the preferred streaming method for the sample.
-   LONG     Handle;        // Audio handle acquired at the audio object [Private - Available to child classes]
-   LONG     ChannelIndex;  // Refers to the channel that the sound is playing through.
+   DOUBLE   Volume;     // The volume to use when playing the sound sample.
+   DOUBLE   Pan;        // Determines the horizontal position of a sound when played through stereo speakers.
+   int64_t  Position;   // The current playback position.
+   int      Priority;   // The priority of a sound in relation to other sound samples being played.
+   int      Length;     // Indicates the total byte-length of sample data.
+   int      Octave;     // The octave to use for sample playback.
+   SDF      Flags;      // Optional initialisation flags.
+   int      Frequency;  // The frequency of a sampled sound is specified here.
+   int      Playback;   // The playback frequency of the sound sample can be defined here.
+   int      Compression; // Determines the amount of compression used when saving an audio sample.
+   int      BytesPerSecond; // The flow of bytes-per-second when the sample is played at normal frequency.
+   int      BitsPerSample; // Indicates the sample rate of the audio sample, typically 8 or 16 bit.
+   OBJECTID AudioID;    // Refers to the audio object/device to use for playback.
+   int      LoopStart;  // The byte position at which sample looping begins.
+   int      LoopEnd;    // The byte position at which sample looping will end.
+   STREAM   Stream;     // Defines the preferred streaming method for the sample.
+   int      Handle;     // Audio handle acquired at the audio object [Private - Available to child classes]
+   int      ChannelIndex; // Refers to the channel that the sound is playing through.
 
    // Action stubs
 
@@ -402,19 +402,19 @@ class objSound : public Object {
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
    }
 
-   inline ERR setPriority(const LONG Value) noexcept {
+   inline ERR setPriority(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setLength(const LONG Value) noexcept {
+   inline ERR setLength(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setOctave(const LONG Value) noexcept {
+   inline ERR setOctave(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -426,29 +426,29 @@ class objSound : public Object {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setFrequency(const LONG Value) noexcept {
+   inline ERR setFrequency(const int Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->Frequency = Value;
       return ERR::Okay;
    }
 
-   inline ERR setPlayback(const LONG Value) noexcept {
+   inline ERR setPlayback(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setCompression(const LONG Value) noexcept {
+   inline ERR setCompression(const int Value) noexcept {
       this->Compression = Value;
       return ERR::Okay;
    }
 
-   inline ERR setBytesPerSecond(const LONG Value) noexcept {
+   inline ERR setBytesPerSecond(const int Value) noexcept {
       this->BytesPerSecond = Value;
       return ERR::Okay;
    }
 
-   inline ERR setBitsPerSample(const LONG Value) noexcept {
+   inline ERR setBitsPerSample(const int Value) noexcept {
       this->BitsPerSample = Value;
       return ERR::Okay;
    }
@@ -459,12 +459,12 @@ class objSound : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setLoopStart(const LONG Value) noexcept {
+   inline ERR setLoopStart(const int Value) noexcept {
       this->LoopStart = Value;
       return ERR::Okay;
    }
 
-   inline ERR setLoopEnd(const LONG Value) noexcept {
+   inline ERR setLoopEnd(const int Value) noexcept {
       this->LoopEnd = Value;
       return ERR::Okay;
    }
@@ -502,18 +502,18 @@ class objSound : public Object {
 
 struct AudioBase {
 #ifndef PARASOL_STATIC
-   ERR (*_MixContinue)(objAudio *Audio, LONG Handle);
-   ERR (*_MixFrequency)(objAudio *Audio, LONG Handle, LONG Frequency);
-   ERR (*_MixMute)(objAudio *Audio, LONG Handle, LONG Mute);
-   ERR (*_MixPan)(objAudio *Audio, LONG Handle, DOUBLE Pan);
-   ERR (*_MixPlay)(objAudio *Audio, LONG Handle, LONG Position);
-   ERR (*_MixRate)(objAudio *Audio, LONG Handle, LONG Rate);
-   ERR (*_MixSample)(objAudio *Audio, LONG Handle, LONG Sample);
-   ERR (*_MixStop)(objAudio *Audio, LONG Handle);
-   ERR (*_MixStopLoop)(objAudio *Audio, LONG Handle);
-   ERR (*_MixVolume)(objAudio *Audio, LONG Handle, DOUBLE Volume);
-   ERR (*_MixStartSequence)(objAudio *Audio, LONG Handle);
-   ERR (*_MixEndSequence)(objAudio *Audio, LONG Handle);
+   ERR (*_MixContinue)(objAudio *Audio, int Handle);
+   ERR (*_MixFrequency)(objAudio *Audio, int Handle, int Frequency);
+   ERR (*_MixMute)(objAudio *Audio, int Handle, int Mute);
+   ERR (*_MixPan)(objAudio *Audio, int Handle, DOUBLE Pan);
+   ERR (*_MixPlay)(objAudio *Audio, int Handle, int Position);
+   ERR (*_MixRate)(objAudio *Audio, int Handle, int Rate);
+   ERR (*_MixSample)(objAudio *Audio, int Handle, int Sample);
+   ERR (*_MixStop)(objAudio *Audio, int Handle);
+   ERR (*_MixStopLoop)(objAudio *Audio, int Handle);
+   ERR (*_MixVolume)(objAudio *Audio, int Handle, DOUBLE Volume);
+   ERR (*_MixStartSequence)(objAudio *Audio, int Handle);
+   ERR (*_MixEndSequence)(objAudio *Audio, int Handle);
 #endif // PARASOL_STATIC
 };
 
@@ -521,33 +521,33 @@ struct AudioBase {
 #ifndef PARASOL_STATIC
 extern struct AudioBase *AudioBase;
 namespace snd {
-inline ERR MixContinue(objAudio *Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
-inline ERR MixFrequency(objAudio *Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
-inline ERR MixMute(objAudio *Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
-inline ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
-inline ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position) { return AudioBase->_MixPlay(Audio,Handle,Position); }
-inline ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
-inline ERR MixSample(objAudio *Audio, LONG Handle, LONG Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
-inline ERR MixStop(objAudio *Audio, LONG Handle) { return AudioBase->_MixStop(Audio,Handle); }
-inline ERR MixStopLoop(objAudio *Audio, LONG Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
-inline ERR MixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
-inline ERR MixStartSequence(objAudio *Audio, LONG Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
-inline ERR MixEndSequence(objAudio *Audio, LONG Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
+inline ERR MixContinue(objAudio *Audio, int Handle) { return AudioBase->_MixContinue(Audio,Handle); }
+inline ERR MixFrequency(objAudio *Audio, int Handle, int Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
+inline ERR MixMute(objAudio *Audio, int Handle, int Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
+inline ERR MixPan(objAudio *Audio, int Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
+inline ERR MixPlay(objAudio *Audio, int Handle, int Position) { return AudioBase->_MixPlay(Audio,Handle,Position); }
+inline ERR MixRate(objAudio *Audio, int Handle, int Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
+inline ERR MixSample(objAudio *Audio, int Handle, int Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
+inline ERR MixStop(objAudio *Audio, int Handle) { return AudioBase->_MixStop(Audio,Handle); }
+inline ERR MixStopLoop(objAudio *Audio, int Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
+inline ERR MixVolume(objAudio *Audio, int Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
+inline ERR MixStartSequence(objAudio *Audio, int Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
+inline ERR MixEndSequence(objAudio *Audio, int Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
 } // namespace
 #else
 namespace snd {
-extern ERR MixContinue(objAudio *Audio, LONG Handle);
-extern ERR MixFrequency(objAudio *Audio, LONG Handle, LONG Frequency);
-extern ERR MixMute(objAudio *Audio, LONG Handle, LONG Mute);
-extern ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan);
-extern ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position);
-extern ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate);
-extern ERR MixSample(objAudio *Audio, LONG Handle, LONG Sample);
-extern ERR MixStop(objAudio *Audio, LONG Handle);
-extern ERR MixStopLoop(objAudio *Audio, LONG Handle);
-extern ERR MixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume);
-extern ERR MixStartSequence(objAudio *Audio, LONG Handle);
-extern ERR MixEndSequence(objAudio *Audio, LONG Handle);
+extern ERR MixContinue(objAudio *Audio, int Handle);
+extern ERR MixFrequency(objAudio *Audio, int Handle, int Frequency);
+extern ERR MixMute(objAudio *Audio, int Handle, int Mute);
+extern ERR MixPan(objAudio *Audio, int Handle, DOUBLE Pan);
+extern ERR MixPlay(objAudio *Audio, int Handle, int Position);
+extern ERR MixRate(objAudio *Audio, int Handle, int Rate);
+extern ERR MixSample(objAudio *Audio, int Handle, int Sample);
+extern ERR MixStop(objAudio *Audio, int Handle);
+extern ERR MixStopLoop(objAudio *Audio, int Handle);
+extern ERR MixVolume(objAudio *Audio, int Handle, DOUBLE Volume);
+extern ERR MixStartSequence(objAudio *Audio, int Handle);
+extern ERR MixEndSequence(objAudio *Audio, int Handle);
 } // namespace
 #endif // PARASOL_STATIC
 #endif

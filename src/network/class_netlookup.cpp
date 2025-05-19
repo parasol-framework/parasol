@@ -42,13 +42,13 @@ static void resolve_callback(extNetLookup *, ERR, const std::string & = "", std:
 // Used for receiving asynchronous execution results (sent as a message).
 // These routines execute in the main process.
 
-static ERR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    pf::Log log(__FUNCTION__);
 
    auto r = (resolve_buffer *)Message;
 
-   log.traceBranch("MsgID: %d, MsgType: %d, Host: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
+   log.traceBranch("MsgID: %d, MsgType: %d, Host: %s, Thread: %d", int(MsgID), int(MsgType), (CSTRING)(r + 1), r->ThreadID);
 
    if (pf::ScopedObjectLock<extNetLookup> nl(r->NetLookupID, 2000); nl.granted()) {
       {
@@ -68,13 +68,13 @@ static ERR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Mes
 
 //********************************************************************************************************************
 
-static ERR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    pf::Log log(__FUNCTION__);
 
    auto r = (resolve_buffer *)Message;
 
-   log.traceBranch("MsgID: %d, MsgType: %d, Address: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
+   log.traceBranch("MsgID: %d, MsgType: %d, Address: %s, Thread: %d", int(MsgID), MsgType, (CSTRING)(r + 1), r->ThreadID);
 
    if (pf::ScopedObjectLock<extNetLookup> nl(r->NetLookupID, 2000); nl.granted()) {
       {

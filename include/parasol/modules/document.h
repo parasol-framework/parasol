@@ -44,7 +44,7 @@ DEFINE_ENUM_FLAG_OPERATORS(DEF)
 
 // Internal trigger codes
 
-enum class DRT : LONG {
+enum class DRT : int {
    NIL = 0,
    BEFORE_LAYOUT = 0,
    AFTER_LAYOUT = 1,
@@ -95,18 +95,18 @@ DEFINE_ENUM_FLAG_OPERATORS(FSO)
 
 namespace doc {
 struct FeedParser { CSTRING String; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectLink { LONG Index; CSTRING Name; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct FindIndex { CSTRING Name; LONG Start; LONG End; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct InsertXML { CSTRING XML; LONG Index; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveContent { LONG Start; LONG End; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct InsertText { CSTRING Text; LONG Index; LONG Char; LONG Preformat; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct CallFunction { CSTRING Function; struct ScriptArg * Args; LONG TotalArgs; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectLink { int Index; CSTRING Name; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindIndex { CSTRING Name; int Start; int End; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertXML { CSTRING XML; int Index; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveContent { int Start; int End; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertText { CSTRING Text; int Index; int Char; int Preformat; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct CallFunction { CSTRING Function; struct ScriptArg * Args; int TotalArgs; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct AddListener { DRT Trigger; FUNCTION * Function; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveListener { LONG Trigger; FUNCTION * Function; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveListener { int Trigger; FUNCTION * Function; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ShowIndex { CSTRING Name; static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct HideIndex { CSTRING Name; static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Edit { CSTRING Name; LONG Flags; static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ReadContent { DATA Format; LONG Start; LONG End; STRING Result; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Edit { CSTRING Name; int Flags; static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ReadContent { DATA Format; int Start; int End; STRING Result; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -129,7 +129,7 @@ class objDocument : public Object {
    OBJECTID TabFocusID;             // Allows the user to hit the tab key to focus on other GUI objects.
    DEF      EventMask;              // Specifies events that need to be reported from the Document object.
    DCF      Flags;                  // Optional flags that affect object behaviour.
-   LONG     PageHeight;             // Measures the page height of the document, in pixels.
+   int      PageHeight;             // Measures the page height of the document, in pixels.
    ERR      Error;                  // The most recently generated error code.
 
    // Action stubs
@@ -172,30 +172,30 @@ class objDocument : public Object {
       struct doc::FeedParser args = { String };
       return(Action(AC(-1), this, &args));
    }
-   inline ERR selectLink(LONG Index, CSTRING Name) noexcept {
+   inline ERR selectLink(int Index, CSTRING Name) noexcept {
       struct doc::SelectLink args = { Index, Name };
       return(Action(AC(-2), this, &args));
    }
-   inline ERR findIndex(CSTRING Name, LONG * Start, LONG * End) noexcept {
-      struct doc::FindIndex args = { Name, (LONG)0, (LONG)0 };
+   inline ERR findIndex(CSTRING Name, int * Start, int * End) noexcept {
+      struct doc::FindIndex args = { Name, (int)0, (int)0 };
       ERR error = Action(AC(-4), this, &args);
       if (Start) *Start = args.Start;
       if (End) *End = args.End;
       return(error);
    }
-   inline ERR insertXML(CSTRING XML, LONG Index) noexcept {
+   inline ERR insertXML(CSTRING XML, int Index) noexcept {
       struct doc::InsertXML args = { XML, Index };
       return(Action(AC(-5), this, &args));
    }
-   inline ERR removeContent(LONG Start, LONG End) noexcept {
+   inline ERR removeContent(int Start, int End) noexcept {
       struct doc::RemoveContent args = { Start, End };
       return(Action(AC(-6), this, &args));
    }
-   inline ERR insertText(CSTRING Text, LONG Index, LONG Char, LONG Preformat) noexcept {
+   inline ERR insertText(CSTRING Text, int Index, int Char, int Preformat) noexcept {
       struct doc::InsertText args = { Text, Index, Char, Preformat };
       return(Action(AC(-7), this, &args));
    }
-   inline ERR callFunction(CSTRING Function, struct ScriptArg * Args, LONG TotalArgs) noexcept {
+   inline ERR callFunction(CSTRING Function, struct ScriptArg * Args, int TotalArgs) noexcept {
       struct doc::CallFunction args = { Function, Args, TotalArgs };
       return(Action(AC(-8), this, &args));
    }
@@ -203,7 +203,7 @@ class objDocument : public Object {
       struct doc::AddListener args = { Trigger, &Function };
       return(Action(AC(-9), this, &args));
    }
-   inline ERR removeListener(LONG Trigger, FUNCTION Function) noexcept {
+   inline ERR removeListener(int Trigger, FUNCTION Function) noexcept {
       struct doc::RemoveListener args = { Trigger, &Function };
       return(Action(AC(-10), this, &args));
    }
@@ -215,11 +215,11 @@ class objDocument : public Object {
       struct doc::HideIndex args = { Name };
       return(Action(AC(-12), this, &args));
    }
-   inline ERR edit(CSTRING Name, LONG Flags) noexcept {
+   inline ERR edit(CSTRING Name, int Flags) noexcept {
       struct doc::Edit args = { Name, Flags };
       return(Action(AC(-13), this, &args));
    }
-   inline ERR readContent(DATA Format, LONG Start, LONG End, STRING * Result) noexcept {
+   inline ERR readContent(DATA Format, int Start, int End, STRING * Result) noexcept {
       struct doc::ReadContent args = { Format, Start, End, (STRING)0 };
       ERR error = Action(AC(-14), this, &args);
       if (Result) *Result = args.Result;
@@ -280,7 +280,7 @@ class objDocument : public Object {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERR setPageWidth(const LONG Value) noexcept {
+   inline ERR setPageWidth(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       Unit var(Value);

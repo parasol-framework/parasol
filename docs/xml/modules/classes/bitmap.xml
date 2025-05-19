@@ -52,10 +52,10 @@
       <comment>Clears a bitmap's image to <fl>BkgdIndex</fl>.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <input>
-        <param type="LONG" name="X">The X position of the region to be drawn.</param>
-        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
-        <param type="LONG" name="Width">The width of the region to be drawn.</param>
-        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+        <param type="INT" name="X">The X position of the region to be drawn.</param>
+        <param type="INT" name="Y">The Y position of the region to be drawn.</param>
+        <param type="INT" name="Width">The width of the region to be drawn.</param>
+        <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
     </action>
 
@@ -98,11 +98,11 @@
     <action>
       <name>Read</name>
       <comment>Reads raw image data from a bitmap object.</comment>
-      <prototype>ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)</prototype>
+      <prototype>ERR acRead(*Object, APTR Buffer, INT Length, INT *Result)</prototype>
       <input>
         <param type="APTR" name="Buffer">Points a buffer that will receive the data.</param>
-        <param type="LONG" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
-        <param type="LONG" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
+        <param type="INT" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
+        <param type="INT" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
       </input>
     </action>
 
@@ -140,7 +140,7 @@
     <action>
       <name>Seek</name>
       <comment>Changes the current byte position for read/write operations.</comment>
-      <prototype>ERR acSeek(*Object, DOUBLE Offset, LONG Position)</prototype>
+      <prototype>ERR acSeek(*Object, DOUBLE Offset, INT Position)</prototype>
       <input>
         <param type="DOUBLE" name="Offset">The desired offset to seek to, relative to the Position parameter.</param>
         <param type="POS" name="Position">The position that defines the starting point for Offset.</param>
@@ -156,11 +156,11 @@
     <action>
       <name>Write</name>
       <comment>Writes raw image data to a bitmap object.</comment>
-      <prototype>ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)</prototype>
+      <prototype>ERR acWrite(*Object, APTR Buffer, INT Length, INT Result)</prototype>
       <input>
         <param type="APTR" name="Buffer">A buffer containing the data that will be written to the object.</param>
-        <param type="LONG" name="Length">The total number of bytes to write to the object.</param>
-        <param type="LONG" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
+        <param type="INT" name="Length">The total number of bytes to write to the object.</param>
+        <param type="INT" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
       </input>
     </action>
 
@@ -552,7 +552,7 @@ unpackAlpha(Colour)
       <name>DrawUCPixel</name>
       <comment>Points to a C function that draws pixels to the bitmap using colour indexes.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*DrawUCPixel)(objBitmap *, LONG, LONG, ULONG)">FUNCTION *</type>
+      <type prototype="void (*DrawUCPixel)(objBitmap *, int, int, ULONG)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid coordinates that would result in a segfault).</p>
 <p>The prototype of the DrawUCPixel function is <code>Function(*Bitmap, LONG X, LONG Y, uint32_t Colour)</code>.</p>
@@ -577,7 +577,7 @@ unpackAlpha(Colour)
       <name>DrawUCRPixel</name>
       <comment>Points to a C function that draws pixels to the bitmap in RGB format.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*DrawUCRPixel)(objBitmap *, LONG, LONG, struct RGB8 *)">FUNCTION *</type>
+      <type prototype="void (*DrawUCRPixel)(objBitmap *, int, int, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid coordinates that would result in a segfault).</p>
 <p>The prototype of the DrawUCRPixel function is <code>Function(*Bitmap, LONG X, LONG Y, RGB8 *RGB)</code>.</p>
@@ -670,7 +670,7 @@ unpackAlpha(Colour)
       <name>ReadUCPixel</name>
       <comment>Points to a C function that reads pixels from the bitmap in colour index format.</comment>
       <access read="R">Read</access>
-      <type prototype="ULONG (*ReadUCPixel)(objBitmap *, LONG, LONG)">FUNCTION *</type>
+      <type prototype="ULONG (*ReadUCPixel)(objBitmap *, int, int)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid X/Y coordinates that would result in a segfault).</p>
 <p>The prototype of the ReadUCPixel function is <code>Function(*Bitmap, LONG X, LONG Y, LONG *Index)</code>.</p>
@@ -695,7 +695,7 @@ unpackAlpha(Colour)
       <name>ReadUCRPixel</name>
       <comment>Points to a C function that reads pixels from the bitmap in RGB format.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*ReadUCRPixel)(objBitmap *, LONG, LONG, struct RGB8 *)">FUNCTION *</type>
+      <type prototype="void (*ReadUCRPixel)(objBitmap *, int, int, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid X/Y coordinates that would result in a segfault).</p>
 <p>The prototype of the ReadUCRPixel function is <code>Function(*Bitmap, LONG X, LONG Y, RGB8 *RGB)</code>.</p>

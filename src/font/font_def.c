@@ -2,8 +2,8 @@
 
 namespace fnt {
 extern ERR GetList(struct FontList ** Result);
-extern LONG StringWidth(objFont * Font, CSTRING String, LONG Chars);
-extern LONG CharWidth(objFont * Font, ULONG Char);
+extern int StringWidth(objFont * Font, CSTRING String, int Chars);
+extern int CharWidth(objFont * Font, ULONG Char);
 extern ERR RefreshFonts();
 extern ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
 extern ERR ResolveFamilyName(CSTRING String, CSTRING * Result);
