@@ -14,7 +14,7 @@ class objHTTP;
 
 // Output mode.
 
-enum class HOM : LONG {
+enum class HOM : int {
    NIL = 0,
    DATA_FEED = 0,
    READ_WRITE = 1,
@@ -24,7 +24,7 @@ enum class HOM : LONG {
 
 // Options for defining an HTTP object's state.
 
-enum class HGS : LONG {
+enum class HGS : int {
    NIL = 0,
    READING_HEADER = 0,
    AUTHENTICATING = 1,
@@ -39,7 +39,7 @@ enum class HGS : LONG {
 
 // The HTTP Method to use when the object is activated.
 
-enum class HTM : LONG {
+enum class HTM : int {
    NIL = 0,
    GET = 0,
    POST = 1,
@@ -69,7 +69,7 @@ enum class HTM : LONG {
 
 // HTTP status codes
 
-enum class HTS : LONG {
+enum class HTS : int {
    NIL = 0,
    CONTINUE = 100,
    SWITCH_PROTOCOLS = 101,
@@ -157,7 +157,7 @@ class objHTTP : public Object {
    OBJECTID InputObjectID;   // Allows data to be sent from an object on execution of a POST command.
    OBJECTID OutputObjectID;  // Incoming data can be sent to the object referenced in this field.
    HTM      Method;          // The HTTP instruction to execute is defined here (defaults to GET).
-   LONG     Port;            // The HTTP port to use when targeting a server.
+   int      Port;            // The HTTP port to use when targeting a server.
    HOM      ObjectMode;      // The access mode used when passing data to a targeted object.
    HTF      Flags;           // Optional flags.
    HTS      Status;          // Indicates the HTTP status code returned on completion of an HTTP request.
@@ -165,8 +165,8 @@ class objHTTP : public Object {
    DATA     Datatype;        // The default datatype format to use when passing data to a target object.
    HGS      CurrentState;    // Indicates the current state of an HTTP object during its interaction with an HTTP server.
    STRING   ProxyServer;     // The targeted HTTP server is specified here, either by name or IP address.
-   LONG     ProxyPort;       // The port to use when communicating with the proxy server.
-   LONG     BufferSize;      // Indicates the preferred buffer size for data operations.
+   int      ProxyPort;       // The port to use when communicating with the proxy server.
+   int      BufferSize;      // Indicates the preferred buffer size for data operations.
 
    // Action stubs
 
@@ -289,7 +289,7 @@ class objHTTP : public Object {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setPort(const LONG Value) noexcept {
+   inline ERR setPort(const int Value) noexcept {
       this->Port = Value;
       return ERR::Okay;
    }
@@ -331,12 +331,12 @@ class objHTTP : public Object {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERR setProxyPort(const LONG Value) noexcept {
+   inline ERR setProxyPort(const int Value) noexcept {
       this->ProxyPort = Value;
       return ERR::Okay;
    }
 
-   inline ERR setBufferSize(const LONG Value) noexcept {
+   inline ERR setBufferSize(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[33];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);

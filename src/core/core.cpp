@@ -600,7 +600,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    #ifdef _DEBUG
       print_class_list();
    #endif
-      
+
    AdjustLogLevel(-1);
 
    log.msg("PROGRAM OPENED");
@@ -839,7 +839,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    if (glCrashStatus IS 0) {
       if (((SignalNumber IS SIGQUIT) or (SignalNumber IS SIGHUP)))  {
          log.msg("Termination request - SIGQUIT or SIGHUP.");
-         SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
+         SendMessage(MSGID::QUIT, MSF::NIL, NULL, 0);
          glCrashStatus = 1;
          return;
       }
@@ -1222,7 +1222,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
             winGetVolumeInformation(buffer+i, label, filesystem, type);
 
             if (buffer[i+2] IS '\\') buffer[i+2] = '/';
-            
+
             switch(type) {
                case DRIVETYPE_USB:
                   SetVolume(usb, buffer+i, "devices/usb_drive", label.c_str(), "usb", VOLUME::NIL);

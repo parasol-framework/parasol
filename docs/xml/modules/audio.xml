@@ -16,7 +16,7 @@
   <function>
     <name>MixContinue</name>
     <comment>Continue playing a stopped channel.</comment>
-    <prototype>ERR snd::MixContinue(objAudio * Audio, LONG Handle)</prototype>
+    <prototype>ERR snd::MixContinue(objAudio * Audio, INT Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>
@@ -33,7 +33,7 @@
   <function>
     <name>MixEndSequence</name>
     <comment>Ends the buffering of mix commands.</comment>
-    <prototype>ERR snd::MixEndSequence(objAudio * Audio, LONG Handle)</prototype>
+    <prototype>ERR snd::MixEndSequence(objAudio * Audio, INT Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>
@@ -50,7 +50,7 @@
   <function>
     <name>MixFrequency</name>
     <comment>Sets a channel's playback rate.</comment>
-    <prototype>ERR snd::MixFrequency(objAudio * Audio, LONG Handle, LONG Frequency)</prototype>
+    <prototype>ERR snd::MixFrequency(objAudio * Audio, INT Handle, INT Frequency)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>
@@ -68,7 +68,7 @@
   <function>
     <name>MixMute</name>
     <comment>Mutes the audio of a channel.</comment>
-    <prototype>ERR snd::MixMute(objAudio * Audio, LONG Handle, LONG Mute)</prototype>
+    <prototype>ERR snd::MixMute(objAudio * Audio, INT Handle, INT Mute)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>
@@ -86,7 +86,7 @@
   <function>
     <name>MixPan</name>
     <comment>Sets a channel's panning value.</comment>
-    <prototype>ERR snd::MixPan(objAudio * Audio, LONG Handle, DOUBLE Pan)</prototype>
+    <prototype>ERR snd::MixPan(objAudio * Audio, INT Handle, DOUBLE Pan)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>
@@ -104,7 +104,7 @@
   <function>
     <name>MixPlay</name>
     <comment>Commences channel playback at a set frequency..</comment>
-    <prototype>ERR snd::MixPlay(objAudio * Audio, LONG Handle, LONG Position)</prototype>
+    <prototype>ERR snd::MixPlay(objAudio * Audio, INT Handle, INT Position)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>
@@ -122,7 +122,7 @@
   <function>
     <name>MixRate</name>
     <comment>Sets a new update rate for a channel.</comment>
-    <prototype>ERR snd::MixRate(objAudio * Audio, LONG Handle, LONG Rate)</prototype>
+    <prototype>ERR snd::MixRate(objAudio * Audio, INT Handle, INT Rate)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The channel set allocated from OpenChannels().</param>
@@ -140,7 +140,7 @@
   <function>
     <name>MixSample</name>
     <comment>Associate a sound sample with a mixer channel.</comment>
-    <prototype>ERR snd::MixSample(objAudio * Audio, LONG Handle, LONG Sample)</prototype>
+    <prototype>ERR snd::MixSample(objAudio * Audio, INT Handle, INT Sample)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>
@@ -159,7 +159,7 @@
   <function>
     <name>MixStartSequence</name>
     <comment>Initiates buffering of mix commands.</comment>
-    <prototype>ERR snd::MixStartSequence(objAudio * Audio, LONG Handle)</prototype>
+    <prototype>ERR snd::MixStartSequence(objAudio * Audio, INT Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>
@@ -177,7 +177,7 @@
   <function>
     <name>MixStop</name>
     <comment>Stops all playback on a channel.</comment>
-    <prototype>ERR snd::MixStop(objAudio * Audio, LONG Handle)</prototype>
+    <prototype>ERR snd::MixStop(objAudio * Audio, INT Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>
@@ -194,7 +194,7 @@
   <function>
     <name>MixStopLoop</name>
     <comment>Cancels any playback loop configured for a channel.</comment>
-    <prototype>ERR snd::MixStopLoop(objAudio * Audio, LONG Handle)</prototype>
+    <prototype>ERR snd::MixStopLoop(objAudio * Audio, INT Handle)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>
@@ -211,7 +211,7 @@
   <function>
     <name>MixVolume</name>
     <comment>Changes the volume of a channel.</comment>
-    <prototype>ERR snd::MixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume)</prototype>
+    <prototype>ERR snd::MixVolume(objAudio * Audio, INT Handle, DOUBLE Volume)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
       <param type="INT" name="Handle">The target channel.</param>

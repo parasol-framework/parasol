@@ -85,7 +85,7 @@
   <function>
     <name>CharWidth</name>
     <comment>Returns the width of a character.</comment>
-    <prototype>DOUBLE vec::CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE * Kerning)</prototype>
+    <prototype>DOUBLE vec::CharWidth(APTR FontHandle, UINT Char, UINT KChar, DOUBLE * Kerning)</prototype>
     <input>
       <param type="APTR" name="FontHandle">The font to use for calculating the character width.</param>
       <param type="UINT" name="Char">A 32-bit unicode character.</param>
@@ -187,7 +187,7 @@
   <function>
     <name>GenerateEllipse</name>
     <comment>Generates an elliptical path.</comment>
-    <prototype>ERR vec::GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR * Path)</prototype>
+    <prototype>ERR vec::GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, INT Vertices, APTR * Path)</prototype>
     <input>
       <param type="DOUBLE" name="CX">Horizontal center point of the ellipse.</param>
       <param type="DOUBLE" name="CY">Vertical center point of the ellipse.</param>
@@ -263,7 +263,7 @@ Z: Close Path
   <function>
     <name>GetFontHandle</name>
     <comment>Returns a handle for a given font family.</comment>
-    <prototype>ERR vec::GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR * Handle)</prototype>
+    <prototype>ERR vec::GetFontHandle(CSTRING Family, CSTRING Style, INT Weight, INT Size, APTR * Handle)</prototype>
     <input>
       <param type="CSTRING" name="Family">The name of the font family to access.</param>
       <param type="CSTRING" name="Style">The preferred style to choose from the family.  Use <code>Regular</code> or <code>NULL</code> for the default.</param>
@@ -547,7 +547,7 @@ Z: Close Path
   <function>
     <name>StringWidth</name>
     <comment>Calculate the pixel width of a UTF-8 string, for a given font.</comment>
-    <prototype>DOUBLE vec::StringWidth(APTR FontHandle, CSTRING String, LONG Chars)</prototype>
+    <prototype>DOUBLE vec::StringWidth(APTR FontHandle, CSTRING String, INT Chars)</prototype>
     <input>
       <param type="APTR" name="FontHandle">A font handle obtained from <function>GetFontHandle</function>.</param>
       <param type="CSTRING" name="String">Pointer to a null-terminated string.</param>

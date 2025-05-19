@@ -372,7 +372,7 @@ static ERR NETSOCKET_FreeWarning(extNetSocket *Self)
          pf::Log log;
          log.msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = TRUE;
-         SendMessage(MSGID_FREE, MSF::NIL, &Self->UID, sizeof(OBJECTID));
+         SendMessage(MSGID::FREE, MSF::NIL, &Self->UID, sizeof(OBJECTID));
       }
       return ERR::InUse;
    }

@@ -34,7 +34,7 @@
     <name>AccessMemory</name>
     <category>Memory</category>
     <comment>Grants access to memory blocks by identifier.</comment>
-    <prototype>ERR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR * Result)</prototype>
+    <prototype>ERR AccessMemory(MEMORYID Memory, MEM Flags, INT MilliSeconds, APTR * Result)</prototype>
     <input>
       <param type="MEMORYID" name="Memory">The ID of the memory block to access.</param>
       <param type="MEM" name="Flags" lookup="MEM">Set to <code>READ</code>, <code>WRITE</code> or <code>READ_WRITE</code>.</param>
@@ -59,7 +59,7 @@
     <name>AccessObject</name>
     <category>Objects</category>
     <comment>Grants exclusive access to objects via unique ID.</comment>
-    <prototype>ERR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result)</prototype>
+    <prototype>ERR AccessObject(OBJECTID Object, INT MilliSeconds, OBJECTPTR * Result)</prototype>
     <input>
       <param type="OBJECTID" name="Object">The unique ID of the target object.</param>
       <param type="INT" name="MilliSeconds">The limit in milliseconds before a timeout occurs.  The maximum limit is <code>60000</code>, and <code>100</code> is recommended.</param>
@@ -127,7 +127,7 @@
     <name>ActionList</name>
     <category>Objects</category>
     <comment>Returns a pointer to the global action table.</comment>
-    <prototype>void ActionList(struct ActionTable ** Actions, LONG * Size)</prototype>
+    <prototype>void ActionList(struct ActionTable ** Actions, INT * Size)</prototype>
     <input>
       <param type="struct ActionTable **" name="Actions">A pointer to the Core's action table <code>struct ActionTable *</code> is returned. Please note that the first entry in the <code>ActionTable</code> list has all fields driven to <code>NULL</code>, because valid action ID's start from one, not zero.  The final action in the list is also terminated with <code>NULL</code> fields in order to indicate an end to the list.  Knowing this is helpful when scanning the list or calculating the total number of actions supported by the Core.</param>
       <param type="INT *" name="Size">Total number of elements in the returned list.</param>
@@ -184,10 +184,10 @@ struct FunctionField argsResize[] = {
     <name>AddMsgHandler</name>
     <category>Messages</category>
     <comment>Adds a new message handler for processing incoming messages.</comment>
-    <prototype>ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle)</prototype>
+    <prototype>ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION * Routine, struct MsgHandler ** Handle)</prototype>
     <input>
       <param type="APTR" name="Custom">A custom pointer that will be passed to the message handler when messages are received.</param>
-      <param type="INT" name="MsgType">The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.</param>
+      <param type="MSGID" name="MsgType" lookup="MSGID">The message type that the handler will intercept.  If zero, all incoming messages are passed to the handler.</param>
       <param type="FUNCTION *" name="Routine">Refers to the function that will handle incoming messages.</param>
       <param type="struct MsgHandler **" name="Handle">The resulting handle of the new message handler - retain for <function>FreeResource</function>.</param>
     </input>
@@ -195,7 +195,7 @@ struct FunctionField argsResize[] = {
 <p>This function allows handlers to be added for the interception of incoming messages.  Message handling works as follows:</p>
 <p>During a call to <function>ProcessMessages</function>, each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
 <p>When calling AddMsgHandler(), you can provide an optional <code>Custom</code> pointer that will have meaning to the handler.  The <code>MsgType</code> acts as a filter so that only messages with the same type identifier will be passed to the handler.  The <code>Routine</code> parameter must point to the function handler, which will follow this definition:</p>
-<pre>ERR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
+<pre>ERR handler(APTR Custom, MSGID MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
 <p>The handler must return <code>ERR::Okay</code> if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw <code>ERR::NothingDone</code> if the message has been ignored or <code>ERR::Continue</code> if the message was processed but may be analysed by other handlers.  Throw <code>ERR::Terminate</code> to break the current <function>ProcessMessages</function> loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
 <p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to <function>FreeResource</function> once it is no longer required.</p>
     </description>
@@ -210,7 +210,7 @@ struct FunctionField argsResize[] = {
     <name>AdjustLogLevel</name>
     <category>System</category>
     <comment>Adjusts the base-line of all log messages.</comment>
-    <prototype>INT AdjustLogLevel(LONG Delta)</prototype>
+    <prototype>INT AdjustLogLevel(INT Delta)</prototype>
     <input>
       <param type="INT" name="Delta">The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 6.</param>
     </input>
@@ -226,7 +226,7 @@ struct FunctionField argsResize[] = {
     <name>AllocMemory</name>
     <category>Memory</category>
     <comment>Allocates a new memory block on the heap.</comment>
-    <prototype>ERR AllocMemory(LONG Size, MEM Flags, APTR * Address, MEMORYID * ID)</prototype>
+    <prototype>ERR AllocMemory(INT Size, MEM Flags, APTR * Address, MEMORYID * ID)</prototype>
     <input>
       <param type="INT" name="Size">The size of the memory block.</param>
       <param type="MEM" name="Flags" lookup="MEM">Optional flags.</param>
@@ -327,7 +327,7 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <name>BroadcastEvent</name>
     <category>Events</category>
     <comment>Broadcast an event to all event listeners in the system.</comment>
-    <prototype>ERR BroadcastEvent(APTR Event, LONG EventSize)</prototype>
+    <prototype>ERR BroadcastEvent(APTR Event, INT EventSize)</prototype>
     <input>
       <param type="APTR" name="Event">Pointer to an event structure.</param>
       <param type="INT" name="EventSize">The size of the <code>Event</code> structure, in bytes.</param>
@@ -575,7 +575,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <name>FieldName</name>
     <category>Fields</category>
     <comment>Resolves a field ID to its registered name.</comment>
-    <prototype>CSTRING FieldName(ULONG FieldID)</prototype>
+    <prototype>CSTRING FieldName(UINT FieldID)</prototype>
     <input>
       <param type="UINT" name="FieldID">The unique field hash to resolve.</param>
     </input>
@@ -606,7 +606,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <name>FindField</name>
     <category>Fields</category>
     <comment>Finds field descriptors for any class, by ID.</comment>
-    <prototype>struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR * Target)</prototype>
+    <prototype>struct Field * FindField(OBJECTPTR Object, UINT FieldID, OBJECTPTR * Target)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The target object.</param>
       <param type="UINT" name="FieldID">The 'FID' number to lookup.</param>
@@ -678,7 +678,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
     <name>GenCRC32</name>
     <category>System</category>
     <comment>Generates 32-bit CRC checksum values.</comment>
-    <prototype>UINT GenCRC32(ULONG CRC, APTR Data, ULONG Length)</prototype>
+    <prototype>UINT GenCRC32(UINT CRC, APTR Data, UINT Length)</prototype>
     <input>
       <param type="UINT" name="CRC">If streaming data to this function, this value should reflect the most recently returned CRC integer.  Otherwise set to zero.</param>
       <param type="APTR" name="Data">The data to generate a CRC value for.</param>
@@ -789,7 +789,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>GetFieldArray</name>
     <category>Fields</category>
     <comment>Retrieves array field values from objects.</comment>
-    <prototype>ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Elements)</prototype>
+    <prototype>ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, INT * Elements)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
       <param type="FIELD" name="Field">The ID of the field that will be read.</param>
@@ -814,7 +814,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>GetFieldVariable</name>
     <category>Fields</category>
     <comment>Retrieves field values by converting them into strings.</comment>
-    <prototype>ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size)</prototype>
+    <prototype>ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, INT Size)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
       <param type="CSTRING" name="Field">The name of the field that is to be retrieved.</param>
@@ -842,9 +842,9 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>GetMessage</name>
     <category>Messages</category>
     <comment>Reads messages from message queues.</comment>
-    <prototype>ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size)</prototype>
+    <prototype>ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, INT Size)</prototype>
     <input>
-      <param type="INT" name="Type">Filter down to this message type or set to zero to receive the next message on the queue.</param>
+      <param type="MSGID" name="Type" lookup="MSGID">Filter down to this message type or set to zero to receive the next message on the queue.</param>
       <param type="MSF" name="Flags" lookup="MSF">This argument is reserved for future use.  Set it to zero.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that is large enough to hold the incoming message information.  If set to <code>NULL</code> then all accompanying message data will be destroyed.</param>
       <param type="INT" name="Size">The byte-size of the buffer that you have supplied.</param>
@@ -1012,7 +1012,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>LockObject</name>
     <category>Objects</category>
     <comment>Lock an object to prevent contention between threads.</comment>
-    <prototype>ERR LockObject(OBJECTPTR Object, LONG MilliSeconds)</prototype>
+    <prototype>ERR LockObject(OBJECTPTR Object, INT MilliSeconds)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">The address of the object to lock.</param>
       <param type="INT" name="MilliSeconds">The total number of milliseconds to wait before giving up.  If <code>-1</code>, the function will wait indefinitely.</param>
@@ -1035,7 +1035,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>MemoryIDInfo</name>
     <category>Memory</category>
     <comment>Returns information on memory ID's.</comment>
-    <prototype>ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size)</prototype>
+    <prototype>ERR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, INT Size)</prototype>
     <input>
       <param type="MEMORYID" name="ID">Pointer to a valid memory ID.</param>
       <param type="struct MemInfo *" name="MemInfo">Pointer to a <st>MemInfo</st> structure.</param>
@@ -1063,7 +1063,7 @@ if (!MemoryIDInfo(memid, &amp;info)) {
     <name>MemoryPtrInfo</name>
     <category>Memory</category>
     <comment>Returns information on memory addresses.</comment>
-    <prototype>ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size)</prototype>
+    <prototype>ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, INT Size)</prototype>
     <input>
       <param type="APTR" name="Address">Pointer to a valid memory area.</param>
       <param type="struct MemInfo *" name="MemInfo">Pointer to a <st>MemInfo</st> structure to be populated.</param>
@@ -1224,7 +1224,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ProcessMessages</name>
     <category>Messages</category>
     <comment>Processes system messages that are queued in the task's message buffer.</comment>
-    <prototype>ERR ProcessMessages(PMF Flags, LONG TimeOut)</prototype>
+    <prototype>ERR ProcessMessages(PMF Flags, INT TimeOut)</prototype>
     <input>
       <param type="PMF" name="Flags" lookup="PMF">Optional flags are specified here (clients should set a value of zero).</param>
       <param type="INT" name="TimeOut">A TimeOut value, measured in milliseconds.  If zero, the function will return as soon as all messages on the queue are processed.  If less than zero, the function does not return until a request for termination is received or a user message requires processing.</param>
@@ -1233,11 +1233,11 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The ProcessMessages() function is used to process the task's message queue.  Messages are dispatched to message handlers in the order in which they arrived and the queue is emptied so that space is available for more messages.</p>
 <p>Responding to incoming messages is a vital process - the queue is the standard means of communication between your task and the rest of the system and other tasks within it.  Failing to call the ProcessMessages() function on a regular basis may cause a back-log of messages to be generated, as well as causing problems with areas such as the graphical interface. If an area of your program is likely to loop continuously for a measurable period of time without returning, consider calling ProcessMessages() at a rate of 50 times per second to ensure that incoming messages are processed.</p>
 <p>User messages that are on the queue are passed to message handlers.  If no message handler exists to interpret the message, then it is removed from the queue without being processed. Message handlers are added with the <function>AddMsgHandler</function> function.  If a message handler returns the error code <code>ERR::Terminate</code>, then ProcessMessages() will stop processing the queue and returns immediately with <code>ERR::Okay</code>.</p>
-<p>If a message with a <code>MSGID_QUIT</code> ID is found on the queue, then the function returns immediately with the error code <code>ERR::Terminate</code>.  The program must respond to the terminate request by exiting immediately.</p>
+<p>If a message with a <code>MSGID::QUIT</code> ID is found on the queue, then the function returns immediately with the error code <code>ERR::Terminate</code>.  The program must respond to the terminate request by exiting immediately.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="Terminate">A <code>MSGID_QUIT</code> message type was found on the message queue.</error>
+      <error code="Terminate">A <code>MSGID::QUIT</code> message type was found on the message queue.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
     </result>
   </function>
@@ -1271,7 +1271,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ReadFileToBuffer</name>
     <category>Files</category>
     <comment>Reads a file into a buffer.</comment>
-    <prototype>ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result)</prototype>
+    <prototype>ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, INT BufferSize, INT * Result)</prototype>
     <input>
       <param type="CSTRING" name="Path">The path of the file.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that will receive the file content.</param>
@@ -1317,7 +1317,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ReallocMemory</name>
     <category>Memory</category>
     <comment>Reallocates memory blocks.</comment>
-    <prototype>ERR ReallocMemory(APTR Memory, ULONG Size, APTR * Address, MEMORYID * ID)</prototype>
+    <prototype>ERR ReallocMemory(APTR Memory, UINT Size, APTR * Address, MEMORYID * ID)</prototype>
     <input>
       <param type="APTR" name="Memory">Pointer to a memory block obtained from <function>AllocMemory</function>.</param>
       <param type="UINT" name="Size">The size of the new memory block.</param>
@@ -1427,7 +1427,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ResolveGroupID</name>
     <category>Files</category>
     <comment>Converts a group ID to its corresponding name.</comment>
-    <prototype>CSTRING ResolveGroupID(LONG Group)</prototype>
+    <prototype>CSTRING ResolveGroupID(INT Group)</prototype>
     <input>
       <param type="INT" name="Group">The group ID.</param>
     </input>
@@ -1472,7 +1472,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ResolveUserID</name>
     <category>Files</category>
     <comment>Converts a user ID to its corresponding name.</comment>
-    <prototype>CSTRING ResolveUserID(LONG User)</prototype>
+    <prototype>CSTRING ResolveUserID(INT User)</prototype>
     <input>
       <param type="INT" name="User">The user ID.</param>
     </input>
@@ -1515,17 +1515,17 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <name>ScanMessages</name>
     <category>Messages</category>
     <comment>Scans a message queue for multiple occurrences of a message type.</comment>
-    <prototype>ERR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size)</prototype>
+    <prototype>ERR ScanMessages(INT * Handle, MSGID Type, APTR Buffer, INT Size)</prototype>
     <input>
       <param type="INT *" name="Handle">Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.</param>
-      <param type="INT" name="Type">The message type to filter for, or zero to scan all messages in the queue.</param>
+      <param type="MSGID" name="Type" lookup="MSGID">The message type to filter for, or zero to scan all messages in the queue.</param>
       <param type="APTR" name="Buffer">Optional pointer to a buffer that is large enough to hold any message data.</param>
       <param type="INT" name="Size">The byte-size of the supplied <code>Buffer</code>.</param>
     </input>
     <description>
 <p>Use the ScanMessages() function to scan the local message queue for information without affecting the state of the queue.  To use this function effectively, make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR::Okay</code>.</p>
-<p>The following example illustrates a scan for <code>MSGID_QUIT</code> messages:</p>
-<pre>while (!ScanMessages(&amp;handle, MSGID_QUIT, NULL, NULL)) {
+<p>The following example illustrates a scan for <code>MSGID::QUIT</code> messages:</p>
+<pre>while (!ScanMessages(&amp;handle, MSGID::QUIT, NULL, NULL)) {
    ...
 }
 </pre>
@@ -1542,15 +1542,15 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <name>SendMessage</name>
     <category>Messages</category>
     <comment>Add a message to the local message queue.</comment>
-    <prototype>ERR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)</prototype>
+    <prototype>ERR SendMessage(MSGID Type, MSF Flags, APTR Data, INT Size)</prototype>
     <input>
-      <param type="LONG" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function>AllocateID</function>.</param>
+      <param type="MSGID" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function>AllocateID</function>.</param>
       <param type="MSF" name="Flags" lookup="MSF">Optional flags.</param>
       <param type="APTR" name="Data">Pointer to the data that will be written to the queue.  Set to <code>NULL</code> if there is no data to write.</param>
       <param type="INT" name="Size">The byte-size of the <code>Data</code> being written to the message queue.</param>
     </input>
     <description>
-<p>The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated with a <code>Type</code> identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined, such as <code>MSGID_QUIT</code>.  Custom messages should use a unique type ID obtained from <function>AllocateID</function>.</p>
+<p>The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated with a <code>Type</code> identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined, such as <code>MSGID::QUIT</code>.  Custom messages should use a unique type ID obtained from <function>AllocateID</function>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">The message was successfully written to the message queue.</error>
@@ -1562,7 +1562,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <name>SetArray</name>
     <category>Fields</category>
     <comment>Used to set array fields in objects.</comment>
-    <prototype>ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements)</prototype>
+    <prototype>ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, INT Elements)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the target object.</param>
       <param type="FIELD" name="Field">The universal ID of the field you wish to write to, OR'd with a type indicator.</param>
@@ -1627,7 +1627,7 @@ FreeResource(memory);  // Reference is no longer valid
     <name>SetDefaultPermissions</name>
     <category>Files</category>
     <comment>Forces the user and group permissions to be applied to new files and folders.</comment>
-    <prototype>void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions)</prototype>
+    <prototype>void SetDefaultPermissions(INT User, INT Group, PERMIT Permissions)</prototype>
     <input>
       <param type="INT" name="User">User ID to apply to new files.</param>
       <param type="INT" name="Group">Group ID to apply to new files.</param>
@@ -1731,7 +1731,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetResource</name>
     <category>System</category>
     <comment>Sets miscellaneous resource identifiers.</comment>
-    <prototype>INT64 SetResource(RES Resource, int64_t Value)</prototype>
+    <prototype>INT64 SetResource(RES Resource, INT64 Value)</prototype>
     <input>
       <param type="RES" name="Resource" lookup="RES">The ID of the resource to be set.</param>
       <param type="INT64" name="Value">The new value to set for the resource.</param>
@@ -1833,7 +1833,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SubscribeEvent</name>
     <category>Events</category>
     <comment>Subscribe to a system event.</comment>
-    <prototype>ERR SubscribeEvent(int64_t Event, FUNCTION * Callback, APTR * Handle)</prototype>
+    <prototype>ERR SubscribeEvent(INT64 Event, FUNCTION * Callback, APTR * Handle)</prototype>
     <input>
       <param type="INT64" name="Event">An event identifier.</param>
       <param type="FUNCTION *" name="Callback">The function that will be subscribed to the event.</param>
@@ -1928,10 +1928,10 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>UpdateMessage</name>
     <category>Messages</category>
     <comment>Updates the data of any message that is queued.</comment>
-    <prototype>ERR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size)</prototype>
+    <prototype>ERR UpdateMessage(INT Message, MSGID Type, APTR Data, INT Size)</prototype>
     <input>
       <param type="INT" name="Message">The ID of the message that will be updated.</param>
-      <param type="INT" name="Type">Defines the type of the message.  If set to <code>-1</code>, the message will be deleted.</param>
+      <param type="MSGID" name="Type" lookup="MSGID">The type of the message.  If set to <code>-1</code>, the message will be deleted.</param>
       <param type="APTR" name="Data">Pointer to a buffer that contains the new data for the message.</param>
       <param type="INT" name="Size">The byte-size of the <code>Data</code> that has been supplied.  It must not exceed the size of the message that is being updated.</param>
     </input>
@@ -1972,7 +1972,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>WaitForObjects</name>
     <category>Messages</category>
     <comment>Process incoming messages while waiting on objects to complete their activities.</comment>
-    <prototype>ERR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals)</prototype>
+    <prototype>ERR WaitForObjects(PMF Flags, INT TimeOut, struct ObjectSignal * ObjectSignals)</prototype>
     <input>
       <param type="PMF" name="Flags" lookup="PMF">Optional flags are specified here.</param>
       <param type="INT" name="TimeOut">A time-out value measured in milliseconds.  If this value is negative then no time-out applies and the function will not return until an incoming message or signal breaks it.</param>
@@ -1996,14 +1996,14 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>WaitTime</name>
     <category>System</category>
     <comment>Waits for a specified amount of seconds and/or microseconds.</comment>
-    <prototype>void WaitTime(LONG Seconds, LONG MicroSeconds)</prototype>
+    <prototype>void WaitTime(INT Seconds, INT MicroSeconds)</prototype>
     <input>
       <param type="INT" name="Seconds">The number of seconds to wait for.</param>
       <param type="INT" name="MicroSeconds">The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - <code>1/1000000</code>.  The value cannot exceed <code>999999</code>.</param>
     </input>
     <description>
 <p>This function waits for a period of time as specified by the <code>Seconds</code> and <code>MicroSeconds</code> parameters.  While waiting, your process will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
-<p>WaitTime() can return earlier than the indicated timeout if a message handler returns <code>ERR::Terminate</code>, or if a <code>MSGID_QUIT</code> message is sent to the task's message queue.</p>
+<p>WaitTime() can return earlier than the indicated timeout if a message handler returns <code>ERR::Terminate</code>, or if a <code>MSGID::QUIT</code> message is sent to the task's message queue.</p>
     </description>
   </function>
 
@@ -3085,7 +3085,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
       <field name="GetValue" type="FUNCTION *" prototype="ERR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
       <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
-      <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
+      <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, int, const void *, int)">An internal function for writing to this field.</field>
       <field name="Name" type="CSTRING">The English name for the field, e.g. <code>Width</code></field>
       <field name="FieldID" type="UINT">Provides a fast way of finding fields, e.g. <code>FID_Width</code></field>
       <field name="Offset" type="UINT16">Field offset within the object</field>
@@ -3174,7 +3174,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     <struct name="Message" comment="Message header.">
       <field name="Time" type="INT64">A timestamp acquired from <function module="Core">PreciseTime</function> when the message was first passed to <function module="Core">SendMessage</function>.</field>
       <field name="UID" type="INT">A unique identifier automatically created by <function module="Core">SendMessage</function>.</field>
-      <field name="Type" type="INT">A message type identifier as defined by the client.</field>
+      <field name="Type" type="MSGID" lookup="MSGID">A message type identifier as defined by the client.</field>
       <field name="Size" type="INT">The byte-size of the message data, or zero if no data is provided.</field>
     </struct>
 

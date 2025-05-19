@@ -16,7 +16,7 @@
 
 struct FluidBase {
 #ifndef PARASOL_STATIC
-   ERR (*_SetVariable)(OBJECTPTR Script, CSTRING Name, LONG Type, ...);
+   ERR (*_SetVariable)(OBJECTPTR Script, CSTRING Name, int Type, ...);
 #endif // PARASOL_STATIC
 };
 
@@ -24,11 +24,11 @@ struct FluidBase {
 #ifndef PARASOL_STATIC
 extern struct FluidBase *FluidBase;
 namespace fl {
-template<class... Args> ERR SetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, Args... Tags) { return FluidBase->_SetVariable(Script,Name,Type,Tags...); }
+template<class... Args> ERR SetVariable(OBJECTPTR Script, CSTRING Name, int Type, Args... Tags) { return FluidBase->_SetVariable(Script,Name,Type,Tags...); }
 } // namespace
 #else
 namespace fl {
-extern ERR SetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, ...);
+extern ERR SetVariable(OBJECTPTR Script, CSTRING Name, int Type, ...);
 } // namespace
 #endif // PARASOL_STATIC
 #endif

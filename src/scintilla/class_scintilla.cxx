@@ -1858,7 +1858,7 @@ EventCallback: Provides callbacks for global state changes.
 Set this field with a function reference to receive event notifications.  It must be set in conjunction with
 #EventFlags so that you can select the type of notifications that will be received.
 
-The callback function must be in the format `Function(*Scintilla, int64_t EventFlag)`.
+The callback function must be in the format `Function(*Scintilla, INT64 EventFlag)`.
 
 The EventFlag value will indicate the event that occurred.  Please see the #EventFlags field for a list of
 supported events and additional details.

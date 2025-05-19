@@ -31,11 +31,11 @@
     <action>
       <name>GetKey</name>
       <comment>Script parameters can be retrieved through this action.</comment>
-      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
-        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+        <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
     </action>
 

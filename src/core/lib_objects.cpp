@@ -53,7 +53,7 @@ static LONG glSubReadOnly = 0; // To prevent modification of glSubscriptions
 static void free_children(OBJECTPTR Object);
 
 //********************************************************************************************************************
-// Hook for MSGID_FREE, used for delaying collection until the next message processing cycle.
+// Hook for MSGID::FREE, used for delaying collection until the next message processing cycle.
 
 ERR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -106,7 +106,7 @@ static ERR object_free(Object *Object)
       if ((Object->Owner) and (Object->Owner->collecting())) Object->Owner = NULL;
       if (!Object->defined(NF::COLLECT)) {
          Object->Flags |= NF::COLLECT;
-         SendMessage(MSGID_FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
+         SendMessage(MSGID::FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
       }
       return ERR::InUse;
    }
@@ -260,7 +260,7 @@ static ERR thread_action(extThread *Thread)
    }
    else --obj->ThreadPending;
 
-   // Send a callback notification via messaging if required.  The MSGID_THREAD_ACTION receiver is msg_threadaction()
+   // Send a callback notification via messaging if required.  The MSGID::THREAD_ACTION receiver is msg_threadaction()
 
    if (data->Callback.defined()) {
       ThreadActionMessage msg = {
@@ -269,7 +269,7 @@ static ERR thread_action(extThread *Thread)
          .Error    = error,
          .Callback = data->Callback
       };
-      SendMessage(MSGID_THREAD_ACTION, MSF::ADD, &msg, sizeof(msg));
+      SendMessage(MSGID::THREAD_ACTION, MSF::ADD, &msg, sizeof(msg));
    }
 
    threadpool_release(Thread);
@@ -750,8 +750,8 @@ OBJECTPTR ParentContext(void)
 -FUNCTION-
 FindClass: Returns the internal MetaClass for a given class ID.
 
-This function will find a specific class by ID and return its @MetaClass.  If the class is not already loaded, the 
-internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is 
+This function will find a specific class by ID and return its @MetaClass.  If the class is not already loaded, the
+internal dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is
 loaded into memory and the correct MetaClass will be returned.
 
 In any event of failure, `NULL` is returned.
@@ -1086,7 +1086,7 @@ ERR InitObject(OBJECTPTR Object)
       //   that in the first case we can only support classes that are already in memory.  The second part of this
       //   routine supports checking of sub-classes that aren't loaded yet.
       //
-      // ERR::UseSubClass: Can be returned by the base-class.  Similar to ERR::NoSupport, but avoids scanning of 
+      // ERR::UseSubClass: Can be returned by the base-class.  Similar to ERR::NoSupport, but avoids scanning of
       // sub-classes that aren't loaded in memory.
 
       auto &subclasses = Object->ExtClass->SubClasses;
@@ -1364,8 +1364,8 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
 -FUNCTION-
 NotifySubscribers: Send a notification event to action subscribers.
 
-This function can be used by classes that need fine-tuned control over notification events, as managed by the 
-~SubscribeAction() function.  Normally the Core will automatically notify subscribers after an action 
+This function can be used by classes that need fine-tuned control over notification events, as managed by the
+~SubscribeAction() function.  Normally the Core will automatically notify subscribers after an action
 is executed.  Using NotifySubscribers(), the client can instead manually notify subscribers during the
 execution of the action.
 
@@ -1525,7 +1525,7 @@ ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
       else return log.warning(ERR::MissingClass);
    }
 
-   if (auto error = SendMessage(MSGID_ACTION, MSF::NIL, &msg.Action, msgsize + sizeof(ActionMessage)); error != ERR::Okay) {
+   if (auto error = SendMessage(MSGID::ACTION, MSF::NIL, &msg.Action, msgsize + sizeof(ActionMessage)); error != ERR::Okay) {
       if (ActionID > AC::NIL) {
          log.warning("#%d.%s() failed, SendMsg error: %s", ObjectID, ActionTable[LONG(ActionID)].Name, glMessages[LONG(error)]);
       }

@@ -261,27 +261,27 @@ typedef std::map<std::string, DNSEntry, CaseInsensitiveMap> HOSTMAP;
 
 //********************************************************************************************************************
 
-static OBJECTPTR clNetLookup = NULL;
-static OBJECTPTR clProxy = NULL;
-static OBJECTPTR clNetSocket = NULL;
-static OBJECTPTR clClientSocket = NULL;
+static OBJECTPTR clNetLookup = nullptr;
+static OBJECTPTR clProxy = nullptr;
+static OBJECTPTR clNetSocket = nullptr;
+static OBJECTPTR clClientSocket = nullptr;
 static HOSTMAP glHosts;
 static HOSTMAP glAddresses;
-static LONG glResolveNameMsgID = 0;
-static LONG glResolveAddrMsgID = 0;
+static MSGID glResolveNameMsgID = MSGID::NIL;
+static MSGID glResolveAddrMsgID = MSGID::NIL;
 
 static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
 static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
-static ERR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
-static ERR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize);
+static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, LONG MsgType, APTR Message, LONG MsgSize);
+static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, LONG MsgType, APTR Message, LONG MsgSize);
 
 static ERR init_netsocket(void);
 static ERR init_clientsocket(void);
 static ERR init_proxy(void);
 static ERR init_netlookup(void);
 
-static MsgHandler *glResolveNameHandler = NULL;
-static MsgHandler *glResolveAddrHandler = NULL;
+static MsgHandler *glResolveNameHandler = nullptr;
+static MsgHandler *glResolveAddrHandler = nullptr;
 
 //********************************************************************************************************************
 
@@ -296,8 +296,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (init_proxy() != ERR::Okay) return ERR::AddClass;
    if (init_netlookup() != ERR::Okay) return ERR::AddClass;
 
-   glResolveNameMsgID = AllocateID(IDTYPE::MESSAGE);
-   glResolveAddrMsgID = AllocateID(IDTYPE::MESSAGE);
+   glResolveNameMsgID = (MSGID)AllocateID(IDTYPE::MESSAGE);
+   glResolveAddrMsgID = (MSGID)AllocateID(IDTYPE::MESSAGE);
 
 #ifdef _WIN32
    // Configure Winsock
@@ -313,12 +313,12 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    auto recv_function = C_FUNCTION(resolve_name_receiver);
    recv_function.Context = CurrentTask();
-   if (AddMsgHandler(NULL, glResolveNameMsgID, &recv_function, &glResolveNameHandler) != ERR::Okay) {
+   if (AddMsgHandler(nullptr, glResolveNameMsgID, &recv_function, &glResolveNameHandler) != ERR::Okay) {
       return ERR::Failed;
    }
 
    recv_function.Routine = (APTR)resolve_addr_receiver;
-   if (AddMsgHandler(NULL, glResolveAddrMsgID, &recv_function, &glResolveAddrHandler) != ERR::Okay) {
+   if (AddMsgHandler(nullptr, glResolveAddrMsgID, &recv_function, &glResolveAddrHandler) != ERR::Okay) {
       return ERR::Failed;
    }
 
@@ -342,11 +342,11 @@ static ERR MODExpunge(void)
    pf::Log log;
 
 #ifdef _WIN32
-   SetResourcePtr(RES::NET_PROCESSING, NULL);
+   SetResourcePtr(RES::NET_PROCESSING, nullptr);
 #endif
 
-   if (glResolveNameHandler) { FreeResource(glResolveNameHandler); glResolveNameHandler = NULL; }
-   if (glResolveAddrHandler) { FreeResource(glResolveAddrHandler); glResolveAddrHandler = NULL; }
+   if (glResolveNameHandler) { FreeResource(glResolveNameHandler); glResolveNameHandler = nullptr; }
+   if (glResolveAddrHandler) { FreeResource(glResolveAddrHandler); glResolveAddrHandler = nullptr; }
 
 #ifdef _WIN32
    log.msg("Closing winsock.");
@@ -354,10 +354,10 @@ static ERR MODExpunge(void)
    if (ShutdownWinsock() != 0) log.warning("Warning: Winsock DLL Cleanup failed.");
 #endif
 
-   if (clNetSocket)    { FreeResource(clNetSocket); clNetSocket = NULL; }
-   if (clClientSocket) { FreeResource(clClientSocket); clClientSocket = NULL; }
-   if (clProxy)        { FreeResource(clProxy); clProxy = NULL; }
-   if (clNetLookup)    { FreeResource(clNetLookup); clNetLookup = NULL; }
+   if (clNetSocket)    { FreeResource(clNetSocket); clNetSocket = nullptr; }
+   if (clClientSocket) { FreeResource(clClientSocket); clClientSocket = nullptr; }
+   if (clProxy)        { FreeResource(clProxy); clProxy = nullptr; }
+   if (clNetLookup)    { FreeResource(clNetLookup); clNetLookup = nullptr; }
 
 #ifdef ENABLE_SSL
    if (ssl_init) {
@@ -392,11 +392,11 @@ CSTRING AddressToStr(IPAddress *Address)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Address) return NULL;
+   if (!Address) return nullptr;
 
    if (Address->Type != IPADDR::V4) {
       log.warning("Only IPv4 Addresses are supported currently");
-      return NULL;
+      return nullptr;
    }
 
    struct in_addr addr;
@@ -409,7 +409,7 @@ CSTRING AddressToStr(IPAddress *Address)
    result = win_inet_ntoa(addr.s_addr);
 #endif
 
-   if (!result) return NULL;
+   if (!result) return nullptr;
    return pf::strclone(result);
 }
 
@@ -624,7 +624,7 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self) __attribute__((un
 static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 {
    #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-   RegisterFD((HOSTHANDLE)((extNetSocket *)Self)->SocketHandle, RFD::REMOVE|RFD::READ|RFD::SOCKET, NULL, NULL);
+   RegisterFD((HOSTHANDLE)((extNetSocket *)Self)->SocketHandle, RFD::REMOVE|RFD::READ|RFD::SOCKET, nullptr, nullptr);
    #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
    client_server_incoming(FD, (extNetSocket *)Self);
 }
@@ -798,7 +798,7 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Len
 
             default:
                while (ssl_error) {
-                  log.warning("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, NULL));
+                  log.warning("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, nullptr));
                   ssl_error = ERR_get_error();
                }
 
@@ -864,7 +864,7 @@ static STRUCTS glStructures = {
    { "NetQueue",  sizeof(NetQueue) }
 };
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_network_module() { return &ModHeader; }
 
 /*********************************************************************************************************************

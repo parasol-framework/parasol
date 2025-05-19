@@ -33,7 +33,7 @@
   <function>
     <name>HostToLong</name>
     <comment>Converts a 32 bit (unsigned) long from host to network byte order.</comment>
-    <prototype>UINT net::HostToLong(ULONG Value)</prototype>
+    <prototype>UINT net::HostToLong(UINT Value)</prototype>
     <input>
       <param type="UINT" name="Value">Data in host byte order to be converted to network byte order</param>
     </input>
@@ -46,7 +46,7 @@
   <function>
     <name>HostToShort</name>
     <comment>Converts a 16 bit (unsigned) word from host to network byte order.</comment>
-    <prototype>UINT net::HostToShort(ULONG Value)</prototype>
+    <prototype>UINT net::HostToShort(UINT Value)</prototype>
     <input>
       <param type="UINT" name="Value">Data in host byte order to be converted to network byte order</param>
     </input>
@@ -59,7 +59,7 @@
   <function>
     <name>LongToHost</name>
     <comment>Converts a 32 bit (unsigned) long from network to host byte order.</comment>
-    <prototype>UINT net::LongToHost(ULONG Value)</prototype>
+    <prototype>UINT net::LongToHost(UINT Value)</prototype>
     <input>
       <param type="UINT" name="Value">Data in network byte order to be converted to host byte order</param>
     </input>
@@ -90,7 +90,7 @@
   <function>
     <name>ShortToHost</name>
     <comment>Converts a 16 bit (unsigned) word from network to host byte order.</comment>
-    <prototype>UINT net::ShortToHost(ULONG Value)</prototype>
+    <prototype>UINT net::ShortToHost(UINT Value)</prototype>
     <input>
       <param type="UINT" name="Value">Data in network byte order to be converted to host byte order</param>
     </input>

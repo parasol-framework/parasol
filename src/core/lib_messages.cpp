@@ -89,7 +89,7 @@ static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERR Result, A
 
       if (glWFOList.empty()) {
          log.trace("All objects signalled.");
-         SendMessage(MSGID_WAIT_FOR_OBJECTS, MSF::WAIT, NULL, 0); // Will result in ProcessMessages() terminating
+         SendMessage(MSGID::WAIT_FOR_OBJECTS, MSF::WAIT, NULL, 0); // Will result in ProcessMessages() terminating
       }
    }
 }
@@ -109,7 +109,7 @@ When calling AddMsgHandler(), you can provide an optional `Custom` pointer that 
 `MsgType` acts as a filter so that only messages with the same type identifier will be passed to the handler.  The
 `Routine` parameter must point to the function handler, which will follow this definition:
 
-<pre>ERR handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
+<pre>ERR handler(APTR Custom, MSGID MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
 
 The handler must return `ERR::Okay` if the message was handled.  This means that the message will not be passed to message
 handlers that are yet to receive the message.  Throw `ERR::NothingDone` if the message has been ignored or `ERR::Continue`
@@ -121,7 +121,7 @@ collected or can be passed to ~FreeResource() once it is no longer required.
 
 -INPUT-
 ptr Custom: A custom pointer that will be passed to the message handler when messages are received.
-int MsgType: The message type that the handler wishes to intercept.  If zero, all incoming messages are passed to the handler.
+int(MSGID) MsgType: The message type that the handler will intercept.  If zero, all incoming messages are passed to the handler.
 ptr(func) Routine: Refers to the function that will handle incoming messages.
 !resource(MsgHandler) Handle: The resulting handle of the new message handler - retain for ~FreeResource().
 
@@ -133,13 +133,13 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, MsgHandler **Handle)
+ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION *Routine, MsgHandler **Handle)
 {
    pf::Log log(__FUNCTION__);
 
    if (!Routine) return log.warning(ERR::NullArgs);
 
-   log.branch("Custom: %p, MsgType: %d", Custom, MsgType);
+   log.branch("Custom: %p, MsgType: %d", Custom, int(MsgType));
 
    if (auto lock = std::unique_lock{glmMsgHandler}) {
       MsgHandler *handler;
@@ -186,7 +186,7 @@ Message data is written to the supplied buffer with a !Message structure, which 
 up with the actual message data.
 
 -INPUT-
-int Type:   Filter down to this message type or set to zero to receive the next message on the queue.
+int(MSGID) Type:   Filter down to this message type or set to zero to receive the next message on the queue.
 int(MSF) Flags:  This argument is reserved for future use.  Set it to zero.
 buf(ptr) Buffer: Pointer to a buffer that is large enough to hold the incoming message information.  If set to `NULL` then all accompanying message data will be destroyed.
 bufsize Size:   The byte-size of the buffer that you have supplied.
@@ -200,18 +200,18 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 *********************************************************************************************************************/
 
-ERR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG BufferSize)
+ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, LONG BufferSize)
 {
    const std::lock_guard<std::mutex> lock(glQueueLock);
 
    for (auto it=glQueue.begin(); it != glQueue.end(); it++) {
-      if (!it->Type) continue;
+      if (it->Type IS MSGID::NIL) continue;
 
       if ((Flags & MSF::MESSAGE_ID) != MSF::NIL) {
          // The Type argument actually refers to a unique message ID when MSF::MESSAGE_ID is used
-         if (it->UID != Type) continue;
+         if (MSGID(it->UID) != Type) continue;
       }
-      else if ((Type) and (it->Type != Type)) continue;
+      else if ((Type != MSGID::NIL) and (it->Type != Type)) continue;
 
       // Copy the message to the buffer
 
@@ -254,7 +254,7 @@ message, then it is removed from the queue without being processed. Message hand
 ~AddMsgHandler() function.  If a message handler returns the error code `ERR::Terminate`, then ProcessMessages()
 will stop processing the queue and returns immediately with `ERR::Okay`.
 
-If a message with a `MSGID_QUIT` ID is found on the queue, then the function returns immediately with the error code
+If a message with a `MSGID::QUIT` ID is found on the queue, then the function returns immediately with the error code
 `ERR::Terminate`.  The program must respond to the terminate request by exiting immediately.
 
 -INPUT-
@@ -263,7 +263,7 @@ int TimeOut: A TimeOut value, measured in milliseconds.  If zero, the function w
 
 -ERRORS-
 Okay:
-Terminate: A `MSGID_QUIT` message type was found on the message queue.
+Terminate: A `MSGID::QUIT` message type was found on the message queue.
 TimeOut:
 -END-
 
@@ -389,8 +389,8 @@ timer_cycle:
 
       unsigned i;
       for (i=0; (i < glQueue.size()) and (i < 30); i++) {
-         if (glQueue[i].Type IS MSGID_BREAK) {
-            // MSGID_BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
+         if (glQueue[i].Type IS MSGID::BREAK) {
+            // MSGID::BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
             // call made by the client application.
             if ((tlMsgRecursion > 1) or (TimeOut != -1)) breaking = true;
             else log.trace("Unable to break from recursive position %d layers deep.", tlMsgRecursion);
@@ -399,10 +399,10 @@ timer_cycle:
          tlCurrentMsg = &glQueue[i];
 
          for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
-            if ((!hdl->MsgType) or (hdl->MsgType IS glQueue[i].Type)) {
+            if ((hdl->MsgType IS MSGID::NIL) or (hdl->MsgType IS glQueue[i].Type)) {
                ERR result = ERR::NoSupport;
                if (hdl->Function.isC()) {
-                  auto msghandler = (ERR (*)(APTR, LONG, LONG, APTR, LONG, APTR))hdl->Function.Routine;
+                  auto msghandler = (ERR (*)(APTR, LONG, MSGID, APTR, LONG, APTR))hdl->Function.Routine;
                   if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size, hdl->Function.Meta);
                   else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0, hdl->Function.Meta);
                }
@@ -410,7 +410,7 @@ timer_cycle:
                   if (sc::Call(hdl->Function, std::to_array<ScriptArg>({
                      { "Custom", hdl->Custom },
                      { "UID",    glQueue[i].UID },
-                     { "Type",   glQueue[i].Type },
+                     { "Type",   int(glQueue[i].Type) },
                      { "Data",   glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
                      { "Size",   glQueue[i].Size, FD_LONG|FD_BUFSIZE }
                   }), result) != ERR::Okay) result = ERR::Terminate;
@@ -427,7 +427,7 @@ timer_cycle:
             }
          }
 
-         glQueue[i].Type = 0;
+         glQueue[i].Type = MSGID::NIL;
 
          tlCurrentMsg = NULL;
       }
@@ -516,10 +516,10 @@ Use the ScanMessages() function to scan the local message queue for information 
 queue.  To use this function effectively, make repeated calls to ScanMessages() to analyse the queue until it returns
 an error code other than `ERR::Okay`.
 
-The following example illustrates a scan for `MSGID_QUIT` messages:
+The following example illustrates a scan for `MSGID::QUIT` messages:
 
 <pre>
-while (!ScanMessages(&handle, MSGID_QUIT, NULL, NULL)) {
+while (!ScanMessages(&handle, MSGID::QUIT, NULL, NULL)) {
    ...
 }
 </pre>
@@ -530,7 +530,7 @@ without any further indication.
 
 -INPUT-
 &int Handle: Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.
-int Type:   The message type to filter for, or zero to scan all messages in the queue.
+int(MSGID) Type:   The message type to filter for, or zero to scan all messages in the queue.
 buf(ptr) Buffer: Optional pointer to a buffer that is large enough to hold any message data.
 bufsize Size: The byte-size of the supplied `Buffer`.
 
@@ -542,7 +542,7 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 *********************************************************************************************************************/
 
-ERR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG BufferSize)
+ERR ScanMessages(LONG *Handle, MSGID Type, APTR Buffer, LONG BufferSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -560,7 +560,7 @@ ERR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG BufferSize)
    if (index >= LONG(glQueue.size())) return ERR::OutOfRange;
 
    for (auto it = glQueue.begin() + index; it != glQueue.end(); it++) {
-      if ((it->Type) and ((it->Type IS Type) or (!Type))) {
+      if ((it->Type != MSGID::NIL) and ((it->Type IS Type) or (Type IS MSGID::NIL))) {
          if ((Buffer) and ((size_t)BufferSize >= sizeof(Message))) {
             ((Message *)Buffer)->UID  = it->UID;
             ((Message *)Buffer)->Type = it->Type;
@@ -591,7 +591,7 @@ SendMessage: Add a message to the local message queue.
 
 The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated
 with a `Type` identifier and this can help the receiver process any accompanying Data.  Some common message types are
-pre-defined, such as `MSGID_QUIT`.  Custom messages should use a unique type ID obtained from ~AllocateID().
+pre-defined, such as `MSGID::QUIT`.  Custom messages should use a unique type ID obtained from ~AllocateID().
 
 -INPUT-
 int(MSGID) Type:  The message Type/ID being sent.  Unique type ID's can be obtained from ~AllocateID().
@@ -606,19 +606,19 @@ Args:
 
 *********************************************************************************************************************/
 
-ERR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)
+ERR SendMessage(MSGID Type, MSF Flags, APTR Data, LONG Size)
 {
    pf::Log log(__FUNCTION__);
 
    if (glLogLevel >= 9) {
-      if (Type IS MSGID_ACTION) {
+      if (Type IS MSGID::ACTION) {
          auto action = (ActionMessage *)Data;
          if (action->ActionID > AC::NIL) log.branch("Action: %s, Object: %d, Size: %d", ActionTable[LONG(action->ActionID)].Name, action->ObjectID, Size);
       }
-      else log.branch("Type: %d, Data: %p, Size: %d", Type, Data, Size);
+      else log.branch("Type: %d, Data: %p, Size: %d", int(Type), Data, Size);
    }
 
-   if ((!Type) or (Size < 0)) return log.warning(ERR::Args);
+   if ((Type IS MSGID::NIL) or (Size < 0)) return log.warning(ERR::Args);
 
    {
       const std::lock_guard<std::mutex> lock(glQueueLock);
@@ -758,15 +758,15 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 // This is the equivalent internal routine to SendMessage(), for the purpose of sending messages to other threads.
 
 #ifdef _WIN32
-ERR send_thread_msg(WINHANDLE Handle, LONG Type, APTR Data, LONG Size)
+ERR send_thread_msg(WINHANDLE Handle, MSGID Type, APTR Data, LONG Size)
 #else
-ERR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
+ERR send_thread_msg(LONG Handle, MSGID Type, APTR Data, LONG Size)
 #endif
 {
    pf::Log log(__FUNCTION__);
    ERR error;
 
-   log.function("Type: %d, Data: %p, Size: %d", Type, Data, Size);
+   log.function("Type: %d, Data: %p, Size: %d", int(Type), Data, Size);
 
    TaskMessage msg;
    msg.UID  = ++glUniqueMsgID;
@@ -863,7 +863,7 @@ if it exceeds that of the existing message, as this function cannot expand the s
 
 -INPUT-
 int Message:   The ID of the message that will be updated.
-int Type:      Defines the type of the message.  If set to `-1`, the message will be deleted.
+int(MSGID) Type: The type of the message.  If set to `-1`, the message will be deleted.
 buf(ptr) Data: Pointer to a buffer that contains the new data for the message.
 bufsize Size:  The byte-size of the `Data` that has been supplied.  It must not exceed the size of the message that is being updated.
 
@@ -876,7 +876,7 @@ Search: The supplied `Message` ID does not refer to a message in the queue.
 
 *********************************************************************************************************************/
 
-ERR UpdateMessage(LONG MessageID, LONG Type, APTR Buffer, LONG BufferSize)
+ERR UpdateMessage(LONG MessageID, MSGID Type, APTR Buffer, LONG BufferSize)
 {
    if (!MessageID) return ERR::NullArgs;
 
@@ -887,8 +887,8 @@ ERR UpdateMessage(LONG MessageID, LONG Type, APTR Buffer, LONG BufferSize)
 
       if (Buffer) it->setBuffer(Buffer, BufferSize);
 
-      if (Type IS -1) glQueue.erase(it); // Delete message from the queue
-      else if (Type) it->Type = Type;
+      if (Type IS MSGID(-1)) glQueue.erase(it); // Delete message from the queue
+      else if (Type != MSGID::NIL) it->Type = Type;
 
       return ERR::Okay;
    }

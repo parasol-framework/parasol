@@ -89,7 +89,7 @@ extern "C" DLLCALL LONG WINAPI RegOpenKeyExA(LONG,CSTRING,LONG,LONG,APTR *);
 extern "C" DLLCALL LONG WINAPI RegQueryValueExA(APTR,CSTRING,LONG *,LONG *,BYTE *,LONG *);
 extern "C" DLLCALL LONG WINAPI RegSetValueExA(APTR hKey, CSTRING lpValueName, LONG Reserved, LONG dwType, const void *lpData, LONG cbData);
 
-static LONG glProcessBreak = 0;
+static MSGID glProcessBreak = MSGID::NIL;
 #endif
 
 static ERR GET_LaunchPath(extTask *, STRING *);
@@ -118,7 +118,7 @@ static const FieldDef clFlags[] = {
    { "Attached",   TSF::ATTACHED },
    { "Detached",   TSF::DETACHED },
    { "Pipe",       TSF::PIPE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const ActionArray clActions[] = {
@@ -129,7 +129,7 @@ static const ActionArray clActions[] = {
    { AC::SetKey,        TASK_SetKey },
    { AC::Init,          TASK_Init },
    { AC::Write,         TASK_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 #include "class_task_def.c"
@@ -345,7 +345,7 @@ extern "C" void task_register_stderr(extTask *Task, WINHANDLE Handle)
 
 extern "C" void task_deregister_incoming(WINHANDLE Handle)
 {
-   RegisterFD(Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, NULL, NULL);
+   RegisterFD(Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, nullptr, nullptr);
 }
 #endif
 
@@ -378,7 +378,7 @@ static ERR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
    ActionMessage *action;
 
    if (!(action = (ActionMessage *)Message)) {
-      log.warning("No data attached to MSGID_ACTION message.");
+      log.warning("No data attached to MSGID::ACTION message.");
       return ERR::Okay;
    }
 
@@ -392,7 +392,7 @@ static ERR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
       if ((error = AccessObject(action->ObjectID, 5000, &obj)) IS ERR::Okay) {
          if (action->SendArgs IS false) {
             obj->Flags |= NF::MESSAGE;
-            Action(action->ActionID, obj, NULL);
+            Action(action->ActionID, obj, nullptr);
             obj->Flags = obj->Flags & (~NF::MESSAGE);
             ReleaseObject(obj);
          }
@@ -530,7 +530,7 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
       } while (size IS sizeof(buffer));
 
       winFreeProcess(Task->Platform);
-      Task->Platform = NULL;
+      Task->Platform = nullptr;
    }
    else winCloseHandle(FD); // winFreeProcess() normally does this with Process->Handle
 
@@ -551,7 +551,7 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
 
    // Send a break if we're waiting for this process to end
 
-   if (((Task->Flags & TSF::WAIT) != TSF::NIL) and (Task->TimeOut > 0)) SendMessage(glProcessBreak, MSF::NIL, NULL, 0);
+   if (((Task->Flags & TSF::WAIT) != TSF::NIL) and (Task->TimeOut > 0)) SendMessage(glProcessBreak, MSF::NIL, nullptr, 0);
 }
 #endif
 
@@ -569,7 +569,7 @@ extern "C" void deregister_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
    pf::Log log;
    log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
-   if (ProcessHandle) RegisterFD(ProcessHandle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, NULL, NULL);
+   if (ProcessHandle) RegisterFD(ProcessHandle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, nullptr, nullptr);
 }
 #endif
 
@@ -769,7 +769,7 @@ static ERR TASK_Activate(extTask *Self)
          log.msg("Waiting for process to exit.  TimeOut: %.2f sec", Self->TimeOut);
 
          //if (!glProcessBreak) glProcessBreak = AllocateID(IDTYPE_MESSAGE);
-         glProcessBreak = MSGID_BREAK;
+         glProcessBreak = MSGID::BREAK;
 
          ProcessMessages(PMF::NIL, Self->TimeOut * 1000.0);
 
@@ -790,7 +790,7 @@ static ERR TASK_Activate(extTask *Self)
 
    // Add a 'cd' command so that the application starts in its own folder
 
-   path = NULL;
+   path = nullptr;
    GET_LaunchPath(Self, &path);
 
    std::ostringstream buffer;
@@ -850,7 +850,7 @@ static ERR TASK_Activate(extTask *Self)
       for (i=0; i < Self->Parameters.size(); i++) {
          argslist[i+1] = Self->Parameters[i].c_str();
       }
-      argslist[i+1] = NULL;
+      argslist[i+1] = nullptr;
 
       if ((Self->Flags & TSF::VERBOSE) != TSF::NIL) {
          for (i=1; argslist[i]; i++) {
@@ -1034,7 +1034,7 @@ static ERR TASK_Activate(extTask *Self)
          if (final_buffer[i] != '#') final_buffer[j++] = final_buffer[i];
       }
 
-      execl("/bin/sh", "sh", "-c", final_buffer.c_str(), (char *)NULL);
+      execl("/bin/sh", "sh", "-c", final_buffer.c_str(), (char *)nullptr);
    }
    else execv(final_buffer.c_str(), (char * const *)&argslist);
 
@@ -1103,13 +1103,13 @@ static ERR TASK_Free(extTask *Self)
    check_incoming(Self);
 
    if (Self->InFD != -1) {
-      RegisterFD(Self->InFD, RFD::REMOVE, NULL, NULL);
+      RegisterFD(Self->InFD, RFD::REMOVE, nullptr, nullptr);
       close(Self->InFD);
       Self->InFD = -1;
    }
 
    if (Self->ErrFD != -1) {
-      RegisterFD(Self->ErrFD, RFD::REMOVE, NULL, NULL);
+      RegisterFD(Self->ErrFD, RFD::REMOVE, nullptr, nullptr);
       close(Self->ErrFD);
       Self->ErrFD = -1;
    }
@@ -1118,27 +1118,27 @@ static ERR TASK_Free(extTask *Self)
 #endif
 
 #ifdef _WIN32
-   if (Self->Env) { FreeResource(Self->Env); Self->Env = NULL; }
-   if (Self->Platform) { winFreeProcess(Self->Platform); Self->Platform = NULL; }
+   if (Self->Env) { FreeResource(Self->Env); Self->Env = nullptr; }
+   if (Self->Platform) { winFreeProcess(Self->Platform); Self->Platform = nullptr; }
    if (Self->InputCallback.defined()) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
 #endif
 
    // Free allocations
 
-   if (Self->LaunchPath)  { FreeResource(Self->LaunchPath);  Self->LaunchPath  = NULL; }
-   if (Self->Location)    { FreeResource(Self->Location);    Self->Location    = NULL; }
-   if (Self->Path)        { FreeResource(Self->Path);        Self->Path        = NULL; }
-   if (Self->ProcessPath) { FreeResource(Self->ProcessPath); Self->ProcessPath = NULL; }
+   if (Self->LaunchPath)  { FreeResource(Self->LaunchPath);  Self->LaunchPath  = nullptr; }
+   if (Self->Location)    { FreeResource(Self->Location);    Self->Location    = nullptr; }
+   if (Self->Path)        { FreeResource(Self->Path);        Self->Path        = nullptr; }
+   if (Self->ProcessPath) { FreeResource(Self->ProcessPath); Self->ProcessPath = nullptr; }
    if (Self->MessageMID)  { FreeResource(Self->MessageMID);  Self->MessageMID  = 0; }
 
-   if (Self->MsgAction)         { FreeResource(Self->MsgAction);         Self->MsgAction          = NULL; }
-   if (Self->MsgDebug)          { FreeResource(Self->MsgDebug);          Self->MsgDebug           = NULL; }
-   if (Self->MsgWaitForObjects) { FreeResource(Self->MsgWaitForObjects); Self->MsgWaitForObjects  = NULL; }
-   if (Self->MsgQuit)           { FreeResource(Self->MsgQuit);           Self->MsgQuit            = NULL; }
-   if (Self->MsgFree)           { FreeResource(Self->MsgFree);           Self->MsgFree            = NULL; }
-   if (Self->MsgEvent)          { FreeResource(Self->MsgEvent);          Self->MsgEvent           = NULL; }
-   if (Self->MsgThreadCallback) { FreeResource(Self->MsgThreadCallback); Self->MsgThreadCallback  = NULL; }
-   if (Self->MsgThreadAction)   { FreeResource(Self->MsgThreadAction);   Self->MsgThreadAction    = NULL; }
+   if (Self->MsgAction)         { FreeResource(Self->MsgAction);         Self->MsgAction          = nullptr; }
+   if (Self->MsgDebug)          { FreeResource(Self->MsgDebug);          Self->MsgDebug           = nullptr; }
+   if (Self->MsgWaitForObjects) { FreeResource(Self->MsgWaitForObjects); Self->MsgWaitForObjects  = nullptr; }
+   if (Self->MsgQuit)           { FreeResource(Self->MsgQuit);           Self->MsgQuit            = nullptr; }
+   if (Self->MsgFree)           { FreeResource(Self->MsgFree);           Self->MsgFree            = nullptr; }
+   if (Self->MsgEvent)          { FreeResource(Self->MsgEvent);          Self->MsgEvent           = nullptr; }
+   if (Self->MsgThreadCallback) { FreeResource(Self->MsgThreadCallback); Self->MsgThreadCallback  = nullptr; }
+   if (Self->MsgThreadAction)   { FreeResource(Self->MsgThreadAction);   Self->MsgThreadAction    = nullptr; }
 
    Self->~extTask();
    return ERR::Okay;
@@ -1190,12 +1190,12 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 
    #define ENV_SIZE 4096
 
-   Args->Value = NULL;
+   Args->Value = nullptr;
 
    if (glCurrentTask != Self) return ERR::Failed;
 
    if (!Self->Env) {
-      if (AllocMemory(ENV_SIZE, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Env, NULL) != ERR::Okay) {
+      if (AllocMemory(ENV_SIZE, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Env, nullptr) != ERR::Okay) {
          return ERR::AllocMemory;
       }
    }
@@ -1320,15 +1320,15 @@ static ERR TASK_Init(extTask *Self)
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
          LONG len = strlen(buffer);
          while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-         if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, NULL) IS ERR::Okay) {
+         if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, nullptr) IS ERR::Okay) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
             Self->ProcessPath[i] = 0;
          }
       }
 
       if ((len = winGetCurrentDirectory(sizeof(buffer), buffer))) {
-         if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-         if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path, NULL) IS ERR::Okay) {
+         if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+         if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path, nullptr) IS ERR::Okay) {
             for (i=0; i < len; i++) Self->Path[i] = buffer[i];
             if (Self->Path[i-1] != '\\') Self->Path[i++] = '\\';
             Self->Path[i] = 0;
@@ -1357,7 +1357,7 @@ static ERR TASK_Init(extTask *Self)
 
             for (len=0; buffer[len]; len++);
             while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-            if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, NULL) IS ERR::Okay) {
+            if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, nullptr) IS ERR::Okay) {
                for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
                Self->ProcessPath[i] = 0;
             }
@@ -1365,9 +1365,9 @@ static ERR TASK_Init(extTask *Self)
 
          if (!Self->Path) { // Set the working folder
             if (getcwd(buffer, sizeof(buffer))) {
-               if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+               if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
                for (len=0; buffer[len]; len++);
-               if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path, NULL) IS ERR::Okay) {
+               if (AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path, nullptr) IS ERR::Okay) {
                   for (i=0; buffer[i]; i++) Self->Path[i] = buffer[i];
                   Self->Path[i++] = '/';
                   Self->Path[i] = 0;
@@ -1381,25 +1381,25 @@ static ERR TASK_Init(extTask *Self)
       FUNCTION call;
       call.Type = CALL::STD_C;
       call.Routine = (APTR)msg_action;
-      AddMsgHandler(NULL, MSGID_ACTION, &call, &Self->MsgAction);
+      AddMsgHandler(nullptr, MSGID::ACTION, &call, &Self->MsgAction);
 
       call.Routine = (APTR)msg_free;
-      AddMsgHandler(NULL, MSGID_FREE, &call, &Self->MsgFree);
+      AddMsgHandler(nullptr, MSGID::FREE, &call, &Self->MsgFree);
 
       call.Routine = (APTR)msg_quit;
-      AddMsgHandler(NULL, MSGID_QUIT, &call, &Self->MsgQuit);
+      AddMsgHandler(nullptr, MSGID::QUIT, &call, &Self->MsgQuit);
 
       call.Routine = (APTR)msg_waitforobjects;
-      AddMsgHandler(NULL, MSGID_WAIT_FOR_OBJECTS, &call, &Self->MsgWaitForObjects);
+      AddMsgHandler(nullptr, MSGID::WAIT_FOR_OBJECTS, &call, &Self->MsgWaitForObjects);
 
       call.Routine = (APTR)msg_event; // lib_events.c
-      AddMsgHandler(NULL, MSGID_EVENT, &call, &Self->MsgEvent);
+      AddMsgHandler(nullptr, MSGID::EVENT, &call, &Self->MsgEvent);
 
       call.Routine = (APTR)msg_threadcallback; // class_thread.c
-      AddMsgHandler(NULL, MSGID_THREAD_CALLBACK, &call, &Self->MsgThreadCallback);
+      AddMsgHandler(nullptr, MSGID::THREAD_CALLBACK, &call, &Self->MsgThreadCallback);
 
       call.Routine = (APTR)msg_threadaction; // class_thread.c
-      AddMsgHandler(NULL, MSGID_THREAD_ACTION, &call, &Self->MsgThreadAction);
+      AddMsgHandler(nullptr, MSGID::THREAD_ACTION, &call, &Self->MsgThreadAction);
 
       log.msg("Process Path: %s", Self->ProcessPath);
       log.msg("Working Path: %s", Self->Path);
@@ -1428,7 +1428,7 @@ Quit: Sends a quit message to a task.
 
 The Quit() method can be used as a convenient way of sending a task a quit message.  This will normally result in the
 destruction of the task, so long as it is still functioning correctly and has been coded to respond to the
-`MSGID_QUIT` message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.
+`MSGID::QUIT` message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.
 
 -ERRORS-
 Okay
@@ -1444,7 +1444,7 @@ static ERR TASK_Quit(extTask *Self)
       log.msg("Terminating foreign process %d", Self->ProcessID);
 
       #ifdef __unix__
-         kill(Self->ProcessID, SIGHUP); // Safe kill signal - this actually results in that process generating an internal MSGID_QUIT message
+         kill(Self->ProcessID, SIGHUP); // Safe kill signal - this actually results in that process generating an internal MSGID::QUIT message
       #elif _WIN32
          winTerminateApp(Self->ProcessID, 1000);
       #else
@@ -1453,7 +1453,7 @@ static ERR TASK_Quit(extTask *Self)
    }
    else {
       log.branch("Sending QUIT message to self.");
-      SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
+      SendMessage(MSGID::QUIT, MSF::NIL, nullptr, 0);
    }
 
    return ERR::Okay;
@@ -1527,18 +1527,18 @@ static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
                APTR keyhandle;
                if (!RegOpenKeyExA(keys[ki].ID, path.c_str(), 0, KEY_READ|KEY_WRITE, &keyhandle)) {
                   LONG type;
-                  if (!RegQueryValueExA(keyhandle, str+len+1, 0, &type, NULL, NULL)) {
+                  if (!RegQueryValueExA(keyhandle, str+len+1, 0, &type, nullptr, nullptr)) {
                      // Numerical registry types can be converted into strings
 
                      switch(type) {
                         case REG_DWORD: {
-                           LONG int32 = strtol(Args->Value, NULL, 0);
+                           LONG int32 = strtol(Args->Value, nullptr, 0);
                            RegSetValueExA(keyhandle, str+len+1, 0, REG_DWORD, &int32, sizeof(int32));
                            break;
                         }
 
                         case REG_QWORD: {
-                           LARGE int64 = strtoll(Args->Value, NULL, 0);
+                           LARGE int64 = strtoll(Args->Value, nullptr, 0);
                            RegSetValueExA(keyhandle, str+len+1, 0, REG_QWORD, &int64, sizeof(int64));
                            break;
                         }
@@ -1858,12 +1858,12 @@ static ERR SET_LaunchPath(extTask *Self, CSTRING Value)
 {
    pf::Log log;
 
-   if (Self->LaunchPath) { FreeResource(Self->LaunchPath); Self->LaunchPath = NULL; }
+   if (Self->LaunchPath) { FreeResource(Self->LaunchPath); Self->LaunchPath = nullptr; }
 
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->LaunchPath, NULL) IS ERR::Okay) {
+      if (AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->LaunchPath, nullptr) IS ERR::Okay) {
          copymem(Value, Self->LaunchPath, i+1);
       }
       else return log.warning(ERR::AllocMemory);
@@ -1895,12 +1895,12 @@ static ERR SET_Location(extTask *Self, CSTRING Value)
 {
    pf::Log log;
 
-   if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
+   if (Self->Location) { FreeResource(Self->Location); Self->Location = nullptr; }
 
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Location, NULL) IS ERR::Okay) {
+      if (AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Location, nullptr) IS ERR::Okay) {
          while ((*Value) and (*Value <= 0x20)) Value++;
          if (*Value IS '"') {
             Value++;
@@ -2003,7 +2003,7 @@ static ERR GET_Path(extTask *Self, STRING *Value)
 
 static ERR SET_Path(extTask *Self, CSTRING Value)
 {
-   STRING new_path = NULL;
+   STRING new_path = nullptr;
 
    pf::Log log;
 
@@ -2013,7 +2013,7 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG len = strlen(Value);
       while ((len > 1) and (Value[len-1] != '/') and (Value[len-1] != '\\') and (Value[len-1] != ':')) len--;
-      if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&new_path, NULL) IS ERR::Okay) {
+      if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&new_path, nullptr) IS ERR::Okay) {
          copymem(Value, new_path, len);
          new_path[len] = 0;
 
@@ -2044,7 +2044,7 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
    else error = ERR::EmptyString;
 
    if (error IS ERR::Okay) {
-      if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+      if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
       Self->Path = new_path;
    }
    else if (new_path) FreeResource(new_path);
@@ -2057,7 +2057,7 @@ static ERR SET_Path(extTask *Self, CSTRING Value)
 -FIELD-
 ProcessPath: The path of the executable that is associated with the task.
 
-The ProcessPath is set to the path of the executable file that is associated with the task (not including the 
+The ProcessPath is set to the path of the executable file that is associated with the task (not including the
 executable file name).  This value is managed internally and cannot be altered.
 
 In Microsoft Windows it is not always possible to determine the origins of an executable, in which case the
@@ -2182,12 +2182,12 @@ process to return.  The time out is defined in seconds.
 
 static const FieldArray clFields[] = {
    { "TimeOut",         FDF_DOUBLE|FDF_RW },
-   { "Flags",           FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clFlags },
+   { "Flags",           FDF_LONGFLAGS|FDF_RI, nullptr, nullptr, &clFlags },
    { "ReturnCode",      FDF_LONG|FDF_RW, GET_ReturnCode, SET_ReturnCode },
    { "ProcessID",       FDF_LONG|FDF_RI },
    // Virtual fields
    { "Actions",        FDF_POINTER|FDF_R,  GET_Actions },
-   { "Args",           FDF_STRING|FDF_W,   NULL, SET_Args },
+   { "Args",           FDF_STRING|FDF_W,   nullptr, SET_Args },
    { "Parameters",     FDF_CPP|FDF_ARRAY|FDF_STRING|FDF_RW, GET_Parameters, SET_Parameters },
    { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, GET_ErrorCallback,   SET_ErrorCallback }, // STDERR
    { "ExitCallback",   FDF_FUNCTIONPTR|FDF_RW, GET_ExitCallback,    SET_ExitCallback },
@@ -2198,7 +2198,7 @@ static const FieldArray clFields[] = {
    { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, GET_OutputCallback,  SET_OutputCallback }, // STDOUT
    { "Path",           FDF_STRING|FDF_RW,      GET_Path,            SET_Path },
    { "ProcessPath",    FDF_STRING|FDF_R,       GET_ProcessPath },
-   { "Priority",       FDF_LONG|FDF_W,         NULL, SET_Priority },
+   { "Priority",       FDF_LONG|FDF_W,         nullptr, SET_Priority },
    // Synonyms
    { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Location, SET_Location },
    END_FIELD

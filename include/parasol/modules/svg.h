@@ -28,7 +28,7 @@ DEFINE_ENUM_FLAG_OPERATORS(SVF)
 // SVG methods
 
 namespace svg {
-struct Render { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Render { objBitmap * Bitmap; int X; int Y; int Width; int Height; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ParseSymbol { CSTRING ID; objVectorViewport * Viewport; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
@@ -44,9 +44,9 @@ class objSVG : public Object {
    STRING    Path;      // A path referring to an SVG file.
    STRING    Title;     // The title of the SVG document.
    STRING    Statement; // A string containing SVG data.
-   LONG      Frame;     // Forces the graphics to be drawn to a specific frame.
+   int       Frame;     // Forces the graphics to be drawn to a specific frame.
    SVF       Flags;     // Optional flags.
-   LONG      FrameRate; // The maximum frame rate to use when animating a vector scene.
+   int       FrameRate; // The maximum frame rate to use when animating a vector scene.
 
    // Action stubs
 
@@ -65,7 +65,7 @@ class objSVG : public Object {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC::SaveToObject, this, &args);
    }
-   inline ERR render(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height) noexcept {
+   inline ERR render(objBitmap * Bitmap, int X, int Y, int Width, int Height) noexcept {
       struct svg::Render args = { Bitmap, X, Y, Width, Height };
       return(Action(AC(-1), this, &args));
    }
@@ -100,7 +100,7 @@ class objSVG : public Object {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERR setFrame(const LONG Value) noexcept {
+   inline ERR setFrame(const int Value) noexcept {
       this->Frame = Value;
       return ERR::Okay;
    }
@@ -110,7 +110,7 @@ class objSVG : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setFrameRate(const LONG Value) noexcept {
+   inline ERR setFrameRate(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);

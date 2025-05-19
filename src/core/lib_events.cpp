@@ -107,7 +107,7 @@ ERR BroadcastEvent(APTR Event, LONG EventSize)
       log.trace("Broadcasting event $%.8x%.8x",
          (ULONG)(((pf::Event *)Event)->EventID>>32 & 0xffffffff),
          (ULONG)(((pf::Event *)Event)->EventID));
-      SendMessage(MSGID_EVENT, MSF::NIL, Event, EventSize);
+      SendMessage(MSGID::EVENT, MSF::NIL, Event, EventSize);
    }
 
    return ERR::Okay;
@@ -288,7 +288,7 @@ void UnsubscribeEvent(APTR Handle)
 }
 
 //********************************************************************************************************************
-// ProcessMessages() will call this function whenever a MSGID_EVENT message is received.
+// ProcessMessages() will call this function whenever a MSGID::EVENT message is received.
 
 ERR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {

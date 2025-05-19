@@ -5,8 +5,8 @@
 -- Use cType() to perform conversion and don't access glTypes directly.
 
 glTypes = {
-   arraysize  = { fd='FD_LONG|FD_ARRAYSIZE',  c_type='LONG', doc_type='INT' },
-   bufsize    = { fd='FD_LONG|FD_BUFSIZE',    c_type='LONG', doc_type='INT' },
+   arraysize  = { fd='FD_LONG|FD_ARRAYSIZE',  c_type='int', doc_type='INT' },
+   bufsize    = { fd='FD_LONG|FD_BUFSIZE',    c_type='int', doc_type='INT' },
    char       = { fd='FD_BYTE',               c_type='BYTE' },
    cid        = { fd='FD_LONG|FD_UNSIGNED',   c_type='CLASSID' },
    cptr       = { fd='FD_PTR',                c_type='const void *' },
@@ -16,11 +16,11 @@ glTypes = {
    error      = { fd='FD_LONG|FD_ERROR',      c_type='ERR' },
    ext        = { fd='FD_OBJECTPTR',          c_type='OBJECTPTR' },
    fid        = { fd='FD_LARGE',              c_type='FIELD' },
-   flags      = { fd='FD_LONG',               c_type='LONG', doc_type='INT' },
+   flags      = { fd='FD_LONG',               c_type='int', doc_type='INT' },
    float      = { fd='FD_FLOAT',              c_type='FLOAT' },
    func       = { fd='FD_FUNCTION',           c_type='FUNCTION' },
    hhandle    = { fd='FD_PTR',                c_type='HOSTHANDLE' },
-   int        = { fd='FD_LONG',               c_type='LONG', doc_type='INT' },
+   int        = { fd='FD_LONG',               c_type='int', doc_type='INT' },
    int32      = { fd='FD_LONG',               c_type='int32_t', doc_type='INT' },
    large      = { fd='FD_LARGE',              c_type='int64_t', doc_type='INT64' },
    maxint     = { fd='FD_LARGE',              c_type='MAXINT' },
@@ -34,7 +34,7 @@ glTypes = {
    strview    = { fd='FD_STR',                c_type='STRING', cpp_type='const std::string_view &' }, -- For API calls only
    str        = { fd='FD_STR',                c_type='STRING', cpp_type='std::string' },
    struct     = { fd='FD_STRUCT',             c_type='APTR' },
-   structsize = { fd='FD_LONG|FD_BUFSIZE',    c_type='LONG', doc_type='INT' },
+   structsize = { fd='FD_LONG|FD_BUFSIZE',    c_type='int', doc_type='INT' },
    tags       = { fd='FD_TAGS',               c_type='...' },
    uchar      = { fd='FD_BYTE',               c_type='UBYTE' },
    uint       = { fd='FD_LONG|FD_UNSIGNED',   c_type='ULONG', doc_type='UINT' },
@@ -45,65 +45,69 @@ glTypes = {
 }
 
 -----------------------------------------------------------------------------------------------------------------------
--- Convert FD flags into a printable C type.
+-- Convert FD flags into a printable C type.  Used by getMetaFieldDefinition() for classes.
 
-function getFieldType(Type, CustomName, Option)
+function getFieldType(Def, Type, CustomName, Option)
    local result
 
    if bit.band(Type, FD_CUSTOM) != 0 then
       if nz(CustomName) then
-         return CustomName
+         Def.type = CustomName
       else
-         return 'APTR'
+         Def.type = 'APTR'
       end
    elseif bit.band(Type, FD_ARRAY) != 0 then
       -- All arrays are pointers, with additional information indicating the type of values in the array.
 
       if bit.band(Type, FD_CPP) != 0 then
          if bit.band(Type, FD_BYTE) != 0 then
-            return 'pf::vector<BYTE>'
+            Def.type = 'pf::vector<BYTE>'
          elseif bit.band(Type, FD_WORD) != 0 then
-            return 'pf::vector<WORD>'
+            Def.type = 'pf::vector<int16_t>'
          elseif bit.band(Type, FD_LONG) != 0 then
-            return 'pf::vector<LONG>'
+            Def.type = 'pf::vector<int>'
          elseif bit.band(Type, FD_FLOAT) != 0 then
-            return 'pf::vector<FLOAT>'
+            Def.type = 'pf::vector<float>'
          elseif bit.band(Type, FD_DOUBLE) != 0 then
-            return 'pf::vector<DOUBLE>'
+            Def.type = 'pf::vector<double>'
          elseif bit.band(Type, FD_STRING) != 0 then
-            return 'pf::vector<std::string>'
+            Def.type = 'pf::vector<std::string>'
          elseif bit.band(Type, FD_POINTER) != 0 then
-            return 'pf::vector<APTR>'
+            Def.type = 'pf::vector<APTR>'
          elseif bit.band(Type, FD_STRUCT) != 0 then
-            return 'pf::vector<STRUCT>'
+            Def.type = 'pf::vector<STRUCT>'
          else
-            return 'pf::vector<>'
+            Def.type = 'pf::vector<>'
          end
       else
          if bit.band(Type, FD_BYTE) != 0 then
-            return 'BYTE []'
+            Def.type = 'BYTE []'
          elseif bit.band(Type, FD_WORD) != 0 then
-            return 'WORD []'
+            Def.type = 'int16_t []'
+            Def.doc_type = 'INT16 []'
          elseif bit.band(Type, FD_LONG) != 0 then
-            return 'LONG []'
+            Def.type = 'int []'
+            Def.doc_type = 'INT []'
          elseif bit.band(Type, FD_FLOAT) != 0 then
-            return 'FLOAT []'
+            Def.type = 'float []'
+            Def.doc_type = 'FLOAT []'
          elseif bit.band(Type, FD_DOUBLE) != 0 then
-            return 'DOUBLE []'
+            Def.type = 'double []'
+            Def.doc_type = 'DOUBLE []'
          elseif bit.band(Type, FD_STRING) != 0 then
-            return 'STRING []'
+            Def.type = 'STRING []'
          elseif bit.band(Type, FD_POINTER) != 0 then
-            return 'APTR []'
+            Def.type = 'APTR []'
          elseif bit.band(Type, FD_STRUCT) != 0 then
-            return 'STRUCT []'
+            Def.type = 'STRUCT []'
          else
-            return 'ARRAY'
+            Def.type = 'ARRAY'
          end
       end
    elseif bit.band(Type, FD_STRING) != 0 then
-      return 'STRING'
+      Def.type = 'STRING'
    elseif bit.band(Type, FD_FUNCTION) != 0 then
-      return 'FUNCTION'
+      Def.type = 'FUNCTION'
    elseif bit.band(Type, FD_POINTER) != 0 then
       local ptr = 0
       if bit.band(Type, FD_LONG) != 0 then
@@ -116,9 +120,11 @@ function getFieldType(Type, CustomName, Option)
          result = 'DOUBLE'
          ptr = ptr + 1
       elseif bit.band(Type, bit.bor(FD_OBJECT, nz(FD_INTEGRAL, FD_LOCAL))) != 0 then // FD_INTEGRAL is deprecated
-         return 'OBJECTPTR'
+         Def.type = 'OBJECTPTR'
+         return
       elseif bit.band(Type, FD_STRING) != 0 then
-         return 'STRING'
+         Def.type = 'STRING'
+         return
       elseif bit.band(Type, FD_RGB) != 0 then
          result = 'RGB'
          ptr = ptr + 1
@@ -132,35 +138,39 @@ function getFieldType(Type, CustomName, Option)
             result = 'APTR'
          end
       else
-         return 'APTR'
+         Def.type = 'APTR'
+         return
       end
 
       if (ptr > 0) then
-         return result .. ' ' .. string.rep('*', ptr)
+         Def.type = result .. ' ' .. string.rep('*', ptr)
       else
-         return result
+         Def.type = result
       end
    elseif bit.band(Type, FD_RGB) != 0 then
-      return 'RGB8'
+      Def.type = 'RGB8'
    elseif bit.band(Type, FD_LONG) != 0 then
       if bit.band(Type, FD_OBJECT) != 0 then
-         return 'OBJECTID'
+         Def.type = 'OBJECTID'
       else
-         return 'LONG'
+         Def.type = 'int'
+         Def.doc_type = 'INT'
       end
    elseif bit.band(Type, FD_LARGE) != 0 then
-      return 'LARGE'
+      Def.type = 'int64_t'
+      Def.doc_type = 'INT64'
    elseif bit.band(Type, FD_DOUBLE) != 0 then
-      return 'DOUBLE'
+      Def.type = 'DOUBLE'
    elseif bit.band(Type, FD_FLOAT) != 0 then
-      return 'FLOAT'
+      Def.type = 'FLOAT'
    else
       print(string.format('Failed to identify field type $%.8x for field "%s"', Type, CustomName))
-      return 'void'
+      Def.type = 'void'
    end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Returns { cpp, type, fullType, docType, defType, sizeof, ref, lookup, bits, name, comment }
 
 function cType(Field, Origin)
    if (Field.type == nil) then
@@ -343,25 +353,25 @@ function cType(Field, Origin)
    end
 
    do -- Integer/Char/Large type reference
-      local type, prefix = Field.type:match('^([intlargecharuso]+)%((%a+)%)')
+      local t, prefix = Field.type:match('^([intlargecharuso]+)%((%a+)%)')
       if (prefix != nil) then
-         if (type == 'char') then
+         if (t == 'char') then
             Field.type     = 'char'
             Field.fullType = glTypes.char
-         elseif (type == 'int') then
-            Field.type     = 'LONG'
+         elseif (t == 'int') then
+            Field.type     = 'int'
             Field.fullType = glTypes.int
-         elseif (type == 'large') then
+         elseif (t == 'large') then
             Field.type     = 'LARGE'
             Field.fullType = glTypes.large
-         elseif (type == 'short') then
-            Field.type = 'WORD'
+         elseif (t == 'short') then
+            Field.type = 'int16_t'
             Field.fullType = glTypes.short
-         elseif (type == 'ushort') then
-            Field.type = 'UWORD'
+         elseif (t == 'ushort') then
+            Field.type = 'uint16_t'
             Field.fullType = glTypes.ushort
          else
-            error('Invalid type "' .. type .. '"')
+            error('Invalid type "' .. t .. '"')
          end
 
          Field.ref    = glCustomTypes[prefix]
@@ -396,7 +406,7 @@ function cType(Field, Origin)
          if nz(unsigned) then
             Field.type = 'ULONG'
          else
-            Field.type = 'LONG'
+            Field.type = 'int'
          end
          Field.arraySize = tonumber(count)
          Field.fullType = glTypes.int
@@ -568,6 +578,8 @@ function cType(Field, Origin)
    if not Field.docType then
       if Field.fullType and Field.fullType.doc_type and not Field.lookup then
          Field.docType = Field.fullType.doc_type
+      elseif Field.lookup then
+         Field.docType = Field.type -- Normally refers to the name of the prefix, e.g. 'MEM'
       else
          Field.docType = Field.type
       end

@@ -292,7 +292,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      NAME_LEN = 31   -- Refer to the 'Object' struct for more info on the NAME_LEN value
   })
 
-  const("MSGID", { comment="Reserved message ID's that are handled internally." }, {
+  const("MSGID", { type="int", comment="Reserved message ID's that are handled internally." }, {
      QUIT             = 1000,   -- Note that IDs >= 100 may be handled by non-Core code (external modules and applications)
      COMMAND          = 101,
      BREAK            = 100,
@@ -955,7 +955,7 @@ inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF
   struct("Message", { comment="Message header." }, [[
      large Time  # A timestamp acquired from ~Core.PreciseTime() when the message was first passed to ~Core.SendMessage().
      int UID     # A unique identifier automatically created by ~Core.SendMessage().
-     int Type    # A message type identifier as defined by the client.
+     int(MSGID) Type # A message type identifier as defined by the client.
      int Size    # The byte-size of the message data, or zero if no data is provided.
   ]])
 
@@ -973,7 +973,7 @@ inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF
     ptr(struct(MsgHandler)) Next  # Next message handler in the chain
     ptr Custom                    # Custom pointer to send to the message handler
     func Function                 # Call this function
-    int MsgType                   # Type of message being filtered
+    int(MSGID) MsgType            # Type of message being filtered
   ]])
 
   struct("CacheFile", { restrict="c", comment="Internal structure for managing files cached by LoadFile()." }, [[

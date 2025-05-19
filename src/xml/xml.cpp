@@ -1250,8 +1250,8 @@ static ERR XML_SetAttrib(extXML *Self, struct xml::SetAttrib *Args)
    auto tag = Self->getTag(Args->Index);
    if (!tag) return log.warning(ERR::Search);
 
-   LONG cmd = Args->Attrib;
-   if ((cmd IS XMS_UPDATE) or (cmd IS XMS_UPDATE_ONLY)) {
+   auto cmd = Args->Attrib;
+   if ((cmd IS XMS::UPDATE) or (cmd IS XMS::UPDATE_ONLY)) {
       for (auto a = tag->Attribs.begin(); a != tag->Attribs.end(); a++) {
          if (pf::iequals(Args->Name, a->Name)) {
             if (Args->Value) {
@@ -1264,7 +1264,7 @@ static ERR XML_SetAttrib(extXML *Self, struct xml::SetAttrib *Args)
          }
       }
 
-      if (cmd IS XMS_UPDATE) {
+      if (cmd IS XMS::UPDATE) {
          if ((!Args->Value) or (!Args->Value[0])) return ERR::Okay; // User wants to remove a non-existing attribute, so return ERR::Okay
          else { // Create new attribute if name wasn't found
             tag->Attribs.push_back({ Args->Name, Args->Value });
@@ -1274,7 +1274,7 @@ static ERR XML_SetAttrib(extXML *Self, struct xml::SetAttrib *Args)
       }
       else return ERR::Search;
    }
-   else if (cmd IS XMS_NEW) {
+   else if (cmd IS XMS::NEW) {
       tag->Attribs.push_back({ Args->Name, Args->Value });
       Self->Modified++;
       return ERR::Okay;
@@ -1282,15 +1282,15 @@ static ERR XML_SetAttrib(extXML *Self, struct xml::SetAttrib *Args)
 
    // Attribute indexing
 
-   if ((Args->Attrib < 0) or (Args->Attrib >= LONG(tag->Attribs.size()))) return log.warning(ERR::OutOfRange);
+   if ((int(Args->Attrib) < 0) or (int(Args->Attrib) >= int(tag->Attribs.size()))) return log.warning(ERR::OutOfRange);
 
    if (Args->Value) {
-      if (Args->Name) tag->Attribs[Args->Attrib].Name = Args->Name;
-      tag->Attribs[Args->Attrib].Value = Args->Value;
+      if (Args->Name) tag->Attribs[int(Args->Attrib)].Name = Args->Name;
+      tag->Attribs[int(Args->Attrib)].Value = Args->Value;
    }
    else {
-      if (Args->Attrib IS 0) tag->Attribs[Args->Attrib].Value.clear(); // Content is erased when Attrib == 0
-      else tag->Attribs.erase(tag->Attribs.begin() + Args->Attrib);
+      if (Args->Attrib IS XMS::NIL) tag->Attribs[int(Args->Attrib)].Value.clear(); // Content is erased when Attrib == 0
+      else tag->Attribs.erase(tag->Attribs.begin() + int(Args->Attrib));
    }
 
    Self->Modified++;

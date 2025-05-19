@@ -417,7 +417,7 @@ int64_t PreciseTime(void)
 RegisterFD: Registers a file descriptor for monitoring when the task is asleep.
 
 This function will register a file descriptor that will be monitored for activity when the task is sleeping.  When
-activity occurs on the descriptor, the callback referenced in `Routine` will be called.  The callback should read all 
+activity occurs on the descriptor, the callback referenced in `Routine` will be called.  The callback should read all
 information from the descriptor, as the process will not be able to sleep if data is back-logged.
 
 The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause the
@@ -839,7 +839,7 @@ your process will continue to process incoming messages in order to prevent the 
 developing a back-log.
 
 WaitTime() can return earlier than the indicated timeout if a message handler returns `ERR::Terminate`, or if a
-`MSGID_QUIT` message is sent to the task's message queue.
+`MSGID::QUIT` message is sent to the task's message queue.
 
 -INPUT-
 int Seconds:      The number of seconds to wait for.

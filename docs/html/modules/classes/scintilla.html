@@ -49,7 +49,7 @@
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">EventCallback</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>Provides callbacks for global state changes.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-EventCallback" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>Set this field with a function reference to receive event notifications.  It must be set in conjunction with <a data-bs-toggle="tooltip" title="Specifies events that need to be reported from the Scintilla object." href="#tf-EventFlags">EventFlags</a> so that you can select the type of notifications that will be received.</p>
-<p>The callback function must be in the format <code>Function(*Scintilla, LARGE EventFlag)</code>.</p>
+<p>The callback function must be in the format <code>Function(*Scintilla, INT64 EventFlag)</code>.</p>
 <p>The EventFlag value will indicate the event that occurred.  Please see the <a data-bs-toggle="tooltip" title="Specifies events that need to be reported from the Scintilla object." href="#tf-EventFlags">EventFlags</a> field for a list of supported events and additional details.</p>
       
 </div></div></td></tr>

@@ -1425,7 +1425,7 @@ end
 function processClassFields(class, ClientSpec)
    local cdef = ''
 
-   -- Process fields defined in the FDL
+   -- Parse fields defined in the FDL
 
    class.fields = extractFields(ClientSpec, class.name)
 
@@ -1445,7 +1445,7 @@ function processClassFields(class, ClientSpec)
       for k, f in ipairs(nz(metaFields, { })) do
          local def = getMetaFieldDefinition(f)
          if (def != nil) and (def.synonym != true) then
-            local f = findClassField(class, def.name)
+            local f = findClassField(class, def.name) -- Retrieve field parsed from FDL, if defined
             if (f != nil) then
                f.write  = def.write
                f.read   = def.read
@@ -1756,9 +1756,11 @@ end
 function getMetaFieldDefinition(Field)
    local fl = {
       name  = Field.name,
-      type  = getFieldType(Field.flags, Field.name, Field.arg),
       flags = Field.flags
    }
+
+   getFieldType(fl, Field.flags, Field.name, Field.arg)
+   fl.docType = fl.doc_type
 
    if (bit.band(Field.flags, FD_SYNONYM) != 0) then
       fl.synonym = true
@@ -1859,7 +1861,7 @@ end
    loadFile(glPath .. 'idl-types.fluid')
 
 ----------------------------------------------------------------------------------------------------------------------
--- Returns fields as a list returned by cType, featuring { type, name, comment }
+-- Returns fields as a list returned by cType, featuring { type, name, docType, fullType, comment }
 
 function extractFields(Def, Origin)
    local fields = { }
@@ -2197,7 +2199,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                variadic = true
             else
                proto = proto .. nz(param.extType, param.type) .. " " .. cName(param)
-               doc_proto = doc_proto .. param.type .. " " .. cName(param)
+               doc_proto = doc_proto .. nz(param.docType, param.type) .. " " .. cName(param)
                outValues = outValues .. param.name
             end
 

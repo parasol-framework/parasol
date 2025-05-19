@@ -81,7 +81,7 @@ DEFINE_ENUM_FLAG_OPERATORS(VF)
 
 // Define the aspect ratio for VectorFilter unit scaling.
 
-enum class VFA : LONG {
+enum class VFA : int {
    NIL = 0,
    MEET = 0,
    NONE = 1,
@@ -89,7 +89,7 @@ enum class VFA : LONG {
 
 // Light source identifiers.
 
-enum class LS : LONG {
+enum class LS : int {
    NIL = 0,
    DISTANT = 0,
    SPOT = 1,
@@ -98,13 +98,13 @@ enum class LS : LONG {
 
 // Lighting algorithm for the LightingFX class.
 
-enum class LT : LONG {
+enum class LT : int {
    NIL = 0,
    DIFFUSE = 0,
    SPECULAR = 1,
 };
 
-enum class VUNIT : LONG {
+enum class VUNIT : int {
    NIL = 0,
    UNDEFINED = 0,
    BOUNDING_BOX = 1,
@@ -114,7 +114,7 @@ enum class VUNIT : LONG {
 
 // Spread method options define the method to use for tiling filled graphics.
 
-enum class VSPREAD : LONG {
+enum class VSPREAD : int {
    NIL = 0,
    UNDEFINED = 0,
    PAD = 1,
@@ -126,14 +126,14 @@ enum class VSPREAD : LONG {
    END = 7,
 };
 
-enum class EM : LONG {
+enum class EM : int {
    NIL = 0,
    DUPLICATE = 1,
    WRAP = 2,
    NONE = 3,
 };
 
-enum class PE : LONG {
+enum class PE : int {
    NIL = 0,
    Move = 1,
    MoveRel = 2,
@@ -158,7 +158,7 @@ enum class PE : LONG {
 
 // Vector fill rules for the FillRule field in the Vector class.
 
-enum class VFR : LONG {
+enum class VFR : int {
    NIL = 0,
    NON_ZERO = 1,
    EVEN_ODD = 2,
@@ -168,7 +168,7 @@ enum class VFR : LONG {
 
 // Options for the Vector class' Visibility field.
 
-enum class VIS : LONG {
+enum class VIS : int {
    NIL = 0,
    HIDDEN = 0,
    VISIBLE = 1,
@@ -178,7 +178,7 @@ enum class VIS : LONG {
 
 // Viewport overflow options.
 
-enum class VOF : LONG {
+enum class VOF : int {
    NIL = 0,
    VISIBLE = 0,
    HIDDEN = 1,
@@ -188,7 +188,7 @@ enum class VOF : LONG {
 
 // Component selection for RemapFX methods.
 
-enum class CMP : LONG {
+enum class CMP : int {
    NIL = 0,
    ALL = -1,
    RED = 0,
@@ -199,7 +199,7 @@ enum class CMP : LONG {
 
 // Options for the look of line joins.
 
-enum class VLJ : LONG {
+enum class VLJ : int {
    NIL = 0,
    MITER = 0,
    MITER_SMART = 1,
@@ -211,7 +211,7 @@ enum class VLJ : LONG {
 
 // Line-cap options.
 
-enum class VLC : LONG {
+enum class VLC : int {
    NIL = 0,
    BUTT = 1,
    SQUARE = 2,
@@ -221,7 +221,7 @@ enum class VLC : LONG {
 
 // Inner join options for angled lines.
 
-enum class VIJ : LONG {
+enum class VIJ : int {
    NIL = 0,
    BEVEL = 1,
    MITER = 2,
@@ -232,7 +232,7 @@ enum class VIJ : LONG {
 
 // VectorGradient options.
 
-enum class VGT : LONG {
+enum class VGT : int {
    NIL = 0,
    LINEAR = 0,
    RADIAL = 1,
@@ -243,7 +243,7 @@ enum class VGT : LONG {
 
 // Options for stretching text in VectorText.
 
-enum class VTS : LONG {
+enum class VTS : int {
    NIL = 0,
    INHERIT = 0,
    NORMAL = 1,
@@ -261,7 +261,7 @@ enum class VTS : LONG {
 
 // MorphologyFX options.
 
-enum class MOP : LONG {
+enum class MOP : int {
    NIL = 0,
    ERODE = 0,
    DILATE = 1,
@@ -269,7 +269,7 @@ enum class MOP : LONG {
 
 // Operators for CompositionFX.
 
-enum class OP : LONG {
+enum class OP : int {
    NIL = 0,
    OVER = 0,
    IN = 1,
@@ -333,7 +333,7 @@ DEFINE_ENUM_FLAG_OPERATORS(VMF)
 
 // Colour space options.
 
-enum class VCS : LONG {
+enum class VCS : int {
    NIL = 0,
    INHERIT = 0,
    SRGB = 1,
@@ -342,7 +342,7 @@ enum class VCS : LONG {
 
 // Filter source types - these are used internally
 
-enum class VSF : LONG {
+enum class VSF : int {
    NIL = 0,
    IGNORE = 0,
    NONE = 0,
@@ -358,7 +358,7 @@ enum class VSF : LONG {
 
 // Wave options.
 
-enum class WVC : LONG {
+enum class WVC : int {
    NIL = 0,
    NONE = 1,
    TOP = 2,
@@ -367,7 +367,7 @@ enum class WVC : LONG {
 
 // Wave style options.
 
-enum class WVS : LONG {
+enum class WVS : int {
    NIL = 0,
    CURVED = 1,
    ANGLED = 2,
@@ -376,7 +376,7 @@ enum class WVS : LONG {
 
 // Colour modes for ColourFX.
 
-enum class CM : LONG {
+enum class CM : int {
    NIL = 0,
    NONE = 0,
    MATRIX = 1,
@@ -431,13 +431,13 @@ enum class VPF : uint32_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(VPF)
 
-enum class TB : LONG {
+enum class TB : int {
    NIL = 0,
    TURBULENCE = 0,
    NOISE = 1,
 };
 
-enum class VSM : LONG {
+enum class VSM : int {
    NIL = 0,
    AUTO = 0,
    NEIGHBOUR = 1,
@@ -454,7 +454,7 @@ enum class VSM : LONG {
    BLACKMAN = 12,
 };
 
-enum class RQ : LONG {
+enum class RQ : int {
    NIL = 0,
    AUTO = 0,
    FAST = 1,
@@ -568,7 +568,7 @@ struct VectorMatrix {
    DOUBLE ScaleY;                 // Matrix value D
    DOUBLE TranslateX;             // Matrix value E
    DOUBLE TranslateY;             // Matrix value F
-   LONG   Tag;                    // An optional tag value defined by the client for matrix identification.
+   int    Tag;                    // An optional tag value defined by the client for matrix identification.
 };
 
 #define MTAG_ANIMATE_MOTION 0x8b929127
@@ -578,10 +578,10 @@ struct VectorMatrix {
 #define MTAG_SVG_TRANSFORM 0x3479679e
 
 struct FontMetrics {
-   LONG Height;         // Capitalised font height
-   LONG LineSpacing;    // Vertical advance from one line to the next
-   LONG Ascent;         // Height from the baseline to the top of the font, including accents.
-   LONG Descent;        // Height from the baseline to the bottom of the font
+   int Height;         // Capitalised font height
+   int LineSpacing;    // Vertical advance from one line to the next
+   int Ascent;         // Height from the baseline to the top of the font, including accents.
+   int Descent;        // Height from the baseline to the bottom of the font
 };
 
 // VectorColour class definition
@@ -653,7 +653,7 @@ class objVectorTransition : public Object {
 
 namespace sc {
 struct AddDef { CSTRING Name; OBJECTPTR Def; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SearchByID { LONG ID; OBJECTPTR Result; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SearchByID { int ID; OBJECTPTR Result; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct FindDef { CSTRING Name; OBJECTPTR Def; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Debug { static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
@@ -673,8 +673,8 @@ class objVectorScene : public Object {
    objBitmap * Bitmap;            // Target bitmap for drawing vectors.
    OBJECTID SurfaceID;            // May refer to a Surface object for enabling automatic rendering.
    VPF      Flags;                // Optional flags.
-   LONG     PageWidth;            // The width of the page that contains the vector.
-   LONG     PageHeight;           // The height of the page that contains the vector.
+   int      PageWidth;            // The width of the page that contains the vector.
+   int      PageHeight;           // The height of the page that contains the vector.
    VSM      SampleMethod;         // The sampling method to use when interpolating images and patterns.
 
    // Action stubs
@@ -703,7 +703,7 @@ class objVectorScene : public Object {
       struct sc::AddDef args = { Name, Def };
       return(Action(AC(-1), this, &args));
    }
-   inline ERR searchByID(LONG ID, OBJECTPTR * Result) noexcept {
+   inline ERR searchByID(int ID, OBJECTPTR * Result) noexcept {
       struct sc::SearchByID args = { ID, (OBJECTPTR)0 };
       ERR error = Action(AC(-2), this, &args);
       if (Result) *Result = args.Result;
@@ -749,13 +749,13 @@ class objVectorScene : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setPageWidth(const LONG Value) noexcept {
+   inline ERR setPageWidth(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setPageHeight(const LONG Value) noexcept {
+   inline ERR setPageHeight(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1074,7 +1074,7 @@ class objVectorGradient : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setColour(const FLOAT * Value, int Elements) noexcept {
+   inline ERR setColour(const float * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
@@ -1092,7 +1092,7 @@ class objVectorGradient : public Object {
       return field->WriteValue(target, field, 0x08000318, Value, 1);
    }
 
-   inline ERR setNumeric(const LONG Value) noexcept {
+   inline ERR setNumeric(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1251,13 +1251,13 @@ class objImageFX : public objFilterEffect {
       return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
    }
 
-   inline ERR setAspectRatio(const LONG Value) noexcept {
+   inline ERR setAspectRatio(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setResampleMethod(const LONG Value) noexcept {
+   inline ERR setResampleMethod(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1287,7 +1287,7 @@ class objSourceFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setAspectRatio(const LONG Value) noexcept {
+   inline ERR setAspectRatio(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1365,13 +1365,13 @@ class objColourFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setMode(const LONG Value) noexcept {
+   inline ERR setMode(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setValues(const DOUBLE * Value, int Elements) noexcept {
+   inline ERR setValues(const double * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x80001508, Value, Elements);
@@ -1401,7 +1401,7 @@ class objCompositeFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setOperator(const LONG Value) noexcept {
+   inline ERR setOperator(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1467,43 +1467,43 @@ class objConvolveFX : public objFilterEffect {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setEdgeMode(const LONG Value) noexcept {
+   inline ERR setEdgeMode(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setMatrixRows(const LONG Value) noexcept {
+   inline ERR setMatrixRows(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setMatrixColumns(const LONG Value) noexcept {
+   inline ERR setMatrixColumns(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setMatrix(const DOUBLE * Value, int Elements) noexcept {
+   inline ERR setMatrix(const double * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x80001508, Value, Elements);
    }
 
-   inline ERR setPreserveAlpha(const LONG Value) noexcept {
+   inline ERR setPreserveAlpha(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setTargetX(const LONG Value) noexcept {
+   inline ERR setTargetX(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setTargetY(const LONG Value) noexcept {
+   inline ERR setTargetY(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1551,13 +1551,13 @@ class objDisplacementFX : public objFilterEffect {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setXChannel(const LONG Value) noexcept {
+   inline ERR setXChannel(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setYChannel(const LONG Value) noexcept {
+   inline ERR setYChannel(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1587,7 +1587,7 @@ class objFloodFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setColour(const FLOAT * Value, int Elements) noexcept {
+   inline ERR setColour(const float * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
@@ -1644,7 +1644,7 @@ class objLightingFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setColour(const FLOAT * Value, int Elements) noexcept {
+   inline ERR setColour(const float * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
@@ -1668,7 +1668,7 @@ class objLightingFX : public objFilterEffect {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setType(const LONG Value) noexcept {
+   inline ERR setType(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1740,19 +1740,19 @@ class objMorphologyFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setOperator(const LONG Value) noexcept {
+   inline ERR setOperator(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setRadiusX(const LONG Value) noexcept {
+   inline ERR setRadiusX(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setRadiusY(const LONG Value) noexcept {
+   inline ERR setRadiusY(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1782,13 +1782,13 @@ class objOffsetFX : public objFilterEffect {
 
    // Customised field setting
 
-   inline ERR setXOffset(const LONG Value) noexcept {
+   inline ERR setXOffset(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setYOffset(const LONG Value) noexcept {
+   inline ERR setYOffset(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1804,12 +1804,12 @@ class objOffsetFX : public objFilterEffect {
 
 namespace rf {
 struct SelectGamma { CMP Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectTable { CMP Component; DOUBLE * Values; LONG Size; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectTable { CMP Component; DOUBLE * Values; int Size; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SelectLinear { CMP Component; DOUBLE Slope; DOUBLE Intercept; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SelectIdentity { CMP Component; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectDiscrete { CMP Component; DOUBLE * Values; LONG Size; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectDiscrete { CMP Component; DOUBLE * Values; int Size; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SelectInvert { CMP Component; static const AC id = AC(-25); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectMask { CMP Component; LONG Mask; static const AC id = AC(-26); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectMask { CMP Component; int Mask; static const AC id = AC(-26); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1832,7 +1832,7 @@ class objRemapFX : public objFilterEffect {
       struct rf::SelectGamma args = { Component, Amplitude, Offset, Exponent };
       return(Action(AC(-20), this, &args));
    }
-   inline ERR selectTable(CMP Component, DOUBLE * Values, LONG Size) noexcept {
+   inline ERR selectTable(CMP Component, DOUBLE * Values, int Size) noexcept {
       struct rf::SelectTable args = { Component, Values, Size };
       return(Action(AC(-21), this, &args));
    }
@@ -1844,7 +1844,7 @@ class objRemapFX : public objFilterEffect {
       struct rf::SelectIdentity args = { Component };
       return(Action(AC(-23), this, &args));
    }
-   inline ERR selectDiscrete(CMP Component, DOUBLE * Values, LONG Size) noexcept {
+   inline ERR selectDiscrete(CMP Component, DOUBLE * Values, int Size) noexcept {
       struct rf::SelectDiscrete args = { Component, Values, Size };
       return(Action(AC(-24), this, &args));
    }
@@ -1852,7 +1852,7 @@ class objRemapFX : public objFilterEffect {
       struct rf::SelectInvert args = { Component };
       return(Action(AC(-25), this, &args));
    }
-   inline ERR selectMask(CMP Component, LONG Mask) noexcept {
+   inline ERR selectMask(CMP Component, int Mask) noexcept {
       struct rf::SelectMask args = { Component, Mask };
       return(Action(AC(-26), this, &args));
    }
@@ -1895,25 +1895,25 @@ class objTurbulenceFX : public objFilterEffect {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setOctaves(const LONG Value) noexcept {
+   inline ERR setOctaves(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setSeed(const LONG Value) noexcept {
+   inline ERR setSeed(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setStitch(const LONG Value) noexcept {
+   inline ERR setStitch(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setType(const LONG Value) noexcept {
+   inline ERR setType(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1949,19 +1949,19 @@ class objWaveFunctionFX : public objFilterEffect {
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
-   inline ERR setN(const LONG Value) noexcept {
+   inline ERR setN(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setL(const LONG Value) noexcept {
+   inline ERR setL(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setM(const LONG Value) noexcept {
+   inline ERR setM(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2029,8 +2029,8 @@ class objVectorFilter : public Object {
    DOUBLE Height;                // The height of the filter area.  Can be expressed as a fixed or scaled coordinate.
    DOUBLE Opacity;               // The opacity of the filter.
    objVectorFilter * Inherit;    // Inherit attributes from a VectorFilter referenced here.
-   LONG   ResX;                  // Width of the intermediate images, measured in pixels.
-   LONG   ResY;                  // Height of the intermediate images, measured in pixels.
+   int    ResX;                  // Width of the intermediate images, measured in pixels.
+   int    ResY;                  // Height of the intermediate images, measured in pixels.
    VUNIT  Units;                 // Defines the coordinate system for X, Y, Width and Height.
    VUNIT  PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
    DMF    Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or scaled values.
@@ -2084,13 +2084,13 @@ class objVectorFilter : public Object {
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERR setResX(const LONG Value) noexcept {
+   inline ERR setResX(const int Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->ResX = Value;
       return ERR::Okay;
    }
 
-   inline ERR setResY(const LONG Value) noexcept {
+   inline ERR setResY(const int Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->ResY = Value;
       return ERR::Okay;
@@ -2125,15 +2125,15 @@ class objVectorFilter : public Object {
 // Vector methods
 
 namespace vec {
-struct Push { LONG Position; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Trace { FUNCTION * Callback; DOUBLE Scale; LONG Transform; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Push { int Position; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Trace { FUNCTION * Callback; DOUBLE Scale; int Transform; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct PointInPath { DOUBLE X; DOUBLE Y; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SubscribeInput { JTYPE Mask; FUNCTION * Callback; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SubscribeKeyboard { FUNCTION * Callback; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SubscribeFeedback { FM Mask; FUNCTION * Callback; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Debug { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct NewMatrix { struct VectorMatrix * Transform; LONG End; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct NewMatrix { struct VectorMatrix * Transform; int End; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct FreeMatrix { struct VectorMatrix * Matrix; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
@@ -2162,7 +2162,7 @@ class objVector : public Object {
    PTC       Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
    RQ        PathQuality;             // Defines the quality of a path when it is rendered.
    VCS       ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
-   LONG      PathTimestamp;           // This counter is modified each time the path is regenerated.
+   int       PathTimestamp;           // This counter is modified each time the path is regenerated.
 
    // Action stubs
 
@@ -2178,11 +2178,11 @@ class objVector : public Object {
    inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
    inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
    inline ERR show() noexcept { return Action(AC::Show, this, NULL); }
-   inline ERR push(LONG Position) noexcept {
+   inline ERR push(int Position) noexcept {
       struct vec::Push args = { Position };
       return(Action(AC(-1), this, &args));
    }
-   inline ERR trace(FUNCTION Callback, DOUBLE Scale, LONG Transform) noexcept {
+   inline ERR trace(FUNCTION Callback, DOUBLE Scale, int Transform) noexcept {
       struct vec::Trace args = { &Callback, Scale, Transform };
       return(Action(AC(-2), this, &args));
    }
@@ -2214,7 +2214,7 @@ class objVector : public Object {
    inline ERR debug() noexcept {
       return(Action(AC(-8), this, NULL));
    }
-   inline ERR newMatrix(struct VectorMatrix ** Transform, LONG End) noexcept {
+   inline ERR newMatrix(struct VectorMatrix ** Transform, int End) noexcept {
       struct vec::NewMatrix args = { (struct VectorMatrix *)0, End };
       ERR error = Action(AC(-9), this, &args);
       if (Transform) *Transform = args.Transform;
@@ -2302,13 +2302,13 @@ class objVector : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setClipRule(const LONG Value) noexcept {
+   inline ERR setClipRule(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setDashArray(const DOUBLE * Value, int Elements) noexcept {
+   inline ERR setDashArray(const double * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
@@ -2332,13 +2332,13 @@ class objVector : public Object {
       return field->WriteValue(target, field, 0x08000309, Value, 1);
    }
 
-   inline ERR setMorphFlags(const LONG Value) noexcept {
+   inline ERR setMorphFlags(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setNumeric(const LONG Value) noexcept {
+   inline ERR setNumeric(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[35];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2362,7 +2362,7 @@ class objVector : public Object {
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
-   inline ERR setStrokeColour(const FLOAT * Value, int Elements) noexcept {
+   inline ERR setStrokeColour(const float * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
@@ -2387,13 +2387,13 @@ class objVector : public Object {
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
-   inline ERR setFillColour(const FLOAT * Value, int Elements) noexcept {
+   inline ERR setFillColour(const float * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, 0x10001308, Value, Elements);
    }
 
-   inline ERR setFillRule(const LONG Value) noexcept {
+   inline ERR setFillRule(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2405,25 +2405,25 @@ class objVector : public Object {
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
-   inline ERR setLineJoin(const LONG Value) noexcept {
+   inline ERR setLineJoin(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[37];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setLineCap(const LONG Value) noexcept {
+   inline ERR setLineCap(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setInnerJoin(const LONG Value) noexcept {
+   inline ERR setInnerJoin(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setTabOrder(const LONG Value) noexcept {
+   inline ERR setTabOrder(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[32];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2438,11 +2438,11 @@ class objVector : public Object {
 // VectorPath methods
 
 namespace vp {
-struct AddCommand { struct PathCommand * Commands; LONG Size; static const AC id = AC(-30); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveCommand { LONG Index; LONG Total; static const AC id = AC(-31); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetCommand { LONG Index; struct PathCommand * Command; LONG Size; static const AC id = AC(-32); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetCommand { LONG Index; struct PathCommand * Command; static const AC id = AC(-33); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetCommandList { APTR Commands; LONG Size; static const AC id = AC(-34); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct AddCommand { struct PathCommand * Commands; int Size; static const AC id = AC(-30); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveCommand { int Index; int Total; static const AC id = AC(-31); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetCommand { int Index; struct PathCommand * Command; int Size; static const AC id = AC(-32); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetCommand { int Index; struct PathCommand * Command; static const AC id = AC(-33); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetCommandList { APTR Commands; int Size; static const AC id = AC(-34); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -2458,25 +2458,25 @@ class objVectorPath : public objVector {
    inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
    inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR addCommand(struct PathCommand * Commands, LONG Size) noexcept {
+   inline ERR addCommand(struct PathCommand * Commands, int Size) noexcept {
       struct vp::AddCommand args = { Commands, Size };
       return(Action(AC(-30), this, &args));
    }
-   inline ERR removeCommand(LONG Index, LONG Total) noexcept {
+   inline ERR removeCommand(int Index, int Total) noexcept {
       struct vp::RemoveCommand args = { Index, Total };
       return(Action(AC(-31), this, &args));
    }
-   inline ERR setCommand(LONG Index, struct PathCommand * Command, LONG Size) noexcept {
+   inline ERR setCommand(int Index, struct PathCommand * Command, int Size) noexcept {
       struct vp::SetCommand args = { Index, Command, Size };
       return(Action(AC(-32), this, &args));
    }
-   inline ERR getCommand(LONG Index, struct PathCommand ** Command) noexcept {
+   inline ERR getCommand(int Index, struct PathCommand ** Command) noexcept {
       struct vp::GetCommand args = { Index, (struct PathCommand *)0 };
       ERR error = Action(AC(-33), this, &args);
       if (Command) *Command = args.Command;
       return(error);
    }
-   inline ERR setCommandList(APTR Commands, LONG Size) noexcept {
+   inline ERR setCommandList(APTR Commands, int Size) noexcept {
       struct vp::SetCommandList args = { Commands, Size };
       return(Action(AC(-34), this, &args));
    }
@@ -2489,13 +2489,13 @@ class objVectorPath : public objVector {
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
-   inline ERR setTotalCommands(const LONG Value) noexcept {
+   inline ERR setTotalCommands(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setPathLength(const LONG Value) noexcept {
+   inline ERR setPathLength(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2516,7 +2516,7 @@ class objVectorPath : public objVector {
 // VectorText methods
 
 namespace vt {
-struct DeleteLine { LONG Line; static const AC id = AC(-30); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DeleteLine { int Line; static const AC id = AC(-30); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -2530,7 +2530,7 @@ class objVectorText : public objVector {
    // Action stubs
 
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR deleteLine(LONG Line) noexcept {
+   inline ERR deleteLine(int Line) noexcept {
       struct vt::DeleteLine args = { Line };
       return(Action(AC(-30), this, &args));
    }
@@ -2551,7 +2551,7 @@ class objVectorText : public objVector {
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setWeight(const LONG Value) noexcept {
+   inline ERR setWeight(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2563,7 +2563,7 @@ class objVectorText : public objVector {
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
-   inline ERR setAlign(const LONG Value) noexcept {
+   inline ERR setAlign(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2593,13 +2593,13 @@ class objVectorText : public objVector {
       return field->WriteValue(target, field, 0x08800508, to_cstring(Value), 1);
    }
 
-   inline ERR setDX(const DOUBLE * Value, int Elements) noexcept {
+   inline ERR setDX(const double * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
    }
 
-   inline ERR setDY(const DOUBLE * Value, int Elements) noexcept {
+   inline ERR setDY(const double * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
@@ -2617,7 +2617,7 @@ class objVectorText : public objVector {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setRotate(const DOUBLE * Value, int Elements) noexcept {
+   inline ERR setRotate(const double * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
@@ -2641,7 +2641,7 @@ class objVectorText : public objVector {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setTextFlags(const LONG Value) noexcept {
+   inline ERR setTextFlags(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2677,25 +2677,25 @@ class objVectorText : public objVector {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setCursorColumn(const LONG Value) noexcept {
+   inline ERR setCursorColumn(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setCursorRow(const LONG Value) noexcept {
+   inline ERR setCursorRow(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setLineLimit(const LONG Value) noexcept {
+   inline ERR setLineLimit(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setCharLimit(const LONG Value) noexcept {
+   inline ERR setCharLimit(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2737,7 +2737,7 @@ class objVectorWave : public objVector {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setClose(const LONG Value) noexcept {
+   inline ERR setClose(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2755,7 +2755,7 @@ class objVectorWave : public objVector {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setDimensions(const LONG Value) noexcept {
+   inline ERR setDimensions(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2774,7 +2774,7 @@ class objVectorWave : public objVector {
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setStyle(const LONG Value) noexcept {
+   inline ERR setStyle(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2822,7 +2822,7 @@ class objVectorRectangle : public objVector {
 
    // Customised field setting
 
-   inline ERR setRounding(const DOUBLE * Value, int Elements) noexcept {
+   inline ERR setRounding(const double * Value, int Elements) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x80001308, Value, Elements);
@@ -2884,7 +2884,7 @@ class objVectorRectangle : public objVector {
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setDimensions(const LONG Value) noexcept {
+   inline ERR setDimensions(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2905,13 +2905,13 @@ class objVectorPolygon : public objVector {
 
    // Customised field setting
 
-   inline ERR setClosed(const LONG Value) noexcept {
+   inline ERR setClosed(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setPathLength(const LONG Value) noexcept {
+   inline ERR setPathLength(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -2993,13 +2993,13 @@ class objVectorShape : public objVector {
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setClose(const LONG Value) noexcept {
+   inline ERR setClose(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setDimensions(const LONG Value) noexcept {
+   inline ERR setDimensions(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -3047,25 +3047,25 @@ class objVectorShape : public objVector {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setVertices(const LONG Value) noexcept {
+   inline ERR setVertices(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setMod(const LONG Value) noexcept {
+   inline ERR setMod(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setSpiral(const LONG Value) noexcept {
+   inline ERR setSpiral(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setRepeat(const LONG Value) noexcept {
+   inline ERR setRepeat(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -3086,7 +3086,7 @@ class objVectorSpiral : public objVector {
 
    // Customised field setting
 
-   inline ERR setPathLength(const LONG Value) noexcept {
+   inline ERR setPathLength(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -3215,13 +3215,13 @@ class objVectorEllipse : public objVector {
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setDimensions(const LONG Value) noexcept {
+   inline ERR setDimensions(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setVertices(const LONG Value) noexcept {
+   inline ERR setVertices(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -3267,19 +3267,19 @@ class objVectorViewport : public objVector {
 
    // Customised field setting
 
-   inline ERR setAspectRatio(const LONG Value) noexcept {
+   inline ERR setAspectRatio(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setBuffered(const LONG Value) noexcept {
+   inline ERR setBuffered(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setDimensions(const LONG Value) noexcept {
+   inline ERR setDimensions(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -3291,19 +3291,19 @@ class objVectorViewport : public objVector {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERR setOverflow(const LONG Value) noexcept {
+   inline ERR setOverflow(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setOverflowX(const LONG Value) noexcept {
+   inline ERR setOverflowX(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERR setOverflowY(const LONG Value) noexcept {
+   inline ERR setOverflowY(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -3386,7 +3386,7 @@ class objVectorViewport : public objVector {
 struct VectorBase {
 #ifndef PARASOL_STATIC
    ERR (*_DrawPath)(objBitmap *Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-   ERR (*_GenerateEllipse)(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path);
+   ERR (*_GenerateEllipse)(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, int Vertices, APTR *Path);
    ERR (*_GeneratePath)(CSTRING Sequence, APTR *Path);
    ERR (*_GenerateRectangle)(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path);
    ERR (*_ReadPainter)(objVectorScene *Scene, CSTRING IRI, struct VectorPainter *Painter, CSTRING *Result);
@@ -3400,7 +3400,7 @@ struct VectorBase {
    void (*_Smooth4)(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
    void (*_ClosePath)(APTR Path);
    void (*_RewindPath)(APTR Path);
-   LONG (*_GetVertex)(APTR Path, DOUBLE *X, DOUBLE *Y);
+   int (*_GetVertex)(APTR Path, DOUBLE *X, DOUBLE *Y);
    ERR (*_ApplyPath)(APTR Path, objVectorPath *VectorPath);
    ERR (*_Rotate)(struct VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
    ERR (*_Translate)(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y);
@@ -3410,10 +3410,10 @@ struct VectorBase {
    ERR (*_Scale)(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y);
    ERR (*_ParseTransform)(struct VectorMatrix *Matrix, CSTRING Transform);
    ERR (*_ResetMatrix)(struct VectorMatrix *Matrix);
-   ERR (*_GetFontHandle)(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle);
+   ERR (*_GetFontHandle)(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle);
    ERR (*_GetFontMetrics)(APTR Handle, struct FontMetrics *Info);
    DOUBLE (*_CharWidth)(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE *Kerning);
-   DOUBLE (*_StringWidth)(APTR FontHandle, CSTRING String, LONG Chars);
+   DOUBLE (*_StringWidth)(APTR FontHandle, CSTRING String, int Chars);
    ERR (*_FlushMatrix)(struct VectorMatrix *Matrix);
    ERR (*_TracePath)(APTR Path, FUNCTION *Callback, DOUBLE Scale);
 #endif // PARASOL_STATIC
@@ -3424,7 +3424,7 @@ struct VectorBase {
 extern struct VectorBase *VectorBase;
 namespace vec {
 inline ERR DrawPath(objBitmap *Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
-inline ERR GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
+inline ERR GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, int Vertices, APTR *Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
 inline ERR GeneratePath(CSTRING Sequence, APTR *Path) { return VectorBase->_GeneratePath(Sequence,Path); }
 inline ERR GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
 inline ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, struct VectorPainter *Painter, CSTRING *Result) { return VectorBase->_ReadPainter(Scene,IRI,Painter,Result); }
@@ -3438,7 +3438,7 @@ inline void Curve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBL
 inline void Smooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth4(Path,CtrlX,CtrlY,X,Y); }
 inline void ClosePath(APTR Path) { return VectorBase->_ClosePath(Path); }
 inline void RewindPath(APTR Path) { return VectorBase->_RewindPath(Path); }
-inline LONG GetVertex(APTR Path, DOUBLE *X, DOUBLE *Y) { return VectorBase->_GetVertex(Path,X,Y); }
+inline int GetVertex(APTR Path, DOUBLE *X, DOUBLE *Y) { return VectorBase->_GetVertex(Path,X,Y); }
 inline ERR ApplyPath(APTR Path, objVectorPath *VectorPath) { return VectorBase->_ApplyPath(Path,VectorPath); }
 inline ERR Rotate(struct VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY) { return VectorBase->_Rotate(Matrix,Angle,CenterX,CenterY); }
 inline ERR Translate(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Translate(Matrix,X,Y); }
@@ -3448,17 +3448,17 @@ inline ERR MultiplyMatrix(struct VectorMatrix *Target, struct VectorMatrix *Sour
 inline ERR Scale(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Scale(Matrix,X,Y); }
 inline ERR ParseTransform(struct VectorMatrix *Matrix, CSTRING Transform) { return VectorBase->_ParseTransform(Matrix,Transform); }
 inline ERR ResetMatrix(struct VectorMatrix *Matrix) { return VectorBase->_ResetMatrix(Matrix); }
-inline ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle) { return VectorBase->_GetFontHandle(Family,Style,Weight,Size,Handle); }
+inline ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle) { return VectorBase->_GetFontHandle(Family,Style,Weight,Size,Handle); }
 inline ERR GetFontMetrics(APTR Handle, struct FontMetrics *Info) { return VectorBase->_GetFontMetrics(Handle,Info); }
 inline DOUBLE CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE *Kerning) { return VectorBase->_CharWidth(FontHandle,Char,KChar,Kerning); }
-inline DOUBLE StringWidth(APTR FontHandle, CSTRING String, LONG Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
+inline DOUBLE StringWidth(APTR FontHandle, CSTRING String, int Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
 inline ERR FlushMatrix(struct VectorMatrix *Matrix) { return VectorBase->_FlushMatrix(Matrix); }
 inline ERR TracePath(APTR Path, FUNCTION *Callback, DOUBLE Scale) { return VectorBase->_TracePath(Path,Callback,Scale); }
 } // namespace
 #else
 namespace vec {
 extern ERR DrawPath(objBitmap *Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern ERR GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR *Path);
+extern ERR GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, int Vertices, APTR *Path);
 extern ERR GeneratePath(CSTRING Sequence, APTR *Path);
 extern ERR GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path);
 extern ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, struct VectorPainter *Painter, CSTRING *Result);
@@ -3472,7 +3472,7 @@ extern void Curve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBL
 extern void Smooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
 extern void ClosePath(APTR Path);
 extern void RewindPath(APTR Path);
-extern LONG GetVertex(APTR Path, DOUBLE *X, DOUBLE *Y);
+extern int GetVertex(APTR Path, DOUBLE *X, DOUBLE *Y);
 extern ERR ApplyPath(APTR Path, objVectorPath *VectorPath);
 extern ERR Rotate(struct VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
 extern ERR Translate(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y);
@@ -3482,10 +3482,10 @@ extern ERR MultiplyMatrix(struct VectorMatrix *Target, struct VectorMatrix *Sour
 extern ERR Scale(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y);
 extern ERR ParseTransform(struct VectorMatrix *Matrix, CSTRING Transform);
 extern ERR ResetMatrix(struct VectorMatrix *Matrix);
-extern ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle);
+extern ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle);
 extern ERR GetFontMetrics(APTR Handle, struct FontMetrics *Info);
 extern DOUBLE CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE *Kerning);
-extern DOUBLE StringWidth(APTR FontHandle, CSTRING String, LONG Chars);
+extern DOUBLE StringWidth(APTR FontHandle, CSTRING String, int Chars);
 extern ERR FlushMatrix(struct VectorMatrix *Matrix);
 extern ERR TracePath(APTR Path, FUNCTION *Callback, DOUBLE Scale);
 } // namespace

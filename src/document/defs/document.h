@@ -304,11 +304,11 @@ public:
    ~docresource() {
       if ((type IS RTD::PERSISTENT_SCRIPT) or (type IS RTD::PERSISTENT_OBJECT)) {
          if (terminate) FreeResource(object_id);
-         else SendMessage(MSGID_FREE, MSF::NIL, &object_id, sizeof(OBJECTID));
+         else SendMessage(MSGID::FREE, MSF::NIL, &object_id, sizeof(OBJECTID));
       }
       else if (type IS RTD::OBJECT_UNLOAD_DELAY) {
          if (terminate) FreeResource(object_id);
-         else SendMessage(MSGID_FREE, MSF::NIL, &object_id, sizeof(OBJECTID));
+         else SendMessage(MSGID::FREE, MSF::NIL, &object_id, sizeof(OBJECTID));
       }
       else if (type != RTD::NIL) FreeResource(object_id);
    }
@@ -445,7 +445,7 @@ public:
 
    font_entry * get_font() const {
       if ((font_index < std::ssize(glFonts)) and (font_index >= 0)) return &glFonts[font_index];
-    
+
       pf::Log log(__FUNCTION__);
       log.error("A font_index is -1."); // An index of -1 means a call to layout_font() is missing.
       return &glFonts[0];

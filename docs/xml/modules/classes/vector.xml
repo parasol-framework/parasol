@@ -33,10 +33,10 @@
       <comment>Draws the surface associated with the vector.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <input>
-        <param type="LONG" name="X">The X position of the region to be drawn.</param>
-        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
-        <param type="LONG" name="Width">The width of the region to be drawn.</param>
-        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+        <param type="INT" name="X">The X position of the region to be drawn.</param>
+        <param type="INT" name="Y">The Y position of the region to be drawn.</param>
+        <param type="INT" name="Width">The width of the region to be drawn.</param>
+        <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
       <description>
 <p>Calling the Draw action on a vector will schedule a redraw of the scene graph if it is associated with a <class name="Surface">Surface</class>. Internally, drawing is scheduled for the next frame and is not immediate.</p>

@@ -52,11 +52,11 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <action>
       <name>Read</name>
       <comment>Read information from the socket.</comment>
-      <prototype>ERR acRead(*Object, APTR Buffer, LONG Length, LONG *Result)</prototype>
+      <prototype>ERR acRead(*Object, APTR Buffer, INT Length, INT *Result)</prototype>
       <input>
         <param type="APTR" name="Buffer">Points a buffer that will receive the data.</param>
-        <param type="LONG" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
-        <param type="LONG" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
+        <param type="INT" name="Length">The total number of bytes to read from the object.  This value cannot exceed the size of the Buffer.</param>
+        <param type="INT" name="Result">The Read action will write this parameter with the total number of bytes read into the Buffer.</param>
       </input>
       <description>
 <p>The Read() action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure and the socket connection will be closed when the action returns.</p>
@@ -72,11 +72,11 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <action>
       <name>Write</name>
       <comment>Writes data to the socket.</comment>
-      <prototype>ERR acWrite(*Object, APTR Buffer, LONG Length, LONG Result)</prototype>
+      <prototype>ERR acWrite(*Object, APTR Buffer, INT Length, INT Result)</prototype>
       <input>
         <param type="APTR" name="Buffer">A buffer containing the data that will be written to the object.</param>
-        <param type="LONG" name="Length">The total number of bytes to write to the object.</param>
-        <param type="LONG" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
+        <param type="INT" name="Length">The total number of bytes to write to the object.</param>
+        <param type="INT" name="Result">This parameter with be updated with the total number of bytes written from the Buffer.</param>
       </input>
       <description>
 <p>Writing data to a socket will send raw data to the remote client or server.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the <fl>MsgLimit</fl> field setting.</p>

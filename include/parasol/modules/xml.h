@@ -21,9 +21,12 @@ class objXML;
 
 // For SetAttrib()
 
-#define XMS_NEW -1
-#define XMS_UPDATE_ONLY -2
-#define XMS_UPDATE -3
+enum class XMS : int {
+   NIL = 0,
+   NEW = -1,
+   UPDATE_ONLY = -2,
+   UPDATE = -3,
+};
 
 // Options for the Sort method.
 
@@ -61,7 +64,7 @@ DEFINE_ENUM_FLAG_OPERATORS(XMF)
 
 // Tag insertion options.
 
-enum class XMI : LONG {
+enum class XMI : int {
    NIL = 0,
    PREV = 0,
    PREVIOUS = 0,
@@ -92,10 +95,10 @@ typedef struct XMLAttrib {
 } XMLATTRIB;
 
 typedef struct XMLTag {
-   LONG ID;                          // Unique ID assigned to the tag on creation
-   LONG ParentID;                    // Unique ID of the parent tag
-   LONG LineNo;                      // Line number on which this tag was encountered
-   XTF  Flags;                       // Optional flags
+   int ID;                           // Unique ID assigned to the tag on creation
+   int ParentID;                     // Unique ID of the parent tag
+   int LineNo;                       // Line number on which this tag was encountered
+   XTF Flags;                        // Optional flags
    pf::vector<XMLAttrib> Attribs;    // Array of attributes for this tag
    pf::vector<XMLTag> Children;      // Array of child tags
    XMLTag(LONG pID, LONG pLine = 0) :
@@ -146,21 +149,21 @@ typedef struct XMLTag {
 // XML methods
 
 namespace xml {
-struct SetAttrib { LONG Index; LONG Attrib; CSTRING Name; CSTRING Value; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Serialise { LONG Index; XMF Flags; STRING Result; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct InsertXML { LONG Index; XMI Where; CSTRING XML; LONG Result; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetContent { LONG Index; STRING Buffer; LONG Length; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetAttrib { int Index; XMS Attrib; CSTRING Name; CSTRING Value; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Serialise { int Index; XMF Flags; STRING Result; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertXML { int Index; XMI Where; CSTRING XML; int Result; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetContent { int Index; STRING Buffer; int Length; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Sort { CSTRING XPath; CSTRING Sort; XSF Flags; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveTag { LONG Index; LONG Total; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct MoveTags { LONG Index; LONG Total; LONG DestIndex; XMI Where; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetAttrib { LONG Index; CSTRING Attrib; CSTRING Value; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct InsertXPath { CSTRING XPath; XMI Where; CSTRING XML; LONG Result; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct FindTag { CSTRING XPath; FUNCTION * Callback; LONG Result; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveTag { int Index; int Total; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct MoveTags { int Index; int Total; int DestIndex; XMI Where; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetAttrib { int Index; CSTRING Attrib; CSTRING Value; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertXPath { CSTRING XPath; XMI Where; CSTRING XML; int Result; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct FindTag { CSTRING XPath; FUNCTION * Callback; int Result; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Filter { CSTRING XPath; static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Count { CSTRING XPath; LONG Result; static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct InsertContent { LONG Index; XMI Where; CSTRING Content; LONG Result; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RemoveXPath { CSTRING XPath; LONG Limit; static const AC id = AC(-15); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetTag { LONG Index; struct XMLTag * Result; static const AC id = AC(-18); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Count { CSTRING XPath; int Result; static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InsertContent { int Index; XMI Where; CSTRING Content; int Result; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RemoveXPath { CSTRING XPath; int Limit; static const AC id = AC(-15); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetTag { int Index; struct XMLTag * Result; static const AC id = AC(-18); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -174,10 +177,10 @@ class objXML : public Object {
    STRING    Path;      // Set this field if the XML document originates from a file source.
    OBJECTPTR Source;    // Set this field if the XML data is to be sourced from another object.
    XMF       Flags;     // Optional flags.
-   LONG      Start;     // Set a starting cursor to affect the starting point for some XML operations.
-   LONG      Modified;  // A timestamp of when the XML data was last modified.
+   int       Start;     // Set a starting cursor to affect the starting point for some XML operations.
+   int       Modified;  // A timestamp of when the XML data was last modified.
    ERR       ParseError; // Private
-   LONG      LineNo;    // Private
+   int       LineNo;    // Private
    public:
    typedef pf::vector<XMLTag> TAGS;
    typedef pf::vector<XMLTag>::iterator CURSOR;
@@ -229,23 +232,23 @@ class objXML : public Object {
       struct acSetKey args = { FieldName, Value };
       return Action(AC::SetKey, this, &args);
    }
-   inline ERR setAttrib(LONG Index, LONG Attrib, CSTRING Name, CSTRING Value) noexcept {
+   inline ERR setAttrib(int Index, XMS Attrib, CSTRING Name, CSTRING Value) noexcept {
       struct xml::SetAttrib args = { Index, Attrib, Name, Value };
       return(Action(AC(-1), this, &args));
    }
-   inline ERR serialise(LONG Index, XMF Flags, STRING * Result) noexcept {
+   inline ERR serialise(int Index, XMF Flags, STRING * Result) noexcept {
       struct xml::Serialise args = { Index, Flags, (STRING)0 };
       ERR error = Action(AC(-2), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR insertXML(LONG Index, XMI Where, CSTRING XML, LONG * Result) noexcept {
-      struct xml::InsertXML args = { Index, Where, XML, (LONG)0 };
+   inline ERR insertXML(int Index, XMI Where, CSTRING XML, int * Result) noexcept {
+      struct xml::InsertXML args = { Index, Where, XML, (int)0 };
       ERR error = Action(AC(-3), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR getContent(LONG Index, STRING Buffer, LONG Length) noexcept {
+   inline ERR getContent(int Index, STRING Buffer, int Length) noexcept {
       struct xml::GetContent args = { Index, Buffer, Length };
       return(Action(AC(-4), this, &args));
    }
@@ -253,28 +256,28 @@ class objXML : public Object {
       struct xml::Sort args = { XPath, Sort, Flags };
       return(Action(AC(-5), this, &args));
    }
-   inline ERR removeTag(LONG Index, LONG Total) noexcept {
+   inline ERR removeTag(int Index, int Total) noexcept {
       struct xml::RemoveTag args = { Index, Total };
       return(Action(AC(-6), this, &args));
    }
-   inline ERR moveTags(LONG Index, LONG Total, LONG DestIndex, XMI Where) noexcept {
+   inline ERR moveTags(int Index, int Total, int DestIndex, XMI Where) noexcept {
       struct xml::MoveTags args = { Index, Total, DestIndex, Where };
       return(Action(AC(-7), this, &args));
    }
-   inline ERR getAttrib(LONG Index, CSTRING Attrib, CSTRING * Value) noexcept {
+   inline ERR getAttrib(int Index, CSTRING Attrib, CSTRING * Value) noexcept {
       struct xml::GetAttrib args = { Index, Attrib, (CSTRING)0 };
       ERR error = Action(AC(-8), this, &args);
       if (Value) *Value = args.Value;
       return(error);
    }
-   inline ERR insertXPath(CSTRING XPath, XMI Where, CSTRING XML, LONG * Result) noexcept {
-      struct xml::InsertXPath args = { XPath, Where, XML, (LONG)0 };
+   inline ERR insertXPath(CSTRING XPath, XMI Where, CSTRING XML, int * Result) noexcept {
+      struct xml::InsertXPath args = { XPath, Where, XML, (int)0 };
       ERR error = Action(AC(-9), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR findTag(CSTRING XPath, FUNCTION Callback, LONG * Result) noexcept {
-      struct xml::FindTag args = { XPath, &Callback, (LONG)0 };
+   inline ERR findTag(CSTRING XPath, FUNCTION Callback, int * Result) noexcept {
+      struct xml::FindTag args = { XPath, &Callback, (int)0 };
       ERR error = Action(AC(-10), this, &args);
       if (Result) *Result = args.Result;
       return(error);
@@ -283,23 +286,23 @@ class objXML : public Object {
       struct xml::Filter args = { XPath };
       return(Action(AC(-11), this, &args));
    }
-   inline ERR count(CSTRING XPath, LONG * Result) noexcept {
-      struct xml::Count args = { XPath, (LONG)0 };
+   inline ERR count(CSTRING XPath, int * Result) noexcept {
+      struct xml::Count args = { XPath, (int)0 };
       ERR error = Action(AC(-13), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR insertContent(LONG Index, XMI Where, CSTRING Content, LONG * Result) noexcept {
-      struct xml::InsertContent args = { Index, Where, Content, (LONG)0 };
+   inline ERR insertContent(int Index, XMI Where, CSTRING Content, int * Result) noexcept {
+      struct xml::InsertContent args = { Index, Where, Content, (int)0 };
       ERR error = Action(AC(-14), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR removeXPath(CSTRING XPath, LONG Limit) noexcept {
+   inline ERR removeXPath(CSTRING XPath, int Limit) noexcept {
       struct xml::RemoveXPath args = { XPath, Limit };
       return(Action(AC(-15), this, &args));
    }
-   inline ERR getTag(LONG Index, struct XMLTag ** Result) noexcept {
+   inline ERR getTag(int Index, struct XMLTag ** Result) noexcept {
       struct xml::GetTag args = { Index, (struct XMLTag *)0 };
       ERR error = Action(AC(-18), this, &args);
       if (Result) *Result = args.Result;
@@ -325,12 +328,12 @@ class objXML : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setStart(const LONG Value) noexcept {
+   inline ERR setStart(const int Value) noexcept {
       this->Start = Value;
       return ERR::Okay;
    }
 
-   inline ERR setReadOnly(const LONG Value) noexcept {
+   inline ERR setReadOnly(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);

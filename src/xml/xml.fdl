@@ -3,7 +3,7 @@
 module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestamp=20240611 }, function()
   cpp_include("<functional>", "<sstream>", "<parasol/strings.hpp>")
 
-  const("XMS", { comment="For SetAttrib()" }, {
+  const("XMS", { type="int", comment="For SetAttrib()" }, {
     NEW         = "-1: Adds a new attribute.  Note that if the attribute already exists, this will result in at least two attributes of the same name in the tag.",
     UPDATE_ONLY = "-2: SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  `ERR::Search` is returned if the attribute cannot be found.",
     UPDATE      = "-3: As for `UPDATE_ONLY`, but if the attribute does not exist, it will be created."

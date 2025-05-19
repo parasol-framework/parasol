@@ -8,10 +8,10 @@ void CloseCore(void)
    pf::Log log("Shutdown");
 
    if (glCodeIndex IS CP_FINISHED) return;
-   
+
    log.msg("PROGRAM TERMINATING");
-   
-   AdjustLogLevel(1); 
+
+   AdjustLogLevel(1);
 
    #ifdef __unix__
       log.msg("UID: %d, EUID: %d, CrashStatus: %d", getuid(), geteuid(), glCrashStatus);
@@ -43,11 +43,11 @@ void CloseCore(void)
             log.msg("Removing sub-process #%d (pid %d).", task.TaskID, task.ProcessID);
 
             #ifdef __unix__
-               // SIGHUP will convert to MSGID_QUIT in the signal handlers.  The main reason for us to use it is
+               // SIGHUP will convert to MSGID::QUIT in the signal handlers.  The main reason for us to use it is
                // to stop foreign processes that we've launched.
                kill(task.ProcessID, SIGHUP);
             #else
-               SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
+               SendMessage(MSGID::QUIT, MSF::NIL, NULL, 0);
             #endif
 
             WaitTime(0, -100000);

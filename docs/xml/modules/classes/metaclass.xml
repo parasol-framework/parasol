@@ -238,7 +238,7 @@
       <name>Objects</name>
       <comment>Returns an allocated list of all objects that belong to this class.</comment>
       <access read="G">Get</access>
-      <type>LONG []</type>
+      <type>INT []</type>
       <description>
 <p>This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
 <p>The resulting array must be terminated with <function>FreeResource</function> after use.</p>
@@ -316,7 +316,7 @@
       <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
       <field name="GetValue" type="FUNCTION *" prototype="ERR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
       <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
-      <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
+      <field name="WriteValue" type="FUNCTION *" prototype="ERR (*WriteValue)(OBJECTPTR, struct Field *, int, const void *, int)">An internal function for writing to this field.</field>
       <field name="Name" type="CSTRING">The English name for the field, e.g. <code>Width</code></field>
       <field name="FieldID" type="UINT">Provides a fast way of finding fields, e.g. <code>FID_Width</code></field>
       <field name="Offset" type="UINT16">Field offset within the object</field>

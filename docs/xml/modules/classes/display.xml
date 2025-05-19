@@ -51,10 +51,10 @@
       <comment>Draws object graphics to drawable areas.</comment>
       <prototype>ERR acDraw(*Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)</prototype>
       <input>
-        <param type="LONG" name="X">The X position of the region to be drawn.</param>
-        <param type="LONG" name="Y">The Y position of the region to be drawn.</param>
-        <param type="LONG" name="Width">The width of the region to be drawn.</param>
-        <param type="LONG" name="Height">The height of the region to be drawn.</param>
+        <param type="INT" name="X">The X position of the region to be drawn.</param>
+        <param type="INT" name="Y">The Y position of the region to be drawn.</param>
+        <param type="INT" name="Width">The width of the region to be drawn.</param>
+        <param type="INT" name="Height">The height of the region to be drawn.</param>
       </input>
     </action>
 
@@ -79,11 +79,11 @@
     <action>
       <name>GetKey</name>
       <comment>Retrieve formatted information from the display.</comment>
-      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, LONG Size)</prototype>
+      <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
         <param type="STRING" name="Value">Pointer to a buffer space large enough to hold the retrieved value.</param>
-        <param type="LONG" name="Size">Indicates the byte size of the Buffer.</param>
+        <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
     </action>
 
