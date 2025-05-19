@@ -365,8 +365,9 @@ gui.window = function(Options)
       end)()
    }
 
-   if Options.minWidth  then surface_opts.minWidth  = Options.minWidth end
-   if Options.minHeight then surface_opts.minHeight = Options.minHeight end
+   surface_opts.minWidth  = nz(Options.minWidth, 20)
+   surface_opts.minHeight = nz(Options.minHeight, 10)
+
    if Options.maxWidth  then surface_opts.maxWidth  = Options.maxWidth end
    if Options.maxHeight then surface_opts.maxHeight = Options.maxHeight end
 
