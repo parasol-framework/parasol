@@ -9,6 +9,8 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
    log.msg("Identifying file '%s'", TargetFile);
 
+   FindClass(CLASSID::FLUID);
+
    CLASSID class_id, subclass;
    if (pf::startswith("STRING:", TargetFile)) {
       subclass = CLASSID::SCRIPT;
