@@ -912,11 +912,8 @@ This function is for use by action and method support routines only.  It will re
 action currently under execution has been called directly from the ~ProcessMessages() function.  In all other
 cases a `NULL` pointer is returned.
 
-The !Message structure reflects the contents of a standard ~GetMessage() call.  Of particular interest may be
-the `Time` field, which indicates the time-stamp at which the action message was originally sent to the object.
-
 -RESULT-
-resource(Message): A !Message structure is returned if the function is called in valid circumstances, otherwise `NULL`.  The !Message structure's fields are described in the ~GetMessage() function.
+resource(Message): A !Message structure is returned if the function is called in valid circumstances, otherwise `NULL`.
 
 *********************************************************************************************************************/
 

@@ -172,73 +172,6 @@ ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION *Routine, MsgHandler **Ha
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetMessage: Reads messages from message queues.
-
-The GetMessage() function is used to read messages that have been stored in the local message queue.  You can use this
-function to read the next immediate message stored on the queue, or the first message on the queue that matches a
-particular Type.  It is also possible to call this function in a loop to clear out all messages, until an error code
-other than `ERR::Okay` is returned.
-
-Messages will often (although not always) carry data that is relevant to the message type.  To retrieve this data you
-need to supply a `Buffer`, preferably one that is large enough to receive all the data that you expect from your
-messages.  If the `Buffer` is too small, the message data will be trimmed to fit.
-
-Message data is written to the supplied buffer with a !Message structure, which is immediately followed
-up with the actual message data.
-
--INPUT-
-int(MSGID) Type:   Filter down to this message type or set to zero to receive the next message on the queue.
-int(MSF) Flags:  This argument is reserved for future use.  Set it to zero.
-buf(ptr) Buffer: Pointer to a buffer that is large enough to hold the incoming message information.  If set to `NULL` then all accompanying message data will be destroyed.
-bufsize Size:   The byte-size of the buffer that you have supplied.
-
--ERRORS-
-Okay:
-Args:
-AccessMemory: Failed to gain access to the message queue.
-Search: No more messages are left on the queue, or no messages that match the given `Type` are on the queue.
--END-
-
-*********************************************************************************************************************/
-
-ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, int BufferSize)
-{
-   const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
-
-   for (auto it=glQueue.begin(); it != glQueue.end(); it++) {
-      if (it->Type IS MSGID::NIL) continue;
-
-      if ((Flags & MSF::MESSAGE_ID) != MSF::NIL) {
-         // The Type argument actually refers to a unique message ID when MSF::MESSAGE_ID is used
-         if (MSGID(it->UID) != Type) continue;
-      }
-      else if ((Type != MSGID::NIL) and (it->Type != Type)) continue;
-
-      // Copy the message to the buffer
-
-      if ((Buffer) and ((size_t)BufferSize >= sizeof(Message))) {
-         ((Message *)Buffer)->UID  = it->UID;
-         ((Message *)Buffer)->Type = it->Type;
-         ((Message *)Buffer)->Size = it->Size;
-         ((Message *)Buffer)->Time = it->Time;
-         BufferSize -= sizeof(Message);
-         if (BufferSize < it->Size) {
-            ((Message *)Buffer)->Size = BufferSize;
-            copymem(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), BufferSize);
-         }
-         else copymem(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), it->Size);
-      }
-
-      glQueue.erase(it);
-      return ERR::Okay;
-   }
-
-   return ERR::Search;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 ProcessMessages: Processes system messages that are queued in the task's message buffer.
 
 The ProcessMessages() function is used to process the task's message queue.  Messages are dispatched to message
@@ -387,8 +320,7 @@ timer_cycle:
       }
 
       // Consume queued messages
-
-      
+            
       const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
 
       unsigned i;
@@ -401,6 +333,8 @@ timer_cycle:
          }
 
          tlCurrentMsg = &glQueue[i];
+
+         // NOTE: This loop relies on the assumption that glQueue messages cannot be erased by clients.
 
          for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
             if ((hdl->MsgType IS MSGID::NIL) or (hdl->MsgType IS glQueue[i].Type)) {
@@ -430,8 +364,6 @@ timer_cycle:
                }
             }
          }
-
-         glQueue[i].Type = MSGID::NIL;
 
          tlCurrentMsg = NULL;
       }
@@ -631,9 +563,9 @@ ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size)
          for (auto it=glQueue.begin(); it != glQueue.end(); it++) {
             if (it->Type IS Type) {
                if ((Flags & MSF::NO_DUPLICATE) != MSF::NIL) return ERR::Okay;
-               else { // Delete the existing message before adding the new one when MF::UPDATE has been specified.
-                  it = glQueue.erase(it);
-                  break;
+               else {
+                  it->setBuffer(Data, Size);
+                  return ERR::Okay;
                }
             }
          }
@@ -859,15 +791,12 @@ The UpdateMessage() function provides a facility for updating the content of exi
 The client must provide the ID of the message to update and the new message Type and/or Data to set against the
 message.
 
-Messages can be deleted from the queue by setting the `Type` to `-1`.  There is no need to provide buffer information
-when deleting a message.
-
 If `Data` is defined, its size should equal that of the data already set against the message.  The size will be trimmed
 if it exceeds that of the existing message, as this function cannot expand the size of the queue.
 
 -INPUT-
 int Message:   The ID of the message that will be updated.
-int(MSGID) Type: The type of the message.  If set to `-1`, the message will be deleted.
+int(MSGID) Type: The type of the message.
 buf(ptr) Data: Pointer to a buffer that contains the new data for the message.
 bufsize Size:  The byte-size of the `Data` that has been supplied.  It must not exceed the size of the message that is being updated.
 
@@ -888,12 +817,8 @@ ERR UpdateMessage(int MessageID, MSGID Type, APTR Buffer, int BufferSize)
 
    for (auto it=glQueue.begin(); it != glQueue.end(); it++) {
       if (it->UID != MessageID) continue;
-
       if (Buffer) it->setBuffer(Buffer, BufferSize);
-
-      if (Type IS MSGID(-1)) glQueue.erase(it); // Delete message from the queue
-      else if (Type != MSGID::NIL) it->Type = Type;
-
+      if (Type != MSGID::NIL) it->Type = Type;
       return ERR::Okay;
    }
 

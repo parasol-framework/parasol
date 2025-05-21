@@ -2076,7 +2076,6 @@ struct CoreBase {
    ERR (*_ProcessMessages)(PMF Flags, int TimeOut);
    ERR (*_IdentifyFile)(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
    ERR (*_ReallocMemory)(APTR Memory, uint32_t Size, APTR *Address, MEMORYID *ID);
-   ERR (*_GetMessage)(MSGID Type, MSF Flags, APTR Buffer, int Size);
    ERR (*_ReleaseMemory)(MEMORYID MemoryID);
    CLASSID (*_ResolveClassName)(CSTRING Name);
    ERR (*_SendMessage)(MSGID Type, MSF Flags, APTR Data, int Size);
@@ -2175,7 +2174,6 @@ inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return C
 inline ERR ProcessMessages(PMF Flags, int TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass) { return CoreBase->_IdentifyFile(Path,Filter,Class,SubClass); }
 inline ERR ReallocMemory(APTR Memory, uint32_t Size, APTR *Address, MEMORYID *ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
-inline ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, int Size) { return CoreBase->_GetMessage(Type,Flags,Buffer,Size); }
 inline ERR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
 inline ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
@@ -2268,7 +2266,6 @@ extern "C" ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR ProcessMessages(PMF Flags, int TimeOut);
 extern "C" ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
 extern "C" ERR ReallocMemory(APTR Memory, uint32_t Size, APTR *Address, MEMORYID *ID);
-extern "C" ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, int Size);
 extern "C" ERR ReleaseMemory(MEMORYID MemoryID);
 extern "C" CLASSID ResolveClassName(CSTRING Name);
 extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);
