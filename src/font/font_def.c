@@ -3,7 +3,7 @@
 namespace fnt {
 extern ERR GetList(struct FontList ** Result);
 extern int StringWidth(objFont * Font, CSTRING String, int Chars);
-extern int CharWidth(objFont * Font, ULONG Char);
+extern int CharWidth(objFont * Font, uint32_t Char);
 extern ERR RefreshFonts();
 extern ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING * Path, FMETA * Meta);
 extern ERR ResolveFamilyName(CSTRING String, CSTRING * Result);

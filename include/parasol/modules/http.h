@@ -143,8 +143,8 @@ class objHTTP : public Object {
 
    using create = pf::Create<objHTTP>;
 
-   DOUBLE   DataTimeout;     // The data timeout value, relevant when receiving or sending data.
-   DOUBLE   ConnectTimeout;  // The initial connection timeout value, measured in seconds.
+   double   DataTimeout;     // The data timeout value, relevant when receiving or sending data.
+   double   ConnectTimeout;  // The initial connection timeout value, measured in seconds.
    int64_t  Index;           // Indicates download progress in terms of bytes received.
    int64_t  ContentLength;   // The byte length of incoming or outgoing content.
    int64_t  Size;            // Set this field to define the length of a data transfer when issuing a POST command.
@@ -213,12 +213,12 @@ class objHTTP : public Object {
 
    // Customised field setting
 
-   inline ERR setDataTimeout(const DOUBLE Value) noexcept {
+   inline ERR setDataTimeout(const double Value) noexcept {
       this->DataTimeout = Value;
       return ERR::Okay;
    }
 
-   inline ERR setConnectTimeout(const DOUBLE Value) noexcept {
+   inline ERR setConnectTimeout(const double Value) noexcept {
       this->ConnectTimeout = Value;
       return ERR::Okay;
    }

@@ -1293,14 +1293,14 @@ enum class KEY : int {
 
 struct InputEvent {
    const struct InputEvent * Next;    // Next event in the chain
-   DOUBLE   Value;                    // The value associated with the Type
+   double   Value;                    // The value associated with the Type
    int64_t  Timestamp;                // PreciseTime() of the recorded input
    OBJECTID RecipientID;              // Surface that the input message is being conveyed to
    OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
-   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor (relative to the top left of the display)
-   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor (relative to the top left of the display)
-   DOUBLE   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   DOUBLE   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   double   AbsX;                     // Absolute horizontal position of mouse cursor (relative to the top left of the display)
+   double   AbsY;                     // Absolute vertical position of mouse cursor (relative to the top left of the display)
+   double   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   double   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
    OBJECTID DeviceID;                 // The hardware device that this event originated from
    JET      Type;                     // JET constant that describes the event
    JTYPE    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object
@@ -1333,50 +1333,50 @@ struct dcDeviceInput {
 };
 
 struct DateTime {
-   WORD Year;        // Year
-   BYTE Month;       // Month 1 to 12
-   BYTE Day;         // Day 1 to 31
-   BYTE Hour;        // Hour 0 to 23
-   BYTE Minute;      // Minute 0 to 59
-   BYTE Second;      // Second 0 to 59
-   BYTE TimeZone;    // TimeZone -13 to +13
+   int16_t Year;    // Year
+   BYTE    Month;   // Month 1 to 12
+   BYTE    Day;     // Day 1 to 31
+   BYTE    Hour;    // Hour 0 to 23
+   BYTE    Minute;  // Minute 0 to 59
+   BYTE    Second;  // Second 0 to 59
+   BYTE    TimeZone; // TimeZone -13 to +13
 };
 
 struct HSV {
-   DOUBLE Hue;           // Between 0 and 359.999
-   DOUBLE Saturation;    // Between 0 and 1.0
-   DOUBLE Value;         // Between 0 and 1.0.  Corresponds to Value, Lightness or Brightness
-   DOUBLE Alpha;         // Alpha blending value from 0 to 1.0.
+   double Hue;           // Between 0 and 359.999
+   double Saturation;    // Between 0 and 1.0
+   double Value;         // Between 0 and 1.0.  Corresponds to Value, Lightness or Brightness
+   double Alpha;         // Alpha blending value from 0 to 1.0.
 };
 
 struct FRGB {
-   FLOAT Red;    // Red component value
-   FLOAT Green;  // Green component value
-   FLOAT Blue;   // Blue component value
-   FLOAT Alpha;  // Alpha component value
+   float Red;    // Red component value
+   float Green;  // Green component value
+   float Blue;   // Blue component value
+   float Alpha;  // Alpha component value
    FRGB() { };
    FRGB(float R, float G, float B, float A = 1.0) : Red(R), Green(G), Blue(B), Alpha(A) { };
 };
 
 typedef struct RGB8 {
-   UBYTE Red;    // Red component value
-   UBYTE Green;  // Green component value
-   UBYTE Blue;   // Blue component value
-   UBYTE Alpha;  // Alpha component value
+   uint8_t Red;    // Red component value
+   uint8_t Green;  // Green component value
+   uint8_t Blue;   // Blue component value
+   uint8_t Alpha;  // Alpha component value
 } RGB8;
 
 struct RGB16 {
-   UWORD Red;    // Red component value
-   UWORD Green;  // Green component value
-   UWORD Blue;   // Blue component value
-   UWORD Alpha;  // Alpha component value
+   uint16_t Red;    // Red component value
+   uint16_t Green;  // Green component value
+   uint16_t Blue;   // Blue component value
+   uint16_t Alpha;  // Alpha component value
 };
 
 struct RGB32 {
-   ULONG Red;    // Red component value
-   ULONG Green;  // Green component value
-   ULONG Blue;   // Blue component value
-   ULONG Alpha;  // Alpha component value
+   uint32_t Red;    // Red component value
+   uint32_t Green;  // Green component value
+   uint32_t Blue;   // Blue component value
+   uint32_t Alpha;  // Alpha component value
 };
 
 struct RGBPalette {
@@ -1385,19 +1385,19 @@ struct RGBPalette {
 };
 
 typedef struct ColourFormat {
-   UBYTE RedShift;        // Right shift value for red (15/16 bit formats only)
-   UBYTE GreenShift;      // Right shift value for green
-   UBYTE BlueShift;       // Right shift value for blue
-   UBYTE AlphaShift;      // Right shift value for alpha
-   UBYTE RedMask;         // Unshifted mask value for red (ranges from 0x00 to 0xff)
-   UBYTE GreenMask;       // Unshifted mask value for green
-   UBYTE BlueMask;        // Unshifted mask value for blue
-   UBYTE AlphaMask;       // Unshifted mask value for alpha
-   UBYTE RedPos;          // Left shift/positional value for red
-   UBYTE GreenPos;        // Left shift/positional value for green
-   UBYTE BluePos;         // Left shift/positional value for blue
-   UBYTE AlphaPos;        // Left shift/positional value for alpha
-   UBYTE BitsPerPixel;    // Number of bits per pixel for this format.
+   uint8_t RedShift;        // Right shift value for red (15/16 bit formats only)
+   uint8_t GreenShift;      // Right shift value for green
+   uint8_t BlueShift;       // Right shift value for blue
+   uint8_t AlphaShift;      // Right shift value for alpha
+   uint8_t RedMask;         // Unshifted mask value for red (ranges from 0x00 to 0xff)
+   uint8_t GreenMask;       // Unshifted mask value for green
+   uint8_t BlueMask;        // Unshifted mask value for blue
+   uint8_t AlphaMask;       // Unshifted mask value for alpha
+   uint8_t RedPos;          // Left shift/positional value for red
+   uint8_t GreenPos;        // Left shift/positional value for green
+   uint8_t BluePos;         // Left shift/positional value for blue
+   uint8_t AlphaPos;        // Left shift/positional value for alpha
+   uint8_t BitsPerPixel;    // Number of bits per pixel for this format.
 } COLOURFORMAT;
 
 struct ClipRectangle {
@@ -1771,8 +1771,8 @@ struct ResourceManager {
 };
 
 struct FunctionField {
-   CSTRING Name;    // Name of the field
-   ULONG   Type;    // Type of the field
+   CSTRING  Name;   // Name of the field
+   uint32_t Type;   // Type of the field
 };
 
 struct Function {
@@ -1811,11 +1811,11 @@ struct ModHeader {
 };
 
 struct FieldArray {
-   CSTRING Name;    // The name of the field, e.g. Width
-   APTR    GetField; // void GetField(*Object, APTR Result);
-   APTR    SetField; // ERR SetField(*Object, APTR Value);
-   MAXINT  Arg;     // Can be a pointer or an integer value
-   ULONG   Flags;   // Special flags that describe the field
+   CSTRING  Name;   // The name of the field, e.g. Width
+   APTR     GetField; // void GetField(*Object, APTR Result);
+   APTR     SetField; // ERR SetField(*Object, APTR Value);
+   MAXINT   Arg;    // Can be a pointer or an integer value
+   uint32_t Flags;  // Special flags that describe the field
   template <class G = APTR, class S = APTR, class T = MAXINT> FieldArray(CSTRING pName, uint32_t pFlags, G pGetField = NULL, S pSetField = NULL, T pArg = 0) :
      Name(pName), GetField((APTR)pGetField), SetField((APTR)pSetField), Arg((MAXINT)pArg), Flags(pFlags)
      { }
@@ -1834,8 +1834,8 @@ struct SystemState {
 };
 
 struct Unit {
-   DOUBLE Value;    // The unit value.
-   ULONG  Type;     // Additional type information
+   double   Value;  // The unit value.
+   uint32_t Type;   // Additional type information
    Unit(double pValue, int pType = FD_DOUBLE) : Value(pValue), Type(pType) { }
    Unit() : Value(0), Type(0) { }
    Unit(std::string_view String) { read(String); }
@@ -1873,9 +1873,9 @@ struct MethodEntry {
 };
 
 struct ActionTable {
-   ULONG   Hash;                         // Hash of the action name.
-   int     Size;                         // Byte-size of the structure for this action.
-   CSTRING Name;                         // Name of the action.
+   uint32_t Hash;                        // Hash of the action name.
+   int      Size;                        // Byte-size of the structure for this action.
+   CSTRING  Name;                        // Name of the action.
    const struct FunctionField * Args;    // List of fields that are passed to this action.
 };
 
@@ -1894,10 +1894,10 @@ struct Message {
 typedef struct MemInfo {
    APTR     Start;       // The starting address of the memory block (does not apply to shared blocks).
    OBJECTID ObjectID;    // The object that owns the memory block.
-   ULONG    Size;        // The size of the memory block.
+   uint32_t Size;        // The size of the memory block.
    MEM      Flags;       // The type of memory.
    MEMORYID MemoryID;    // The unique ID for this block.
-   WORD     AccessCount; // Total number of active locks on this block.
+   int16_t  AccessCount; // Total number of active locks on this block.
 } MEMINFO;
 
 struct MsgHandler {
@@ -1924,12 +1924,12 @@ struct CompressionFeedback {
    int64_t Progress;        // Progress indicator (byte position for the file being de/compressed).
    int64_t OriginalSize;    // Original size of the file
    int64_t CompressedSize;  // Compressed size of the file
-   WORD    Year;            // Year of the original file's datestamp.
-   WORD    Month;           // Month of the original file's datestamp.
-   WORD    Day;             // Day of the original file's datestamp.
-   WORD    Hour;            // Hour of the original file's datestamp.
-   WORD    Minute;          // Minute of the original file's datestamp.
-   WORD    Second;          // Second of the original file's datestamp.
+   int16_t Year;            // Year of the original file's datestamp.
+   int16_t Month;           // Month of the original file's datestamp.
+   int16_t Day;             // Day of the original file's datestamp.
+   int16_t Hour;            // Hour of the original file's datestamp.
+   int16_t Minute;          // Minute of the original file's datestamp.
+   int16_t Second;          // Second of the original file's datestamp.
    CompressionFeedback() : FeedbackID(FDB::NIL), Index(0), Path(NULL), Dest(NULL),
       Progress(0), OriginalSize(0), CompressedSize(0),
       Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
@@ -1998,15 +1998,15 @@ struct FileFeedback {
 };
 
 struct Field {
-   MAXINT  Arg;                                                              // An option to complement the field type.  Can be a pointer or an integer value
+   MAXINT   Arg;                                                             // An option to complement the field type.  Can be a pointer or an integer value
    ERR (*GetValue)(APTR, APTR);                                              // A virtual function that will retrieve the value for this field.
-   APTR    SetValue;                                                         // A virtual function that will set the value for this field.
+   APTR     SetValue;                                                        // A virtual function that will set the value for this field.
    ERR (*WriteValue)(OBJECTPTR, struct Field *, int, const void *, int);     // An internal function for writing to this field.
-   CSTRING Name;                                                             // The English name for the field, e.g. Width
-   ULONG   FieldID;                                                          // Provides a fast way of finding fields, e.g. FID_Width
-   UWORD   Offset;                                                           // Field offset within the object
-   UWORD   Index;                                                            // Field array index
-   ULONG   Flags;                                                            // Special flags that describe the field
+   CSTRING  Name;                                                            // The English name for the field, e.g. Width
+   uint32_t FieldID;                                                         // Provides a fast way of finding fields, e.g. FID_Width
+   uint16_t Offset;                                                          // Field offset within the object
+   uint16_t Index;                                                           // Field array index
+   uint32_t Flags;                                                           // Special flags that describe the field
 };
 
 struct ScriptArg { // For use with sc::Exec
@@ -2075,7 +2075,7 @@ struct CoreBase {
    ERR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
    ERR (*_ProcessMessages)(PMF Flags, int TimeOut);
    ERR (*_IdentifyFile)(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
-   ERR (*_ReallocMemory)(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID);
+   ERR (*_ReallocMemory)(APTR Memory, uint32_t Size, APTR *Address, MEMORYID *ID);
    ERR (*_GetMessage)(MSGID Type, MSF Flags, APTR Buffer, int Size);
    ERR (*_ReleaseMemory)(MEMORYID MemoryID);
    CLASSID (*_ResolveClassName)(CSTRING Name);
@@ -2083,20 +2083,20 @@ struct CoreBase {
    ERR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
    ERR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
-   CSTRING (*_FieldName)(ULONG FieldID);
+   CSTRING (*_FieldName)(uint32_t FieldID);
    ERR (*_ScanDir)(struct DirInfo *Info);
    ERR (*_SetName)(OBJECTPTR Object, CSTRING Name);
    void (*_LogReturn)(void);
    ERR (*_SubscribeAction)(OBJECTPTR Object, AC Action, FUNCTION *Callback);
    ERR (*_SubscribeEvent)(int64_t Event, FUNCTION *Callback, APTR *Handle);
-   ERR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription);
-   ERR (*_UpdateTimer)(APTR Subscription, DOUBLE Interval);
+   ERR (*_SubscribeTimer)(double Interval, FUNCTION *Callback, APTR *Subscription);
+   ERR (*_UpdateTimer)(APTR Subscription, double Interval);
    ERR (*_UnsubscribeAction)(OBJECTPTR Object, AC Action);
    void (*_UnsubscribeEvent)(APTR Handle);
    ERR (*_BroadcastEvent)(APTR Event, int EventSize);
    void (*_WaitTime)(int Seconds, int MicroSeconds);
    int64_t (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
-   ULONG (*_GenCRC32)(ULONG CRC, APTR Data, ULONG Length);
+   uint32_t (*_GenCRC32)(uint32_t CRC, APTR Data, uint32_t Length);
    int64_t (*_GetResource)(RES Resource);
    int64_t (*_SetResource)(RES Resource, int64_t Value);
    ERR (*_ScanMessages)(int *Handle, MSGID Type, APTR Buffer, int Size);
@@ -2113,7 +2113,7 @@ struct CoreBase {
    int64_t (*_PreciseTime)(void);
    ERR (*_OpenDir)(CSTRING Path, RDF Flags, struct DirInfo **Info);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID Object);
-   struct Field * (*_FindField)(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target);
+   struct Field * (*_FindField)(OBJECTPTR Object, uint32_t FieldID, OBJECTPTR *Target);
    CSTRING (*_GetErrorMsg)(ERR Error);
    struct Message * (*_GetActionMsg)(void);
    ERR (*_FuncError)(CSTRING Header, ERR Error);
@@ -2174,7 +2174,7 @@ inline void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error)
 inline ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERR ProcessMessages(PMF Flags, int TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass) { return CoreBase->_IdentifyFile(Path,Filter,Class,SubClass); }
-inline ERR ReallocMemory(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
+inline ERR ReallocMemory(APTR Memory, uint32_t Size, APTR *Address, MEMORYID *ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
 inline ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, int Size) { return CoreBase->_GetMessage(Type,Flags,Buffer,Size); }
 inline ERR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
@@ -2182,20 +2182,20 @@ inline ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size) { return Core
 inline ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
 template<class... Args> ERR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
-inline CSTRING FieldName(ULONG FieldID) { return CoreBase->_FieldName(FieldID); }
+inline CSTRING FieldName(uint32_t FieldID) { return CoreBase->_FieldName(FieldID); }
 inline ERR ScanDir(struct DirInfo *Info) { return CoreBase->_ScanDir(Info); }
 inline ERR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
 inline ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION *Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
 inline ERR SubscribeEvent(int64_t Event, FUNCTION *Callback, APTR *Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Handle); }
-inline ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
-inline ERR UpdateTimer(APTR Subscription, DOUBLE Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
+inline ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
+inline ERR UpdateTimer(APTR Subscription, double Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
 inline ERR UnsubscribeAction(OBJECTPTR Object, AC Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
 inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
 inline ERR BroadcastEvent(APTR Event, int EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
 inline void WaitTime(int Seconds, int MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
 inline int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
-inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
+inline uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
 inline int64_t GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
 inline int64_t SetResource(RES Resource, int64_t Value) { return CoreBase->_SetResource(Resource,Value); }
 inline ERR ScanMessages(int *Handle, MSGID Type, APTR Buffer, int Size) { return CoreBase->_ScanMessages(Handle,Type,Buffer,Size); }
@@ -2212,7 +2212,7 @@ inline ERR QueueAction(AC Action, OBJECTID Object, APTR Args) { return CoreBase-
 inline int64_t PreciseTime(void) { return CoreBase->_PreciseTime(); }
 inline ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
 inline OBJECTPTR GetObjectPtr(OBJECTID Object) { return CoreBase->_GetObjectPtr(Object); }
-inline struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) { return CoreBase->_FindField(Object,FieldID,Target); }
+inline struct Field * FindField(OBJECTPTR Object, uint32_t FieldID, OBJECTPTR *Target) { return CoreBase->_FindField(Object,FieldID,Target); }
 inline CSTRING GetErrorMsg(ERR Error) { return CoreBase->_GetErrorMsg(Error); }
 inline struct Message * GetActionMsg(void) { return CoreBase->_GetActionMsg(); }
 inline ERR FuncError(CSTRING Header, ERR Error) { return CoreBase->_FuncError(Header,Error); }
@@ -2267,7 +2267,7 @@ extern "C" void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Er
 extern "C" ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR ProcessMessages(PMF Flags, int TimeOut);
 extern "C" ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *Class, CLASSID *SubClass);
-extern "C" ERR ReallocMemory(APTR Memory, ULONG Size, APTR *Address, MEMORYID *ID);
+extern "C" ERR ReallocMemory(APTR Memory, uint32_t Size, APTR *Address, MEMORYID *ID);
 extern "C" ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, int Size);
 extern "C" ERR ReleaseMemory(MEMORYID MemoryID);
 extern "C" CLASSID ResolveClassName(CSTRING Name);
@@ -2275,20 +2275,20 @@ extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);
 extern "C" ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 extern "C" OBJECTPTR SetContext(OBJECTPTR Object);
 extern "C" ERR SetField(OBJECTPTR Object, FIELD Field, ...);
-extern "C" CSTRING FieldName(ULONG FieldID);
+extern "C" CSTRING FieldName(uint32_t FieldID);
 extern "C" ERR ScanDir(struct DirInfo *Info);
 extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);
 extern "C" void LogReturn(void);
 extern "C" ERR SubscribeAction(OBJECTPTR Object, AC Action, FUNCTION *Callback);
 extern "C" ERR SubscribeEvent(int64_t Event, FUNCTION *Callback, APTR *Handle);
-extern "C" ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription);
-extern "C" ERR UpdateTimer(APTR Subscription, DOUBLE Interval);
+extern "C" ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription);
+extern "C" ERR UpdateTimer(APTR Subscription, double Interval);
 extern "C" ERR UnsubscribeAction(OBJECTPTR Object, AC Action);
 extern "C" void UnsubscribeEvent(APTR Handle);
 extern "C" ERR BroadcastEvent(APTR Event, int EventSize);
 extern "C" void WaitTime(int Seconds, int MicroSeconds);
 extern "C" int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
-extern "C" ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length);
+extern "C" uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length);
 extern "C" int64_t GetResource(RES Resource);
 extern "C" int64_t SetResource(RES Resource, int64_t Value);
 extern "C" ERR ScanMessages(int *Handle, MSGID Type, APTR Buffer, int Size);
@@ -2305,7 +2305,7 @@ extern "C" ERR QueueAction(AC Action, OBJECTID Object, APTR Args);
 extern "C" int64_t PreciseTime(void);
 extern "C" ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info);
 extern "C" OBJECTPTR GetObjectPtr(OBJECTID Object);
-extern "C" struct Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target);
+extern "C" struct Field * FindField(OBJECTPTR Object, uint32_t FieldID, OBJECTPTR *Target);
 extern "C" CSTRING GetErrorMsg(ERR Error);
 extern "C" struct Message * GetActionMsg(void);
 extern "C" ERR FuncError(CSTRING Header, ERR Error);
@@ -3094,7 +3094,7 @@ class objMetaClass : public Object {
 
    using create = pf::Create<objMetaClass>;
 
-   DOUBLE  ClassVersion;                // The version number of the class.
+   double  ClassVersion;                // The version number of the class.
    const struct FieldArray * Fields;    // Points to a FieldArray that describes the class' object structure.
    struct Field * Dictionary;           // Returns a field lookup table sorted by field IDs.
    CSTRING ClassName;                   // The name of the represented class.
@@ -3119,7 +3119,7 @@ class objMetaClass : public Object {
 
    // Customised field setting
 
-   inline ERR setClassVersion(const DOUBLE Value) noexcept {
+   inline ERR setClassVersion(const double Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->ClassVersion = Value;
       return ERR::Okay;
@@ -3843,7 +3843,7 @@ class objTask : public Object {
 
    using create = pf::Create<objTask>;
 
-   DOUBLE TimeOut;    // Limits the amount of time to wait for a launched process to return.
+   double TimeOut;    // Limits the amount of time to wait for a launched process to return.
    TSF    Flags;      // Optional flags.
    int    ReturnCode; // The task's return code can be retrieved following execution.
    int    ProcessID;  // Reflects the process ID when an executable is launched.
@@ -3912,7 +3912,7 @@ class objTask : public Object {
 
    // Customised field setting
 
-   inline ERR setTimeOut(const DOUBLE Value) noexcept {
+   inline ERR setTimeOut(const double Value) noexcept {
       this->TimeOut = Value;
       return ERR::Okay;
    }

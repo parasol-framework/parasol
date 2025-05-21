@@ -40,7 +40,7 @@ thread routine.
 #include "../defs.h"
 #include <parasol/main.h>
 
-static const LONG THREADPOOL_MAX = 6;
+static const int THREADPOOL_MAX = 6;
 
 static void thread_entry_cleanup(void *);
 
@@ -49,10 +49,10 @@ struct AsyncAction {
    bool InUse;
 
    // Move constructor
-   AsyncAction(AsyncAction &&Other) noexcept : Thread(NULL), InUse(false) {
+   AsyncAction(AsyncAction &&Other) noexcept : Thread(nullptr), InUse(false) {
       Thread = Other.Thread;
       InUse  = Other.InUse;
-      Other.Thread = NULL;
+      Other.Thread = nullptr;
       Other.InUse  = false;
    }
 
@@ -128,7 +128,7 @@ void threadpool_release(extThread *Thread)
 {
    pf::Log log;
 
-   log.traceBranch("Thread: #%d, Total: %d", Thread->UID, (LONG)glAsyncActions.size());
+   log.traceBranch("Thread: #%d, Total: %d", Thread->UID, (int)glAsyncActions.size());
 
    glmThreadPool.lock();
    for (auto &at : glAsyncActions) {
@@ -153,7 +153,7 @@ void remove_threadpool(void)
 {
    if (!glAsyncActions.empty()) {
       pf::Log log("Core");
-      log.branch("Removing the action thread pool of %d threads.", (LONG)glAsyncActions.size());
+      log.branch("Removing the action thread pool of %d threads.", (int)glAsyncActions.size());
       std::lock_guard lock(glmThreadPool);
       glAsyncActions.clear();
    }
@@ -162,22 +162,22 @@ void remove_threadpool(void)
 //********************************************************************************************************************
 // Called whenever a MSGID::THREAD_ACTION message is caught by ProcessMessages().  See thread_action() for usage.
 
-ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
    auto msg = (ThreadActionMessage *)Message;
    if (!msg) return ERR::Okay;
 
    if (msg->Callback.isC()) {
-      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, LONG, APTR))msg->Callback.Routine;
+      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, int, APTR))msg->Callback.Routine;
       routine(msg->ActionID, msg->Object, msg->Error, msg->Key, msg->Callback.Meta);
    }
    else if (msg->Callback.isScript()) {
       auto script = msg->Callback.Context;
       if (LockObject(script, 5000) IS ERR::Okay) {
          sc::Call(msg->Callback, std::to_array<ScriptArg>({
-            { "ActionID", LONG(msg->ActionID) },
+            { "ActionID", int(msg->ActionID) },
             { "Object",   msg->Object, FD_OBJECTPTR },
-            { "Error",    LONG(msg->Error) },
+            { "Error",    int(msg->Error) },
             { "Key",      msg->Key }
          }));
          ReleaseObject(script);
@@ -190,7 +190,7 @@ ERR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG M
 //********************************************************************************************************************
 // Called whenever a MSGID::THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
 
-ERR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
    pf::Log log;
 
@@ -228,7 +228,7 @@ ERR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
 //********************************************************************************************************************
 // This is the entry point for all threads.
 
-THREADVAR BYTE tlThreadCrashed;
+THREADVAR int8_t tlThreadCrashed;
 THREADVAR extThread *tlThreadRef;
 
 #ifdef _WIN32
@@ -276,7 +276,7 @@ static void * thread_entry(extThread *Self)
    if (!pooled) SendMessage(MSGID::THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
 
    // Reset the crash indicators and invoke the cleanup code.
-   tlThreadRef     = NULL;
+   tlThreadRef     = nullptr;
    tlThreadCrashed = false;
    #ifdef __GNUC__
    pthread_cleanup_pop(true);
@@ -393,7 +393,7 @@ static ERR THREAD_Free(extThread *Self)
 {
    if ((Self->Data) and (Self->DataSize > 0)) {
       FreeResource(Self->Data);
-      Self->Data = NULL;
+      Self->Data = nullptr;
       Self->DataSize = 0;
    }
 
@@ -481,7 +481,7 @@ static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
 
    if (Self->Data) {
       FreeResource(Self->Data);
-      Self->Data = NULL;
+      Self->Data = nullptr;
       Self->DataSize = 0;
    }
 
@@ -489,7 +489,7 @@ static ERR THREAD_SetData(extThread *Self, struct th::SetData *Args)
       Self->Data = Args->Data;
       return ERR::Okay;
    }
-   else if (AllocMemory(Args->Size, MEM::DATA, &Self->Data, NULL) IS ERR::Okay) {
+   else if (AllocMemory(Args->Size, MEM::DATA, &Self->Data, nullptr) IS ERR::Okay) {
       Self->DataSize = Args->Size;
       copymem(Args->Data, Self->Data, Args->Size);
       return ERR::Okay;
@@ -535,7 +535,7 @@ the thread object.  It is paired with the #DataSize field, which reflects the si
 
 *********************************************************************************************************************/
 
-static ERR GET_Data(extThread *Self, APTR *Value, LONG *Elements)
+static ERR GET_Data(extThread *Self, APTR *Value, int *Elements)
 {
    *Value = Self->Data;
    *Elements = Self->DataSize;
@@ -599,7 +599,7 @@ static const FieldArray clFields[] = {
    { "DataSize",  FD_LONG|FDF_R },
    { "StackSize", FDF_LONG|FDF_RW },
    { "Error",     FDF_LONG|FDF_R },
-   { "Flags",     FDF_LONG|FDF_RI, NULL, NULL, &clThreadFlags },
+   { "Flags",     FDF_LONG|FDF_RI, nullptr, nullptr, &clThreadFlags },
    // Virtual fields
    { "Callback",  FDF_FUNCTIONPTR|FDF_RW, GET_Callback, SET_Callback },
    { "Routine",   FDF_FUNCTIONPTR|FDF_RW, GET_Routine, SET_Routine },

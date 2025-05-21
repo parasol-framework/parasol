@@ -76,8 +76,8 @@ class objFont : public Object {
 
    using create = pf::Create<objFont>;
 
-   DOUBLE Point;           // The point size of a font.
-   DOUBLE GlyphSpacing;    // Adjusts the amount of spacing between each character.
+   double Point;           // The point size of a font.
+   double GlyphSpacing;    // Adjusts the amount of spacing between each character.
    objBitmap * Bitmap;     // The destination Bitmap to use when drawing a font.
    STRING String;          // The string to use when drawing a Font.
    STRING Path;            // The path to a font file.
@@ -115,13 +115,13 @@ class objFont : public Object {
 
    // Customised field setting
 
-   inline ERR setPoint(const DOUBLE Value) noexcept {
+   inline ERR setPoint(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setGlyphSpacing(const DOUBLE Value) noexcept {
+   inline ERR setGlyphSpacing(const double Value) noexcept {
       this->GlyphSpacing = Value;
       return ERR::Okay;
    }
@@ -279,7 +279,7 @@ struct FontBase {
 #ifndef PARASOL_STATIC
    ERR (*_GetList)(struct FontList **Result);
    int (*_StringWidth)(objFont *Font, CSTRING String, int Chars);
-   int (*_CharWidth)(objFont *Font, ULONG Char);
+   int (*_CharWidth)(objFont *Font, uint32_t Char);
    ERR (*_RefreshFonts)(void);
    ERR (*_SelectFont)(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta);
    ERR (*_ResolveFamilyName)(CSTRING String, CSTRING *Result);
@@ -292,7 +292,7 @@ extern struct FontBase *FontBase;
 namespace fnt {
 inline ERR GetList(struct FontList **Result) { return FontBase->_GetList(Result); }
 inline int StringWidth(objFont *Font, CSTRING String, int Chars) { return FontBase->_StringWidth(Font,String,Chars); }
-inline int CharWidth(objFont *Font, ULONG Char) { return FontBase->_CharWidth(Font,Char); }
+inline int CharWidth(objFont *Font, uint32_t Char) { return FontBase->_CharWidth(Font,Char); }
 inline ERR RefreshFonts(void) { return FontBase->_RefreshFonts(); }
 inline ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta) { return FontBase->_SelectFont(Name,Style,Path,Meta); }
 inline ERR ResolveFamilyName(CSTRING String, CSTRING *Result) { return FontBase->_ResolveFamilyName(String,Result); }
@@ -301,7 +301,7 @@ inline ERR ResolveFamilyName(CSTRING String, CSTRING *Result) { return FontBase-
 namespace fnt {
 extern ERR GetList(struct FontList **Result);
 extern int StringWidth(objFont *Font, CSTRING String, int Chars);
-extern int CharWidth(objFont *Font, ULONG Char);
+extern int CharWidth(objFont *Font, uint32_t Char);
 extern ERR RefreshFonts(void);
 extern ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta);
 extern ERR ResolveFamilyName(CSTRING String, CSTRING *Result);

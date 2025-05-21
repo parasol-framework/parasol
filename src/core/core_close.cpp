@@ -3,6 +3,75 @@ static void free_private_memory(void);
 
 //********************************************************************************************************************
 
+static void free_classes(void) 
+{
+   #ifdef __ANDROID__
+   if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = 0; }
+   #endif
+   if (glCompressedStreamClass) { FreeResource(glCompressedStreamClass); glCompressedStreamClass  = 0; }
+   if (glArchiveClass)      { FreeResource(glArchiveClass);      glArchiveClass      = 0; }
+   if (glCompressionClass)  { FreeResource(glCompressionClass);  glCompressionClass  = 0; }
+   if (glScriptClass)       { FreeResource(glScriptClass);       glScriptClass       = 0; }
+   if (glFileClass)         { FreeResource(glFileClass);         glFileClass         = 0; }
+   if (glStorageClass)      { FreeResource(glStorageClass);      glStorageClass      = 0; }
+   if (glConfigClass)       { FreeResource(glConfigClass);       glConfigClass       = 0; }
+   if (glTimeClass)         { FreeResource(glTimeClass);         glTimeClass         = 0; }
+   if (glModuleClass)       { FreeResource(glModuleClass);       glModuleClass       = 0; }
+   if (glThreadClass)       { FreeResource(glThreadClass);       glThreadClass       = 0; }
+   if (glRootModuleClass)   { FreeResource(glRootModuleClass);   glRootModuleClass   = 0; }
+}
+
+//********************************************************************************************************************
+// Remove the Task object and remaining children
+
+static void remove_task(void)
+{
+   if (glCurrentTask) {
+      pf::Log log("Shutdown");
+      log.branch("Freeing the task object and its resources.");
+      FreeResource(glCurrentTask);
+      glCurrentTask = nullptr;
+   }
+}
+
+//********************************************************************************************************************
+
+static void remove_schedulers(void)
+{
+   if (glCacheTimer) {
+      auto id = glCacheTimer;
+      glCacheTimer = 0;
+      UpdateTimer(id, 0);
+   }
+
+   if (glProcessJanitor) {
+      auto id = glProcessJanitor;
+      glProcessJanitor = 0;
+      UpdateTimer(id, 0);
+   }
+}
+
+//********************************************************************************************************************
+// Remove orphaned object locks
+   
+static void remove_object_locks(void) 
+{
+   pf::Log log(__FUNCTION__);
+
+   if (auto lock = std::unique_lock{glmMemory}) {
+      for (const auto & [ id, mem ] : glPrivateMemory) {
+         if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (mem.AccessCount > 0)) {
+            if (auto obj = mem.Object) {
+               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->Owner ? obj->Owner->UID : 0, mem.AccessCount);
+               for (auto count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
+            }
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
+
 void CloseCore(void)
 {
    pf::Log log("Shutdown");
@@ -25,7 +94,7 @@ void CloseCore(void)
    tlContext = &glTopContext;
    tlDepth   = 0;
 
-   if (glClassFile) { FreeResource(glClassFile); glClassFile = NULL; }
+   if (glClassFile) { FreeResource(glClassFile); glClassFile = nullptr; }
 
    free_events(); // Remove event subscriptions
 
@@ -47,7 +116,7 @@ void CloseCore(void)
                // to stop foreign processes that we've launched.
                kill(task.ProcessID, SIGHUP);
             #else
-               SendMessage(MSGID::QUIT, MSF::NIL, NULL, 0);
+               SendMessage(MSGID::QUIT, MSF::NIL, nullptr, 0);
             #endif
 
             WaitTime(0, -100000);
@@ -57,9 +126,9 @@ void CloseCore(void)
 
    // Wait for sub-tasks to die within the designated time limit
 
-   log.msg("Waiting for %d child processes to terminate...", LONG(glTasks.size()));
+   log.msg("Waiting for %d child processes to terminate...", int(glTasks.size()));
 
-   static const LONG TIME_TO_DIE = 6; // Seconds to wait before a task has to die
+   static const int TIME_TO_DIE = 6; // Seconds to wait before a task has to die
    auto wait_until = PreciseTime() + (TIME_TO_DIE * 1000000);
    while ((!glTasks.empty()) and (PreciseTime() < wait_until)) {
       for (auto it = glTasks.begin(); it != glTasks.end(); ) {
@@ -98,7 +167,7 @@ void CloseCore(void)
    if ((glCrashStatus) and (glVideoRecovery)) {
       void (*routine)(void);
       routine = glVideoRecovery;
-      glVideoRecovery = NULL;
+      glVideoRecovery = nullptr;
       routine();
    }
 
@@ -107,7 +176,7 @@ void CloseCore(void)
    if ((glCurrentTask) or (glProcessID)) remove_process_waitlocks();
 
    if (!glCrashStatus) { // This code is only safe to execute if the process hasn't crashed.
-      if (glTime) { FreeResource(glTime); glTime = NULL; }
+      if (glTime) { FreeResource(glTime); glTime = nullptr; }
 
       // Removing objects that are tracked to the task before the first expunge will make for a cleaner exit.
 
@@ -115,7 +184,7 @@ void CloseCore(void)
          const auto children = glObjectChildren[glCurrentTask->UID]; // Take an immutable copy of the resource list
 
          if (children.size() > 0) {
-            log.branch("Freeing %d objects allocated to task #%d.", (LONG)children.size(), glCurrentTask->UID);
+            log.branch("Freeing %d objects allocated to task #%d.", (int)children.size(), glCurrentTask->UID);
 
             for (const auto id : children) FreeResource(id);
          }
@@ -126,43 +195,15 @@ void CloseCore(void)
 
       Expunge(false);
 
-      if (glCacheTimer) {
-         auto id = glCacheTimer;
-         glCacheTimer = 0;
-         UpdateTimer(id, 0);
-      }
-
-      if (glProcessJanitor) {
-         auto id = glProcessJanitor;
-         glProcessJanitor = 0;
-         UpdateTimer(id, 0);
-      }
-
-      // Remove the Task object and remaining children
-
-      if (glCurrentTask) {
-         pf::Log log("Shutdown");
-         log.branch("Freeing the task object and its resources.");
-         FreeResource(glCurrentTask);
-         glCurrentTask = NULL;
-      }
-
-      // Remove locks on any private objects that have not been unlocked yet
-
-      for (const auto & [ id, mem ] : glPrivateMemory) {
-         if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (mem.AccessCount > 0)) {
-            if (auto obj = mem.Object) {
-               log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->Owner ? obj->Owner->UID : 0, mem.AccessCount);
-               for (auto count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
-            }
-         }
-      }
+      remove_schedulers();
+      remove_task();
+      remove_object_locks();
 
       Expunge(false); // Second expunge.  Safety measures are still engaged.
 
       if (!glCrashStatus) {
          #ifdef __linux__
-            if (glFileMonitor) { FreeResource(glFileMonitor); glFileMonitor = NULL; }
+            if (glFileMonitor) { FreeResource(glFileMonitor); glFileMonitor = nullptr; }
          #endif
 
          free_file_cache();
@@ -175,32 +216,19 @@ void CloseCore(void)
       VirtualVolume("archive", VAS::DEREGISTER, TAGEND);
 
       while (glMsgHandlers) FreeResource(glMsgHandlers);
-      glLastMsgHandler = NULL;
+      glLastMsgHandler = nullptr;
 
-      #ifdef __ANDROID__
-      if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = 0; }
-      #endif
-      if (glCompressedStreamClass) { FreeResource(glCompressedStreamClass); glCompressedStreamClass  = 0; }
-      if (glArchiveClass)      { FreeResource(glArchiveClass);      glArchiveClass      = 0; }
-      if (glCompressionClass)  { FreeResource(glCompressionClass);  glCompressionClass  = 0; }
-      if (glScriptClass)       { FreeResource(glScriptClass);       glScriptClass       = 0; }
-      if (glFileClass)         { FreeResource(glFileClass);         glFileClass         = 0; }
-      if (glStorageClass)      { FreeResource(glStorageClass);      glStorageClass      = 0; }
-      if (glConfigClass)       { FreeResource(glConfigClass);       glConfigClass       = 0; }
-      if (glTimeClass)         { FreeResource(glTimeClass);         glTimeClass         = 0; }
-      if (glModuleClass)       { FreeResource(glModuleClass);       glModuleClass       = 0; }
-      if (glThreadClass)       { FreeResource(glThreadClass);       glThreadClass       = 0; }
-      if (glRootModuleClass)   { FreeResource(glRootModuleClass);   glRootModuleClass   = 0; }
+      free_classes();
 
       #ifdef __unix__
-         if (glSocket != -1) RegisterFD(glSocket, RFD::REMOVE, NULL, NULL);
+         if (glSocket != -1) RegisterFD(glSocket, RFD::REMOVE, nullptr, nullptr);
       #endif
 
       // Report FD's that have not been removed by the client
 
       if (!glCrashStatus) {
          for (auto &fd : glFDTable) {
-            log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)fd.FD, fd.Routine, fd.Data, LONG(fd.Flags));
+            log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)fd.FD, fd.Routine, fd.Data, int(fd.Flags));
          }
       }
    }
@@ -210,10 +238,12 @@ void CloseCore(void)
 
       log.msg("Removing all resource locks.");
 
-      for (auto & [ id, mem ] : glPrivateMemory) {
-         if ((mem.Address) and (mem.AccessCount > 0)) {
-            if (!glCrashStatus) log.msg("Removing %d locks on private memory block #%d, size %d.", mem.AccessCount, mem.MemoryID, mem.Size);
-            mem.AccessCount = 0;
+      if (auto lock = std::unique_lock{glmMemory}) {
+         for (auto & [ id, mem ] : glPrivateMemory) {
+            if ((mem.Address) and (mem.AccessCount > 0)) {
+               if (!glCrashStatus) log.msg("Removing %d locks on private memory block #%d, size %d.", mem.AccessCount, mem.MemoryID, mem.Size);
+               mem.AccessCount = 0;
+            }
          }
       }
    }
@@ -224,7 +254,7 @@ void CloseCore(void)
 
    if (glCodeIndex < CP_FREE_COREBASE) {
       glCodeIndex = CP_FREE_COREBASE;
-      if (LocalCoreBase) { FreeResource(LocalCoreBase); LocalCoreBase = NULL; }
+      if (LocalCoreBase) { FreeResource(LocalCoreBase); LocalCoreBase = nullptr; }
    }
 
    if (glCodeIndex < CP_FREE_PRIVATE_MEMORY) {
@@ -238,7 +268,7 @@ void CloseCore(void)
    #endif
 
    #ifdef __APPLE__
-      LONG socklen;
+      int socklen;
       struct sockaddr_un *sockpath = get_socket_path(glProcessID, &socklen);
       unlink(sockpath->sun_path);
    #endif
@@ -263,7 +293,7 @@ void CloseCore(void)
 
 // TODO: Expunging cannot occur while other threads are active.  In that case, the expunge should be delayed until no additional threads are running.
 
-__export void Expunge(WORD Force)
+__export void Expunge(int16_t Force)
 {
    pf::Log log(__FUNCTION__);
 
@@ -274,9 +304,9 @@ __export void Expunge(WORD Force)
 
    log.branch("Sending expunge call to all loaded modules.");
 
-   WORD mod_count = -1;
-   WORD ccount   = 0;
-   WORD Pass     = 1;
+   int16_t mod_count = -1;
+   int16_t ccount   = 0;
+   int16_t Pass     = 1;
 
    while (ccount > mod_count) {
       mod_count = ccount;
@@ -394,35 +424,38 @@ static void free_private_memory(void)
 {
    pf::Log log("Shutdown");
 
-   log.branch("Freeing private memory allocations...");
+   log.branch("Checking for orphaned memory allocations...");
+   
+   int count = 0;
 
-   // Free strings first
+   if (auto lock = std::unique_lock{glmMemory}) {
+      // Free strings first
 
-   LONG count = 0;
-   for (auto & [ id, mem ] : glPrivateMemory) {
-      if ((mem.Address) and ((mem.Flags & MEM::STRING) != MEM::NIL)) {
-         if (!glCrashStatus) log.warning("Unfreed string \"%.80s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
-         mem.AccessCount = 0;
-         FreeResource(mem.Address);
-         mem.Address = NULL;
-         count++;
-      }
-   }
-
-   // Free all other memory blocks
-
-   for (auto & [ id, mem ] : glPrivateMemory) {
-      if (mem.Address) {
-         if (!glCrashStatus) {
-            if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
-               log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, ULONG(mem.Object->classID()), mem.OwnerID);
-            }
-            else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
+      for (auto & [ id, mem ] : glPrivateMemory) {
+         if ((mem.Address) and ((mem.Flags & MEM::STRING) != MEM::NIL)) {
+            if (!glCrashStatus) log.warning("Unfreed string \"%.80s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
+            mem.AccessCount = 0;
+            FreeResource(mem.Address);
+            mem.Address = nullptr;
+            count++;
          }
-         mem.AccessCount = 0;
-         FreeResource(mem.Address);
-         mem.Address = NULL;
-         count++;
+      }
+
+      // Free all other memory blocks
+
+      for (auto & [ id, mem ] : glPrivateMemory) {
+         if (mem.Address) {
+            if (!glCrashStatus) {
+               if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
+                  log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, uint32_t(mem.Object->classID()), mem.OwnerID);
+               }
+               else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
+            }
+            mem.AccessCount = 0;
+            FreeResource(mem.Address);
+            mem.Address = nullptr;
+            count++;
+         }
       }
    }
 

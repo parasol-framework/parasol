@@ -409,7 +409,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </struct>
 
     <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
-      <field name="IP" type="char" size="8">IP address in 4/8-byte format</field>
+      <field name="IP" type="BYTE" size="8">IP address in 4/8-byte format</field>
       <field name="Next" type="struct NetClient *">Next client in the chain</field>
       <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
       <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>

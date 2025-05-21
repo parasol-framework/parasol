@@ -396,7 +396,7 @@ typedef struct SurfaceInfoV2 {
    int      Height;      // Height of the surface area
    int      AbsX;        // Absolute X coordinate
    int      AbsY;        // Absolute Y coordinate
-   WORD     Level;       // Branch level within the tree
+   int16_t  Level;       // Branch level within the tree
    BYTE     BitsPerPixel; // Bits per pixel of the bitmap
    BYTE     BytesPerPixel; // Bytes per pixel of the bitmap
    int      LineWidth;   // Line width of the bitmap, in bytes
@@ -427,18 +427,18 @@ struct xrMode {
 };
 
 typedef struct PixelFormat {
-   UBYTE RedShift;    // Right shift value
-   UBYTE GreenShift;  // Green shift value
-   UBYTE BlueShift;   // Blue shift value
-   UBYTE AlphaShift;  // Alpha shift value
-   UBYTE RedMask;     // The unshifted red mask value (ranges from 0x00 to 0xff)
-   UBYTE GreenMask;   // The unshifted green mask value (ranges from 0x00 to 0xff)
-   UBYTE BlueMask;    // The unshifted blue mask value (ranges from 0x00 to 0xff)
-   UBYTE AlphaMask;   // The unshifted alpha mask value (ranges from 0x00 to 0xff)
-   UBYTE RedPos;      // Left shift/positional value for red
-   UBYTE GreenPos;    // Left shift/positional value for green
-   UBYTE BluePos;     // Left shift/positional value for blue
-   UBYTE AlphaPos;    // Left shift/positional value for alpha
+   uint8_t RedShift;    // Right shift value
+   uint8_t GreenShift;  // Green shift value
+   uint8_t BlueShift;   // Blue shift value
+   uint8_t AlphaShift;  // Alpha shift value
+   uint8_t RedMask;     // The unshifted red mask value (ranges from 0x00 to 0xff)
+   uint8_t GreenMask;   // The unshifted green mask value (ranges from 0x00 to 0xff)
+   uint8_t BlueMask;    // The unshifted blue mask value (ranges from 0x00 to 0xff)
+   uint8_t AlphaMask;   // The unshifted alpha mask value (ranges from 0x00 to 0xff)
+   uint8_t RedPos;      // Left shift/positional value for red
+   uint8_t GreenPos;    // Left shift/positional value for green
+   uint8_t BluePos;     // Left shift/positional value for blue
+   uint8_t AlphaPos;    // Left shift/positional value for alpha
 } PIXELFORMAT;
 
 #define VER_DISPLAYINFO 3
@@ -446,43 +446,43 @@ typedef struct PixelFormat {
 typedef struct DisplayInfoV3 {
    OBJECTID DisplayID;                // Object ID related to the display
    SCR      Flags;                    // Display flags
-   WORD     Width;                    // Pixel width of the display
-   WORD     Height;                   // Pixel height of the display
-   WORD     BitsPerPixel;             // Bits per pixel
-   WORD     BytesPerPixel;            // Bytes per pixel
+   int16_t  Width;                    // Pixel width of the display
+   int16_t  Height;                   // Pixel height of the display
+   int16_t  BitsPerPixel;             // Bits per pixel
+   int16_t  BytesPerPixel;            // Bytes per pixel
    ACF      AccelFlags;               // Flags describing supported hardware features.
    int      AmtColours;               // Total number of supported colours.
    struct PixelFormat PixelFormat;    // The colour format to use for each pixel.
-   FLOAT    MinRefresh;               // Minimum refresh rate
-   FLOAT    MaxRefresh;               // Maximum refresh rate
-   FLOAT    RefreshRate;              // Recommended refresh rate
+   float    MinRefresh;               // Minimum refresh rate
+   float    MaxRefresh;               // Maximum refresh rate
+   float    RefreshRate;              // Recommended refresh rate
    int      Index;                    // Display mode ID (internal)
    int      HDensity;                 // Horizontal pixel density per inch.
    int      VDensity;                 // Vertical pixel density per inch.
 } DISPLAYINFO;
 
 struct CursorInfo {
-   int  Width;           // Maximum cursor width for custom cursors
-   int  Height;          // Maximum cursor height for custom cursors
-   int  Flags;           // Currently unused
-   WORD BitsPerPixel;    // Preferred bits-per-pixel setting for custom cursors
+   int     Width;           // Maximum cursor width for custom cursors
+   int     Height;          // Maximum cursor height for custom cursors
+   int     Flags;           // Currently unused
+   int16_t BitsPerPixel;    // Preferred bits-per-pixel setting for custom cursors
 };
 
 #define VER_BITMAPSURFACE 2
 
 typedef struct BitmapSurfaceV2 {
-   APTR  Data;                   // Pointer to the bitmap graphics data.
-   WORD  Width;                  // Pixel width of the bitmap.
-   WORD  Height;                 // Pixel height of the bitmap.
-   int   LineWidth;              // The distance between bitmap lines, measured in bytes.
-   UBYTE BitsPerPixel;           // The number of bits per pixel (8, 15, 16, 24, 32).
-   UBYTE BytesPerPixel;          // The number of bytes per pixel (1, 2, 3, 4).
-   UBYTE Opacity;                // Opacity level of the source if CSRF::TRANSLUCENT is used.
-   UBYTE Version;                // Version of this structure.
-   int   Colour;                 // Colour index to use if CSRF::TRANSPARENT is used.
+   APTR    Data;                 // Pointer to the bitmap graphics data.
+   int16_t Width;                // Pixel width of the bitmap.
+   int16_t Height;               // Pixel height of the bitmap.
+   int     LineWidth;            // The distance between bitmap lines, measured in bytes.
+   uint8_t BitsPerPixel;         // The number of bits per pixel (8, 15, 16, 24, 32).
+   uint8_t BytesPerPixel;        // The number of bytes per pixel (1, 2, 3, 4).
+   uint8_t Opacity;              // Opacity level of the source if CSRF::TRANSLUCENT is used.
+   uint8_t Version;              // Version of this structure.
+   int     Colour;               // Colour index to use if CSRF::TRANSPARENT is used.
    struct ClipRectangle Clip;    // A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.
-   WORD  XOffset;                // Offset all X coordinate references by the given value.
-   WORD  YOffset;                // Offset all Y coordinate references by the given value.
+   int16_t XOffset;              // Offset all X coordinate references by the given value.
+   int16_t YOffset;              // Offset all Y coordinate references by the given value.
    struct ColourFormat Format;   // The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.
 } BITMAPSURFACE;
 
@@ -496,9 +496,9 @@ namespace bmp {
 struct CopyArea { objBitmap * DestBitmap; BAF Flags; int X; int Y; int Width; int Height; int XDest; int YDest; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Compress { int Level; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Decompress { int RetainData; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DrawRectangle { int X; int Y; int Width; int Height; ULONG Colour; BAF Flags; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DrawRectangle { int X; int Y; int Width; int Height; uint32_t Colour; BAF Flags; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SetClipRegion { int Number; int Left; int Top; int Right; int Bottom; int Terminate; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetColour { int Red; int Green; int Blue; int Alpha; ULONG Colour; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetColour { int Red; int Green; int Blue; int Alpha; uint32_t Colour; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Premultiply { static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Demultiply { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ConvertToLinear { static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
@@ -515,34 +515,34 @@ class objBitmap : public Object {
 
    struct RGBPalette * Palette;                                    // Points to a bitmap's colour palette.
    struct ColourFormat * ColourFormat;                             // Describes the colour format used to construct each bitmap pixel.
-   void (*DrawUCPixel)(objBitmap *, int, int, ULONG);              // Points to a C function that draws pixels to the bitmap using colour indexes.
+   void (*DrawUCPixel)(objBitmap *, int, int, uint32_t);           // Points to a C function that draws pixels to the bitmap using colour indexes.
    void (*DrawUCRPixel)(objBitmap *, int, int, struct RGB8 *);     // Points to a C function that draws pixels to the bitmap in RGB format.
-   ULONG (*ReadUCPixel)(objBitmap *, int, int);                    // Points to a C function that reads pixels from the bitmap in colour index format.
+   uint32_t (*ReadUCPixel)(objBitmap *, int, int);                 // Points to a C function that reads pixels from the bitmap in colour index format.
    void (*ReadUCRPixel)(objBitmap *, int, int, struct RGB8 *);     // Points to a C function that reads pixels from the bitmap in RGB format.
-   void (*ReadUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *);      // Points to a C function that reads pixels from the bitmap in RGB format.
-   void (*DrawUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *);      // Points to a C function that draws pixels to the bitmap in RGB format.
-   UBYTE * Data;                                                   // Pointer to a bitmap's data area.
-   int     Width;                                                  // The width of the bitmap, in pixels.
-   int     ByteWidth;                                              // The width of the bitmap, in bytes.
-   int     Height;                                                 // The height of the bitmap, in pixels.
-   BMP     Type;                                                   // Defines the data type of the bitmap.
-   int     LineWidth;                                              // The length of each bitmap line in bytes, including alignment.
-   int     PlaneMod;                                               // The differential between each bitmap plane.
+   void (*ReadUCRIndex)(objBitmap *, uint8_t *, struct RGB8 *);    // Points to a C function that reads pixels from the bitmap in RGB format.
+   void (*DrawUCRIndex)(objBitmap *, uint8_t *, struct RGB8 *);    // Points to a C function that draws pixels to the bitmap in RGB format.
+   uint8_t * Data;                                                 // Pointer to a bitmap's data area.
+   int       Width;                                                // The width of the bitmap, in pixels.
+   int       ByteWidth;                                            // The width of the bitmap, in bytes.
+   int       Height;                                               // The height of the bitmap, in pixels.
+   BMP       Type;                                                 // Defines the data type of the bitmap.
+   int       LineWidth;                                            // The length of each bitmap line in bytes, including alignment.
+   int       PlaneMod;                                             // The differential between each bitmap plane.
    struct ClipRectangle Clip;                                      // Defines the bitmap's clipping region.
-   int     Size;                                                   // The total size of the bitmap, in bytes.
-   MEM     DataFlags;                                              // Defines the memory flags to use in allocating a bitmap's data area.
-   int     AmtColours;                                             // The maximum number of displayable colours.
-   BMF     Flags;                                                  // Optional flags.
-   int     TransIndex;                                             // The transparent colour of the bitmap, represented as an index.
-   int     BytesPerPixel;                                          // The number of bytes per pixel.
-   int     BitsPerPixel;                                           // The number of bits per pixel
-   int     Position;                                               // The current read/write data position.
-   int     Opacity;                                                // Determines the translucency setting to use in drawing operations.
-   BLM     BlendMode;                                              // Defines the blending algorithm to use when rendering transparent pixels.
+   int       Size;                                                 // The total size of the bitmap, in bytes.
+   MEM       DataFlags;                                            // Defines the memory flags to use in allocating a bitmap's data area.
+   int       AmtColours;                                           // The maximum number of displayable colours.
+   BMF       Flags;                                                // Optional flags.
+   int       TransIndex;                                           // The transparent colour of the bitmap, represented as an index.
+   int       BytesPerPixel;                                        // The number of bytes per pixel.
+   int       BitsPerPixel;                                         // The number of bits per pixel
+   int       Position;                                             // The current read/write data position.
+   int       Opacity;                                              // Determines the translucency setting to use in drawing operations.
+   BLM       BlendMode;                                            // Defines the blending algorithm to use when rendering transparent pixels.
    struct RGB8 TransColour;                                        // The transparent colour of the bitmap, in RGB format.
    struct RGB8 Bkgd;                                               // The bitmap's background colour is defined here in RGB format.
-   int     BkgdIndex;                                              // The bitmap's background colour is defined here as a colour index.
-   CS      ColourSpace;                                            // Defines the colour space for RGB values.
+   int       BkgdIndex;                                            // The bitmap's background colour is defined here as a colour index.
+   CS        ColourSpace;                                          // Defines the colour space for RGB values.
    public:
    inline ULONG getColour(struct RGB8 &RGB) {
       if (BitsPerPixel > 8) return packPixel(RGB);
@@ -702,7 +702,7 @@ class objBitmap : public Object {
       struct bmp::Decompress args = { RetainData };
       return(Action(AC(-3), this, &args));
    }
-   inline ERR drawRectangle(int X, int Y, int Width, int Height, ULONG Colour, BAF Flags) noexcept {
+   inline ERR drawRectangle(int X, int Y, int Width, int Height, uint32_t Colour, BAF Flags) noexcept {
       struct bmp::DrawRectangle args = { X, Y, Width, Height, Colour, Flags };
       return(Action(AC(-4), this, &args));
    }
@@ -710,8 +710,8 @@ class objBitmap : public Object {
       struct bmp::SetClipRegion args = { Number, Left, Top, Right, Bottom, Terminate };
       return(Action(AC(-5), this, &args));
    }
-   inline ERR getColour(int Red, int Green, int Blue, int Alpha, ULONG * Colour) noexcept {
-      struct bmp::GetColour args = { Red, Green, Blue, Alpha, (ULONG)0 };
+   inline ERR getColour(int Red, int Green, int Blue, int Alpha, uint32_t * Colour) noexcept {
+      struct bmp::GetColour args = { Red, Green, Blue, Alpha, (uint32_t)0 };
       ERR error = Action(AC(-6), this, &args);
       if (Colour) *Colour = args.Colour;
       return(error);
@@ -737,7 +737,7 @@ class objBitmap : public Object {
       return field->WriteValue(target, field, 0x08000300, Value, 1);
    }
 
-   inline ERR setData(UBYTE * Value) noexcept {
+   inline ERR setData(uint8_t * Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
@@ -877,10 +877,10 @@ class objBitmap : public Object {
 namespace gfx {
 struct WaitVBL { static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct UpdatePalette { struct RGBPalette * NewPalette; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetDisplay { int X; int Y; int Width; int Height; int InsideWidth; int InsideHeight; int BitsPerPixel; DOUBLE RefreshRate; int Flags; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetDisplay { int X; int Y; int Width; int Height; int InsideWidth; int InsideHeight; int BitsPerPixel; double RefreshRate; int Flags; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SizeHints { int MinWidth; int MinHeight; int MaxWidth; int MaxHeight; int EnforceAspect; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetGamma { double Red; double Green; double Blue; GMF Flags; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetGammaLinear { double Red; double Green; double Blue; GMF Flags; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SetMonitor { CSTRING Name; int MinH; int MaxH; int MinV; int MaxV; MON Flags; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Minimise { static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct CheckXWindow { static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
@@ -894,7 +894,7 @@ class objDisplay : public Object {
 
    using create = pf::Create<objDisplay>;
 
-   DOUBLE   RefreshRate;  // This field manages the display refresh rate.
+   double   RefreshRate;  // This field manages the display refresh rate.
    objBitmap * Bitmap;    // Reference to the display's bitmap information.
    SCR      Flags;        // Optional flag settings.
    int      Width;        // Defines the width of the display.
@@ -977,7 +977,7 @@ class objDisplay : public Object {
       struct gfx::UpdatePalette args = { NewPalette };
       return(Action(AC(-2), this, &args));
    }
-   inline ERR setDisplay(int X, int Y, int Width, int Height, int InsideWidth, int InsideHeight, int BitsPerPixel, DOUBLE RefreshRate, int Flags) noexcept {
+   inline ERR setDisplay(int X, int Y, int Width, int Height, int InsideWidth, int InsideHeight, int BitsPerPixel, double RefreshRate, int Flags) noexcept {
       struct gfx::SetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
       return(Action(AC(-3), this, &args));
    }
@@ -985,11 +985,11 @@ class objDisplay : public Object {
       struct gfx::SizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect };
       return(Action(AC(-4), this, &args));
    }
-   inline ERR setGamma(DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
+   inline ERR setGamma(double Red, double Green, double Blue, GMF Flags) noexcept {
       struct gfx::SetGamma args = { Red, Green, Blue, Flags };
       return(Action(AC(-5), this, &args));
    }
-   inline ERR setGammaLinear(DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) noexcept {
+   inline ERR setGammaLinear(double Red, double Green, double Blue, GMF Flags) noexcept {
       struct gfx::SetGammaLinear args = { Red, Green, Blue, Flags };
       return(Action(AC(-6), this, &args));
    }
@@ -1006,7 +1006,7 @@ class objDisplay : public Object {
 
    // Customised field setting
 
-   inline ERR setRefreshRate(const DOUBLE Value) noexcept {
+   inline ERR setRefreshRate(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[39];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -1195,12 +1195,12 @@ class objController : public Object {
 
    using create = pf::Create<objController>;
 
-   DOUBLE LeftTrigger;    // Left trigger value between 0.0 and 1.0.
-   DOUBLE RightTrigger;   // Right trigger value between 0.0 and 1.0.
-   DOUBLE LeftStickX;     // Left analog stick value for X axis, between -1.0 and 1.0.
-   DOUBLE LeftStickY;     // Left analog stick value for Y axis, between -1.0 and 1.0.
-   DOUBLE RightStickX;    // Right analog stick value for X axis, between -1.0 and 1.0.
-   DOUBLE RightStickY;    // Right analog stick value for Y axis, between -1.0 and 1.0.
+   double LeftTrigger;    // Left trigger value between 0.0 and 1.0.
+   double RightTrigger;   // Right trigger value between 0.0 and 1.0.
+   double LeftStickX;     // Left analog stick value for X axis, between -1.0 and 1.0.
+   double LeftStickY;     // Left analog stick value for Y axis, between -1.0 and 1.0.
+   double RightStickX;    // Right analog stick value for X axis, between -1.0 and 1.0.
+   double RightStickY;    // Right analog stick value for Y axis, between -1.0 and 1.0.
    CON    Buttons;        // JET button values expressed as bit-fields.
    int    Port;           // The port number assigned to the controller.
 
@@ -1230,15 +1230,15 @@ class objPointer : public Object {
 
    using create = pf::Create<objPointer>;
 
-   DOUBLE   Speed;         // Speed multiplier for pointer movement.
-   DOUBLE   Acceleration;  // The rate of acceleration for relative pointer movement.
-   DOUBLE   DoubleClick;   // The maximum interval between two clicks for a double click to be recognised.
-   DOUBLE   WheelSpeed;    // Defines a multiplier to be applied to the mouse wheel.
-   DOUBLE   X;             // The horizontal position of the pointer within its parent display.
-   DOUBLE   Y;             // The vertical position of the pointer within its parent display.
-   DOUBLE   OverX;         // The horizontal position of the pointer with respect to the object underneath the hot-spot.
-   DOUBLE   OverY;         // The vertical position of the pointer with respect to the object underneath the hot-spot.
-   DOUBLE   OverZ;         // The position of the Pointer within an object.
+   double   Speed;         // Speed multiplier for pointer movement.
+   double   Acceleration;  // The rate of acceleration for relative pointer movement.
+   double   DoubleClick;   // The maximum interval between two clicks for a double click to be recognised.
+   double   WheelSpeed;    // Defines a multiplier to be applied to the mouse wheel.
+   double   X;             // The horizontal position of the pointer within its parent display.
+   double   Y;             // The vertical position of the pointer within its parent display.
+   double   OverX;         // The horizontal position of the pointer with respect to the object underneath the hot-spot.
+   double   OverY;         // The vertical position of the pointer with respect to the object underneath the hot-spot.
+   double   OverZ;         // The position of the Pointer within an object.
    int      MaxSpeed;      // Restricts the maximum speed of a pointer's movement.
    OBJECTID InputID;       // Declares the I/O object to read movement from.
    OBJECTID SurfaceID;     // The top-most surface that is under the pointer's hot spot.
@@ -1257,33 +1257,33 @@ class objPointer : public Object {
 
    // Customised field setting
 
-   inline ERR setSpeed(const DOUBLE Value) noexcept {
+   inline ERR setSpeed(const double Value) noexcept {
       this->Speed = Value;
       return ERR::Okay;
    }
 
-   inline ERR setAcceleration(const DOUBLE Value) noexcept {
+   inline ERR setAcceleration(const double Value) noexcept {
       this->Acceleration = Value;
       return ERR::Okay;
    }
 
-   inline ERR setDoubleClick(const DOUBLE Value) noexcept {
+   inline ERR setDoubleClick(const double Value) noexcept {
       this->DoubleClick = Value;
       return ERR::Okay;
    }
 
-   inline ERR setWheelSpeed(const DOUBLE Value) noexcept {
+   inline ERR setWheelSpeed(const double Value) noexcept {
       this->WheelSpeed = Value;
       return ERR::Okay;
    }
 
-   inline ERR setX(const DOUBLE Value) noexcept {
+   inline ERR setX(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setY(const DOUBLE Value) noexcept {
+   inline ERR setY(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -1345,11 +1345,11 @@ namespace drw {
 struct InheritedFocus { OBJECTID FocusID; RNF Flags; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ExposeToDisplay { int X; int Y; int Width; int Height; EXF Flags; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct InvalidateRegion { int X; int Y; int Width; int Height; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetDisplay { int X; int Y; int Width; int Height; int InsideWidth; int InsideHeight; int BitsPerPixel; DOUBLE RefreshRate; int Flags; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetOpacity { DOUBLE Value; DOUBLE Adjustment; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetDisplay { int X; int Y; int Width; int Height; int InsideWidth; int InsideHeight; int BitsPerPixel; double RefreshRate; int Flags; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetOpacity { double Value; double Adjustment; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct AddCallback { FUNCTION * Callback; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Minimise { static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; DMF Dimensions; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResetDimensions { double X; double Y; double XOffset; double YOffset; double Width; double Height; DMF Dimensions; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RemoveCallback { FUNCTION * Callback; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ScheduleRedraw { static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
@@ -1458,11 +1458,11 @@ class objSurface : public Object {
       struct drw::InvalidateRegion args = { X, Y, Width, Height };
       return(Action(AC(-3), this, &args));
    }
-   inline ERR setDisplay(int X, int Y, int Width, int Height, int InsideWidth, int InsideHeight, int BitsPerPixel, DOUBLE RefreshRate, int Flags) noexcept {
+   inline ERR setDisplay(int X, int Y, int Width, int Height, int InsideWidth, int InsideHeight, int BitsPerPixel, double RefreshRate, int Flags) noexcept {
       struct drw::SetDisplay args = { X, Y, Width, Height, InsideWidth, InsideHeight, BitsPerPixel, RefreshRate, Flags };
       return(Action(AC(-4), this, &args));
    }
-   inline ERR setOpacity(DOUBLE Value, DOUBLE Adjustment) noexcept {
+   inline ERR setOpacity(double Value, double Adjustment) noexcept {
       struct drw::SetOpacity args = { Value, Adjustment };
       return(Action(AC(-5), this, &args));
    }
@@ -1473,7 +1473,7 @@ class objSurface : public Object {
    inline ERR minimise() noexcept {
       return(Action(AC(-7), this, NULL));
    }
-   inline ERR resetDimensions(DOUBLE X, DOUBLE Y, DOUBLE XOffset, DOUBLE YOffset, DOUBLE Width, DOUBLE Height, DMF Dimensions) noexcept {
+   inline ERR resetDimensions(double X, double Y, double XOffset, double YOffset, double Width, double Height, DMF Dimensions) noexcept {
       struct drw::ResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
       return(Action(AC(-8), this, &args));
    }
@@ -1710,33 +1710,33 @@ struct DisplayBase {
    ERR (*_CopyArea)(objBitmap *Bitmap, objBitmap *Dest, BAF Flags, int X, int Y, int Width, int Height, int XDest, int YDest);
    ERR (*_CopyRawBitmap)(struct BitmapSurfaceV2 *Surface, objBitmap *Dest, CSRF Flags, int X, int Y, int Width, int Height, int XDest, int YDest);
    ERR (*_CopySurface)(OBJECTID Surface, objBitmap *Bitmap, BDF Flags, int X, int Y, int Width, int Height, int XDest, int YDest);
-   void (*_DrawPixel)(objBitmap *Bitmap, int X, int Y, ULONG Colour);
+   void (*_DrawPixel)(objBitmap *Bitmap, int X, int Y, uint32_t Colour);
    void (*_DrawRGBPixel)(objBitmap *Bitmap, int X, int Y, struct RGB8 *RGB);
-   void (*_DrawRectangle)(objBitmap *Bitmap, int X, int Y, int Width, int Height, ULONG Colour, BAF Flags);
+   void (*_DrawRectangle)(objBitmap *Bitmap, int X, int Y, int Width, int Height, uint32_t Colour, BAF Flags);
    ERR (*_ExposeSurface)(OBJECTID Surface, int X, int Y, int Width, int Height, EXF Flags);
    void (*_GetColourFormat)(struct ColourFormat *Format, int BitsPerPixel, int RedMask, int GreenMask, int BlueMask, int AlphaMask);
    ERR (*_GetCursorInfo)(struct CursorInfo *Info, int Size);
-   ERR (*_GetCursorPos)(DOUBLE *X, DOUBLE *Y);
+   ERR (*_GetCursorPos)(double *X, double *Y);
    ERR (*_GetDisplayInfo)(OBJECTID Display, struct DisplayInfoV3 **Info);
    DT (*_GetDisplayType)(void);
    CSTRING (*_GetInputTypeName)(JET Type);
    OBJECTID (*_GetModalSurface)(void);
-   ERR (*_GetRelativeCursorPos)(OBJECTID Surface, DOUBLE *X, DOUBLE *Y);
+   ERR (*_GetRelativeCursorPos)(OBJECTID Surface, double *X, double *Y);
    ERR (*_GetSurfaceCoords)(OBJECTID Surface, int *X, int *Y, int *AbsX, int *AbsY, int *Width, int *Height);
    ERR (*_GetSurfaceFlags)(OBJECTID Surface, RNF *Flags);
    ERR (*_GetSurfaceInfo)(OBJECTID Surface, struct SurfaceInfoV2 **Info);
    OBJECTID (*_GetUserFocus)(void);
    ERR (*_GetVisibleArea)(OBJECTID Surface, int *X, int *Y, int *AbsX, int *AbsY, int *Width, int *Height);
    ERR (*_LockCursor)(OBJECTID Surface);
-   ULONG (*_ReadPixel)(objBitmap *Bitmap, int X, int Y);
+   uint32_t (*_ReadPixel)(objBitmap *Bitmap, int X, int Y);
    void (*_ReadRGBPixel)(objBitmap *Bitmap, int X, int Y, struct RGB8 **RGB);
    ERR (*_Resample)(objBitmap *Bitmap, struct ColourFormat *ColourFormat);
    ERR (*_RestoreCursor)(PTC Cursor, OBJECTID Owner);
-   DOUBLE (*_ScaleToDPI)(DOUBLE Value);
+   double (*_ScaleToDPI)(double Value);
    ERR (*_ScanDisplayModes)(CSTRING Filter, struct DisplayInfoV3 *Info, int Size);
    void (*_SetClipRegion)(objBitmap *Bitmap, int Number, int Left, int Top, int Right, int Bottom, int Terminate);
    ERR (*_SetCursor)(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
-   ERR (*_SetCursorPos)(DOUBLE X, DOUBLE Y);
+   ERR (*_SetCursorPos)(double X, double Y);
    ERR (*_SetCustomCursor)(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, int HotX, int HotY, OBJECTID Owner);
    ERR (*_SetHostOption)(HOST Option, int64_t Value);
    OBJECTID (*_SetModalSurface)(OBJECTID Surface);
@@ -1758,33 +1758,33 @@ inline ERR CheckIfChild(OBJECTID Parent, OBJECTID Child) { return DisplayBase->_
 inline ERR CopyArea(objBitmap *Bitmap, objBitmap *Dest, BAF Flags, int X, int Y, int Width, int Height, int XDest, int YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
 inline ERR CopyRawBitmap(struct BitmapSurfaceV2 *Surface, objBitmap *Dest, CSRF Flags, int X, int Y, int Width, int Height, int XDest, int YDest) { return DisplayBase->_CopyRawBitmap(Surface,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
 inline ERR CopySurface(OBJECTID Surface, objBitmap *Bitmap, BDF Flags, int X, int Y, int Width, int Height, int XDest, int YDest) { return DisplayBase->_CopySurface(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
-inline void DrawPixel(objBitmap *Bitmap, int X, int Y, ULONG Colour) { return DisplayBase->_DrawPixel(Bitmap,X,Y,Colour); }
+inline void DrawPixel(objBitmap *Bitmap, int X, int Y, uint32_t Colour) { return DisplayBase->_DrawPixel(Bitmap,X,Y,Colour); }
 inline void DrawRGBPixel(objBitmap *Bitmap, int X, int Y, struct RGB8 *RGB) { return DisplayBase->_DrawRGBPixel(Bitmap,X,Y,RGB); }
-inline void DrawRectangle(objBitmap *Bitmap, int X, int Y, int Width, int Height, ULONG Colour, BAF Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
+inline void DrawRectangle(objBitmap *Bitmap, int X, int Y, int Width, int Height, uint32_t Colour, BAF Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
 inline ERR ExposeSurface(OBJECTID Surface, int X, int Y, int Width, int Height, EXF Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
 inline void GetColourFormat(struct ColourFormat *Format, int BitsPerPixel, int RedMask, int GreenMask, int BlueMask, int AlphaMask) { return DisplayBase->_GetColourFormat(Format,BitsPerPixel,RedMask,GreenMask,BlueMask,AlphaMask); }
 inline ERR GetCursorInfo(struct CursorInfo *Info, int Size) { return DisplayBase->_GetCursorInfo(Info,Size); }
-inline ERR GetCursorPos(DOUBLE *X, DOUBLE *Y) { return DisplayBase->_GetCursorPos(X,Y); }
+inline ERR GetCursorPos(double *X, double *Y) { return DisplayBase->_GetCursorPos(X,Y); }
 inline ERR GetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 **Info) { return DisplayBase->_GetDisplayInfo(Display,Info); }
 inline DT GetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
 inline CSTRING GetInputTypeName(JET Type) { return DisplayBase->_GetInputTypeName(Type); }
 inline OBJECTID GetModalSurface(void) { return DisplayBase->_GetModalSurface(); }
-inline ERR GetRelativeCursorPos(OBJECTID Surface, DOUBLE *X, DOUBLE *Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
+inline ERR GetRelativeCursorPos(OBJECTID Surface, double *X, double *Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
 inline ERR GetSurfaceCoords(OBJECTID Surface, int *X, int *Y, int *AbsX, int *AbsY, int *Width, int *Height) { return DisplayBase->_GetSurfaceCoords(Surface,X,Y,AbsX,AbsY,Width,Height); }
 inline ERR GetSurfaceFlags(OBJECTID Surface, RNF *Flags) { return DisplayBase->_GetSurfaceFlags(Surface,Flags); }
 inline ERR GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 **Info) { return DisplayBase->_GetSurfaceInfo(Surface,Info); }
 inline OBJECTID GetUserFocus(void) { return DisplayBase->_GetUserFocus(); }
 inline ERR GetVisibleArea(OBJECTID Surface, int *X, int *Y, int *AbsX, int *AbsY, int *Width, int *Height) { return DisplayBase->_GetVisibleArea(Surface,X,Y,AbsX,AbsY,Width,Height); }
 inline ERR LockCursor(OBJECTID Surface) { return DisplayBase->_LockCursor(Surface); }
-inline ULONG ReadPixel(objBitmap *Bitmap, int X, int Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
+inline uint32_t ReadPixel(objBitmap *Bitmap, int X, int Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
 inline void ReadRGBPixel(objBitmap *Bitmap, int X, int Y, struct RGB8 **RGB) { return DisplayBase->_ReadRGBPixel(Bitmap,X,Y,RGB); }
 inline ERR Resample(objBitmap *Bitmap, struct ColourFormat *ColourFormat) { return DisplayBase->_Resample(Bitmap,ColourFormat); }
 inline ERR RestoreCursor(PTC Cursor, OBJECTID Owner) { return DisplayBase->_RestoreCursor(Cursor,Owner); }
-inline DOUBLE ScaleToDPI(DOUBLE Value) { return DisplayBase->_ScaleToDPI(Value); }
+inline double ScaleToDPI(double Value) { return DisplayBase->_ScaleToDPI(Value); }
 inline ERR ScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 *Info, int Size) { return DisplayBase->_ScanDisplayModes(Filter,Info,Size); }
 inline void SetClipRegion(objBitmap *Bitmap, int Number, int Left, int Top, int Right, int Bottom, int Terminate) { return DisplayBase->_SetClipRegion(Bitmap,Number,Left,Top,Right,Bottom,Terminate); }
 inline ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
-inline ERR SetCursorPos(DOUBLE X, DOUBLE Y) { return DisplayBase->_SetCursorPos(X,Y); }
+inline ERR SetCursorPos(double X, double Y) { return DisplayBase->_SetCursorPos(X,Y); }
 inline ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, int HotX, int HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
 inline ERR SetHostOption(HOST Option, int64_t Value) { return DisplayBase->_SetHostOption(Option,Value); }
 inline OBJECTID SetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
@@ -1802,33 +1802,33 @@ extern ERR CheckIfChild(OBJECTID Parent, OBJECTID Child);
 extern ERR CopyArea(objBitmap *Bitmap, objBitmap *Dest, BAF Flags, int X, int Y, int Width, int Height, int XDest, int YDest);
 extern ERR CopyRawBitmap(struct BitmapSurfaceV2 *Surface, objBitmap *Dest, CSRF Flags, int X, int Y, int Width, int Height, int XDest, int YDest);
 extern ERR CopySurface(OBJECTID Surface, objBitmap *Bitmap, BDF Flags, int X, int Y, int Width, int Height, int XDest, int YDest);
-extern void DrawPixel(objBitmap *Bitmap, int X, int Y, ULONG Colour);
+extern void DrawPixel(objBitmap *Bitmap, int X, int Y, uint32_t Colour);
 extern void DrawRGBPixel(objBitmap *Bitmap, int X, int Y, struct RGB8 *RGB);
-extern void DrawRectangle(objBitmap *Bitmap, int X, int Y, int Width, int Height, ULONG Colour, BAF Flags);
+extern void DrawRectangle(objBitmap *Bitmap, int X, int Y, int Width, int Height, uint32_t Colour, BAF Flags);
 extern ERR ExposeSurface(OBJECTID Surface, int X, int Y, int Width, int Height, EXF Flags);
 extern void GetColourFormat(struct ColourFormat *Format, int BitsPerPixel, int RedMask, int GreenMask, int BlueMask, int AlphaMask);
 extern ERR GetCursorInfo(struct CursorInfo *Info, int Size);
-extern ERR GetCursorPos(DOUBLE *X, DOUBLE *Y);
+extern ERR GetCursorPos(double *X, double *Y);
 extern ERR GetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 **Info);
 extern DT GetDisplayType(void);
 extern CSTRING GetInputTypeName(JET Type);
 extern OBJECTID GetModalSurface(void);
-extern ERR GetRelativeCursorPos(OBJECTID Surface, DOUBLE *X, DOUBLE *Y);
+extern ERR GetRelativeCursorPos(OBJECTID Surface, double *X, double *Y);
 extern ERR GetSurfaceCoords(OBJECTID Surface, int *X, int *Y, int *AbsX, int *AbsY, int *Width, int *Height);
 extern ERR GetSurfaceFlags(OBJECTID Surface, RNF *Flags);
 extern ERR GetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 **Info);
 extern OBJECTID GetUserFocus(void);
 extern ERR GetVisibleArea(OBJECTID Surface, int *X, int *Y, int *AbsX, int *AbsY, int *Width, int *Height);
 extern ERR LockCursor(OBJECTID Surface);
-extern ULONG ReadPixel(objBitmap *Bitmap, int X, int Y);
+extern uint32_t ReadPixel(objBitmap *Bitmap, int X, int Y);
 extern void ReadRGBPixel(objBitmap *Bitmap, int X, int Y, struct RGB8 **RGB);
 extern ERR Resample(objBitmap *Bitmap, struct ColourFormat *ColourFormat);
 extern ERR RestoreCursor(PTC Cursor, OBJECTID Owner);
-extern DOUBLE ScaleToDPI(DOUBLE Value);
+extern double ScaleToDPI(double Value);
 extern ERR ScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 *Info, int Size);
 extern void SetClipRegion(objBitmap *Bitmap, int Number, int Left, int Top, int Right, int Bottom, int Terminate);
 extern ERR SetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
-extern ERR SetCursorPos(DOUBLE X, DOUBLE Y);
+extern ERR SetCursorPos(double X, double Y);
 extern ERR SetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap *Bitmap, int HotX, int HotY, OBJECTID Owner);
 extern ERR SetHostOption(HOST Option, int64_t Value);
 extern OBJECTID SetModalSurface(OBJECTID Surface);

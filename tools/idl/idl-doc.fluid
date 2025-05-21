@@ -808,9 +808,9 @@ function docClass(Class)
                local typeName = nz(f.docType,nz(f.type,'NIL'))
                if (typeName == 'struct RGB8') then
                   typeName = 'RGB8'
-               elseif (typeName == 'LONG') or (typeName == 'int') then
+               elseif (typeName == 'int') then
                   typeName = 'INT'
-               elseif (typeName == 'LARGE') or (typeName == 'int64_t') then
+               elseif (typeName == 'int64_t') then
                   typeName = 'INT64'
                elseif (f.className) then
                   typeName = '*' .. f.className

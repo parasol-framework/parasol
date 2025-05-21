@@ -127,19 +127,19 @@ struct IPAddress {
 };
 
 struct NetQueue {
-   ULONG Index;    // The current read/write position within the buffer
-   ULONG Length;   // The size of the buffer.
-   APTR  Buffer;   // The buffer hosting the data
+   uint32_t Index;    // The current read/write position within the buffer
+   uint32_t Length;   // The size of the buffer.
+   APTR     Buffer;   // The buffer hosting the data
 };
 
 struct NetMsg {
-   ULONG Magic;    // Standard key to recognise the message packet
-   ULONG Length;   // Byte length of the message
+   uint32_t Magic;    // Standard key to recognise the message packet
+   uint32_t Length;   // Byte length of the message
 };
 
 struct NetMsgEnd {
-   ULONG CRC;    // Checksum of the message packet
-   ULONG Magic;  // Standard key to recognise the message packet
+   uint32_t CRC;    // Checksum of the message packet
+   uint32_t Magic;  // Standard key to recognise the message packet
 };
 
 struct NetClient {
@@ -627,10 +627,10 @@ struct NetworkBase {
 #ifndef PARASOL_STATIC
    ERR (*_StrToAddress)(CSTRING String, struct IPAddress *Address);
    CSTRING (*_AddressToStr)(struct IPAddress *IPAddress);
-   ULONG (*_HostToShort)(ULONG Value);
-   ULONG (*_HostToLong)(ULONG Value);
-   ULONG (*_ShortToHost)(ULONG Value);
-   ULONG (*_LongToHost)(ULONG Value);
+   uint32_t (*_HostToShort)(uint32_t Value);
+   uint32_t (*_HostToLong)(uint32_t Value);
+   uint32_t (*_ShortToHost)(uint32_t Value);
+   uint32_t (*_LongToHost)(uint32_t Value);
    ERR (*_SetSSL)(objNetSocket *NetSocket, ...);
 #endif // PARASOL_STATIC
 };
@@ -641,20 +641,20 @@ extern struct NetworkBase *NetworkBase;
 namespace net {
 inline ERR StrToAddress(CSTRING String, struct IPAddress *Address) { return NetworkBase->_StrToAddress(String,Address); }
 inline CSTRING AddressToStr(struct IPAddress *IPAddress) { return NetworkBase->_AddressToStr(IPAddress); }
-inline ULONG HostToShort(ULONG Value) { return NetworkBase->_HostToShort(Value); }
-inline ULONG HostToLong(ULONG Value) { return NetworkBase->_HostToLong(Value); }
-inline ULONG ShortToHost(ULONG Value) { return NetworkBase->_ShortToHost(Value); }
-inline ULONG LongToHost(ULONG Value) { return NetworkBase->_LongToHost(Value); }
+inline uint32_t HostToShort(uint32_t Value) { return NetworkBase->_HostToShort(Value); }
+inline uint32_t HostToLong(uint32_t Value) { return NetworkBase->_HostToLong(Value); }
+inline uint32_t ShortToHost(uint32_t Value) { return NetworkBase->_ShortToHost(Value); }
+inline uint32_t LongToHost(uint32_t Value) { return NetworkBase->_LongToHost(Value); }
 template<class... Args> ERR SetSSL(objNetSocket *NetSocket, Args... Tags) { return NetworkBase->_SetSSL(NetSocket,Tags...); }
 } // namespace
 #else
 namespace net {
 extern ERR StrToAddress(CSTRING String, struct IPAddress *Address);
 extern CSTRING AddressToStr(struct IPAddress *IPAddress);
-extern ULONG HostToShort(ULONG Value);
-extern ULONG HostToLong(ULONG Value);
-extern ULONG ShortToHost(ULONG Value);
-extern ULONG LongToHost(ULONG Value);
+extern uint32_t HostToShort(uint32_t Value);
+extern uint32_t HostToLong(uint32_t Value);
+extern uint32_t ShortToHost(uint32_t Value);
+extern uint32_t LongToHost(uint32_t Value);
 extern ERR SetSSL(objNetSocket *NetSocket, ...);
 } // namespace
 #endif // PARASOL_STATIC

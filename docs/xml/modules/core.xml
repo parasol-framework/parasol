@@ -3112,7 +3112,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <field name="Path" type="STRING">Path to the file</field>
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
       <field name="FeedbackID" type="FBK" lookup="FBK">Set to one of the <code>FBK</code> values</field>
-      <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
+      <field name="Reserved" type="BYTE" size="32">Reserved in case of future expansion</field>
     </struct>
 
     <struct name="FileInfo" comment="Metadata for describing a file.">
@@ -3241,7 +3241,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 
     <struct name="dcRequest" comment="Data feed item request">
       <field name="Item" type="INT">Identifier for retrieval from the source</field>
-      <field name="Preference" type="char" size="4">Data preferences for the returned item(s)</field>
+      <field name="Preference" type="BYTE" size="4">Data preferences for the returned item(s)</field>
     </struct>
 
   </structs>

@@ -552,7 +552,7 @@ unpackAlpha(Colour)
       <name>DrawUCPixel</name>
       <comment>Points to a C function that draws pixels to the bitmap using colour indexes.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*DrawUCPixel)(objBitmap *, int, int, ULONG)">FUNCTION *</type>
+      <type prototype="void (*DrawUCPixel)(objBitmap *, int, int, uint32_t)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid coordinates that would result in a segfault).</p>
 <p>The prototype of the DrawUCPixel function is <code>Function(*Bitmap, LONG X, LONG Y, uint32_t Colour)</code>.</p>
@@ -564,7 +564,7 @@ unpackAlpha(Colour)
       <name>DrawUCRIndex</name>
       <comment>Points to a C function that draws pixels to the bitmap in RGB format.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*DrawUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *)">FUNCTION *</type>
+      <type prototype="void (*DrawUCRIndex)(objBitmap *, uint8_t *, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for drawing pixels to the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
 <p>The prototype of the DrawUCRIndex function is <code>Function(*Bitmap, uint8_t *Data, RGB8 *RGB)</code>.</p>
@@ -670,7 +670,7 @@ unpackAlpha(Colour)
       <name>ReadUCPixel</name>
       <comment>Points to a C function that reads pixels from the bitmap in colour index format.</comment>
       <access read="R">Read</access>
-      <type prototype="ULONG (*ReadUCPixel)(objBitmap *, int, int)">FUNCTION *</type>
+      <type prototype="uint32_t (*ReadUCPixel)(objBitmap *, int, int)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply invalid X/Y coordinates that would result in a segfault).</p>
 <p>The prototype of the ReadUCPixel function is <code>Function(*Bitmap, LONG X, LONG Y, LONG *Index)</code>.</p>
@@ -682,7 +682,7 @@ unpackAlpha(Colour)
       <name>ReadUCRIndex</name>
       <comment>Points to a C function that reads pixels from the bitmap in RGB format.</comment>
       <access read="R">Read</access>
-      <type prototype="void (*ReadUCRIndex)(objBitmap *, UBYTE *, struct RGB8 *)">FUNCTION *</type>
+      <type prototype="void (*ReadUCRIndex)(objBitmap *, uint8_t *, struct RGB8 *)">FUNCTION *</type>
       <description>
 <p>This field points to an internal C function that can be used for reading pixels from the bitmap.  It is intended that the function is only ever called by C programs and that caution is exercised by the programmer, as no clipping checks will be performed (meaning it is possible to supply an invalid address that would result in a segfault).</p>
 <p>The prototype of the ReadUCRIndex function is <code>Function(*Bitmap, uint8_t *Data, RGB8 *RGB)</code>.</p>

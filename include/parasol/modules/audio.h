@@ -79,7 +79,7 @@ DEFINE_ENUM_FLAG_OPERATORS(SDF)
 
 // These audio bit formats are supported by AddSample and AddStream.
 
-enum class SFM : ULONG {
+enum class SFM : uint32_t {
    NIL = 0,
    F_BIG_ENDIAN = 0x80000000,
    U8_BIT_MONO = 1,
@@ -91,7 +91,7 @@ enum class SFM : ULONG {
 
 // Loop modes for the AudioLoop structure.
 
-enum class LOOP : WORD {
+enum class LOOP : int16_t {
    NIL = 0,
    SINGLE = 1,
    SINGLE_RELEASE = 2,
@@ -168,7 +168,7 @@ struct RemoveSample { int Handle; static const AC id = AC(-4); ERR call(OBJECTPT
 struct SetSampleLength { int Sample; int64_t Length; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct AddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; int SampleLength; int PlayOffset; struct AudioLoop * Loop; int LoopSize; int Result; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Beep { int Pitch; int Duration; int Volume; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetVolume { int Index; CSTRING Name; SVF Flags; int Channel; DOUBLE Volume; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetVolume { int Index; CSTRING Name; SVF Flags; int Channel; double Volume; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -231,7 +231,7 @@ class objAudio : public Object {
       struct snd::Beep args = { Pitch, Duration, Volume };
       return(Action(AC(-7), this, &args));
    }
-   inline ERR setVolume(int Index, CSTRING Name, SVF Flags, int Channel, DOUBLE Volume) noexcept {
+   inline ERR setVolume(int Index, CSTRING Name, SVF Flags, int Channel, double Volume) noexcept {
       struct snd::SetVolume args = { Index, Name, Flags, Channel, Volume };
       return(Action(AC(-8), this, &args));
    }
@@ -317,8 +317,8 @@ class objSound : public Object {
 
    using create = pf::Create<objSound>;
 
-   DOUBLE   Volume;     // The volume to use when playing the sound sample.
-   DOUBLE   Pan;        // Determines the horizontal position of a sound when played through stereo speakers.
+   double   Volume;     // The volume to use when playing the sound sample.
+   double   Pan;        // Determines the horizontal position of a sound when played through stereo speakers.
    int64_t  Position;   // The current playback position.
    int      Priority;   // The priority of a sound in relation to other sound samples being played.
    int      Length;     // Indicates the total byte-length of sample data.
@@ -384,13 +384,13 @@ class objSound : public Object {
 
    // Customised field setting
 
-   inline ERR setVolume(const DOUBLE Value) noexcept {
+   inline ERR setVolume(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setPan(const DOUBLE Value) noexcept {
+   inline ERR setPan(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -505,13 +505,13 @@ struct AudioBase {
    ERR (*_MixContinue)(objAudio *Audio, int Handle);
    ERR (*_MixFrequency)(objAudio *Audio, int Handle, int Frequency);
    ERR (*_MixMute)(objAudio *Audio, int Handle, int Mute);
-   ERR (*_MixPan)(objAudio *Audio, int Handle, DOUBLE Pan);
+   ERR (*_MixPan)(objAudio *Audio, int Handle, double Pan);
    ERR (*_MixPlay)(objAudio *Audio, int Handle, int Position);
    ERR (*_MixRate)(objAudio *Audio, int Handle, int Rate);
    ERR (*_MixSample)(objAudio *Audio, int Handle, int Sample);
    ERR (*_MixStop)(objAudio *Audio, int Handle);
    ERR (*_MixStopLoop)(objAudio *Audio, int Handle);
-   ERR (*_MixVolume)(objAudio *Audio, int Handle, DOUBLE Volume);
+   ERR (*_MixVolume)(objAudio *Audio, int Handle, double Volume);
    ERR (*_MixStartSequence)(objAudio *Audio, int Handle);
    ERR (*_MixEndSequence)(objAudio *Audio, int Handle);
 #endif // PARASOL_STATIC
@@ -524,13 +524,13 @@ namespace snd {
 inline ERR MixContinue(objAudio *Audio, int Handle) { return AudioBase->_MixContinue(Audio,Handle); }
 inline ERR MixFrequency(objAudio *Audio, int Handle, int Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
 inline ERR MixMute(objAudio *Audio, int Handle, int Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }
-inline ERR MixPan(objAudio *Audio, int Handle, DOUBLE Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
+inline ERR MixPan(objAudio *Audio, int Handle, double Pan) { return AudioBase->_MixPan(Audio,Handle,Pan); }
 inline ERR MixPlay(objAudio *Audio, int Handle, int Position) { return AudioBase->_MixPlay(Audio,Handle,Position); }
 inline ERR MixRate(objAudio *Audio, int Handle, int Rate) { return AudioBase->_MixRate(Audio,Handle,Rate); }
 inline ERR MixSample(objAudio *Audio, int Handle, int Sample) { return AudioBase->_MixSample(Audio,Handle,Sample); }
 inline ERR MixStop(objAudio *Audio, int Handle) { return AudioBase->_MixStop(Audio,Handle); }
 inline ERR MixStopLoop(objAudio *Audio, int Handle) { return AudioBase->_MixStopLoop(Audio,Handle); }
-inline ERR MixVolume(objAudio *Audio, int Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
+inline ERR MixVolume(objAudio *Audio, int Handle, double Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
 inline ERR MixStartSequence(objAudio *Audio, int Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
 inline ERR MixEndSequence(objAudio *Audio, int Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
 } // namespace
@@ -539,13 +539,13 @@ namespace snd {
 extern ERR MixContinue(objAudio *Audio, int Handle);
 extern ERR MixFrequency(objAudio *Audio, int Handle, int Frequency);
 extern ERR MixMute(objAudio *Audio, int Handle, int Mute);
-extern ERR MixPan(objAudio *Audio, int Handle, DOUBLE Pan);
+extern ERR MixPan(objAudio *Audio, int Handle, double Pan);
 extern ERR MixPlay(objAudio *Audio, int Handle, int Position);
 extern ERR MixRate(objAudio *Audio, int Handle, int Rate);
 extern ERR MixSample(objAudio *Audio, int Handle, int Sample);
 extern ERR MixStop(objAudio *Audio, int Handle);
 extern ERR MixStopLoop(objAudio *Audio, int Handle);
-extern ERR MixVolume(objAudio *Audio, int Handle, DOUBLE Volume);
+extern ERR MixVolume(objAudio *Audio, int Handle, double Volume);
 extern ERR MixStartSequence(objAudio *Audio, int Handle);
 extern ERR MixEndSequence(objAudio *Audio, int Handle);
 } // namespace

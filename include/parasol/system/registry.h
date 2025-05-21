@@ -4,7 +4,7 @@
 // Copyright: Paul Manias 1996-2025
 // Generator: idl-c
 
-enum class CLASSID : ULONG {
+enum class CLASSID : uint32_t {
    NIL = 0,
    PICTURE = 0xad68f281UL,
    SOUND = 0x105ee06eUL,

@@ -4,13 +4,13 @@ namespace snd {
 extern ERR MixContinue(objAudio * Audio, int Handle);
 extern ERR MixFrequency(objAudio * Audio, int Handle, int Frequency);
 extern ERR MixMute(objAudio * Audio, int Handle, int Mute);
-extern ERR MixPan(objAudio * Audio, int Handle, DOUBLE Pan);
+extern ERR MixPan(objAudio * Audio, int Handle, double Pan);
 extern ERR MixPlay(objAudio * Audio, int Handle, int Position);
 extern ERR MixRate(objAudio * Audio, int Handle, int Rate);
 extern ERR MixSample(objAudio * Audio, int Handle, int Sample);
 extern ERR MixStop(objAudio * Audio, int Handle);
 extern ERR MixStopLoop(objAudio * Audio, int Handle);
-extern ERR MixVolume(objAudio * Audio, int Handle, DOUBLE Volume);
+extern ERR MixVolume(objAudio * Audio, int Handle, double Volume);
 extern ERR MixStartSequence(objAudio * Audio, int Handle);
 extern ERR MixEndSequence(objAudio * Audio, int Handle);
 

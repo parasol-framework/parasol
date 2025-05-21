@@ -3,10 +3,10 @@
 namespace net {
 extern ERR StrToAddress(CSTRING String, struct IPAddress * Address);
 extern CSTRING AddressToStr(struct IPAddress * IPAddress);
-extern ULONG HostToShort(ULONG Value);
-extern ULONG HostToLong(ULONG Value);
-extern ULONG ShortToHost(ULONG Value);
-extern ULONG LongToHost(ULONG Value);
+extern uint32_t HostToShort(uint32_t Value);
+extern uint32_t HostToLong(uint32_t Value);
+extern uint32_t ShortToHost(uint32_t Value);
+extern uint32_t LongToHost(uint32_t Value);
 extern ERR SetSSL(objNetSocket * NetSocket, ...);
 
 } // namespace

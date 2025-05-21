@@ -514,20 +514,20 @@ enum class FM : uint32_t {
 DEFINE_ENUM_FLAG_OPERATORS(FM)
 
 struct GradientStop {
-   DOUBLE Offset;    // An offset in the range of 0 - 1.0
+   double Offset;    // An offset in the range of 0 - 1.0
    struct FRGB RGB;  // A floating point RGB value.
 };
 
 struct Transition {
-   DOUBLE  Offset;       // An offset from 0.0 to 1.0 at which to apply the transform.
+   double  Offset;       // An offset from 0.0 to 1.0 at which to apply the transform.
    CSTRING Transform;    // A transform string, as per SVG guidelines.
 };
 
 struct VectorPoint {
-   DOUBLE X;           // The X coordinate of this point.
-   DOUBLE Y;           // The Y coordinate of this point.
-   UBYTE  XScaled:1;   // TRUE if the X value is scaled to its viewport (between 0 and 1.0).
-   UBYTE  YScaled:1;   // TRUE if the Y value is scaled to its viewport (between 0 and 1.0).
+   double  X;            // The X coordinate of this point.
+   double  Y;            // The Y coordinate of this point.
+   uint8_t XScaled:1;    // TRUE if the X value is scaled to its viewport (between 0 and 1.0).
+   uint8_t YScaled:1;    // TRUE if the Y value is scaled to its viewport (between 0 and 1.0).
 };
 
 struct VectorPainter {
@@ -544,30 +544,30 @@ struct VectorPainter {
 };
 
 struct PathCommand {
-   PE     Type;       // The command type
-   UBYTE  LargeArc;   // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
-   UBYTE  Sweep;      // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
-   UBYTE  Pad1;       // Private
-   DOUBLE X;          // The targeted X coordinate (absolute or scaled) for the command
-   DOUBLE Y;          // The targeted Y coordinate (absolute or scaled) for the command
-   DOUBLE AbsX;       // Private
-   DOUBLE AbsY;       // Private
-   DOUBLE X2;         // The X2 coordinate for curve commands, or RX for arcs
-   DOUBLE Y2;         // The Y2 coordinate for curve commands, or RY for arcs
-   DOUBLE X3;         // The X3 coordinate for curve-to or smooth-curve-to
-   DOUBLE Y3;         // The Y3 coordinate for curve-to or smooth-curve-to
-   DOUBLE Angle;      // Arc angle
+   PE      Type;        // The command type
+   uint8_t LargeArc;    // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
+   uint8_t Sweep;       // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
+   uint8_t Pad1;        // Private
+   double  X;           // The targeted X coordinate (absolute or scaled) for the command
+   double  Y;           // The targeted Y coordinate (absolute or scaled) for the command
+   double  AbsX;        // Private
+   double  AbsY;        // Private
+   double  X2;          // The X2 coordinate for curve commands, or RX for arcs
+   double  Y2;          // The Y2 coordinate for curve commands, or RY for arcs
+   double  X3;          // The X3 coordinate for curve-to or smooth-curve-to
+   double  Y3;          // The Y3 coordinate for curve-to or smooth-curve-to
+   double  Angle;       // Arc angle
 };
 
 struct VectorMatrix {
    struct VectorMatrix * Next;    // The next transform in the list.
    objVector * Vector;            // The vector associated with the transform.
-   DOUBLE ScaleX;                 // Matrix value A
-   DOUBLE ShearY;                 // Matrix value B
-   DOUBLE ShearX;                 // Matrix value C
-   DOUBLE ScaleY;                 // Matrix value D
-   DOUBLE TranslateX;             // Matrix value E
-   DOUBLE TranslateY;             // Matrix value F
+   double ScaleX;                 // Matrix value A
+   double ShearY;                 // Matrix value B
+   double ShearX;                 // Matrix value C
+   double ScaleY;                 // Matrix value D
+   double TranslateX;             // Matrix value E
+   double TranslateY;             // Matrix value F
    int    Tag;                    // An optional tag value defined by the client for matrix identification.
 };
 
@@ -595,29 +595,29 @@ class objVectorColour : public Object {
 
    using create = pf::Create<objVectorColour>;
 
-   DOUBLE Red;    // The red component value.
-   DOUBLE Green;  // The green component value.
-   DOUBLE Blue;   // The blue component value.
-   DOUBLE Alpha;  // The alpha component value.
+   double Red;    // The red component value.
+   double Green;  // The green component value.
+   double Blue;   // The blue component value.
+   double Alpha;  // The alpha component value.
 
    // Customised field setting
 
-   inline ERR setRed(const DOUBLE Value) noexcept {
+   inline ERR setRed(const double Value) noexcept {
       this->Red = Value;
       return ERR::Okay;
    }
 
-   inline ERR setGreen(const DOUBLE Value) noexcept {
+   inline ERR setGreen(const double Value) noexcept {
       this->Green = Value;
       return ERR::Okay;
    }
 
-   inline ERR setBlue(const DOUBLE Value) noexcept {
+   inline ERR setBlue(const double Value) noexcept {
       this->Blue = Value;
       return ERR::Okay;
    }
 
-   inline ERR setAlpha(const DOUBLE Value) noexcept {
+   inline ERR setAlpha(const double Value) noexcept {
       this->Alpha = Value;
       return ERR::Okay;
    }
@@ -667,7 +667,7 @@ class objVectorScene : public Object {
    using create = pf::Create<objVectorScene>;
 
    int64_t  RenderTime;           // Returns the rendering time of the last scene.
-   DOUBLE   Gamma;                // Private. Not currently implemented.
+   double   Gamma;                // Private. Not currently implemented.
    objVectorScene * HostScene;    // Refers to a top-level VectorScene object, if applicable.
    objVectorViewport * Viewport;  // References the first object in the scene, which must be a VectorViewport object.
    objBitmap * Bitmap;            // Target bitmap for drawing vectors.
@@ -721,7 +721,7 @@ class objVectorScene : public Object {
 
    // Customised field setting
 
-   inline ERR setGamma(const DOUBLE Value) noexcept {
+   inline ERR setGamma(const double Value) noexcept {
       this->Gamma = Value;
       return ERR::Okay;
    }
@@ -780,8 +780,8 @@ class objVectorImage : public Object {
 
    using create = pf::Create<objVectorImage>;
 
-   DOUBLE  X;               // Apply a horizontal offset to the image, the origin of which is determined by the Units value.
-   DOUBLE  Y;               // Apply a vertical offset to the image, the origin of which is determined by the Units value.
+   double  X;               // Apply a horizontal offset to the image, the origin of which is determined by the Units value.
+   double  Y;               // Apply a vertical offset to the image, the origin of which is determined by the Units value.
    objPicture * Picture;    // Refers to a Picture from which the source Bitmap is acquired.
    objBitmap * Bitmap;      // Reference to a source bitmap for the rendering algorithm.
    VUNIT   Units;           // Declares the coordinate system to use for the X and Y values.
@@ -791,13 +791,13 @@ class objVectorImage : public Object {
 
    // Customised field setting
 
-   inline ERR setX(const DOUBLE Value) noexcept {
+   inline ERR setX(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setY(const DOUBLE Value) noexcept {
+   inline ERR setY(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -850,11 +850,11 @@ class objVectorPattern : public Object {
 
    using create = pf::Create<objVectorPattern>;
 
-   DOUBLE  X;                       // X coordinate for the pattern.
-   DOUBLE  Y;                       // Y coordinate for the pattern.
-   DOUBLE  Width;                   // Width of the pattern tile.
-   DOUBLE  Height;                  // Height of the pattern tile.
-   DOUBLE  Opacity;                 // The opacity of the pattern.
+   double  X;                       // X coordinate for the pattern.
+   double  Y;                       // Y coordinate for the pattern.
+   double  Width;                   // Width of the pattern tile.
+   double  Height;                  // Height of the pattern tile.
+   double  Opacity;                 // The opacity of the pattern.
    objVectorScene * Scene;          // Refers to the internal VectorScene that will contain the rendered pattern.
    objVectorViewport * Viewport;    // Refers to the viewport that contains the pattern.
    objVectorPattern * Inherit;      // Inherit attributes from a VectorPattern referenced here.
@@ -865,35 +865,35 @@ class objVectorPattern : public Object {
 
    // Customised field setting
 
-   inline ERR setX(const DOUBLE Value) noexcept {
+   inline ERR setX(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setY(const DOUBLE Value) noexcept {
+   inline ERR setY(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setWidth(const DOUBLE Value) noexcept {
+   inline ERR setWidth(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setHeight(const DOUBLE Value) noexcept {
+   inline ERR setHeight(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setOpacity(const DOUBLE Value) noexcept {
+   inline ERR setOpacity(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -946,17 +946,17 @@ class objVectorGradient : public Object {
 
    using create = pf::Create<objVectorGradient>;
 
-   DOUBLE  X1;            // Initial X coordinate for the gradient.
-   DOUBLE  Y1;            // Initial Y coordinate for the gradient.
-   DOUBLE  X2;            // Final X coordinate for the gradient.
-   DOUBLE  Y2;            // Final Y coordinate for the gradient.
-   DOUBLE  CenterX;       // The horizontal center point of the gradient.
-   DOUBLE  CenterY;       // The vertical center point of the gradient.
-   DOUBLE  FocalX;        // The horizontal focal point for radial gradients.
-   DOUBLE  FocalY;        // The vertical focal point for radial gradients.
-   DOUBLE  Radius;        // The radius of the gradient.
-   DOUBLE  FocalRadius;   // The size of the focal radius for radial gradients.
-   DOUBLE  Resolution;    // Affects the rate of change for colours in the gradient.
+   double  X1;            // Initial X coordinate for the gradient.
+   double  Y1;            // Initial Y coordinate for the gradient.
+   double  X2;            // Final X coordinate for the gradient.
+   double  Y2;            // Final Y coordinate for the gradient.
+   double  CenterX;       // The horizontal center point of the gradient.
+   double  CenterY;       // The vertical center point of the gradient.
+   double  FocalX;        // The horizontal focal point for radial gradients.
+   double  FocalY;        // The vertical focal point for radial gradients.
+   double  Radius;        // The radius of the gradient.
+   double  FocalRadius;   // The size of the focal radius for radial gradients.
+   double  Resolution;    // Affects the rate of change for colours in the gradient.
    VSPREAD SpreadMethod;  // Determines the rendering behaviour to use when gradient colours are cycled.
    VUNIT   Units;         // Defines the coordinate system for X1, Y1, X2 and Y2.
    VGT     Type;          // Specifies the type of gradient (e.g. RADIAL, LINEAR)
@@ -969,77 +969,77 @@ class objVectorGradient : public Object {
 
    // Customised field setting
 
-   inline ERR setX1(const DOUBLE Value) noexcept {
+   inline ERR setX1(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setY1(const DOUBLE Value) noexcept {
+   inline ERR setY1(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setX2(const DOUBLE Value) noexcept {
+   inline ERR setX2(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setY2(const DOUBLE Value) noexcept {
+   inline ERR setY2(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setCenterX(const DOUBLE Value) noexcept {
+   inline ERR setCenterX(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setCenterY(const DOUBLE Value) noexcept {
+   inline ERR setCenterY(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[24];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setFocalX(const DOUBLE Value) noexcept {
+   inline ERR setFocalX(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[30];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setFocalY(const DOUBLE Value) noexcept {
+   inline ERR setFocalY(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[31];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setRadius(const DOUBLE Value) noexcept {
+   inline ERR setRadius(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setFocalRadius(const DOUBLE Value) noexcept {
+   inline ERR setFocalRadius(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[27];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setResolution(const DOUBLE Value) noexcept {
+   inline ERR setResolution(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -1134,10 +1134,10 @@ class objFilterEffect : public Object {
    objBitmap * Target;        // Target bitmap for rendering the effect.
    objFilterEffect * Input;   // Reference to another effect to be used as an input source.
    objFilterEffect * Mix;     // Reference to another effect to be used a mixer with Input.
-   DOUBLE X;                  // Primitive X coordinate for the effect.
-   DOUBLE Y;                  // Primitive Y coordinate for the effect.
-   DOUBLE Width;              // Primitive width of the effect area.
-   DOUBLE Height;             // Primitive height of the effect area.
+   double X;                  // Primitive X coordinate for the effect.
+   double Y;                  // Primitive Y coordinate for the effect.
+   double Width;              // Primitive width of the effect area.
+   double Height;             // Primitive height of the effect area.
    DMF    Dimensions;         // Dimension flags are stored here.
    VSF    SourceType;         // Specifies an input source for the effect algorithm, if required.
    VSF    MixType;            // If a secondary mix input is required for the effect, specify it here.
@@ -1177,28 +1177,28 @@ class objFilterEffect : public Object {
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERR setX(const DOUBLE Value) noexcept {
+   inline ERR setX(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setY(const DOUBLE Value) noexcept {
+   inline ERR setY(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setWidth(const DOUBLE Value) noexcept {
+   inline ERR setWidth(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setHeight(const DOUBLE Value) noexcept {
+   inline ERR setHeight(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       Unit var(Value);
@@ -1608,9 +1608,9 @@ class objFloodFX : public objFilterEffect {
 // LightingFX methods
 
 namespace lt {
-struct SetDistantLight { DOUBLE Azimuth; DOUBLE Elevation; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetPointLight { DOUBLE X; DOUBLE Y; DOUBLE Z; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetSpotLight { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE PX; DOUBLE PY; DOUBLE PZ; DOUBLE Exponent; DOUBLE ConeAngle; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetDistantLight { double Azimuth; double Elevation; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetPointLight { double X; double Y; double Z; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetSpotLight { double X; double Y; double Z; double PX; double PY; double PZ; double Exponent; double ConeAngle; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -1629,15 +1629,15 @@ class objLightingFX : public objFilterEffect {
       return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR setDistantLight(DOUBLE Azimuth, DOUBLE Elevation) noexcept {
+   inline ERR setDistantLight(double Azimuth, double Elevation) noexcept {
       struct lt::SetDistantLight args = { Azimuth, Elevation };
       return(Action(AC(-20), this, &args));
    }
-   inline ERR setPointLight(DOUBLE X, DOUBLE Y, DOUBLE Z) noexcept {
+   inline ERR setPointLight(double X, double Y, double Z) noexcept {
       struct lt::SetPointLight args = { X, Y, Z };
       return(Action(AC(-22), this, &args));
    }
-   inline ERR setSpotLight(DOUBLE X, DOUBLE Y, DOUBLE Z, DOUBLE PX, DOUBLE PY, DOUBLE PZ, DOUBLE Exponent, DOUBLE ConeAngle) noexcept {
+   inline ERR setSpotLight(double X, double Y, double Z, double PX, double PY, double PZ, double Exponent, double ConeAngle) noexcept {
       struct lt::SetSpotLight args = { X, Y, Z, PX, PY, PZ, Exponent, ConeAngle };
       return(Action(AC(-21), this, &args));
    }
@@ -1803,11 +1803,11 @@ class objOffsetFX : public objFilterEffect {
 // RemapFX methods
 
 namespace rf {
-struct SelectGamma { CMP Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectTable { CMP Component; DOUBLE * Values; int Size; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectLinear { CMP Component; DOUBLE Slope; DOUBLE Intercept; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectGamma { CMP Component; double Amplitude; double Offset; double Exponent; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectTable { CMP Component; double * Values; int Size; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectLinear { CMP Component; double Slope; double Intercept; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SelectIdentity { CMP Component; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SelectDiscrete { CMP Component; DOUBLE * Values; int Size; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SelectDiscrete { CMP Component; double * Values; int Size; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SelectInvert { CMP Component; static const AC id = AC(-25); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SelectMask { CMP Component; int Mask; static const AC id = AC(-26); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
@@ -1828,15 +1828,15 @@ class objRemapFX : public objFilterEffect {
       return Action(AC::Draw, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR selectGamma(CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) noexcept {
+   inline ERR selectGamma(CMP Component, double Amplitude, double Offset, double Exponent) noexcept {
       struct rf::SelectGamma args = { Component, Amplitude, Offset, Exponent };
       return(Action(AC(-20), this, &args));
    }
-   inline ERR selectTable(CMP Component, DOUBLE * Values, int Size) noexcept {
+   inline ERR selectTable(CMP Component, double * Values, int Size) noexcept {
       struct rf::SelectTable args = { Component, Values, Size };
       return(Action(AC(-21), this, &args));
    }
-   inline ERR selectLinear(CMP Component, DOUBLE Slope, DOUBLE Intercept) noexcept {
+   inline ERR selectLinear(CMP Component, double Slope, double Intercept) noexcept {
       struct rf::SelectLinear args = { Component, Slope, Intercept };
       return(Action(AC(-22), this, &args));
    }
@@ -1844,7 +1844,7 @@ class objRemapFX : public objFilterEffect {
       struct rf::SelectIdentity args = { Component };
       return(Action(AC(-23), this, &args));
    }
-   inline ERR selectDiscrete(CMP Component, DOUBLE * Values, int Size) noexcept {
+   inline ERR selectDiscrete(CMP Component, double * Values, int Size) noexcept {
       struct rf::SelectDiscrete args = { Component, Values, Size };
       return(Action(AC(-24), this, &args));
    }
@@ -2023,11 +2023,11 @@ class objVectorFilter : public Object {
 
    using create = pf::Create<objVectorFilter>;
 
-   DOUBLE X;                     // X coordinate for the filter.
-   DOUBLE Y;                     // Y coordinate for the filter.
-   DOUBLE Width;                 // The width of the filter area.  Can be expressed as a fixed or scaled coordinate.
-   DOUBLE Height;                // The height of the filter area.  Can be expressed as a fixed or scaled coordinate.
-   DOUBLE Opacity;               // The opacity of the filter.
+   double X;                     // X coordinate for the filter.
+   double Y;                     // Y coordinate for the filter.
+   double Width;                 // The width of the filter area.  Can be expressed as a fixed or scaled coordinate.
+   double Height;                // The height of the filter area.  Can be expressed as a fixed or scaled coordinate.
+   double Opacity;               // The opacity of the filter.
    objVectorFilter * Inherit;    // Inherit attributes from a VectorFilter referenced here.
    int    ResX;                  // Width of the intermediate images, measured in pixels.
    int    ResY;                  // Height of the intermediate images, measured in pixels.
@@ -2044,35 +2044,35 @@ class objVectorFilter : public Object {
 
    // Customised field setting
 
-   inline ERR setX(const DOUBLE Value) noexcept {
+   inline ERR setX(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setY(const DOUBLE Value) noexcept {
+   inline ERR setY(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setWidth(const DOUBLE Value) noexcept {
+   inline ERR setWidth(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setHeight(const DOUBLE Value) noexcept {
+   inline ERR setHeight(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       Unit var(Value);
       return field->WriteValue(target, field, FD_UNIT, &var, 1);
    }
 
-   inline ERR setOpacity(const DOUBLE Value) noexcept {
+   inline ERR setOpacity(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -2126,9 +2126,9 @@ class objVectorFilter : public Object {
 
 namespace vec {
 struct Push { int Position; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Trace { FUNCTION * Callback; DOUBLE Scale; int Transform; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct PointInPath { DOUBLE X; DOUBLE Y; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Trace { FUNCTION * Callback; double Scale; int Transform; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetBoundary { VBF Flags; double X; double Y; double Width; double Height; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct PointInPath { double X; double Y; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SubscribeInput { JTYPE Mask; FUNCTION * Callback; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SubscribeKeyboard { FUNCTION * Callback; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SubscribeFeedback { FM Mask; FUNCTION * Callback; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
@@ -2151,12 +2151,12 @@ class objVector : public Object {
    objVector * Prev;                  // The previous vector in the branch, or NULL.
    OBJECTPTR Parent;                  // The parent of the vector, or NULL if this is the top-most vector.
    struct VectorMatrix * Matrices;    // A linked list of transform matrices that have been applied to the vector.
-   DOUBLE    StrokeOpacity;           // Defines the opacity of the path stroke.
-   DOUBLE    FillOpacity;             // The opacity to use when filling the vector.
-   DOUBLE    Opacity;                 // Defines an overall opacity for the vector's graphics.
-   DOUBLE    MiterLimit;              // Imposes a limit on the ratio of the miter length to the StrokeWidth.
-   DOUBLE    InnerMiterLimit;         // Private. No internal documentation exists for this feature.
-   DOUBLE    DashOffset;              // The distance into the dash pattern to start the dash.  Can be a negative number.
+   double    StrokeOpacity;           // Defines the opacity of the path stroke.
+   double    FillOpacity;             // The opacity to use when filling the vector.
+   double    Opacity;                 // Defines an overall opacity for the vector's graphics.
+   double    MiterLimit;              // Imposes a limit on the ratio of the miter length to the StrokeWidth.
+   double    InnerMiterLimit;         // Private. No internal documentation exists for this feature.
+   double    DashOffset;              // The distance into the dash pattern to start the dash.  Can be a negative number.
    VIS       Visibility;              // Controls the visibility of a vector and its children.
    VF        Flags;                   // Optional flags.
    PTC       Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
@@ -2182,12 +2182,12 @@ class objVector : public Object {
       struct vec::Push args = { Position };
       return(Action(AC(-1), this, &args));
    }
-   inline ERR trace(FUNCTION Callback, DOUBLE Scale, int Transform) noexcept {
+   inline ERR trace(FUNCTION Callback, double Scale, int Transform) noexcept {
       struct vec::Trace args = { &Callback, Scale, Transform };
       return(Action(AC(-2), this, &args));
    }
-   inline ERR getBoundary(VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) noexcept {
-      struct vec::GetBoundary args = { Flags, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0 };
+   inline ERR getBoundary(VBF Flags, double * X, double * Y, double * Width, double * Height) noexcept {
+      struct vec::GetBoundary args = { Flags, (double)0, (double)0, (double)0, (double)0 };
       ERR error = Action(AC(-3), this, &args);
       if (X) *X = args.X;
       if (Y) *Y = args.Y;
@@ -2195,7 +2195,7 @@ class objVector : public Object {
       if (Height) *Height = args.Height;
       return(error);
    }
-   inline ERR pointInPath(DOUBLE X, DOUBLE Y) noexcept {
+   inline ERR pointInPath(double X, double Y) noexcept {
       struct vec::PointInPath args = { X, Y };
       return(Action(AC(-4), this, &args));
    }
@@ -2239,36 +2239,36 @@ class objVector : public Object {
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERR setStrokeOpacity(const DOUBLE Value) noexcept {
+   inline ERR setStrokeOpacity(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setFillOpacity(const DOUBLE Value) noexcept {
+   inline ERR setFillOpacity(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[42];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setOpacity(const DOUBLE Value) noexcept {
+   inline ERR setOpacity(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setMiterLimit(const DOUBLE Value) noexcept {
+   inline ERR setMiterLimit(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERR setInnerMiterLimit(const DOUBLE Value) noexcept {
+   inline ERR setInnerMiterLimit(const double Value) noexcept {
       this->InnerMiterLimit = Value;
       return ERR::Okay;
    }
 
-   inline ERR setDashOffset(const DOUBLE Value) noexcept {
+   inline ERR setDashOffset(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -3385,37 +3385,37 @@ class objVectorViewport : public objVector {
 
 struct VectorBase {
 #ifndef PARASOL_STATIC
-   ERR (*_DrawPath)(objBitmap *Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-   ERR (*_GenerateEllipse)(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, int Vertices, APTR *Path);
+   ERR (*_DrawPath)(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+   ERR (*_GenerateEllipse)(double CX, double CY, double RX, double RY, int Vertices, APTR *Path);
    ERR (*_GeneratePath)(CSTRING Sequence, APTR *Path);
-   ERR (*_GenerateRectangle)(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path);
+   ERR (*_GenerateRectangle)(double X, double Y, double Width, double Height, APTR *Path);
    ERR (*_ReadPainter)(objVectorScene *Scene, CSTRING IRI, struct VectorPainter *Painter, CSTRING *Result);
-   void (*_TranslatePath)(APTR Path, DOUBLE X, DOUBLE Y);
-   void (*_MoveTo)(APTR Path, DOUBLE X, DOUBLE Y);
-   void (*_LineTo)(APTR Path, DOUBLE X, DOUBLE Y);
-   void (*_ArcTo)(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
-   void (*_Curve3)(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
-   void (*_Smooth3)(APTR Path, DOUBLE X, DOUBLE Y);
-   void (*_Curve4)(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
-   void (*_Smooth4)(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+   void (*_TranslatePath)(APTR Path, double X, double Y);
+   void (*_MoveTo)(APTR Path, double X, double Y);
+   void (*_LineTo)(APTR Path, double X, double Y);
+   void (*_ArcTo)(APTR Path, double RX, double RY, double Angle, double X, double Y, ARC Flags);
+   void (*_Curve3)(APTR Path, double CtrlX, double CtrlY, double X, double Y);
+   void (*_Smooth3)(APTR Path, double X, double Y);
+   void (*_Curve4)(APTR Path, double CtrlX1, double CtrlY1, double CtrlX2, double CtrlY2, double X, double Y);
+   void (*_Smooth4)(APTR Path, double CtrlX, double CtrlY, double X, double Y);
    void (*_ClosePath)(APTR Path);
    void (*_RewindPath)(APTR Path);
-   int (*_GetVertex)(APTR Path, DOUBLE *X, DOUBLE *Y);
+   int (*_GetVertex)(APTR Path, double *X, double *Y);
    ERR (*_ApplyPath)(APTR Path, objVectorPath *VectorPath);
-   ERR (*_Rotate)(struct VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
-   ERR (*_Translate)(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y);
-   ERR (*_Skew)(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y);
-   ERR (*_Multiply)(struct VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY);
+   ERR (*_Rotate)(struct VectorMatrix *Matrix, double Angle, double CenterX, double CenterY);
+   ERR (*_Translate)(struct VectorMatrix *Matrix, double X, double Y);
+   ERR (*_Skew)(struct VectorMatrix *Matrix, double X, double Y);
+   ERR (*_Multiply)(struct VectorMatrix *Matrix, double ScaleX, double ShearY, double ShearX, double ScaleY, double TranslateX, double TranslateY);
    ERR (*_MultiplyMatrix)(struct VectorMatrix *Target, struct VectorMatrix *Source);
-   ERR (*_Scale)(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y);
+   ERR (*_Scale)(struct VectorMatrix *Matrix, double X, double Y);
    ERR (*_ParseTransform)(struct VectorMatrix *Matrix, CSTRING Transform);
    ERR (*_ResetMatrix)(struct VectorMatrix *Matrix);
    ERR (*_GetFontHandle)(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle);
    ERR (*_GetFontMetrics)(APTR Handle, struct FontMetrics *Info);
-   DOUBLE (*_CharWidth)(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE *Kerning);
-   DOUBLE (*_StringWidth)(APTR FontHandle, CSTRING String, int Chars);
+   double (*_CharWidth)(APTR FontHandle, uint32_t Char, uint32_t KChar, double *Kerning);
+   double (*_StringWidth)(APTR FontHandle, CSTRING String, int Chars);
    ERR (*_FlushMatrix)(struct VectorMatrix *Matrix);
-   ERR (*_TracePath)(APTR Path, FUNCTION *Callback, DOUBLE Scale);
+   ERR (*_TracePath)(APTR Path, FUNCTION *Callback, double Scale);
 #endif // PARASOL_STATIC
 };
 
@@ -3423,71 +3423,71 @@ struct VectorBase {
 #ifndef PARASOL_STATIC
 extern struct VectorBase *VectorBase;
 namespace vec {
-inline ERR DrawPath(objBitmap *Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
-inline ERR GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, int Vertices, APTR *Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
+inline ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
+inline ERR GenerateEllipse(double CX, double CY, double RX, double RY, int Vertices, APTR *Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
 inline ERR GeneratePath(CSTRING Sequence, APTR *Path) { return VectorBase->_GeneratePath(Sequence,Path); }
-inline ERR GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
+inline ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
 inline ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, struct VectorPainter *Painter, CSTRING *Result) { return VectorBase->_ReadPainter(Scene,IRI,Painter,Result); }
-inline void TranslatePath(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_TranslatePath(Path,X,Y); }
-inline void MoveTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_MoveTo(Path,X,Y); }
-inline void LineTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_LineTo(Path,X,Y); }
-inline void ArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags) { return VectorBase->_ArcTo(Path,RX,RY,Angle,X,Y,Flags); }
-inline void Curve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve3(Path,CtrlX,CtrlY,X,Y); }
-inline void Smooth3(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth3(Path,X,Y); }
-inline void Curve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve4(Path,CtrlX1,CtrlY1,CtrlX2,CtrlY2,X,Y); }
-inline void Smooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth4(Path,CtrlX,CtrlY,X,Y); }
+inline void TranslatePath(APTR Path, double X, double Y) { return VectorBase->_TranslatePath(Path,X,Y); }
+inline void MoveTo(APTR Path, double X, double Y) { return VectorBase->_MoveTo(Path,X,Y); }
+inline void LineTo(APTR Path, double X, double Y) { return VectorBase->_LineTo(Path,X,Y); }
+inline void ArcTo(APTR Path, double RX, double RY, double Angle, double X, double Y, ARC Flags) { return VectorBase->_ArcTo(Path,RX,RY,Angle,X,Y,Flags); }
+inline void Curve3(APTR Path, double CtrlX, double CtrlY, double X, double Y) { return VectorBase->_Curve3(Path,CtrlX,CtrlY,X,Y); }
+inline void Smooth3(APTR Path, double X, double Y) { return VectorBase->_Smooth3(Path,X,Y); }
+inline void Curve4(APTR Path, double CtrlX1, double CtrlY1, double CtrlX2, double CtrlY2, double X, double Y) { return VectorBase->_Curve4(Path,CtrlX1,CtrlY1,CtrlX2,CtrlY2,X,Y); }
+inline void Smooth4(APTR Path, double CtrlX, double CtrlY, double X, double Y) { return VectorBase->_Smooth4(Path,CtrlX,CtrlY,X,Y); }
 inline void ClosePath(APTR Path) { return VectorBase->_ClosePath(Path); }
 inline void RewindPath(APTR Path) { return VectorBase->_RewindPath(Path); }
-inline int GetVertex(APTR Path, DOUBLE *X, DOUBLE *Y) { return VectorBase->_GetVertex(Path,X,Y); }
+inline int GetVertex(APTR Path, double *X, double *Y) { return VectorBase->_GetVertex(Path,X,Y); }
 inline ERR ApplyPath(APTR Path, objVectorPath *VectorPath) { return VectorBase->_ApplyPath(Path,VectorPath); }
-inline ERR Rotate(struct VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY) { return VectorBase->_Rotate(Matrix,Angle,CenterX,CenterY); }
-inline ERR Translate(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Translate(Matrix,X,Y); }
-inline ERR Skew(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Skew(Matrix,X,Y); }
-inline ERR Multiply(struct VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY) { return VectorBase->_Multiply(Matrix,ScaleX,ShearY,ShearX,ScaleY,TranslateX,TranslateY); }
+inline ERR Rotate(struct VectorMatrix *Matrix, double Angle, double CenterX, double CenterY) { return VectorBase->_Rotate(Matrix,Angle,CenterX,CenterY); }
+inline ERR Translate(struct VectorMatrix *Matrix, double X, double Y) { return VectorBase->_Translate(Matrix,X,Y); }
+inline ERR Skew(struct VectorMatrix *Matrix, double X, double Y) { return VectorBase->_Skew(Matrix,X,Y); }
+inline ERR Multiply(struct VectorMatrix *Matrix, double ScaleX, double ShearY, double ShearX, double ScaleY, double TranslateX, double TranslateY) { return VectorBase->_Multiply(Matrix,ScaleX,ShearY,ShearX,ScaleY,TranslateX,TranslateY); }
 inline ERR MultiplyMatrix(struct VectorMatrix *Target, struct VectorMatrix *Source) { return VectorBase->_MultiplyMatrix(Target,Source); }
-inline ERR Scale(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Scale(Matrix,X,Y); }
+inline ERR Scale(struct VectorMatrix *Matrix, double X, double Y) { return VectorBase->_Scale(Matrix,X,Y); }
 inline ERR ParseTransform(struct VectorMatrix *Matrix, CSTRING Transform) { return VectorBase->_ParseTransform(Matrix,Transform); }
 inline ERR ResetMatrix(struct VectorMatrix *Matrix) { return VectorBase->_ResetMatrix(Matrix); }
 inline ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle) { return VectorBase->_GetFontHandle(Family,Style,Weight,Size,Handle); }
 inline ERR GetFontMetrics(APTR Handle, struct FontMetrics *Info) { return VectorBase->_GetFontMetrics(Handle,Info); }
-inline DOUBLE CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE *Kerning) { return VectorBase->_CharWidth(FontHandle,Char,KChar,Kerning); }
-inline DOUBLE StringWidth(APTR FontHandle, CSTRING String, int Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
+inline double CharWidth(APTR FontHandle, uint32_t Char, uint32_t KChar, double *Kerning) { return VectorBase->_CharWidth(FontHandle,Char,KChar,Kerning); }
+inline double StringWidth(APTR FontHandle, CSTRING String, int Chars) { return VectorBase->_StringWidth(FontHandle,String,Chars); }
 inline ERR FlushMatrix(struct VectorMatrix *Matrix) { return VectorBase->_FlushMatrix(Matrix); }
-inline ERR TracePath(APTR Path, FUNCTION *Callback, DOUBLE Scale) { return VectorBase->_TracePath(Path,Callback,Scale); }
+inline ERR TracePath(APTR Path, FUNCTION *Callback, double Scale) { return VectorBase->_TracePath(Path,Callback,Scale); }
 } // namespace
 #else
 namespace vec {
-extern ERR DrawPath(objBitmap *Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern ERR GenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, int Vertices, APTR *Path);
+extern ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+extern ERR GenerateEllipse(double CX, double CY, double RX, double RY, int Vertices, APTR *Path);
 extern ERR GeneratePath(CSTRING Sequence, APTR *Path);
-extern ERR GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR *Path);
+extern ERR GenerateRectangle(double X, double Y, double Width, double Height, APTR *Path);
 extern ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, struct VectorPainter *Painter, CSTRING *Result);
-extern void TranslatePath(APTR Path, DOUBLE X, DOUBLE Y);
-extern void MoveTo(APTR Path, DOUBLE X, DOUBLE Y);
-extern void LineTo(APTR Path, DOUBLE X, DOUBLE Y);
-extern void ArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
-extern void Curve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
-extern void Smooth3(APTR Path, DOUBLE X, DOUBLE Y);
-extern void Curve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
-extern void Smooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern void TranslatePath(APTR Path, double X, double Y);
+extern void MoveTo(APTR Path, double X, double Y);
+extern void LineTo(APTR Path, double X, double Y);
+extern void ArcTo(APTR Path, double RX, double RY, double Angle, double X, double Y, ARC Flags);
+extern void Curve3(APTR Path, double CtrlX, double CtrlY, double X, double Y);
+extern void Smooth3(APTR Path, double X, double Y);
+extern void Curve4(APTR Path, double CtrlX1, double CtrlY1, double CtrlX2, double CtrlY2, double X, double Y);
+extern void Smooth4(APTR Path, double CtrlX, double CtrlY, double X, double Y);
 extern void ClosePath(APTR Path);
 extern void RewindPath(APTR Path);
-extern int GetVertex(APTR Path, DOUBLE *X, DOUBLE *Y);
+extern int GetVertex(APTR Path, double *X, double *Y);
 extern ERR ApplyPath(APTR Path, objVectorPath *VectorPath);
-extern ERR Rotate(struct VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
-extern ERR Translate(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y);
-extern ERR Skew(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y);
-extern ERR Multiply(struct VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY);
+extern ERR Rotate(struct VectorMatrix *Matrix, double Angle, double CenterX, double CenterY);
+extern ERR Translate(struct VectorMatrix *Matrix, double X, double Y);
+extern ERR Skew(struct VectorMatrix *Matrix, double X, double Y);
+extern ERR Multiply(struct VectorMatrix *Matrix, double ScaleX, double ShearY, double ShearX, double ScaleY, double TranslateX, double TranslateY);
 extern ERR MultiplyMatrix(struct VectorMatrix *Target, struct VectorMatrix *Source);
-extern ERR Scale(struct VectorMatrix *Matrix, DOUBLE X, DOUBLE Y);
+extern ERR Scale(struct VectorMatrix *Matrix, double X, double Y);
 extern ERR ParseTransform(struct VectorMatrix *Matrix, CSTRING Transform);
 extern ERR ResetMatrix(struct VectorMatrix *Matrix);
 extern ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle);
 extern ERR GetFontMetrics(APTR Handle, struct FontMetrics *Info);
-extern DOUBLE CharWidth(APTR FontHandle, ULONG Char, ULONG KChar, DOUBLE *Kerning);
-extern DOUBLE StringWidth(APTR FontHandle, CSTRING String, int Chars);
+extern double CharWidth(APTR FontHandle, uint32_t Char, uint32_t KChar, double *Kerning);
+extern double StringWidth(APTR FontHandle, CSTRING String, int Chars);
 extern ERR FlushMatrix(struct VectorMatrix *Matrix);
-extern ERR TracePath(APTR Path, FUNCTION *Callback, DOUBLE Scale);
+extern ERR TracePath(APTR Path, FUNCTION *Callback, double Scale);
 } // namespace
 #endif // PARASOL_STATIC
 #endif
