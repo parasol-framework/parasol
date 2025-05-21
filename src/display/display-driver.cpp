@@ -1163,9 +1163,11 @@ static ERR MODExpunge(void)
    pf::Log log(__FUNCTION__);
    ERR error = ERR::Okay;
 
-   clean_clipboard();
+   if (clDisplay) {
+      clean_clipboard();
+      glClips.clear();
+   }
 
-   glClips.clear();
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
    if (glComposite)           { FreeResource(glComposite); glComposite = NULL; }
    if (glCompress)            { FreeResource(glCompress); glCompress = NULL; }
@@ -1226,13 +1228,13 @@ static ERR MODExpunge(void)
 
 #endif
 
-   if (glIconArchive) { FreeResource(glIconArchive); glIconArchive = NULL; }
-   if (clPointer)     { FreeResource(clPointer);     clPointer     = NULL; }
-   if (clDisplay)     { FreeResource(clDisplay);     clDisplay     = NULL; }
-   if (clBitmap)      { FreeResource(clBitmap);      clBitmap      = NULL; }
-   if (clClipboard)   { FreeResource(clClipboard);   clClipboard   = NULL; }
-   if (clSurface)     { FreeResource(clSurface);     clSurface     = NULL; }
-   if (clController)  { FreeResource(clController);  clController  = NULL; }
+   if (glIconArchive) { FreeResource(glIconArchive); glIconArchive = nullptr; }
+   if (clPointer)     { FreeResource(clPointer);     clPointer     = nullptr; }
+   if (clDisplay)     { FreeResource(clDisplay);     clDisplay     = nullptr; }
+   if (clBitmap)      { FreeResource(clBitmap);      clBitmap      = nullptr; }
+   if (clClipboard)   { FreeResource(clClipboard);   clClipboard   = nullptr; }
+   if (clSurface)     { FreeResource(clSurface);     clSurface     = nullptr; }
+   if (clController)  { FreeResource(clController);  clController  = nullptr; }
 
    #ifdef _GLES_
       free_egl();

@@ -34,13 +34,18 @@ Name: Messages
 
 static ERR wake_task(void);
 #ifdef _WIN32
-static ERR sleep_task(LONG, BYTE);
+static ERR sleep_task(int, BYTE);
 #else
-static ERR sleep_task(LONG);
-ERR write_nonblock(LONG Handle, APTR Data, LONG Size, int64_t EndTime);
+static ERR sleep_task(int);
+ERR write_nonblock(int Handle, APTR Data, int Size, int64_t EndTime);
 #endif
 
-template <class T> inline APTR ResolveAddress(T *Pointer, LONG Offset) {
+static const int MAX_MSEC = 1000;
+
+static std::recursive_mutex glQueueLock;
+static std::vector<TaskMessage> glQueue; // Available to all threads, use glQueueLock
+
+template <class T> inline APTR ResolveAddress(T *Pointer, int Offset) {
    return APTR(((BYTE *)Pointer) + Offset);
 }
 
@@ -63,10 +68,6 @@ static ResourceManager glResourceMsgHandler = {
    "MsgHandler",
    &msghandler_free
 };
-
-#define MAX_MSEC 1000
-
-static std::mutex glQueueLock;
 
 //********************************************************************************************************************
 // Handler for WaitForObjects().  If an object on the list is signalled then it is removed from the list.  A
@@ -109,7 +110,7 @@ When calling AddMsgHandler(), you can provide an optional `Custom` pointer that 
 `MsgType` acts as a filter so that only messages with the same type identifier will be passed to the handler.  The
 `Routine` parameter must point to the function handler, which will follow this definition:
 
-<pre>ERR handler(APTR Custom, MSGID MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
+<pre>ERR handler(APTR Custom, MSGID MsgID, INT MsgType, APTR Message, INT MsgSize)</pre>
 
 The handler must return `ERR::Okay` if the message was handled.  This means that the message will not be passed to message
 handlers that are yet to receive the message.  Throw `ERR::NothingDone` if the message has been ignored or `ERR::Continue`
@@ -200,9 +201,9 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 *********************************************************************************************************************/
 
-ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, LONG BufferSize)
+ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, int BufferSize)
 {
-   const std::lock_guard<std::mutex> lock(glQueueLock);
+   const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
 
    for (auto it=glQueue.begin(); it != glQueue.end(); it++) {
       if (it->Type IS MSGID::NIL) continue;
@@ -269,7 +270,7 @@ TimeOut:
 
 *********************************************************************************************************************/
 
-ERR ProcessMessages(PMF Flags, LONG TimeOut)
+ERR ProcessMessages(PMF Flags, int TimeOut)
 {
    pf::Log log(__FUNCTION__);
 
@@ -300,7 +301,7 @@ ERR ProcessMessages(PMF Flags, LONG TimeOut)
    if (TimeOut IS -1) timeout_end = 0x7fffffffffffffffLL; // Infinite loop
    else timeout_end = PreciseTime() + ((int64_t)TimeOut * 1000LL);
 
-   log.traceBranch("Flags: $%.8x, TimeOut: %d", LONG(Flags), TimeOut);
+   log.traceBranch("Flags: $%.8x, TimeOut: %d", int(Flags), TimeOut);
 
    ERR returncode = ERR::Okay;
    bool breaking = false;
@@ -387,6 +388,9 @@ timer_cycle:
 
       // Consume queued messages
 
+      
+      const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
+
       unsigned i;
       for (i=0; (i < glQueue.size()) and (i < 30); i++) {
          if (glQueue[i].Type IS MSGID::BREAK) {
@@ -402,7 +406,7 @@ timer_cycle:
             if ((hdl->MsgType IS MSGID::NIL) or (hdl->MsgType IS glQueue[i].Type)) {
                ERR result = ERR::NoSupport;
                if (hdl->Function.isC()) {
-                  auto msghandler = (ERR (*)(APTR, LONG, MSGID, APTR, LONG, APTR))hdl->Function.Routine;
+                  auto msghandler = (ERR (*)(APTR, int, MSGID, APTR, int, APTR))hdl->Function.Routine;
                   if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size, hdl->Function.Meta);
                   else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0, hdl->Function.Meta);
                }
@@ -542,7 +546,7 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 *********************************************************************************************************************/
 
-ERR ScanMessages(LONG *Handle, MSGID Type, APTR Buffer, LONG BufferSize)
+ERR ScanMessages(int *Handle, MSGID Type, APTR Buffer, int BufferSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -554,10 +558,10 @@ ERR ScanMessages(LONG *Handle, MSGID Type, APTR Buffer, LONG BufferSize)
       return ERR::Search;
    }
 
-   const std::lock_guard<std::mutex> lock(glQueueLock);
+   const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
 
-   LONG index = *Handle;
-   if (index >= LONG(glQueue.size())) return ERR::OutOfRange;
+   int index = *Handle;
+   if (index >= int(glQueue.size())) return ERR::OutOfRange;
 
    for (auto it = glQueue.begin() + index; it != glQueue.end(); it++) {
       if ((it->Type != MSGID::NIL) and ((it->Type IS Type) or (Type IS MSGID::NIL))) {
@@ -606,14 +610,14 @@ Args:
 
 *********************************************************************************************************************/
 
-ERR SendMessage(MSGID Type, MSF Flags, APTR Data, LONG Size)
+ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size)
 {
    pf::Log log(__FUNCTION__);
 
    if (glLogLevel >= 9) {
       if (Type IS MSGID::ACTION) {
          auto action = (ActionMessage *)Data;
-         if (action->ActionID > AC::NIL) log.branch("Action: %s, Object: %d, Size: %d", ActionTable[LONG(action->ActionID)].Name, action->ObjectID, Size);
+         if (action->ActionID > AC::NIL) log.branch("Action: %s, Object: %d, Size: %d", ActionTable[int(action->ActionID)].Name, action->ObjectID, Size);
       }
       else log.branch("Type: %d, Data: %p, Size: %d", int(Type), Data, Size);
    }
@@ -621,7 +625,7 @@ ERR SendMessage(MSGID Type, MSF Flags, APTR Data, LONG Size)
    if ((Type IS MSGID::NIL) or (Size < 0)) return log.warning(ERR::Args);
 
    {
-      const std::lock_guard<std::mutex> lock(glQueueLock);
+      const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
 
       if ((Flags & (MSF::NO_DUPLICATE|MSF::UPDATE)) != MSF::NIL) {
          for (auto it=glQueue.begin(); it != glQueue.end(); it++) {
@@ -635,7 +639,7 @@ ERR SendMessage(MSGID Type, MSF Flags, APTR Data, LONG Size)
          }
       }
 
-      glQueue.emplace_back(Type, Data, Size);
+      glQueue.emplace_back(Type, Data, Size); // BROKEN: Causes reallocation of the vector, affects threads.
    }
 
    wake_task(); // Alert the process to indicate that there are messages available.
@@ -674,7 +678,7 @@ OutsideMainThread
 
 *********************************************************************************************************************/
 
-ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
+ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
 {
    // Refer to the Task class for the message interception routines
    pf::Log log(__FUNCTION__);
@@ -684,7 +688,7 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if (!tlMainThread) return log.warning(ERR::OutsideMainThread);
 
-   log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", LONG(Flags), TimeOut, ObjectSignals);
+   log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", int(Flags), TimeOut, ObjectSignals);
 
    pf::SwitchContext ctx(glCurrentTask);
 
@@ -694,7 +698,7 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
    glWFOList.clear();
 
    if (ObjectSignals) {
-      for (LONG i=0; ((error IS ERR::Okay) and (ObjectSignals[i].Object)); i++) {
+      for (int i=0; ((error IS ERR::Okay) and (ObjectSignals[i].Object)); i++) {
          pf::ScopedObjectLock lock(ObjectSignals[i].Object); // For thread safety
 
          if (lock.granted()) {
@@ -730,7 +734,7 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
          auto current_time = PreciseTime();
          auto end_time = current_time + (TimeOut * 1000LL);
          while ((not glWFOList.empty()) and (current_time < end_time) and (error IS ERR::Okay)) {
-            log.detail("Waiting on %d objects.", (LONG)glWFOList.size());
+            log.detail("Waiting on %d objects.", (int)glWFOList.size());
             error = ProcessMessages(Flags, (end_time - current_time) / 1000LL);
             current_time = PreciseTime();
          }
@@ -758,9 +762,9 @@ ERR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 // This is the equivalent internal routine to SendMessage(), for the purpose of sending messages to other threads.
 
 #ifdef _WIN32
-ERR send_thread_msg(WINHANDLE Handle, MSGID Type, APTR Data, LONG Size)
+ERR send_thread_msg(WINHANDLE Handle, MSGID Type, APTR Data, int Size)
 #else
-ERR send_thread_msg(LONG Handle, MSGID Type, APTR Data, LONG Size)
+ERR send_thread_msg(int Handle, MSGID Type, APTR Data, int Size)
 #endif
 {
    pf::Log log(__FUNCTION__);
@@ -775,7 +779,7 @@ ERR send_thread_msg(LONG Handle, MSGID Type, APTR Data, LONG Size)
    msg.Time = PreciseTime();
 
 #ifdef _WIN32
-   LONG write = sizeof(msg);
+   int write = sizeof(msg);
    if (!winWritePipe(Handle, &msg, &write)) { // Write the header first.
       if ((Data) and (Size > 0)) {
          // Write the main message.
@@ -805,15 +809,15 @@ ERR send_thread_msg(LONG Handle, MSGID Type, APTR Data, LONG Size)
 // end-time is required so that a timeout will be signalled if the reader isn't keeping the buffer clear.
 
 #ifdef __unix__
-ERR write_nonblock(LONG Handle, APTR Data, LONG Size, int64_t EndTime)
+ERR write_nonblock(int Handle, APTR Data, int Size, int64_t EndTime)
 {
-   LONG offset = 0;
+   int offset = 0;
    ERR error = ERR::Okay;
 
    while ((offset < Size) and (error IS ERR::Okay)) {
-      LONG write_size = Size;
+      int write_size = Size;
       if (write_size > 1024) write_size = 1024;  // Limiting the size will make the chance of an EWOULDBLOCK error less likely.
-      LONG len = write(Handle, (char *)Data+offset, write_size - offset);
+      int len = write(Handle, (char *)Data+offset, write_size - offset);
       if (len >= 0) offset += len;
       if (offset IS Size) break;
 
@@ -826,7 +830,7 @@ ERR write_nonblock(LONG Handle, APTR Data, LONG Size, int64_t EndTime)
                FD_SET(Handle, &wfds);
                tv.tv_sec = (EndTime - (PreciseTime() / 1000LL)) / 1000LL;
                tv.tv_usec = 0;
-               LONG total = select(1, &wfds, NULL, NULL, &tv);
+               int total = select(1, &wfds, NULL, NULL, &tv);
                if (total IS -1) error = ERR::SystemCall;
                else if (!total) error = ERR::TimeOut;
                else break;
@@ -876,11 +880,11 @@ Search: The supplied `Message` ID does not refer to a message in the queue.
 
 *********************************************************************************************************************/
 
-ERR UpdateMessage(LONG MessageID, MSGID Type, APTR Buffer, LONG BufferSize)
+ERR UpdateMessage(int MessageID, MSGID Type, APTR Buffer, int BufferSize)
 {
    if (!MessageID) return ERR::NullArgs;
 
-   const std::lock_guard<std::mutex> lock(glQueueLock);
+   const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
 
    for (auto it=glQueue.begin(); it != glQueue.end(); it++) {
       if (it->UID != MessageID) continue;
@@ -900,7 +904,7 @@ ERR UpdateMessage(LONG MessageID, MSGID Type, APTR Buffer, LONG BufferSize)
 // sleep_task() - Unix version
 
 #ifdef __unix__
-ERR sleep_task(LONG Timeout)
+ERR sleep_task(int Timeout)
 {
    pf::Log log(__FUNCTION__);
 
@@ -931,7 +935,7 @@ ERR sleep_task(LONG Timeout)
 
    //log.trace("Time-out: %d", Timeout);
 
-   LONG maxfd = -1;
+   int maxfd = -1;
    if (!glFDTable.empty()) {
       FD_ZERO(&fread);
       FD_ZERO(&fwrite);
@@ -973,7 +977,7 @@ ERR sleep_task(LONG Timeout)
       }
    }
 
-   LONG result = 0;
+   int result = 0;
    if (Timeout < 0) { // Sleep indefinitely
       if (!glFDTable.empty()) result = select(maxfd + 1, &fread, &fwrite, NULL, NULL);
       else pause();
@@ -1069,7 +1073,7 @@ ERR sleep_task(LONG Timeout)
 // sleep_task() - Windows version
 
 #ifdef _WIN32
-ERR sleep_task(LONG Timeout, BYTE SystemOnly)
+ERR sleep_task(int Timeout, BYTE SystemOnly)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1111,7 +1115,7 @@ ERR sleep_task(LONG Timeout, BYTE SystemOnly)
 
       auto handles = std::make_unique<WINHANDLE[]>(glFDTable.size()+1); // +1 for thread-lock
       handles[0] = get_threadlock();
-      LONG total = 1;
+      int total = 1;
 
       if ((SystemOnly) and (!tlMessageBreak)) {
          log.trace("Sleeping on process semaphore only.");
@@ -1137,10 +1141,10 @@ ERR sleep_task(LONG Timeout, BYTE SystemOnly)
 
       //if (Timeout > 0) log.trace("Sleeping on %d handles for up to %dms.  MsgBreak: %d", total, Timeout, tlMessageBreak);
 
-      LONG sleeptime = time_end - (PreciseTime() / 1000LL);
+      int sleeptime = time_end - (PreciseTime() / 1000LL);
       if (sleeptime < 0) sleeptime = 0;
 
-      LONG i = winWaitForObjects(total, handles.get(), sleeptime, tlMessageBreak);
+      int i = winWaitForObjects(total, handles.get(), sleeptime, tlMessageBreak);
 
       // Return Codes/Reasons for breaking:
       //

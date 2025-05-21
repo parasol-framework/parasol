@@ -98,7 +98,6 @@ std::unordered_map<ULONG, std::string> glFields;
 std::unordered_multimap<ULONG, CLASSID> glWildClassMap;
 
 std::vector<FDRecord> glRegisterFD;
-std::vector<TaskMessage> glQueue;
 std::vector<TaskRecord> glTasks;
 
 class RootModule  *glModuleList  = NULL;

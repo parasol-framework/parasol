@@ -118,21 +118,21 @@ enum class IDTYPE : LONG;
 enum class TSTATE : BYTE;
 enum class LOC    : LONG;
 enum class STT    : LONG;
-enum class NF     : ULONG;
-enum class FOF    : ULONG;
-enum class RFD    : ULONG;
-enum class PMF    : ULONG;
-enum class MSF    : ULONG;
-enum class RDF    : ULONG;
-enum class RSF    : ULONG;
-enum class LDF    : ULONG;
-enum class VOLUME : ULONG;
-enum class STR    : ULONG;
-enum class SCF    : ULONG;
-enum class SBF    : ULONG;
-enum class SMF    : ULONG;
-enum class VLF    : ULONG;
-enum class MFF    : ULONG;
+enum class NF     : uint32_t;
+enum class FOF    : uint32_t;
+enum class RFD    : uint32_t;
+enum class PMF    : uint32_t;
+enum class MSF    : uint32_t;
+enum class RDF    : uint32_t;
+enum class RSF    : uint32_t;
+enum class LDF    : uint32_t;
+enum class VOLUME : uint32_t;
+enum class STR    : uint32_t;
+enum class SCF    : uint32_t;
+enum class SBF    : uint32_t;
+enum class SMF    : uint32_t;
+enum class VLF    : uint32_t;
+enum class MFF    : uint32_t;
 enum class DEVICE : int64_t;
 enum class PERMIT : ULONG;
 enum class CCF    : ULONG;
@@ -144,10 +144,10 @@ enum class MSGID  : LONG;
 
 #define STAT_FOLDER 0x0001
 
-struct THREADID : strong_typedef<THREADID, LONG> { // Internal thread ID, unrelated to the host platform.
+struct THREADID : strong_typedef<THREADID, int> { // Internal thread ID, unrelated to the host platform.
    // Make constructors available
    using strong_typedef::strong_typedef;
-   bool operator==(const THREADID & other) const { return LONG(*this) == LONG(other); }
+   bool operator==(const THREADID & other) const { return int(*this) == int(other); }
 };
 
 struct rkWatchPath {
@@ -784,9 +784,9 @@ class TaskMessage {
    public:
    // struct Message - START
    int64_t Time;
-   LONG  UID;
-   MSGID Type;
-   LONG  Size;
+   int     UID;
+   MSGID   Type;
+   int     Size;
    // struct Message - END
    private:
    char *ExtBuffer;
@@ -866,8 +866,6 @@ class TaskMessage {
       else if (Size) copymem(Source.Buffer.data(), Buffer.data(), Size);
    }
 };
-
-extern std::vector<TaskMessage> glQueue;
 
 //********************************************************************************************************************
 // ObjectContext is used to represent the object that has the current context in terms of the run-time call stack.
