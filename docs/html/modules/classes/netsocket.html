@@ -256,7 +256,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr><th>Type</th><td><span class="text-nowrap">IPADDR</span></td><td>Identifies the address Data value as a V4 or V6 address type.</td></tr>
 <tr><th>Pad</th><td><span class="text-nowrap">INT</span></td><td>Unused padding for 64-bit alignment</td></tr>
 </tbody></table><div class="footer copyright text-right">NetSocket class documentation © Paul Manias © 2005-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-NetClient"><h1>NetClient Structure</h1><p class="lead">Simple data storage class utilised by NetSocket to represent a client machine/IP.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>IP</th><td><span class="text-nowrap">char</span></td><td>IP address in 4/8-byte format</td></tr>
+<div class="docs-content" style="display:none;" id="struct-NetClient"><h1>NetClient Structure</h1><p class="lead">Simple data storage class utilised by NetSocket to represent a client machine/IP.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>IP</th><td><span class="text-nowrap">BYTE</span></td><td>IP address in 4/8-byte format</td></tr>
 <tr><th>Next</th><td><span class="text-nowrap">struct NetClient *</span></td><td>Next client in the chain</td></tr>
 <tr><th>Prev</th><td><span class="text-nowrap">struct NetClient *</span></td><td>Previous client in the chain</td></tr>
 <tr><th>NetSocket</th><td><span class="text-nowrap">objNetSocket *</span></td><td>Reference to the parent socket</td></tr>

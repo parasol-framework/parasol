@@ -38,7 +38,6 @@ extern "C" ERR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 extern "C" ERR ProcessMessages(PMF Flags, int TimeOut);
 extern "C" ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID * Class, CLASSID * SubClass);
 extern "C" ERR ReallocMemory(APTR Memory, uint32_t Size, APTR * Address, MEMORYID * ID);
-extern "C" ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, int Size);
 extern "C" ERR ReleaseMemory(MEMORYID MemoryID);
 extern "C" CLASSID ResolveClassName(CSTRING Name);
 extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);

@@ -83,7 +83,7 @@ ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    }
 
    if (MemoryID) *MemoryID = 0;
-   if (Address) *Address = NULL;
+   if (Address) *Address = nullptr;
 
    // Determine the object that will own the memory block.  The preferred default is for it to belong to the current context.
 
@@ -119,7 +119,7 @@ ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 
       APTR header = start_mem;
       if ((Flags & MEM::MANAGED) != MEM::NIL) {
-         ((ResourceManager **)header)[0] = NULL;
+         ((ResourceManager **)header)[0] = nullptr;
          header = (char *)header + sizeof(ResourceManager *);
       }
 

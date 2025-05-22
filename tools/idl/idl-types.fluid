@@ -437,15 +437,23 @@ function cType(Field, Origin)
    do
       local const, ptr_type = Field.type:match('^(c-)ptr%((.+)%)')
       if (ptr_type != nil) then
-         Field.type = cType({ type=ptr_type }, Origin).type .. ' *'
+         local ptr_ctype = cType({ type=ptr_type }, Origin)
+
+         Field.type = ptr_ctype.type .. ' *'
+
          if (nz(const)) then
             Field.type =  'const ' .. Field.type
          end
+
          if (ptr_type == 'func') then
             Field.fullType = { fd='FD_FUNCTIONPTR', c_type='FUNCTION *' }
          else
-            Field.fullType = glTypes.ptr
+            Field.fullType = { fd='FD_PTR', c_type='APTR' }
+            if ptr_ctype.fullType.doc_type then
+               Field.fullType.doc_type = ptr_ctype.fullType.doc_type .. ' *'
+            end
          end
+
          goto finalise
       end
    end

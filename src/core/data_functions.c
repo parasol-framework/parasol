@@ -41,7 +41,6 @@ FDEF argsGetEventID[] = { { "Result", FD_LARGE }, { "Group", FD_LONG }, { "SubGr
 FDEF argsGetField[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR }, { 0, 0 } };
 FDEF argsGetFieldArray[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_LARGE }, { "Result", FD_PTR|FD_RESULT }, { "Elements", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsGetFieldVariable[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_STR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsGetMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Type", FD_LONG }, { "Flags", FD_LONG }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetObjectPtr[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetOwnerID[] = { { "Result", FD_OBJECTID }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { 0, 0 } };
@@ -137,7 +136,6 @@ const struct Function glFunctions[] = {
    { (APTR)ProcessMessages, "ProcessMessages", argsProcessMessages },
    { (APTR)IdentifyFile, "IdentifyFile", argsIdentifyFile },
    { (APTR)ReallocMemory, "ReallocMemory", argsReallocMemory },
-   { (APTR)GetMessage, "GetMessage", argsGetMessage },
    { (APTR)ReleaseMemory, "ReleaseMemory", argsReleaseMemory },
    { (APTR)ResolveClassName, "ResolveClassName", argsResolveClassName },
    { (APTR)SendMessage, "SendMessage", argsSendMessage },

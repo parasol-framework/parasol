@@ -302,7 +302,7 @@ __export void Expunge(int16_t Force)
       return;
    }
 
-   log.branch("Sending expunge call to all loaded modules.");
+   log.branch("Expunging loaded modules.");
 
    int16_t mod_count = -1;
    int16_t ccount   = 0;
@@ -335,8 +335,8 @@ __export void Expunge(int16_t Force)
             if (!class_in_use) {
                if (mod_master->Expunge) {
                   pf::Log log(__FUNCTION__);
-                  log.branch("Sending expunge request to the %s module #%d.", mod_master->Name.c_str(), mod_master->UID);
-                  if (mod_master->Expunge() IS ERR::Okay) {
+                  log.branch("Expunging %s module #%d.", mod_master->Name.c_str(), mod_master->UID);
+                  if (auto error = mod_master->Expunge(); error IS ERR::Okay) {
                      ccount++;
                      if (FreeResource(mod_master) != ERR::Okay) {
                         log.warning("RootModule data is corrupt");
@@ -344,7 +344,7 @@ __export void Expunge(int16_t Force)
                         break;
                      }
                   }
-                  else log.msg("Module \"%s\" does not want to be flushed.",mod_master->Name.c_str());
+                  else if (error != ERR::DoNotExpunge) log.msg("Module \"%s\" does not want to be flushed.",mod_master->Name.c_str());
                }
                else {
                   ccount++;
@@ -406,7 +406,7 @@ __export void Expunge(int16_t Force)
             pf::Log log(__FUNCTION__);
             log.branch("Forcing the expunge of stubborn module %s.", mod_master->Name.c_str());
             mod_master->Expunge();
-            mod_master->NoUnload = true; // Do not actively destroy the module code as a precaution
+            mod_master->NoUnload = true; // Do not actively destroy the module code as a precaution (e.g. X11 Display module doesn't like it)
             FreeResource(mod_master);
          }
          else {
@@ -449,7 +449,7 @@ static void free_private_memory(void)
                if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
                   log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, uint32_t(mem.Object->classID()), mem.OwnerID);
                }
-               else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
+               else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d, Locks: %d, ThreadLock: %d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID, mem.AccessCount, int(mem.ThreadLockID));
             }
             mem.AccessCount = 0;
             FreeResource(mem.Address);

@@ -195,7 +195,7 @@ struct FunctionField argsResize[] = {
 <p>This function allows handlers to be added for the interception of incoming messages.  Message handling works as follows:</p>
 <p>During a call to <function>ProcessMessages</function>, each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
 <p>When calling AddMsgHandler(), you can provide an optional <code>Custom</code> pointer that will have meaning to the handler.  The <code>MsgType</code> acts as a filter so that only messages with the same type identifier will be passed to the handler.  The <code>Routine</code> parameter must point to the function handler, which will follow this definition:</p>
-<pre>ERR handler(APTR Custom, MSGID MsgID, LONG MsgType, APTR Message, LONG MsgSize)</pre>
+<pre>ERR handler(APTR Custom, MSGID MsgID, INT MsgType, APTR Message, INT MsgSize)</pre>
 <p>The handler must return <code>ERR::Okay</code> if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw <code>ERR::NothingDone</code> if the message has been ignored or <code>ERR::Continue</code> if the message was processed but may be analysed by other handlers.  Throw <code>ERR::Terminate</code> to break the current <function>ProcessMessages</function> loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
 <p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to <function>FreeResource</function> once it is no longer required.</p>
     </description>
@@ -697,9 +697,8 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
     <prototype>struct Message * GetActionMsg()</prototype>
     <description>
 <p>This function is for use by action and method support routines only.  It will return a <st>Message</st> structure if the action currently under execution has been called directly from the <function>ProcessMessages</function> function.  In all other cases a <code>NULL</code> pointer is returned.</p>
-<p>The <st>Message</st> structure reflects the contents of a standard <function>GetMessage</function> call.  Of particular interest may be the <code>Time</code> field, which indicates the time-stamp at which the action message was originally sent to the object.</p>
     </description>
-    <result type="struct Message *">A <st>Message</st> structure is returned if the function is called in valid circumstances, otherwise <code>NULL</code>.  The <st>Message</st> structure's fields are described in the <function>GetMessage</function> function.</result>
+    <result type="struct Message *">A <st>Message</st> structure is returned if the function is called in valid circumstances, otherwise <code>NULL</code>.</result>
   </function>
 
   <function>
@@ -835,30 +834,6 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <error code="NoFieldAccess">Permissions for this field state that it is not readable.</error>
       <error code="UnsupportedField">The requested field is not supported by the object's class.</error>
       <error code="Mismatch">The field value cannot be converted into a string.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>GetMessage</name>
-    <category>Messages</category>
-    <comment>Reads messages from message queues.</comment>
-    <prototype>ERR GetMessage(MSGID Type, MSF Flags, APTR Buffer, INT Size)</prototype>
-    <input>
-      <param type="MSGID" name="Type" lookup="MSGID">Filter down to this message type or set to zero to receive the next message on the queue.</param>
-      <param type="MSF" name="Flags" lookup="MSF">This argument is reserved for future use.  Set it to zero.</param>
-      <param type="APTR" name="Buffer">Pointer to a buffer that is large enough to hold the incoming message information.  If set to <code>NULL</code> then all accompanying message data will be destroyed.</param>
-      <param type="INT" name="Size">The byte-size of the buffer that you have supplied.</param>
-    </input>
-    <description>
-<p>The GetMessage() function is used to read messages that have been stored in the local message queue.  You can use this function to read the next immediate message stored on the queue, or the first message on the queue that matches a particular Type.  It is also possible to call this function in a loop to clear out all messages, until an error code other than <code>ERR::Okay</code> is returned.</p>
-<p>Messages will often (although not always) carry data that is relevant to the message type.  To retrieve this data you need to supply a <code>Buffer</code>, preferably one that is large enough to receive all the data that you expect from your messages.  If the <code>Buffer</code> is too small, the message data will be trimmed to fit.</p>
-<p>Message data is written to the supplied buffer with a <st>Message</st> structure, which is immediately followed up with the actual message data.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Search">No more messages are left on the queue, or no messages that match the given <code>Type</code> are on the queue.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="AccessMemory">Failed to gain access to the message queue.</error>
     </result>
   </function>
 
@@ -1931,13 +1906,12 @@ SetField(Object, FID_Statement|TSTR, "string");
     <prototype>ERR UpdateMessage(INT Message, MSGID Type, APTR Data, INT Size)</prototype>
     <input>
       <param type="INT" name="Message">The ID of the message that will be updated.</param>
-      <param type="MSGID" name="Type" lookup="MSGID">The type of the message.  If set to <code>-1</code>, the message will be deleted.</param>
+      <param type="MSGID" name="Type" lookup="MSGID">The type of the message.</param>
       <param type="APTR" name="Data">Pointer to a buffer that contains the new data for the message.</param>
       <param type="INT" name="Size">The byte-size of the <code>Data</code> that has been supplied.  It must not exceed the size of the message that is being updated.</param>
     </input>
     <description>
 <p>The UpdateMessage() function provides a facility for updating the content of existing messages on the local queue. The client must provide the ID of the message to update and the new message Type and/or Data to set against the message.</p>
-<p>Messages can be deleted from the queue by setting the <code>Type</code> to <code>-1</code>.  There is no need to provide buffer information when deleting a message.</p>
 <p>If <code>Data</code> is defined, its size should equal that of the data already set against the message.  The size will be trimmed if it exceeds that of the existing message, as this function cannot expand the size of the queue.</p>
     </description>
     <result type="ERR">
