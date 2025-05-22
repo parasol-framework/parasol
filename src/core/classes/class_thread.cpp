@@ -72,6 +72,7 @@ struct AsyncAction {
 };
 
 static std::vector<struct AsyncAction> glAsyncActions;
+static std::mutex glmThreadPool;
 
 //********************************************************************************************************************
 // Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.

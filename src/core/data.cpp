@@ -76,7 +76,6 @@ std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 std::map<std::string, std::vector<Object *>, CaseInsensitiveMap> glObjectLookup;
 
 std::mutex glmPrint;
-std::mutex glmThreadPool;
 std::recursive_mutex glmMemory;
 std::recursive_mutex glmMsgHandler;
 std::recursive_timed_mutex glmObjectLookup;

@@ -33,7 +33,7 @@ static ERR thread_script_callback(OBJECTID);
 
 struct thread_callback {
    objScript *threadScript;
-   LONG     callbackID;
+   int     callbackID;
    OBJECTID mainScriptID;
 };
 
@@ -101,7 +101,7 @@ static ERR thread_script_callback(OBJECTID ThreadID)
       thread_callback &cb = it->second;
       if (ScopedObjectLock<objScript> script(cb.mainScriptID, 4000); script.granted()) {
          auto prv = (prvFluid *)script->ChildPrivate;
-         script->callback(cb.callbackID, NULL, 0, NULL);
+         script->callback(cb.callbackID, nullptr, 0, nullptr);
          luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb.callbackID);
       }
       glThreadCB.erase(it);
@@ -125,9 +125,9 @@ static int thread_action(lua_State *Lua)
       return 0;
    }
 
-   LONG type = lua_type(Lua, 2);
+   auto type = lua_type(Lua, 2);
    AC action_id;
-   CSTRING action = NULL;
+   CSTRING action = nullptr;
    if (type IS LUA_TSTRING) {
       action = lua_tostring(Lua, 2);
       if (auto it = glActionLookup.find(action); it != glActionLookup.end()) {
@@ -159,30 +159,30 @@ static int thread_action(lua_State *Lua)
       callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
    }
 
-   LONG argsize = 0;
-   const FunctionField *args = NULL;
+   int arg_size = 0;
+   const FunctionField *args = nullptr;
    ERR error = ERR::Okay;
 
-   if ((glActions[LONG(action_id)].Args) and (glActions[LONG(action_id)].Size)) {
-      argsize = glActions[LONG(action_id)].Size;
-      args = glActions[LONG(action_id)].Args;
+   if ((glActions[int(action_id)].Args) and (glActions[int(action_id)].Size)) {
+      arg_size = glActions[int(action_id)].Size;
+      args = glActions[int(action_id)].Args;
    }
 
-   log.trace("#%d/%p, Action: %s/%d, Args: %d", object->UID, object->ObjectPtr, action, LONG(action_id), argsize);
+   log.trace("#%d/%p, Action: %s/%d, Args: %d", object->UID, object->ObjectPtr, action, int(action_id), arg_size);
 
-   if (argsize > 0) {
-      auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
-      LONG resultcount;
+   if (arg_size > 0) {
+      auto arg_buffer = std::make_unique<BYTE[]>(arg_size+8); // +8 for overflow protection in build_args()
+      int result_count;
 
-      if ((error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount)) IS ERR::Okay) {
+      if ((error = build_args(Lua, args, arg_size, arg_buffer.get(), &result_count)) IS ERR::Okay) {
          callback.Meta = (APTR)key;
          if (object->ObjectPtr) {
-            error = AsyncAction(action_id, object->ObjectPtr, argbuffer.get(), &callback);
+            error = AsyncAction(action_id, object->ObjectPtr, arg_buffer.get(), &callback);
          }
          else {
-            if (!resultcount) {
+            if (!result_count) {
                if (auto obj = access_object(object)) {
-                  error = AsyncAction(action_id, obj, argbuffer.get(), &callback);
+                  error = AsyncAction(action_id, obj, arg_buffer.get(), &callback);
                   release_object(object);
                }
             }
@@ -191,7 +191,7 @@ static int thread_action(lua_State *Lua)
       }
       else {
          luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-         luaL_error(Lua, "Argument build failure for %s.", glActions[LONG(action_id)].Name);
+         luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
          return 0;
       }
    }
@@ -199,10 +199,10 @@ static int thread_action(lua_State *Lua)
       // No parameters.
       callback.Meta = (APTR)key;
       if (object->ObjectPtr) {
-         error = AsyncAction(action_id, object->ObjectPtr, NULL, &callback);
+         error = AsyncAction(action_id, object->ObjectPtr, nullptr, &callback);
       }
       else if (auto obj = access_object(object)) {
-         error = AsyncAction(action_id, obj, NULL, &callback);
+         error = AsyncAction(action_id, obj, nullptr, &callback);
          release_object(object);
       }
       else error = log.warning(ERR::AccessObject);
@@ -228,7 +228,7 @@ static int thread_method(lua_State *Lua)
    if (auto object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       if (auto method = luaL_checkstring(Lua, 2)) {
          MethodEntry *table;
-         LONG total_methods, i;
+         int total_methods, i;
 
          // TODO: We should be using a hashmap here.
 
@@ -243,13 +243,13 @@ static int thread_method(lua_State *Lua)
                // lock the object with LockObject() and a timeout error will occur otherwise.
 
                auto args = table[i].Args;
-               LONG argsize = table[i].Size;
+               int argsize = table[i].Size;
                AC action_id = table[i].MethodID;
                ERR error;
                OBJECTPTR obj;
                FUNCTION callback;
 
-               LONG type = lua_type(Lua, 3); // Optional callback.
+               int type = lua_type(Lua, 3); // Optional callback.
                if (type IS LUA_TSTRING) {
                   lua_getglobal(Lua, (STRING)lua_tostring(Lua, 3));
                   callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
@@ -263,7 +263,7 @@ static int thread_method(lua_State *Lua)
 
                if (argsize > 0) {
                   auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
-                  LONG resultcount;
+                  int resultcount;
 
                   lua_remove(Lua, 1); // Remove all 4 required arguments so that the user's custom parameters are then left on the stack
                   lua_remove(Lua, 1);
@@ -285,16 +285,16 @@ static int thread_method(lua_State *Lua)
                   }
                   else {
                      luaL_unref(Lua, LUA_REGISTRYINDEX, callback.ProcedureID);
-                     luaL_error(Lua, "Argument build failure for %s.", glActions[LONG(action_id)].Name);
+                     luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
                      return 0;
                   }
                }
                else { // No parameters.
                   if (object->ObjectPtr) {
-                     error = AsyncAction(action_id, object->ObjectPtr, NULL, &callback);
+                     error = AsyncAction(action_id, object->ObjectPtr, nullptr, &callback);
                   }
                   else if ((obj = access_object(object))) {
-                     error = AsyncAction(action_id, obj, NULL, &callback);
+                     error = AsyncAction(action_id, obj, nullptr, &callback);
                      release_object(object);
                   }
                   else error = log.warning(ERR::AccessObject);
@@ -325,13 +325,13 @@ static const luaL_Reg threadlib_functions[] = {
    { "action", thread_action },
    { "method", thread_method },
    { "script", thread_script },
-   { NULL, NULL }
+   { nullptr, nullptr }
 };
 
 static const luaL_Reg threadlib_methods[] = {
    //{ "__index",    thread_get },
    //{ "__newindex", thread_set },
-   { NULL, NULL }
+   { nullptr, nullptr }
 };
 
 void register_thread_class(lua_State *Lua)
@@ -345,6 +345,6 @@ void register_thread_class(lua_State *Lua)
    lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
    lua_settable(Lua, -3);   // metatable.__index = metatable
 
-   luaL_openlib(Lua, NULL, threadlib_methods, 0);
+   luaL_openlib(Lua, nullptr, threadlib_methods, 0);
    luaL_openlib(Lua, "thread", threadlib_functions, 0);
 }

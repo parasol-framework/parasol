@@ -64,7 +64,7 @@ ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
 
    log.traceBranch("Path: '%s'", Path);
 
-   *Result = NULL;
+   *Result = nullptr;
 
    if ((Flags & (RDF::FOLDER|RDF::FILE)) IS RDF::NIL) Flags |= RDF::FOLDER|RDF::FILE;
 
@@ -78,7 +78,7 @@ ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
       DirInfo *dir;
       // Layout: [DirInfo] [FileInfo] [Driver] [Name] [Path]
       LONG size = sizeof(DirInfo) + sizeof(FileInfo) + vd->DriverSize + MAX_FILENAME + path_len + MAX_FILENAME;
-      if (AllocMemory(size, MEM::DATA|MEM::MANAGED, (APTR *)&dir, NULL) != ERR::Okay) {
+      if (AllocMemory(size, MEM::DATA|MEM::MANAGED, (APTR *)&dir, nullptr) != ERR::Okay) {
          return ERR::AllocMemory;
       }
 
@@ -178,7 +178,7 @@ ERR ScanDir(DirInfo *Dir)
    file->UserID  = 0;
    file->GroupID = 0;
 
-   if (file->Tags) { delete file->Tags; file->Tags = NULL; }
+   if (file->Tags) { delete file->Tags; file->Tags = nullptr; }
 
    // Support for scanning of volume names
 

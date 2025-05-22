@@ -320,55 +320,57 @@ timer_cycle:
       }
 
       // Consume queued messages
-            
-      const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
 
-      unsigned i;
-      for (i=0; (i < glQueue.size()) and (i < 30); i++) {
-         if (glQueue[i].Type IS MSGID::BREAK) {
-            // MSGID::BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
-            // call made by the client application.
-            if ((tlMsgRecursion > 1) or (TimeOut != -1)) breaking = true;
-            else log.trace("Unable to break from recursive position %d layers deep.", tlMsgRecursion);
-         }
+      {
+         const std::lock_guard<std::recursive_mutex> lock(glQueueLock);
 
-         tlCurrentMsg = &glQueue[i];
+         unsigned i;
+         for (i=0; (i < glQueue.size()) and (i < 30); i++) {
+            if (glQueue[i].Type IS MSGID::BREAK) {
+               // MSGID::BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
+               // call made by the client application.
+               if ((tlMsgRecursion > 1) or (TimeOut != -1)) breaking = true;
+               else log.trace("Unable to break from recursive position %d layers deep.", tlMsgRecursion);
+            }
 
-         // NOTE: This loop relies on the assumption that glQueue messages cannot be erased by clients.
+            tlCurrentMsg = &glQueue[i];
 
-         for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
-            if ((hdl->MsgType IS MSGID::NIL) or (hdl->MsgType IS glQueue[i].Type)) {
-               ERR result = ERR::NoSupport;
-               if (hdl->Function.isC()) {
-                  auto msghandler = (ERR (*)(APTR, int, MSGID, APTR, int, APTR))hdl->Function.Routine;
-                  if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size, hdl->Function.Meta);
-                  else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0, hdl->Function.Meta);
-               }
-               else if (hdl->Function.isScript()) {
-                  if (sc::Call(hdl->Function, std::to_array<ScriptArg>({
-                     { "Custom", hdl->Custom },
-                     { "UID",    glQueue[i].UID },
-                     { "Type",   int(glQueue[i].Type) },
-                     { "Data",   glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
-                     { "Size",   glQueue[i].Size, FD_LONG|FD_BUFSIZE }
-                  }), result) != ERR::Okay) result = ERR::Terminate;
-               }
+            // NOTE: This loop relies on the assumption that glQueue messages cannot be erased by clients.
 
-               if (result IS ERR::Okay) { // If the message was handled, do not pass it to anyone else
-                  break;
-               }
-               else if (result IS ERR::Terminate) { // Terminate the ProcessMessages() loop, but don't quit the program
-                  log.trace("Terminate request received from message handler.");
-                  timeout_end = 0; // Set to zero to indicate loop terminated
-                  break;
+            for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
+               if ((hdl->MsgType IS MSGID::NIL) or (hdl->MsgType IS glQueue[i].Type)) {
+                  ERR result = ERR::NoSupport;
+                  if (hdl->Function.isC()) {
+                     auto msghandler = (ERR (*)(APTR, int, MSGID, APTR, int, APTR))hdl->Function.Routine;
+                     if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size, hdl->Function.Meta);
+                     else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0, hdl->Function.Meta);
+                  }
+                  else if (hdl->Function.isScript()) {
+                     if (sc::Call(hdl->Function, std::to_array<ScriptArg>({
+                        { "Custom", hdl->Custom },
+                        { "UID",    glQueue[i].UID },
+                        { "Type",   int(glQueue[i].Type) },
+                        { "Data",   glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
+                        { "Size",   glQueue[i].Size, FD_LONG|FD_BUFSIZE }
+                     }), result) != ERR::Okay) result = ERR::Terminate;
+                  }
+
+                  if (result IS ERR::Okay) { // If the message was handled, do not pass it to anyone else
+                     break;
+                  }
+                  else if (result IS ERR::Terminate) { // Terminate the ProcessMessages() loop, but don't quit the program
+                     log.trace("Terminate request received from message handler.");
+                     timeout_end = 0; // Set to zero to indicate loop terminated
+                     break;
+                  }
                }
             }
+
+            tlCurrentMsg = NULL;
          }
 
-         tlCurrentMsg = NULL;
+         if (i > 0) glQueue.erase(glQueue.begin(), glQueue.begin() + i);
       }
-
-      if (i > 0) glQueue.erase(glQueue.begin(), glQueue.begin() + i);
 
       // Check for possibly broken child processes
 
@@ -591,7 +593,7 @@ This function will only return once ALL of the objects are signalled or a time-o
 Note that if an object has been signalled prior to entry to this function, its signal flag will be cleared and the
 object will not be monitored.
 
-If this function is called recursively, the state of the earlier call will be preserved so that it will not be 
+If this function is called recursively, the state of the earlier call will be preserved so that it will not be
 affected by subsequent calls.
 
 -INPUT-
@@ -614,7 +616,7 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
 {
    // Refer to the Task class for the message interception routines
    pf::Log log(__FUNCTION__);
-   
+
    std::unordered_map<OBJECTID, ObjectSignal> saved_list;
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
