@@ -458,11 +458,11 @@ static const ActionArray clPolygonActions[] = {
 };
 
 static const FieldArray clPolygonFields[] = {
-   { "Closed",      FDF_VIRTUAL|FDF_LONG|FD_RW,                 POLY_GET_Closed, POLY_SET_Closed },
-   { "PathLength",  FDF_VIRTUAL|FDF_LONG|FDF_RW,                POLY_GET_PathLength, POLY_SET_PathLength },
+   { "Closed",      FDF_VIRTUAL|FDF_INT|FD_RW,                 POLY_GET_Closed, POLY_SET_Closed },
+   { "PathLength",  FDF_VIRTUAL|FDF_INT|FDF_RW,                POLY_GET_PathLength, POLY_SET_PathLength },
    { "PointsArray", FDF_VIRTUAL|FDF_ARRAY|FDF_POINTER|FDF_RW,   POLY_GET_PointsArray, POLY_SET_PointsArray },
    { "Points",      FDF_VIRTUAL|FDF_STRING|FDF_W,               NULL, POLY_SET_Points },
-   { "TotalPoints", FDF_VIRTUAL|FDF_LONG|FDF_R,                 POLY_GET_TotalPoints },
+   { "TotalPoints", FDF_VIRTUAL|FDF_INT|FDF_R,                 POLY_GET_TotalPoints },
    { "X1",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_X1, POLY_SET_X1 },
    { "Y1",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_Y1, POLY_SET_Y1 },
    { "X2",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, POLY_GET_X2, POLY_SET_X2 },

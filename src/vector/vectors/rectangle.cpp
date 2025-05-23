@@ -560,7 +560,7 @@ static const FieldArray clRectangleFields[] = {
    { "YOffset",    FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_YOffset, RECTANGLE_SET_YOffset },
    { "Width",      FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_Width, RECTANGLE_SET_Width },
    { "Height",     FDF_VIRTUAL|FD_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, RECTANGLE_GET_Height, RECTANGLE_SET_Height },
-   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, RECTANGLE_GET_Dimensions, RECTANGLE_SET_Dimensions, &clRectDimensions },
+   { "Dimensions", FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, RECTANGLE_GET_Dimensions, RECTANGLE_SET_Dimensions, &clRectDimensions },
    END_FIELD
 };
 

@@ -31,7 +31,7 @@ static const struct FieldDef clVectorTextVTS[] = {
    { NULL, 0 }
 };
 
-FDEF maDeleteLine[] = { { "Line", FD_LONG }, { 0, 0 } };
+FDEF maDeleteLine[] = { { "Line", FD_INT }, { 0, 0 } };
 
 static const struct MethodEntry clVectorTextMethods[] = {
    { AC(-30), (APTR)VECTORTEXT_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct vt::DeleteLine) },

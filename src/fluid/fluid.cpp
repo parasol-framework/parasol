@@ -73,7 +73,7 @@ static ERR flSetVariable(objScript *, CSTRING, LONG, ...);
 
 //********************************************************************************************************************
 
-FDEF argsSetVariable[] = { { "Error", FD_ERROR }, { "Script", FD_OBJECTPTR }, { "Name", FD_STR }, { "Type", FD_LONG }, { "Variable", FD_TAGS }, { 0, 0 } };
+FDEF argsSetVariable[] = { { "Error", FD_ERROR }, { "Script", FD_OBJECTPTR }, { "Name", FD_STR }, { "Type", FD_INT }, { "Variable", FD_TAGS }, { 0, 0 } };
 
 // These test calls are used to check that the dynamic assembler function calls are working as expected.
 
@@ -87,11 +87,11 @@ static LARGE flTestCall6(LONG, LARGE, LARGE, LONG, LARGE, DOUBLE);
 static void flTestCall7(STRING a, STRING b, STRING c);
 
 FDEF argsTestCall1[]   = { { "Void", FD_VOID }, { 0, 0 } };
-FDEF argsTestCall2[]   = { { "Result", FD_LONG }, { 0, 0 } };
+FDEF argsTestCall2[]   = { { "Result", FD_INT }, { 0, 0 } };
 FDEF argsTestCall3[]   = { { "Result", FD_STR }, { 0, 0 } };
-FDEF argsTestCall4[]   = { { "Void", FD_VOID }, { "Long", FD_LONG }, { "Large", FD_LARGE }, { 0, 0 } };
-FDEF argsTestCall5[]   = { { "Result", FD_LONG }, { "LA", FD_LONG }, { "LB", FD_LONG }, { "LC", FD_LONG }, { "LD", FD_LONG }, { "LE", FD_LONG }, { "LF", FD_LARGE }, { 0, 0 } };
-FDEF argsTestCall6[]   = { { "Result", FD_LARGE }, { "LA", FD_LONG }, { "LLA", FD_LARGE }, { "LLB", FD_LARGE }, { "LB", FD_LONG }, { "LLC", FD_LARGE }, { "DA", FD_DOUBLE }, { "LB", FD_LARGE }, { 0, 0 } };
+FDEF argsTestCall4[]   = { { "Void", FD_VOID }, { "Long", FD_INT }, { "Large", FD_INT64 }, { 0, 0 } };
+FDEF argsTestCall5[]   = { { "Result", FD_INT }, { "LA", FD_INT }, { "LB", FD_INT }, { "LC", FD_INT }, { "LD", FD_INT }, { "LE", FD_INT }, { "LF", FD_INT64 }, { 0, 0 } };
+FDEF argsTestCall6[]   = { { "Result", FD_INT64 }, { "LA", FD_INT }, { "LLA", FD_INT64 }, { "LLB", FD_INT64 }, { "LB", FD_INT }, { "LLC", FD_INT64 }, { "DA", FD_DOUBLE }, { "LB", FD_INT64 }, { 0, 0 } };
 FDEF argsTestCall7[]   = { { "Void", FD_VOID }, { "StringA", FD_STRING }, { "StringB", FD_STRING }, { "StringC", FD_STRING }, { 0, 0 } };
 #endif
 
@@ -326,7 +326,7 @@ script.  If the script is cached, the variable settings will be available on the
 -INPUT-
 obj Script: Pointer to a Fluid script.
 cstr Name: The name of the variable to set.
-int Type: A valid field type must be indicated, e.g. `FD_STRING`, `FD_POINTER`, `FD_LONG`, `FD_DOUBLE`, `FD_LARGE`.
+int Type: A valid field type must be indicated, e.g. `FD_STRING`, `FD_POINTER`, `FD_INT`, `FD_DOUBLE`, `FD_INT64`.
 tags Variable: A variable that matches the indicated `Type`.
 
 -ERRORS-
@@ -354,8 +354,8 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 
    if (Type & FD_STRING)       lua_pushstring(prv->Lua, va_arg(list, STRING));
    else if (Type & FD_POINTER) lua_pushlightuserdata(prv->Lua, va_arg(list, APTR));
-   else if (Type & FD_LONG)    lua_pushinteger(prv->Lua, va_arg(list, LONG));
-   else if (Type & FD_LARGE)   lua_pushnumber(prv->Lua, va_arg(list, LARGE));
+   else if (Type & FD_INT)    lua_pushinteger(prv->Lua, va_arg(list, LONG));
+   else if (Type & FD_INT64)   lua_pushnumber(prv->Lua, va_arg(list, LARGE));
    else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, DOUBLE));
    else {
       va_end(list);
@@ -409,14 +409,14 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
       if (!Data) Elements = 0;
       else {
          LONG i = 0;
-         switch (Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
+         switch (Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
             case FD_STRING:
             case FD_OBJECT:
             case FD_POINTER: for (i=0; ((APTR *)Data)[i]; i++); break;
             case FD_FLOAT:   for (i=0; ((FLOAT *)Data)[i]; i++); break;
             case FD_DOUBLE:  for (i=0; ((DOUBLE *)Data)[i]; i++); break;
-            case FD_LARGE:   for (i=0; ((LARGE *)Data)[i]; i++); break;
-            case FD_LONG:    for (i=0; ((LONG *)Data)[i]; i++); break;
+            case FD_INT64:   for (i=0; ((LARGE *)Data)[i]; i++); break;
+            case FD_INT:    for (i=0; ((LONG *)Data)[i]; i++); break;
             case FD_WORD:    for (i=0; ((WORD *)Data)[i]; i++); break;
             case FD_BYTE:    for (i=0; ((BYTE *)Data)[i]; i++); break;
             default:
@@ -432,14 +432,14 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
    lua_createtable(Lua, Elements, 0); // Create a new table on the stack.
    if (!Data) return;
 
-   switch(Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
+   switch(Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
       case FD_STRING:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushstring(Lua, ((CSTRING *)Data)[i]); lua_settable(Lua, -3); } break;
       case FD_OBJECT:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); push_object(Lua, ((OBJECTPTR *)Data)[i]); lua_settable(Lua, -3); } break;
       case FD_POINTER: for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushlightuserdata(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
       case FD_FLOAT:   for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((FLOAT *)Data)[i]); lua_settable(Lua, -3); } break;
       case FD_DOUBLE:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((DOUBLE *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_LARGE:   for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((LARGE *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_LONG:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((LONG *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_INT64:   for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((LARGE *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_INT:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((LONG *)Data)[i]); lua_settable(Lua, -3); } break;
       case FD_WORD:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((WORD *)Data)[i]); lua_settable(Lua, -3); } break;
       case FD_BYTE:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((BYTE *)Data)[i]); lua_settable(Lua, -3); } break;
    }

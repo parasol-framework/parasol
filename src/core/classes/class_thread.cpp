@@ -597,10 +597,10 @@ On some platforms it may not be possible to preset the stack size and the provid
 
 static const FieldArray clFields[] = {
    { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, GET_Data },
-   { "DataSize",  FD_LONG|FDF_R },
-   { "StackSize", FDF_LONG|FDF_RW },
-   { "Error",     FDF_LONG|FDF_R },
-   { "Flags",     FDF_LONG|FDF_RI, nullptr, nullptr, &clThreadFlags },
+   { "DataSize",  FDF_INT|FDF_R },
+   { "StackSize", FDF_INT|FDF_RW },
+   { "Error",     FDF_INT|FDF_R },
+   { "Flags",     FDF_INT|FDF_RI, nullptr, nullptr, &clThreadFlags },
    // Virtual fields
    { "Callback",  FDF_FUNCTIONPTR|FDF_RW, GET_Callback, SET_Callback },
    { "Routine",   FDF_FUNCTIONPTR|FDF_RW, GET_Routine, SET_Routine },

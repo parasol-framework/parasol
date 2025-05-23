@@ -46,8 +46,8 @@ static ERR GET_Size(objFile *, LARGE *);
 static ERR SET_Permissions(objFile *, APTR);
 
 static const FieldArray clFields[] = {
-   { "Permissions", FDF_LONG|FDF_RW, GET_Permissions, SET_Permissions },
-   { "Size",        FDF_LARGE|FDF_R, GET_Size },
+   { "Permissions", FDF_INT|FDF_RW, GET_Permissions, SET_Permissions },
+   { "Size",        FDF_INT64|FDF_R, GET_Size },
    END_FIELD
 };
 

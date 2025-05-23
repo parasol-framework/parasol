@@ -201,10 +201,10 @@ static const FieldArray clImageFields[] = {
    { "Y",            FDF_DOUBLE|FDF_RW, nullptr, IMAGE_SET_Y },
    { "Picture",      FDF_OBJECT|FDF_RW, nullptr, IMAGE_SET_Picture, CLASSID::PICTURE },
    { "Bitmap",       FDF_OBJECT|FDF_RW, nullptr, IMAGE_SET_Bitmap, CLASSID::BITMAP },
-   { "Units",        FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clImageUnits },
-   { "Dimensions",   FDF_LONGFLAGS|FDF_RW, nullptr, nullptr, &clImageDimensions },
-   { "SpreadMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, IMAGE_SET_SpreadMethod, &clImageSpread },
-   { "AspectRatio",  FDF_LONGFLAGS|FDF_RW, nullptr, IMAGE_SET_AspectRatio, &clAspectRatio },
+   { "Units",        FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clImageUnits },
+   { "Dimensions",   FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clImageDimensions },
+   { "SpreadMethod", FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, IMAGE_SET_SpreadMethod, &clImageSpread },
+   { "AspectRatio",  FDF_INTFLAGS|FDF_RW, nullptr, IMAGE_SET_AspectRatio, &clAspectRatio },
    END_FIELD
 };
 

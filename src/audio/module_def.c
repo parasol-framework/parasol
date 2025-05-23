@@ -19,18 +19,18 @@ extern ERR MixEndSequence(objAudio * Audio, int Handle);
 #define FDEF static const struct FunctionField
 #endif
 
-FDEF argsMixContinue[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { 0, 0 } };
-FDEF argsMixEndSequence[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { 0, 0 } };
-FDEF argsMixFrequency[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Frequency", FD_LONG }, { 0, 0 } };
-FDEF argsMixMute[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Mute", FD_LONG }, { 0, 0 } };
-FDEF argsMixPan[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Pan", FD_DOUBLE }, { 0, 0 } };
-FDEF argsMixPlay[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Position", FD_LONG }, { 0, 0 } };
-FDEF argsMixRate[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Rate", FD_LONG }, { 0, 0 } };
-FDEF argsMixSample[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Sample", FD_LONG }, { 0, 0 } };
-FDEF argsMixStartSequence[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { 0, 0 } };
-FDEF argsMixStop[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { 0, 0 } };
-FDEF argsMixStopLoop[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { 0, 0 } };
-FDEF argsMixVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_LONG }, { "Volume", FD_DOUBLE }, { 0, 0 } };
+FDEF argsMixContinue[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { 0, 0 } };
+FDEF argsMixEndSequence[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { 0, 0 } };
+FDEF argsMixFrequency[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { "Frequency", FD_INT }, { 0, 0 } };
+FDEF argsMixMute[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { "Mute", FD_INT }, { 0, 0 } };
+FDEF argsMixPan[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { "Pan", FD_DOUBLE }, { 0, 0 } };
+FDEF argsMixPlay[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { "Position", FD_INT }, { 0, 0 } };
+FDEF argsMixRate[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { "Rate", FD_INT }, { 0, 0 } };
+FDEF argsMixSample[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { "Sample", FD_INT }, { 0, 0 } };
+FDEF argsMixStartSequence[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { 0, 0 } };
+FDEF argsMixStop[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { 0, 0 } };
+FDEF argsMixStopLoop[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { 0, 0 } };
+FDEF argsMixVolume[] = { { "Error", FD_INT|FD_ERROR }, { "Audio", FD_OBJECTPTR }, { "Handle", FD_INT }, { "Volume", FD_DOUBLE }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)snd::MixContinue, "MixContinue", argsMixContinue },

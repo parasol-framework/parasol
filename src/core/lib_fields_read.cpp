@@ -195,11 +195,11 @@ ERR GetField(OBJECTPTR Object, FIELD FieldID, APTR Result)
    FieldID = FieldID & 0xffffffff;
 
 #ifdef _LP64
-   if (type & (FD_DOUBLE|FD_LARGE|FD_POINTER|FD_STRING)) *((LARGE *)Result) = 0;
+   if (type & (FD_DOUBLE|FD_INT64|FD_POINTER|FD_STRING)) *((LARGE *)Result) = 0;
    else if (type & FD_UNIT); // Do not touch unit storage.
    else *((LONG *)Result)  = 0;
 #else
-   if (type & (FD_DOUBLE|FD_LARGE)) *((LARGE *)Result) = 0;
+   if (type & (FD_DOUBLE|FD_INT64)) *((LARGE *)Result) = 0;
    else if (type & FD_UNIT); // Do not touch unit storage.
    else *((LONG *)Result)  = 0;
 #endif
@@ -411,11 +411,11 @@ ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Bu
             return error;
          }
       }
-      else if (field->Flags & (FD_LONG|FD_LARGE)) {
+      else if (field->Flags & (FD_INT|FD_INT64)) {
          FieldDef *lookup;
          LARGE large;
 
-         if ((error = copy_field_to_buffer(Object, field, FD_LARGE, &large, ext, NULL)) IS ERR::Okay) {
+         if ((error = copy_field_to_buffer(Object, field, FD_INT64, &large, ext, NULL)) IS ERR::Okay) {
             if ((ext) and (field->Flags & (FD_FLAGS|FD_LOOKUP))) {
                Buffer[0] = '0';
                Buffer[1] = 0;
@@ -527,7 +527,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
    LONG array_size = -1;
    auto srcflags = Field->Flags;
 
-   if (!(DestFlags & (FD_UNIT|FD_LARGE|FD_LONG|FD_DOUBLE|FD_POINTER|FD_STRING|FD_ARRAY))) goto mismatch;
+   if (!(DestFlags & (FD_UNIT|FD_INT64|FD_INT|FD_DOUBLE|FD_POINTER|FD_STRING|FD_ARRAY))) goto mismatch;
 
    if (srcflags & FD_UNIT) {
       if (!Field->GetValue) return ERR::NoFieldAccess;
@@ -540,23 +540,23 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
          error = Field->GetValue(Object, Result);
       }
       else if (srcflags & FD_DOUBLE) {
-         var.Type = FD_DOUBLE | (DestFlags & (~(FD_LONG|FD_LARGE|FD_DOUBLE)));
+         var.Type = FD_DOUBLE | (DestFlags & (~(FD_INT|FD_INT64|FD_DOUBLE)));
          error = Field->GetValue(Object, &var);
 
          if (error IS ERR::Okay) {
-            if (DestFlags & FD_LARGE)       *((LARGE *)Result)  = var.Value;
-            else if (DestFlags & FD_LONG)   *((LONG *)Result)   = var.Value;
+            if (DestFlags & FD_INT64)       *((LARGE *)Result)  = var.Value;
+            else if (DestFlags & FD_INT)   *((LONG *)Result)   = var.Value;
             else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = var.Value;
             else error = ERR::FieldTypeMismatch;
          }
       }
-      else if (srcflags & (FD_LARGE|FD_LONG)) {
-         var.Type = FD_DOUBLE | (DestFlags & (~(FD_LARGE|FD_LONG|FD_DOUBLE)));
+      else if (srcflags & (FD_INT64|FD_INT)) {
+         var.Type = FD_DOUBLE | (DestFlags & (~(FD_INT64|FD_INT|FD_DOUBLE)));
 
          error = Field->GetValue(Object, &var);
          if (error IS ERR::Okay) {
-            if (DestFlags & FD_LARGE)       *((LARGE *)Result)  = var.Value;
-            else if (DestFlags & FD_LONG)   *((LONG *)Result)   = var.Value;
+            if (DestFlags & FD_INT64)       *((LARGE *)Result)  = var.Value;
+            else if (DestFlags & FD_INT)   *((LONG *)Result)   = var.Value;
             else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = var.Value;
             else error = ERR::FieldTypeMismatch;
          }
@@ -585,8 +585,8 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
             if (TotalElements) *TotalElements = vec->size();
             unsigned index = strtol(Option, NULL, 0);
             if ((index >= 0) and (index < vec->size())) {
-               if (srcflags & FD_LONG) data = &((pf::vector<LONG> *)data)[0][index];
-               else if (srcflags & (FD_LARGE|FD_DOUBLE))   data = &((pf::vector<DOUBLE> *)data)[0][index];
+               if (srcflags & FD_INT) data = &((pf::vector<LONG> *)data)[0][index];
+               else if (srcflags & (FD_INT64|FD_DOUBLE))   data = &((pf::vector<DOUBLE> *)data)[0][index];
                else if (srcflags & (FD_POINTER|FD_STRING)) data = &((pf::vector<APTR> *)data)[0][index];
                else goto mismatch;
                // Drop through to field value conversion
@@ -596,7 +596,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
          else if (DestFlags & FD_STRING) {
             // Special feature: If a string is requested, the array values are converted to CSV format.
             std::stringstream buffer;
-            if (srcflags & FD_LONG) {
+            if (srcflags & FD_INT) {
                auto vec = (pf::vector<LONG> *)data;
                if (TotalElements) *TotalElements = vec->size();
                for (auto &val : vec[0]) buffer << val << ',';
@@ -630,8 +630,8 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
          if (Option) { // If an option is specified, treat it as an array index.
             LONG index = strtol(Option, NULL, 0);
             if ((index >= 0) and (index < array_size)) {
-               if (srcflags & FD_LONG) data = (BYTE *)data + (sizeof(LONG) * index);
-               else if (srcflags & (FD_LARGE|FD_DOUBLE))   data = (BYTE *)data + (sizeof(DOUBLE) * index);
+               if (srcflags & FD_INT) data = (BYTE *)data + (sizeof(LONG) * index);
+               else if (srcflags & (FD_INT64|FD_DOUBLE))   data = (BYTE *)data + (sizeof(DOUBLE) * index);
                else if (srcflags & (FD_POINTER|FD_STRING)) data = (BYTE *)data + (sizeof(APTR) * index);
                else goto mismatch;
                // Drop through to field value conversion
@@ -641,7 +641,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
          else if (DestFlags & FD_STRING) {
             // Special feature: If a string is requested, the array values are converted to CSV format.
             LONG pos = 0;
-            if (srcflags & FD_LONG) {
+            if (srcflags & FD_INT) {
                LONG *array = (LONG *)data;
                for (LONG i=0; i < array_size; i++) {
                   pos += strcopy(std::to_string(*array++), strGetField+pos, sizeof(strGetField)-pos);
@@ -671,10 +671,10 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
       return ERR::Okay;
    }
 
-   if (srcflags & FD_LONG) {
+   if (srcflags & FD_INT) {
       if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = *((LONG *)data);
-      else if (DestFlags & FD_LONG)   *((LONG *)Result)   = *((LONG *)data);
-      else if (DestFlags & FD_LARGE)  *((LARGE *)Result)  = *((LONG *)data);
+      else if (DestFlags & FD_INT)   *((LONG *)Result)   = *((LONG *)data);
+      else if (DestFlags & FD_INT64)  *((LARGE *)Result)  = *((LONG *)data);
       else if (DestFlags & FD_STRING) {
          if (srcflags & FD_LOOKUP) {
             FieldDef *lookup;
@@ -698,10 +698,10 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
       }
       else goto mismatch;
    }
-   else if (srcflags & FD_LARGE) {
+   else if (srcflags & FD_INT64) {
       if (DestFlags & FD_DOUBLE)      *((DOUBLE *)Result) = (DOUBLE)(*((LARGE *)data));
-      else if (DestFlags & FD_LONG)   *((LONG *)Result)   = (LONG)(*((LARGE *)data));
-      else if (DestFlags & FD_LARGE)  *((LARGE *)Result)  = *((LARGE *)data);
+      else if (DestFlags & FD_INT)   *((LONG *)Result)   = (LONG)(*((LARGE *)data));
+      else if (DestFlags & FD_INT64)  *((LARGE *)Result)  = *((LARGE *)data);
       else if (DestFlags & FD_STRING) {
          strcopy(std::to_string(*((LARGE *)data)), strGetField, sizeof(strGetField));
          *((STRING *)Result) = strGetField;
@@ -709,9 +709,9 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
       else goto mismatch;
    }
    else if (srcflags & FD_DOUBLE) {
-      if (DestFlags & FD_LONG)        *((LONG *)Result)   = F2I(*((DOUBLE *)data));
+      if (DestFlags & FD_INT)        *((LONG *)Result)   = F2I(*((DOUBLE *)data));
       else if (DestFlags & FD_DOUBLE) *((DOUBLE *)Result) = *((DOUBLE *)data);
-      else if (DestFlags & FD_LARGE)  *((LARGE *)Result)  = F2I(*((DOUBLE *)data));
+      else if (DestFlags & FD_INT64)  *((LARGE *)Result)  = F2I(*((DOUBLE *)data));
       else if (DestFlags & FD_STRING) {
          snprintf(strGetField, sizeof(strGetField), "%f", *((DOUBLE *)data));
          *((STRING *)Result) = strGetField;
@@ -722,8 +722,8 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR Re
       if (DestFlags & (FD_POINTER|FD_STRING)) *((APTR *)Result) = *((APTR *)data);
       else if (srcflags & (FD_LOCAL|FD_OBJECT)) {
          if (auto object = *((OBJECTPTR *)data)) {
-            if (DestFlags & FD_LONG)       *((LONG *)Result)  = object->UID;
-            else if (DestFlags & FD_LARGE) *((LARGE *)Result) = object->UID;
+            if (DestFlags & FD_INT)       *((LONG *)Result)  = object->UID;
+            else if (DestFlags & FD_INT64) *((LARGE *)Result) = object->UID;
             else goto mismatch;
          }
          else goto mismatch;

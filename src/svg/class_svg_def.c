@@ -7,7 +7,7 @@ static const struct FieldDef clSVGFlags[] = {
    { NULL, 0 }
 };
 
-FDEF maRender[] = { { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { 0, 0 } };
+FDEF maRender[] = { { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Width", FD_INT }, { "Height", FD_INT }, { 0, 0 } };
 FDEF maParseSymbol[] = { { "ID", FD_STR }, { "Viewport", FD_OBJECTPTR }, { 0, 0 } };
 
 static const struct MethodEntry clSVGMethods[] = {

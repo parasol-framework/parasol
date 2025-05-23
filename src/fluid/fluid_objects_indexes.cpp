@@ -37,7 +37,7 @@ static int object_newindex(lua_State *Lua)
 
 static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values, LONG total)
 {
-   if (Field->Flags & FD_LONG) {
+   if (Field->Flags & FD_INT) {
       pf::vector<LONG> values((size_t)total);
       for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
          LONG index = lua_tointeger(Lua, -2) - 1;
@@ -300,10 +300,10 @@ static int object_get(lua_State *Lua)
          else if (field->Flags & FD_DOUBLE) {
             result = object_get_double(Lua, obj_read(0, NULL, field), def);
          }
-         else if (field->Flags & FD_LARGE) {
+         else if (field->Flags & FD_INT64) {
             result = object_get_large(Lua, obj_read(0, NULL, field), def);
          }
-         else if (field->Flags & FD_LONG) {
+         else if (field->Flags & FD_INT) {
             if (field->Flags & FD_UNSIGNED) {
                result = object_get_ulong(Lua, obj_read(0, NULL, field), def);
             }
@@ -547,7 +547,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
                return ERR::SetValueNotObject;
          }
       }
-      else if (field->Flags & (FD_LONG|FD_LARGE)) {
+      else if (field->Flags & (FD_INT|FD_INT64)) {
          switch(type) {
             case LUA_TBOOLEAN:
                return target->set(field->FieldID, lua_toboolean(Lua, ValueIndex));
@@ -591,7 +591,7 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
          else if (field->Flags & FD_STRING) {
             make_table(Lua, FD_STRING, total, list);
          }
-         else if (field->Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT)) {
+         else if (field->Flags & (FD_INT|FD_INT64|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT)) {
             make_any_table(Lua, field->Flags, (CSTRING)field->Arg, total, list);
          }
          else {

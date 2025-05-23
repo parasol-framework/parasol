@@ -163,8 +163,8 @@ static const ActionArray clClipActions[] = {
 
 static const FieldArray clClipFields[] = {
    { "Viewport", FDF_OBJECT|FDF_R, CLIP_GET_Viewport },
-   { "Units",    FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipUnits },
-   { "Flags",    FDF_LONGFLAGS|FDF_RW, CLIP_GET_Flags, CLIP_SET_Flags, &clVectorClipFlags },
+   { "Units",    FDF_INT|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipUnits },
+   { "Flags",    FDF_INTFLAGS|FDF_RW, CLIP_GET_Flags, CLIP_SET_Flags, &clVectorClipFlags },
    END_FIELD
 };
 

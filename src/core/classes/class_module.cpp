@@ -109,7 +109,7 @@ static const FieldArray glModuleFields[] = {
    { "ModBase",      FDF_POINTER|FDF_R },
    { "Root",         FDF_POINTER|FDF_R },
    { "Header",       FDF_POINTER|FDF_RI, NULL, SET_Header },
-   { "Flags",        FDF_LONG|FDF_RI, NULL, NULL, &clFlags },
+   { "Flags",        FDF_INT|FDF_RI, NULL, NULL, &clFlags },
    // Virtual fields
    { "Name",         FDF_STRING|FDF_RI, GET_Name, SET_Name },
    END_FIELD

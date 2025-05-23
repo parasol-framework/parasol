@@ -161,10 +161,10 @@ static const FieldDef clDeviceFlags[] = {
 };
 
 static const FieldArray clFields[] = {
-   { "DeviceFlags", FDF_LARGE|FDF_R, NULL, NULL, &clDeviceFlags },
-   { "DeviceSize",  FDF_LARGE|FDF_R },
-   { "BytesFree",   FDF_LARGE|FDF_R },
-   { "BytesUsed",   FDF_LARGE|FDF_R },
+   { "DeviceFlags", FDF_INT64|FDF_R, NULL, NULL, &clDeviceFlags },
+   { "DeviceSize",  FDF_INT64|FDF_R },
+   { "BytesFree",   FDF_INT64|FDF_R },
+   { "BytesUsed",   FDF_INT64|FDF_R },
    // Virtual fields
    { "DeviceID",    FDF_STRING|FDF_R, GET_DeviceID },
    { "Volume",      FDF_STRING|FDF_RI, GET_Volume, SET_Volume },

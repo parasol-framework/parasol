@@ -175,8 +175,8 @@ ERR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *a
                // more arguments are specified in the function call.
 
                LONG memsize = array->ArraySize;
-               if (args[i+1].Type & FD_LONG)  ((LONG *)(argbuffer + j))[0] = memsize;
-               else if (args[i+1].Type & FD_LARGE) ((LARGE *)(argbuffer + j))[0] = memsize;
+               if (args[i+1].Type & FD_INT)  ((LONG *)(argbuffer + j))[0] = memsize;
+               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = memsize;
                //log.trace("Preset buffer size of %d bytes.", memsize);
             }
 
@@ -192,8 +192,8 @@ ERR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *a
                // Buffer size is optional, so set the buffer size parameter by default.
                // The user can override it if more arguments are specified in the function call.
 
-               if (args[i+1].Type & FD_LONG) ((LONG *)(argbuffer + j))[0] = fstruct->AlignedSize;
-               else if (args[i+1].Type & FD_LARGE) ((LARGE *)(argbuffer + j))[0] = fstruct->AlignedSize;
+               if (args[i+1].Type & FD_INT) ((LONG *)(argbuffer + j))[0] = fstruct->AlignedSize;
+               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = fstruct->AlignedSize;
             }
             n--; // Adjustment required due to successful get_meta()
          }
@@ -209,8 +209,8 @@ ERR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *a
 
                //log.trace("Advance setting of following BUFSIZE parameter to %d", farray->ArraySize);
 
-               if (args[i+1].Type & FD_LONG) ((LONG *)(argbuffer + j))[0] = farray->ArraySize;
-               else if (args[i+1].Type & FD_LARGE) ((LARGE *)(argbuffer + j))[0] = farray->ArraySize;
+               if (args[i+1].Type & FD_INT) ((LONG *)(argbuffer + j))[0] = farray->ArraySize;
+               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = farray->ArraySize;
                else log.trace("Cannot set BUFSIZE argument - unknown type.");
             }
             n--; // Adjustment required due to successful get_meta()
@@ -223,8 +223,8 @@ ERR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *a
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
-               if (args[i+1].Type & FD_LONG) ((LONG *)(argbuffer + j))[0] = len;
-               else if (args[i+1].Type & FD_LARGE) ((LARGE *)(argbuffer + j))[0] = len;
+               if (args[i+1].Type & FD_INT) ((LONG *)(argbuffer + j))[0] = len;
+               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = len;
             }
          }
          else if (type IS LUA_TNUMBER) {
@@ -324,7 +324,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *a
 
          j += sizeof(APTR);
       }
-      else if (args[i].Type & FD_LONG) {
+      else if (args[i].Type & FD_INT) {
          if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
             if (auto obj = (struct object *)get_meta(Lua, n, "Fluid.obj")) {
                ((LONG *)(argbuffer + j))[0] = obj->UID;
@@ -344,7 +344,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *a
          //log.trace("Arg: %s, Value: %.2f", args[i].Name, ((DOUBLE *)(argbuffer + j))[0]);
          j += sizeof(DOUBLE);
       }
-      else if (args[i].Type & FD_LARGE) {
+      else if (args[i].Type & FD_INT64) {
          j = ALIGN64(j);
          ((LARGE *)(argbuffer + j))[0] = lua_tointeger(Lua, n);
          //log.trace("Arg: %s, Value: %" PF64, args[i].Name, ((LARGE *)(argbuffer + j))[0]);
@@ -386,8 +386,8 @@ static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *A
             LONG total_elements = -1;  // If -1, make_any_table() assumes the array is null terminated.
             if (args[i+1].Type & FD_ARRAYSIZE) {
                const APTR size_var = ((APTR *)(ArgBuf + of + sizeof(APTR)))[0];
-               if (args[i+1].Type & FD_LONG) total_elements = ((LONG *)size_var)[0];
-               else if (args[i+1].Type & FD_LARGE) total_elements = ((LARGE *)size_var)[0];
+               if (args[i+1].Type & FD_INT) total_elements = ((LONG *)size_var)[0];
+               else if (args[i+1].Type & FD_INT64) total_elements = ((LARGE *)size_var)[0];
                else log.warning("Invalid parameter definition for '%s' of $%.8x", args[i+1].Name, args[i+1].Type);
             }
 
@@ -490,7 +490,7 @@ static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *A
          }
          of += sizeof(APTR);
       }
-      else if (type & FD_LONG) {
+      else if (type & FD_INT) {
          if (type & FD_RESULT) {
             RMSG("Result-Arg: %s, Value: %d (Long)", args[i].Name, ((LONG *)(ArgBuf+of))[0]);
             lua_pushinteger(Lua, ((LONG *)(ArgBuf+of))[0]);
@@ -507,7 +507,7 @@ static LONG get_results(lua_State *Lua, const FunctionField *args, const BYTE *A
          }
          of += sizeof(DOUBLE);
       }
-      else if (type & FD_LARGE) {
+      else if (type & FD_INT64) {
          of = ALIGN64(of);
          if (type & FD_RESULT) {
             RMSG("Result-Arg: %s, Value: %" PF64 " (Large)", args[i].Name, ((LARGE *)(ArgBuf+of))[0]);

@@ -13,12 +13,12 @@ extern ERR ResolveFamilyName(CSTRING String, CSTRING * Result);
 #define FDEF static const struct FunctionField
 #endif
 
-FDEF argsCharWidth[] = { { "Result", FD_LONG }, { "Font", FD_OBJECTPTR }, { "Char", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
-FDEF argsGetList[] = { { "Error", FD_LONG|FD_ERROR }, { "FontList:Result", FD_PTR|FD_STRUCT|FD_ALLOC|FD_RESULT }, { 0, 0 } };
-FDEF argsRefreshFonts[] = { { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
-FDEF argsResolveFamilyName[] = { { "Error", FD_LONG|FD_ERROR }, { "String", FD_STR }, { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
-FDEF argsSelectFont[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Style", FD_STR }, { "Path", FD_STR|FD_ALLOC|FD_RESULT }, { "Meta", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsStringWidth[] = { { "Result", FD_LONG }, { "Font", FD_OBJECTPTR }, { "String", FD_STR }, { "Chars", FD_LONG }, { 0, 0 } };
+FDEF argsCharWidth[] = { { "Result", FD_INT }, { "Font", FD_OBJECTPTR }, { "Char", FD_INT|FD_UNSIGNED }, { 0, 0 } };
+FDEF argsGetList[] = { { "Error", FD_INT|FD_ERROR }, { "FontList:Result", FD_PTR|FD_STRUCT|FD_ALLOC|FD_RESULT }, { 0, 0 } };
+FDEF argsRefreshFonts[] = { { "Error", FD_INT|FD_ERROR }, { 0, 0 } };
+FDEF argsResolveFamilyName[] = { { "Error", FD_INT|FD_ERROR }, { "String", FD_STR }, { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
+FDEF argsSelectFont[] = { { "Error", FD_INT|FD_ERROR }, { "Name", FD_STR }, { "Style", FD_STR }, { "Path", FD_STR|FD_ALLOC|FD_RESULT }, { "Meta", FD_INT|FD_RESULT }, { 0, 0 } };
+FDEF argsStringWidth[] = { { "Result", FD_INT }, { "Font", FD_OBJECTPTR }, { "String", FD_STR }, { "Chars", FD_INT }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)fnt::GetList, "GetList", argsGetList },

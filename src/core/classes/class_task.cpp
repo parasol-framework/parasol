@@ -168,7 +168,7 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
       sc::Call(Self->InputCallback, std::to_array<ScriptArg>({
          { "Task",       Self },
          { "Buffer",     buffer, FD_PTRBUFFER },
-         { "BufferSize", bytes_read, FD_LONG|FD_BUFSIZE },
+         { "BufferSize", bytes_read, FD_INT|FD_BUFSIZE },
          { "Status",     LONG(error), FD_ERROR }
       }));
    }
@@ -224,7 +224,7 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
          sc::Call(task->OutputCallback, std::to_array<ScriptArg>({
             { "Task",       Task,   FD_OBJECTPTR },
             { "Buffer",     buffer, FD_PTRBUFFER },
-            { "BufferSize", len,    FD_LONG|FD_BUFSIZE }
+            { "BufferSize", len,    FD_INT|FD_BUFSIZE }
          }));
       }
    }
@@ -252,7 +252,7 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
          sc::Call(task->ErrorCallback, std::to_array<ScriptArg>({
             { "Task", Task, FD_OBJECTPTR },
             { "Data", buffer, FD_PTRBUFFER },
-            { "Size", len, FD_LONG|FD_BUFSIZE }
+            { "Size", len, FD_INT|FD_BUFSIZE }
          }));
       }
    }
@@ -275,7 +275,7 @@ static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, LONG
       sc::Call(*Callback, std::to_array<ScriptArg>({
          { "Task", Task, FD_OBJECTPTR },
          { "Data", Buffer, FD_PTRBUFFER },
-         { "Size", Size, FD_LONG|FD_BUFSIZE }
+         { "Size", Size, FD_INT|FD_BUFSIZE }
       }));
    }
 }
@@ -2182,9 +2182,9 @@ process to return.  The time out is defined in seconds.
 
 static const FieldArray clFields[] = {
    { "TimeOut",         FDF_DOUBLE|FDF_RW },
-   { "Flags",           FDF_LONGFLAGS|FDF_RI, nullptr, nullptr, &clFlags },
-   { "ReturnCode",      FDF_LONG|FDF_RW, GET_ReturnCode, SET_ReturnCode },
-   { "ProcessID",       FDF_LONG|FDF_RI },
+   { "Flags",           FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clFlags },
+   { "ReturnCode",      FDF_INT|FDF_RW, GET_ReturnCode, SET_ReturnCode },
+   { "ProcessID",       FDF_INT|FDF_RI },
    // Virtual fields
    { "Actions",        FDF_POINTER|FDF_R,  GET_Actions },
    { "Args",           FDF_STRING|FDF_W,   nullptr, SET_Args },
@@ -2198,7 +2198,7 @@ static const FieldArray clFields[] = {
    { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, GET_OutputCallback,  SET_OutputCallback }, // STDOUT
    { "Path",           FDF_STRING|FDF_RW,      GET_Path,            SET_Path },
    { "ProcessPath",    FDF_STRING|FDF_R,       GET_ProcessPath },
-   { "Priority",       FDF_LONG|FDF_W,         nullptr, SET_Priority },
+   { "Priority",       FDF_INT|FDF_W,         nullptr, SET_Priority },
    // Synonyms
    { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Location, SET_Location },
    END_FIELD

@@ -30,7 +30,7 @@ static ERR PTR_SET_Y(extPointer *, double);
 
 #ifdef _WIN32
 static ERR PTR_SetWinCursor(extPointer *, struct ptrSetWinCursor *);
-static FunctionField mthSetWinCursor[]  = { { "Cursor", FD_LONG }, { nullptr, 0 } };
+static FunctionField mthSetWinCursor[]  = { { "Cursor", FD_INT }, { nullptr, 0 } };
 #endif
 
 #ifdef __xwindows__
@@ -38,7 +38,7 @@ static FunctionField mthSetWinCursor[]  = { { "Cursor", FD_LONG }, { nullptr, 0 
 #undef False
 static ERR PTR_GrabX11Pointer(extPointer *, struct ptrGrabX11Pointer *);
 static ERR PTR_UngrabX11Pointer(extPointer *);
-static FunctionField mthGrabX11Pointer[] = { { "Surface", FD_LONG }, { nullptr, 0 } };
+static FunctionField mthGrabX11Pointer[] = { { "Surface", FD_INT }, { nullptr, 0 } };
 #endif
 
 static int glDefaultSpeed = 160;
@@ -1265,8 +1265,8 @@ static const FieldDef clPointerFlags[] = {
    { nullptr, 0 }
 };
 
-static const FunctionField mthSetCursor[]     = { { "Surface", FD_LONG }, { "Flags", FD_LONG }, { "Cursor", FD_LONG }, { "Name", FD_STRING }, { "Owner", FD_LONG }, { "PreviousCursor", FD_LONG|FD_RESULT }, { nullptr, 0 } };
-static const FunctionField mthRestoreCursor[] = { { "Cursor", FD_LONG }, { "Owner", FD_LONG }, { nullptr, 0 } };
+static const FunctionField mthSetCursor[]     = { { "Surface", FD_INT }, { "Flags", FD_INT }, { "Cursor", FD_INT }, { "Name", FD_STRING }, { "Owner", FD_INT }, { "PreviousCursor", FD_INT|FD_RESULT }, { nullptr, 0 } };
+static const FunctionField mthRestoreCursor[] = { { "Cursor", FD_INT }, { "Owner", FD_INT }, { nullptr, 0 } };
 
 static const MethodEntry clPointerMethods[] = {
    // Private methods
@@ -1290,23 +1290,23 @@ static const FieldArray clPointerFields[] = {
    { "OverX",        FDF_DOUBLE|FDF_R },
    { "OverY",        FDF_DOUBLE|FDF_R },
    { "OverZ",        FDF_DOUBLE|FDF_R },
-   { "MaxSpeed",     FDF_LONG|FDF_RW, nullptr, SET_MaxSpeed },
+   { "MaxSpeed",     FDF_INT|FDF_RW, nullptr, SET_MaxSpeed },
    { "Input",        FDF_OBJECTID|FDF_RW },
    { "Surface",      FDF_OBJECTID|FDF_RW, nullptr, nullptr, CLASSID::SURFACE },
    { "Anchor",       FDF_OBJECTID|FDF_R, nullptr, nullptr, CLASSID::SURFACE },
-   { "CursorID",     FDF_LONG|FDF_LOOKUP|FDF_RI, nullptr, nullptr, &CursorLookup },
+   { "CursorID",     FDF_INT|FDF_LOOKUP|FDF_RI, nullptr, nullptr, &CursorLookup },
    { "CursorOwner",  FDF_OBJECTID|FDF_RW },
-   { "Flags",        FDF_LONGFLAGS|FDF_RI, nullptr, nullptr, &clPointerFlags },
+   { "Flags",        FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clPointerFlags },
    { "Restrict",     FDF_OBJECTID|FDF_R, nullptr, nullptr, CLASSID::SURFACE },
-   { "HostX",        FDF_LONG|FDF_R|FDF_SYSTEM },
-   { "HostY",        FDF_LONG|FDF_R|FDF_SYSTEM },
+   { "HostX",        FDF_INT|FDF_R|FDF_SYSTEM },
+   { "HostY",        FDF_INT|FDF_R|FDF_SYSTEM },
    { "Bitmap",       FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::BITMAP },
    { "DragSource",   FDF_OBJECTID|FDF_R },
-   { "DragItem",     FDF_LONG|FDF_R },
+   { "DragItem",     FDF_INT|FDF_R },
    { "OverObject",   FDF_OBJECTID|FDF_R },
-   { "ClickSlop",    FDF_LONG|FDF_RW },
+   { "ClickSlop",    FDF_INT|FDF_RW },
    // Virtual Fields
-   { "ButtonState",  FDF_LONG|FDF_R, GET_ButtonState },
+   { "ButtonState",  FDF_INT|FDF_R, GET_ButtonState },
    { "ButtonOrder",  FDF_STRING|FDF_RW, GET_ButtonOrder, SET_ButtonOrder },
    END_FIELD
 };

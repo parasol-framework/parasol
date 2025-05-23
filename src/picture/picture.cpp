@@ -1307,11 +1307,11 @@ exit:
 static const FieldArray clFields[] = {
    { "Bitmap",        FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::BITMAP },
    { "Mask",          FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::BITMAP },
-   { "Flags",         FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clPictureFlags },
-   { "DisplayHeight", FDF_LONG|FDF_RW },
-   { "DisplayWidth",  FDF_LONG|FDF_RW },
-   { "Quality",       FDF_LONG|FDF_RW },
-   { "FrameRate",     FDF_SYSTEM|FDF_LONG|FDF_R },
+   { "Flags",         FDF_INTFLAGS|FDF_RW, NULL, NULL, &clPictureFlags },
+   { "DisplayHeight", FDF_INT|FDF_RW },
+   { "DisplayWidth",  FDF_INT|FDF_RW },
+   { "Quality",       FDF_INT|FDF_RW },
+   { "FrameRate",     FDF_SYSTEM|FDF_INT|FDF_R },
    // Virtual fields
    { "Author",        FDF_STRING|FDF_RW,  GET_Author, SET_Author },
    { "Copyright",     FDF_STRING|FDF_RW,  GET_Copyright, SET_Copyright },

@@ -578,8 +578,8 @@ static ERR VECTORPATH_SET_TotalCommands(extVectorPath *Self, LONG Value)
 
 static const FieldArray clPathFields[] = {
    { "Sequence",      FDF_VIRTUAL|FDF_STRING|FDF_RW, VECTOR_GET_Sequence, VECTORPATH_SET_Sequence },
-   { "TotalCommands", FDF_VIRTUAL|FDF_LONG|FDF_RW,   VECTORPATH_GET_TotalCommands, VECTORPATH_SET_TotalCommands },
-   { "PathLength",    FDF_VIRTUAL|FDF_LONG|FDF_RW,   VECTORPATH_GET_PathLength, VECTORPATH_SET_PathLength },
+   { "TotalCommands", FDF_VIRTUAL|FDF_INT|FDF_RW,   VECTORPATH_GET_TotalCommands, VECTORPATH_SET_TotalCommands },
+   { "PathLength",    FDF_VIRTUAL|FDF_INT|FDF_RW,   VECTORPATH_GET_PathLength, VECTORPATH_SET_PathLength },
    { "Commands",      FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, VECTORPATH_GET_Commands, VECTORPATH_SET_Commands, "PathCommand" },
    END_FIELD
 };

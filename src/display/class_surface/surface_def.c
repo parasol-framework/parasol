@@ -204,13 +204,13 @@ static const struct FieldDef clSurfaceJET[] = {
    { NULL, 0 }
 };
 
-FDEF maInheritedFocus[] = { { "FocusID", FD_OBJECTID }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF maExposeToDisplay[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF maInvalidateRegion[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { 0, 0 } };
-FDEF maSetDisplay[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "InsideWidth", FD_LONG }, { "InsideHeight", FD_LONG }, { "BitsPerPixel", FD_LONG }, { "RefreshRate", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
+FDEF maInheritedFocus[] = { { "FocusID", FD_OBJECTID }, { "Flags", FD_INT }, { 0, 0 } };
+FDEF maExposeToDisplay[] = { { "X", FD_INT }, { "Y", FD_INT }, { "Width", FD_INT }, { "Height", FD_INT }, { "Flags", FD_INT }, { 0, 0 } };
+FDEF maInvalidateRegion[] = { { "X", FD_INT }, { "Y", FD_INT }, { "Width", FD_INT }, { "Height", FD_INT }, { 0, 0 } };
+FDEF maSetDisplay[] = { { "X", FD_INT }, { "Y", FD_INT }, { "Width", FD_INT }, { "Height", FD_INT }, { "InsideWidth", FD_INT }, { "InsideHeight", FD_INT }, { "BitsPerPixel", FD_INT }, { "RefreshRate", FD_DOUBLE }, { "Flags", FD_INT }, { 0, 0 } };
 FDEF maSetOpacity[] = { { "Value", FD_DOUBLE }, { "Adjustment", FD_DOUBLE }, { 0, 0 } };
 FDEF maAddCallback[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF maResetDimensions[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "XOffset", FD_DOUBLE }, { "YOffset", FD_DOUBLE }, { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { "Dimensions", FD_LONG }, { 0, 0 } };
+FDEF maResetDimensions[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "XOffset", FD_DOUBLE }, { "YOffset", FD_DOUBLE }, { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { "Dimensions", FD_INT }, { 0, 0 } };
 FDEF maRemoveCallback[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 
 static const struct MethodEntry clSurfaceMethods[] = {

@@ -94,12 +94,12 @@ static const std::vector<Field> glMetaFieldsPreset = {
    { 0, NULL, NULL,                writeval_default, "FileHeader",      FID_FileHeader,      sizeof(Object)+8+(sizeof(APTR)*5),  6,  FDF_STRING|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "Path",            FID_Path,            sizeof(Object)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "Icon",            FID_Icon,            sizeof(Object)+8+(sizeof(APTR)*7),  8,  FDF_STRING|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "Size",            FID_Size,            sizeof(Object)+8+(sizeof(APTR)*8),  9,  FDF_LONG|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "Flags",           FID_Flags,           sizeof(Object)+12+(sizeof(APTR)*8), 10, FDF_LONG|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "ClassID",         FID_ClassID,         sizeof(Object)+16+(sizeof(APTR)*8), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Object)+20+(sizeof(APTR)*8), 12, FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Object)+24+(sizeof(APTR)*8), 13, FDF_LONG|FDF_R },
-   { MAXINT(&CategoryTable), NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(Object)+28+(sizeof(APTR)*8), 14, FDF_LONG|FDF_LOOKUP|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Size",            FID_Size,            sizeof(Object)+8+(sizeof(APTR)*8),  9,  FDF_INT|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "Flags",           FID_Flags,           sizeof(Object)+12+(sizeof(APTR)*8), 10, FDF_INT|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "ClassID",         FID_ClassID,         sizeof(Object)+16+(sizeof(APTR)*8), 11, FDF_INT|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(Object)+20+(sizeof(APTR)*8), 12, FDF_INT|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(Object)+24+(sizeof(APTR)*8), 13, FDF_INT|FDF_R },
+   { MAXINT(&CategoryTable), NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(Object)+28+(sizeof(APTR)*8), 14, FDF_INT|FDF_LOOKUP|FDF_RI },
    // Virtual fields
    { MAXINT("MethodEntry"), (ERR (*)(APTR, APTR))GET_Methods, (APTR)SET_Methods, writeval_default, "Methods", FID_Methods, sizeof(Object), 15, FDF_ARRAY|FD_STRUCT|FDF_RI },
    { 0, NULL, (APTR)SET_Actions,                  writeval_default,   "Actions",           FID_Actions,         sizeof(Object), 16, FDF_POINTER|FDF_I },
@@ -107,7 +107,7 @@ static const std::vector<Field> glMetaFieldsPreset = {
    { 0, (ERR (*)(APTR, APTR))GET_Location, 0,     writeval_default,   "Location",          FID_Location,        sizeof(Object), 18, FDF_STRING|FDF_R },
    { 0, (ERR (*)(APTR, APTR))GET_ClassName, (APTR)SET_ClassName, writeval_default, "Name", FID_Name,            sizeof(Object), 19, FDF_STRING|FDF_SYSTEM|FDF_RI },
    { 0, (ERR (*)(APTR, APTR))GET_Module, 0,       writeval_default,   "Module",            FID_Module,          sizeof(Object), 20, FDF_STRING|FDF_R },
-   { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(Object), 21, FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R },
+   { 0, (ERR (*)(APTR, APTR))GET_Objects, 0,      writeval_default,   "Objects",           FID_Objects,         sizeof(Object), 21, FDF_ARRAY|FDF_INT|FDF_ALLOC|FDF_R },
    { MAXINT("FieldArray"), (ERR (*)(APTR, APTR))GET_SubFields, 0, writeval_default, "SubFields", FID_SubFields, sizeof(Object), 22, FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R },
    { MAXINT(CLASSID::ROOTMODULE), (ERR (*)(APTR, APTR))GET_RootModule, 0, writeval_default, "RootModule", FID_RootModule,     sizeof(Object), 23, FDF_OBJECT|FDF_R },
    { 0, 0, 0, NULL, "", 0, 0, 0,  0 }
@@ -122,12 +122,12 @@ static const FieldArray glMetaFields[] = {
    { "FileDescription", FDF_STRING|FDF_RI },
    { "FileHeader",      FDF_STRING|FDF_RI },
    { "Path",            FDF_STRING|FDF_RI },
-   { "Size",            FDF_LONG|FDF_RI },
-   { "Flags",           FDF_LONG|FDF_RI },
-   { "ClassID",         FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { "BaseClassID",     FDF_LONG|FDF_UNSIGNED|FDF_RI },
-   { "OpenCount",       FDF_LONG|FDF_R },
-   { "Category",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &CategoryTable },
+   { "Size",            FDF_INT|FDF_RI },
+   { "Flags",           FDF_INT|FDF_RI },
+   { "ClassID",         FDF_INT|FDF_UNSIGNED|FDF_RI },
+   { "BaseClassID",     FDF_INT|FDF_UNSIGNED|FDF_RI },
+   { "OpenCount",       FDF_INT|FDF_R },
+   { "Category",        FDF_INT|FDF_LOOKUP|FDF_RI, NULL, NULL, &CategoryTable },
    // Virtual fields
    { "Methods",         FDF_ARRAY|FD_STRUCT|FDF_RI, GET_Methods, SET_Methods, "MethodEntry" },
    { "Actions",         FDF_POINTER|FDF_I },
@@ -135,7 +135,7 @@ static const FieldArray glMetaFields[] = {
    { "Location",        FDF_STRING|FDF_R },
    { "Name",            FDF_STRING|FDF_SYSTEM|FDF_RI, GET_ClassName, SET_ClassName },
    { "Module",          FDF_STRING|FDF_R, GET_Module },
-   { "Objects",         FDF_ARRAY|FDF_LONG|FDF_ALLOC|FDF_R, GET_Objects },
+   { "Objects",         FDF_ARRAY|FDF_INT|FDF_ALLOC|FDF_R, GET_Objects },
    { "SubFields",       FDF_ARRAY|FD_STRUCT|FDF_SYSTEM|FDF_R, GET_SubFields, NULL, "FieldArray" },
    { "RootModule",      FDF_OBJECT|FDF_R, GET_RootModule, NULL, CLASSID::ROOTMODULE },
    END_FIELD
@@ -146,7 +146,7 @@ extern "C" ERR CLASS_Free(extMetaClass *);
 extern "C" ERR CLASS_Init(extMetaClass *);
 extern "C" ERR CLASS_NewPlacement(extMetaClass *);
 
-FDEF argsFindField[] = { { "ID", FD_LONG }, { "Field:Field", FD_RESULT|FD_PTR|FD_STRUCT }, { "Source", FD_RESULT|FD_OBJECTPTR }, { 0, 0 } };
+FDEF argsFindField[] = { { "ID", FD_INT }, { "Field:Field", FD_RESULT|FD_PTR|FD_STRUCT }, { "Source", FD_RESULT|FD_OBJECTPTR }, { 0, 0 } };
 
 extMetaClass glMetaClass;
 
@@ -941,7 +941,7 @@ static void field_setup(extMetaClass *Class)
          .FieldID    = FID_ClassID,
          .Offset     = 0,
          .Index      = 0,
-         .Flags      = FDF_LONG|FDF_UNSIGNED|FDF_R|FDF_SYSTEM
+         .Flags      = FDF_INT|FDF_UNSIGNED|FDF_R|FDF_SYSTEM
       });
 
       if (glLogLevel >= 2) register_fields(Class->FieldLookup);
@@ -1025,10 +1025,10 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
       #endif
       Offset += sizeof(APTR);
    }
-   else if (field.Flags & FD_LONG) Offset += sizeof(LONG);
+   else if (field.Flags & FD_INT) Offset += sizeof(LONG);
    else if (field.Flags & FD_BYTE) Offset += sizeof(BYTE);
    else if (field.Flags & FD_FUNCTION) Offset += sizeof(FUNCTION);
-   else if (field.Flags & (FD_DOUBLE|FD_LARGE)) {
+   else if (field.Flags & (FD_DOUBLE|FD_INT64)) {
       if (Offset & 0x7) {
          if (((field.Flags & FDF_R) and (!field.GetValue)) or
              ((field.Flags & FDF_W) and (!field.SetValue))) {

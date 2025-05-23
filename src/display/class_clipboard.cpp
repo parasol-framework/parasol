@@ -412,7 +412,7 @@ static ERR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
             { "Requester", Args->Object, FD_OBJECTPTR },
             { "Item",      request->Item },
             { "Datatypes", request->Preference, FD_ARRAY|FD_BYTE },
-            { "Size",      int(std::ssize(request->Preference)), FD_LONG|FD_ARRAYSIZE }
+            { "Size",      int(std::ssize(request->Preference)), FD_INT|FD_ARRAYSIZE }
          }), error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = log.warning(ERR::FieldNotSet);
@@ -814,7 +814,7 @@ extern "C" void win_clipboard_updated()
 #include "class_clipboard_def.c"
 
 static const FieldArray clFields[] = {
-   { "Flags",          FDF_LONGFLAGS|FDF_RI, nullptr, nullptr, &clClipboardFlags },
+   { "Flags",          FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clClipboardFlags },
    { "RequestHandler", FDF_FUNCTIONPTR|FDF_RW, GET_RequestHandler, SET_RequestHandler },
    END_FIELD
 };

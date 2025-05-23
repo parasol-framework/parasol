@@ -178,8 +178,8 @@ inline void build_read_table(object *Def)
             else jmp.insert(obj_read(hash, object_get_ptr, &dict[i]));
          }
          else if (dict[i].Flags & FD_DOUBLE) jmp.insert(obj_read(hash, object_get_double, &dict[i]));
-         else if (dict[i].Flags & FD_LARGE) jmp.insert(obj_read(hash, object_get_large, &dict[i]));
-         else if (dict[i].Flags & FD_LONG) {
+         else if (dict[i].Flags & FD_INT64) jmp.insert(obj_read(hash, object_get_large, &dict[i]));
+         else if (dict[i].Flags & FD_INT) {
             if (dict[i].Flags & FD_UNSIGNED) jmp.insert(obj_read(hash, object_get_ulong, &dict[i]));
             else jmp.insert(obj_read(hash, object_get_long, &dict[i]));
          }
@@ -247,7 +247,7 @@ inline WRITE_TABLE * get_write_table(object *Def)
                   else if (dict[i].Flags & FD_OBJECT) { // Object ID
                      jmp.insert(obj_write(hash, object_set_oid, &dict[i]));
                   }
-                  else if (dict[i].Flags & (FD_LONG|FD_LARGE)) {
+                  else if (dict[i].Flags & (FD_INT|FD_INT64)) {
                      jmp.insert(obj_write(hash, object_set_number, &dict[i]));
                   }
                }
@@ -767,9 +767,9 @@ static int object_children(lua_State *Lua)
          else id[index++] = rec.ObjectID;
       }
 
-      make_table(Lua, FD_LONG, index, id.get());
+      make_table(Lua, FD_INT, index, id.get());
    }
-   else make_table(Lua, FD_LONG, 0, NULL);
+   else make_table(Lua, FD_INT, 0, NULL);
 
    return 1; // make_table() always returns a value even if it is nil
 }

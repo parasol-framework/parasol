@@ -43,15 +43,15 @@ static const struct FieldDef clScintillaLexer[] = {
 };
 
 FDEF maSetFont[] = { { "Face", FD_STR }, { 0, 0 } };
-FDEF maReplaceText[] = { { "Find", FD_STR }, { "Replace", FD_STR }, { "Flags", FD_LONG }, { "Start", FD_LONG }, { "End", FD_LONG }, { 0, 0 } };
-FDEF maDeleteLine[] = { { "Line", FD_LONG }, { 0, 0 } };
-FDEF maSelectRange[] = { { "Start", FD_LONG }, { "End", FD_LONG }, { 0, 0 } };
-FDEF maInsertText[] = { { "String", FD_STR }, { "Pos", FD_LONG }, { 0, 0 } };
-FDEF maGetLine[] = { { "Line", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Length", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF maReplaceLine[] = { { "Line", FD_LONG }, { "String", FD_STR }, { "Length", FD_LONG }, { 0, 0 } };
-FDEF maGotoLine[] = { { "Line", FD_LONG }, { 0, 0 } };
-FDEF maGetPos[] = { { "Line", FD_LONG }, { "Column", FD_LONG }, { "Pos", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF maScrollToPoint[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { 0, 0 } };
+FDEF maReplaceText[] = { { "Find", FD_STR }, { "Replace", FD_STR }, { "Flags", FD_INT }, { "Start", FD_INT }, { "End", FD_INT }, { 0, 0 } };
+FDEF maDeleteLine[] = { { "Line", FD_INT }, { 0, 0 } };
+FDEF maSelectRange[] = { { "Start", FD_INT }, { "End", FD_INT }, { 0, 0 } };
+FDEF maInsertText[] = { { "String", FD_STR }, { "Pos", FD_INT }, { 0, 0 } };
+FDEF maGetLine[] = { { "Line", FD_INT }, { "Buffer", FD_BUFFER|FD_STR }, { "Length", FD_INT|FD_BUFSIZE }, { 0, 0 } };
+FDEF maReplaceLine[] = { { "Line", FD_INT }, { "String", FD_STR }, { "Length", FD_INT }, { 0, 0 } };
+FDEF maGotoLine[] = { { "Line", FD_INT }, { 0, 0 } };
+FDEF maGetPos[] = { { "Line", FD_INT }, { "Column", FD_INT }, { "Pos", FD_INT|FD_RESULT }, { 0, 0 } };
+FDEF maScrollToPoint[] = { { "X", FD_INT }, { "Y", FD_INT }, { 0, 0 } };
 
 static const struct MethodEntry clScintillaMethods[] = {
    { AC(-1), (APTR)SCINTILLA_SetFont, "SetFont", maSetFont, sizeof(struct sci::SetFont) },

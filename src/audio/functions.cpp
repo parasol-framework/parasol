@@ -40,7 +40,7 @@ static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
          { "Handle", Handle },
          { "Offset", Offset },
          { "Buffer", Sample.Data, FD_BUFFER },
-         { "Length", Sample.SampleLength<<sample_shift(Sample.SampleType), FD_BUFSIZE|FD_LONG }
+         { "Length", Sample.SampleLength<<sample_shift(Sample.SampleType), FD_BUFSIZE|FD_INT }
       });
 
       ERR result;

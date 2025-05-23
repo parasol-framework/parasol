@@ -373,8 +373,8 @@ static const FieldArray clEllipseFields[] = {
    { "Radius",     FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_Radius,  ELLIPSE_SET_Radius },
    { "RadiusX",    FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_RadiusX, ELLIPSE_SET_RadiusX },
    { "RadiusY",    FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_RadiusY, ELLIPSE_SET_RadiusY },
-   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, ELLIPSE_GET_Dimensions, ELLIPSE_SET_Dimensions, &clEllipseDimensions },
-   { "Vertices",   FDF_VIRTUAL|FDF_LONG|FDF_RW, ELLIPSE_GET_Vertices, ELLIPSE_SET_Vertices },
+   { "Dimensions", FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, ELLIPSE_GET_Dimensions, ELLIPSE_SET_Dimensions, &clEllipseDimensions },
+   { "Vertices",   FDF_VIRTUAL|FDF_INT|FDF_RW, ELLIPSE_GET_Vertices, ELLIPSE_SET_Vertices },
    // Synonyms
    { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_CenterX, ELLIPSE_SET_CenterX },
    { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_CenterY, ELLIPSE_SET_CenterY },

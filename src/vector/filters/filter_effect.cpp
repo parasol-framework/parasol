@@ -311,9 +311,9 @@ static const FieldArray clFilterEffectFields[] = {
    { "Y",          FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Y, FILTEREFFECT_SET_Y },
    { "Width",      FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Width, FILTEREFFECT_SET_Width },
    { "Height",     FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, FILTEREFFECT_GET_Height, FILTEREFFECT_SET_Height },
-   { "Dimensions", FDF_LONGFLAGS|FDF_R, NULL, NULL, &clFilterEffectDimensions },
-   { "SourceType", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clFilterEffectSourceType },
-   { "MixType",    FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clFilterEffectMixType },
+   { "Dimensions", FDF_INTFLAGS|FDF_R, NULL, NULL, &clFilterEffectDimensions },
+   { "SourceType", FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clFilterEffectSourceType },
+   { "MixType",    FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clFilterEffectMixType },
    END_FIELD
 };
 

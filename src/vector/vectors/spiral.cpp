@@ -338,7 +338,7 @@ static const ActionArray clVectorSpiralActions[] = {
 };
 
 static const FieldArray clVectorSpiralFields[] = {
-   { "PathLength", FDF_VIRTUAL|FDF_LONG|FDF_RW, SPIRAL_GET_PathLength, SPIRAL_SET_PathLength },
+   { "PathLength", FDF_VIRTUAL|FDF_INT|FDF_RW, SPIRAL_GET_PathLength, SPIRAL_SET_PathLength },
    { "Width",      FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_Width,   SPIRAL_SET_Width },
    { "Height",     FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_Height,  SPIRAL_SET_Height },
    { "CenterX",    FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_CenterX, SPIRAL_SET_CenterX },

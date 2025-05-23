@@ -69,12 +69,12 @@ static const struct FieldDef clBitmapColourSpace[] = {
    { NULL, 0 }
 };
 
-FDEF maCopyArea[] = { { "DestBitmap", FD_OBJECTPTR }, { "Flags", FD_LONG }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
-FDEF maCompress[] = { { "Level", FD_LONG }, { 0, 0 } };
-FDEF maDecompress[] = { { "RetainData", FD_LONG }, { 0, 0 } };
-FDEF maDrawRectangle[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF maSetClipRegion[] = { { "Number", FD_LONG }, { "Left", FD_LONG }, { "Top", FD_LONG }, { "Right", FD_LONG }, { "Bottom", FD_LONG }, { "Terminate", FD_LONG }, { 0, 0 } };
-FDEF maGetColour[] = { { "Red", FD_LONG }, { "Green", FD_LONG }, { "Blue", FD_LONG }, { "Alpha", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
+FDEF maCopyArea[] = { { "DestBitmap", FD_OBJECTPTR }, { "Flags", FD_INT }, { "X", FD_INT }, { "Y", FD_INT }, { "Width", FD_INT }, { "Height", FD_INT }, { "XDest", FD_INT }, { "YDest", FD_INT }, { 0, 0 } };
+FDEF maCompress[] = { { "Level", FD_INT }, { 0, 0 } };
+FDEF maDecompress[] = { { "RetainData", FD_INT }, { 0, 0 } };
+FDEF maDrawRectangle[] = { { "X", FD_INT }, { "Y", FD_INT }, { "Width", FD_INT }, { "Height", FD_INT }, { "Colour", FD_INT|FD_UNSIGNED }, { "Flags", FD_INT }, { 0, 0 } };
+FDEF maSetClipRegion[] = { { "Number", FD_INT }, { "Left", FD_INT }, { "Top", FD_INT }, { "Right", FD_INT }, { "Bottom", FD_INT }, { "Terminate", FD_INT }, { 0, 0 } };
+FDEF maGetColour[] = { { "Red", FD_INT }, { "Green", FD_INT }, { "Blue", FD_INT }, { "Alpha", FD_INT }, { "Colour", FD_INT|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clBitmapMethods[] = {
    { AC(-1), (APTR)BITMAP_CopyArea, "CopyArea", maCopyArea, sizeof(struct bmp::CopyArea) },

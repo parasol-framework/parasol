@@ -162,10 +162,10 @@ static const FieldDef clDataFlags[] = {
    { NULL, 0 }
 };
 
-FDEF argsDrawUCPixel[]  = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_LONG }, { NULL, 0 } };
-FDEF argsDrawUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_PTR|FD_RGB }, { NULL, 0 } };
-FDEF argsReadUCPixel[]  = { { "Value", FD_LONG }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { NULL, 0 } };
-FDEF argsReadUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { NULL, 0 } };
+FDEF argsDrawUCPixel[]  = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_INT }, { NULL, 0 } };
+FDEF argsDrawUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RGB }, { NULL, 0 } };
+FDEF argsReadUCPixel[]  = { { "Value", FD_INT }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { NULL, 0 } };
+FDEF argsReadUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { NULL, 0 } };
 FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB }, { NULL, 0 } };
 FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB|FD_RESULT }, { NULL, 0 } };
 
@@ -2811,31 +2811,31 @@ static const FieldArray clBitmapFields[] = {
    { "ReadUCRIndex",  FDF_POINTER|FDF_R, NULL, NULL, &argsReadUCRIndex },
    { "DrawUCRIndex",  FDF_POINTER|FDF_R, NULL, NULL, &argsDrawUCRIndex },
    { "Data",          FDF_POINTER|FDF_RI, NULL, SET_Data },
-   { "Width",         FDF_LONG|FDF_RI, NULL, NULL },
-   { "ByteWidth",     FDF_LONG|FDF_R, NULL, NULL },
-   { "Height",        FDF_LONG|FDF_RI, NULL, NULL },
-   { "Type",          FDF_LONG|FDF_RI|FDF_LOOKUP, NULL, NULL, &clBitmapType },
-   { "LineWidth",     FDF_LONG|FDF_R },
-   { "PlaneMod",      FDF_LONG|FDF_R },
-   { "ClipLeft",      FDF_LONG|FDF_RW },
-   { "ClipRight",     FDF_LONG|FDF_RW },
-   { "ClipBottom",    FDF_LONG|FDF_RW },
-   { "ClipTop",       FDF_LONG|FDF_RW },
-   { "Size",          FDF_LONG|FDF_R },
-   { "DataFlags",     FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clDataFlags },
-   { "AmtColours",    FDF_LONG|FDF_RI },
-   { "Flags",         FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clBitmapFlags },
-   { "TransIndex",    FDF_LONG|FDF_RW, NULL, SET_TransIndex },
-   { "BytesPerPixel", FDF_LONG|FDF_RI },
-   { "BitsPerPixel",  FDF_LONG|FDF_RI },
-   { "Position",      FDF_LONG|FDF_R },
-   { "Opacity",       FDF_LONG|FDF_RW },
-   { "BlendMode",     FDF_LONG|FDF_RW|FDF_LOOKUP, nullptr, nullptr, &clBitmapBlendMode },
-   { "DataID",        FDF_LONG|FDF_SYSTEM|FDF_R },
+   { "Width",         FDF_INT|FDF_RI, NULL, NULL },
+   { "ByteWidth",     FDF_INT|FDF_R, NULL, NULL },
+   { "Height",        FDF_INT|FDF_RI, NULL, NULL },
+   { "Type",          FDF_INT|FDF_RI|FDF_LOOKUP, NULL, NULL, &clBitmapType },
+   { "LineWidth",     FDF_INT|FDF_R },
+   { "PlaneMod",      FDF_INT|FDF_R },
+   { "ClipLeft",      FDF_INT|FDF_RW },
+   { "ClipRight",     FDF_INT|FDF_RW },
+   { "ClipBottom",    FDF_INT|FDF_RW },
+   { "ClipTop",       FDF_INT|FDF_RW },
+   { "Size",          FDF_INT|FDF_R },
+   { "DataFlags",     FDF_INTFLAGS|FDF_RI, NULL, NULL, &clDataFlags },
+   { "AmtColours",    FDF_INT|FDF_RI },
+   { "Flags",         FDF_INTFLAGS|FDF_RI, NULL, NULL, &clBitmapFlags },
+   { "TransIndex",    FDF_INT|FDF_RW, NULL, SET_TransIndex },
+   { "BytesPerPixel", FDF_INT|FDF_RI },
+   { "BitsPerPixel",  FDF_INT|FDF_RI },
+   { "Position",      FDF_INT|FDF_R },
+   { "Opacity",       FDF_INT|FDF_RW },
+   { "BlendMode",     FDF_INT|FDF_RW|FDF_LOOKUP, nullptr, nullptr, &clBitmapBlendMode },
+   { "DataID",        FDF_INT|FDF_SYSTEM|FDF_R },
    { "TransColour",   FDF_RGB|FDF_RW, NULL, SET_Trans },
    { "Bkgd",          FDF_RGB|FDF_RW, NULL, SET_Bkgd },
-   { "BkgdIndex",     FDF_LONG|FDF_RW, NULL, SET_BkgdIndex },
-   { "ColourSpace",   FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clBitmapColourSpace },
+   { "BkgdIndex",     FDF_INT|FDF_RW, NULL, SET_BkgdIndex },
+   { "ColourSpace",   FDF_INTFLAGS|FDF_RW, NULL, NULL, &clBitmapColourSpace },
    // Virtual fields
    { "Clip",          FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Clip, SET_Clip },
    { "Handle",        FDF_POINTER|FDF_SYSTEM|FDF_RW, GET_Handle, SET_Handle },
