@@ -1671,7 +1671,7 @@ function outputClassHeader(class, Private, Custom)
             end
 
             if bit.band(f.flags, FD_UNIT) != 0 then
-               if bit.band(f.flags, bit.bor(FD_LONG,FD_LARGE,FD_DOUBLE,FD_FLOAT)) != 0 then
+               if bit.band(f.flags, bit.bor(FD_INT,FD_INT64,FD_DOUBLE,FD_FLOAT)) != 0 then
                   output(indent .. 'Unit var(Value);')
                   output(indent .. 'return field->WriteValue(target, field, FD_UNIT, &var, 1);')
                else
@@ -1696,10 +1696,10 @@ function outputClassHeader(class, Private, Custom)
                output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, 1);')
             elseif bit.band(f.flags, bit.bor(FD_DOUBLE,FD_FLOAT)) != 0 then
                output(indent .. 'return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);')
-            elseif bit.band(f.flags, FD_LARGE) != 0 then
-               output(indent .. 'return field->WriteValue(target, field, FD_LARGE, &Value, 1);')
+            elseif bit.band(f.flags, FD_INT64) != 0 then
+               output(indent .. 'return field->WriteValue(target, field, FD_INT64, &Value, 1);')
             else
-               output(indent .. 'return field->WriteValue(target, field, FD_LONG, &Value, 1);')
+               output(indent .. 'return field->WriteValue(target, field, FD_INT, &Value, 1);')
             end
          else
             if (field_type == 'T &&') then
@@ -2465,7 +2465,7 @@ function buildDefs()
          if (type != nil) then
             local fd = type.fd
             local result_name = "Result"
-            if (fd == "FD_LONG|FD_ERROR") then
+            if (fd == "FD_INT|FD_ERROR") then
                result_name = "Error"
             elseif (fd == "FD_OBJECTPTR") then
                result_name = "Object"

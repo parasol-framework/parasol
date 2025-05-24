@@ -50,18 +50,18 @@ static const struct FieldDef clCompressionPermissions[] = {
    { NULL, 0 }
 };
 
-FDEF maCompressBuffer[] = { { "Input", FD_BUFFER|FD_PTR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
+FDEF maCompressBuffer[] = { { "Input", FD_BUFFER|FD_PTR }, { "InputSize", FD_INT|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_INT|FD_BUFSIZE }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF maCompressFile[] = { { "Location", FD_STR }, { "Path", FD_STR }, { 0, 0 } };
-FDEF maDecompressBuffer[] = { { "Input", FD_BUFFER|FD_PTR }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF maDecompressFile[] = { { "Path", FD_STR }, { "Dest", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
+FDEF maDecompressBuffer[] = { { "Input", FD_BUFFER|FD_PTR }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_INT|FD_BUFSIZE }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
+FDEF maDecompressFile[] = { { "Path", FD_STR }, { "Dest", FD_STR }, { "Flags", FD_INT }, { 0, 0 } };
 FDEF maRemoveFile[] = { { "Path", FD_STR }, { 0, 0 } };
-FDEF maCompressStream[] = { { "Input", FD_BUFFER|FD_PTR }, { "Length", FD_LONG|FD_BUFSIZE }, { "Callback", FD_FUNCTIONPTR }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF maDecompressStream[] = { { "Input", FD_BUFFER|FD_PTR }, { "Length", FD_LONG|FD_BUFSIZE }, { "Callback", FD_FUNCTIONPTR }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF maCompressStreamEnd[] = { { "Callback", FD_FUNCTIONPTR }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
+FDEF maCompressStream[] = { { "Input", FD_BUFFER|FD_PTR }, { "Length", FD_INT|FD_BUFSIZE }, { "Callback", FD_FUNCTIONPTR }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_INT|FD_BUFSIZE }, { 0, 0 } };
+FDEF maDecompressStream[] = { { "Input", FD_BUFFER|FD_PTR }, { "Length", FD_INT|FD_BUFSIZE }, { "Callback", FD_FUNCTIONPTR }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_INT|FD_BUFSIZE }, { 0, 0 } };
+FDEF maCompressStreamEnd[] = { { "Callback", FD_FUNCTIONPTR }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 FDEF maDecompressStreamEnd[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maDecompressObject[] = { { "Path", FD_STR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maScan[] = { { "Folder", FD_STR }, { "Filter", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF maFind[] = { { "Path", FD_STR }, { "CaseSensitive", FD_LONG }, { "Wildcard", FD_LONG }, { "CompressedItem:Item", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
+FDEF maFind[] = { { "Path", FD_STR }, { "CaseSensitive", FD_INT }, { "Wildcard", FD_INT }, { "CompressedItem:Item", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clCompressionMethods[] = {
    { AC(-1), (APTR)COMPRESSION_CompressBuffer, "CompressBuffer", maCompressBuffer, sizeof(struct cmp::CompressBuffer) },

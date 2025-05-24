@@ -1068,7 +1068,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
          { "X",       DOUBLE(0) },
          { "Y",       DOUBLE(0) }
       }};
-      args[0].Long = Self->UID;
+      args[0].Int = Self->UID;
 
       if (Args->Transform) {
          agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
@@ -1076,8 +1076,8 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
          do {
             cmd = t_path.vertex(&x, &y);
             if (agg::is_vertex(cmd)) {
-               args[1].Long = index++;
-               args[2].Long = cmd;
+               args[1].Int = index++;
+               args[2].Int = cmd;
                args[3].Double = x;
                args[4].Double = y;
                if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;
@@ -1090,8 +1090,8 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
          do {
             cmd = Self->BasePath.vertex(&x, &y);
             if (agg::is_vertex(cmd)) {
-               args[1].Long = index++;
-               args[2].Long = cmd;
+               args[1].Int = index++;
+               args[2].Int = cmd;
                args[3].Double = x;
                args[4].Double = y;
                if (sc::Call(*Args->Callback, args, result) != ERR::Okay) return ERR::Failed;

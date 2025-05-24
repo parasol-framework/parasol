@@ -40,7 +40,7 @@ static ResourceManager glResourceSimpleVector = {
 
 static void set_memory_manager(APTR Address, ResourceManager *Manager)
 {
-   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
+   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(int) - sizeof(int) - sizeof(ResourceManager *));
    address_mgr[0] = Manager;
 }
 
@@ -135,7 +135,7 @@ double: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-double CharWidth(APTR Handle, ULONG Char, ULONG KChar, double *Kerning)
+double CharWidth(APTR Handle, uint32_t Char, uint32_t KChar, double *Kerning)
 {
    if (!Handle) return 0;
 
@@ -319,7 +319,7 @@ int: The internal command value for the vertex will be returned.
 
 *********************************************************************************************************************/
 
-LONG GetVertex(APTR Vector, double *X, double *Y)
+int GetVertex(APTR Vector, double *X, double *Y)
 {
    return ((SimpleVector *)Vector)->mPath.vertex(X, Y);
 }
@@ -347,7 +347,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERR GenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices, APTR *Path)
+ERR GenerateEllipse(double CX, double CY, double RX, double RY, int Vertices, APTR *Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -374,17 +374,17 @@ ERR GenerateEllipse(double CX, double CY, double RX, double RY, LONG Vertices, A
    vector->mPath.curve4(CX - ox, ye, CX - RX, CY + oy, CX - RX, CY);
    vector->mPath.close_polygon();
 #else
-   ULONG steps;
+   uint32_t steps;
 
    if (Vertices >= 3) steps = Vertices;
    else {
-      const double ra = (fabs(RX) + fabs(RY)) / 2.0;
+      const double ra = (fabs(RX) + fabs(RY)) * 0.5;
       const double da = acos(ra / (ra + 0.125)) * 2.0;
       steps = agg::uround(2.0 * agg::pi / da);
       if (steps < 3) steps = 3; // Because you need at least 3 vertices to create a shape.
    }
 
-   for (ULONG step=0; step < steps; step++) {
+   for (uint32_t step=0; step < steps; step++) {
       const double angle = double(step) / double(steps) * 2.0 * agg::pi;
       const double x = CX + cos(angle) * RX;
       const double y = CY + sin(angle) * RY;
@@ -533,7 +533,7 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERR GetFontHandle(CSTRING Family, CSTRING Style, LONG Weight, LONG Size, APTR *Handle)
+ERR GetFontHandle(CSTRING Family, CSTRING Style, int Weight, int Size, APTR *Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -596,7 +596,7 @@ TracePath: Returns the coordinates for a vector path, using callbacks.
 
 Any vector that generates a path can be traced by calling this method.  Tracing allows the caller to follow the
 `Path` from point-to-point if the path were to be rendered with a stroke.  The prototype of the callback  function
-is `ERR Function(OBJECTPTR Vector, LONG Index, LONG Command, double X, double Y, APTR Meta)`.
+is `ERR Function(OBJECTPTR Vector, INT Index, INT Command, double X, double Y, APTR Meta)`.
 
 The `Index` is an incrementing counter that reflects the currently plotted point.  The `X` and `Y` parameters reflect the
 coordinate of a point on the path.
@@ -624,11 +624,11 @@ ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
    ((SimpleVector *)Path)->mPath.approximation_scale(Scale);
 
    double x, y;
-   LONG cmd = -1;
-   LONG index = 0;
+   int cmd = -1;
+   int index = 0;
 
    if (Callback->isC()) {
-      auto routine = ((ERR (*)(SimpleVector *, LONG, LONG, double, double, APTR))(Callback->Routine));
+      auto routine = ((ERR (*)(SimpleVector *, int, int, double, double, APTR))(Callback->Routine));
 
       pf::SwitchContext context(ParentContext());
 
@@ -644,8 +644,8 @@ ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
    else if (Callback->isScript()) {
       std::array<ScriptArg, 5> args {{
          { "Path",    Path },
-         { "Index",   LONG(0) },
-         { "Command", LONG(0) },
+         { "Index",   int(0) },
+         { "Command", int(0) },
          { "X",       double(0) },
          { "Y",       double(0) }
       }};
@@ -655,8 +655,8 @@ ERR TracePath(APTR Path, FUNCTION *Callback, double Scale)
       do {
          cmd = ((SimpleVector *)Path)->mPath.vertex(&x, &y);
          if (agg::is_vertex(cmd)) {
-            args[1].Long = index++;
-            args[2].Long = cmd;
+            args[1].Int = index++;
+            args[2].Int = cmd;
             args[3].Double = x;
             args[4].Double = y;
             if (sc::Call(*Callback, args, result) != ERR::Okay) return ERR::Failed;
@@ -987,7 +987,7 @@ Failed:
 ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    pf::Log log(__FUNCTION__);
-   ULONG i;
+   uint32_t i;
 
    if (Result) *Result = NULL;
    if ((!IRI) or (!Painter)) return ERR::NullArgs;
@@ -1026,7 +1026,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
             else if (def->classID() IS CLASSID::VECTORPATTERN) {
                Painter->Pattern = (objVectorPattern *)def;
             }
-            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), ULONG(def->classID()));
+            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), uint32_t(def->classID()));
             found = true;
          }
          else if (glColourMaps.contains(lookup)) {
@@ -1186,7 +1186,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       val = std::clamp(val, 0.0, 1.0);
 
       hue = hue / 60.0;
-      LONG i = floor(hue);
+      int i = floor(hue);
       double f = hue - i;
       if (!(i & 1)) f = 1.0 - f; // if i is even
       double m = val * (1.0 - sat);
@@ -1546,7 +1546,7 @@ double: The pixel width of the string is returned.
 
 *********************************************************************************************************************/
 
-double StringWidth(APTR Handle, CSTRING String, LONG Chars)
+double StringWidth(APTR Handle, CSTRING String, int Chars)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1560,10 +1560,10 @@ double StringWidth(APTR Handle, CSTRING String, LONG Chars)
 
       if (Chars IS -1) Chars = 0x7fffffff;
 
-      LONG len        = 0;
-      LONG widest     = 0;
-      LONG prev_glyph = 0;
-      LONG i = 0;
+      int len        = 0;
+      int widest     = 0;
+      int prev_glyph = 0;
+      int i = 0;
       while ((i < Chars) and (String[i])) {
          if (String[i] IS '\n') {
             if (widest < len) widest = len;
@@ -1571,7 +1571,7 @@ double StringWidth(APTR Handle, CSTRING String, LONG Chars)
             i++;
          }
          else {
-            ULONG unicode;
+            uint32_t unicode;
             auto charlen = get_utf8(String, unicode, i);
             auto &glyph  = pt->get_glyph(unicode);
             len += glyph.adv_x;

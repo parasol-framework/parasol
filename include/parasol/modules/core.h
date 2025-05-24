@@ -449,21 +449,21 @@ enum class JET : int {
 #define FD_STRRESULT 0x00800100
 #define FD_BYTE 0x01000000
 #define FD_FUNCTION 0x02000000
-#define FD_LARGE 0x04000000
-#define FD_LARGERESULT 0x04000100
+#define FD_INT64 0x04000000
+#define FD_INT64RESULT 0x04000100
 #define FD_POINTER 0x08000000
 #define FD_PTR 0x08000000
 #define FD_OBJECTPTR 0x08000001
 #define FD_PTRRESULT 0x08000100
 #define FD_PTRBUFFER 0x08000200
 #define FD_FUNCTIONPTR 0x0a000000
-#define FD_PTR_LARGERESULT 0x0c000100
+#define FD_PTR_INT64RESULT 0x0c000100
 #define FD_FLOAT 0x10000000
 #define FD_UNIT 0x20000000
-#define FD_LONG 0x40000000
+#define FD_INT 0x40000000
 #define FD_OBJECTID 0x40000001
-#define FD_LONGRESULT 0x40000100
-#define FD_PTR_LONGRESULT 0x48000100
+#define FD_INTRESULT 0x40000100
+#define FD_PTR_INTRESULT 0x48000100
 #define FD_DOUBLE 0x80000000
 
 // Predefined cursor styles
@@ -1573,8 +1573,8 @@ inline int F2T(double val) // For numbers no larger than 16 bit, standard (int) 
 struct OpenTag {
    TOI Tag;
    union {
-      int Long;
-      int64_t Large;
+      int Int;
+      int64_t Int64;
       APTR Pointer;
       CSTRING String;
    } Value;
@@ -1610,9 +1610,9 @@ struct OpenInfo {
 
 #define FT_POINTER  FD_POINTER
 #define FT_FLOAT    FD_FLOAT
-#define FT_LONG     FD_LONG
+#define FT_INT      FD_INT
 #define FT_DOUBLE   FD_DOUBLE
-#define FT_LARGE    FD_LARGE
+#define FT_INT64    FD_INT64
 #define FT_STRING   (FD_POINTER|FD_STRING)
 #define FT_UNLISTED FD_UNLISTED
 #define FT_UNIT     FD_UNIT
@@ -1621,9 +1621,9 @@ struct OpenInfo {
 
 #define FDF_BYTE       FD_BYTE
 #define FDF_WORD       FD_WORD     // Field is word sized (16-bit)
-#define FDF_LONG       FD_LONG     // Field is int sized (32-bit)
+#define FDF_INT        FD_INT      // Field is int sized (32-bit)
 #define FDF_DOUBLE     FD_DOUBLE   // Field is double floating point sized (64-bit)
-#define FDF_LARGE      FD_LARGE    // Field is large sized (64-bit)
+#define FDF_INT64      FD_INT64    // Field is large sized (64-bit)
 #define FDF_POINTER    FD_POINTER  // Field is an address pointer (typically 32-bit)
 #define FDF_ARRAY      FD_ARRAY    // Field is a pointer to an array
 #define FDF_CPP        FD_CPP      // Field is a C++ type variant
@@ -1637,7 +1637,7 @@ struct OpenInfo {
 #define FDF_STRUCT      FD_STRUCT
 #define FDF_RESOURCE    FD_RESOURCE
 #define FDF_OBJECT      (FD_POINTER|FD_OBJECT)   // Field refers to another object
-#define FDF_OBJECTID    (FD_LONG|FD_OBJECT)      // Field refers to another object by ID
+#define FDF_OBJECTID    (FD_INT|FD_OBJECT)      // Field refers to another object by ID
 #define FDF_LOCAL       (FD_POINTER|FD_LOCAL)    // Field refers to a local object
 #define FDF_STRING      (FD_POINTER|FD_STRING)   // Field points to a string.  NB: Ideally want to remove the FD_POINTER as it should be redundant
 #define FDF_STR         FDF_STRING
@@ -1649,7 +1649,7 @@ struct OpenInfo {
 #define FDF_WRITE       FD_WRITE                // Field is writeable
 #define FDF_INIT        FD_INIT                 // Field can only be written prior to Init()
 #define FDF_SYSTEM      FD_SYSTEM
-#define FDF_ERROR       (FD_LONG|FD_ERROR)
+#define FDF_ERROR       (FD_INT|FD_ERROR)
 #define FDF_RGB         (FD_RGB|FD_BYTE|FD_ARRAY)
 #define FDF_R           FD_READ
 #define FDF_W           FD_WRITE
@@ -1657,17 +1657,17 @@ struct OpenInfo {
 #define FDF_RI          (FD_READ|FD_INIT)
 #define FDF_I           FD_INIT
 #define FDF_VIRTUAL     FD_VIRTUAL
-#define FDF_LONGFLAGS   (FDF_LONG|FDF_FLAGS)
-#define FDF_FIELDTYPES  (FD_LONG|FD_DOUBLE|FD_LARGE|FD_POINTER|FD_UNIT|FD_BYTE|FD_ARRAY|FD_FUNCTION)
+#define FDF_INTFLAGS    (FDF_INT|FDF_FLAGS)
+#define FDF_FIELDTYPES  (FD_INT|FD_DOUBLE|FD_INT64|FD_POINTER|FD_UNIT|FD_BYTE|FD_ARRAY|FD_FUNCTION)
 
 // These constants have to match the FD* constants << 32
 
 #define TDOUBLE   0x8000000000000000LL
-#define TLONG     0x4000000000000000LL
+#define TINT      0x4000000000000000LL
 #define TUNIT     0x2000000000000000LL
 #define TFLOAT    0x1000000000000000LL // NB: Floats are upscaled to doubles when passed as v-args.
 #define TPTR      0x0800000000000000LL
-#define TLARGE    0x0400000000000000LL
+#define TINT64    0x0400000000000000LL
 #define TFUNCTION 0x0200000000000000LL
 #define TSTR      0x0080000000000000LL
 #define TARRAY    0x0000100000000000LL
@@ -1692,21 +1692,21 @@ struct FieldValue {
       CPTR    CPointer;
       double  Double;
       SCALE   Percent;
-      int64_t   Large;
-      int    Long;
+      int64_t Int64;
+      int     Int;
    };
 
    //std::string not included as not compatible with constexpr
-   constexpr FieldValue(uint32_t pFID, CSTRING pValue)   : FieldID(pFID), Type(FD_STRING), String(pValue) { };
-   constexpr FieldValue(uint32_t pFID, int pValue)      : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
-   constexpr FieldValue(uint32_t pFID, int64_t pValue)     : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
-   constexpr FieldValue(uint32_t pFID, size_t pValue)    : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
-   constexpr FieldValue(uint32_t pFID, double pValue)    : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
-   constexpr FieldValue(uint32_t pFID, SCALE pValue)     : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
+   constexpr FieldValue(uint32_t pFID, CSTRING pValue)  : FieldID(pFID), Type(FD_STRING), String(pValue) { };
+   constexpr FieldValue(uint32_t pFID, int pValue)      : FieldID(pFID), Type(FD_INT), Int(pValue) { };
+   constexpr FieldValue(uint32_t pFID, int64_t pValue)  : FieldID(pFID), Type(FD_INT64), Int64(pValue) { };
+   constexpr FieldValue(uint32_t pFID, size_t pValue)   : FieldID(pFID), Type(FD_INT64), Int64(pValue) { };
+   constexpr FieldValue(uint32_t pFID, double pValue)   : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
+   constexpr FieldValue(uint32_t pFID, SCALE pValue)    : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
    constexpr FieldValue(uint32_t pFID, const FUNCTION &pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(&pValue) { };
    constexpr FieldValue(uint32_t pFID, const FUNCTION *pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(pValue) { };
-   constexpr FieldValue(uint32_t pFID, APTR pValue)      : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
-   constexpr FieldValue(uint32_t pFID, CPTR pValue)      : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
+   constexpr FieldValue(uint32_t pFID, APTR pValue)     : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
+   constexpr FieldValue(uint32_t pFID, CPTR pValue)     : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
    constexpr FieldValue(uint32_t pFID, CPTR pValue, int pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
 };
 
@@ -2013,10 +2013,10 @@ struct ScriptArg { // For use with sc::Exec
    CSTRING Name;
    uint32_t Type;
    union {
-      APTR   Address;
-      int   Long;
-      int64_t  Large;
-      double Double;
+      APTR    Address;
+      int     Int;
+      int64_t Int64;
+      double  Double;
    };
 
    ScriptArg(CSTRING pName, OBJECTPTR pValue, uint32_t pType = FD_OBJECTPTR) : Name(pName), Type(pType), Address((APTR)pValue) { }
@@ -2024,9 +2024,9 @@ struct ScriptArg { // For use with sc::Exec
    ScriptArg(CSTRING pName, const std::string &pValue, uint32_t pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue.data()) { }
    ScriptArg(CSTRING pName, CSTRING pValue, uint32_t pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue) { }
    ScriptArg(CSTRING pName, APTR pValue, uint32_t pType = FD_PTR) : Name(pName), Type(pType), Address(pValue) { }
-   ScriptArg(CSTRING pName, int pValue, uint32_t pType = FD_LONG) : Name(pName), Type(pType), Long(pValue) { }
-   ScriptArg(CSTRING pName, uint32_t pValue, uint32_t pType = FD_LONG) : Name(pName), Type(pType), Long(pValue) { }
-   ScriptArg(CSTRING pName, int64_t pValue, uint32_t pType = FD_LARGE) : Name(pName), Type(pType), Large(pValue) { }
+   ScriptArg(CSTRING pName, int pValue, uint32_t pType = FD_INT) : Name(pName), Type(pType), Int(pValue) { }
+   ScriptArg(CSTRING pName, uint32_t pValue, uint32_t pType = FD_INT) : Name(pName), Type(pType), Int(pValue) { }
+   ScriptArg(CSTRING pName, int64_t pValue, uint32_t pType = FD_INT64) : Name(pName), Type(pType), Int64(pValue) { }
    ScriptArg(CSTRING pName, double pValue, uint32_t pType = FD_DOUBLE) : Name(pName), Type(pType), Double(pValue) { }
 };
 
@@ -2586,9 +2586,9 @@ class LogLevel {
 
 template <class T> inline int64_t FIELD_TAG()     { return 0; }
 template <> inline int64_t FIELD_TAG<double>()    { return TDOUBLE; }
-template <> inline int64_t FIELD_TAG<int>()       { return TLONG; }
-template <> inline int64_t FIELD_TAG<int64_t>()   { return TLARGE; }
-template <> inline int64_t FIELD_TAG<uint64_t>()  { return TLARGE; }
+template <> inline int64_t FIELD_TAG<int>()       { return TINT; }
+template <> inline int64_t FIELD_TAG<int64_t>()   { return TINT64; }
+template <> inline int64_t FIELD_TAG<uint64_t>()  { return TINT64; }
 template <> inline int64_t FIELD_TAG<float>()     { return TFLOAT; }
 template <> inline int64_t FIELD_TAG<OBJECTPTR>() { return TPTR; }
 template <> inline int64_t FIELD_TAG<APTR>()      { return TPTR; }
@@ -2670,9 +2670,9 @@ struct Object { // Must be 64-bit aligned
    }
 
    inline ERR set(FIELD FieldID, const FRGB &Value)     { return SetArray(this, FieldID|TFLOAT, (FLOAT *)&Value, 4); }
-   inline ERR set(FIELD FieldID, int Value)             { return SetField(this, FieldID|TLONG, Value); }
-   inline ERR set(FIELD FieldID, unsigned int Value)    { return SetField(this, FieldID|TLONG, Value); }
-   inline ERR set(FIELD FieldID, int64_t Value)         { return SetField(this, FieldID|TLARGE, Value); }
+   inline ERR set(FIELD FieldID, int Value)             { return SetField(this, FieldID|TINT, Value); }
+   inline ERR set(FIELD FieldID, unsigned int Value)    { return SetField(this, FieldID|TINT, Value); }
+   inline ERR set(FIELD FieldID, int64_t Value)         { return SetField(this, FieldID|TINT64, Value); }
    inline ERR set(FIELD FieldID, double Value)          { return SetField(this, FieldID|TDOUBLE, Value); }
    inline ERR set(FIELD FieldID, const FUNCTION *Value) { return SetField(this, FieldID|TFUNCTION, Value); }
    inline ERR set(FIELD FieldID, const char *Value)     { return SetField(this, FieldID|TSTRING, Value); }
@@ -2687,8 +2687,8 @@ struct Object { // Must be 64-bit aligned
    // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
    // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
 
-   inline ERR get(FIELD FieldID, int *Value)      { return GetField(this, FieldID|TLONG, Value); }
-   inline ERR get(FIELD FieldID, int64_t *Value)  { return GetField(this, FieldID|TLARGE, Value); }
+   inline ERR get(FIELD FieldID, int *Value)      { return GetField(this, FieldID|TINT, Value); }
+   inline ERR get(FIELD FieldID, int64_t *Value)  { return GetField(this, FieldID|TINT64, Value); }
    inline ERR get(FIELD FieldID, double *Value)   { return GetField(this, FieldID|TDOUBLE, Value); }
    inline ERR get(FIELD FieldID, STRING *Value)   { return GetField(this, FieldID|TSTRING, Value); }
    inline ERR get(FIELD FieldID, CSTRING *Value)  { return GetField(this, FieldID|TSTRING, Value); }
@@ -2727,10 +2727,10 @@ struct Object { // Must be 64-bit aligned
                else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
                   error = field->WriteValue(target, field, f.Type, &f.Double, 1);
                }
-               else if (f.Type & FD_LARGE) {
-                  error = field->WriteValue(target, field, f.Type, &f.Large, 1);
+               else if (f.Type & FD_INT64) {
+                  error = field->WriteValue(target, field, f.Type, &f.Int64, 1);
                }
-               else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
+               else error = field->WriteValue(target, field, f.Type, &f.Int, 1);
 
                if (target != this) target->unlock();
 
@@ -2842,10 +2842,10 @@ class Create {
                      else if (f.Type & (FD_DOUBLE|FD_FLOAT)) {
                         error = field->WriteValue(target, field, f.Type, &f.Double, 1);
                      }
-                     else if (f.Type & FD_LARGE) {
-                        error = field->WriteValue(target, field, f.Type, &f.Large, 1);
+                     else if (f.Type & FD_INT64) {
+                        error = field->WriteValue(target, field, f.Type, &f.Int64, 1);
                      }
-                     else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
+                     else error = field->WriteValue(target, field, f.Type, &f.Int, 1);
 
                      target->unlock();
 
@@ -3391,7 +3391,7 @@ class objFile : public Object {
    inline ERR setPosition(const int64_t Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, FD_LARGE, &Value, 1);
+      return field->WriteValue(target, field, FD_INT64, &Value, 1);
    }
 
    inline ERR setFlags(const FL Value) noexcept {
@@ -3432,13 +3432,13 @@ class objFile : public Object {
    inline ERR setPermissions(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setSize(const int64_t Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
-      return field->WriteValue(target, field, FD_LARGE, &Value, 1);
+      return field->WriteValue(target, field, FD_INT64, &Value, 1);
    }
 
    template <class T> inline ERR setLink(T && Value) noexcept {
@@ -3450,13 +3450,13 @@ class objFile : public Object {
    inline ERR setUser(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setGroup(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
 };
@@ -3766,7 +3766,7 @@ class objScript : public Object {
    inline ERR setOwner(OBJECTID Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
@@ -3923,7 +3923,7 @@ class objTask : public Object {
    inline ERR setReturnCode(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setProcess(const int Value) noexcept {
@@ -3995,7 +3995,7 @@ class objTask : public Object {
    inline ERR setPriority(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
 };
@@ -4354,7 +4354,7 @@ class objCompression : public Object {
    inline ERR setCompressionLevel(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setFlags(const CMF Value) noexcept {
@@ -4375,7 +4375,7 @@ class objCompression : public Object {
    inline ERR setWindowBits(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setArchiveName(T && Value) noexcept {

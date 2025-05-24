@@ -626,8 +626,8 @@ inline int F2T(double val) // For numbers no larger than 16 bit, standard (int) 
 struct OpenTag {
    TOI Tag;
    union {
-      int Long;
-      int64_t Large;
+      int Int;
+      int64_t Int64;
       APTR Pointer;
       CSTRING String;
    } Value;
@@ -745,21 +745,21 @@ struct FieldValue {
       CPTR    CPointer;
       double  Double;
       SCALE   Percent;
-      int64_t   Large;
-      int    Long;
+      int64_t Int64;
+      int     Int;
    };
 
    //std::string not included as not compatible with constexpr
-   constexpr FieldValue(uint32_t pFID, CSTRING pValue)   : FieldID(pFID), Type(FD_STRING), String(pValue) { };
-   constexpr FieldValue(uint32_t pFID, int pValue)      : FieldID(pFID), Type(FD_INT), Long(pValue) { };
-   constexpr FieldValue(uint32_t pFID, int64_t pValue)     : FieldID(pFID), Type(FD_INT64), Large(pValue) { };
-   constexpr FieldValue(uint32_t pFID, size_t pValue)    : FieldID(pFID), Type(FD_INT64), Large(pValue) { };
-   constexpr FieldValue(uint32_t pFID, double pValue)    : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
-   constexpr FieldValue(uint32_t pFID, SCALE pValue)     : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
+   constexpr FieldValue(uint32_t pFID, CSTRING pValue)  : FieldID(pFID), Type(FD_STRING), String(pValue) { };
+   constexpr FieldValue(uint32_t pFID, int pValue)      : FieldID(pFID), Type(FD_INT), Int(pValue) { };
+   constexpr FieldValue(uint32_t pFID, int64_t pValue)  : FieldID(pFID), Type(FD_INT64), Int64(pValue) { };
+   constexpr FieldValue(uint32_t pFID, size_t pValue)   : FieldID(pFID), Type(FD_INT64), Int64(pValue) { };
+   constexpr FieldValue(uint32_t pFID, double pValue)   : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
+   constexpr FieldValue(uint32_t pFID, SCALE pValue)    : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
    constexpr FieldValue(uint32_t pFID, const FUNCTION &pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(&pValue) { };
    constexpr FieldValue(uint32_t pFID, const FUNCTION *pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(pValue) { };
-   constexpr FieldValue(uint32_t pFID, APTR pValue)      : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
-   constexpr FieldValue(uint32_t pFID, CPTR pValue)      : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
+   constexpr FieldValue(uint32_t pFID, APTR pValue)     : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
+   constexpr FieldValue(uint32_t pFID, CPTR pValue)     : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
    constexpr FieldValue(uint32_t pFID, CPTR pValue, int pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
 };
 
@@ -1093,10 +1093,10 @@ struct ScriptArg { // For use with sc::Exec
    CSTRING Name;
    uint32_t Type;
    union {
-      APTR   Address;
-      int   Long;
-      int64_t  Large;
-      double Double;
+      APTR    Address;
+      int     Int;
+      int64_t Int64;
+      double  Double;
    };
 
    ScriptArg(CSTRING pName, OBJECTPTR pValue, uint32_t pType = FD_OBJECTPTR) : Name(pName), Type(pType), Address((APTR)pValue) { }
@@ -1104,9 +1104,9 @@ struct ScriptArg { // For use with sc::Exec
    ScriptArg(CSTRING pName, const std::string &pValue, uint32_t pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue.data()) { }
    ScriptArg(CSTRING pName, CSTRING pValue, uint32_t pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue) { }
    ScriptArg(CSTRING pName, APTR pValue, uint32_t pType = FD_PTR) : Name(pName), Type(pType), Address(pValue) { }
-   ScriptArg(CSTRING pName, int pValue, uint32_t pType = FD_INT) : Name(pName), Type(pType), Long(pValue) { }
-   ScriptArg(CSTRING pName, uint32_t pValue, uint32_t pType = FD_INT) : Name(pName), Type(pType), Long(pValue) { }
-   ScriptArg(CSTRING pName, int64_t pValue, uint32_t pType = FD_INT64) : Name(pName), Type(pType), Large(pValue) { }
+   ScriptArg(CSTRING pName, int pValue, uint32_t pType = FD_INT) : Name(pName), Type(pType), Int(pValue) { }
+   ScriptArg(CSTRING pName, uint32_t pValue, uint32_t pType = FD_INT) : Name(pName), Type(pType), Int(pValue) { }
+   ScriptArg(CSTRING pName, int64_t pValue, uint32_t pType = FD_INT64) : Name(pName), Type(pType), Int64(pValue) { }
    ScriptArg(CSTRING pName, double pValue, uint32_t pType = FD_DOUBLE) : Name(pName), Type(pType), Double(pValue) { }
 };
 ]])
@@ -1469,7 +1469,7 @@ class LogLevel {
 
 template <class T> inline int64_t FIELD_TAG()     { return 0; }
 template <> inline int64_t FIELD_TAG<double>()    { return TDOUBLE; }
-template <> inline int64_t FIELD_TAG<int>()       { return TLONG; }
+template <> inline int64_t FIELD_TAG<int>()       { return TINT; }
 template <> inline int64_t FIELD_TAG<int64_t>()   { return TINT64; }
 template <> inline int64_t FIELD_TAG<uint64_t>()  { return TINT64; }
 template <> inline int64_t FIELD_TAG<float>()     { return TFLOAT; }
@@ -1553,8 +1553,8 @@ struct Object { // Must be 64-bit aligned
    }
 
    inline ERR set(FIELD FieldID, const FRGB &Value)     { return SetArray(this, FieldID|TFLOAT, (FLOAT *)&Value, 4); }
-   inline ERR set(FIELD FieldID, int Value)             { return SetField(this, FieldID|TLONG, Value); }
-   inline ERR set(FIELD FieldID, unsigned int Value)    { return SetField(this, FieldID|TLONG, Value); }
+   inline ERR set(FIELD FieldID, int Value)             { return SetField(this, FieldID|TINT, Value); }
+   inline ERR set(FIELD FieldID, unsigned int Value)    { return SetField(this, FieldID|TINT, Value); }
    inline ERR set(FIELD FieldID, int64_t Value)         { return SetField(this, FieldID|TINT64, Value); }
    inline ERR set(FIELD FieldID, double Value)          { return SetField(this, FieldID|TDOUBLE, Value); }
    inline ERR set(FIELD FieldID, const FUNCTION *Value) { return SetField(this, FieldID|TFUNCTION, Value); }
@@ -1570,7 +1570,7 @@ struct Object { // Must be 64-bit aligned
    // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
    // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
 
-   inline ERR get(FIELD FieldID, int *Value)      { return GetField(this, FieldID|TLONG, Value); }
+   inline ERR get(FIELD FieldID, int *Value)      { return GetField(this, FieldID|TINT, Value); }
    inline ERR get(FIELD FieldID, int64_t *Value)  { return GetField(this, FieldID|TINT64, Value); }
    inline ERR get(FIELD FieldID, double *Value)   { return GetField(this, FieldID|TDOUBLE, Value); }
    inline ERR get(FIELD FieldID, STRING *Value)   { return GetField(this, FieldID|TSTRING, Value); }
@@ -1611,9 +1611,9 @@ struct Object { // Must be 64-bit aligned
                   error = field->WriteValue(target, field, f.Type, &f.Double, 1);
                }
                else if (f.Type & FD_INT64) {
-                  error = field->WriteValue(target, field, f.Type, &f.Large, 1);
+                  error = field->WriteValue(target, field, f.Type, &f.Int64, 1);
                }
-               else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
+               else error = field->WriteValue(target, field, f.Type, &f.Int, 1);
 
                if (target != this) target->unlock();
 
@@ -1726,9 +1726,9 @@ class Create {
                         error = field->WriteValue(target, field, f.Type, &f.Double, 1);
                      }
                      else if (f.Type & FD_INT64) {
-                        error = field->WriteValue(target, field, f.Type, &f.Large, 1);
+                        error = field->WriteValue(target, field, f.Type, &f.Int64, 1);
                      }
-                     else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
+                     else error = field->WriteValue(target, field, f.Type, &f.Int, 1);
 
                      target->unlock();
 

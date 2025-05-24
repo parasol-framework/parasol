@@ -150,8 +150,8 @@ compatible with the field value itself.
 The following code segment illustrates how to read values from an object:
 
 <pre>
-GetField(Object, FID_X|TLONG, &x);
-GetField(Object, FID_Y|TLONG, &y);
+GetField(Object, FID_X|TINT, &x);
+GetField(Object, FID_Y|TINT, &y);
 </pre>
 
 As GetField() is based on field ID's that reflect field names (`FID`'s), you will find that there are occasions where
@@ -166,9 +166,9 @@ types are interchangeable.
 Available field types are as follows:
 
 <types>
-<type name="TLONG">A 32-bit integer value.</>
+<type name="TINT">A 32-bit integer value.</>
 <type name="TDOUBLE">A 64-bit floating point value.</>
-<type name="TLARGE">A 64-bit integer value.</>
+<type name="TINT64">A 64-bit integer value.</>
 <type name="TPTR">A standard 32-bit address space pointer.</>
 <type name="TSTR">A 32-bit pointer that refers to a string.</>
 </table>
@@ -231,7 +231,7 @@ This function returns the array as-is with no provision for type conversion.  If
 is standard practice not to count the null terminator in the total returned by `Elements`.
 
 To achieve a minimum level of type safety, the anticipated type of array values can be specified by
-OR'ing a field type with the field identifier, e.g. `TLONG` or `TSTR`.  If no type is incorporated then a check will
+OR'ing a field type with the field identifier, e.g. `TINT` or `TSTR`.  If no type is incorporated then a check will
 not be performed.
 
 -INPUT-

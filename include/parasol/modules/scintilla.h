@@ -252,13 +252,13 @@ class objScintilla : public Object {
    inline ERR setLeftMargin(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[32];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setRightMargin(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[27];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setLineHighlight(const struct RGB8 * Value, int Elements) noexcept {
@@ -310,25 +310,25 @@ class objScintilla : public Object {
    inline ERR setLexer(const SCLEX Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setModified(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[17];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setAllowTabs(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setAutoIndent(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setFileDrop(FUNCTION Value) noexcept {
@@ -340,13 +340,13 @@ class objScintilla : public Object {
    inline ERR setFoldingMarkers(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setLineNumbers(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setOrigin(T && Value) noexcept {
@@ -358,7 +358,7 @@ class objScintilla : public Object {
    inline ERR setShowWhitespace(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setEventCallback(FUNCTION Value) noexcept {
@@ -376,19 +376,19 @@ class objScintilla : public Object {
    inline ERR setSymbols(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[28];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setTabWidth(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setWordwrap(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[29];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
 };

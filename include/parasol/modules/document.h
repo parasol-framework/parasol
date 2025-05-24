@@ -253,7 +253,7 @@ class objDocument : public Object {
    inline ERR setFlags(const DCF Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setClientScript(OBJECTPTR Value) noexcept {

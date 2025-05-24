@@ -113,7 +113,7 @@ class objSVG : public Object {
    inline ERR setFrameRate(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setColour(T && Value) noexcept {

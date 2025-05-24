@@ -62,7 +62,7 @@ int: A unique ID matching the requested type will be returned.  This function ca
 
 *********************************************************************************************************************/
 
-LONG AllocateID(IDTYPE Type)
+int AllocateID(IDTYPE Type)
 {
    pf::Log log(__FUNCTION__);
 
@@ -120,8 +120,8 @@ cstr: A human readable string for the error code is returned.  By default error 
 
 CSTRING GetErrorMsg(ERR Code)
 {
-   if ((LONG(Code) < glTotalMessages) and (LONG(Code) > 0)) {
-      return glMessages[LONG(Code)];
+   if ((int(Code) < glTotalMessages) and (int(Code) > 0)) {
+      return glMessages[int(Code)];
    }
    else if (Code IS ERR::Okay) return "Operation successful.";
    else return "Unknown error code.";
@@ -147,7 +147,7 @@ uint: Returns the computed 32 bit CRC value for the given data.
 
 *********************************************************************************************************************/
 
-static const ULONG crc_table[256] = {
+static const uint32_t crc_table[256] = {
   0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
   0x706af48fL, 0xe963a535L, 0x9e6495a3L, 0x0edb8832L, 0x79dcb8a4L,
   0xe0d5e91eL, 0x97d2d988L, 0x09b64c2bL, 0x7eb17cbdL, 0xe7b82d07L,
@@ -202,27 +202,27 @@ static const ULONG crc_table[256] = {
   0x2d02ef8dL
 };
 
-ULONG GenCRC32(ULONG crc, APTR Data, ULONG len)
+uint32_t GenCRC32(uint32_t crc, APTR Data, uint32_t len)
 {
    if (!Data) return 0;
 
    auto buf = (BYTE *)Data;
    crc = crc ^ 0xffffffff;
    while (len >= 8) {
-      crc = crc_table[((LONG)crc ^ (buf[0])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((LONG)crc ^ (buf[1])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((LONG)crc ^ (buf[2])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((LONG)crc ^ (buf[3])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((LONG)crc ^ (buf[4])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((LONG)crc ^ (buf[5])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((LONG)crc ^ (buf[6])) & 0xff] ^ (crc >> 8);
-      crc = crc_table[((LONG)crc ^ (buf[7])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((int)crc ^ (buf[0])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((int)crc ^ (buf[1])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((int)crc ^ (buf[2])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((int)crc ^ (buf[3])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((int)crc ^ (buf[4])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((int)crc ^ (buf[5])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((int)crc ^ (buf[6])) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((int)crc ^ (buf[7])) & 0xff] ^ (crc >> 8);
       buf += 8;
       len -= 8;
    }
 
    while (len > 0) {
-      crc = crc_table[((LONG)crc ^ *buf++) & 0xff] ^ (crc >> 8);
+      crc = crc_table[((int)crc ^ *buf++) & 0xff] ^ (crc >> 8);
       len--;
    }
 
@@ -263,7 +263,7 @@ int64_t GetResource(RES Resource)
       case RES::LOG_DEPTH:       return tlDepth;
       case RES::OPEN_INFO:       return (MAXINT)glOpenInfo;
       case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
-      case RES::THREAD_ID:       return LONG(get_thread_id());
+      case RES::THREAD_ID:       return int(get_thread_id());
       case RES::CORE_IDL:        return (MAXINT)glIDL;
       case RES::DISPLAY_DRIVER:  if (!glDisplayDriver.empty()) return (MAXINT)glDisplayDriver.c_str(); else return 0;
 
@@ -289,10 +289,10 @@ int64_t GetResource(RES Resource)
          if (!sysinfo(&sys)) return (int64_t)(sys.freeram + sys.bufferram) * (int64_t)sys.mem_unit; // Buffer RAM is considered as 'free'
    #else
          char str[2048];
-         LONG result;
+         int result;
          int64_t freemem = 0;
          if (ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result) IS ERR::Okay) {
-            LONG i = 0;
+            int i = 0;
             while (i < result) {
                if (startswith("Cached", str+i)) freemem += strtoll(str+i, NULL, 0) * 1024LL;
                else if (startswith("Buffers", str+i)) freemem += strtoll(str+i, NULL, 0) * 1024LL;
@@ -321,7 +321,7 @@ int64_t GetResource(RES Resource)
 
       case RES::CPU_SPEED: {
          CSTRING line;
-         static LONG cpu_mhz = 0;
+         static int cpu_mhz = 0;
 
          if (cpu_mhz) return cpu_mhz;
 
@@ -452,7 +452,7 @@ NoSupport: The host platform does not support the provided `FD`.
 #ifdef _WIN32
 ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #else
-ERR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #endif
 {
    pf::Log log(__FUNCTION__);
@@ -495,7 +495,7 @@ ERR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
       }
    }
 
-   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, LONG(Flags));
+   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, int(Flags));
 
 #ifdef _WIN32
    // Nothing to do for Win32
@@ -530,7 +530,7 @@ ERR SetResourcePath(RP PathType, CSTRING Path)
 {
    pf::Log log(__FUNCTION__);
 
-   log.function("Type: %d, Path: %s", LONG(PathType), Path);
+   log.function("Type: %d, Path: %s", int(PathType), Path);
 
    switch(PathType) {
       case RP::ROOT_PATH:
@@ -618,7 +618,7 @@ int64_t SetResource(RES Resource, int64_t Value)
          // Note: You can set your own crash handler, or set a value of NULL - this resets the existing handler which is useful if an external DLL function is suspected to have changed the filter.
 
          #ifdef _WIN32
-            winSetUnhandledExceptionFilter((LONG (*)(LONG, APTR, LONG, LONG *))L64PTR(Value));
+            winSetUnhandledExceptionFilter((int (*)(int, APTR, int, int *))L64PTR(Value));
          #endif
          break;
 
@@ -629,7 +629,7 @@ int64_t SetResource(RES Resource, int64_t Value)
       case RES::LOG_DEPTH: tlDepth = Value; break;
 
 #ifdef _WIN32
-      case RES::NET_PROCESSING: glNetProcessMessages = (void (*)(LONG, APTR))L64PTR(Value); break;
+      case RES::NET_PROCESSING: glNetProcessMessages = (void (*)(int, APTR))L64PTR(Value); break;
 #else
       case RES::NET_PROCESSING: break;
 #endif
@@ -849,7 +849,7 @@ int MicroSeconds: The number of microseconds to wait for.  Please note that a mi
 
 *********************************************************************************************************************/
 
-void WaitTime(LONG Seconds, LONG MicroSeconds)
+void WaitTime(int Seconds, int MicroSeconds)
 {
    bool process_msg;
 

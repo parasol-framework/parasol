@@ -45,7 +45,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values
             values[index] = lua_tointeger(Lua, -1);
          }
       }
-      return SetArray(Object, Field->FieldID|TLONG, values);
+      return SetArray(Object, Field->FieldID|TINT, values);
    }
    else if (Field->Flags & FD_STRING) {
       pf::vector<CSTRING> values((size_t)total);

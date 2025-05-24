@@ -19,7 +19,7 @@
     <input>
       <param type="OBJECTPTR" name="Script">Pointer to a Fluid script.</param>
       <param type="CSTRING" name="Name">The name of the variable to set.</param>
-      <param type="INT" name="Type">A valid field type must be indicated, e.g. <code>FD_STRING</code>, <code>FD_POINTER</code>, <code>FD_LONG</code>, <code>FD_DOUBLE</code>, <code>FD_LARGE</code>.</param>
+      <param type="INT" name="Type">A valid field type must be indicated, e.g. <code>FD_STRING</code>, <code>FD_POINTER</code>, <code>FD_INT</code>, <code>FD_DOUBLE</code>, <code>FD_INT64</code>.</param>
       <param type="..." name="Variable">A variable that matches the indicated <code>Type</code>.</param>
     </input>
     <description>

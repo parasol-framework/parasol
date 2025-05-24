@@ -32,9 +32,9 @@ void Scintilla::Menu::CreatePopUp()
    //id = *reinterpret_cast<MenuID *>(&surface_id);
 /*
    if (CreateObject(ID_MENU, 0, &menu,
-      FID_Target|TLONG,       display_id,
-      //FID_Relative|TLONG,     surface_id,
-      //FID_Drawable|TLONG,   surface_id,
+      FID_Target|TINT,       display_id,
+      //FID_Relative|TINT,     surface_id,
+      //FID_Drawable|TINT,   surface_id,
       //FID_Font|TPTR,        menufont,
       TAGEND) != ERR_Okay) {
 
