@@ -218,7 +218,7 @@ struct prvFluid {
 struct array {
    struct struct_record *StructDef; // Set if the array represents a known struct.
    LONG Total;        // Total number of elements
-   LONG Type;         // FD_BYTE, FD_LONG etc...
+   LONG Type;         // FD_BYTE, FD_INT etc...
    LONG TypeSize;     // Byte-size of the type, e.g. LARGE == 8 bytes
    LONG ArraySize;    // Size of the array *in bytes*
    LONG AlignedSize;  // For struct alignment

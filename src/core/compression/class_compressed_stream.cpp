@@ -380,12 +380,12 @@ TotalOutput: A live counter of total bytes that have been output by the stream.
 //********************************************************************************************************************
 
 static const FieldArray clStreamFields[] = {
-   { "TotalOutput", FDF_LARGE|FDF_R },
+   { "TotalOutput", FDF_INT64|FDF_R },
    { "Input",       FDF_OBJECT|FDF_RI },
    { "Output",      FDF_OBJECT|FDF_RI },
-   { "Format",      FDF_LONG|FDF_LOOKUP|FD_RI, NULL, NULL, &clCompressedStreamFormat },
+   { "Format",      FDF_INT|FDF_LOOKUP|FD_RI, NULL, NULL, &clCompressedStreamFormat },
    // Virtual fields
-   { "Size",        FDF_LARGE|FDF_R, CSTREAM_GET_Size },
+   { "Size",        FDF_INT64|FDF_R, CSTREAM_GET_Size },
    END_FIELD
 };
 

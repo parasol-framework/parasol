@@ -535,13 +535,13 @@ static const FieldDef clWaveDimensions[] = {
 
 static const FieldArray clWaveFields[] = {
    { "Amplitude",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Amplitude, WAVE_SET_Amplitude },
-   { "Close",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, WAVE_GET_Close, WAVE_SET_Close, &clWaveClose },
+   { "Close",      FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, WAVE_GET_Close, WAVE_SET_Close, &clWaveClose },
    { "Decay",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Decay, WAVE_SET_Decay },
    { "Degree",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Degree, WAVE_SET_Degree },
-   { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, WAVE_GET_Dimensions, WAVE_SET_Dimensions, &clWaveDimensions },
+   { "Dimensions", FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW, WAVE_GET_Dimensions, WAVE_SET_Dimensions, &clWaveDimensions },
    { "Frequency",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Frequency, WAVE_SET_Frequency },
    { "Height",     FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_Height, WAVE_SET_Height },
-   { "Style",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, WAVE_GET_Style, WAVE_SET_Style, &clWaveStyle },
+   { "Style",      FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, WAVE_GET_Style, WAVE_SET_Style, &clWaveStyle },
    { "Thickness",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Thickness, WAVE_SET_Thickness },
    { "X",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_X, WAVE_SET_X },
    { "Y",          FDF_VIRTUAL|FDF_UNIT|FDF_DOUBLE|FDF_SCALED|FDF_RW, WAVE_GET_Y, WAVE_SET_Y },

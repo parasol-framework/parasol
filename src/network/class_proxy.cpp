@@ -875,10 +875,10 @@ static const FieldArray clProxyFields[] = {
    { "Password",      FDF_STRING|FDF_RW, NULL, SET_Password },
    { "ProxyName",     FDF_STRING|FDF_RW, NULL, SET_ProxyName },
    { "Server",        FDF_STRING|FDF_RW, NULL, SET_Server },
-   { "Port",          FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, SET_Port, &clPorts },
-   { "ServerPort",    FDF_LONG|FDF_RW, NULL, SET_ServerPort },
-   { "Enabled",       FDF_LONG|FDF_RW, NULL, SET_Enabled },
-   { "Record",        FDF_LONG|FDF_RW, NULL, SET_Record },
+   { "Port",          FDF_INT|FDF_LOOKUP|FDF_RW, NULL, SET_Port, &clPorts },
+   { "ServerPort",    FDF_INT|FDF_RW, NULL, SET_ServerPort },
+   { "Enabled",       FDF_INT|FDF_RW, NULL, SET_Enabled },
+   { "Record",        FDF_INT|FDF_RW, NULL, SET_Record },
    END_FIELD
 };
 

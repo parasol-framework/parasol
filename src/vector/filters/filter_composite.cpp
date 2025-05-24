@@ -902,7 +902,7 @@ static const FieldDef clCompositeOperator[] = {
 };
 
 static const FieldArray clCompositeFXFields[] = {
-   { "Operator", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, COMPOSITEFX_GET_Operator, COMPOSITEFX_SET_Operator, &clCompositeOperator },
+   { "Operator", FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, COMPOSITEFX_GET_Operator, COMPOSITEFX_SET_Operator, &clCompositeOperator },
    { "K1",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, COMPOSITEFX_GET_K1, COMPOSITEFX_SET_K1 },
    { "K2",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, COMPOSITEFX_GET_K2, COMPOSITEFX_SET_K2 },
    { "K3",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, COMPOSITEFX_GET_K3, COMPOSITEFX_SET_K3 },

@@ -351,7 +351,7 @@ timer_cycle:
                         { "UID",    glQueue[i].UID },
                         { "Type",   int(glQueue[i].Type) },
                         { "Data",   glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
-                        { "Size",   glQueue[i].Size, FD_LONG|FD_BUFSIZE }
+                        { "Size",   glQueue[i].Size, FD_INT|FD_BUFSIZE }
                      }), result) != ERR::Okay) result = ERR::Terminate;
                   }
 

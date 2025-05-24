@@ -952,7 +952,7 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
          if (sc::Call(Self->Incoming, std::to_array<ScriptArg>({
                { "HTTP",       Self,   FD_OBJECTPTR },
                { "Buffer",     Buffer, FD_PTRBUFFER },
-               { "BufferSize", Length, FD_LONG|FD_BUFSIZE }
+               { "BufferSize", Length, FD_INT|FD_BUFSIZE }
             }), error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = ERR::InvalidValue;

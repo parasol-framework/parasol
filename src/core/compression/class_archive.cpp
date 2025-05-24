@@ -693,8 +693,8 @@ static const MethodEntry clArchiveMethods[] = {
 };
 
 static const struct FieldArray clArchiveFields[] = {
-   { "Size", FDF_LARGE|FDF_R, ARCHIVE_GET_Size },
-   { "Timestamp", FDF_LARGE|FDF_R, ARCHIVE_GET_Timestamp },
+   { "Size", FDF_INT64|FDF_R, ARCHIVE_GET_Size },
+   { "Timestamp", FDF_INT64|FDF_R, ARCHIVE_GET_Timestamp },
    END_FIELD
 };
 

@@ -5,7 +5,7 @@ static const struct FieldDef clThreadFlags[] = {
    { NULL, 0 }
 };
 
-FDEF maSetData[] = { { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
+FDEF maSetData[] = { { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 
 static const struct MethodEntry clThreadMethods[] = {
    { AC(-1), (APTR)THREAD_SetData, "SetData", maSetData, sizeof(struct th::SetData) },

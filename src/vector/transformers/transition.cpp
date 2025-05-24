@@ -214,7 +214,7 @@ static const ActionArray clTransitionActions[] = {
 };
 
 static const FieldArray clTransitionFields[] = {
-   { "TotalStops",   FDF_LONG|FDF_R },
+   { "TotalStops",   FDF_INT|FDF_R },
    // Virtual fields
    { "Stops",        FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_W, NULL, (APTR)TRANSITION_SET_Stops, "Transition" },
    END_FIELD

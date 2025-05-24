@@ -149,21 +149,21 @@ A PTR|RESULT followed by a PTRSIZE indicates that the user has to supply a buffe
 the function will fill the buffer with data, which means that a result set has to be returned to the caller.  Example:
 
 <pre>
-Read(Bytes (FD_LONG), Buffer (FD_PTRRESULT), BufferSize (FD_PTRSIZE), &BytesRead (FD_LONGRESULT));
+Read(Bytes (FD_INT), Buffer (FD_PTRRESULT), BufferSize (FD_PTRSIZE), &BytesRead (FD_INTRESULT));
 </pre>
 
 A standard PTR followed by a PTRSIZE indicates that the user has to supply a buffer to the function.  It is assumed
 that this is one-way traffic only, and the function will not fill the buffer with data.  Example:
 
 <pre>
-Write(Bytes (FD_LONG, Buffer (FD_PTR), BufferSize (FD_PTRSIZE), &BytesWritten (FD_LONGRESULT));
+Write(Bytes (FD_INT, Buffer (FD_PTR), BufferSize (FD_PTRSIZE), &BytesWritten (FD_INTRESULT));
 </pre>
 
 If the function will return a memory block of its own, it must return the block as a MEMORYID, not a PTR.  The
 allocation must be made using the object's MemFlags, as the action messaging functions will change between
 public|untracked and private memory flags as necessary.  Example:
 
-  Read(Bytes (FD_LONG), &BufferMID (FD_LONGRESULT), &BufferSize (FD_LONGRESULT));
+  Read(Bytes (FD_INT), &BufferMID (FD_INTRESULT), &BufferSize (FD_INTRESULT));
 
 *********************************************************************************************************************/
 
@@ -210,7 +210,7 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
          pos += sizeof(STRING);
       }
       else if (Args[i].Type & FD_PTR) {
-         if (Args[i].Type & (FD_LONG|FD_PTRSIZE)) { // Pointer to long.
+         if (Args[i].Type & (FD_INT|FD_PTRSIZE)) { // Pointer to long.
             if ((size_t)offset < (BufferSize - sizeof(LONG))) {
                ((LONG *)Buffer)[offset] = ((LONG *)(ArgsBuffer + pos))[0];
                ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset;
@@ -218,7 +218,7 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
             }
             else { error = ERR::BufferOverflow; goto looperror; }
          }
-         else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) { // Pointer to large/double
+         else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) { // Pointer to large/double
             if ((size_t)offset < (BufferSize - sizeof(LARGE))) {
                ((LARGE *)Buffer)[offset] = ((LARGE *)(ArgsBuffer + pos))[0];
                ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset;
@@ -283,8 +283,8 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
          }
          pos += sizeof(APTR);
       }
-      else if (Args[i].Type & (FD_LONG|FD_PTRSIZE)) pos += sizeof(LONG);
-      else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
+      else if (Args[i].Type & (FD_INT|FD_PTRSIZE)) pos += sizeof(LONG);
+      else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) pos += sizeof(LARGE);
       else log.warning("Bad type definition for argument \"%s\".", Args[i].Name);
    }
 
@@ -316,7 +316,7 @@ void local_free_args(APTR Parameters, const struct FunctionField *Args)
          }
          pos += sizeof(APTR);
       }
-      else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
+      else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) pos += sizeof(LARGE);
       else pos += sizeof(LONG);
    }
 }
@@ -356,7 +356,7 @@ ERR resolve_args(APTR Parameters, const struct FunctionField *Args)
 
          pos += sizeof(APTR);
       }
-      else if (Args[i].Type & (FD_DOUBLE|FD_LARGE)) pos += sizeof(LARGE);
+      else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) pos += sizeof(LARGE);
       else pos += sizeof(LONG);
    }
    return ERR::Okay;

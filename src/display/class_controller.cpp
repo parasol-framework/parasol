@@ -100,9 +100,9 @@ static const FieldArray clFields[] = {
    { "LeftStickY",   FDF_DOUBLE|FDF_R },
    { "RightStickX",  FDF_DOUBLE|FDF_R },
    { "RightStickY",  FDF_DOUBLE|FDF_R },
-   { "Buttons",      FDF_LONG|FDF_R },
-   { "Port",         FDF_LONG|FDF_RI },
-   { "TotalPorts",   FDF_VIRTUAL|FDF_LONG|FDF_R, CONTROLLER_GET_TotalPorts },
+   { "Buttons",      FDF_INT|FDF_R },
+   { "Port",         FDF_INT|FDF_RI },
+   { "TotalPorts",   FDF_VIRTUAL|FDF_INT|FDF_R, CONTROLLER_GET_TotalPorts },
    END_FIELD
 };
 

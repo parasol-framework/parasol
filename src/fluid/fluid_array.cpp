@@ -63,7 +63,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    auto Self = Lua->Script;
    auto prv = (prvFluid *)Self->ChildPrivate;
 
-   FieldType &= (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_LONG|FD_WORD|FD_BYTE|FD_CPP);
+   FieldType &= (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRING|FD_STRUCT|FD_FLOAT|FD_INT|FD_WORD|FD_BYTE|FD_CPP);
 
    if (FieldType & FD_STRING) FieldType &= FD_STRING|FD_CPP; // Eliminate confusion when FD_STRING|FD_POINTER might be combined
 
@@ -88,12 +88,12 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    }
 
    LONG type_size = 0;
-   if (FieldType & FD_LONG)        type_size = sizeof(LONG);
+   if (FieldType & FD_INT)        type_size = sizeof(LONG);
    else if (FieldType & FD_WORD)   type_size = sizeof(WORD);
    else if (FieldType & FD_BYTE)   type_size = sizeof(BYTE);
    else if (FieldType & FD_FLOAT)  type_size = sizeof(FLOAT);
    else if (FieldType & FD_DOUBLE) type_size = sizeof(DOUBLE);
-   else if (FieldType & FD_LARGE)  type_size = sizeof(LARGE);
+   else if (FieldType & FD_INT64)  type_size = sizeof(LARGE);
    else if (FieldType & FD_STRING) {
       if (FieldType & FD_CPP) type_size = sizeof(std::string);
       else type_size = sizeof(APTR);
@@ -108,12 +108,12 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    // Calculate the array length if the total is unspecified.
 
    if ((List) and (Total < 0)) {
-      if (FieldType & FD_LONG)        for (Total=0; ((LONG *)List)[Total]; Total++);
+      if (FieldType & FD_INT)        for (Total=0; ((LONG *)List)[Total]; Total++);
       else if (FieldType & FD_WORD)   for (Total=0; ((WORD *)List)[Total]; Total++);
       else if (FieldType & FD_BYTE)   for (Total=0; ((BYTE *)List)[Total]; Total++);
       else if (FieldType & FD_FLOAT)  for (Total=0; ((FLOAT *)List)[Total]; Total++);
       else if (FieldType & FD_DOUBLE) for (Total=0; ((DOUBLE *)List)[Total]; Total++);
-      else if (FieldType & FD_LARGE)  for (Total=0; ((LARGE *)List)[Total]; Total++);
+      else if (FieldType & FD_INT64)  for (Total=0; ((LARGE *)List)[Total]; Total++);
       else if (FieldType & FD_STRING) {
          if (FieldType & FD_CPP) { // Null-terminated std::string lists aren't permitted.
             lua_pushnil(Lua);
@@ -250,12 +250,12 @@ static int array_new(lua_State *Lua)
          CSTRING s_name = NULL;
          switch (strihash(type)) {
             case HASH_LONG:
-            case HASH_INTEGER: fieldtype = FD_LONG; break;
+            case HASH_INTEGER: fieldtype = FD_INT; break;
             case HASH_STRING:  fieldtype = FD_STRING; break;
             case HASH_SHORT:
             case HASH_WORD:    fieldtype = FD_WORD; break;
             case HASH_BYTE:    fieldtype = FD_BYTE; break;
-            case HASH_LARGE:   fieldtype = FD_LARGE; break;
+            case HASH_LARGE:   fieldtype = FD_INT64; break;
             case HASH_DOUBLE:  fieldtype = FD_DOUBLE; break;
             case HASH_FLOAT:   fieldtype = FD_FLOAT; break;
             case HASH_PTR:
@@ -346,7 +346,7 @@ static int array_get(lua_State *Lua)
          log.trace("array.index(%d)", index);
 
          index--; // Convert Lua index to C index
-         switch(a->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
+         switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
             case FD_STRUCT: {
                // Arrays of structs are presumed to be in sequence, as opposed to an array of pointers to structs.
                std::vector<lua_ref> ref;
@@ -359,8 +359,8 @@ static int array_get(lua_State *Lua)
             case FD_POINTER: lua_pushlightuserdata(Lua, a->ptrPointer[index]); break;
             case FD_FLOAT:   lua_pushnumber(Lua, a->ptrFloat[index]); break;
             case FD_DOUBLE:  lua_pushnumber(Lua, a->ptrDouble[index]); break;
-            case FD_LARGE:   lua_pushnumber(Lua, a->ptrLarge[index]); break;
-            case FD_LONG:    lua_pushinteger(Lua, a->ptrLong[index]); break;
+            case FD_INT64:   lua_pushnumber(Lua, a->ptrLarge[index]); break;
+            case FD_INT:     lua_pushinteger(Lua, a->ptrLong[index]); break;
             case FD_WORD:    lua_pushinteger(Lua, a->ptrWord[index]); break;
             case FD_BYTE:    lua_pushinteger(Lua, a->ptrByte[index]); break;
             default:
@@ -376,7 +376,7 @@ static int array_get(lua_State *Lua)
 
          if (std::string_view("table") == field) { // Convert the array to a standard Lua table.
             lua_createtable(Lua, a->Total, 0); // Create a new table on the stack.
-            switch(a->Type & (FD_DOUBLE|FD_LARGE|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_LONG|FD_WORD|FD_BYTE)) {
+            switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
                case FD_STRUCT:  {
                   std::vector<lua_ref> ref;
                   for (LONG i=0; i < a->Total; i++) {
@@ -390,8 +390,8 @@ static int array_get(lua_State *Lua)
                case FD_POINTER: for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushlightuserdata(Lua, a->ptrPointer[i]); lua_settable(Lua, -3); } break;
                case FD_FLOAT:   for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrFloat[i]); lua_settable(Lua, -3); } break;
                case FD_DOUBLE:  for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrDouble[i]); lua_settable(Lua, -3); } break;
-               case FD_LARGE:   for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrLarge[i]); lua_settable(Lua, -3); } break;
-               case FD_LONG:    for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrLong[i]); lua_settable(Lua, -3); } break;
+               case FD_INT64:   for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrLarge[i]); lua_settable(Lua, -3); } break;
+               case FD_INT:     for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrLong[i]); lua_settable(Lua, -3); } break;
                case FD_WORD:    for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrWord[i]); lua_settable(Lua, -3); } break;
                case FD_BYTE:    for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrByte[i]); lua_settable(Lua, -3); } break;
             }
@@ -453,12 +453,12 @@ static int array_set(lua_State *Lua)
             //a->ptrPointer[index] = lua_touserdata(Lua, 3);
             luaL_error(Lua, "Writing to pointer arrays is not supported.");
          }
-         else if (a->Type & FD_FLOAT)   a->ptrFloat[index]   = lua_tonumber(Lua, 3);
-         else if (a->Type & FD_DOUBLE)  a->ptrDouble[index]  = lua_tonumber(Lua, 3);
-         else if (a->Type & FD_LARGE)   a->ptrLarge[index]   = lua_tointeger(Lua, 3);
-         else if (a->Type & FD_LONG)    a->ptrLong[index]    = lua_tointeger(Lua, 3);
-         else if (a->Type & FD_WORD)    a->ptrWord[index]    = lua_tointeger(Lua, 3);
-         else if (a->Type & FD_BYTE)    a->ptrByte[index]    = lua_tointeger(Lua, 3);
+         else if (a->Type & FD_FLOAT)  a->ptrFloat[index]  = lua_tonumber(Lua, 3);
+         else if (a->Type & FD_DOUBLE) a->ptrDouble[index] = lua_tonumber(Lua, 3);
+         else if (a->Type & FD_INT64)  a->ptrLarge[index]  = lua_tointeger(Lua, 3);
+         else if (a->Type & FD_INT)    a->ptrLong[index]   = lua_tointeger(Lua, 3);
+         else if (a->Type & FD_WORD)   a->ptrWord[index]   = lua_tointeger(Lua, 3);
+         else if (a->Type & FD_BYTE)   a->ptrByte[index]   = lua_tointeger(Lua, 3);
          else luaL_error(Lua, "Unsupported array type $%.8x", a->Type);
       }
       else luaL_error(Lua, "Array index expected in 2nd argument.");

@@ -35,6 +35,8 @@ Google Fonts Knowledge page: https://fonts.google.com/knowledge
 #include FT_ADVANCES_H
 #include FT_SFNT_NAMES_H
 
+#undef FT_INT64  // Avoid Freetype clash
+
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
 #include <parasol/modules/font.h>

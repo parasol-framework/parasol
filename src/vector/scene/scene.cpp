@@ -964,16 +964,16 @@ static void scene_key_event(evKey *Event, int Size, extVectorScene *Self)
 #include "scene_def.c"
 
 static const FieldArray clSceneFields[] = {
-   { "RenderTime",   FDF_LARGE|FDF_R, GET_RenderTime },
+   { "RenderTime",   FDF_INT64|FDF_R, GET_RenderTime },
    { "Gamma",        FDF_DOUBLE|FDF_RW },
    { "HostScene",    FDF_OBJECT|FDF_RI,    nullptr, nullptr, CLASSID::VECTORSCENE },
    { "Viewport",     FDF_OBJECT|FD_R,      nullptr, nullptr, CLASSID::VECTORVIEWPORT },
    { "Bitmap",       FDF_OBJECT|FDF_RW,    nullptr, SET_Bitmap, CLASSID::BITMAP },
    { "Surface",      FDF_OBJECTID|FDF_RI,  nullptr, SET_Surface, CLASSID::SURFACE },
-   { "Flags",        FDF_LONGFLAGS|FDF_RW, nullptr, nullptr, &clVectorSceneFlags },
-   { "PageWidth",    FDF_LONG|FDF_RW,      nullptr, SET_PageWidth },
-   { "PageHeight",   FDF_LONG|FDF_RW,      nullptr, SET_PageHeight },
-   { "SampleMethod", FDF_LONG|FDF_LOOKUP|FDF_RW, nullptr, SET_SampleMethod, &clVectorSceneSampleMethod },
+   { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clVectorSceneFlags },
+   { "PageWidth",    FDF_INT|FDF_RW,      nullptr, SET_PageWidth },
+   { "PageHeight",   FDF_INT|FDF_RW,      nullptr, SET_PageHeight },
+   { "SampleMethod", FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_SampleMethod, &clVectorSceneSampleMethod },
    // Virtual fields
    { "Defs",         FDF_PTR|FDF_SYSTEM|FDF_R, GET_Defs, nullptr },
    END_FIELD

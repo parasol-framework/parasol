@@ -19,14 +19,14 @@ static const struct FieldDef clFileFlags[] = {
    { NULL, 0 }
 };
 
-FDEF maStartStream[] = { { "Subscriber", FD_OBJECTID }, { "Flags", FD_LONG }, { "Length", FD_LONG }, { 0, 0 } };
+FDEF maStartStream[] = { { "Subscriber", FD_OBJECTID }, { "Flags", FD_INT }, { "Length", FD_INT }, { 0, 0 } };
 FDEF maDelete[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maMove[] = { { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maCopy[] = { { "Dest", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF maSetDate[] = { { "Year", FD_LONG }, { "Month", FD_LONG }, { "Day", FD_LONG }, { "Hour", FD_LONG }, { "Minute", FD_LONG }, { "Second", FD_LONG }, { "Type", FD_LONG }, { 0, 0 } };
+FDEF maSetDate[] = { { "Year", FD_INT }, { "Month", FD_INT }, { "Day", FD_INT }, { "Hour", FD_INT }, { "Minute", FD_INT }, { "Second", FD_INT }, { "Type", FD_INT }, { 0, 0 } };
 FDEF maReadLine[] = { { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maNext[] = { { "File", FD_OBJECTPTR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
-FDEF maWatch[] = { { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_LARGE }, { "Flags", FD_LONG }, { 0, 0 } };
+FDEF maWatch[] = { { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_INT64 }, { "Flags", FD_INT }, { 0, 0 } };
 
 static const struct MethodEntry clFileMethods[] = {
    { AC(-1), (APTR)FILE_StartStream, "StartStream", maStartStream, sizeof(struct fl::StartStream) },

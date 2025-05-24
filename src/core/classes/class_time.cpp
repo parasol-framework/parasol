@@ -229,19 +229,19 @@ Year: Year (-ve for BC, +ve for AD).
 *********************************************************************************************************************/
 
 static const FieldArray clFields[] = {
-   { "SystemTime",   FDF_LARGE|FDF_RW },
-   { "Year",         FDF_LONG|FDF_RW },
-   { "Month",        FDF_LONG|FDF_RW },
-   { "Day",          FDF_LONG|FDF_RW },
-   { "Hour",         FDF_LONG|FDF_RW },
-   { "Minute",       FDF_LONG|FDF_RW },
-   { "Second",       FDF_LONG|FDF_RW },
-   { "TimeZone",     FDF_LONG|FDF_RW },
-   { "DayOfWeek",    FDF_LONG|FDF_RW },
-   { "MilliSecond",  FDF_LONG|FDF_RW },
-   { "MicroSecond",  FDF_LONG|FDF_RW },
+   { "SystemTime",   FDF_INT64|FDF_RW },
+   { "Year",         FDF_INT|FDF_RW },
+   { "Month",        FDF_INT|FDF_RW },
+   { "Day",          FDF_INT|FDF_RW },
+   { "Hour",         FDF_INT|FDF_RW },
+   { "Minute",       FDF_INT|FDF_RW },
+   { "Second",       FDF_INT|FDF_RW },
+   { "TimeZone",     FDF_INT|FDF_RW },
+   { "DayOfWeek",    FDF_INT|FDF_RW },
+   { "MilliSecond",  FDF_INT|FDF_RW },
+   { "MicroSecond",  FDF_INT|FDF_RW },
    // Virtual fields
-   { "TimeStamp",    FDF_LARGE|FDF_R, GET_TimeStamp },
+   { "TimeStamp",    FDF_INT64|FDF_R, GET_TimeStamp },
    END_FIELD
 };
 

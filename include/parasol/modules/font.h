@@ -173,7 +173,7 @@ class objFont : public Object {
    inline ERR setFlags(const FTF Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setGutter(const int Value) noexcept {
@@ -252,13 +252,13 @@ class objFont : public Object {
    inline ERR setBold(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setItalic(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setOpacity(const DOUBLE Value) noexcept {

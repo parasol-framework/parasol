@@ -1076,11 +1076,11 @@ static const FieldArray clFields[] = {
    { "Path",        FDF_STRING|FDF_RW, NULL, SET_Path },
    { "KeyFilter",   FDF_STRING|FDF_RW, GET_KeyFilter, SET_KeyFilter },
    { "GroupFilter", FDF_STRING|FDF_RW, GET_GroupFilter, SET_GroupFilter },
-   { "Flags",       FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clFlags },
+   { "Flags",       FDF_INTFLAGS|FDF_RW, NULL, NULL, &clFlags },
    // Virtual fields
    { "Data",        FDF_POINTER|FDF_R, GET_Data },
-   { "TotalGroups", FDF_LONG|FDF_R, GET_TotalGroups },
-   { "TotalKeys",   FDF_LONG|FDF_R, GET_TotalKeys },
+   { "TotalGroups", FDF_INT|FDF_R, GET_TotalGroups },
+   { "TotalKeys",   FDF_INT|FDF_R, GET_TotalKeys },
    END_FIELD
 };
 

@@ -200,14 +200,14 @@ static int module_call(lua_State *Lua)
                j += sizeof(APTR);
 
                if (args[i+1].Type & (FD_BUFSIZE|FD_ARRAYSIZE)) {
-                  if (args[i+1].Type & FD_LONG) {
+                  if (args[i+1].Type & FD_INT) {
                      ((LONG *)(buffer + j))[0] = mem->ArraySize;
                      arg_values[in]  = buffer + j;
                      arg_types[in++] = &ffi_type_sint32;
                      i++;
                      j += sizeof(LONG);
                   }
-                  else if (args[i+1].Type & FD_LARGE) {
+                  else if (args[i+1].Type & FD_INT64) {
                      ((LARGE *)(buffer + j))[0] = mem->ArraySize;
                      arg_values[in]  = buffer + j;
                      arg_types[in++] = &ffi_type_sint64;
@@ -251,7 +251,7 @@ static int module_call(lua_State *Lua)
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
-         else if (argtype & FD_LONG) { // FD_RESULT
+         else if (argtype & FD_INT) { // FD_RESULT
             end -= sizeof(LONG);
             ((APTR *)(buffer + j))[0] = end;
             ((LONG *)end)[0] = 0;
@@ -259,7 +259,7 @@ static int module_call(lua_State *Lua)
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
-         else if (argtype & (FD_DOUBLE|FD_LARGE)) { // FD_RESULT
+         else if (argtype & (FD_DOUBLE|FD_INT64)) { // FD_RESULT
             end -= sizeof(LARGE);
             ((APTR *)(buffer + j))[0] = end;
             ((LARGE *)end)[0] = 0;
@@ -347,7 +347,7 @@ static int module_call(lua_State *Lua)
 
             if (args[i+1].Type & (FD_BUFSIZE|FD_ARRAYSIZE)) {
                if (args[i+1].Type & FD_RESULT) {
-                  if (args[i+1].Type & FD_LONG) {
+                  if (args[i+1].Type & FD_INT) {
                      end -= sizeof(LONG);
                      ((LONG *)end)[0] = mem->Total;
                      ((APTR *)(buffer + j))[0] = end;
@@ -356,7 +356,7 @@ static int module_call(lua_State *Lua)
                      j += sizeof(APTR);
                      i++;
                   }
-                  else if (args[i+1].Type & FD_LARGE) {
+                  else if (args[i+1].Type & FD_INT64) {
                      end -= sizeof(LARGE);
                      ((LARGE *)end)[0] = mem->Total;
                      ((APTR *)(buffer + j))[0] = end;
@@ -371,14 +371,14 @@ static int module_call(lua_State *Lua)
                   }
                }
                else {
-                  if (args[i+1].Type & FD_LONG) {
+                  if (args[i+1].Type & FD_INT) {
                      ((LONG *)(buffer + j))[0] = mem->Total;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_sint32;
                      j += sizeof(LONG);
                      i++;
                   }
-                  else if (args[i+1].Type & FD_LARGE) {
+                  else if (args[i+1].Type & FD_INT64) {
                      ((LARGE *)(buffer + j))[0] = mem->Total;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_sint64;
@@ -411,14 +411,14 @@ static int module_call(lua_State *Lua)
             j += sizeof(CSTRING);
 
             if (args[i+1].Type & FD_BUFSIZE) {
-               if (args[i+1].Type & FD_LONG) {
+               if (args[i+1].Type & FD_INT) {
                   ((LONG *)(buffer + j))[0] = strlen;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint32;
                   j += sizeof(LONG);
                }
-               else if (args[i+1].Type & FD_LARGE) {
+               else if (args[i+1].Type & FD_INT64) {
                   ((LARGE *)(buffer + j))[0] = strlen;
                   i++;
                   arg_values[in] = buffer + j;
@@ -434,14 +434,14 @@ static int module_call(lua_State *Lua)
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
-               if (args[i+1].Type & FD_LONG) {
+               if (args[i+1].Type & FD_INT) {
                   ((LONG *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint32;
                   j += sizeof(LONG);
                }
-               else if (args[i+1].Type & FD_LARGE) {
+               else if (args[i+1].Type & FD_INT64) {
                   ((LARGE *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
@@ -458,14 +458,14 @@ static int module_call(lua_State *Lua)
 
             log.trace("Struct address %p inserted to arg offset %d", fstruct->Data, j);
             if (args[i+1].Type & FD_BUFSIZE) {
-               if (args[i+1].Type & FD_LONG) {
+               if (args[i+1].Type & FD_INT) {
                   ((LONG *)(buffer + j))[0] = fstruct->AlignedSize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint32;
                   j += sizeof(LONG);
                }
-               else if (args[i+1].Type & FD_LARGE) {
+               else if (args[i+1].Type & FD_INT64) {
                   ((LARGE *)(buffer + j))[0] = fstruct->AlignedSize;
                   i++;
                   arg_values[in] = buffer + j;
@@ -498,7 +498,7 @@ static int module_call(lua_State *Lua)
             j += sizeof(APTR);
          }
       }
-      else if (argtype & FD_LONG) {
+      else if (argtype & FD_INT) {
          if (argtype & FD_OBJECT) {
             if (auto obj = (object *)get_meta(Lua, i, "Fluid.obj")) {
                ((LONG *)(buffer + j))[0] = obj->UID;
@@ -517,7 +517,7 @@ static int module_call(lua_State *Lua)
          arg_types[in++] = &ffi_type_double;
          j += sizeof(DOUBLE);
       }
-      else if (argtype & FD_LARGE) {
+      else if (argtype & FD_INT64) {
          ((LARGE *)(buffer + j))[0] = lua_tointeger(Lua, i);
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_sint64;
@@ -597,7 +597,7 @@ static int module_call(lua_State *Lua)
       }
       else lua_pushnil(Lua);
    }
-   else if (restype & (FD_LONG|FD_ERROR)) {
+   else if (restype & (FD_INT|FD_ERROR)) {
       if (restype & FD_UNSIGNED) {
          if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_uint32, arg_types) IS FFI_OK) {
             ffi_call(&cif, (void (*)())function, &rc, arg_values);
@@ -625,7 +625,7 @@ static int module_call(lua_State *Lua)
       }
       else lua_pushnil(Lua);
    }
-   else if (restype & FD_LARGE) {
+   else if (restype & FD_INT64) {
       if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_sint64, arg_types) IS FFI_OK) {
          ffi_call(&cif, (void (*)())function, &rc, arg_values);
          lua_pushnumber(Lua, (LARGE)rc);
@@ -671,8 +671,8 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
 
                if (args[i+1].Type & FD_ARRAYSIZE) {
                   CPTR size_var = ((APTR *)scan)[0];
-                  if (args[i+1].Type & FD_LONG) total_elements = ((LONG *)size_var)[0];
-                  else if (args[i+1].Type & FD_LARGE) total_elements = ((LARGE *)size_var)[0];
+                  if (args[i+1].Type & FD_INT) total_elements = ((LONG *)size_var)[0];
+                  else if (args[i+1].Type & FD_INT64) total_elements = ((LARGE *)size_var)[0];
                   else log.warning("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
                }
 
@@ -737,8 +737,8 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                   LARGE size = 0;
                   if (args[i+1].Type & FD_BUFSIZE) {
                      const APTR size_var = ((APTR *)scan)[0];
-                     if (args[i+1].Type & FD_LONG) size = ((LONG *)size_var)[0];
-                     else if (args[i+1].Type & FD_LARGE) size = ((LARGE *)size_var)[0];
+                     if (args[i+1].Type & FD_INT) size = ((LONG *)size_var)[0];
+                     else if (args[i+1].Type & FD_INT64) size = ((LARGE *)size_var)[0];
                      else log.warning("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
                   }
                   else {
@@ -754,8 +754,8 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                else if (args[i+1].Type & FD_BUFSIZE) { // We can convert the data to a binary string rather than work with unsafe pointers.
                   LARGE size = 0;
                   CPTR size_var = ((APTR *)scan)[0];
-                  if (args[i+1].Type & FD_LONG) size = ((LONG *)size_var)[0];
-                  else if (args[i+1].Type & FD_LARGE) size = ((LARGE *)size_var)[0];
+                  if (args[i+1].Type & FD_INT) size = ((LONG *)size_var)[0];
+                  else if (args[i+1].Type & FD_INT64) size = ((LARGE *)size_var)[0];
                   else log.warning("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
 
                   if (size > 0) lua_pushlstring(prv->Lua, ((CSTRING *)var)[0], size);
@@ -768,7 +768,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
          }
          else scan += sizeof(APTR);
       }
-      else if (argtype & FD_LONG) {
+      else if (argtype & FD_INT) {
          if (argtype & FD_RESULT) {
             if (auto var = ((APTR *)scan)[0]) lua_pushinteger(prv->Lua, ((LONG *)var)[0]);
             else lua_pushnil(prv->Lua);
@@ -786,7 +786,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
          }
          else scan += sizeof(DOUBLE);
       }
-      else if (argtype & FD_LARGE) {
+      else if (argtype & FD_INT64) {
          if (argtype & FD_RESULT) {
             if (auto var = ((APTR *)scan)[0]) lua_pushnumber(prv->Lua, ((LARGE *)var)[0]);
             else lua_pushnil(prv->Lua);

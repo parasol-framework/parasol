@@ -286,7 +286,7 @@ class objHTTP : public Object {
    inline ERR setMethod(const HTM Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setPort(const int Value) noexcept {
@@ -322,7 +322,7 @@ class objHTTP : public Object {
    inline ERR setCurrentState(const HGS Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setProxyServer(T && Value) noexcept {
@@ -339,7 +339,7 @@ class objHTTP : public Object {
    inline ERR setBufferSize(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[33];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setAuthCallback(FUNCTION Value) noexcept {

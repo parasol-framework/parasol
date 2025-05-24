@@ -304,9 +304,9 @@ static const FieldDef clMorphologyFXOperator[] = {
 };
 
 static const FieldArray clMorphologyFXFields[] = {
-   { "Operator", FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, MORPHOLOGYFX_GET_Operator, MORPHOLOGYFX_SET_Operator, &clMorphologyFXOperator },
-   { "RadiusX",  FDF_VIRTUAL|FDF_LONG|FDF_RW, MORPHOLOGYFX_GET_RadiusX, MORPHOLOGYFX_SET_RadiusX },
-   { "RadiusY",  FDF_VIRTUAL|FDF_LONG|FDF_RW, MORPHOLOGYFX_GET_RadiusY, MORPHOLOGYFX_SET_RadiusY },
+   { "Operator", FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, MORPHOLOGYFX_GET_Operator, MORPHOLOGYFX_SET_Operator, &clMorphologyFXOperator },
+   { "RadiusX",  FDF_VIRTUAL|FDF_INT|FDF_RW, MORPHOLOGYFX_GET_RadiusX, MORPHOLOGYFX_SET_RadiusX },
+   { "RadiusY",  FDF_VIRTUAL|FDF_INT|FDF_RW, MORPHOLOGYFX_GET_RadiusY, MORPHOLOGYFX_SET_RadiusY },
    { "XMLDef",   FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, MORPHOLOGYFX_GET_XMLDef },
    END_FIELD
 };

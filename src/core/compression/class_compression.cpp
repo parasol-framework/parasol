@@ -688,7 +688,7 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::Compress
             if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
                   { "Compression",  Self, FD_OBJECTPTR },
                   { "Output",       output, FD_BUFFER },
-                  { "OutputLength", int64_t(len), FD_LARGE|FD_BUFSIZE }
+                  { "OutputLength", int64_t(len), FD_INT64|FD_BUFSIZE }
                }), error) != ERR::Okay) error = ERR::Failed;
          }
          else {
@@ -777,7 +777,7 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::Compr
          if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
             { "Compression",  Self,   FD_OBJECTPTR },
             { "Output",       output, FD_BUFFER },
-            { "OutputLength", int64_t(outputsize - Self->DeflateStream.avail_out), FD_LARGE|FD_BUFSIZE }
+            { "OutputLength", int64_t(outputsize - Self->DeflateStream.avail_out), FD_INT64|FD_BUFSIZE }
          }), error) != ERR::Okay) error = ERR::Failed;
       }
       else error = ERR::Okay;
@@ -928,7 +928,7 @@ static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmp::Decomp
             if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
                { "Compression",  Self,   FD_OBJECTPTR },
                { "Output",       output, FD_BUFFER },
-               { "OutputLength", len,    FD_LONG|FD_BUFSIZE }
+               { "OutputLength", len,    FD_INT|FD_BUFSIZE }
             }), error) != ERR::Okay) error = ERR::Failed;
          }
          else {
@@ -2070,23 +2070,23 @@ static const FieldDef clPermissionFlags[] = {
 #include "class_compression_def.c"
 
 static const FieldArray clFields[] = {
-   { "TotalOutput",      FDF_LARGE|FDF_R },
+   { "TotalOutput",      FDF_INT64|FDF_R },
    { "Output",           FDF_OBJECTID|FDF_RI },
-   { "CompressionLevel", FDF_LONG|FDF_RW, NULL, SET_CompressionLevel },
-   { "Flags",            FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clCompressionFlags },
-   { "SegmentSize",      FDF_LONG|FDF_SYSTEM|FDF_RW },
-   { "Permissions",      FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPermissionFlags },
-   { "MinOutputSize",    FDF_LONG|FDF_R },
-   { "WindowBits",       FDF_LONG|FDF_RW, NULL, SET_WindowBits },
+   { "CompressionLevel", FDF_INT|FDF_RW, NULL, SET_CompressionLevel },
+   { "Flags",            FDF_INTFLAGS|FDF_RW, NULL, NULL, &clCompressionFlags },
+   { "SegmentSize",      FDF_INT|FDF_SYSTEM|FDF_RW },
+   { "Permissions",      FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPermissionFlags },
+   { "MinOutputSize",    FDF_INT|FDF_R },
+   { "WindowBits",       FDF_INT|FDF_RW, NULL, SET_WindowBits },
    // Virtual fields
    { "ArchiveName",      FDF_STRING|FDF_W,       NULL, SET_ArchiveName },
    { "Path",             FDF_STRING|FDF_RW,      GET_Path, SET_Path },
    { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, GET_Feedback, SET_Feedback },
    { "Header",           FDF_POINTER|FDF_R,      GET_Header },
    { "Password",         FDF_STRING|FDF_RW,      GET_Password, SET_Password },
-   { "Size",             FDF_LARGE|FDF_R,        GET_Size },
+   { "Size",             FDF_INT64|FDF_R,        GET_Size },
    { "Src",              FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "UncompressedSize", FDF_LARGE|FDF_R,        GET_UncompressedSize },
+   { "UncompressedSize", FDF_INT64|FDF_R,        GET_UncompressedSize },
    END_FIELD
 };
 

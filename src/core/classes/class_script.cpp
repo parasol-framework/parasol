@@ -171,7 +171,7 @@ Parameter values must be specified as an array of ScriptArg structures.  The fol
 struct ScriptArg args[] = {
    { "Object",       FD_OBJECTID, { .Long = Self->UID } },
    { "Output",       FD_PTR,      { .Address = output } },
-   { "OutputLength", FD_LONG,     { .Long = len } }
+   { "OutputLength", FD_INT,     { .Long = len } }
 };
 </>
 
@@ -191,7 +191,7 @@ struct ScriptArg {
 </>
 
 The Field Descriptor `FD` specified in the `Type` must be a match to whatever value is defined in the union.  For instance
-if the `Long` field is defined then an `FD_LONG` `Type` must be used.  Supplementary field definition information, e.g.
+if the `Long` field is defined then an `FD_INT` `Type` must be used.  Supplementary field definition information, e.g.
 `FD_OBJECT`, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are
 documented in detail in the Parasol Wiki.
 
@@ -857,10 +857,10 @@ static ERR SET_WorkingPath(objScript *Self, STRING Value)
 
 static const FieldArray clScriptFields[] = {
    { "Target",      FDF_OBJECTID|FDF_RW },
-   { "Flags",       FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clScriptFlags },
-   { "Error",       FDF_LONG|FDF_R },
-   { "CurrentLine", FDF_LONG|FDF_R },
-   { "LineOffset",  FDF_LONG|FDF_RW },
+   { "Flags",       FDF_INTFLAGS|FDF_RI, NULL, NULL, &clScriptFlags },
+   { "Error",       FDF_INT|FDF_R },
+   { "CurrentLine", FDF_INT|FDF_R },
+   { "LineOffset",  FDF_INT|FDF_RW },
    // Virtual Fields
    { "CacheFile",   FDF_STRING|FDF_RW,              GET_CacheFile, SET_CacheFile },
    { "ErrorString", FDF_STRING|FDF_RW,              GET_ErrorString, SET_ErrorString },
@@ -875,7 +875,7 @@ static const FieldArray clScriptFields[] = {
    { "Src",         FDF_SYNONYM|FDF_STRING|FDF_RI,  GET_Path, SET_Path },
    { "Statement",   FDF_STRING|FDF_RW,              GET_String, SET_String },
    { "String",      FDF_SYNONYM|FDF_STRING|FDF_RW,  GET_String, SET_String },
-   { "TotalArgs",   FDF_LONG|FDF_R,                 GET_TotalArgs, NULL },
+   { "TotalArgs",   FDF_INT|FDF_R,                 GET_TotalArgs, NULL },
    { "Variables",   FDF_POINTER|FDF_SYSTEM|FDF_R,   GET_Variables, NULL },
    END_FIELD
 };

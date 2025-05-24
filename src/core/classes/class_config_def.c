@@ -13,8 +13,8 @@ FDEF maSet[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR }, { 0
 FDEF maWriteValue[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR }, { 0, 0 } };
 FDEF maDeleteKey[] = { { "Group", FD_STR }, { "Key", FD_STR }, { 0, 0 } };
 FDEF maDeleteGroup[] = { { "Group", FD_STR }, { 0, 0 } };
-FDEF maGetGroupFromIndex[] = { { "Index", FD_LONG }, { "Group", FD_STR|FD_RESULT }, { 0, 0 } };
-FDEF maSortByKey[] = { { "Key", FD_STR }, { "Descending", FD_LONG }, { 0, 0 } };
+FDEF maGetGroupFromIndex[] = { { "Index", FD_INT }, { "Group", FD_STR|FD_RESULT }, { 0, 0 } };
+FDEF maSortByKey[] = { { "Key", FD_STR }, { "Descending", FD_INT }, { 0, 0 } };
 FDEF maMergeFile[] = { { "Path", FD_STR }, { 0, 0 } };
 FDEF maMerge[] = { { "Source", FD_OBJECTPTR }, { 0, 0 } };
 

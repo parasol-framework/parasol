@@ -192,8 +192,8 @@ ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_rec
       }
       else if (type & FD_FLOAT)  lua_pushnumber(Lua, ((FLOAT *)address)[0]);
       else if (type & FD_DOUBLE) lua_pushnumber(Lua, ((DOUBLE *)address)[0]);
-      else if (type & FD_LARGE)  lua_pushnumber(Lua, ((LARGE *)address)[0]);
-      else if (type & FD_LONG)   lua_pushinteger(Lua, ((LONG *)address)[0]);
+      else if (type & FD_INT64)  lua_pushnumber(Lua, ((LARGE *)address)[0]);
+      else if (type & FD_INT)   lua_pushinteger(Lua, ((LONG *)address)[0]);
       else if (type & FD_WORD)   lua_pushinteger(Lua, ((WORD *)address)[0]);
       else if (type & FD_BYTE)   lua_pushinteger(Lua, ((UBYTE *)address)[0]);
       else lua_pushnil(Lua);
@@ -321,9 +321,9 @@ static ERR generate_structdef(objScript *Self, const std::string_view StructName
       }
 
       switch (Sequence[pos]) {
-         case 'l': type |= FD_LONG;     field_size = sizeof(LONG); break;
+         case 'l': type |= FD_INT;     field_size = sizeof(LONG); break;
          case 'd': type |= FD_DOUBLE;   field_size = sizeof(DOUBLE); break;
-         case 'x': type |= FD_LARGE;    field_size = sizeof(LARGE); break;
+         case 'x': type |= FD_INT64;    field_size = sizeof(LARGE); break;
          case 'f': type |= FD_FLOAT;    field_size = sizeof(FLOAT); break;
          case 'r': type |= FD_FUNCTION; field_size = sizeof(FUNCTION); break;
          case 'w': type |= FD_WORD;     field_size = sizeof(WORD); break;
@@ -362,7 +362,7 @@ static ERR generate_structdef(objScript *Self, const std::string_view StructName
          }
 
          case 'm': // MAXINT
-            type |= (sizeof(MAXINT) IS 4) ? FD_LONG : FD_LARGE;
+            type |= (sizeof(MAXINT) IS 4) ? FD_INT : FD_INT64;
             field_size = sizeof(MAXINT);
             break;
 
@@ -558,7 +558,7 @@ static int struct_new(lua_State *Lua)
                         // Lua and free it when the field changes or the structure is destroyed.
                      }
                      else if (field->Type & FD_OBJECT)  ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, 3);
-                     else if (field->Type & FD_LONG)   ((LONG *)address)[0]   = lua_tointeger(Lua, 3);
+                     else if (field->Type & FD_INT)   ((LONG *)address)[0]   = lua_tointeger(Lua, 3);
                      else if (field->Type & FD_WORD)   ((WORD *)address)[0]   = lua_tointeger(Lua, 3);
                      else if (field->Type & FD_BYTE)   ((BYTE *)address)[0]   = lua_tointeger(Lua, 3);
                      else if (field->Type & FD_DOUBLE) ((DOUBLE *)address)[0] = lua_tonumber(Lua, 3);
@@ -687,12 +687,12 @@ static int struct_get(lua_State *Lua)
                if (field->Type & FD_ARRAY) make_array(Lua, FD_DOUBLE, NULL, (APTR *)address, array_size, false);
                else lua_pushnumber(Lua, ((DOUBLE *)address)[0]);
             }
-            else if (field->Type & FD_LARGE) {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_LARGE, NULL, (APTR *)address, array_size, false);
+            else if (field->Type & FD_INT64) {
+               if (field->Type & FD_ARRAY) make_array(Lua, FD_INT64, NULL, (APTR *)address, array_size, false);
                else lua_pushnumber(Lua, ((LARGE *)address)[0]);
             }
-            else if (field->Type & FD_LONG) {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_LONG, NULL, (APTR *)address, array_size, false);
+            else if (field->Type & FD_INT) {
+               if (field->Type & FD_ARRAY) make_array(Lua, FD_INT, NULL, (APTR *)address, array_size, false);
                else lua_pushinteger(Lua, ((LONG *)address)[0]);
             }
             else if (field->Type & FD_WORD) {
@@ -752,7 +752,7 @@ static int struct_set(lua_State *Lua)
             else if (field->Type & FD_OBJECT)  ((OBJECTPTR *)address)[0] = (OBJECTPTR)lua_touserdata(Lua, 3);
             else if (field->Type & FD_POINTER) ((APTR *)address)[0] = lua_touserdata(Lua, 3);
             else if (field->Type & FD_FUNCTION);
-            else if (field->Type & FD_LONG)   ((LONG *)address)[0]   = lua_tointeger(Lua, 3);
+            else if (field->Type & FD_INT)   ((LONG *)address)[0]   = lua_tointeger(Lua, 3);
             else if (field->Type & FD_WORD)   ((WORD *)address)[0]   = lua_tointeger(Lua, 3);
             else if (field->Type & FD_BYTE)   ((BYTE *)address)[0]   = lua_tointeger(Lua, 3);
             else if (field->Type & FD_DOUBLE) ((DOUBLE *)address)[0] = lua_tonumber(Lua, 3);

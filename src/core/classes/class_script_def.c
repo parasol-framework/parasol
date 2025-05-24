@@ -6,10 +6,10 @@ static const struct FieldDef clScriptFlags[] = {
    { NULL, 0 }
 };
 
-FDEF maExec[] = { { "Procedure", FD_STR }, { "ScriptArg:Args", FD_PTR|FD_STRUCT }, { "TotalArgs", FD_LONG }, { 0, 0 } };
+FDEF maExec[] = { { "Procedure", FD_STR }, { "ScriptArg:Args", FD_PTR|FD_STRUCT }, { "TotalArgs", FD_INT }, { 0, 0 } };
 FDEF maDerefProcedure[] = { { "Procedure", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF maCallback[] = { { "ProcedureID", FD_LARGE }, { "ScriptArg:Args", FD_PTR|FD_STRUCT }, { "TotalArgs", FD_LONG }, { "Error", FD_LONG|FD_ERROR|FD_RESULT }, { 0, 0 } };
-FDEF maGetProcedureID[] = { { "Procedure", FD_STR }, { "ProcedureID", FD_LARGE|FD_RESULT }, { 0, 0 } };
+FDEF maCallback[] = { { "ProcedureID", FD_INT64 }, { "ScriptArg:Args", FD_PTR|FD_STRUCT }, { "TotalArgs", FD_INT }, { "Error", FD_INT|FD_ERROR|FD_RESULT }, { 0, 0 } };
+FDEF maGetProcedureID[] = { { "Procedure", FD_STR }, { "ProcedureID", FD_INT64|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clScriptMethods[] = {
    { AC(-1), (APTR)SCRIPT_Exec, "Exec", maExec, sizeof(struct sc::Exec) },

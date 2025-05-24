@@ -638,9 +638,9 @@ static const FieldArray clSVGFields[] = {
    { "Path",      FDF_STRING|FDF_RW, NULL, SET_Path },
    { "Title",     FDF_STRING|FDF_RW, NULL, SET_Title },
    { "Statement", FDF_STRING|FDF_RW, NULL, SET_Statement },
-   { "Frame",     FDF_LONG|FDF_RW, NULL, NULL },
-   { "Flags",     FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clSVGFlags },
-   { "FrameRate", FDF_LONG|FDF_RW, NULL, SET_FrameRate },
+   { "Frame",     FDF_INT|FDF_RW, NULL, NULL },
+   { "Flags",     FDF_INTFLAGS|FDF_RW, NULL, NULL, &clSVGFlags },
+   { "FrameRate", FDF_INT|FDF_RW, NULL, SET_FrameRate },
    // Virtual Fields
    { "Colour",        FDF_VIRTUAL|FDF_STRING|FDF_RW, GET_Colour, SET_Colour },
    { "FrameCallback", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_FrameCallback, SET_FrameCallback },

@@ -495,16 +495,16 @@ static ERR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct cs::WriteCl
 #include "clientsocket_def.c"
 
 static const FieldArray clClientSocketFields[] = {
-   { "ConnectTime", FDF_LARGE|FDF_R },
+   { "ConnectTime", FDF_INT64|FDF_R },
    { "Prev",        FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::CLIENTSOCKET },
    { "Next",        FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::CLIENTSOCKET },
    { "Client",      FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "NetClient" },
    { "ClientData",  FDF_POINTER|FDF_R },
    { "Outgoing",    FDF_FUNCTION|FDF_R },
    { "Incoming",    FDF_FUNCTION|FDF_R },
-   { "MsgLen",      FDF_LONG|FDF_R },
+   { "MsgLen",      FDF_INT|FDF_R },
    // Virtual fields
-//   { "Handle", FDF_LONG|FDF_R|FDF_VIRTUAL, GET_ClientHandle, SET_ClientHandle },
+//   { "Handle", FDF_INT|FDF_R|FDF_VIRTUAL, GET_ClientHandle, SET_ClientHandle },
    END_FIELD
 };
 

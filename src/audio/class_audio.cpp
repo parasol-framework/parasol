@@ -1348,19 +1348,19 @@ static void load_config(extAudio *Self)
 #include "audio_def.c"
 
 static const FieldArray clAudioFields[] = {
-   { "OutputRate",    FDF_LONG|FDF_RI, NULL, SET_OutputRate },
-   { "InputRate",     FDF_LONG|FDF_RI },
-   { "Quality",       FDF_LONG|FDF_RW,    NULL, SET_Quality },
-   { "Flags",         FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clAudioFlags },
-   { "BitDepth",      FDF_LONG|FDF_RI,    NULL, SET_BitDepth },
-   { "Periods",       FDF_LONG|FDF_RI,    NULL, SET_Periods },
-   { "PeriodSize",    FDF_LONG|FDF_RI,    NULL, SET_PeriodSize },
+   { "OutputRate",    FDF_INT|FDF_RI, NULL, SET_OutputRate },
+   { "InputRate",     FDF_INT|FDF_RI },
+   { "Quality",       FDF_INT|FDF_RW,    NULL, SET_Quality },
+   { "Flags",         FDF_INTFLAGS|FDF_RI, NULL, NULL, &clAudioFlags },
+   { "BitDepth",      FDF_INT|FDF_RI,    NULL, SET_BitDepth },
+   { "Periods",       FDF_INT|FDF_RI,    NULL, SET_Periods },
+   { "PeriodSize",    FDF_INT|FDF_RI,    NULL, SET_PeriodSize },
    // VIRTUAL FIELDS
    { "Device",        FDF_STRING|FDF_RW,  GET_Device, SET_Device },
    { "MixerLag",      FDF_DOUBLE|FDF_R,   GET_MixerLag },
    { "MasterVolume",  FDF_DOUBLE|FDF_RW,  GET_MasterVolume, SET_MasterVolume },
-   { "Mute",          FDF_LONG|FDF_RW,    GET_Mute, SET_Mute },
-   { "Stereo",        FDF_LONG|FDF_RW,    GET_Stereo, SET_Stereo },
+   { "Mute",          FDF_INT|FDF_RW,    GET_Mute, SET_Mute },
+   { "Stereo",        FDF_INT|FDF_RW,    GET_Stereo, SET_Stereo },
    END_FIELD
 };
 

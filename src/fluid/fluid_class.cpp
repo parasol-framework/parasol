@@ -198,7 +198,7 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
          else lua_pushnil(Lua);
          Buffer += sizeof(APTR);
       }
-      else if (args[i].Type & FD_LONG) {
+      else if (args[i].Type & FD_INT) {
          lua_pushinteger(Lua, ((LONG *)Buffer)[0]);
          Buffer += sizeof(LONG);
       }
@@ -206,7 +206,7 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
          lua_pushnumber(Lua, ((DOUBLE *)Buffer)[0]);
          Buffer += sizeof(DOUBLE);
       }
-      else if (args[i].Type & FD_LARGE) {
+      else if (args[i].Type & FD_INT64) {
          lua_pushnumber(Lua, ((int64_t *)Buffer)[0]);
          Buffer += sizeof(int64_t);
       }
@@ -935,8 +935,8 @@ static ERR run_script(objScript *Self)
                   LONG total_elements = -1;
                   CSTRING arg_name = args->Name;
                   if (args[1].Type & FD_ARRAYSIZE) {
-                     if (args[1].Type & FD_LONG) total_elements = args[1].Long;
-                     else if (args[1].Type & FD_LARGE) total_elements = args[1].Large;
+                     if (args[1].Type & FD_INT) total_elements = args[1].Int;
+                     else if (args[1].Type & FD_INT64) total_elements = args[1].Int64;
                      else values = nullptr;
                      i++; args++; // Because we took the array-size parameter into account
                   }
@@ -970,8 +970,8 @@ static ERR run_script(objScript *Self)
                   if ((type & FD_BUFFER) and (i+1 < Self->TotalArgs) and (args[1].Type & FD_BUFSIZE)) {
                      // Buffers are considered to be directly writable regions of memory, so the array interface is
                      // used to represent them.
-                     if (args[1].Type & FD_LONG) make_array(prv->Lua, FD_BYTE|FD_WRITE, nullptr, (APTR *)args->Address, args[1].Long, false);
-                     else if (args[1].Type & FD_LARGE) make_array(prv->Lua, FD_BYTE|FD_WRITE, nullptr, (APTR *)args->Address, args[1].Large, false);
+                     if (args[1].Type & FD_INT) make_array(prv->Lua, FD_BYTE|FD_WRITE, nullptr, (APTR *)args->Address, args[1].Int, false);
+                     else if (args[1].Type & FD_INT64) make_array(prv->Lua, FD_BYTE|FD_WRITE, nullptr, (APTR *)args->Address, args[1].Int64, false);
                      else lua_pushnil(prv->Lua);
                      i++; args++; // Because we took the buffer-size parameter into account
                   }
@@ -990,15 +990,15 @@ static ERR run_script(objScript *Self)
                   }
                   else lua_pushlightuserdata(prv->Lua, args->Address);
                }
-               else if (type & FD_LONG)   {
-                  log.trace("Setting arg '%s', Value: %d", args->Name, args->Long);
+               else if (type & FD_INT)   {
+                  log.trace("Setting arg '%s', Value: %d", args->Name, args->Int);
                   if (type & FD_OBJECT) {
-                     if (args->Long) push_object_id(prv->Lua, args->Long);
+                     if (args->Int) push_object_id(prv->Lua, args->Int);
                      else lua_pushnil(prv->Lua);
                   }
-                  else lua_pushinteger(prv->Lua, args->Long);
+                  else lua_pushinteger(prv->Lua, args->Int);
                }
-               else if (type & FD_LARGE)  { log.trace("Setting arg '%s', Value: %" PF64, args->Name, (long long)args->Large); lua_pushnumber(prv->Lua, args->Large); }
+               else if (type & FD_INT64)  { log.trace("Setting arg '%s', Value: %" PF64, args->Name, (long long)args->Int64); lua_pushnumber(prv->Lua, args->Int64); }
                else if (type & FD_DOUBLE) { log.trace("Setting arg '%s', Value: %.2f", args->Name, args->Double); lua_pushnumber(prv->Lua, args->Double); }
                else { lua_pushnil(prv->Lua); log.warning("Arg '%s' uses unrecognised type $%.8x", args->Name, type); }
                count++;
