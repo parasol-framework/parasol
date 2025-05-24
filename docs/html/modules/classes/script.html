@@ -152,7 +152,7 @@
 struct ScriptArg args[] = {
    { "Object",       FD_OBJECTID, { .Long = Self-&gt;UID } },
    { "Output",       FD_PTR,      { .Address = output } },
-   { "OutputLength", FD_LONG,     { .Long = len } }
+   { "OutputLength", FD_INT,     { .Long = len } }
 };
 </pre>
 <p>The ScriptArg structure follows this arrangement:</p>
@@ -168,7 +168,7 @@ struct ScriptArg {
    };
 };
 </pre>
-<p>The Field Descriptor <code>FD</code> specified in the <code>Type</code> must be a match to whatever value is defined in the union.  For instance if the <code>Long</code> field is defined then an <code>FD_LONG</code> <code>Type</code> must be used.  Supplementary field definition information, e.g. <code>FD_OBJECT</code>, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are documented in detail in the Parasol Wiki.</p>
+<p>The Field Descriptor <code>FD</code> specified in the <code>Type</code> must be a match to whatever value is defined in the union.  For instance if the <code>Long</code> field is defined then an <code>FD_INT</code> <code>Type</code> must be used.  Supplementary field definition information, e.g. <code>FD_OBJECT</code>, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are documented in detail in the Parasol Wiki.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The procedure was executed.</td></tr>
 <tr><th class="col-md-1">Args</th><td>The <code>TotalArgs</code> value is invalid.</td></tr>

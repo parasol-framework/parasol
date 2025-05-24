@@ -121,9 +121,9 @@ typedef LONG SOCKET_HANDLE;
 #error "No support for this platform"
 #endif
 struct IPAddress {
-   ULONG  Data[4];   // 128-bit array for supporting both V4 and V6 IP addresses.
-   IPADDR Type;      // Identifies the address Data value as a V4 or V6 address type.
-   int    Pad;       // Unused padding for 64-bit alignment
+   uint32_t Data[4];    // 128-bit array for supporting both V4 and V6 IP addresses.
+   IPADDR   Type;       // Identifies the address Data value as a V4 or V6 address type.
+   int      Pad;        // Unused padding for 64-bit alignment
 };
 
 struct NetQueue {

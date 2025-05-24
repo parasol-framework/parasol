@@ -198,7 +198,7 @@
 <p>This function returns an array of all actions supported by the Core, including name, arguments and structure size.  The ID of each action is indicated by its index within the array.</p>
 <p>The <code>Name</code> field specifies the name of the action.  The <code>Args</code> field refers to the action's argument definition structure, which lists the argument names and their relevant types.  This is matched by the <code>Size</code> field, which indicates the byte-size of the action's related argument structure.  If the action does not support arguments, the <code>Args</code> and <code>Size</code> fields will be set to <code>NULL</code>.  The following illustrates two argument definition examples:</p>
 <pre>struct FunctionField argsCopyData[] = {
-   { "Destination", FD_LONG  },
+   { "Destination", FD_INT  },
    { NULL, 0 }
 };
 
@@ -215,9 +215,9 @@ struct FunctionField argsResize[] = {
 <tr><th class="col-md-1">FD::PTR</th><td>A standard address space pointer.</td></tr>
 <tr><th class="col-md-1">FD::STRING</th><td>A pointer to a null-terminated string.</td></tr>
 <tr><th class="col-md-1">FD::DOUBLE</th><td>A 64-bit floating point value.</td></tr>
-<tr><th class="col-md-1">FD::OBJECT</th><td>This flag is sometimes set in conjunction with the <code>FD_LONG</code> type.  It indicates that the argument refers to an object ID.</td></tr>
+<tr><th class="col-md-1">FD::OBJECT</th><td>This flag is sometimes set in conjunction with the <code>FD_INT</code> type.  It indicates that the argument refers to an object ID.</td></tr>
 <tr><th class="col-md-1">FD::PTRSIZE</th><td>This argument type can only be used if it follows an <code>FD_PTR</code> type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous <code>FD_PTR</code> argument.</td></tr>
-<tr><th class="col-md-1">FD::RESULT</th><td>This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a <code>LONG</code> field in which the function will store a result, the correct argument definition will be <code>FD_RESULT|FD_LONG|FD_PTR</code>. To make the definition of these argument types easier, <code>FD_PTRRESULT</code> and <code>FD_LONGRESULT</code> macros are also available for use.</td></tr>
+<tr><th class="col-md-1">FD::RESULT</th><td>This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a <code>LONG</code> field in which the function will store a result, the correct argument definition will be <code>FD_RESULT|FD_INT|FD_PTR</code>. To make the definition of these argument types easier, <code>FD_PTRRESULT</code> and <code>FD_INTRESULT</code> macros are also available for use.</td></tr>
 </tbody></table>
     <div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="AddInfoTag"><h2>AddInfoTag()</h2><p class="lead">Adds new tags to FileInfo structures.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Info</td><td>Pointer to a valid <a data-toggle="tooltip" title="" href="?page=struct-FileInfo">FileInfo</a> structure.</td></tr>
@@ -545,15 +545,15 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 </tbody></table></div></div>
 <p>The GetField() function is used to read field values from objects in the safest way possible.  As long as the requested field exists, the value can most likely be read.  It is only imperative that the requested type is compatible with the field value itself.</p>
 <p>The following code segment illustrates how to read values from an object:</p>
-<pre>GetField(Object, FID_X|TLONG, &amp;x);
-GetField(Object, FID_Y|TLONG, &amp;y);
+<pre>GetField(Object, FID_X|TINT, &amp;x);
+GetField(Object, FID_Y|TINT, &amp;y);
 </pre>
 <p>As GetField() is based on field ID's that reflect field names (<code>FID</code>'s), you will find that there are occasions where there is no reserved ID for the field that you wish to read.  To convert field names into their relevant IDs, call the C++ <code>strihash()</code> function.  Reserved field ID's are listed in the <code>parasol/system/fields.h</code> include file.</p>
 <p>The type of the <code>Result</code> parameter must be OR'd into the <code>Field</code> parameter.  When reading a field you must give consideration to the type of the source, in order to prevent a type mismatch from occurring.  All numeric types are compatible with each other and strings can also be converted to numeric types automatically.  String and pointer types are interchangeable.</p>
 <p>Available field types are as follows:</p>
-<table class="table"><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">TLONG</th><td>A 32-bit integer value.</td></tr>
+<table class="table"><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">TINT</th><td>A 32-bit integer value.</td></tr>
 <tr><th class="col-md-1">TDOUBLE</th><td>A 64-bit floating point value.</td></tr>
-<tr><th class="col-md-1">TLARGE</th><td>A 64-bit integer value.</td></tr>
+<tr><th class="col-md-1">TINT64</th><td>A 64-bit integer value.</td></tr>
 <tr><th class="col-md-1">TPTR</th><td>A standard 32-bit address space pointer.</td></tr>
 <tr><th class="col-md-1">TSTR</th><td>A 32-bit pointer that refers to a string.</td></tr>
 </tbody></table>
@@ -569,7 +569,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
 </tbody></table></div></div>
 <p>Use the GetFieldArray() function to read an array field from an object, including the length of that array.  This supplements the <a href="?page=GetField">GetField()</a> function, which does not support returning the array length.</p>
 <p>This function returns the array as-is with no provision for type conversion.  If the array is null terminated, it is standard practice not to count the null terminator in the total returned by <code>Elements</code>.</p>
-<p>To achieve a minimum level of type safety, the anticipated type of array values can be specified by OR'ing a field type with the field identifier, e.g. <code>TLONG</code> or <code>TSTR</code>.  If no type is incorporated then a check will not be performed.</p>
+<p>To achieve a minimum level of type safety, the anticipated type of array values can be specified by OR'ing a field type with the field identifier, e.g. <code>TINT</code> or <code>TSTR</code>.  If no type is incorporated then a check will not be performed.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NoFieldAccess</th><td>Permissions for this field indicate that it is not readable.</td></tr>
 <tr><th class="col-md-1">UnsupportedField</th><td>The Field is not supported by the object's class.</td></tr>
@@ -959,8 +959,8 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
 </tbody></table></div></div>
 <p>The SetArray() function is used as an alternative to <a href="?page=SetField">SetField()</a> for the purpose of writing arrays to objects.</p>
 <p>The following code segment illustrates how to write an array to an object field:</p>
-<pre>LONG array[100];
-SetArray(Object, FID_Table|TLONG, array, 100);
+<pre>int array[100];
+SetArray(Object, FID_Table|TINT, array, 100);
 </pre>
 <p>An indicator of the type of the elements in the <code>Array</code> must be OR'd into the <code>Field</code> parameter.  Available field types are listed in <a href="?page=SetField">SetField()</a>.  Note that the type that you choose must be a match to the type expected for elements in the array.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
@@ -1009,16 +1009,16 @@ FreeResource(memory);  // Reference is no longer valid
 </tbody></table></div></div>
 <p>The SetField() function is used to write field values to objects.</p>
 <p>The following code segment illustrates how to write values to an object:</p>
-<pre>SetField(Object, FID_X|TLONG, 100);
+<pre>SetField(Object, FID_X|TINT, 100);
 SetField(Object, FID_Statement|TSTR, "string");
 </pre>
 <p>Fields are referenced as hashed UID's calculated from the C++ <code>strihash()</code> function.  The majority of field ID's are predefined in the <code>parasol/system/fields.h</code> include file.</p>
 <p>The type of the <code>Value</code> parameter must be OR'd into the <code>Field</code> parameter.  If the provided type does not match that of the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be converted to a numeric value automatically.  String and pointer types are interchangeable.</p>
 <p>Available field types are as follows:</p>
-<table class="table"><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">TLONG</th><td>A 32-bit integer value.</td></tr>
+<table class="table"><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">TINT</th><td>A 32-bit integer value.</td></tr>
 <tr><th class="col-md-1">TDOUBLE</th><td>A 64-bit floating point value.</td></tr>
 <tr><th class="col-md-1">TSCALE</th><td>A 64-bit floating point value that represents a scaled multiplier or percentage (1.0 is equivalent to 100%).</td></tr>
-<tr><th class="col-md-1">TLARGE</th><td>A 64-bit integer value.</td></tr>
+<tr><th class="col-md-1">TINT64</th><td>A 64-bit integer value.</td></tr>
 <tr><th class="col-md-1">TPTR</th><td>A standard address space pointer.</td></tr>
 <tr><th class="col-md-1">TSTR</th><td>A pointer that refers to a string.</td></tr>
 <tr><th class="col-md-1">TFUNCTION</th><td>A pointer to a <code>FUNCTION</code> structure.</td></tr>
@@ -1430,29 +1430,29 @@ SetField(Object, FID_Statement|TSTR, "string");
 <tr><th>FD::FUNCTIONPTR</th><td>Synonym for <code>PTR | FUNCTION</code></td></tr>
 <tr><th>FD::I</th><td>Synonym for <code>INIT</code></td></tr>
 <tr><th>FD::INIT</th><td>CLASSDEF</td></tr>
-<tr><th>FD::LARGE</th><td>64 bit integer.</td></tr>
-<tr><th>FD::LARGERESULT</th><td>For actions and methods</td></tr>
+<tr><th>FD::INT</th><td>32 bit integer.</td></tr>
+<tr><th>FD::INT64</th><td>64 bit integer.</td></tr>
+<tr><th>FD::INT64RESULT</th><td>For actions and methods</td></tr>
+<tr><th>FD::INTRESULT</th><td>For actions and methods</td></tr>
 <tr><th>FD::LOCAL</th><td>CLASSDEF Pointer to an object that is local to the class</td></tr>
-<tr><th>FD::LONG</th><td>32 bit integer.</td></tr>
-<tr><th>FD::LONGRESULT</th><td>For actions and methods</td></tr>
 <tr><th>FD::LOOKUP</th><td>CLASSDEF</td></tr>
-<tr><th>FD::OBJECT</th><td>Supplementary, can be used with longs (for IDs) or pointers</td></tr>
-<tr><th>FD::OBJECTID</th><td>Synonym for <code>LONG | OBJECT</code></td></tr>
+<tr><th>FD::OBJECT</th><td>Supplementary, can be used with ints (for IDs) or pointers</td></tr>
+<tr><th>FD::OBJECTID</th><td>Synonym for <code>INT | OBJECT</code></td></tr>
 <tr><th>FD::OBJECTPTR</th><td>Synonym for <code>PTR | OBJECT</code></td></tr>
 <tr><th>FD::POINTER</th><td>Pointer (32 or 64 bit).</td></tr>
 <tr><th>FD::PRIVATE</th><td>Synonym for <code>SYSTEM</code></td></tr>
 <tr><th>FD::PTR</th><td>Synonym for <code>POINTER</code></td></tr>
-<tr><th>FD::PTRBUFFER</th><td>The next argument should be <code>LONG|BUFSIZE</code></td></tr>
+<tr><th>FD::PTRBUFFER</th><td>The next argument should be <code>INT|BUFSIZE</code></td></tr>
 <tr><th>FD::PTRRESULT</th><td>Use for pointer-based value results only</td></tr>
 <tr><th>FD::PTRSIZE</th><td>Synonym for <code>BUFSIZE</code></td></tr>
 <tr><th>FD::PTR_DOUBLERESULT</th><td>Use for pointer-based value results only.</td></tr>
-<tr><th>FD::PTR_LARGERESULT</th><td>Use for pointer-based value results only.</td></tr>
-<tr><th>FD::PTR_LONGRESULT</th><td>Use for pointer-based value results only.</td></tr>
+<tr><th>FD::PTR_INT64RESULT</th><td>Use for pointer-based value results only.</td></tr>
+<tr><th>FD::PTR_INTRESULT</th><td>Use for pointer-based value results only.</td></tr>
 <tr><th>FD::R</th><td>Synonym for <code>READ</code></td></tr>
 <tr><th>FD::READ</th><td>CLASSDEF</td></tr>
 <tr><th>FD::RESOURCE</th><td>The referenced struct or pointer is a special resource.  Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Fluid.</td></tr>
 <tr><th>FD::RESULT</th><td>FUNCDEF Overrides <code>READ</code></td></tr>
-<tr><th>FD::RGB</th><td>Supplementary, if a long type then format is <code>0xAARRGGBB</code>, if pointer then refers to an RGB structure.</td></tr>
+<tr><th>FD::RGB</th><td>Supplementary, if an int type then format is <code>0xAARRGGBB</code>, if pointer then refers to an RGB structure.</td></tr>
 <tr><th>FD::RI</th><td>Synonym for <code>READ | INIT</code></td></tr>
 <tr><th>FD::RW</th><td>Synonym for <code>READ | WRITE</code></td></tr>
 <tr><th>FD::SCALED</th><td>Supplementary, indicates a float value for multiplicative scaling.</td></tr>
@@ -1465,7 +1465,7 @@ SetField(Object, FID_Statement|TSTR, "string");
 <tr><th>FD::TAGS</th><td>FUNCDEF Overrides <code>INIT</code></td></tr>
 <tr><th>FD::UNIT</th><td>A value that describes a display unit.</td></tr>
 <tr><th>FD::UNSIGNED</th><td>Supplementary, integer value is unsigned.</td></tr>
-<tr><th>FD::VARTAGS</th><td>FUNCDEF Overrides <code>FLAGS</code>.  Use for 64-bit taglists that require value definitions, e.g. <code>TDOUBLE</code>, <code>TLONG</code> etc.</td></tr>
+<tr><th>FD::VARTAGS</th><td>FUNCDEF Overrides <code>FLAGS</code>.  Use for 64-bit taglists that require value definitions, e.g. <code>TDOUBLE</code>, <code>TINT</code> etc.</td></tr>
 <tr><th>FD::VIRTUAL</th><td>CLASSDEF Ensures that the field has no physical representation in the structure.</td></tr>
 <tr><th>FD::VOID</th><td></td></tr>
 <tr><th>FD::VOLATILE</th><td>[Not yet allocated a bit]  Used on result pointers, usually strings, to indicate that the consecutive reads will overwrite the content of previous return values.  This indicates to scripting languages to make a copy of the data before the next interaction with the object.</td></tr>

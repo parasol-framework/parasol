@@ -2248,7 +2248,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="INTRESULT">For actions and methods</const>
       <const name="LOCAL">CLASSDEF Pointer to an object that is local to the class</const>
       <const name="LOOKUP">CLASSDEF</const>
-      <const name="OBJECT">Supplementary, can be used with longs (for IDs) or pointers</const>
+      <const name="OBJECT">Supplementary, can be used with ints (for IDs) or pointers</const>
       <const name="OBJECTID">Synonym for <code>INT | OBJECT</code></const>
       <const name="OBJECTPTR">Synonym for <code>PTR | OBJECT</code></const>
       <const name="POINTER">Pointer (32 or 64 bit).</const>
@@ -2264,7 +2264,7 @@ SetField(Object, FID_Statement|TSTR, "string");
       <const name="READ">CLASSDEF</const>
       <const name="RESOURCE">The referenced struct or pointer is a special resource.  Changes some behaviours, e.g. a resourced struct will use direct value references rather than being copied in Fluid.</const>
       <const name="RESULT">FUNCDEF Overrides <code>READ</code></const>
-      <const name="RGB">Supplementary, if a long type then format is <code>0xAARRGGBB</code>, if pointer then refers to an RGB structure.</const>
+      <const name="RGB">Supplementary, if an int type then format is <code>0xAARRGGBB</code>, if pointer then refers to an RGB structure.</const>
       <const name="RI">Synonym for <code>READ | INIT</code></const>
       <const name="RW">Synonym for <code>READ | WRITE</code></const>
       <const name="SCALED">Supplementary, indicates a float value for multiplicative scaling.</const>

@@ -111,10 +111,10 @@ function getFieldType(Def, Type, CustomName, Option)
    elseif bit.band(Type, FD_POINTER) != 0 then
       local ptr = 0
       if bit.band(Type, FD_INT) != 0 then
-         result = 'LONG'
+         result = 'INT'
          ptr = ptr + 1
       elseif bit.band(Type, FD_INT64) != 0 then
-         result = 'LARGE'
+         result = 'INT64'
          ptr = ptr + 1
       elseif bit.band(Type, FD_DOUBLE) != 0 then
          result = 'DOUBLE'
@@ -180,7 +180,7 @@ function cType(Field, Origin)
    Field.defType = Field.type -- Save the original type name
 
    -- A ! symbol indicates that the field is a result that is allocated and can be removed with FreeResource()
-   -- A & symbol indicates that the field is a pointer to a reserved area that will store a result value, e.g. LONG *
+   -- A & symbol indicates that the field is a pointer to a reserved area that will store a result value, e.g. INT *
 
    local resultValue
    local special, result_type = Field.type:match('^([!&]+)(.+)')
@@ -362,7 +362,7 @@ function cType(Field, Origin)
             Field.type     = 'int'
             Field.fullType = glTypes.int
          elseif (t == 'large') then
-            Field.type     = 'LARGE'
+            Field.type     = 'INT64'
             Field.fullType = glTypes.large
          elseif (t == 'short') then
             Field.type = 'int16_t'
@@ -404,7 +404,7 @@ function cType(Field, Origin)
       local unsigned, count = Field.type:match('^(u-)int%((%d+)%)')
       if (count != nil) then
          if nz(unsigned) then
-            Field.type = 'ULONG'
+            Field.type = 'uint32_t'
          else
             Field.type = 'int'
          end
