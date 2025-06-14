@@ -50,7 +50,7 @@ static ERR JPEG_Activate(extPicture *Self)
 
    if (!Self->prvFile) {
       STRING path;
-      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::GetField);
+      if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          log.warning("Failed to open file \"%s\".", path);
@@ -166,7 +166,7 @@ static ERR JPEG_Init(extPicture *Self)
    UBYTE *buffer;
    STRING path = NULL;
 
-   Self->get(FID_Location, &path);
+   Self->get(FID_Location, path);
 
    if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       // If no location has been specified, assume that the picture is being created from scratch (e.g. to save an image to disk).  The
@@ -208,7 +208,7 @@ static ERR JPEG_Query(extPicture *Self)
 
    if (!Self->prvFile) {
       STRING path;
-      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::GetField);
+      if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          return log.warning(ERR::CreateObject);
@@ -253,7 +253,7 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
    if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
       STRING path;
-      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::MissingPath);
+      if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::MissingPath);
 
       if (!(file = objFile::create::local(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) {
          return log.warning(ERR::CreateObject);

@@ -674,8 +674,8 @@ static ERR FLUID_Init(objScript *Self)
       int64_t src_ts, src_size;
 
       if ((src_file = objFile::create::local(fl::Path(Self->Path)))) {
-         error = src_file->get(FID_TimeStamp, &src_ts);
-         if (error IS ERR::Okay) error = src_file->get(FID_Size, &src_size);
+         error = src_file->get(FID_TimeStamp, src_ts);
+         if (error IS ERR::Okay) error = src_file->get(FID_Size, src_size);
       }
       else error = ERR::File;
 
@@ -689,8 +689,8 @@ static ERR FLUID_Init(objScript *Self)
          {
             objFile::create cache_file = { fl::Path(Self->CacheFile) };
             if (cache_file.ok()) {
-               cache_file->get(FID_TimeStamp, &cache_ts);
-               cache_file->get(FID_Size, &cache_size);
+               cache_file->get(FID_TimeStamp, cache_ts);
+               cache_file->get(FID_Size, cache_size);
             }
          }
 
@@ -743,7 +743,7 @@ static ERR FLUID_Init(objScript *Self)
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
             if (src_file->getPtr(FID_Date, &dt) IS ERR::Okay) prv->CacheDate = *dt;
-            src_file->get(FID_Permissions, (LONG *)&prv->CachePermissions);
+            src_file->get(FID_Permissions, (LONG &)prv->CachePermissions);
             prv->LoadedSize = loaded_size;
          }
       }

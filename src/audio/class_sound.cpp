@@ -692,7 +692,7 @@ static ERR SOUND_Init(extSound *Self)
    }
 
    STRING path;
-   if (((Self->Flags & SDF::NEW) != SDF::NIL) or (Self->get(FID_Path, &path) != ERR::Okay) or (!path)) {
+   if (((Self->Flags & SDF::NEW) != SDF::NIL) or (Self->get(FID_Path, path) != ERR::Okay) or (!path)) {
       // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to record
       // audio to disk).
 

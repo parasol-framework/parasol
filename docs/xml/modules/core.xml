@@ -580,8 +580,8 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
       <param type="UINT" name="FieldID">The unique field hash to resolve.</param>
     </input>
     <description>
-<p>Resolves a field identifier to its name.  For this to work successfully, the field must have been registered with the internal dictionary.  This is handled automatically when a new class is added to the system.</p>
-<p>If the <code>FieldID</code> is not registered, the value is returned back as a hex string.  The inclusion of this feature guarantees that an empty string will never be returned.</p>
+<p>Resolves a field identifier to its name by checking the internal dictionary.  The field must have previously been referenced by a class blueprint in order for its name to be registered.</p>
+<p>If <code>FieldID</code> is not registered, the value is returned as a printable hex string.</p>
     </description>
     <result type="CSTRING">The name of the field is returned.</result>
   </function>

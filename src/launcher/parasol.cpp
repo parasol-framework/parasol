@@ -157,7 +157,7 @@ extern "C" int main(int argc, char **argv)
       }
       else if (!glTargetFile.empty()) {
          STRING path;
-         if (glTask->get(FID_Path, &path) IS ERR::Okay) log.msg("Path: %s", path);
+         if (glTask->get(FID_Path, path) IS ERR::Okay) log.msg("Path: %s", path);
          else log.error("No working path.");
 
          LOC type;

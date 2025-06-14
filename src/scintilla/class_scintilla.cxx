@@ -2210,7 +2210,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
          }
          else error = ERR::Failed;
       }
-      else if (file->get(FID_Size, &size) IS ERR::Okay) {
+      else if (file->get(FID_Size, size) IS ERR::Okay) {
          if (size > 0) {
             if (size < 1024 * 1024 * 10) {
                if (AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &str) IS ERR::Okay) {

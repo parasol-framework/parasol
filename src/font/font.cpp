@@ -1096,7 +1096,7 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
                if (fl::ReadLE(*file, &count) IS ERR::Okay) {
                   if (type_id IS 0x8008) {
                      font_count  = count;
-                     file->get(FID_Position, &font_offset);
+                     file->get(FID_Position, font_offset);
                      font_offset = font_offset + 4;
                      break;
                   }

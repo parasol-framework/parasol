@@ -2007,6 +2007,9 @@ struct Field {
    uint16_t Offset;                                                          // Field offset within the object
    uint16_t Index;                                                           // Field array index
    uint32_t Flags;                                                           // Special flags that describe the field
+   bool readable() {
+      return (Flags & FD_READ) ? true : false;
+   }
 };
 
 struct ScriptArg { // For use with sc::Exec
@@ -2581,6 +2584,22 @@ class LogLevel {
 
 } // namespace
 
+class ScopedObjectAccess {
+   private:
+      OBJECTPTR obj;
+
+   public:
+      ERR error;
+
+      inline ScopedObjectAccess(OBJECTPTR Object);
+
+      inline ~ScopedObjectAccess();
+
+      inline bool granted() { return error == ERR::Okay; }
+
+      inline void release();
+};
+
 //********************************************************************************************************************
 // Refer to Object->get() to see what this is about...
 
@@ -2595,6 +2614,70 @@ template <> inline int64_t FIELD_TAG<APTR>()      { return TPTR; }
 template <> inline int64_t FIELD_TAG<CSTRING>()   { return TSTRING; }
 template <> inline int64_t FIELD_TAG<STRING>()    { return TSTRING; }
 template <> inline int64_t FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
+
+//********************************************************************************************************************
+// ObjectContext is used to represent the object that has the current context in terms of the run-time call stack.
+// It is primarily used for the resource tracking of newly allocated memory and objects, as well as for message logs
+// and analysis of the call stack.
+
+extern Object glDummyObject; // Defined in the Core
+extern THREADVAR class ObjectContext *tlContext; // Defined in the Core
+
+class ObjectContext {
+   public:
+   class ObjectContext *stack; // Call stack.
+   struct Field *field;        // Set if the context is linked to a get/set field operation.  For logging purposes only.
+   AC action;                  // Set if the context enters an action or method routine.
+
+   protected:
+   OBJECTPTR obj;           // Required.  The object that currently has the operating context.
+
+   public:
+   ObjectContext() { // Dummy initialisation
+      stack  = NULL;
+      obj    = &glDummyObject;
+      field  = NULL;
+      action = AC::NIL;
+   }
+
+   ObjectContext(OBJECTPTR pObject, AC pAction, struct Field *pField = NULL) {
+      stack  = tlContext;
+      obj    = pObject;
+      field  = pField;
+      action = pAction;
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wdangling-pointer"
+      tlContext = this;
+      #pragma GCC diagnostic pop
+   }
+
+   ~ObjectContext() {
+      if (stack) tlContext = stack;
+   }
+
+   // Return the nearest object for resourcing purposes.  Note that an action ID of 0 has special meaning and indicates
+   // that resources should be tracked to the next object on the stack (this feature is used by GetField*() functionality).
+
+   inline OBJECTPTR resource() const {
+      if (action != AC::NIL) return obj;
+      else {
+         for (auto ctx = stack; ctx; ctx=ctx->stack) {
+            if (action != AC::NIL) return ctx->obj;
+         }
+         return &glDummyObject;
+      }
+   }
+
+   inline OBJECTPTR setContext(OBJECTPTR NewObject) {
+      auto old = obj;
+      obj = NewObject;
+      return old;
+   }
+
+   constexpr inline OBJECTPTR object() const { // Return the object that has the context (but not necessarily for resourcing)
+      return obj;
+   }
+};
 
 //********************************************************************************************************************
 // Header used for all objects.
@@ -2687,12 +2770,57 @@ struct Object { // Must be 64-bit aligned
    // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
    // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
 
-   inline ERR get(FIELD FieldID, int *Value)      { return GetField(this, FieldID|TINT, Value); }
-   inline ERR get(FIELD FieldID, int64_t *Value)  { return GetField(this, FieldID|TINT64, Value); }
-   inline ERR get(FIELD FieldID, double *Value)   { return GetField(this, FieldID|TDOUBLE, Value); }
-   inline ERR get(FIELD FieldID, STRING *Value)   { return GetField(this, FieldID|TSTRING, Value); }
-   inline ERR get(FIELD FieldID, CSTRING *Value)  { return GetField(this, FieldID|TSTRING, Value); }
-   inline ERR get(FIELD FieldID, Unit *Value)     { return GetField(this, FieldID|TUNIT, Value); }
+   ERR get(FIELD FieldID, int &Value) {
+      Value = 0;
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!field->readable()) return ERR::NoFieldAccess;
+
+         ScopedObjectAccess objlock(target);
+
+         auto flags = field->Flags;
+
+         if (flags & FD_UNIT) {
+            ObjectContext ctx(target, AC::NIL, field);
+
+            ERR error;
+            if (flags & (FD_DOUBLE|FD_INT64|FD_INT)) {
+               Unit var;
+               var.Type = FD_DOUBLE;
+               error = field->GetValue(target, &var);
+               if (error IS ERR::Okay) Value = pf::F2I(var.Value);
+            }
+            else return ERR::FieldTypeMismatch;
+
+            return error;
+         }
+
+         APTR ptr_value;
+         int8_t field_value[8];
+         if (field->GetValue) {
+            ObjectContext ctx(target, AC::NIL, field);
+            auto get_field = (ERR (*)(APTR, APTR, int &))field->GetValue;
+            int array_size;
+            ERR error = get_field(target, field_value, array_size);
+            if (error != ERR::Okay) return error;
+            ptr_value = field_value;
+         }
+         else ptr_value = ((BYTE *)target) + field->Offset;
+
+         if (flags & FD_INT) Value = *((int *)ptr_value);
+         else if (flags & FD_INT64) Value = (int)(*((int64_t *)ptr_value));
+         else if (flags & FD_DOUBLE) Value = pf::F2I(*((double *)ptr_value));
+         else return ERR::FieldTypeMismatch;
+         return ERR::Okay;
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR get(FIELD FieldID, int64_t &Value)  { return GetField(this, FieldID|TINT64, &Value); }
+   inline ERR get(FIELD FieldID, double &Value)   { return GetField(this, FieldID|TDOUBLE, &Value); }
+   inline ERR get(FIELD FieldID, STRING &Value)   { return GetField(this, FieldID|TSTRING, &Value); }
+   inline ERR get(FIELD FieldID, CSTRING &Value)  { return GetField(this, FieldID|TSTRING, &Value); }
+   inline ERR get(FIELD FieldID, Unit &Value)     { return GetField(this, FieldID|TUNIT, &Value); }
    inline ERR getPtr(FIELD FieldID, APTR Value)   { return GetField(this, FieldID|TPTR, Value); }
    inline ERR getScale(FIELD FieldID, double *Value) { return GetField(this, FieldID|TDOUBLE|TSCALE, Value); }
 
@@ -2890,6 +3018,24 @@ class Create {
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
+
+//********************************************************************************************************************
+
+inline ScopedObjectAccess::ScopedObjectAccess(OBJECTPTR Object) {
+   error = Object->lock();
+   obj = Object;
+}
+
+inline ScopedObjectAccess::~ScopedObjectAccess() {
+   if (error IS ERR::Okay) obj->unlock();
+}
+
+inline void ScopedObjectAccess::release() {
+   if (error IS ERR::Okay) {
+      obj->unlock();
+      error = ERR::NotLocked;
+   }
+}
 
 // Action and Notification Structures
 

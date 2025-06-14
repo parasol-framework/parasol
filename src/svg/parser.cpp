@@ -1914,7 +1914,7 @@ ERR svgState::process_tag(XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent, objV
          if (proc_shape(CLASSID::VECTORTEXT, Tag, Parent, Vector) IS ERR::Okay) {
             if (!Tag.Children.empty()) {
                STRING existing_str = NULL;
-               Vector->get(FID_String, &existing_str);
+               Vector->get(FID_String, existing_str);
 
                if (auto buffer = Tag.getContent(); !buffer.empty()) {
                   pf::ltrim(buffer);

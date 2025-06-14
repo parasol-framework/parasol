@@ -39,7 +39,7 @@ static ERR RSVG_Init(extPicture *Self)
    pf::Log log;
    STRING path;
 
-   Self->get(FID_Path, &path);
+   Self->get(FID_Path, path);
 
    if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       return ERR::NoSupport; // Creating new SVG's is not supported in this module.
@@ -82,7 +82,7 @@ static ERR RSVG_Query(extPicture *Self)
 
    if (!prv->SVG) {
       STRING path;
-      if (Self->get(FID_Path, &path) IS ERR::Okay) {
+      if (Self->get(FID_Path, path) IS ERR::Okay) {
          if ((prv->SVG = objSVG::create::local(fl::Path(path)))) {
          }
          else return log.warning(ERR::CreateObject);

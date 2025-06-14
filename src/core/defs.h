@@ -709,7 +709,6 @@ extern APTR glJNIEnv;
 extern class ObjectContext glTopContext; // Read-only, not a threading concern.
 extern objTime *glTime;
 extern objFile *glClassFile;
-extern Object glDummyObject;
 extern TIMER glProcessJanitor;
 extern LONG glEventMask;
 extern struct ModHeader glCoreHeader;
@@ -744,7 +743,6 @@ extern std::atomic_int glUniqueMsgID;
 //********************************************************************************************************************
 // Thread specific variables - these do not require locks.
 
-extern THREADVAR class ObjectContext *tlContext;
 extern THREADVAR class TaskMessage *tlCurrentMsg;
 extern THREADVAR bool tlMainThread;
 extern THREADVAR WORD tlMsgRecursion;
@@ -863,67 +861,6 @@ class TaskMessage {
       Size = Source.Size;
       if (Source.ExtBuffer) setBuffer(Source.ExtBuffer, Size);
       else if (Size) copymem(Source.Buffer.data(), Buffer.data(), Size);
-   }
-};
-
-//********************************************************************************************************************
-// ObjectContext is used to represent the object that has the current context in terms of the run-time call stack.
-// It is primarily used for the resource tracking of newly allocated memory and objects, as well as for message logs
-// and analysis of the call stack.
-
-class ObjectContext {
-   public:
-   class ObjectContext *stack; // Call stack.
-   struct Field *field;        // Set if the context is linked to a get/set field operation.  For logging purposes only.
-   AC action;                  // Set if the context enters an action or method routine.
-
-   protected:
-   OBJECTPTR obj;           // Required.  The object that currently has the operating context.
-
-   public:
-   ObjectContext() { // Dummy initialisation
-      stack  = NULL;
-      obj = &glDummyObject;
-      field  = NULL;
-      action = AC::NIL;
-   }
-
-   ObjectContext(OBJECTPTR pObject, AC pAction, struct Field *pField = NULL) {
-      stack  = tlContext;
-      obj = pObject;
-      field  = pField;
-      action = pAction;
-      #pragma GCC diagnostic push
-      #pragma GCC diagnostic ignored "-Wdangling-pointer"
-      tlContext = this;
-      #pragma GCC diagnostic pop
-   }
-
-   ~ObjectContext() {
-      if (stack) tlContext = stack;
-   }
-
-   // Return the nearest object for resourcing purposes.  Note that an action ID of 0 has special meaning and indicates
-   // that resources should be tracked to the next object on the stack (this feature is used by GetField*() functionality).
-
-   inline OBJECTPTR resource() const {
-      if (action != AC::NIL) return obj;
-      else {
-         for (auto ctx = stack; ctx; ctx=ctx->stack) {
-            if (action != AC::NIL) return ctx->obj;
-         }
-         return &glDummyObject;
-      }
-   }
-
-   inline OBJECTPTR setContext(OBJECTPTR NewObject) {
-      auto old = obj;
-      obj = NewObject;
-      return old;
-   }
-
-   constexpr inline OBJECTPTR object() const { // Return the object that has the context (but not necessarily for resourcing)
-      return obj;
    }
 };
 
@@ -1182,32 +1119,6 @@ inline void set_memory_manager(APTR Address, ResourceManager *Manager)
    ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
    address_mgr[0] = Manager;
 }
-
-//********************************************************************************************************************
-
-class ScopedObjectAccess {
-   private:
-      OBJECTPTR obj;
-
-   public:
-      ERR error;
-
-      ScopedObjectAccess(OBJECTPTR Object) {
-         error = Object->lock();
-         obj = Object;
-      }
-
-      ~ScopedObjectAccess() { if (error IS ERR::Okay) obj->unlock(); }
-
-      bool granted() { return error == ERR::Okay; }
-
-      void release() {
-         if (error IS ERR::Okay) {
-            obj->unlock();
-            error = ERR::NotLocked;
-         }
-      }
-};
 
 //********************************************************************************************************************
 

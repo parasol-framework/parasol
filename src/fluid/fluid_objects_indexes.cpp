@@ -616,7 +616,7 @@ static int object_get_rgb(lua_State *Lua, const obj_read &Handle, object *Def)
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       STRING rgb;
-      if (((error = obj->get(field->FieldID, &rgb)) IS ERR::Okay) and (rgb)) lua_pushstring(Lua, rgb);
+      if (((error = obj->get(field->FieldID, rgb)) IS ERR::Okay) and (rgb)) lua_pushstring(Lua, rgb);
       release_object(Def);
    }
    else error = ERR::AccessObject;
@@ -663,7 +663,7 @@ static int object_get_string(lua_State *Lua, const obj_read &Handle, object *Def
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       STRING result;
-      if ((error = obj->get(field->FieldID, &result)) IS ERR::Okay) {
+      if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) {
          lua_pushstring(Lua, result);
          if (field->Flags & FD_ALLOC) FreeResource(result);
       }
@@ -717,7 +717,7 @@ static int object_get_double(lua_State *Lua, const obj_read &Handle, object *Def
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       DOUBLE result;
-      if ((error = obj->get(field->FieldID, &result)) IS ERR::Okay) lua_pushnumber(Lua, result);
+      if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) lua_pushnumber(Lua, result);
       release_object(Def);
    }
    else error = ERR::AccessObject;
@@ -733,7 +733,7 @@ static int object_get_large(lua_State *Lua, const obj_read &Handle, object *Def)
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       int64_t result;
-      if ((error = obj->get(field->FieldID, &result)) IS ERR::Okay) lua_pushnumber(Lua, result);
+      if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) lua_pushnumber(Lua, result);
       release_object(Def);
    }
    else error = ERR::AccessObject;
@@ -749,7 +749,7 @@ static int object_get_long(lua_State *Lua, const obj_read &Handle, object *Def)
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       LONG result;
-      if ((error = obj->get(field->FieldID, &result)) IS ERR::Okay) {
+      if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) {
          if (field->Flags & FD_OBJECT) push_object_id(Lua, result);
          else lua_pushinteger(Lua, result);
       }
@@ -768,7 +768,7 @@ static int object_get_ulong(lua_State *Lua, const obj_read &Handle, object *Def)
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       ULONG result;
-      if ((error = obj->get(field->FieldID, (LONG *)&result)) IS ERR::Okay) {
+      if ((error = obj->get(field->FieldID, (LONG &)result)) IS ERR::Okay) {
          lua_pushnumber(Lua, result);
       }
       release_object(Def);

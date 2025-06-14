@@ -230,7 +230,7 @@ Path: Path to an image file supported by the @Picture class.
 
 static ERR IMAGEFX_GET_Path(extImageFX *Self, STRING *Value)
 {
-   if (Self->Picture) return Self->Picture->get(FID_Path, Value);
+   if (Self->Picture) return Self->Picture->get(FID_Path, *Value);
    else *Value = NULL;
    return ERR::Okay;
 }

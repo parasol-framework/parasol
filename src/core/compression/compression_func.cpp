@@ -213,7 +213,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    // Send feedback
 
    CompressionFeedback fb(FDB::COMPRESS_FILE, Self->FileIndex, Location.c_str(), filename.c_str());
-   file->get(FID_Size, &fb.OriginalSize);
+   file->get(FID_Size, fb.OriginalSize);
 
    switch (send_feedback(Self, &fb)) {
       case ERR::Terminate:
@@ -280,7 +280,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    entry.Offset = dataoffset;
 
    if (((Self->Flags & CMF::NO_LINKS) IS CMF::NIL) and ((file->Flags & FL::LINK) != FL::NIL)) {
-      if (file->get(FID_Link, &symlink) IS ERR::Okay) {
+      if (file->get(FID_Link, symlink) IS ERR::Okay) {
          log.msg("Note: File \"%s\" is a symbolic link to \"%s\"", filename.c_str(), symlink);
          entry.Flags |= ZIP_LINK;
       }
@@ -295,7 +295,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    }
 
    PERMIT permissions;
-   if (file->get(FID_Permissions, (LONG *)&permissions) IS ERR::Okay) {
+   if (file->get(FID_Permissions, (LONG &)permissions) IS ERR::Okay) {
       if ((permissions & PERMIT::USER_READ) != PERMIT::NIL)   entry.Flags |= ZIP_UREAD;
       if ((permissions & PERMIT::GROUP_READ) != PERMIT::NIL)  entry.Flags |= ZIP_GREAD;
       if ((permissions & PERMIT::OTHERS_READ) != PERMIT::NIL) entry.Flags |= ZIP_OREAD;

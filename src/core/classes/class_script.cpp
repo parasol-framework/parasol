@@ -823,7 +823,7 @@ static ERR GET_WorkingPath(objScript *Self, STRING *Value)
       }
       else {
          STRING working_path;
-         if ((CurrentTask()->get(FID_Path, &working_path) IS ERR::Okay) and (working_path)) {
+         if ((CurrentTask()->get(FID_Path, working_path) IS ERR::Okay) and (working_path)) {
             // Using ResolvePath() can help to determine relative paths such as "../path/file"
 
             std::string buf = working_path;

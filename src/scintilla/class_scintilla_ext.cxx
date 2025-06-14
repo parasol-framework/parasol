@@ -331,7 +331,7 @@ void ScintillaParasol::Paste()
          objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
          if (file.ok()) {
             LONG len, size;
-            if ((file->get(FID_Size, &size) IS ERR::Okay) and (size > 0)) {
+            if ((file->get(FID_Size, size) IS ERR::Okay) and (size > 0)) {
                STRING buffer;
                if (AllocMemory(size, MEM::STRING, &buffer) IS ERR::Okay) {
                   if (file->read(buffer, size, &len) IS ERR::Okay) {

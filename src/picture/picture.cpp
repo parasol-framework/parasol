@@ -138,7 +138,7 @@ static ERR PICTURE_Activate(extPicture *Self)
 
    if (!Self->prvFile) {
       STRING path;
-      if (Self->get(FID_Path, &path) != ERR::Okay) return log.warning(ERR::GetField);
+      if (Self->get(FID_Path, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
@@ -460,7 +460,7 @@ static ERR PICTURE_Query(extPicture *Self)
    // Open the data file
 
    if (!Self->prvFile) {
-      if (Self->get(FID_Path, &path) != ERR::Okay) return log.warning(ERR::GetField);
+      if (Self->get(FID_Path, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
@@ -560,7 +560,7 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
-      if (Self->get(FID_Path, &path) != ERR::Okay) return log.warning(ERR::MissingPath);
+      if (Self->get(FID_Path, path) != ERR::Okay) return log.warning(ERR::MissingPath);
 
       if (!(file = objFile::create::global(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) return ERR::CreateObject;
    }

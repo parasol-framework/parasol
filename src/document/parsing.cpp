@@ -422,7 +422,7 @@ void parser::translate_args(const std::string &Input, std::string &Output)
                            if (auto classfield = FindField(object.obj, strihash(fieldname), &target)) {
                               if (classfield->Flags & FD_STRING) {
                                  CSTRING str;
-                                 if (target->get(classfield->FieldID, &str) IS ERR::Okay) Output.replace(pos, end-pos, str);
+                                 if (target->get(classfield->FieldID, str) IS ERR::Okay) Output.replace(pos, end-pos, str);
                                  else Output.replace(pos, end-pos, "");
                               }
                               else {
@@ -592,7 +592,7 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
    }
    else if (!Output.compare(pos, sizeof("[%path]"), "[%path]")) {
       CSTRING workingpath = "";
-      Self->get(FID_WorkingPath, &workingpath);
+      Self->get(FID_WorkingPath, workingpath);
       if (!workingpath) workingpath = "";
       Output.replace(pos, sizeof("[%path]")-1, workingpath);
    }

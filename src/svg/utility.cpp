@@ -491,7 +491,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          }
          else xml->setPath(Path);
 
-         if (task->get(FID_Path, &working_path) IS ERR::Okay) working_path = strclone(working_path);
+         if (task->get(FID_Path, working_path) IS ERR::Okay) working_path = strclone(working_path);
 
          // Set a new working path based on the path
 

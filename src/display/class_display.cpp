@@ -796,7 +796,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
          }
 
          STRING name = NULL;
-         CurrentTask()->get(FID_Name, &name);
+         CurrentTask()->get(FID_Name, name);
          HWND popover = 0;
          if (Self->PopOverID) {
             if (ScopedObjectLock<extDisplay> other_display(Self->PopOverID, 3000); other_display.granted()) {
@@ -2177,7 +2177,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
 
          bool maximise = true;
          STRING title;
-         Self->get(FID_Title, &title); // Get the window title before we kill it
+         Self->get(FID_Title, title); // Get the window title before we kill it
 
          OBJECTID surface_id = winLookupSurfaceID(Self->WindowHandle);
          winSetSurfaceID(Self->WindowHandle, 0); // Nullify the surface ID to prevent WM_DESTROY from being acted upon
