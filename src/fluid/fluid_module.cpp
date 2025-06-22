@@ -87,7 +87,7 @@ static int module_destruct(lua_State *Lua)
 static int module_tostring(lua_State *Lua)
 {
    if (auto mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
-      STRING name;
+      CSTRING name;
       if (mod->Module->get(FID_Name, name) IS ERR::Okay) {
          lua_pushstring(Lua, name);
       }

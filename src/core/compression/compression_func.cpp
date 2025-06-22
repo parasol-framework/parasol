@@ -161,7 +161,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    log.branch("Compressing file \"%s\" to \"%s\"", Location.c_str(), Path.c_str());
 
-   STRING symlink = NULL;
+   CSTRING symlink = nullptr;
    bool deflateend = false;
    ULONG dataoffset = 0;
    std::string filename;
@@ -329,7 +329,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
          log.warning("Failure during data compression.");
          return ERR::Failed;
       }
-      entry.CRC = GenCRC32(entry.CRC, symlink, len);
+      entry.CRC = GenCRC32(entry.CRC, (APTR)symlink, len);
    }
    else {
       struct acRead read = { .Buffer = Self->Input, .Length = SIZE_COMPRESSION_BUFFER };

@@ -19,6 +19,7 @@
 #include <atomic>
 #include <array>
 #include <charconv>
+#include <sstream>
 #endif
 
 #if defined(_DEBUG)
@@ -2770,7 +2771,31 @@ struct Object { // Must be 64-bit aligned
    // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
    // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
 
-   ERR get(FIELD FieldID, int &Value) {
+   private:
+   template <class T> ERR get_unit(Object *Object, struct Field &Field, T &Value) {
+      ObjectContext ctx(Object, AC::NIL, &Field);
+
+      if (Field.Flags & (FD_DOUBLE|FD_INT64|FD_INT)) {
+          Unit var(0, FD_DOUBLE);
+          auto error = Field.GetValue(Object, &var);
+          if (error IS ERR::Okay) Value = var.Value;
+          return error;
+      }
+      else return ERR::FieldTypeMismatch;
+   }
+
+   inline std::pair<ERR, APTR> get_field_value(Object *Object, struct Field &Field, int8_t Buffer[8], int &ArraySize) {
+      if (Field.GetValue) {
+         ObjectContext ctx(Object, AC::NIL, &Field);
+         auto get_field = (ERR (*)(APTR, APTR, int &))Field.GetValue;
+         return std::make_pair(get_field(Object, Buffer, ArraySize), Buffer);
+      }
+      else return std::make_pair(ERR::Okay, ((BYTE *)Object) + Field.Offset);
+   }
+
+   public:
+
+   template <class T> ERR get(FIELD FieldID, T &Value) requires std::integral<T> || std::floating_point<T> {
       Value = 0;
       Object *target;
       if (auto field = FindField(this, FieldID, &target)) {
@@ -2780,46 +2805,151 @@ struct Object { // Must be 64-bit aligned
 
          auto flags = field->Flags;
 
-         if (flags & FD_UNIT) {
-            ObjectContext ctx(target, AC::NIL, field);
+         if (flags & FD_UNIT) return get_unit<T>(target, *field, Value);
 
-            ERR error;
-            if (flags & (FD_DOUBLE|FD_INT64|FD_INT)) {
-               Unit var;
-               var.Type = FD_DOUBLE;
-               error = field->GetValue(target, &var);
-               if (error IS ERR::Okay) Value = pf::F2I(var.Value);
-            }
-            else return ERR::FieldTypeMismatch;
-
-            return error;
-         }
-
-         APTR ptr_value;
          int8_t field_value[8];
-         if (field->GetValue) {
-            ObjectContext ctx(target, AC::NIL, field);
-            auto get_field = (ERR (*)(APTR, APTR, int &))field->GetValue;
-            int array_size;
-            ERR error = get_field(target, field_value, array_size);
-            if (error != ERR::Okay) return error;
-            ptr_value = field_value;
-         }
-         else ptr_value = ((BYTE *)target) + field->Offset;
+         int array_size;
+         auto fv = get_field_value(target, *field, field_value, array_size);
 
-         if (flags & FD_INT) Value = *((int *)ptr_value);
-         else if (flags & FD_INT64) Value = (int)(*((int64_t *)ptr_value));
-         else if (flags & FD_DOUBLE) Value = pf::F2I(*((double *)ptr_value));
-         else return ERR::FieldTypeMismatch;
+         if (flags & FD_INT)         Value = *((int *)fv.second);
+         else if (flags & FD_INT64)  Value = *((int64_t *)fv.second);
+         else if (flags & FD_DOUBLE) Value = *((double *)fv.second);
+         else {
+            if ((fv.first IS ERR::Okay) and (flags & FD_ALLOC)) FreeResource(GetMemoryID(*((APTR *)fv.second)));
+            return ERR::FieldTypeMismatch;
+         }
+         return fv.first;
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR get(FIELD FieldID, std::string &Value) { // Retrieve field as a string, supports type conversion.
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!field->readable()) return ERR::NoFieldAccess;
+
+         auto flags = field->Flags;
+         if (flags & FD_UNIT) {
+            double num;
+
+            if (auto error = get_unit<double>(target, *field, num); error IS ERR::Okay) {
+               char buffer[64];
+               snprintf(buffer, sizeof(buffer), "%f", num);
+               Value = buffer;
+            }
+            else return error;
+         }
+
+         int8_t field_value[8];
+         int array_size = -1;
+         auto fv = get_field_value(target, *field, field_value, array_size);
+         APTR data = fv.second;
+
+         if (fv.first != ERR::Okay) return fv.first;
+
+         if (flags & FD_ARRAY) {
+            if (flags & FD_CPP) {
+               array_size = ((pf::vector<int> *)data)->size();
+               data = ((pf::vector<int> *)data)->data();
+            }
+
+            std::stringstream buffer;
+            if (array_size IS -1) return ERR::Failed; // Array sizing not supported by this field.
+
+            if (flags & FD_INT) {
+               auto array = (int *)data;
+               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+            }
+            else if (flags & FD_BYTE) {
+               auto array = (UBYTE *)data;
+               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+            }
+            else if (flags & FD_DOUBLE) {
+               auto array = (double *)data;
+               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+            }
+
+            Value = buffer.str();
+            if (Value.size() > 0) Value.resize(Value.size() - 1); // Remove trailing comma
+            return ERR::Okay;
+         }
+
+         if (flags & FD_INT) {
+            if (flags & FD_LOOKUP) {
+               // Reading a lookup field as a string is permissible, we just return the string registered in the lookup table
+               if (auto lookup = (FieldDef *)field->Arg) {
+                  int v = ((int *)data)[0];
+                  while (lookup->Name) {
+                     if (v IS lookup->Value) {
+                        Value = lookup->Name;
+                        return ERR::Okay;
+                     }
+                     lookup++;
+                  }
+               }
+               Value = nullptr;
+            }
+            else Value = std::to_string(*((int *)data));
+         }
+         else if (flags & FD_INT64) {
+            Value = std::to_string(*((int64_t *)data));
+         }
+         else if (flags & FD_DOUBLE) {
+            char buffer[64];
+            auto written = snprintf(buffer, sizeof(buffer), "%f", *((double *)data));
+            Value.assign(buffer, written);
+         }
+         else if (flags & (FD_POINTER|FD_STRING)) {
+            Value.assign(*((CSTRING *)data));
+            if (flags & FD_ALLOC) FreeResource(GetMemoryID(*((CSTRING *)data)));
+         }
+         else return ERR::UnrecognisedFieldType;
+
          return ERR::Okay;
       }
       else return ERR::UnsupportedField;
    }
 
-   inline ERR get(FIELD FieldID, int64_t &Value)  { return GetField(this, FieldID|TINT64, &Value); }
-   inline ERR get(FIELD FieldID, double &Value)   { return GetField(this, FieldID|TDOUBLE, &Value); }
-   inline ERR get(FIELD FieldID, STRING &Value)   { return GetField(this, FieldID|TSTRING, &Value); }
-   inline ERR get(FIELD FieldID, CSTRING &Value)  { return GetField(this, FieldID|TSTRING, &Value); }
+   // Retrieve a direct pointer to a string field, no-copy operation.  May require deallocation by the client if the field is marked with ALLOC.
+
+   inline ERR get(FIELD FieldID, CSTRING &Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!field->readable()) { Value = nullptr; return ERR::NoFieldAccess; }
+
+         int8_t field_value[8];
+         int array_size;
+         auto fv = get_field_value(target, *field, field_value, array_size);
+         if (fv.first != ERR::Okay) { Value = nullptr; return fv.first; }
+
+         if ((field->Flags & FD_INT) and (field->Flags & FD_LOOKUP)) {
+            // Reading a lookup field as a string is permissible, we just return the string registered in the lookup table
+            if (auto lookup = (FieldDef *)field->Arg) {
+               int value = ((int *)fv.second)[0];
+               while (lookup->Name) {
+                  if (value IS lookup->Value) {
+                     Value = lookup->Name;
+                     return ERR::Okay;
+                  }
+                  lookup++;
+               }
+            }
+            Value = nullptr;
+            return ERR::Okay;
+         }
+         else if (field->Flags & (FD_POINTER|FD_STRING)) {
+            Value = *((CSTRING *)fv.second);
+            return ERR::Okay;
+         }
+         Value = nullptr;
+         return ERR::FieldTypeMismatch;
+      }
+      else {
+         Value = nullptr;
+         return ERR::UnsupportedField;
+      }
+   }
+
    inline ERR get(FIELD FieldID, Unit &Value)     { return GetField(this, FieldID|TUNIT, &Value); }
    inline ERR getPtr(FIELD FieldID, APTR Value)   { return GetField(this, FieldID|TPTR, Value); }
    inline ERR getScale(FIELD FieldID, double *Value) { return GetField(this, FieldID|TDOUBLE|TSCALE, Value); }

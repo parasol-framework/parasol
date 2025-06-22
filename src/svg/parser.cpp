@@ -1913,7 +1913,7 @@ ERR svgState::process_tag(XMLTag &Tag, XMLTag &ParentTag, OBJECTPTR Parent, objV
       case SVF_TEXT: {
          if (proc_shape(CLASSID::VECTORTEXT, Tag, Parent, Vector) IS ERR::Okay) {
             if (!Tag.Children.empty()) {
-               STRING existing_str = NULL;
+               CSTRING existing_str = nullptr;
                Vector->get(FID_String, existing_str);
 
                if (auto buffer = Tag.getContent(); !buffer.empty()) {

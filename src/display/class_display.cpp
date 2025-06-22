@@ -795,7 +795,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
             }
          }
 
-         STRING name = NULL;
+         CSTRING name = nullptr;
          CurrentTask()->get(FID_Name, name);
          HWND popover = 0;
          if (Self->PopOverID) {
@@ -2176,7 +2176,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
          log.msg("Switching window type.");
 
          bool maximise = true;
-         STRING title;
+         CSTRING title = nullptr;
          Self->get(FID_Title, title); // Get the window title before we kill it
 
          OBJECTID surface_id = winLookupSurfaceID(Self->WindowHandle);

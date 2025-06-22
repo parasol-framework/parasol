@@ -520,7 +520,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
       if (file.ok()) {
          LONG filesize;
-         file->get(FID_Size, &filesize);
+         file->get(FID_Size, filesize);
 
          LONG hdr;
          file->read(&hdr, sizeof(hdr));

@@ -137,7 +137,7 @@ static ERR PICTURE_Activate(extPicture *Self)
    png_infop end_info = NULL;
 
    if (!Self->prvFile) {
-      STRING path;
+      CSTRING path;
       if (Self->get(FID_Path, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
@@ -441,7 +441,7 @@ static ERR PICTURE_NewPlacement(extPicture *Self)
 static ERR PICTURE_Query(extPicture *Self)
 {
    pf::Log log;
-   STRING path;
+   CSTRING path;
    png_uint_32 width, height;
    int bit_depth, color_type;
 
@@ -545,16 +545,16 @@ If no destination is specified then the image will be saved as a new file target
 static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
    pf::Log log;
-   STRING path;
-   LONG y, i;
+   CSTRING path;
+   int y, i;
    png_bytep row_pointers;
 
    log.branch();
 
    objBitmap *bmp        = Self->Bitmap;
-   OBJECTPTR file        = NULL;
-   png_structp write_ptr = NULL;
-   png_infop info_ptr    = NULL;
+   OBJECTPTR file        = nullptr;
+   png_structp write_ptr = nullptr;
+   png_infop info_ptr    = nullptr;
    ERR error = ERR::Failed;
    tlError = false;
 

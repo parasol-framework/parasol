@@ -54,7 +54,7 @@ static ERR SOUND_GET_Active(extSound *, LONG *);
 
 static ERR SOUND_SET_Note(extSound *, CSTRING);
 
-static const std::array<DOUBLE, 12> glScale = {
+static const std::array<double, 12> glScale = {
    1.0,         // C
    1.059435080, // CS
    1.122424798, // D
@@ -141,7 +141,7 @@ static ERR set_playback_trigger(extSound *Self)
    if (Self->OnStop.defined()) {
       pf::Log log(__FUNCTION__);
       const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
-      const DOUBLE playback_time = DOUBLE((Self->Length - Self->Position) / bytes_per_sample) / DOUBLE(Self->Playback);
+      const double playback_time = double((Self->Length - Self->Position) / bytes_per_sample) / double(Self->Playback);
       if (playback_time < 0.01) {
          if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
          timer_playback_ended(Self, 0, 0);
@@ -167,7 +167,7 @@ extern "C" void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
          pf::Log log(__FUNCTION__);
          pf::SwitchContext context(Object);
          const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
-         const DOUBLE playback_time = (DOUBLE(BytesRemaining / bytes_per_sample) / DOUBLE(Self->Playback)) + 0.01;
+         const double playback_time = (double(BytesRemaining / bytes_per_sample) / double(Self->Playback)) + 0.01;
 
          if (!Self->PlaybackTimer) {
             if (playback_time < 0.01) {
@@ -691,7 +691,7 @@ static ERR SOUND_Init(extSound *Self)
       else return log.warning(ERR::AccessObject);
    }
 
-   STRING path;
+   CSTRING path;
    if (((Self->Flags & SDF::NEW) != SDF::NIL) or (Self->get(FID_Path, path) != ERR::Okay) or (!path)) {
       // If the sample is new or no path has been specified, create an audio sample from scratch (e.g. to record
       // audio to disk).
@@ -1138,11 +1138,11 @@ Duration: Returns the duration of the sample, measured in seconds.
 
 *********************************************************************************************************************/
 
-static ERR SOUND_GET_Duration(extSound *Self, DOUBLE *Value)
+static ERR SOUND_GET_Duration(extSound *Self, double *Value)
 {
    if (Self->Length) {
-      const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
-      *Value = DOUBLE(Self->Length / bytes_per_sample) / DOUBLE(Self->Playback ? Self->Playback : Self->Frequency);
+      const int bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
+      *Value = double(Self->Length / bytes_per_sample) / double(Self->Playback ? Self->Playback : Self->Frequency);
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -1479,7 +1479,7 @@ value is `-1.0` to force play through the left speaker and the maximum value is 
 
 *********************************************************************************************************************/
 
-static ERR SOUND_SET_Pan(extSound *Self, DOUBLE Value)
+static ERR SOUND_SET_Pan(extSound *Self, double Value)
 {
    Self->Pan = Value;
 
@@ -1622,7 +1622,7 @@ playback will dynamically alter the volume.
 
 *********************************************************************************************************************/
 
-static ERR SOUND_SET_Volume(extSound *Self, DOUBLE Value)
+static ERR SOUND_SET_Volume(extSound *Self, double Value)
 {
    if (Value < 0) Value = 0;
    else if (Value > 1.0) Value = 1.0;

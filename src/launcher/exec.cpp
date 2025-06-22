@@ -172,7 +172,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
                return glScript->Error;
             }
 
-            STRING msg;
+            CSTRING msg;
             if ((glScript->get(FID_ErrorString, msg) IS ERR::Okay) and (msg)) {
                log.msg("Script returned error message: %s", msg);
                return ERR::Failed;

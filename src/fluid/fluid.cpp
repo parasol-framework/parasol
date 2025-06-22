@@ -247,7 +247,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
    CSTRING module_name;
    ERR error;
-   if ((error = MetaClass->get(FID_Module, (STRING &)module_name)) IS ERR::Okay) {
+   if ((error = MetaClass->get(FID_Module, (CSTRING &)module_name)) IS ERR::Okay) {
       log.trace("Class: %s, Module: %s", MetaClass->ClassName, module_name);
 
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;

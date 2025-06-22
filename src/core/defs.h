@@ -137,7 +137,7 @@ enum class DEVICE : int64_t;
 enum class PERMIT : ULONG;
 enum class CCF    : ULONG;
 enum class MEM    : ULONG;
-enum class ALF    : UWORD;
+enum class ALF    : uint16_t;
 enum class EVG    : LONG;
 enum class AC     : LONG;
 enum class MSGID  : LONG;
@@ -224,7 +224,7 @@ public:
    ULONG    Size;       // 4GB max
    THREADID ThreadLockID = THREADID(0);
    MEM      Flags;
-   WORD     AccessCount = 0; // Total number of locks
+   int16_t     AccessCount = 0; // Total number of locks
 
    PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, MEM aFlags) :
       Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
@@ -365,8 +365,8 @@ class extMetaClass : public objMetaClass {
    UBYTE Local[8];                      // Local object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
    ActionEntry ActionTable[LONG(AC::END)];
-   WORD OriginalFieldTotal;
-   UWORD BaseCeiling;                   // FieldLookup ceiling value for the base-class fields
+   int16_t OriginalFieldTotal;
+   uint16_t BaseCeiling;                   // FieldLookup ceiling value for the base-class fields
 };
 
 class extFile : public objFile {
@@ -669,7 +669,7 @@ extern std::string glDisplayDriver;
 extern bool glShowIO, glShowPrivate, glEnableCrashHandler;
 extern bool glJanitorActive;
 extern bool glLogThreads;
-extern WORD glLogLevel, glMaxDepth;
+extern int16_t glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
 extern int64_t glTimeLog;
 extern RootModule *glModuleList;    // Locked with glmGeneric.  Maintained as a linked-list; hashmap unsuitable.
@@ -700,7 +700,7 @@ extern LONG glValidateProcessID; // Not a threading concern
 extern std::atomic_int glMessageIDCount;
 extern std::atomic_int glGlobalIDCount;
 extern std::atomic_int glPrivateIDCounter;
-extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
+extern int16_t glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
 extern std::atomic_ushort glFunctionID;
 extern "C" BYTE glProgramStage;
 extern bool glPrivileged, glSync;
@@ -745,12 +745,12 @@ extern std::atomic_int glUniqueMsgID;
 
 extern THREADVAR class TaskMessage *tlCurrentMsg;
 extern THREADVAR bool tlMainThread;
-extern THREADVAR WORD tlMsgRecursion;
-extern THREADVAR WORD tlDepth;
-extern THREADVAR WORD tlLogStatus;
-extern THREADVAR WORD tlPreventSleep;
-extern THREADVAR WORD tlPublicLockCount;
-extern THREADVAR WORD tlPrivateLockCount;
+extern THREADVAR int16_t tlMsgRecursion;
+extern THREADVAR int16_t tlDepth;
+extern THREADVAR int16_t tlLogStatus;
+extern THREADVAR int16_t tlPreventSleep;
+extern THREADVAR int16_t tlPublicLockCount;
+extern THREADVAR int16_t tlPrivateLockCount;
 extern THREADVAR LONG glForceUID, glForceGID;
 extern THREADVAR PERMIT glDefaultPermissions;
 
@@ -908,8 +908,8 @@ class RootModule : public Object {
    #endif
    std::string Name;           // Name of the module (as declared by the header)
    struct ModHeader *Table;
-   WORD   Version;
-   WORD   OpenCount;           // Amount of programs with this module open
+   int16_t   Version;
+   int16_t   OpenCount;           // Amount of programs with this module open
    FLOAT  ModVersion;          // Version of this module
    MHF    Flags;
    bool   NoUnload;
@@ -959,7 +959,7 @@ ERR    get_file_info(std::string_view, FileInfo *, LONG);
 extern "C" ERR convert_errno(LONG Error, ERR Default);
 void free_file_cache(void);
 
-__export void Expunge(WORD);
+__export void Expunge(int16_t);
 
 extern void add_archive(class extCompression *);
 extern void remove_archive(class extCompression *);
@@ -1104,7 +1104,7 @@ extern "C" ERR winWatchFile(LONG, CSTRING, APTR, WINHANDLE *, LONG *);
 extern "C" void winFindCloseChangeNotification(WINHANDLE);
 extern "C" APTR winFindDirectory(STRING, APTR *, STRING);
 extern "C" APTR winFindFile(STRING, APTR *, STRING);
-extern "C" LONG winSetFileTime(CSTRING, bool, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second);
+extern "C" LONG winSetFileTime(CSTRING, bool, int16_t Year, int16_t Month, int16_t Day, int16_t Hour, int16_t Minute, int16_t Second);
 extern "C" LONG winResetDate(STRING);
 extern "C" void winSetDllDirectory(CSTRING);
 extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, BYTE));
@@ -1131,7 +1131,7 @@ inline int64_t calc_timestamp(struct DateTime *Date) {
           ((int64_t)Date->Year * 60LL * 60LL * 24LL * 31LL * 12LL));
 }
 
-inline UWORD reverse_word(UWORD Value) {
+inline uint16_t reverse_word(uint16_t Value) {
     return (((Value & 0x00FF) << 8) | ((Value & 0xFF00) >> 8));
 }
 

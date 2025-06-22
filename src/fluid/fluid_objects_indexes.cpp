@@ -615,7 +615,7 @@ static int object_get_rgb(lua_State *Lua, const obj_read &Handle, object *Def)
    ERR error;
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
-      STRING rgb;
+      CSTRING rgb;
       if (((error = obj->get(field->FieldID, rgb)) IS ERR::Okay) and (rgb)) lua_pushstring(Lua, rgb);
       release_object(Def);
    }
@@ -662,7 +662,7 @@ static int object_get_string(lua_State *Lua, const obj_read &Handle, object *Def
    ERR error;
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
-      STRING result;
+      CSTRING result;
       if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) {
          lua_pushstring(Lua, result);
          if (field->Flags & FD_ALLOC) FreeResource(result);

@@ -49,7 +49,7 @@ static ERR JPEG_Activate(extPicture *Self)
    if (Self->Bitmap->initialised()) return ERR::Okay;
 
    if (!Self->prvFile) {
-      STRING path;
+      CSTRING path;
       if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
@@ -164,7 +164,7 @@ static ERR JPEG_Init(extPicture *Self)
 {
    pf::Log log;
    UBYTE *buffer;
-   STRING path = NULL;
+   CSTRING path = nullptr;
 
    Self->get(FID_Location, path);
 
@@ -207,7 +207,7 @@ static ERR JPEG_Query(extPicture *Self)
    log.branch();
 
    if (!Self->prvFile) {
-      STRING path;
+      CSTRING path;
       if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
@@ -252,7 +252,7 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
-      STRING path;
+      CSTRING path;
       if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::MissingPath);
 
       if (!(file = objFile::create::local(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) {

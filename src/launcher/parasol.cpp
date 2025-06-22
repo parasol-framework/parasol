@@ -156,7 +156,7 @@ extern "C" int main(int argc, char **argv)
          result = int(exec_source(glDialogScript.c_str(), glTime, glProcedure));
       }
       else if (!glTargetFile.empty()) {
-         STRING path;
+         CSTRING path;
          if (glTask->get(FID_Path, path) IS ERR::Okay) log.msg("Path: %s", path);
          else log.error("No working path.");
 

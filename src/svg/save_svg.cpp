@@ -9,7 +9,7 @@ static void set_dimension(XMLTag *Tag, const std::string Attrib, DOUBLE Value, b
 
 static ERR save_vectorpath(extSVG *Self, objXML *XML, objVector *Vector, LONG Parent)
 {
-   STRING path;
+   CSTRING path;
    ERR error;
 
    if ((error = Vector->get(FID_Sequence, path)) IS ERR::Okay) {
@@ -179,7 +179,7 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
                }
             }
 
-            STRING effect_xml;
+            CSTRING effect_xml;
             if ((error IS ERR::Okay) and (filter->get(FID_EffectXML, effect_xml) IS ERR::Okay)) {
                error = XML->insertStatement(tag->ID, XMI::CHILD, effect_xml, NULL);
                FreeResource(effect_xml);
@@ -227,8 +227,8 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
 {
    pf::Log log(__FUNCTION__);
    char buffer[160];
-   STRING str;
-   FLOAT *colour;
+   CSTRING str;
+   float *colour;
    LONG array_size;
    ERR error = ERR::Okay;
 
@@ -343,7 +343,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
       XMLTag *morph_tag;
       error = XML->insertStatement(TagID, XMI::CHILD_END, "<parasol:morph/>", &morph_tag);
 
-      STRING shape_id;
+      CSTRING shape_id;
       if ((error IS ERR::Okay) and (shape->get(FID_ID, shape_id) IS ERR::Okay) and (shape_id)) {
          // NB: It is required that the shape has previously been registered as a definition, otherwise the url will refer to a dud tag.
          char shape_ref[120];
@@ -487,7 +487,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
       XMLTag *tag;
       DOUBLE x, y, *dx, *dy, *rotate, text_length;
       LONG total, i, weight;
-      STRING str;
+      CSTRING str;
       char buffer[1024];
 
       error = XML->insertStatement(Parent, XMI::CHILD_END, "<text/>", &tag);
@@ -554,7 +554,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    }
    else if (Vector->classID() IS CLASSID::VECTORCLIP) {
       XMLTag *tag;
-      STRING str;
+      CSTRING str;
       if (((error = Vector->get(FID_ID, str)) IS ERR::Okay) and (str)) { // The id is an essential requirement
          error = XML->insertStatement(Parent, XMI::CHILD_END, "<clipPath/>", &tag);
 

@@ -320,7 +320,7 @@ static ERR MP3_Init(objSound *Self)
 {
    pf::Log log;
 
-   STRING location;
+   CSTRING location = nullptr;
    Self->get(FID_Path, location);
 
    if ((!location) or ((Self->Flags & SDF::NEW) != SDF::NIL)) {
@@ -387,7 +387,7 @@ static ERR MP3_Init(objSound *Self)
    if (prv->info.channels IS 2) Self->Flags |= SDF::STEREO;
    if (Self->Stream != STREAM::NEVER) Self->Flags |= SDF::STREAM;
 
-   Self->BytesPerSecond = LONG(prv->info.hz * prv->info.channels * sizeof(WORD));
+   Self->BytesPerSecond = int(prv->info.hz * prv->info.channels * sizeof(int16_t));
    Self->BitsPerSample  = 16;
    Self->Frequency      = prv->info.hz;
    Self->Playback       = Self->Frequency;

@@ -97,9 +97,10 @@ static void free_all(objScript *Self)
 
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = nullptr; }
 
+   auto lua = prv->Lua;
    prv->~prvFluid();
 
-   lua_close(prv->Lua);
+   lua_close(lua);
    prv->Lua = nullptr;
 }
 
@@ -671,7 +672,7 @@ static ERR FLUID_Init(objScript *Self)
    LONG loaded_size = 0;
    objFile *src_file = nullptr;
    if ((!Self->String) and (Self->Path)) {
-      int64_t src_ts, src_size;
+      int64_t src_ts = 0, src_size = 0;
 
       if ((src_file = objFile::create::local(fl::Path(Self->Path)))) {
          error = src_file->get(FID_TimeStamp, src_ts);

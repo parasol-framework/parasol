@@ -37,7 +37,7 @@ static ERR RSVG_Free(extPicture *Self)
 static ERR RSVG_Init(extPicture *Self)
 {
    pf::Log log;
-   STRING path;
+   CSTRING path = nullptr;
 
    Self->get(FID_Path, path);
 
@@ -81,7 +81,7 @@ static ERR RSVG_Query(extPicture *Self)
    Self->Queried = TRUE;
 
    if (!prv->SVG) {
-      STRING path;
+      CSTRING path;
       if (Self->get(FID_Path, path) IS ERR::Okay) {
          if ((prv->SVG = objSVG::create::local(fl::Path(path)))) {
          }

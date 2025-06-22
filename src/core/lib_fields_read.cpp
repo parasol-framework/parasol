@@ -538,7 +538,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, int DestFlags, APTR Res
       if (DestFlags & FD_UNIT) {
          error = Field->GetValue(Object, Result);
       }
-      else if (srcflags & FD_DOUBLE) {
+      else {
          var.Type = FD_DOUBLE | (DestFlags & (~(FD_INT|FD_INT64|FD_DOUBLE)));
          error = Field->GetValue(Object, &var);
 
@@ -549,18 +549,6 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, int DestFlags, APTR Res
             else error = ERR::FieldTypeMismatch;
          }
       }
-      else if (srcflags & (FD_INT64|FD_INT)) {
-         var.Type = FD_DOUBLE | (DestFlags & (~(FD_INT64|FD_INT|FD_DOUBLE)));
-
-         error = Field->GetValue(Object, &var);
-         if (error IS ERR::Okay) {
-            if (DestFlags & FD_INT64)       *((int64_t *)Result) = var.Value;
-            else if (DestFlags & FD_INT)    *((int *)Result)     = var.Value;
-            else if (DestFlags & FD_DOUBLE) *((double *)Result)  = var.Value;
-            else error = ERR::FieldTypeMismatch;
-         }
-      }
-      else error = ERR::FieldTypeMismatch;
 
       if (error IS ERR::FieldTypeMismatch) goto mismatch;
       else return error;

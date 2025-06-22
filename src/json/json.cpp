@@ -172,7 +172,7 @@ static ERR next_item(LONG &Line, CSTRING &Input)
 static ERR JSON_Init(objXML *Self)
 {
    pf::Log log;
-   STRING location, statement;
+   CSTRING location = nullptr, statement = nullptr;
 
    log.trace("Attempting JSON interpretation of source data.");
 
