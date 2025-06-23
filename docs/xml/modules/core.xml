@@ -750,41 +750,6 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
   </function>
 
   <function>
-    <name>GetField</name>
-    <category>Fields</category>
-    <comment>Retrieves single field values from objects.</comment>
-    <prototype>ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
-      <param type="FIELD" name="Field">The ID of the field to read, OR'd with a type indicator.</param>
-      <param type="APTR" name="Result">Pointer to the variable that will store the result.</param>
-    </input>
-    <description>
-<p>The GetField() function is used to read field values from objects in the safest way possible.  As long as the requested field exists, the value can most likely be read.  It is only imperative that the requested type is compatible with the field value itself.</p>
-<p>The following code segment illustrates how to read values from an object:</p>
-<pre>GetField(Object, FID_X|TINT, &amp;x);
-GetField(Object, FID_Y|TINT, &amp;y);
-</pre>
-<p>As GetField() is based on field ID's that reflect field names (<code>FID</code>'s), you will find that there are occasions where there is no reserved ID for the field that you wish to read.  To convert field names into their relevant IDs, call the C++ <code>strihash()</code> function.  Reserved field ID's are listed in the <code>parasol/system/fields.h</code> include file.</p>
-<p>The type of the <code>Result</code> parameter must be OR'd into the <code>Field</code> parameter.  When reading a field you must give consideration to the type of the source, in order to prevent a type mismatch from occurring.  All numeric types are compatible with each other and strings can also be converted to numeric types automatically.  String and pointer types are interchangeable.</p>
-<p>Available field types are as follows:</p>
-<types>
-<type name="TINT">A 32-bit integer value.</type>
-<type name="TDOUBLE">A 64-bit floating point value.</type>
-<type name="TINT64">A 64-bit integer value.</type>
-<type name="TPTR">A standard 32-bit address space pointer.</type>
-<type name="TSTR">A 32-bit pointer that refers to a string.</type>
-</types>
-    </description>
-    <result type="ERR">
-      <error code="Okay">The <code>Field</code> value was read successfully.</error>
-      <error code="Args">Invalid arguments were specified.</error>
-      <error code="NoFieldAccess">Permissions for this field indicate that it is not readable.</error>
-      <error code="UnsupportedField">The <code>Field</code> is not supported by the object's class.</error>
-    </result>
-  </function>
-
-  <function>
     <name>GetFieldArray</name>
     <category>Fields</category>
     <comment>Retrieves array field values from objects.</comment>
@@ -796,7 +761,7 @@ GetField(Object, FID_Y|TINT, &amp;y);
       <param type="INT *" name="Elements">The total number of elements in the array will be returned in this parameter.</param>
     </input>
     <description>
-<p>Use the GetFieldArray() function to read an array field from an object, including the length of that array.  This supplements the <function>GetField</function> function, which does not support returning the array length.</p>
+<p>Use the GetFieldArray() function to read an array field from an object, including the length of that array.  This supplements the ~GetField() function, which does not support returning the array length.</p>
 <p>This function returns the array as-is with no provision for type conversion.  If the array is null terminated, it is standard practice not to count the null terminator in the total returned by <code>Elements</code>.</p>
 <p>To achieve a minimum level of type safety, the anticipated type of array values can be specified by OR'ing a field type with the field identifier, e.g. <code>TINT</code> or <code>TSTR</code>.  If no type is incorporated then a check will not be performed.</p>
     </description>

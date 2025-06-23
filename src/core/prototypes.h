@@ -23,7 +23,6 @@ extern "C" ERR AnalysePath(CSTRING Path, LOC * Type);
 extern "C" ERR FreeResource(MEMORYID ID);
 extern "C" CLASSID GetClassID(OBJECTID Object);
 extern "C" OBJECTID GetOwnerID(OBJECTID Object);
-extern "C" ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
 extern "C" ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size);
 extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState();

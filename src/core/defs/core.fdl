@@ -1143,7 +1143,6 @@ struct ScriptArg { // For use with sc::Exec
     "FreeResource",
     "GetClassID",
     "GetOwnerID",
-    "GetField",
     "GetFieldVariable",
     "CompareFilePaths",
     "GetSystemState",

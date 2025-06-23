@@ -1139,7 +1139,7 @@ ERR InitObject(OBJECTPTR Object)
    if (use_subclass) { // If ERR::UseSubClass was set and the sub-class was not registered, do not call IdentifyFile()
       log.warning("ERR::UseSubClass was used but no suitable sub-class was registered.");
    }
-   else if ((error IS ERR::NoSupport) and (GetField(Object, FID_Path|TSTR, &path) IS ERR::Okay) and (path)) {
+   else if ((error IS ERR::NoSupport) and (Object->get(FID_Path, path) IS ERR::Okay) and (path)) {
       CLASSID class_id, subclass_id;
       if (IdentifyFile(path, cl->BaseClassID, &class_id, &subclass_id) IS ERR::Okay) {
          if ((class_id IS Object->classID()) and (subclass_id != CLASSID::NIL)) {

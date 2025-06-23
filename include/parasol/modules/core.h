@@ -2068,7 +2068,6 @@ struct CoreBase {
    ERR (*_FreeResource)(MEMORYID ID);
    CLASSID (*_GetClassID)(OBJECTID Object);
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
-   ERR (*_GetField)(OBJECTPTR Object, FIELD Field, APTR Result);
    ERR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size);
    ERR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
    const struct SystemState * (*_GetSystemState)(void);
@@ -2166,7 +2165,6 @@ inline ERR AnalysePath(CSTRING Path, LOC *Type) { return CoreBase->_AnalysePath(
 inline ERR FreeResource(MEMORYID ID) { return CoreBase->_FreeResource(ID); }
 inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object); }
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
-inline ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreBase->_GetField(Object,Field,Result); }
 inline ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
 inline ERR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
@@ -2258,7 +2256,6 @@ extern "C" ERR AnalysePath(CSTRING Path, LOC *Type);
 extern "C" ERR FreeResource(MEMORYID ID);
 extern "C" CLASSID GetClassID(OBJECTID Object);
 extern "C" OBJECTID GetOwnerID(OBJECTID Object);
-extern "C" ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
 extern "C" ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size);
 extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState(void);

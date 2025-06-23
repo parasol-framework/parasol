@@ -2906,7 +2906,7 @@ ERR parser::tag_xml_content_eval(std::string &Buffer)
                         const Field *classfield;
                         if (((classfield = find_field(object, field, &target))) and (classfield->Flags & FD_STRING)) {
                            CSTRING str;
-                           if (GetField(object, (FIELD)classfield->FieldID|TSTR, &str) IS ERR::Okay) {
+                           if (object->get(classfield->FieldID, str) IS ERR::Okay) {
                               Buffer.insert(end-pos+1, str);
                            }
                         }
