@@ -9,7 +9,8 @@ void anim_base::set_orig_value(svgState &State)
 
    pf::ScopedObjectLock<objVector> obj(target_vector);
    if (obj.granted()) {
-      switch(strihash(target_attrib)) {
+      auto fid = strihash(target_attrib);
+      switch(fid) {
          case SVF_DISPLAY:
             if (obj->Visibility IS VIS::HIDDEN) target_attrib_orig = "none";
             else if (obj->Visibility IS VIS::INHERIT) target_attrib_orig = "inherit";
@@ -47,10 +48,8 @@ void anim_base::set_orig_value(svgState &State)
             break;
 
          default: {
-            char buffer[400];
-            if (GetFieldVariable(*obj, target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
-               target_attrib_orig.assign(buffer);
-            }
+            std::string buffer;
+            if (obj->get(fid, buffer) IS ERR::Okay) target_attrib_orig.assign(buffer);
          }
       }
    }

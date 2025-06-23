@@ -413,29 +413,29 @@ void parser::translate_args(const std::string &Input, std::string &Output)
 
                if (objectid) {
                   if (valid_objectid(Self, objectid)) {
-                     auto dot = Output.find('.');
-                     if (dot != std::string::npos) { // Object makes a field reference
+                     if (auto dot = Output.find('.'); dot != std::string::npos) { // Object makes a field reference
                         pf::ScopedObjectLock object(objectid, 2000);
                         if (object.granted()) {
                            OBJECTPTR target;
                            auto fieldname = Output.substr(dot+1, end-(dot+1));
                            if (auto classfield = FindField(object.obj, strihash(fieldname), &target)) {
-                              if (classfield->Flags & FD_STRING) {
-                                 CSTRING str;
-                                 if (target->get(classfield->FieldID, str) IS ERR::Okay) Output.replace(pos, end-pos, str);
-                                 else Output.replace(pos, end-pos, "");
-                              }
-                              else {
-                                 // Get field as a variable type and manage any buffer overflow (the use of variables
-                                 // for extremely big strings is considered rare / poor design).
-                                 std::string tbuffer;
-                                 tbuffer.reserve(64 * 1024);
-                                 while (tbuffer.capacity() < 8 * 1024 * 1024) {
-                                    tbuffer[tbuffer.size()-1] = 0;
-                                    GetFieldVariable(target, name.c_str(), tbuffer.data(), tbuffer.size());
-                                    if (!tbuffer[tbuffer.size()-1]) break;
+                              std::string str;
+                              if (target->get(classfield->FieldID, str) IS ERR::Okay) Output.replace(pos, end-pos, str);
+                              else Output.replace(pos, end-pos, "");
+                           }
+                           else if (CheckAction(object.obj, AC::GetKey) IS ERR::Okay) {
+                              // Get field as an unlisted type and manage any buffer overflow
+                              std::string tbuffer;
+                              tbuffer.reserve(4096);
+repeat:
+                              tbuffer[tbuffer.capacity()-1] = 0;
+                              struct acGetKey var = { fieldname.c_str(), tbuffer.data(), int(tbuffer.size()) };
+                              if (Action(AC::GetKey, object.obj, &var) IS ERR::Okay) {
+                                 if (tbuffer[tbuffer.capacity()-1]) {
                                     tbuffer.reserve(tbuffer.capacity() * 2);
+                                    goto repeat;
                                  }
+                                 Output.replace(pos, end-pos, tbuffer);
                               }
                            }
                            else Output.replace(pos, end-pos, "");
@@ -623,7 +623,7 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
    else if (!Output.compare(pos, sizeof("[%font-size]")-1, "[%font-size]")) {
       char buffer[28];
       switch(m_style.req_size.type) {
-         case DU::PIXEL: 
+         case DU::PIXEL:
             snprintf(buffer, sizeof(buffer), "%gpx", m_style.req_size.value);
             break;
          case DU::FONT_SIZE:
@@ -1511,7 +1511,7 @@ void parser::tag_body(XMLTag &Tag)
             Self->FontFace = Tag.Attribs[i].Value;
             break;
 
-         case HASH_font_size: { 
+         case HASH_font_size: {
             // Default font point size, which must be fixed.  Relative sizes like 'em' are not permitted.
             auto val = DUNIT(Tag.Attribs[i].Value);
             switch (val.type) {
@@ -2042,7 +2042,7 @@ void parser::tag_debug(XMLTag &Tag)
 
 //********************************************************************************************************************
 // Declaring <svg> anywhere can execute an SVG statement of any kind, with the caveat that it will target the
-// Page viewport (or View if 'background' is used).  The SVG feature should only be used for the creation of resources 
+// Page viewport (or View if 'background' is used).  The SVG feature should only be used for the creation of resources
 // that can then be referred to in the document as named patterns, or via the 'use' option for symbols.
 //
 // This tag can only be used ONCE per document.  Potentially we could improve this by appending to the existing
@@ -2895,7 +2895,7 @@ ERR parser::tag_xml_content_eval(std::string &Buffer)
                else FindObject(name.c_str(), CLASSID::NIL, FOF::SMART_NAMES, &objectid);
 
                if (objectid) {
-                  OBJECTPTR object = NULL;
+                  OBJECTPTR object = nullptr;
                   if (Buffer[i] IS '.') {
                      // Get the field from the object
                      i++;
@@ -2910,12 +2910,14 @@ ERR parser::tag_xml_content_eval(std::string &Buffer)
                               Buffer.insert(end-pos+1, str);
                            }
                         }
-                        else { // Get field as an unlisted type and manage any buffer overflow
+                        else if (CheckAction(object, AC::GetKey) IS ERR::Okay) {
+                           // Get field as an unlisted type and manage any buffer overflow
                            std::string tbuffer;
                            tbuffer.reserve(4096);
 repeat:
                            tbuffer[tbuffer.capacity()-1] = 0;
-                           if (GetFieldVariable(object, field.c_str(), tbuffer.data(), tbuffer.capacity()) IS ERR::Okay) {
+                           struct acGetKey var{ field.c_str(), tbuffer.data(), int(tbuffer.size()) };
+                           if (Action(AC::GetKey, object, &var) IS ERR::Okay) {
                               if (tbuffer[tbuffer.capacity()-1]) {
                                  tbuffer.reserve(tbuffer.capacity() * 2);
                                  goto repeat;

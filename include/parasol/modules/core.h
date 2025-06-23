@@ -2068,7 +2068,6 @@ struct CoreBase {
    ERR (*_FreeResource)(MEMORYID ID);
    CLASSID (*_GetClassID)(OBJECTID Object);
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
-   ERR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size);
    ERR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
    const struct SystemState * (*_GetSystemState)(void);
    ERR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> *List);
@@ -2165,7 +2164,6 @@ inline ERR AnalysePath(CSTRING Path, LOC *Type) { return CoreBase->_AnalysePath(
 inline ERR FreeResource(MEMORYID ID) { return CoreBase->_FreeResource(ID); }
 inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object); }
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
-inline ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
 inline ERR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List) { return CoreBase->_ListChildren(Object,List); }
@@ -2256,7 +2254,6 @@ extern "C" ERR AnalysePath(CSTRING Path, LOC *Type);
 extern "C" ERR FreeResource(MEMORYID ID);
 extern "C" CLASSID GetClassID(OBJECTID Object);
 extern "C" OBJECTID GetOwnerID(OBJECTID Object);
-extern "C" ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size);
 extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState(void);
 extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List);
@@ -2835,7 +2832,7 @@ struct Object { // Must be 64-bit aligned
             if (auto error = get_unit<double>(target, *field, num); error IS ERR::Okay) {
                char buffer[64];
                snprintf(buffer, sizeof(buffer), "%f", num);
-               Value = buffer;
+               Value.assign(buffer);
             }
             else return error;
          }
@@ -2870,7 +2867,7 @@ struct Object { // Must be 64-bit aligned
             }
 
             Value = buffer.str();
-            if (Value.size() > 0) Value.resize(Value.size() - 1); // Remove trailing comma
+            if (!Value.empty()) Value.pop_back(); // Remove trailing comma
             return ERR::Okay;
          }
 
@@ -2887,7 +2884,20 @@ struct Object { // Must be 64-bit aligned
                      lookup++;
                   }
                }
-               Value = nullptr;
+               Value.clear();
+            }
+            else if (flags & FD_FLAGS) {
+               if (auto lookup = (FieldDef *)field->Arg) {
+                  std::stringstream buffer;
+                  int v = ((int *)data)[0];
+                  while (lookup->Name) {
+                     if (v & lookup->Value) buffer << lookup->Name << '|';
+                     lookup++;
+                  }
+                  Value = buffer.str();
+                  if (!Value.empty()) Value.pop_back(); // Remove trailing pipe
+                  return ERR::Okay;
+               }
             }
             else Value = std::to_string(*((int *)data));
          }

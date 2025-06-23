@@ -39,7 +39,6 @@ FDEF argsGetClassID[] = { { "Result", FD_INT|FD_UNSIGNED }, { "Object", FD_OBJEC
 FDEF argsGetErrorMsg[] = { { "Result", FD_STR }, { "Error", FD_INT|FD_ERROR }, { 0, 0 } };
 FDEF argsGetEventID[] = { { "Result", FD_INT64 }, { "Group", FD_INT }, { "SubGroup", FD_STR }, { "Event", FD_STR }, { 0, 0 } };
 FDEF argsGetFieldArray[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_INT64 }, { "Result", FD_PTR|FD_RESULT }, { "Elements", FD_INT|FD_RESULT }, { 0, 0 } };
-FDEF argsGetFieldVariable[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_STR }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsGetObjectPtr[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetOwnerID[] = { { "Result", FD_OBJECTID }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetResource[] = { { "Result", FD_INT64 }, { "Resource", FD_INT }, { 0, 0 } };
@@ -120,7 +119,6 @@ const struct Function glFunctions[] = {
    { (APTR)FreeResource, "FreeResource", argsFreeResource },
    { (APTR)GetClassID, "GetClassID", argsGetClassID },
    { (APTR)GetOwnerID, "GetOwnerID", argsGetOwnerID },
-   { (APTR)GetFieldVariable, "GetFieldVariable", argsGetFieldVariable },
    { (APTR)CompareFilePaths, "CompareFilePaths", argsCompareFilePaths },
    { (APTR)GetSystemState, "GetSystemState", argsGetSystemState },
    { (APTR)ListChildren, "ListChildren", argsListChildren },

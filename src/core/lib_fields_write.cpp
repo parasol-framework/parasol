@@ -394,7 +394,7 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
             if (op != OP_OVERWRITE) {
                ERR error;
                int current_flags;
-               if ((error = copy_field_to_buffer(Object, Field, FT_INT, &current_flags, NULL, NULL)) IS ERR::Okay) {
+               if ((error = copy_field_to_buffer(Object, Field, FT_INT, &current_flags, NULL)) IS ERR::Okay) {
                   if (op IS OP_OR) int64 = current_flags | int64;
                   else if (op IS OP_AND) int64 = current_flags & int64;
                }

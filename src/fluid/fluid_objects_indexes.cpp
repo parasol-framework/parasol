@@ -271,10 +271,9 @@ static int object_get(lua_State *Lua)
       }
 
       OBJECTPTR target;
-      if (fieldname[0] IS '$') {
-         // Get field as string, useful for retrieving lookup values as their named type.
-         char buffer[1024];
-         if (GetFieldVariable(obj, fieldname, buffer, sizeof(buffer)) IS ERR::Okay) lua_pushstring(Lua, buffer);
+      if (fieldname[0] IS '$') { // Get field as a string, good for CSV arrays, flags and lookups
+         std::string buffer;
+         if (obj->get(strihash(fieldname+1), buffer) IS ERR::Okay) lua_pushlstring(Lua, buffer.c_str(), buffer.size());
          else lua_pushvalue(Lua, 2); // Push the client's default value
          release_object(def);
          return 1;

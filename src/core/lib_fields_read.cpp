@@ -76,7 +76,7 @@ Field * lookup_id(OBJECTPTR Object, uint32_t FieldID, OBJECTPTR *Target)
 -FUNCTION-
 FieldName: Resolves a field ID to its registered name.
 
-Resolves a field identifier to its name by checking the internal dictionary.  The field must have previously been 
+Resolves a field identifier to its name by checking the internal dictionary.  The field must have previously been
 referenced by a class blueprint in order for its name to be registered.
 
 If `FieldID` is not registered, the value is returned as a printable hex string.
@@ -190,7 +190,7 @@ ERR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, int *Elements)
       }
 
       ScopedObjectAccess objlock(Object);
-      ERR error = copy_field_to_buffer(Object, field, FD_POINTER, Result, nullptr, Elements);
+      ERR error = copy_field_to_buffer(Object, field, FD_POINTER, Result, Elements);
       return error;
    }
    else log.warning("Unsupported field %s", FieldName(FieldID));
@@ -198,245 +198,10 @@ ERR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, int *Elements)
    return ERR::UnsupportedField;
 }
 
-/*********************************************************************************************************************
-
--FUNCTION-
-GetFieldVariable: Retrieves field values by converting them into strings.
-
-The GetFieldVariable() function is used to retrieve the value of a field without any advance knowledge of the field's
-type or details.  It also supports some advanced features such as flag name lookups and the retrieval of values from
-array indexes.  Although this function is simple to use, it is the slowest of the field retrieval instructions as it
-relies on string-based field names and converts all results into a string buffer that you must provide.
-
-This function does not support pointer based fields as they cannot be translated, although an exception is made for
-string field types.
-
-If the field name refers to a flag or lookup based field type, it is possible to test if a specific flag has been set.
-This is achieved by specifying a dot immediately after the field name, then the name of the flag or lookup to test.
-If the test passes, a value of `1` is returned, otherwise `0`.
-
-String conversion for flag and lookup based fields is also supported (by default, integer values are returned for
-these field types when no other test is applied).  This feature is enabled by prefixing the field name with a `$` symbol.
-If multiple fields are set, the resulting flags will be separated with the traditional OR symbol `|`.
-
-If the field name refers to an array, it is possible to index specific values within that array by specifying a dot
-after the field name, then the index number to lookup.
-
-To check if a string is defined (rather than retrieving the entire string content which can be time consuming), prefix
-the `Field` name with a question mark.  A value of `1` will be returned in the `Buffer` if the string has a minimum length
-of `1` character, otherwise a value of `0` is returned in the Buffer.
-
--INPUT-
-obj Object: Pointer to an object.
-cstr Field: The name of the field that is to be retrieved.
-buf(str) Buffer: Pointer to a buffer space large enough to hold the expected field value.  If the buffer is not large enough, the result will be truncated.  A buffer of 256 bytes is considered large enough for most occasions.  For generic field reading purposes, a buffer as large as 64kb may be desired.
-bufsize Size: The size of the `Buffer` that has been provided, in bytes.
-
--ERRORS-
-Okay:             The field was value retrieved.
-Args
-UnsupportedField: The requested field is not supported by the object's class.
-NoFieldAccess:    Permissions for this field state that it is not readable.
-Mismatch:         The field value cannot be converted into a string.
--END-
-
-*********************************************************************************************************************/
-
-ERR GetFieldVariable(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, int BufferSize)
-{
-   pf::Log log("GetVariable");
-
-   if ((!Object) or (!FieldName) or (!Buffer) or (BufferSize < 2)) {
-      return log.warning(ERR::Args);
-   }
-
-   Field *field;
-   char flagref[80];
-   int i;
-   ERR error;
-
-   Buffer[0] = 0;
-   flagref[0] = 0;
-   STRING ext = nullptr;
-   CSTRING fname = FieldName;
-   bool strconvert = false;
-   bool checkdefined = false;
-
-   // NB: The $ character can be used at the start of a field name to convert lookups and flag based fields to strings.
-
-   while (fname[0] <= 0x40) {
-      if (fname[0] IS '$') {
-         strconvert = true;
-         fname++;
-      }
-      else if (fname[0] IS '?') {
-         checkdefined = true;
-         fname++;
-      }
-      else break;
-   }
-
-   // Check for dots in the fieldname.  Flags can be tested by specifying the flag name after the fieldname.
-
-   uint32_t hash = 5381;
-   for (int i=0; fname[i]; i++) {
-      char c = fname[i];
-
-      if (c IS '.') {
-         WORD j;
-         // Flagref == fieldname\0flagname\0
-         for (j=0; ((size_t)j < sizeof(flagref)-1) and (fname[j]); j++) flagref[j] = fname[j];
-         flagref[i] = 0; // Middle termination
-         flagref[j] = 0; // End termination
-         fname = flagref;
-         ext = flagref + i + 1;
-         break;
-      }
-      else {
-         if ((c >= 'A') and (c <= 'Z')) c = c - 'A' + 'a';
-         hash = ((hash<<5) + hash) + c;
-      }
-   }
-
-   if ((field = lookup_id(Object, hash, &Object))) {
-      if (!(field->Flags & FD_READ)) {
-         if (!field->Name) log.warning("Illegal attempt to read field %d.", field->FieldID);
-         else log.warning("Illegal attempt to read field %s.", field->Name);
-         return ERR::NoFieldAccess;
-      }
-
-      ScopedObjectAccess objlock(Object);
-
-      if (field->Flags & (FD_STRING|FD_ARRAY)) {
-         STRING str = nullptr;
-         if ((error = copy_field_to_buffer(Object, field, FD_POINTER|FD_STRING, &str, ext, nullptr)) IS ERR::Okay) {
-            if (checkdefined) {
-               if (field->Flags & FD_STRING) {
-                  if ((str) and (str[0])) Buffer[0] = '1'; // A string needs only one char (of any kind) to be considered to be defined
-                  else Buffer[0] = '0';
-               }
-               else Buffer[0] = '1';
-               Buffer[1] = 0;
-            }
-            else if (str) {
-               for (i=0; (str[i]) and (i < BufferSize - 1); i++) Buffer[i] = str[i];
-               Buffer[i] = 0;
-            }
-            else Buffer[0] = 0;
-         }
-         else {
-            Buffer[0] = 0;
-            return error;
-         }
-      }
-      else if (field->Flags & (FD_INT|FD_INT64)) {
-         FieldDef *lookup;
-         int64_t large;
-
-         if ((error = copy_field_to_buffer(Object, field, FD_INT64, &large, ext, nullptr)) IS ERR::Okay) {
-            if ((ext) and (field->Flags & (FD_FLAGS|FD_LOOKUP))) {
-               Buffer[0] = '0';
-               Buffer[1] = 0;
-
-               if ((lookup = (FieldDef *)field->Arg)) {
-                  while (lookup->Name) {
-                     if (iequals(lookup->Name, ext)) {
-                        if (field->Flags & FD_FLAGS) {
-                           if (large & lookup->Value) Buffer[0] = '1';
-                        }
-                        else if (large IS lookup->Value) Buffer[0] = '1';
-                        break;
-                     }
-                     lookup++;
-                  }
-               }
-               else log.warning("No lookup table for field '%s', class '%s'.", fname, Object->className());
-
-               return ERR::Okay;
-            }
-            else if (strconvert) {
-               if (field->Flags & FD_FLAGS) {
-                  if ((lookup = (FieldDef *)field->Arg)) {
-                     int pos = 0;
-                     while (lookup->Name) {
-                        if (large & lookup->Value) {
-                           if ((pos) and (pos < BufferSize-1)) Buffer[pos++] = '|';
-                           pos += strcopy(lookup->Name, Buffer+pos, BufferSize-pos);
-                        }
-                        lookup++;
-                     }
-                     return ERR::Okay;
-                  }
-               }
-               else if (field->Flags & FD_LOOKUP) {
-                  if ((lookup = (FieldDef *)field->Arg)) {
-                     while (lookup->Name) {
-                        if (large IS lookup->Value) {
-                           strcopy(lookup->Name, Buffer, BufferSize);
-                           break;
-                        }
-                        lookup++;
-                     }
-                     return ERR::Okay;
-                  }
-               }
-            }
-
-            if (field->Flags & FD_OBJECT) {
-               Buffer[0] = '#';
-               strcopy(std::to_string(large), Buffer+1, BufferSize-1);
-            }
-            else strcopy(std::to_string(large), Buffer, BufferSize);
-         }
-         else return error;
-      }
-      else if (field->Flags & FD_DOUBLE) {
-         DOUBLE dbl;
-         if ((error = copy_field_to_buffer(Object, field, FD_DOUBLE, &dbl, ext, nullptr)) IS ERR::Okay) {
-            snprintf(Buffer, BufferSize, "%f", dbl);
-         }
-         else return error;
-      }
-      else if (field->Flags & (FD_LOCAL|FD_OBJECT)) {
-         OBJECTPTR obj;
-         if ((error = copy_field_to_buffer(Object, field, FD_POINTER, &obj, ext, nullptr)) IS ERR::Okay) {
-            if (ext) {
-               error = GetFieldVariable(obj, ext, Buffer, BufferSize);
-               return error;
-            }
-            else snprintf(Buffer, BufferSize, "#%d", obj->UID);
-         }
-         else strcopy("0", Buffer, BufferSize);
-      }
-      else {
-         log.warning("Field %s is not a value that can be converted to a string.", field->Name);
-         return ERR::Mismatch;
-      }
-
-      return ERR::Okay;
-   }
-   else {
-      if (CheckAction(Object, AC::GetKey) IS ERR::Okay) {
-         struct acGetKey var = {
-            FieldName, // Must use the original field name argument, not the modified fname
-            Buffer,
-            BufferSize
-         };
-         if (Action(AC::GetKey, Object, &var) IS ERR::Okay) {
-            return ERR::Okay;
-         }
-         else log.msg("Could not find field %s from object %p (%s).", FieldName, Object, Object->className());
-      }
-      else log.warning("Could not find field %s from object %p (%s).", FieldName, Object, Object->className());
-
-      return ERR::UnsupportedField;
-   }
-}
-
 //********************************************************************************************************************
 // Used by the GetField() range of functions.
 
-ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, int DestFlags, APTR Result, CSTRING Option, int *TotalElements)
+ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, int DestFlags, APTR Result, int *TotalElements)
 {
    //log.msg("[%s:%d] Name: %s, Flags: $%x", ((extMetaClass *)Object->Class)->Name, Object->UID, Field->Name, DestFlags);
 
@@ -486,20 +251,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, int DestFlags, APTR Res
 
    if (srcflags & FD_ARRAY) {
       if (srcflags & FD_CPP) {
-         if (Option) { // If an option is specified, treat it as an array index.
-            auto vec = (pf::vector<int> *)data;
-            if (TotalElements) *TotalElements = vec->size();
-            unsigned index = strtol(Option, nullptr, 0);
-            if ((index >= 0) and (index < vec->size())) {
-               if (srcflags & FD_INT) data = &((pf::vector<int> *)data)[0][index];
-               else if (srcflags & (FD_INT64|FD_DOUBLE))   data = &((pf::vector<double> *)data)[0][index];
-               else if (srcflags & (FD_POINTER|FD_STRING)) data = &((pf::vector<APTR> *)data)[0][index];
-               else goto mismatch;
-               // Drop through to field value conversion
-            }
-            else return ERR::OutOfRange;
-         }
-         else if (DestFlags & FD_STRING) {
+         if (DestFlags & FD_STRING) {
             // Special feature: If a string is requested, the array values are converted to CSV format.
             std::stringstream buffer;
             if (srcflags & FD_INT) {
@@ -533,18 +285,7 @@ ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, int DestFlags, APTR Res
 
          if (TotalElements) *TotalElements = array_size;
 
-         if (Option) { // If an option is specified, treat it as an array index.
-            int index = strtol(Option, nullptr, 0);
-            if ((index >= 0) and (index < array_size)) {
-               if (srcflags & FD_INT) data = (BYTE *)data + (sizeof(int) * index);
-               else if (srcflags & (FD_INT64|FD_DOUBLE))   data = (BYTE *)data + (sizeof(double) * index);
-               else if (srcflags & (FD_POINTER|FD_STRING)) data = (BYTE *)data + (sizeof(APTR) * index);
-               else goto mismatch;
-               // Drop through to field value conversion
-            }
-            else return ERR::OutOfRange;
-         }
-         else if (DestFlags & FD_STRING) {
+         if (DestFlags & FD_STRING) {
             // Special feature: If a string is requested, the array values are converted to CSV format.
             int pos = 0;
             if (srcflags & FD_INT) {

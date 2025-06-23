@@ -970,7 +970,7 @@ CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 APTR   build_jump_table(const Function *);
 #endif
 ERR    copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
-ERR    copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
+ERR    copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, LONG *);
 ERR    create_archive_volume(void);
 ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
