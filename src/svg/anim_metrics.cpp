@@ -22,14 +22,14 @@ void anim_base::set_orig_value(svgState &State)
 
          case SVF_FILL: {
             CSTRING val;
-            if ((obj->getPtr(FID_Fill, &val) IS ERR::Okay) and (val)) target_attrib_orig = val;
+            if ((obj->get(FID_Fill, val) IS ERR::Okay) and (val)) target_attrib_orig = val;
             else target_attrib_orig = State.m_fill;
             break;
          }
 
          case SVF_STROKE: {
             CSTRING val;
-            if ((obj->getPtr(FID_Stroke, &val) IS ERR::Okay) and (val)) target_attrib_orig = val;
+            if ((obj->get(FID_Stroke, val) IS ERR::Okay) and (val)) target_attrib_orig = val;
             else target_attrib_orig = State.m_stroke;
             break;
          }

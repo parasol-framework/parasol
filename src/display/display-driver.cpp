@@ -812,7 +812,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   argModule->getPtr(FID_Root, &glModule);
+   argModule->getPtr(FID_Root, glModule);
 
 #ifndef PARASOL_STATIC
    if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
@@ -1515,7 +1515,7 @@ ERR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Wid
    // Adjust coordinates by offset values
 
    APTR drawable;
-   dest->getPtr(FID_Handle, &drawable);
+   dest->getPtr(FID_Handle, drawable);
 
    win32RedrawWindow(Self->WindowHandle, drawable,
       x, y,

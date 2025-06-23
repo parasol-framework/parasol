@@ -48,7 +48,7 @@ static ERR RSVG_Init(extPicture *Self)
    char *buffer;
 
    if (wildcmp("*.svg|*.svgz", path));
-   else if (Self->getPtr(FID_Header, &buffer) IS ERR::Okay) {
+   else if (Self->getPtr(FID_Header, buffer) IS ERR::Okay) {
       if (strisearch("<svg", buffer) >= 0) {
       }
       else return ERR::NoSupport;
@@ -92,7 +92,7 @@ static ERR RSVG_Query(extPicture *Self)
 
    objVectorScene *scene;
    ERR error;
-   if (((error = prv->SVG->getPtr(FID_Scene, &scene)) IS ERR::Okay) and (scene)) {
+   if (((error = prv->SVG->getPtr(FID_Scene, scene)) IS ERR::Okay) and (scene)) {
       if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
          bmp->Flags |= BMF::ALPHA_CHANNEL;
          bmp->BitsPerPixel  = 32;
@@ -168,7 +168,7 @@ static ERR RSVG_Resize(extPicture *Self, struct acResize *Args)
 
       if (Action(AC::Resize, Self->Bitmap, Args) IS ERR::Okay) {
          objVectorScene *scene;
-         if ((prv->SVG->getPtr(FID_Scene, &scene) IS ERR::Okay) and (scene)) {
+         if ((prv->SVG->getPtr(FID_Scene, scene) IS ERR::Okay) and (scene)) {
             scene->setPageWidth(Self->Bitmap->Width);
             scene->setPageHeight(Self->Bitmap->Height);
 

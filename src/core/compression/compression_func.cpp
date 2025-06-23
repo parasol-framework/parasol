@@ -100,7 +100,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
       // Convert the file date stamp into a DOS time stamp for zip
 
       DateTime *tm;
-      if (file->getPtr(FID_Date, &tm) IS ERR::Okay) {
+      if (file->getPtr(FID_Date, tm) IS ERR::Okay) {
          if (tm->Year < 1980) entry.TimeStamp = 0x00210000;
          else entry.TimeStamp = ((tm->Year-1980)<<25) | (tm->Month<<21) | (tm->Day<<16) | (tm->Hour<<11) | (tm->Minute<<5) | (tm->Second>>1);
       }
@@ -289,7 +289,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    // Convert the file date stamp into a DOS time stamp for zip
 
    DateTime *time;
-   if (file->getPtr(FID_Date, &time) IS ERR::Okay) {
+   if (file->getPtr(FID_Date, time) IS ERR::Okay) {
       if (time->Year < 1980) entry.TimeStamp = 0x00210000;
       else entry.TimeStamp = ((time->Year-1980)<<25) | (time->Month<<21) | (time->Day<<16) | (time->Hour<<11) | (time->Minute<<5) | (time->Second>>1);
    }

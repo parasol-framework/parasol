@@ -386,7 +386,7 @@ static ERR FLUID_Activate(objScript *Self)
          luaL_getmetatable(prv->Lua, "Fluid.mod");
          lua_setmetatable(prv->Lua, -2);
          mod->Module = core;
-         core->getPtr(FID_FunctionList, &mod->Functions);
+         core->getPtr(FID_FunctionList, mod->Functions);
          lua_setglobal(prv->Lua, "mSys");
       }
       else {
@@ -743,7 +743,7 @@ static ERR FLUID_Init(objScript *Self)
          new (prv) prvFluid;
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
-            if (src_file->getPtr(FID_Date, &dt) IS ERR::Okay) prv->CacheDate = *dt;
+            if (src_file->getPtr(FID_Date, dt) IS ERR::Okay) prv->CacheDate = *dt;
             src_file->get(FID_Permissions, (LONG &)prv->CachePermissions);
             prv->LoadedSize = loaded_size;
          }

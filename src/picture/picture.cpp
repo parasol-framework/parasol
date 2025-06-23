@@ -809,7 +809,7 @@ static ERR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
 
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::PICTURE)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((mc->getPtr(FID_ActionTable, &routine) IS ERR::Okay) and (routine)) {
+      if ((mc->getPtr(FID_ActionTable, routine) IS ERR::Okay) and (routine)) {
          if ((routine[LONG(AC::SaveToObject)]) and (routine[LONG(AC::SaveToObject)] != (APTR)PICTURE_SaveToObject)) {
             return routine[LONG(AC::SaveToObject)](Self, Args);
          }

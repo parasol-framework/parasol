@@ -78,7 +78,7 @@ static ERR process_args(void)
 {
    pf::Log log("Parasol");
 
-   if ((glTask->getPtr(FID_Parameters, &glArgs) IS ERR::Okay) and (glArgs)) {
+   if ((glTask->getPtr(FID_Parameters, glArgs) IS ERR::Okay) and (glArgs)) {
       pf::vector<std::string> &args = *glArgs;
       for (unsigned i=0; i < args.size(); i++) {
          if (pf::iequals(args[i], "--help")) { // Print help for the user

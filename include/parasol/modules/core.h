@@ -28,6 +28,9 @@
  #endif
 #endif
 
+template <class T> concept pcPointer = std::is_pointer_v<T>;
+template <class T> concept pcObject = std::is_base_of_v<Object, T>;
+
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
@@ -2910,17 +2913,18 @@ struct Object { // Must be 64-bit aligned
       else return ERR::UnsupportedField;
    }
 
-   // Retrieve a direct pointer to a string field, no-copy operation.  May require deallocation by the client if the field is marked with ALLOC.
+   // Retrieve a direct pointer to a string field, no-copy operation.  Result will require deallocation by the client if the field is marked with ALLOC.
 
    inline ERR get(FIELD FieldID, CSTRING &Value) {
       Object *target;
+      Value = nullptr;
       if (auto field = FindField(this, FieldID, &target)) {
-         if (!field->readable()) { Value = nullptr; return ERR::NoFieldAccess; }
+         if (!field->readable()) return ERR::NoFieldAccess;
 
          int8_t field_value[8];
          int array_size;
          auto fv = get_field_value(target, *field, field_value, array_size);
-         if (fv.first != ERR::Okay) { Value = nullptr; return fv.first; }
+         if (fv.first != ERR::Okay) return fv.first;
 
          if ((field->Flags & FD_INT) and (field->Flags & FD_LOOKUP)) {
             // Reading a lookup field as a string is permissible, we just return the string registered in the lookup table
@@ -2934,25 +2938,51 @@ struct Object { // Must be 64-bit aligned
                   lookup++;
                }
             }
-            Value = nullptr;
             return ERR::Okay;
          }
          else if (field->Flags & (FD_POINTER|FD_STRING)) {
             Value = *((CSTRING *)fv.second);
             return ERR::Okay;
          }
-         Value = nullptr;
-         return ERR::FieldTypeMismatch;
+         else return ERR::FieldTypeMismatch;
       }
-      else {
-         Value = nullptr;
-         return ERR::UnsupportedField;
-      }
+      else return ERR::UnsupportedField;
    }
 
-   inline ERR get(FIELD FieldID, Unit &Value)     { return GetField(this, FieldID|TUNIT, &Value); }
-   inline ERR getPtr(FIELD FieldID, APTR Value)   { return GetField(this, FieldID|TPTR, Value); }
-   inline ERR getScale(FIELD FieldID, double *Value) { return GetField(this, FieldID|TDOUBLE|TSCALE, Value); }
+   template <class T> ERR getPtr(FIELD FieldID, T &Value) requires pcPointer<T> {
+      Object *target;
+      Value = nullptr;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!field->readable()) return ERR::NoFieldAccess;
+
+         int8_t field_value[8];
+         int array_size;
+         auto fv = get_field_value(target, *field, field_value, array_size);
+         if (fv.first != ERR::Okay) return fv.first;
+
+         if (field->Flags & (FD_POINTER|FD_STRING)) {
+            Value = *((T *)fv.second);
+            return ERR::Okay;
+         }
+         return ERR::FieldTypeMismatch;
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR get(FIELD FieldID, Unit &Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!field->readable()) return ERR::NoFieldAccess;
+
+         if (field->Flags & FD_UNIT) {
+            ObjectContext ctx(target, AC::NIL, field);
+            auto get_field = (ERR (*)(APTR, Unit &))field->GetValue;
+            return get_field(target, Value);
+         }
+         else return ERR::FieldTypeMismatch;
+      }
+      else return ERR::UnsupportedField;
+   }
 
    template <class T> inline T get(FIELD FieldID) { // Validity of the result is not guaranteed
       T val(T(0));

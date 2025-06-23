@@ -339,7 +339,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
-   argModule->getPtr(FID_Root, &modFont);
+   argModule->getPtr(FID_Root, modFont);
 
    if (objModule::load("display", &modDisplay, &DisplayBase) != ERR::Okay) return ERR::LoadModule;
 
@@ -352,7 +352,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       if (refresh) fnt::RefreshFonts();
 
       ConfigGroups *groups;
-      if (not ((glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) and (!groups->empty()))) {
+      if (not ((glConfig->getPtr(FID_Data, groups) IS ERR::Okay) and (!groups->empty()))) {
          log.error("Failed to build a database of valid fonts.");
          return ERR::Failed;
       }
@@ -448,7 +448,7 @@ ERR GetList(FontList **Result)
 
    size_t size = 0;
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) {
+   if (glConfig->getPtr(FID_Data, groups) IS ERR::Okay) {
       for (auto & [group, keys] : groups[0]) {
          size += sizeof(FontList) + keys["Name"].size() + 1 + keys["Styles"].size() + 1 + (keys["Points"].size()*4) + 1;
          if (keys.contains("Alias")) size += keys["Alias"].size() + 1;
@@ -640,7 +640,7 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
    if (not config.granted()) return log.warning(ERR::AccessObject);
 
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups) != ERR::Okay) return ERR::Search;
+   if (glConfig->getPtr(FID_Data, groups) != ERR::Okay) return ERR::Search;
 
    auto get_meta = [](ConfigKeys &Group) {
       auto meta = FMETA::NIL;
@@ -734,7 +734,7 @@ ERR RefreshFonts(void)
    //    Styles = Bold,Bold Italic,Italic,Regular
 
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) {
+   if (glConfig->getPtr(FID_Data, groups) IS ERR::Okay) {
       for (auto & [group, keys] : *groups) {
          std::list <std::string> styles;
          for (auto & [k, v] : keys) {
@@ -797,7 +797,7 @@ ERR ResolveFamilyName(CSTRING String, CSTRING *Result)
    if (not config.granted()) return log.warning(ERR::AccessObject);
 
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups) != ERR::Okay) return log.warning(ERR::GetField);
+   if (glConfig->getPtr(FID_Data, groups) != ERR::Okay) return log.warning(ERR::GetField);
 
    std::vector<std::string> names;
    pf::split(std::string(String), std::back_inserter(names));

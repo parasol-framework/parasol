@@ -59,7 +59,7 @@ static int module_load(lua_State *Lua)
       lua_setmetatable(Lua, -2);
 
       mod->Module = loaded_mod;
-      loaded_mod->getPtr(FID_FunctionList, &mod->Functions);
+      loaded_mod->getPtr(FID_FunctionList, mod->Functions);
       return 1;  // new userdatum is already on the stack
    }
    else {

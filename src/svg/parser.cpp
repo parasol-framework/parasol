@@ -1705,7 +1705,7 @@ void svgState::proc_pattern(XMLTag &Tag) noexcept
          fl::HostScene(Self->Scene));
 
       objVectorViewport *viewport;
-      pattern->getPtr(FID_Viewport, &viewport);
+      pattern->getPtr(FID_Viewport, viewport);
 
       bool rel_coords = true; // True because the default is 'objectBoundingBox'
       std::string x, y, width, height;

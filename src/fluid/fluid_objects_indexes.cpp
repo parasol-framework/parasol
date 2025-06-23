@@ -633,7 +633,7 @@ static int object_get_struct(lua_State *Lua, const obj_read &Handle, object *Def
       auto field = (Field *)(Handle.Data);
       if (field->Arg) {
          APTR result;
-         if ((error = obj->getPtr(field->FieldID, &result)) IS ERR::Okay) {
+         if ((error = obj->getPtr(field->FieldID, result)) IS ERR::Okay) {
             if (result) { // Structs are copied into standard Lua tables.
                if (field->Flags & FD_RESOURCE) {
                    push_struct(Lua->Script, result, (CSTRING)field->Arg, (field->Flags & FD_ALLOC) ? TRUE : FALSE, TRUE);
@@ -682,7 +682,7 @@ static int object_get_ptr(lua_State *Lua, const obj_read &Handle, object *Def)
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       APTR result;
-      if ((error = obj->getPtr(field->FieldID, &result)) IS ERR::Okay) lua_pushlightuserdata(Lua, result);
+      if ((error = obj->getPtr(field->FieldID, result)) IS ERR::Okay) lua_pushlightuserdata(Lua, result);
       release_object(Def);
    }
    else error = ERR::AccessObject;
@@ -698,7 +698,7 @@ static int object_get_object(lua_State *Lua, const obj_read &Handle, object *Def
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       OBJECTPTR objval;
-      if ((error = obj->getPtr(field->FieldID, &objval)) IS ERR::Okay) {
+      if ((error = obj->getPtr(field->FieldID, objval)) IS ERR::Okay) {
          if (objval) push_object(Lua, objval);
          else lua_pushnil(Lua);
       }
