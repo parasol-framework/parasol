@@ -964,7 +964,7 @@ static ERR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
       auto mclass = (objMetaClass *)FindClass(Args->ClassID);
 
       ERR (**routine)(OBJECTPTR, APTR);
-      if ((mclass->getPtr(FID_ActionTable, routine) IS ERR::Okay) and (routine)) {
+      if ((mclass->get(FID_ActionTable, routine) IS ERR::Okay) and (routine)) {
          if (routine[LONG(AC::SaveToObject)]) {
             return routine[LONG(AC::SaveToObject)](Self, Args);
          }

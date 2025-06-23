@@ -95,7 +95,7 @@ static ERR PTR_GrabX11Pointer(extPointer *Self, struct ptrGrabX11Pointer *Args)
    OBJECTPTR surface;
 
    if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR::Okay) {
-      surface->getPtr(FID_WindowHandle, &xwin);
+      surface->get(FID_WindowHandle, xwin);
       ReleaseObject(surface);
 
       if (xwin) XGrabPointer(XDisplay, (Window)xwin, 1, 0, GrabModeAsync, GrabModeAsync, (Window)xwin, None, CurrentTime);
@@ -126,7 +126,7 @@ flag for that button.
 
 *********************************************************************************************************************/
 
-// NOTE: See input_event_loop() if you are looking for the main input event processing loop.  Incoming events are 
+// NOTE: See input_event_loop() if you are looking for the main input event processing loop.  Incoming events are
 // pushed onto the glInputEvents queue and processed in the main thread at a later time.
 
 static ERR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
@@ -526,7 +526,7 @@ static ERR PTR_Hide(extPointer *Self)
       OBJECTPTR surface;
 
       if (AccessObject(Self->SurfaceID, 5000, &surface) IS ERR::Okay) {
-         surface->getPtr(FID_WindowHandle, &xwin);
+         surface->get(FID_WindowHandle, xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
       }
@@ -628,7 +628,7 @@ static ERR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
    if (AccessObject(Self->SurfaceID, 3000, &surface) IS ERR::Okay) {
       APTR xwin;
 
-      if (surface->getPtr(FID_WindowHandle, &xwin) IS ERR::Okay) {
+      if (surface->get(FID_WindowHandle, xwin) IS ERR::Okay) {
          if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = Args->X;
          if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = Args->Y;
          if (Self->X < 0) Self->X = 0;
@@ -753,7 +753,7 @@ static ERR PTR_Show(extPointer *Self)
       OBJECTPTR surface;
 
       if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
-         surface->getPtr(FID_WindowHandle, &xwin);
+         surface->get(FID_WindowHandle, xwin);
          XDefineCursor(XDisplay, (Window)xwin, GetX11Cursor(Self->CursorID));
          ReleaseObject(surface);
       }

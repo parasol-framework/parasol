@@ -254,10 +254,10 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
          prv->Includes.insert(module_name); // Mark the module as processed.
 
          OBJECTPTR mod;
-         if ((error = MetaClass->getPtr(FID_RootModule, mod)) IS ERR::Okay) {
+         if ((error = MetaClass->get(FID_RootModule, mod)) IS ERR::Okay) {
             struct ModHeader *header;
 
-            if (((error = mod->getPtr(FID_Header, header)) IS ERR::Okay) and (header)) {
+            if (((error = mod->get(FID_Header, header)) IS ERR::Okay) and (header)) {
                if (auto structs = header->StructDefs) {
                   for (auto &s : structs[0]) {
                      glStructSizes[s.first] = s.second;
@@ -288,7 +288,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   argModule->getPtr(FID_Root, modFluid);
+   argModule->get(FID_Root, modFluid);
 
    ActionList(&glActions, NULL); // Get the global action table from the Core
 
@@ -597,9 +597,9 @@ ERR load_include(objScript *Script, CSTRING IncName)
          prv->Includes.insert(IncName); // Mark the file as loaded.
 
          OBJECTPTR root;
-         if ((error = module->getPtr(FID_Root, root)) IS ERR::Okay) {
+         if ((error = module->get(FID_Root, root)) IS ERR::Okay) {
             struct ModHeader *header;
-            if ((((error = root->getPtr(FID_Header, header)) IS ERR::Okay) and (header))) {
+            if ((((error = root->get(FID_Header, header)) IS ERR::Okay) and (header))) {
                if (auto structs = header->StructDefs) {
                   for (auto &s : structs[0]) glStructSizes[s.first] = s.second;
                }

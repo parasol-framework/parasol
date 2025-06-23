@@ -711,7 +711,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
          }
 
          CSTRING name;
-         if ((CurrentTask()->getPtr(FID_Name, &name) IS ERR::Okay) and (name)) {
+         if ((CurrentTask()->get(FID_Name, name) IS ERR::Okay) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
@@ -2253,7 +2253,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
          }
 
          STRING name;
-         if ((CurrentTask()->getPtr(FID_Name, &name) IS ERR::Okay) and (name)) {
+         if ((CurrentTask()->get(FID_Name, name) IS ERR::Okay) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");

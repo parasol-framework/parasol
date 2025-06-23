@@ -35,7 +35,7 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
    pf::Log log(__FUNCTION__);
    std::unordered_map<std::string, OBJECTPTR> *defs;
 
-   if (Scene->getPtr(FID_Defs, defs) IS ERR::Okay) {
+   if (Scene->get(FID_Defs, defs) IS ERR::Okay) {
       ERR error;
       LONG def_index = 0;
       for (auto & [ key, def ] : *defs) {
@@ -106,7 +106,7 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
             }
 
             VectorMatrix *transform;
-            if ((error IS ERR::Okay) and (gradient->getPtr(FID_Transforms, transform) IS ERR::Okay) and (transform)) {
+            if ((error IS ERR::Okay) and (gradient->get(FID_Transforms, transform) IS ERR::Okay) and (transform)) {
                std::stringstream buffer;
                if (save_svg_transform(transform, buffer) IS ERR::Okay) {
                   xml::NewAttrib(tag, "gradientTransform", buffer.str());
@@ -330,7 +330,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
    if ((error IS ERR::Okay) and (Vector->get(FID_Filter, str) IS ERR::Okay) and (str)) xml::NewAttrib(tag, "filter", str);
 
    VectorMatrix *transform;
-   if ((error IS ERR::Okay) and (Vector->getPtr(FID_Transforms, transform) IS ERR::Okay) and (transform)) {
+   if ((error IS ERR::Okay) and (Vector->get(FID_Transforms, transform) IS ERR::Okay) and (transform)) {
       std::stringstream buffer;
       if ((error = save_svg_transform(transform, buffer)) IS ERR::Okay) {
          xml::NewAttrib(tag, "transform", buffer.str());
@@ -338,7 +338,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
    }
 
    OBJECTPTR shape;
-   if ((error IS ERR::Okay) and (Vector->getPtr(FID_Morph, shape) IS ERR::Okay) and (shape)) {
+   if ((error IS ERR::Okay) and (Vector->get(FID_Morph, shape) IS ERR::Okay) and (shape)) {
       VMF morph_flags;
       XMLTag *morph_tag;
       error = XML->insertStatement(TagID, XMI::CHILD_END, "<parasol:morph/>", &morph_tag);
@@ -370,7 +370,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
       }
 
       struct rkVectorTransition *tv;
-      if ((error IS ERR::Okay) and (Vector->getPtr(FID_Transition, tv) IS ERR::Okay)) {
+      if ((error IS ERR::Okay) and (Vector->get(FID_Transition, tv) IS ERR::Okay)) {
          // TODO save_svg_scan_std transition support
 
 

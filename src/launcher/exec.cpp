@@ -26,7 +26,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
    if (glSandbox) {
       pf::vector<std::string> *params = nullptr;
-      glTask->getPtr(FID_Parameters, params);
+      glTask->get(FID_Parameters, params);
 
       #ifdef _WIN32
          IntegrityLevel il = get_integrity_level();

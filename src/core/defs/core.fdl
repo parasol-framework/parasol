@@ -1833,7 +1833,7 @@ struct Object { // Must be 64-bit aligned
       else return ERR::UnsupportedField;
    }
 
-   template <class T> ERR getPtr(FIELD FieldID, T &Value) requires pcPointer<T> {
+   template <class T> ERR get(FIELD FieldID, T &Value) requires pcPointer<T> {
       Object *target;
       Value = nullptr;
       if (auto field = FindField(this, FieldID, &target)) {
@@ -1868,10 +1868,24 @@ struct Object { // Must be 64-bit aligned
       else return ERR::UnsupportedField;
    }
 
-   template <class T> inline T get(FIELD FieldID) { // Validity of the result is not guaranteed
-      T val(T(0));
-      GetField(this, FieldID|FIELD_TAG<T>(), &val);
-      return val;
+   inline ERR get(FIELD FieldID, DMF &Value) {
+      uint32_t result;
+      auto error = get<uint32_t>(FieldID, result);
+      Value = DMF(result);
+      return error;
+   }
+
+   template <class T> T get(FIELD FieldID)
+   requires pcPointer<T> || std::integral<T> || std::floating_point<T> {
+      T result(0);
+      get(FieldID, result);
+      return result;
+   };
+
+   template <class T> T get(FIELD FieldID) requires std::is_same_v<T, DMF> {
+      DMF result(DMF::NIL);
+      get(FieldID, result);
+      return result;
    };
 
    template <typename... Args> ERR setFields(Args&&... pFields) {

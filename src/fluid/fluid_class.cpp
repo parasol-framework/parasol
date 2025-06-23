@@ -251,7 +251,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
             if ((scan.Args) and (Args)) {
                stack_args(prv->Lua, Object->UID, scan.Args, (STRING)Args);
             }
-            
+
             LONG total_args = 2;
 
             if (scan.Reference) { // +1: Custom reference (optional)
@@ -386,7 +386,7 @@ static ERR FLUID_Activate(objScript *Self)
          luaL_getmetatable(prv->Lua, "Fluid.mod");
          lua_setmetatable(prv->Lua, -2);
          mod->Module = core;
-         core->getPtr(FID_FunctionList, mod->Functions);
+         core->get(FID_FunctionList, mod->Functions);
          lua_setglobal(prv->Lua, "mSys");
       }
       else {
@@ -743,7 +743,7 @@ static ERR FLUID_Init(objScript *Self)
          new (prv) prvFluid;
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
-            if (src_file->getPtr(FID_Date, dt) IS ERR::Okay) prv->CacheDate = *dt;
+            if (src_file->get(FID_Date, dt) IS ERR::Okay) prv->CacheDate = *dt;
             src_file->get(FID_Permissions, (LONG &)prv->CachePermissions);
             prv->LoadedSize = loaded_size;
          }
@@ -1069,7 +1069,7 @@ static ERR run_script(objScript *Self)
       return ERR::Okay;
    }
    else {
-      // LuaJIT catches C++ exceptions, but we would prefer that crashes occur normally so that they can be traced in 
+      // LuaJIT catches C++ exceptions, but we would prefer that crashes occur normally so that they can be traced in
       // the debugger.  As we don't have a solution to this design issue yet, the following context check will suffice
       // to prevent unwanted behaviour.
 

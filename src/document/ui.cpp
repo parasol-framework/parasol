@@ -956,7 +956,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
             pf::ScopedObjectLock focus(std::get<OBJECTID>(Self->Tabs[Index].ref));
             if (focus.granted()) {
                acFocus(*focus);
-               //if ((input->getPtr(FID_UserInput, &text) IS ERR::Okay) and (text)) {
+               //if ((input->get(FID_UserInput, text) IS ERR::Okay) and (text)) {
                //   txtSelectArea(text, 0,0, 200000, 200000);
                //}
             }

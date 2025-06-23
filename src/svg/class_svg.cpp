@@ -297,7 +297,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((mc->getPtr(FID_ActionTable, actions) IS ERR::Okay) and (actions)) {
+      if ((mc->get(FID_ActionTable, actions) IS ERR::Okay) and (actions)) {
          if ((actions[LONG(AC::SaveToObject)]) and (actions[LONG(AC::SaveToObject)] != (APTR)SVG_SaveToObject)) {
             return actions[LONG(AC::SaveToObject)](Self, Args);
          }

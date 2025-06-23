@@ -254,7 +254,7 @@ static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // All function addresses specified in the driver can overload our local generic functions
 
    Function * drivertable;
-   if (!modDriver->getPtr(FID_FunctionList, &drivertable)) {
+   if (!modDriver->get(FID_FunctionList, drivertable)) {
       for (LONG i=0; drivertable[i].Name; i++) {
          if (drivertable[i].Address) JumpTable[i].Address = drivertable[i].Address;
       }

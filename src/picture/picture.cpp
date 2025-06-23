@@ -809,7 +809,7 @@ static ERR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
 
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::PICTURE)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((mc->getPtr(FID_ActionTable, routine) IS ERR::Okay) and (routine)) {
+      if ((mc->get(FID_ActionTable, routine) IS ERR::Okay) and (routine)) {
          if ((routine[LONG(AC::SaveToObject)]) and (routine[LONG(AC::SaveToObject)] != (APTR)PICTURE_SaveToObject)) {
             return routine[LONG(AC::SaveToObject)](Self, Args);
          }
@@ -1214,10 +1214,10 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
 
    if (PngWidth > (png_uint_32)Bitmap->Width) PngWidth = Bitmap->Width;
    if (PngHeight > (png_uint_32)Bitmap->Height) PngHeight = Bitmap->Height;
-   
+
    LONG passes = 1;
    if (interlace_type == PNG_INTERLACE_ADAM7) passes = png_set_interlace_handling(ReadPtr);
-      
+
    row_pointers = row;
    if (ColourType IS PNG_COLOR_TYPE_GRAY) {
       log.trace("Greyscale image source.");

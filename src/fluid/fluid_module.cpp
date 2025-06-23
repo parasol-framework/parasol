@@ -59,7 +59,7 @@ static int module_load(lua_State *Lua)
       lua_setmetatable(Lua, -2);
 
       mod->Module = loaded_mod;
-      loaded_mod->getPtr(FID_FunctionList, mod->Functions);
+      loaded_mod->get(FID_FunctionList, mod->Functions);
       return 1;  // new userdatum is already on the stack
    }
    else {
@@ -227,7 +227,7 @@ static int module_call(lua_State *Lua)
             }
          }
          else if (argtype & FD_STR) { // FD_RESULT
-            if (argtype & FD_CPP) { 
+            if (argtype & FD_CPP) {
                // Special case; we provide a std::string that will be used as a buffer for storing the result.
                ((std::string **)(buffer + j))[0] = new std::string;
                arg_values[in]  = buffer + j;

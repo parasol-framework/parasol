@@ -3368,7 +3368,7 @@ void parser::tag_script(XMLTag &Tag)
          // Pass document arguments to the script
 
          std::unordered_map<std::string, std::string> *vs;
-         if ((script->getPtr(FID_Variables, vs) IS ERR::Okay) and (vs) and (vs->size() > 0)) {
+         if ((script->get(FID_Variables, vs) IS ERR::Okay) and (vs) and (vs->size() > 0)) {
             Self->Vars   = *vs;
             Self->Params = *vs;
          }

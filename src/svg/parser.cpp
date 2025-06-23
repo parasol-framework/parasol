@@ -1705,7 +1705,7 @@ void svgState::proc_pattern(XMLTag &Tag) noexcept
          fl::HostScene(Self->Scene));
 
       objVectorViewport *viewport;
-      pattern->getPtr(FID_Viewport, viewport);
+      pattern->get(FID_Viewport, viewport);
 
       bool rel_coords = true; // True because the default is 'objectBoundingBox'
       std::string x, y, width, height;
@@ -3649,7 +3649,7 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
          else if (iequals("inherit", StrValue)) Vector->setClipRule(LONG(VFR::INHERIT));
          else log.warning("Unsupported clip-rule value '%s'", StrValue.c_str());
          break;
-         
+
       case SVF_ENABLE_BACKGROUND: // Deprecated in favour of 'isolated'
          log.warning("enable-background is deprecated in favour of the isolated attribute.");
          if (iequals("new", StrValue)) Vector->setFlags(Vector->Flags | VF::ISOLATED);
