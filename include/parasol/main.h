@@ -69,13 +69,13 @@ DEFINE_ENUM_FLAG_OPERATORS(ERR)
 //********************************************************************************************************************
 
 template <class T>
-class ScopedAccessMemory { // C++ wrapper for automatically releasing shared memory
+class ScopedAccessMemory { // C++ wrapper for automatically releasing locked memory
    public:
-      LONG id;
+      int id;
       T *ptr;
       ERR error;
 
-      ScopedAccessMemory(LONG ID, MEM Flags, LONG Milliseconds = 5000) {
+      ScopedAccessMemory(int ID, MEM Flags, int Milliseconds = 5000) {
          id = ID;
          error = AccessMemory(ID, Flags, Milliseconds, (APTR *)&ptr);
       }
@@ -145,12 +145,12 @@ class ScopedObjectLock {
       ERR error;
       T *obj;
 
-      inline ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
+      inline ScopedObjectLock(OBJECTID ObjectID, int Milliseconds = 3000) {
          error = AccessObject(ObjectID, Milliseconds, (OBJECTPTR *)&obj);
          quicklock = false;
       }
 
-      inline ScopedObjectLock(T *Object, LONG Milliseconds = 3000) {
+      inline ScopedObjectLock(T *Object, int Milliseconds = 3000) {
          if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
             obj = (T *)Object;
             quicklock = true;
@@ -186,7 +186,7 @@ class LocalResource {
    public:
       LocalResource(T Resource) {
          static_assert(std::is_pointer<T>::value, "The resource value must be a pointer");
-         id = ((LONG *)Resource)[-2];
+         id = ((int *)Resource)[-2];
       }
       ~LocalResource() { FreeResource(id); }
 };
@@ -198,7 +198,7 @@ class LocalResource {
 template <class T = Object, class C = std::atomic_int>
 class GuardedObject {
    private:
-      C * count;  // Count of GuardedObjects accessing the same resource.  Can be LONG (non-threaded) or std::atomic_int
+      C * count;  // Count of GuardedObjects accessing the same resource.  Can be int (non-threaded) or std::atomic_int
       T * object; // Pointer to the Parasol object being guarded.  Use '*' or '->' operators to access.
 
    public:
@@ -210,7 +210,7 @@ class GuardedObject {
 
       GuardedObject(T *pObject) : count(new C(1)), object(pObject) {
          static_assert(std::is_base_of_v<Object, T>, "The resource value must belong to Object");
-         id = ((LONG *)pObject)[-2];
+         id = ((int *)pObject)[-2];
       }
 
       GuardedObject(const GuardedObject &other) { // Copy constructor
@@ -276,7 +276,7 @@ class GuardedObject {
          if (!Object) return;
          else if (count[0] IS 1) {
             object = Object;
-            id     = ((LONG *)Object)[-2];
+            id     = ((int *)Object)[-2];
          }
          else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
       }
@@ -294,7 +294,7 @@ class GuardedObject {
 template <class T = void, class C = std::atomic_int>
 class GuardedResource {
    private:
-      C * count;  // Count of GuardedResources accessing the same resource.  Can be LONG (non-threaded) or std::atomic_int
+      C * count;  // Count of GuardedResources accessing the same resource.  Can be int (non-threaded) or std::atomic_int
       T * resource; // Pointer to the Parasol resource being guarded.  Use '*' or '->' operators to access.
 
    public:
@@ -305,7 +305,7 @@ class GuardedResource {
       GuardedResource() : count(new C(1)), resource(NULL), id(0) { }
 
       GuardedResource(T *Resource) : count(new C(1)), resource(Resource) {
-         id = ((LONG *)Resource)[-2];
+         id = ((int *)Resource)[-2];
       }
 
       GuardedResource(const GuardedResource &other) { // Copy constructor
@@ -371,7 +371,7 @@ class GuardedResource {
          if (!Resource) return;
          else if (count[0] IS 1) {
             resource = Resource;
-            id       = ((LONG *)Resource)[-2];
+            id       = ((int *)Resource)[-2];
          }
          else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
       }
@@ -452,7 +452,7 @@ constexpr FieldValue FileHeader(CSTRING Value) { return FieldValue(FID_FileHeade
 inline FieldValue FileHeader(const std::string &Value) { return FieldValue(FID_FileHeader, Value.c_str()); }
 
 constexpr FieldValue FontSize(double Value) { return FieldValue(FID_FontSize, Value); }
-constexpr FieldValue FontSize(LONG Value) { return FieldValue(FID_FontSize, Value); }
+constexpr FieldValue FontSize(int Value) { return FieldValue(FID_FontSize, Value); }
 constexpr FieldValue FontSize(CSTRING Value) { return FieldValue(FID_FontSize, Value); }
 inline FieldValue FontSize(const std::string &Value) { return FieldValue(FID_FontSize, Value.c_str()); }
 
@@ -471,14 +471,14 @@ inline FieldValue Icon(const std::string &Value) { return FieldValue(FID_Icon, V
 constexpr FieldValue Procedure(CSTRING Value) { return FieldValue(FID_Procedure, Value); }
 inline FieldValue Procedure(const std::string &Value) { return FieldValue(FID_Procedure, Value.c_str()); }
 
-constexpr FieldValue ReadOnly(LONG Value) { return FieldValue(FID_ReadOnly, Value); }
+constexpr FieldValue ReadOnly(int Value) { return FieldValue(FID_ReadOnly, Value); }
 constexpr FieldValue ReadOnly(bool Value) { return FieldValue(FID_ReadOnly, (Value ? 1 : 0)); }
 
 constexpr FieldValue ButtonOrder(CSTRING Value) { return FieldValue(FID_ButtonOrder, Value); }
 inline FieldValue ButtonOrder(const std::string &Value) { return FieldValue(FID_ButtonOrder, Value.c_str()); }
 
 constexpr FieldValue Point(double Value) { return FieldValue(FID_Point, Value); }
-constexpr FieldValue Point(LONG Value) { return FieldValue(FID_Point, Value); }
+constexpr FieldValue Point(int Value) { return FieldValue(FID_Point, Value); }
 constexpr FieldValue Point(CSTRING Value) { return FieldValue(FID_Point, Value); }
 inline FieldValue Point(const std::string &Value) { return FieldValue(FID_Point, Value.c_str()); }
 
@@ -490,42 +490,42 @@ inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pret
 
 constexpr FieldValue Acceleration(double Value) { return FieldValue(FID_Acceleration, Value); }
 constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
-constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
-constexpr FieldValue BaseClassID(CLASSID Value) { return FieldValue(FID_BaseClassID, LONG(Value)); }
+constexpr FieldValue AmtColours(int Value) { return FieldValue(FID_AmtColours, Value); }
+constexpr FieldValue BaseClassID(CLASSID Value) { return FieldValue(FID_BaseClassID, int(Value)); }
 constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
-constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPixel, Value); }
-constexpr FieldValue BytesPerPixel(LONG Value) { return FieldValue(FID_BytesPerPixel, Value); }
-constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, LONG(Value)); }
-constexpr FieldValue ClassID(CLASSID Value) { return FieldValue(FID_ClassID, LONG(Value)); }
+constexpr FieldValue BitsPerPixel(int Value) { return FieldValue(FID_BitsPerPixel, Value); }
+constexpr FieldValue BytesPerPixel(int Value) { return FieldValue(FID_BytesPerPixel, Value); }
+constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, int(Value)); }
+constexpr FieldValue ClassID(CLASSID Value) { return FieldValue(FID_ClassID, int(Value)); }
 constexpr FieldValue ClassVersion(double Value) { return FieldValue(FID_ClassVersion, Value); }
 constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
-constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, LONG(Value)); }
-constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, LONG(Value)); }
+constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, int(Value)); }
+constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, int(Value)); }
 constexpr FieldValue DoubleClick(double Value) { return FieldValue(FID_DoubleClick, Value); }
 constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
 constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
-constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
+constexpr FieldValue Flags(int Value) { return FieldValue(FID_Flags, Value); }
 constexpr FieldValue Font(OBJECTPTR Value) { return FieldValue(FID_Font, Value); }
 constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
 constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
 constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
-constexpr FieldValue LineLimit(LONG Value) { return FieldValue(FID_LineLimit, Value); }
-constexpr FieldValue Listener(LONG Value) { return FieldValue(FID_Listener, Value); }
-constexpr FieldValue MatrixColumns(LONG Value) { return FieldValue(FID_MatrixColumns, Value); }
-constexpr FieldValue MatrixRows(LONG Value) { return FieldValue(FID_MatrixRows, Value); }
-constexpr FieldValue MaxHeight(LONG Value) { return FieldValue(FID_MaxHeight, Value); }
+constexpr FieldValue LineLimit(int Value) { return FieldValue(FID_LineLimit, Value); }
+constexpr FieldValue Listener(int Value) { return FieldValue(FID_Listener, Value); }
+constexpr FieldValue MatrixColumns(int Value) { return FieldValue(FID_MatrixColumns, Value); }
+constexpr FieldValue MatrixRows(int Value) { return FieldValue(FID_MatrixRows, Value); }
+constexpr FieldValue MaxHeight(int Value) { return FieldValue(FID_MaxHeight, Value); }
 constexpr FieldValue MaxSpeed(double Value) { return FieldValue(FID_MaxSpeed, Value); }
-constexpr FieldValue MaxWidth(LONG Value) { return FieldValue(FID_MaxWidth, Value); }
+constexpr FieldValue MaxWidth(int Value) { return FieldValue(FID_MaxWidth, Value); }
 constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
 constexpr FieldValue Opacity(double Value) { return FieldValue(FID_Opacity, Value); }
 constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value); }
 constexpr FieldValue Parent(OBJECTID Value) { return FieldValue(FID_Parent, Value); }
-constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, LONG(Value)); }
+constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, int(Value)); }
 constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
 constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }
 constexpr FieldValue RefreshRate(double Value) { return FieldValue(FID_RefreshRate, Value); }
 constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
-constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
+constexpr FieldValue Size(int Value) { return FieldValue(FID_Size, Value); }
 constexpr FieldValue Speed(double Value) { return FieldValue(FID_Speed, Value); }
 constexpr FieldValue StrokeWidth(double Value) { return FieldValue(FID_StrokeWidth, Value); }
 constexpr FieldValue Surface(OBJECTID Value) { return FieldValue(FID_Surface, Value); }
@@ -535,51 +535,51 @@ constexpr FieldValue ClientData(CPTR Value) { return FieldValue(FID_ClientData, 
 constexpr FieldValue Version(double Value) { return FieldValue(FID_Version, Value); }
 constexpr FieldValue Viewport(OBJECTID Value) { return FieldValue(FID_Viewport, Value); }
 constexpr FieldValue Viewport(OBJECTPTR Value) { return FieldValue(FID_Viewport, Value); }
-constexpr FieldValue Weight(LONG Value) { return FieldValue(FID_Weight, Value); }
+constexpr FieldValue Weight(int Value) { return FieldValue(FID_Weight, Value); }
 constexpr FieldValue WheelSpeed(double Value) { return FieldValue(FID_WheelSpeed, Value); }
 constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
-constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }
+constexpr FieldValue WindowHandle(int Value) { return FieldValue(FID_WindowHandle, Value); }
 
 // Template-based Flags are required for strongly typed enums
 
 template <class T> FieldValue Type(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Type value must be numeric");
-   return FieldValue(FID_Type, LONG(Value));
+   return FieldValue(FID_Type, int(Value));
 }
 
 template <class T> FieldValue AspectRatio(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "AspectRatio value must be numeric");
-   return FieldValue(FID_AspectRatio, LONG(Value));
+   return FieldValue(FID_AspectRatio, int(Value));
 }
 
 template <class T> FieldValue BlendMode(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "BlendMode value must be numeric");
-   return FieldValue(FID_BlendMode, LONG(Value));
+   return FieldValue(FID_BlendMode, int(Value));
 }
 
 template <class T> FieldValue ColourSpace(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "ColourSpace value must be numeric");
-   return FieldValue(FID_ColourSpace, LONG(Value));
+   return FieldValue(FID_ColourSpace, int(Value));
 }
 
 template <class T> FieldValue Flags(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Flags value must be numeric");
-   return FieldValue(FID_Flags, LONG(Value));
+   return FieldValue(FID_Flags, int(Value));
 }
 
 template <class T> FieldValue Units(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Units value must be numeric");
-   return FieldValue(FID_Units, LONG(Value));
+   return FieldValue(FID_Units, int(Value));
 }
 
 template <class T> FieldValue SpreadMethod(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "SpreadMethod value must be numeric");
-   return FieldValue(FID_SpreadMethod, LONG(Value));
+   return FieldValue(FID_SpreadMethod, int(Value));
 }
 
 template <class T> FieldValue Visibility(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Visibility value must be numeric");
-   return FieldValue(FID_Visibility, LONG(Value));
+   return FieldValue(FID_Visibility, int(Value));
 }
 
 template <class T> FieldValue PageWidth(T Value) {

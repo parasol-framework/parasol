@@ -53,7 +53,7 @@ Field * lookup_id(OBJECTPTR Object, uint32_t FieldID, OBJECTPTR *Target)
    // directly retrieving a pointer to the local object and then reading the field value from that.
 
    for (unsigned i=0; mc->Local[i] != 0xff; i++) {
-      OBJECTPTR child = *((OBJECTPTR *)(((BYTE *)Object) + mc->FieldLookup[mc->Local[i]].Offset));
+      OBJECTPTR child = *((OBJECTPTR *)(((int8_t *)Object) + mc->FieldLookup[mc->Local[i]].Offset));
       auto &field = child->ExtClass->FieldLookup;
       unsigned floor = 0;
       auto ceiling = child->ExtClass->BaseCeiling;
@@ -179,213 +179,43 @@ ERR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, int *Elements)
    *Result = nullptr;
 
    if (auto field = lookup_id(Object, FieldID, &Object)) {
-      if ((!(field->Flags & FD_READ)) or (!(field->Flags & FD_ARRAY))) {
-         if (!field->Name) log.warning("Illegal attempt to read field %s.", FieldName(FieldID));
-         else log.warning("Illegal attempt to read field %s.", field->Name);
+      if ((!field->readable()) or (!(field->Flags & FD_ARRAY))) {
          return ERR::NoFieldAccess;
       }
 
-      if (req_type) { // Perform simple type validation if requested to do so.
-         if (!(req_type & field->Flags)) return log.warning(ERR::Mismatch);
-      }
+      if ((req_type) and (!(req_type & field->Flags))) return log.warning(ERR::FieldTypeMismatch);
 
       ScopedObjectAccess objlock(Object);
-      ERR error = copy_field_to_buffer(Object, field, FD_POINTER, Result, Elements);
-      return error;
+
+      int8_t value[16]; // 128 bits of space
+      APTR data;
+      int array_size = -1;
+      auto srcflags = field->Flags;
+
+      if (field->GetValue) {
+         ObjectContext ctx(Object, AC::NIL, field);
+         auto get_field = (ERR (*)(APTR, APTR, int &))field->GetValue;
+         if (auto error = get_field(Object, value, array_size); error != ERR::Okay) return error;
+         data = value;
+      }
+      else data = ((int8_t *)Object) + field->Offset;
+
+      if (srcflags & FD_CPP) {
+         *((APTR *)Result) = *((APTR *)data);
+      }
+      else {
+         if (array_size IS -1) {
+            log.warning("Array sizing not supported for field %s", field->Name);
+            return ERR::Failed;
+         }
+
+         *Elements = array_size;
+         *((APTR *)Result) = *((APTR *)data);
+      }
+
+      return ERR::Okay;
    }
    else log.warning("Unsupported field %s", FieldName(FieldID));
 
    return ERR::UnsupportedField;
-}
-
-//********************************************************************************************************************
-// Used by the GetField() range of functions.
-
-ERR copy_field_to_buffer(OBJECTPTR Object, Field *Field, int DestFlags, APTR Result, int *TotalElements)
-{
-   //log.msg("[%s:%d] Name: %s, Flags: $%x", ((extMetaClass *)Object->Class)->Name, Object->UID, Field->Name, DestFlags);
-
-   BYTE value[16]; // 128 bits of space
-   APTR data;
-   int array_size = -1;
-   auto srcflags = Field->Flags;
-
-   if (!(DestFlags & (FD_UNIT|FD_INT64|FD_INT|FD_DOUBLE|FD_POINTER|FD_STRING|FD_ARRAY))) goto mismatch;
-
-   if (srcflags & FD_UNIT) {
-      if (!Field->GetValue) return ERR::NoFieldAccess;
-
-      Unit var;
-      ERR error;
-      ObjectContext ctx(Object, AC::NIL, Field);
-
-      if (DestFlags & FD_UNIT) {
-         error = Field->GetValue(Object, Result);
-      }
-      else {
-         var.Type = FD_DOUBLE | (DestFlags & (~(FD_INT|FD_INT64|FD_DOUBLE)));
-         error = Field->GetValue(Object, &var);
-
-         if (error IS ERR::Okay) {
-            if (DestFlags & FD_INT64)       *((int64_t *)Result) = var.Value;
-            else if (DestFlags & FD_INT)    *((int *)Result)     = var.Value;
-            else if (DestFlags & FD_DOUBLE) *((double *)Result)  = var.Value;
-            else error = ERR::FieldTypeMismatch;
-         }
-      }
-
-      if (error IS ERR::FieldTypeMismatch) goto mismatch;
-      else return error;
-   }
-
-   if (Field->GetValue) {
-      ObjectContext ctx(Object, AC::NIL, Field);
-      auto get_field = (ERR (*)(APTR, APTR, int *))Field->GetValue;
-      ERR error = get_field(Object, value, &array_size);
-      if (error != ERR::Okay) return error;
-      data = value;
-   }
-   else data = ((BYTE *)Object) + Field->Offset;
-
-   // Write the data to the result area using some basic conversion code
-
-   if (srcflags & FD_ARRAY) {
-      if (srcflags & FD_CPP) {
-         if (DestFlags & FD_STRING) {
-            // Special feature: If a string is requested, the array values are converted to CSV format.
-            std::stringstream buffer;
-            if (srcflags & FD_INT) {
-               auto vec = (pf::vector<int> *)data;
-               if (TotalElements) *TotalElements = vec->size();
-               for (auto &val : vec[0]) buffer << val << ',';
-            }
-            else if (srcflags & FD_BYTE) {
-               auto vec = (pf::vector<UBYTE> *)data;
-               if (TotalElements) *TotalElements = vec->size();
-               for (auto &val : vec[0]) buffer << val << ',';
-            }
-            else if (srcflags & FD_DOUBLE) {
-               auto vec = (pf::vector<double> *)data;
-               if (TotalElements) *TotalElements = vec->size();
-               for (auto &val : vec[0]) buffer << val << ',';
-            }
-            auto i = strcopy(buffer.str(), strGetField, sizeof(strGetField));
-            if (i > 0) strGetField[i-1] = 0; // Eliminate trailing comma
-            *((STRING *)Result) = strGetField;
-         }
-         else if (DestFlags & FD_POINTER) *((APTR *)Result) = *((APTR *)data);
-         else goto mismatch;
-      }
-      else {
-         if (array_size IS -1) {
-            pf::Log log("GetField");
-            log.warning("Array sizing not supported for field %s", Field->Name);
-            return ERR::Failed;
-         }
-
-         if (TotalElements) *TotalElements = array_size;
-
-         if (DestFlags & FD_STRING) {
-            // Special feature: If a string is requested, the array values are converted to CSV format.
-            int pos = 0;
-            if (srcflags & FD_INT) {
-               int *array = (int *)data;
-               for (int i=0; i < array_size; i++) {
-                  pos += strcopy(std::to_string(*array++), strGetField+pos, sizeof(strGetField)-pos);
-                  if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
-               }
-            }
-            else if (srcflags & FD_BYTE) {
-               UBYTE *array = (UBYTE *)data;
-               for (int i=0; i < array_size; i++) {
-                  pos += strcopy(std::to_string(*array++), strGetField+pos, sizeof(strGetField)-pos);
-                  if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
-               }
-            }
-            else if (srcflags & FD_DOUBLE) {
-               double *array = (double *)data;
-               for (int i=0; i < array_size; i++) {
-                  pos += snprintf(strGetField+pos, sizeof(strGetField)-pos, "%f", *array++);
-                  if (((size_t)pos < sizeof(strGetField)-2) and (i+1 < array_size)) strGetField[pos++] = ',';
-               }
-               }
-            strGetField[pos] = 0;
-            *((STRING *)Result) = strGetField;
-         }
-         else if (DestFlags & FD_POINTER) *((APTR *)Result) = *((APTR *)data);
-         else goto mismatch;
-      }
-      return ERR::Okay;
-   }
-
-   if (srcflags & FD_INT) {
-      if (DestFlags & FD_DOUBLE)     *((double *)Result)  = *((int *)data);
-      else if (DestFlags & FD_INT)   *((int *)Result)     = *((int *)data);
-      else if (DestFlags & FD_INT64) *((int64_t *)Result) = *((int *)data);
-      else if (DestFlags & FD_STRING) {
-         if (srcflags & FD_LOOKUP) {
-            FieldDef *lookup;
-            // Reading a lookup field as a string is permissible, we just return the string registered in the lookup table
-            if ((lookup = (FieldDef *)Field->Arg)) {
-               int value = ((int *)data)[0];
-               while (lookup->Name) {
-                  if (value IS lookup->Value) {
-                     *((CSTRING *)Result) = lookup->Name;
-                     return ERR::Okay;
-                  }
-                  lookup++;
-               }
-            }
-            *((STRING *)Result) = nullptr;
-         }
-         else {
-            strcopy(std::to_string(*((int *)data)), strGetField, sizeof(strGetField));
-            *((STRING *)Result) = strGetField;
-         }
-      }
-      else goto mismatch;
-   }
-   else if (srcflags & FD_INT64) {
-      if (DestFlags & FD_DOUBLE)     *((double *)Result)  = (double)(*((int64_t *)data));
-      else if (DestFlags & FD_INT)   *((int *)Result)     = (int)(*((int64_t *)data));
-      else if (DestFlags & FD_INT64) *((int64_t *)Result) = *((int64_t *)data);
-      else if (DestFlags & FD_STRING) {
-         strcopy(std::to_string(*((int64_t *)data)), strGetField, sizeof(strGetField));
-         *((STRING *)Result) = strGetField;
-      }
-      else goto mismatch;
-   }
-   else if (srcflags & FD_DOUBLE) {
-      if (DestFlags & FD_INT)         *((int *)Result)     = F2I(*((double *)data));
-      else if (DestFlags & FD_DOUBLE) *((double *)Result)  = *((double *)data);
-      else if (DestFlags & FD_INT64)  *((int64_t *)Result) = F2I(*((double *)data));
-      else if (DestFlags & FD_STRING) {
-         snprintf(strGetField, sizeof(strGetField), "%f", *((double *)data));
-         *((STRING *)Result) = strGetField;
-      }
-      else goto mismatch;
-   }
-   else if (srcflags & (FD_POINTER|FD_STRING)) {
-      if (DestFlags & (FD_POINTER|FD_STRING)) *((APTR *)Result) = *((APTR *)data);
-      else if (srcflags & (FD_LOCAL|FD_OBJECT)) {
-         if (auto object = *((OBJECTPTR *)data)) {
-            if (DestFlags & FD_INT)        *((int *)Result)  = object->UID;
-            else if (DestFlags & FD_INT64) *((int64_t *)Result) = object->UID;
-            else goto mismatch;
-         }
-         else goto mismatch;
-      }
-      else goto mismatch;
-   }
-   else {
-      pf::Log log("GetField");
-      return log.warning(ERR::UnrecognisedFieldType);
-   }
-
-   return ERR::Okay;
-
-mismatch:
-   pf::Log log("GetField");
-   log.warning("Mismatch while reading %s.%s (field $%.8x, requested $%.8x).", Object->className(), Field->Name, Field->Flags, DestFlags);
-   return ERR::FieldTypeMismatch;
 }
