@@ -116,7 +116,7 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
             if (gradient->get<LONG>(FID_TotalStops) > 0) {
                GradientStop *stops;
                LONG total_stops, stop_index;
-               if (GetFieldArray(gradient, FID_Stops, (APTR *)&stops, &total_stops) IS ERR::Okay) {
+               if (gradient->get(FID_Stops, stops, total_stops) IS ERR::Okay) {
                   for (LONG s=0; (s < total_stops) and (error IS ERR::Okay); s++) {
                      if ((error = XML->insertXML(def_index, XMI::CHILD_END, "<stop/>", &stop_index)) IS ERR::Okay) {
                         XMLTag *stop_tag;
@@ -229,7 +229,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
    char buffer[160];
    CSTRING str;
    float *colour;
-   LONG array_size;
+   int array_size;
    ERR error = ERR::Okay;
 
    XMLTag *tag;
@@ -242,7 +242,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
    if ((Vector->get(FID_Stroke, str) IS ERR::Okay) and (str)) {
       xml::NewAttrib(tag, "stroke", str);
    }
-   else if ((GetFieldArray(Vector, FID_StrokeColour, (APTR *)&colour, &array_size) IS ERR::Okay) and (colour[3] != 0)) {
+   else if ((Vector->get(FID_StrokeColour, colour, array_size) IS ERR::Okay) and (colour[3] != 0)) {
       snprintf(buffer, sizeof(buffer), "rgb(%g,%g,%g,%g)", colour[0], colour[1], colour[2], colour[3]);
       xml::NewAttrib(tag, "stroke-color", buffer);
    }
@@ -272,9 +272,9 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
       }
    }
 
-   DOUBLE *dash_array;
-   LONG dash_total;
-   if ((error IS ERR::Okay) and (GetFieldArray(Vector, FID_DashArray, (APTR *)&dash_array, &dash_total) IS ERR::Okay) and (dash_array)) {
+   double *dash_array;
+   int dash_total;
+   if ((error IS ERR::Okay) and (Vector->get(FID_DashArray, dash_array, dash_total) IS ERR::Okay) and (dash_array)) {
       DOUBLE dash_offset;
       if ((Vector->get(FID_DashOffset, dash_offset) IS ERR::Okay) and (dash_offset != 0)) {
          xml::NewAttrib(tag, "stroke-dashoffset", std::to_string(Vector->DashOffset));
@@ -315,7 +315,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
    if ((error IS ERR::Okay) and (Vector->get(FID_Fill, str) IS ERR::Okay) and (str)) {
       if (!iequals("rgb(0,0,0)", str)) xml::NewAttrib(tag, "fill", str);
    }
-   else if ((error IS ERR::Okay) and (GetFieldArray(Vector, FID_FillColour, (APTR *)&colour, &array_size) IS ERR::Okay) and (colour[3] != 0)) {
+   else if ((error IS ERR::Okay) and (Vector->get(FID_FillColour, colour, array_size) IS ERR::Okay) and (colour[3] != 0)) {
       snprintf(buffer, sizeof(buffer), "rgb(%g,%g,%g,%g)", colour[0], colour[1], colour[2], colour[3]);
       xml::NewAttrib(tag, "fill", buffer);
    }
@@ -442,7 +442,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
       LONG total_points, i;
 
       if ((Vector->get(FID_Closed, i) IS ERR::Okay) and (i IS FALSE)) { // Line or Polyline
-         if ((error = GetFieldArray(Vector, FID_PointsArray, (APTR *)&points, &total_points)) IS ERR::Okay) {
+         if ((error = Vector->get(FID_PointsArray, points, total_points)) IS ERR::Okay) {
             if (total_points IS 2) {
                error = XML->insertStatement(Parent, XMI::CHILD_END, "<line/>", &tag);
                if (error IS ERR::Okay) {
@@ -468,7 +468,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
          std::stringstream buffer;
          error = XML->insertStatement(Parent, XMI::CHILD_END, "<polygon/>", &tag);
 
-         if ((error IS ERR::Okay) and (GetFieldArray(Vector, FID_PointsArray, (APTR *)&points, &total_points) IS ERR::Okay)) {
+         if ((error IS ERR::Okay) and (Vector->get(FID_PointsArray, points, total_points) IS ERR::Okay)) {
             for (i=0; i < total_points; i++) {
                buffer << points[i].X << "," << points[i].Y << " ";
             }
@@ -495,7 +495,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
       if ((error IS ERR::Okay) and (Vector->get(FID_X, x) IS ERR::Okay)) set_dimension(tag, "x", x, FALSE);
       if ((error IS ERR::Okay) and (Vector->get(FID_Y, y) IS ERR::Okay)) set_dimension(tag, "y", y, FALSE);
 
-      if ((error IS ERR::Okay) and ((error = GetFieldArray(Vector, FID_DX, (APTR *)&dx, &total)) IS ERR::Okay) and (total > 0)) {
+      if ((error IS ERR::Okay) and ((error = Vector->get(FID_DX, dx, total)) IS ERR::Okay) and (total > 0)) {
          LONG pos = 0;
          for (LONG i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
@@ -505,7 +505,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
          xml::NewAttrib(tag, "dx", buffer);
       }
 
-      if ((error IS ERR::Okay) and ((error = GetFieldArray(Vector, FID_DY, (APTR *)&dy, &total)) IS ERR::Okay) and (total > 0)) {
+      if ((error IS ERR::Okay) and ((error = Vector->get(FID_DY, dy, total)) IS ERR::Okay) and (total > 0)) {
          LONG pos = 0;
          for (i=0; i < total; i++) {
             if (pos != 0) buffer[pos++] = ',';
@@ -520,7 +520,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
          FreeResource(str);
       }
 
-      if ((error IS ERR::Okay) and ((error = GetFieldArray(Vector, FID_Rotate, (APTR *)&rotate, &total)) IS ERR::Okay) and (total > 0)) {
+      if ((error IS ERR::Okay) and ((error = Vector->get(FID_Rotate, rotate, total)) IS ERR::Okay) and (total > 0)) {
          std::stringstream buffer;
          bool comma = false;
          for (i=0; i < total; i++) {

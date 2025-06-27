@@ -750,31 +750,6 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
   </function>
 
   <function>
-    <name>GetFieldArray</name>
-    <category>Fields</category>
-    <comment>Retrieves array field values from objects.</comment>
-    <prototype>ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, INT * Elements)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
-      <param type="FIELD" name="Field">The ID of the field that will be read.</param>
-      <param type="APTR *" name="Result">A direct pointer to the array values will be returned in this parameter.</param>
-      <param type="INT *" name="Elements">The total number of elements in the array will be returned in this parameter.</param>
-    </input>
-    <description>
-<p>Use the GetFieldArray() function to read an array field from an object, including the length of that array.  This supplements the ~GetField() function, which does not support returning the array length.</p>
-<p>This function returns the array as-is with no provision for type conversion.  If the array is null terminated, it is standard practice not to count the null terminator in the total returned by <code>Elements</code>.</p>
-<p>To achieve a minimum level of type safety, the anticipated type of array values can be specified by OR'ing a field type with the field identifier, e.g. <code>TINT</code> or <code>TSTR</code>.  If no type is incorporated then a check will not be performed.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NoFieldAccess">Permissions for this field indicate that it is not readable.</error>
-      <error code="UnsupportedField">The Field is not supported by the object's class.</error>
-      <error code="Mismatch">A mis-match has been detected that prevents further processing.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>GetObjectPtr</name>
     <category>Objects</category>
     <comment>Returns a direct pointer for any object ID.</comment>

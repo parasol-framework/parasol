@@ -114,7 +114,8 @@ ERR svgState::current_colour(objVector *Vector, FRGB &RGB) noexcept
    while (Vector) {
       if (Vector->Class->BaseClassID != CLASSID::VECTOR) return ERR::Failed;
 
-      if (GetFieldArray(Vector, FID_FillColour|TFLOAT, (APTR *)&RGB, NULL) IS ERR::Okay) {
+      int total;
+      if (Vector->get(FID_FillColour, (float * &)RGB, total) IS ERR::Okay) {
          if (RGB.Alpha != 0) return ERR::Okay;
       }
       Vector = (objVector *)Vector->Parent;

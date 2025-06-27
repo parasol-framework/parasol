@@ -2059,7 +2059,6 @@ struct CoreBase {
    ERR (*_InitObject)(OBJECTPTR Object);
    ERR (*_VirtualVolume)(CSTRING Name, ...);
    OBJECTPTR (*_CurrentContext)(void);
-   ERR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR *Result, int *Elements);
    int (*_AdjustLogLevel)(int Delta);
    ERR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, int BufferSize, int *Result);
    ERR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
@@ -2155,7 +2154,6 @@ inline ERR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExi
 inline ERR InitObject(OBJECTPTR Object) { return CoreBase->_InitObject(Object); }
 template<class... Args> ERR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
-inline ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR *Result, int *Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline int AdjustLogLevel(int Delta) { return CoreBase->_AdjustLogLevel(Delta); }
 inline ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 inline ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
@@ -2245,7 +2243,6 @@ extern "C" ERR CheckMemoryExists(MEMORYID ID);
 extern "C" ERR CheckObjectExists(OBJECTID Object);
 extern "C" ERR InitObject(OBJECTPTR Object);
 extern "C" OBJECTPTR CurrentContext(void);
-extern "C" ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR *Result, int *Elements);
 extern "C" int AdjustLogLevel(int Delta);
 extern "C" ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *Result);
 extern "C" ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
@@ -2612,6 +2609,19 @@ template <> inline int64_t FIELD_TAG<APTR>()      { return TPTR; }
 template <> inline int64_t FIELD_TAG<CSTRING>()   { return TSTRING; }
 template <> inline int64_t FIELD_TAG<STRING>()    { return TSTRING; }
 template <> inline int64_t FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
+
+// For testing if type T can be matched to an FD flag.
+
+template <class T> inline int FIELD_TYPECHECK()     { return FD_PTR|FD_STRUCT|FD_STRING; }
+template <> inline int FIELD_TYPECHECK<double>()    { return FD_DOUBLE; }
+template <> inline int FIELD_TYPECHECK<int>()       { return FD_INT; }
+template <> inline int FIELD_TYPECHECK<int64_t>()   { return FD_INT64; }
+template <> inline int FIELD_TYPECHECK<uint64_t>()  { return FD_INT64; }
+template <> inline int FIELD_TYPECHECK<float>()     { return FD_FLOAT; }
+template <> inline int FIELD_TYPECHECK<OBJECTPTR>() { return FD_PTR; }
+template <> inline int FIELD_TYPECHECK<APTR>()      { return FD_PTR; }
+template <> inline int FIELD_TYPECHECK<CSTRING>()   { return FD_STRING; }
+template <> inline int FIELD_TYPECHECK<STRING>()    { return FD_STRING; }
 
 //********************************************************************************************************************
 // ObjectContext is used to represent the object that has the current context in terms of the run-time call stack.
@@ -3010,6 +3020,41 @@ struct Object { // Must be 64-bit aligned
       get(FieldID, result);
       return result;
    };
+   
+   template <class T> ERR get(FIELD FieldID, T * &Result, int &Elements, bool TypeCheck = true) {
+      Object *target;
+      Result = nullptr;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->readable()) or (!(field->Flags & FD_ARRAY))) return ERR::NoFieldAccess;
+
+         if ((TypeCheck) and (!(field->Flags & FIELD_TYPECHECK<T>()))) return ERR::FieldTypeMismatch;
+
+         ScopedObjectAccess objlock(target);
+
+         T *data;
+         Elements = -1;
+
+         if (field->GetValue) {
+            ObjectContext ctx(target, AC::NIL, field);
+            auto get_field = (ERR (*)(APTR, T * &, int &))field->GetValue;
+            if (auto error = get_field(target, data, Elements); error != ERR::Okay) return error;
+         }
+         else data = *((T **)((int8_t *)target) + field->Offset);
+
+         if (field->Flags & FD_CPP) {
+            auto vec = *((pf::vector<T> *)data);
+            Result = vec.data();
+            Elements = vec.size();
+         }
+         else {
+            if (Elements IS -1) return ERR::Failed;
+            Result = data;
+         }
+
+         return ERR::Okay;
+      }
+      else return ERR::UnsupportedField;
+   }
 
    template <typename... Args> ERR setFields(Args&&... pFields) {
       pf::Log log("setFields");

@@ -1631,7 +1631,7 @@ void parser::tag_call(XMLTag &Tag)
 
    CSTRING *results;
    int size;
-   if ((GetFieldArray(script, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
+   if ((script->get(FID_Results, results, size) IS ERR::Okay) and (size > 0)) {
       auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
       if (xmlinc) {
          auto old_xml = change_xml(xmlinc);
@@ -3387,7 +3387,7 @@ void parser::tag_script(XMLTag &Tag)
 
             CSTRING *results;
             int size;
-            if ((GetFieldArray(script, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
+            if ((script->get(FID_Results, results, size) IS ERR::Okay) and (size > 0)) {
                auto xmlinc = objXML::create::global(fl::Statement(results[0]), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS));
                if (xmlinc) {
                   auto old_xml = change_xml(xmlinc);

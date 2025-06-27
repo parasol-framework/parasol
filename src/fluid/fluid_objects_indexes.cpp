@@ -584,8 +584,8 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       LONG total;
-      APTR list;
-      if ((error = GetFieldArray(obj, field->FieldID, &list, &total)) IS ERR::Okay) {
+      APTR *list;
+      if ((error = obj->get(field->FieldID, list, total, false)) IS ERR::Okay) {
          if (total <= 0) lua_pushnil(Lua);
          else if (field->Flags & FD_STRING) {
             make_table(Lua, FD_STRING, total, list);

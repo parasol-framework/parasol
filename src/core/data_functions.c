@@ -38,7 +38,6 @@ FDEF argsGetActionMsg[] = { { "Message", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 
 FDEF argsGetClassID[] = { { "Result", FD_INT|FD_UNSIGNED }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetErrorMsg[] = { { "Result", FD_STR }, { "Error", FD_INT|FD_ERROR }, { 0, 0 } };
 FDEF argsGetEventID[] = { { "Result", FD_INT64 }, { "Group", FD_INT }, { "SubGroup", FD_STR }, { "Event", FD_STR }, { 0, 0 } };
-FDEF argsGetFieldArray[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_INT64 }, { "Result", FD_PTR|FD_RESULT }, { "Elements", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF argsGetObjectPtr[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetOwnerID[] = { { "Result", FD_OBJECTID }, { "Object", FD_OBJECTID }, { 0, 0 } };
 FDEF argsGetResource[] = { { "Result", FD_INT64 }, { "Resource", FD_INT }, { 0, 0 } };
@@ -110,7 +109,6 @@ const struct Function glFunctions[] = {
    { (APTR)InitObject, "InitObject", argsInitObject },
    { (APTR)VirtualVolume, "VirtualVolume", argsVirtualVolume },
    { (APTR)CurrentContext, "CurrentContext", argsCurrentContext },
-   { (APTR)GetFieldArray, "GetFieldArray", argsGetFieldArray },
    { (APTR)AdjustLogLevel, "AdjustLogLevel", argsAdjustLogLevel },
    { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { (APTR)FindObject, "FindObject", argsFindObject },

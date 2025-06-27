@@ -7,16 +7,10 @@ that is distributed with this package.  Please refer to it for further informati
 Name: Fields
 -END-
 
-NOTE: The GetField range of functions do not provide any context management (which is intentional). This means that
-field routines that allocate memory will have their memory tracked back to the object that made the GetField() call.
-They can overcome this by calling SetContext() themselves.
-
 *********************************************************************************************************************/
 
 #include "defs.h"
 #include <parasol/main.h>
-
-static THREADVAR char strGetField[400]; // Buffer for retrieving variable field values
 
 //********************************************************************************************************************
 // This internal function provides a fast binary search of field names via ID.
@@ -135,87 +129,4 @@ Field * FindField(OBJECTPTR Object, uint32_t FieldID, OBJECTPTR *Target) // Read
    OBJECTPTR dummy;
    if (!Target) Target = &dummy;
    return lookup_id(Object, FieldID, Target);
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-GetFieldArray: Retrieves array field values from objects.
-
-Use the GetFieldArray() function to read an array field from an object, including the length of that array.  This
-supplements the ~GetField() function, which does not support returning the array length.
-
-This function returns the array as-is with no provision for type conversion.  If the array is null terminated, it
-is standard practice not to count the null terminator in the total returned by `Elements`.
-
-To achieve a minimum level of type safety, the anticipated type of array values can be specified by
-OR'ing a field type with the field identifier, e.g. `TINT` or `TSTR`.  If no type is incorporated then a check will
-not be performed.
-
--INPUT-
-obj Object: Pointer to an object.
-fid Field:  The ID of the field that will be read.
-&ptr Result: A direct pointer to the array values will be returned in this parameter.
-&int Elements: The total number of elements in the array will be returned in this parameter.
-
--ERRORS-
-Okay:
-NullArgs:
-NoFieldAccess:    Permissions for this field indicate that it is not readable.
-UnsupportedField: The Field is not supported by the object's class.
-Mismatch
-
-*********************************************************************************************************************/
-
-ERR GetFieldArray(OBJECTPTR Object, FIELD FieldID, APTR *Result, int *Elements)
-{
-   pf::Log log(__FUNCTION__);
-
-   if ((!Object) or (!Result) or (!Elements)) return log.warning(ERR::NullArgs);
-
-   int req_type = FieldID>>32;
-   FieldID = FieldID & 0xffffffff;
-
-   *Result = nullptr;
-
-   if (auto field = lookup_id(Object, FieldID, &Object)) {
-      if ((!field->readable()) or (!(field->Flags & FD_ARRAY))) {
-         return ERR::NoFieldAccess;
-      }
-
-      if ((req_type) and (!(req_type & field->Flags))) return log.warning(ERR::FieldTypeMismatch);
-
-      ScopedObjectAccess objlock(Object);
-
-      int8_t value[16]; // 128 bits of space
-      APTR data;
-      int array_size = -1;
-      auto srcflags = field->Flags;
-
-      if (field->GetValue) {
-         ObjectContext ctx(Object, AC::NIL, field);
-         auto get_field = (ERR (*)(APTR, APTR, int &))field->GetValue;
-         if (auto error = get_field(Object, value, array_size); error != ERR::Okay) return error;
-         data = value;
-      }
-      else data = ((int8_t *)Object) + field->Offset;
-
-      if (srcflags & FD_CPP) {
-         *((APTR *)Result) = *((APTR *)data);
-      }
-      else {
-         if (array_size IS -1) {
-            log.warning("Array sizing not supported for field %s", field->Name);
-            return ERR::Failed;
-         }
-
-         *Elements = array_size;
-         *((APTR *)Result) = *((APTR *)data);
-      }
-
-      return ERR::Okay;
-   }
-   else log.warning("Unsupported field %s", FieldName(FieldID));
-
-   return ERR::UnsupportedField;
 }

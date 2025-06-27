@@ -2182,9 +2182,9 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERR Error)
 
       if ((InitObject(dialog) IS ERR::Okay) and (acActivate(dialog) IS ERR::Okay)) {
          CSTRING *results;
-         LONG size;
-         if ((GetFieldArray(dialog, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
-            dialog_id = strtol(results[0], NULL, 0);
+         int size;
+         if ((dialog->get(FID_Results, results, size) IS ERR::Okay) and (size > 0)) {
+            dialog_id = strtol(results[0], nullptr, 0);
          }
       }
    }
