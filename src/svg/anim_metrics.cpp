@@ -422,9 +422,9 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
       vec::ReadPainter(NULL, to.c_str(), &to_col, NULL);
    }
    else if (not by.empty()) {
-      FLOAT *colour;
-      LONG elements;
-      if ((GetFieldArray(&Vector, Field, (APTR *)&colour, &elements) IS ERR::Okay) and (elements IS 4)) {
+      float *colour;
+      int elements;
+      if ((Vector.get(Field, colour, elements) IS ERR::Okay) and (elements IS 4)) {
          from_col.Colour = { colour[0], colour[1], colour[2], colour[3] };
          vec::ReadPainter(NULL, to.c_str(), &to_col, NULL);
          to_col.Colour.Red   = std::clamp<float>(to_col.Colour.Red   + colour[0], 0.0, 1.0);
