@@ -4465,7 +4465,7 @@ class objModule : public Object {
             return ERR::Okay;
          #else
             APTR functionbase;
-            if (module->getPtr(FID_ModBase, &functionbase) IS ERR::Okay) {
+            if (module->get(FID_ModBase, functionbase) IS ERR::Okay) {
                if (Module) *Module = module;
                if (Functions) ((APTR *)Functions)[0] = functionbase;
                return ERR::Okay;
