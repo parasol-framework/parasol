@@ -63,7 +63,7 @@ enum {
 
 extern "C" LONG glProcessID;
 extern "C" HANDLE glProcessHandle;
-extern "C" BYTE glProgramStage;
+extern "C" int8_t glProgramStage;
 
 static HANDLE glInstance = 0;
 static HANDLE glMsgWindow = 0;

@@ -702,7 +702,7 @@ extern std::atomic_int glGlobalIDCount;
 extern std::atomic_int glPrivateIDCounter;
 extern int16_t glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
 extern std::atomic_ushort glFunctionID;
-extern "C" BYTE glProgramStage;
+extern "C" int8_t glProgramStage;
 extern bool glPrivileged, glSync;
 extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
@@ -732,7 +732,7 @@ extern objMetaClass *glCompressedStreamClass;
 #ifdef __ANDROID__
 extern objMetaClass *glAssetClass;
 #endif
-extern BYTE fs_initialised;
+extern int8_t fs_initialised;
 extern APTR glPageFault;
 extern bool glScanClasses;
 extern UBYTE glTimerCycle;
@@ -886,7 +886,7 @@ struct FDRecord {
 
 extern std::list<FDRecord> glFDTable;
 extern LONG glInotify;
-extern BYTE glFDProtected;
+extern int8_t glFDProtected;
 extern std::vector<FDRecord> glRegisterFD;
 
 #define LRT_Exclusive 1
