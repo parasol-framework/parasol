@@ -246,7 +246,7 @@ struct ActionSubscription {
    void (*Callback)(OBJECTPTR, ACTIONID, ERR, APTR, APTR);
    APTR Meta;
 
-   ActionSubscription() : Subscriber(NULL), SubscriberID(0), Callback(NULL), Meta(NULL) { }
+   ActionSubscription() : Subscriber(nullptr), SubscriberID(0), Callback(nullptr), Meta(nullptr) { }
 
    ActionSubscription(OBJECTPTR pContext, void (*pCallback)(OBJECTPTR, ACTIONID, ERR, APTR, APTR), APTR pMeta) :
       Subscriber(pContext), SubscriberID(pContext->UID), Callback(pCallback), Meta(pMeta) { }
@@ -524,7 +524,7 @@ struct ClassRecord {
       if (pClass->Icon) Icon.assign(pClass->Icon);
    }
 
-   inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL, CSTRING pIcon = NULL) {
+   inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = nullptr, CSTRING pHeader = nullptr, CSTRING pIcon = nullptr) {
       ClassID  = pClassID;
       ParentID = CLASSID::NIL;
       Category = CCF::SYSTEM;
@@ -536,9 +536,9 @@ struct ClassRecord {
    }
 
    inline ERR write(objFile *File) {
-      if (File->write(&ClassID, sizeof(ClassID), NULL) != ERR::Okay) return ERR::Write;
-      if (File->write(&ParentID, sizeof(ParentID), NULL) != ERR::Okay) return ERR::Write;
-      if (File->write(&Category, sizeof(Category), NULL) != ERR::Okay) return ERR::Write;
+      if (File->write(&ClassID, sizeof(ClassID), nullptr) != ERR::Okay) return ERR::Write;
+      if (File->write(&ParentID, sizeof(ParentID), nullptr) != ERR::Okay) return ERR::Write;
+      if (File->write(&Category, sizeof(Category), nullptr) != ERR::Okay) return ERR::Write;
 
       auto size = LONG(Name.size());
       File->write(&size, sizeof(size));
@@ -706,9 +706,10 @@ extern "C" int8_t glProgramStage;
 extern bool glPrivileged, glSync;
 extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
-extern class ObjectContext glTopContext; // Read-only, not a threading concern.
+extern class extObjectContext glTopContext; // Read-only, not a threading concern.
 extern objTime *glTime;
 extern objFile *glClassFile;
+extern Object glDummyObject;
 extern TIMER glProcessJanitor;
 extern LONG glEventMask;
 extern struct ModHeader glCoreHeader;
@@ -743,6 +744,7 @@ extern std::atomic_int glUniqueMsgID;
 //********************************************************************************************************************
 // Thread specific variables - these do not require locks.
 
+extern THREADVAR class extObjectContext *tlContext;
 extern THREADVAR class TaskMessage *tlCurrentMsg;
 extern THREADVAR bool tlMainThread;
 extern THREADVAR int16_t tlMsgRecursion;
@@ -792,32 +794,32 @@ class TaskMessage {
    // Constructors
 
    public:
-   TaskMessage() : Size(0), ExtBuffer(NULL) { }
+   TaskMessage() : Size(0), ExtBuffer(nullptr) { }
 
-   TaskMessage(MSGID pType, APTR pData = NULL, LONG pSize = 0) {
+   TaskMessage(MSGID pType, APTR pData = nullptr, LONG pSize = 0) {
       Time = PreciseTime();
       UID  = ++glUniqueMsgID;
       Type = pType;
       Size = 0;
-      ExtBuffer = NULL;
+      ExtBuffer = nullptr;
       if ((pData) and (pSize)) setBuffer(pData, pSize);
    }
 
    ~TaskMessage() {
-      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = NULL; }
+      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = nullptr; }
    }
 
    // Move constructor
    TaskMessage(TaskMessage &&other) noexcept {
-      ExtBuffer = NULL;
+      ExtBuffer = nullptr;
       copy_from(other);
       other.Size = 0;
-      other.ExtBuffer = NULL; // Source loses its buffer
+      other.ExtBuffer = nullptr; // Source loses its buffer
    }
 
    // Copy constructor
    TaskMessage(const TaskMessage &other) {
-      ExtBuffer = NULL;
+      ExtBuffer = nullptr;
       copy_from(other);
    }
 
@@ -826,7 +828,7 @@ class TaskMessage {
       if (this == &other) return *this;
       copy_from(other);
       other.Size = 0;
-      other.ExtBuffer = NULL; // Source loses its buffer
+      other.ExtBuffer = nullptr; // Source loses its buffer
       return *this;
    }
 
@@ -842,7 +844,7 @@ class TaskMessage {
    char * getBuffer() { return ExtBuffer ? ExtBuffer : Buffer.data(); }
 
    void setBuffer(APTR pData, size_t pSize) {
-      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = NULL; }
+      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = nullptr; }
 
       if (pSize <= Buffer.size()) copymem(pData, Buffer.data(), pSize);
       else {
@@ -861,6 +863,59 @@ class TaskMessage {
       Size = Source.Size;
       if (Source.ExtBuffer) setBuffer(Source.ExtBuffer, Size);
       else if (Size) copymem(Source.Buffer.data(), Buffer.data(), Size);
+   }
+};
+
+//********************************************************************************************************************
+// ObjectContext is used to represent the object that has the current context in terms of the run-time call stack.
+// It is primarily used for the resource tracking of newly allocated memory and objects, as well as for message logs
+// and analysis of the call stack.
+
+class extObjectContext : public ObjectContext {
+   public:
+   extObjectContext() { // Dummy initialisation
+      stack  = nullptr;
+      obj    = &glDummyObject;
+      field  = nullptr;
+      action = AC::NIL;
+   }
+
+   extObjectContext(OBJECTPTR pObject, AC pAction, struct Field *pField = nullptr) {
+      stack  = tlContext;
+      obj    = pObject;
+      field  = pField;
+      action = pAction;
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wdangling-pointer"
+      tlContext = this;
+      #pragma GCC diagnostic pop
+   }
+
+   ~extObjectContext() {
+      if (stack) tlContext = stack;
+   }
+
+   // Return the nearest object for resourcing purposes.  Note that an action ID of 0 has special meaning and indicates
+   // that resources should be tracked to the next object on the stack (this feature is used by GetField*() functionality).
+
+   inline OBJECTPTR resource() const {
+      if (action != AC::NIL) return obj;
+      else {
+         for (auto ctx = stack; ctx; ctx=ctx->stack) {
+            if (action != AC::NIL) return ctx->obj;
+         }
+         return &glDummyObject;
+      }
+   }
+
+   inline OBJECTPTR setContext(OBJECTPTR pObject) {
+      auto old = obj;
+      obj = pObject;
+      return old;
+   }
+
+   constexpr inline OBJECTPTR object() const { // Return the object that has the context (but not necessarily for resourcing)
+      return obj;
    }
 };
 

@@ -256,7 +256,7 @@ static void * thread_entry(extThread *Self)
 
    {
       // Replace the default dummy context with one that pertains to the thread
-      ObjectContext thread_ctx(Self, AC::NIL);
+      extObjectContext thread_ctx(Self, AC::NIL);
 
       if (Self->Routine.isC()) {
          auto routine = (ERR (*)(extThread *, APTR))Self->Routine.Routine;

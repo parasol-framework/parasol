@@ -77,6 +77,7 @@ FDEF argsSetContext[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTPTR }
 FDEF argsSetDefaultPermissions[] = { { "Void", FD_VOID }, { "User", FD_INT }, { "Group", FD_INT }, { "Permissions", FD_INT }, { 0, 0 } };
 FDEF argsSetField[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_INT64 }, { "Value", FD_VARTAGS }, { 0, 0 } };
 FDEF argsSetName[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Name", FD_STR }, { 0, 0 } };
+FDEF argsSetObjectContext[] = { { "ObjectContext", FD_PTR|FD_STRUCT }, { "ObjectContext:Context", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsSetOwner[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Owner", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSetResource[] = { { "Result", FD_INT64 }, { "Resource", FD_INT }, { "Value", FD_INT64 }, { 0, 0 } };
 FDEF argsSetResourcePath[] = { { "Error", FD_INT|FD_ERROR }, { "PathType", FD_INT }, { "Path", FD_STR }, { 0, 0 } };
@@ -135,6 +136,7 @@ const struct Function glFunctions[] = {
    { (APTR)SendMessage, "SendMessage", argsSendMessage },
    { (APTR)SetOwner, "SetOwner", argsSetOwner },
    { (APTR)SetContext, "SetContext", argsSetContext },
+   { (APTR)SetObjectContext, "SetObjectContext", argsSetObjectContext },
    { (APTR)SetField, "SetField", argsSetField },
    { (APTR)FieldName, "FieldName", argsFieldName },
    { (APTR)ScanDir, "ScanDir", argsScanDir },

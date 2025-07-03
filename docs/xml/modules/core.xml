@@ -1476,7 +1476,7 @@ SetArray(Object, FID_Table|TINT, array, 100);
   <function>
     <name>SetContext</name>
     <category>Objects</category>
-    <comment>Sets the nominated owner of new resources.</comment>
+    <comment>Declares the owner of future allocated resources.</comment>
     <prototype>OBJECTPTR SetContext(OBJECTPTR Object)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object that will take on the new context.  If <code>NULL</code>, no change to the context will be made.</param>

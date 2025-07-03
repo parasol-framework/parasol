@@ -210,7 +210,7 @@ ERR SetField(OBJECTPTR Object, FIELD FieldID, ...)
 //********************************************************************************************************************
 // Converts a CSV string into an array (or use "#0x123..." for a hexadecimal byte list)
 
-static int write_array(CSTRING String, int Flags, WORD ArraySize, APTR Dest)
+static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
 {
    if (!ArraySize) ArraySize = 0x7fff; // If no ArraySize is specified then there is no imposed limit.
 
@@ -362,7 +362,7 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
          }
          else if (Field->Arg) {
             bool reverse = false;
-            WORD op      = OP_OVERWRITE;
+            int16_t op   = OP_OVERWRITE;
             while (*str) {
                if (*str IS '&')      { op = OP_AND;       str++; }
                else if (*str IS '!') { op = OP_OR;        str++; }
@@ -505,11 +505,11 @@ static ERR writeval_ptr(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
 
 //********************************************************************************************************************
 
-class FieldContext : public ObjectContext {
+class FieldContext : public extObjectContext {
    bool success;
 
    public:
-   FieldContext(OBJECTPTR Object, struct Field *Field) : ObjectContext(Object, AC::SetField, NULL) {
+   FieldContext(OBJECTPTR Object, struct Field *Field) : extObjectContext(Object, AC::SetField) {
       if ((tlContext->field IS Field) and (tlContext->object() IS Object)) { // Detect recursion
          success = false;
          return;

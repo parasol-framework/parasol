@@ -199,8 +199,8 @@ struct Object glDummyObject = {
    .ThreadPending = 0, .Queue = 0, .SleepQueue = 0, .ActionDepth = 0,
    .UID = 0, .Flags = NF::NIL, .ThreadID = 0, .Name = ""
 };
-class ObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
-THREADVAR ObjectContext *tlContext = &glTopContext;
+class extObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
+THREADVAR extObjectContext *tlContext = &glTopContext;
 
 objTime *glTime = nullptr;
 

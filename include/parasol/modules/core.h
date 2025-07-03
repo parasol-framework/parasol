@@ -2085,6 +2085,7 @@ struct CoreBase {
    ERR (*_SendMessage)(MSGID Type, MSF Flags, APTR Data, int Size);
    ERR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
+   struct ObjectContext * (*_SetObjectContext)(struct ObjectContext *Context);
    ERR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
    CSTRING (*_FieldName)(uint32_t FieldID);
    ERR (*_ScanDir)(struct DirInfo *Info);
@@ -2180,6 +2181,7 @@ inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassNa
 inline ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
 inline ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
+inline struct ObjectContext * SetObjectContext(struct ObjectContext *Context) { return CoreBase->_SetObjectContext(Context); }
 template<class... Args> ERR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
 inline CSTRING FieldName(uint32_t FieldID) { return CoreBase->_FieldName(FieldID); }
 inline ERR ScanDir(struct DirInfo *Info) { return CoreBase->_ScanDir(Info); }
@@ -2269,6 +2271,7 @@ extern "C" CLASSID ResolveClassName(CSTRING Name);
 extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);
 extern "C" ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 extern "C" OBJECTPTR SetContext(OBJECTPTR Object);
+extern "C" struct ObjectContext * SetObjectContext(struct ObjectContext *Context);
 extern "C" ERR SetField(OBJECTPTR Object, FIELD Field, ...);
 extern "C" CSTRING FieldName(uint32_t FieldID);
 extern "C" ERR ScanDir(struct DirInfo *Info);
@@ -2624,67 +2627,13 @@ template <> inline int FIELD_TYPECHECK<CSTRING>()   { return FD_STRING; }
 template <> inline int FIELD_TYPECHECK<STRING>()    { return FD_STRING; }
 
 //********************************************************************************************************************
-// ObjectContext is used to represent the object that has the current context in terms of the run-time call stack.
-// It is primarily used for the resource tracking of newly allocated memory and objects, as well as for message logs
-// and analysis of the call stack.
-
-extern Object glDummyObject; // Defined in the Core
-extern THREADVAR class ObjectContext *tlContext; // Defined in the Core
 
 class ObjectContext {
-   public:
-   class ObjectContext *stack; // Call stack.
-   struct Field *field;        // Set if the context is linked to a get/set field operation.  For logging purposes only.
-   AC action;                  // Set if the context enters an action or method routine.
-
-   protected:
-   OBJECTPTR obj;           // Required.  The object that currently has the operating context.
-
-   public:
-   ObjectContext() { // Dummy initialisation
-      stack  = NULL;
-      obj    = &glDummyObject;
-      field  = NULL;
-      action = AC::NIL;
-   }
-
-   ObjectContext(OBJECTPTR pObject, AC pAction, struct Field *pField = NULL) {
-      stack  = tlContext;
-      obj    = pObject;
-      field  = pField;
-      action = pAction;
-      #pragma GCC diagnostic push
-      #pragma GCC diagnostic ignored "-Wdangling-pointer"
-      tlContext = this;
-      #pragma GCC diagnostic pop
-   }
-
-   ~ObjectContext() {
-      if (stack) tlContext = stack;
-   }
-
-   // Return the nearest object for resourcing purposes.  Note that an action ID of 0 has special meaning and indicates
-   // that resources should be tracked to the next object on the stack (this feature is used by GetField*() functionality).
-
-   inline OBJECTPTR resource() const {
-      if (action != AC::NIL) return obj;
-      else {
-         for (auto ctx = stack; ctx; ctx=ctx->stack) {
-            if (action != AC::NIL) return ctx->obj;
-         }
-         return &glDummyObject;
-      }
-   }
-
-   inline OBJECTPTR setContext(OBJECTPTR NewObject) {
-      auto old = obj;
-      obj = NewObject;
-      return old;
-   }
-
-   constexpr inline OBJECTPTR object() const { // Return the object that has the context (but not necessarily for resourcing)
-      return obj;
-   }
+public:
+   OBJECTPTR obj = nullptr;                 // The object that currently has the operating context.
+   struct Field *field = nullptr;           // Set if the context is linked to a get/set field operation.  For logging purposes only.
+   class extObjectContext *stack = nullptr; // Call stack.
+   AC action = AC::NIL;                     // Set if the context enters an action or method routine. 
 };
 
 //********************************************************************************************************************
@@ -2780,21 +2729,27 @@ struct Object { // Must be 64-bit aligned
 
    private:
    template <class T> ERR get_unit(Object *Object, struct Field &Field, T &Value) {
-      ObjectContext ctx(Object, AC::NIL, &Field);
+      auto new_context = ObjectContext{ Object, &Field };
+      auto ctx = SetObjectContext(&new_context);
 
+      ERR error = ERR::Okay;
       if (Field.Flags & (FD_DOUBLE|FD_INT64|FD_INT)) {
           Unit var(0, FD_DOUBLE);
-          auto error = Field.GetValue(Object, &var);
+          error = Field.GetValue(Object, &var);
           if (error IS ERR::Okay) Value = var.Value;
-          return error;
       }
-      else return ERR::FieldTypeMismatch;
+      else error = ERR::FieldTypeMismatch;
+      
+      SetObjectContext(ctx);
+      return error;
    }
 
    inline std::pair<ERR, APTR> get_field_value(Object *Object, struct Field &Field, int8_t Buffer[8], int &ArraySize) {
       if (Field.GetValue) {
-         ObjectContext ctx(Object, AC::NIL, &Field);
+         auto new_context = ObjectContext{ Object, &Field };
+         auto ctx = SetObjectContext(&new_context);
          auto get_field = (ERR (*)(APTR, APTR, int &))Field.GetValue;
+         SetObjectContext(ctx);
          return std::make_pair(get_field(Object, Buffer, ArraySize), Buffer);
       }
       else return std::make_pair(ERR::Okay, ((BYTE *)Object) + Field.Offset);
@@ -2992,9 +2947,12 @@ struct Object { // Must be 64-bit aligned
          if (!field->readable()) return ERR::NoFieldAccess;
 
          if (field->Flags & FD_UNIT) {
-            ObjectContext ctx(target, AC::NIL, field);
+            auto new_context = ObjectContext{ target, field };
+            auto ctx = SetObjectContext(&new_context);
             auto get_field = (ERR (*)(APTR, Unit &))field->GetValue;
-            return get_field(target, Value);
+            auto error = get_field(target, Value);
+            SetObjectContext(ctx);
+            return error;
          }
          else return ERR::FieldTypeMismatch;
       }
@@ -3035,9 +2993,12 @@ struct Object { // Must be 64-bit aligned
          Elements = -1;
 
          if (field->GetValue) {
-            ObjectContext ctx(target, AC::NIL, field);
+            auto new_context = ObjectContext{ target, field };
+            auto ctx = SetObjectContext(&new_context);
             auto get_field = (ERR (*)(APTR, T * &, int &))field->GetValue;
-            if (auto error = get_field(target, data, Elements); error != ERR::Okay) return error;
+            auto error = get_field(target, data, Elements);
+            SetObjectContext(ctx);
+            if (error != ERR::Okay) return error;
          }
          else data = *((T **)((int8_t *)target) + field->Offset);
 
