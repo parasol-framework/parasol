@@ -294,7 +294,7 @@
 <tbody>
 <tr>
 <td style="text-align: left;">target</td>
-<td style="text-align: left;">Required. Refers to a viewport that will contain the button.</td>
+<td style="text-align: left;">Required. Refers to a viewport that will contain the widget.</td>
 </tr>
 <tr>
 <td style="text-align: left;">icon</td>
@@ -355,7 +355,7 @@
 <tbody>
 <tr>
 <td style="text-align: left;">target</td>
-<td style="text-align: left;">Required. Refers to a viewport that will contain the checkbox.</td>
+<td style="text-align: left;">Required. Refers to a viewport that will contain the widget.</td>
 </tr>
 <tr>
 <td style="text-align: left;">label</td>
@@ -747,7 +747,7 @@
 <p><code>gui.dialog.file({ Options... })</code></p>
 <p>Use the file dialog interface to prompt the user into selecting an existing file, or declaring a new one. The dialog will return the user&#39;s choice via the <code>feedback</code> function.</p>
 <p>If the dialog box is modal, the call will not return until the user has responded to the dialog.</p>
-<p>Note that the dialog box should be managed as a dynamic resource, i.e. created as necessary and deallocated once the user has responded (i.e. set all references to nil). Retaining dialog boxes in memory will provide no descernible speed improvement to the user.</p>
+<p>Note that the dialog box should be managed as a dynamic resource, i.e. created as necessary and deallocated once the user has responded (i.e. set all references to nil). Retaining dialog boxes in memory will provide no discernible speed improvement to the user.</p>
 <p>Valid options are:</p>
 <table>
 <thead>
@@ -778,12 +778,8 @@
 <td style="text-align: left;">Override the text to display in the Cancel button.</td>
 </tr>
 <tr>
-<td style="text-align: left;">filter</td>
-<td style="text-align: left;">Name of the default filter to apply from the <code>filterList</code>.</td>
-</tr>
-<tr>
 <td style="text-align: left;">filterList</td>
-<td style="text-align: left;">List of items for the combobox filter, e.g. <code>{ { name=&#39;All Files&#39;, pattern=&#39;*&#39; } }</code></td>
+<td style="text-align: left;">A list of allowed items for the <code>fileview</code> filter, e.g. <code>{ { name=&#39;JPEG Images&#39;, ext={ &#39;.jpg&#39;, &#39;.jpeg&#39; }, selected=true } }</code>. The <code>ext</code> can be a string or list of strings. The selection of more than one item is permitted.</td>
 </tr>
 <tr>
 <td style="text-align: left;">icon</td>
@@ -817,11 +813,13 @@
 </table>
 <h2 id="fileview">fileview</h2>
 <p><code>gui.fileview(View, { Options... })</code></p>
-<p>The <code>fileview</code> interface enhances any view object, such as <code>listview</code> or <code>columnview</code> to create a file system browser. The following example illustrates basic usage:</p>
+<p>The <code>fileview</code> interface will populate a target viewport with elements that present the user with a file system browser. The following example illustrates basic usage:</p>
 <pre><code>gui.fileview(view, {
+   target     = viewport,
    showParent = true,
    showHidden = true,
    autoMode   = &#39;open&#39;,
+   style      = &#39;list&#39;,
    pathChanged = function(FileView, Path)
    end,
    fileSelected = function(FileView)
@@ -845,12 +843,16 @@
 <td>Callback for the user selecting a file, in the format <code>function(FileView)</code>. Use the <code>selection()</code>, <code>selectionFile()</code> and <code>selectionPath()</code> methods for information on the selected item.</td>
 </tr>
 <tr>
-<td>filter</td>
-<td>Show only the files that match this wildcard filter, e.g. <code>*.csv</code>.</td>
+<td>filterList</td>
+<td>A list of allowed items for the file filter, e.g. <code>{ { name=&#39;JPEG Images&#39;, ext={ &#39;.jpg&#39;, &#39;.jpeg&#39; }, selected=true } }</code>. The <code>ext</code> can be a string or list of strings. The selection of more than one item is permitted.</td>
 </tr>
 <tr>
 <td>limitPath</td>
 <td>Limit browsing to this folder and its sub-folders.</td>
+</tr>
+<tr>
+<td>multiSelect</td>
+<td>If <code>true</code> the user will be allowed to select more than one file in the file list.</td>
 </tr>
 <tr>
 <td>noExtensions</td>
@@ -881,8 +883,24 @@
 <td>If <code>true</code>, show document views.</td>
 </tr>
 <tr>
+<td>style</td>
+<td>Defines the style of the view, which can be either <code>column</code> or <code>list</code>. The default is <code>column</code>.</td>
+</tr>
+<tr>
 <td>sysKeys</td>
 <td>If <code>true</code>, system key monitoring and relevant default behaviours are active when this option is enabled. Cut, Copy, Paste and Select-All key combinations are provided to the user in this mode.</td>
+</tr>
+<tr>
+<td>target</td>
+<td>Required. The viewport that will host the fileview is defined here.</td>
+</tr>
+<tr>
+<td>toolBar</td>
+<td>Enables a toolbar that enhances the user&#39;s interaction with the view. The client must provide a table list of permitted tools, which are <code>all</code>, <code>clipboard</code>, <code>settings</code>, <code>navigation</code>, <code>views</code>, and <code>actions</code>.</td>
+</tr>
+<tr>
+<td>viewOptions</td>
+<td>Passes additional options to the view (e.g. <code>columnview</code>) that will be listing the files.</td>
 </tr>
 </tbody>
 </table>
@@ -941,7 +959,7 @@
 </tr>
 <tr>
 <td>filter(Filter)</td>
-<td>Apply a wildcard <code>Filter</code> to limit the display to matching file names.</td>
+<td>Apply a private <code>Filter</code> using a Lua pattern to limit the display to matching file names. The use of the filter is hidden from the user.</td>
 </tr>
 <tr>
 <td>moveFilesTo(Path)</td>
@@ -1100,7 +1118,7 @@
 <tbody>
 <tr>
 <td style="text-align: left;">target</td>
-<td style="text-align: left;">Required. Refers to a viewport that will contain the icon.</td>
+<td style="text-align: left;">Required. Refers to a viewport that will contain the widget.</td>
 </tr>
 <tr>
 <td style="text-align: left;">image</td>
@@ -1141,6 +1159,10 @@
 </thead>
 <tbody>
 <tr>
+<td style="text-align: left;">bkgd</td>
+<td style="text-align: left;">Overrides the default fill instruction for the background.</td>
+</tr>
+<tr>
 <td style="text-align: left;">events</td>
 <td style="text-align: left;">A table of event triggers. Supported events are <code>activate</code>, <code>show</code>, <code>cursorEntry</code>, <code>cursorExit</code>, <code>disable</code>, <code>enable</code>, <code>focus</code>, <code>lostFocus</code> and <code>keypress</code>.</td>
 </tr>
@@ -1171,6 +1193,18 @@
 <tr>
 <td style="text-align: left;">text</td>
 <td style="text-align: left;">A preset string to display in the input box.</td>
+</tr>
+<tr>
+<td style="text-align: left;">textFace</td>
+<td style="text-align: left;">Overrides the default font face for the input text.</td>
+</tr>
+<tr>
+<td style="text-align: left;">textFill</td>
+<td style="text-align: left;">Overrides the default fill instruction for the input text.</td>
+</tr>
+<tr>
+<td style="text-align: left;">textStyle</td>
+<td style="text-align: left;">Overrides the default font style (normally <code>regular</code>) for the input text.</td>
 </tr>
 <tr>
 <td style="text-align: left;">width</td>
@@ -1248,7 +1282,7 @@
 </tr>
 <tr>
 <td style="text-align: left;">target</td>
-<td style="text-align: left;">Optional reference to a surface that will contain the menu. Viewports are not supported.</td>
+<td style="text-align: left;">Optional reference to a surface that will contain the widget. Viewports are not supported.</td>
 </tr>
 <tr>
 <td style="text-align: left;">x, y</td>
@@ -1387,7 +1421,7 @@
 <tbody>
 <tr>
 <td style="text-align: left;">target</td>
-<td style="text-align: left;">Required. Refers to a viewport that will contain the scrollbar.</td>
+<td style="text-align: left;">Required. Refers to a viewport that will contain the widget.</td>
 </tr>
 <tr>
 <td style="text-align: left;">view</td>
@@ -1451,6 +1485,123 @@
 <tr>
 <td style="text-align: left;">vbar</td>
 <td style="text-align: left;">Direct reference to the vertical bar viewport.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="slider">slider</h2>
+<p><code>gui.slider({ Options... })</code></p>
+<p>The Slider interface creates a horizontal or vertical slider that controls a value range.</p>
+<p>The following example illustrates typical usage:</p>
+<pre><code>gui.slider({
+   target = viewport,
+   label  = &#39;Label:&#39;,
+   value  = 1,
+   min    = 0.5,
+   max    = 1,
+   events = {
+      activate = function(Widget, Value)
+         print(&#39;Slider Value: &#39; .. Value)
+      end
+   }
+})</code></pre>
+<p>Valid options are:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Option</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">target</td>
+<td style="text-align: left;">Required. Refers to a viewport that will contain the widget.</td>
+</tr>
+<tr>
+<td style="text-align: left;">events</td>
+<td style="text-align: left;">A table of event triggers. Supported events are <code>show</code>, <code>focus</code>, <code>lostFocus</code> and <code>activate</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">label</td>
+<td style="text-align: left;">An optional label string.</td>
+</tr>
+<tr>
+<td style="text-align: left;">max</td>
+<td style="text-align: left;">The maximum value of the slider. Defaults to 1.</td>
+</tr>
+<tr>
+<td style="text-align: left;">min</td>
+<td style="text-align: left;">The minimum value of the slider. Defaults to 0.</td>
+</tr>
+<tr>
+<td style="text-align: left;">orientation</td>
+<td style="text-align: left;">Set to <code>vertical</code> for a vertically oriented slider. Otherwise defaults to horizontal.</td>
+</tr>
+<tr>
+<td style="text-align: left;">size</td>
+<td style="text-align: left;">The length of the slider in pixels, not including the label.</td>
+</tr>
+<tr>
+<td style="text-align: left;">value</td>
+<td style="text-align: left;">The starting value of the slider. Defaults to 0.</td>
+</tr>
+<tr>
+<td style="text-align: left;">x</td>
+<td style="text-align: left;">The x coordinate of the slider, in pixels.</td>
+</tr>
+<tr>
+<td style="text-align: left;">y</td>
+<td style="text-align: left;">The y coordinate of the slider, in pixels.</td>
+</tr>
+</tbody>
+</table>
+<p>Functionality:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">setRange(Min, Max)</td>
+<td style="text-align: left;">Alters the min and max values of the slider.</td>
+</tr>
+</tbody>
+</table>
+<p>The slider state consists of the following readable fields:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Field</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">events</td>
+<td style="text-align: left;">Access to the event functions defined by the client. Real-time modification is permitted.</td>
+</tr>
+<tr>
+<td style="text-align: left;">max</td>
+<td style="text-align: left;">The maximum value of the slider.</td>
+</tr>
+<tr>
+<td style="text-align: left;">min</td>
+<td style="text-align: left;">The minimum value of the slider.</td>
+</tr>
+<tr>
+<td style="text-align: left;">orientation</td>
+<td style="text-align: left;">Defined as &#39;V&#39; if the slider is oriented vertically, otherwise horizontal.</td>
+</tr>
+<tr>
+<td style="text-align: left;">value</td>
+<td style="text-align: left;">The current value of the slider.</td>
+</tr>
+<tr>
+<td style="text-align: left;">viewport</td>
+<td style="text-align: left;">The viewport representing the widget interface.</td>
 </tr>
 </tbody>
 </table>
@@ -1541,6 +1692,10 @@
 <td style="text-align: left;">To be used for the creation of toolbar groups during <code>createItems</code>. Call this method before adding a series of items that form a natural group. For instance to group Cut, Copy and Paste items under &#39;Clipboard&#39;, call this method with a <code>Span</code> of <code>3</code> and then create the three items.</td>
 </tr>
 <tr>
+<td style="text-align: left;">applySticker(ID, Content)</td>
+<td style="text-align: left;">Add a small sticker to the corner of the item identified by <code>ID</code>. The sticker&#39;s <code>Content</code> can either be a string naming an icon, or a number to print inside the sticker. Content can be <code>nil</code>, in which case the sticker is empty.</td>
+</tr>
+<tr>
 <td style="text-align: left;">disableItem(ID)</td>
 <td style="text-align: left;">Disable the item identified by <code>ID</code>.</td>
 </tr>
@@ -1551,6 +1706,10 @@
 <tr>
 <td style="text-align: left;">deselectItem(ID)</td>
 <td style="text-align: left;">Deselect a previously selected item identified by <code>ID</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;">removeSticker(ID)</td>
+<td style="text-align: left;">Remove the sticker from the item identified by <code>ID</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">selectItem(ID, Exclusive)</td>
@@ -1569,7 +1728,7 @@
 <tbody>
 <tr>
 <td style="text-align: left;">viewport</td>
-<td style="text-align: left;">The viewport that hosts the toolbar&#39;s UI.</td>
+<td style="text-align: left;">The viewport representing the widget interface.</td>
 </tr>
 </tbody>
 </table>
@@ -1613,10 +1772,6 @@
 <td style="text-align: left;">If <code>true</code>, enforces the aspect ratio defined by the <code>minWidth</code> and <code>minHeight</code> values.</td>
 </tr>
 <tr>
-<td style="text-align: left;">center</td>
-<td style="text-align: left;">Centers the window on screen if <code>true</code>.</td>
-</tr>
-<tr>
 <td style="text-align: left;">client</td>
 <td style="text-align: left;">Readable, defines the client boundaries around the frame.</td>
 </tr>
@@ -1639,6 +1794,10 @@
 <tr>
 <td style="text-align: left;">insideWidth, insideHeight</td>
 <td style="text-align: left;">Alternative to width and height; defines the internal size of the window.</td>
+</tr>
+<tr>
+<td style="text-align: left;">invertPalette</td>
+<td style="text-align: left;">If <code>true</code> the palette scheme will be inverted. Thus if the current scheme is light, the window will adopt a dark background.</td>
 </tr>
 <tr>
 <td style="text-align: left;">maximise</td>
@@ -1708,8 +1867,8 @@
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;">:show()</td>
-<td style="text-align: left;">Display the window if not already shown.</td>
+<td style="text-align: left;">:show(Center)</td>
+<td style="text-align: left;">Display the window if not already shown. The window will be repositioned to the center if <code>Center</code> is true.</td>
 </tr>
 <tr>
 <td style="text-align: left;">:getClientSize()</td>
@@ -1807,6 +1966,18 @@
 <tr>
 <td style="text-align: left;">dragDrop</td>
 <td style="text-align: left;">Set to <code>true</code> to enable support for drag and drop.</td>
+</tr>
+<tr>
+<td style="text-align: left;">fontFace</td>
+<td style="text-align: left;">Overrides the default font face.</td>
+</tr>
+<tr>
+<td style="text-align: left;">fontSize</td>
+<td style="text-align: left;">Overrides the default font size.</td>
+</tr>
+<tr>
+<td style="text-align: left;">fontStyle</td>
+<td style="text-align: left;">Overrides the default font style.</td>
 </tr>
 <tr>
 <td style="text-align: left;">items</td>
@@ -1953,6 +2124,10 @@
 <td style="text-align: left;">Re-enable the view.</td>
 </tr>
 <tr>
+<td style="text-align: left;">free()</td>
+<td style="text-align: left;">Terminates the view and any resources that it has allocated.</td>
+</tr>
+<tr>
 <td style="text-align: left;">loadItems(Items)</td>
 <td style="text-align: left;">Load a new set of items and display them for the user. Any existing items will be cleared.</td>
 </tr>
@@ -2015,7 +2190,7 @@
 </tr>
 <tr>
 <td style="text-align: left;">width</td>
-<td style="text-align: left;">The pixel width of the column.</td>
+<td style="text-align: left;">The width of the column measured in &#39;em&#39; units (relative to font height).</td>
 </tr>
 <tr>
 <td style="text-align: left;">type</td>
@@ -2032,9 +2207,9 @@
 </tbody>
 </table>
 <p>Here&#39;s an example of a valid <code>columns</code> list:</p>
-<pre><code>{ { attrib=&#39;name&#39;,        title=&#39;Name&#39;, width=160, showIcons=true },
-  { attrib=&#39;size&#39;,        title=&#39;Size&#39;, width=70, type=&#39;bytesize&#39;, align=&#39;right&#39; },
-  { attrib=&#39;dateCreated&#39;, title=&#39;Date&#39;, width=100, type=&#39;date&#39;, align=&#39;right&#39; }
+<pre><code>{ { attrib=&#39;name&#39;,        title=&#39;Name&#39;, width=16, showIcons=true },
+  { attrib=&#39;size&#39;,        title=&#39;Size&#39;, width=7, type=&#39;bytesize&#39;, align=&#39;right&#39; },
+  { attrib=&#39;dateCreated&#39;, title=&#39;Date&#39;, width=10, type=&#39;date&#39;, align=&#39;right&#39; }
 }</code></pre>
 <p>Methods specific to the <code>columnview</code> interface are:</p>
 <table>
