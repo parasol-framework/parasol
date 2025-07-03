@@ -210,7 +210,7 @@ ERR SetField(OBJECTPTR Object, FIELD FieldID, ...)
 //********************************************************************************************************************
 // Converts a CSV string into an array (or use "#0x123..." for a hexadecimal byte list)
 
-static int write_array(CSTRING String, int Flags, WORD ArraySize, APTR Dest)
+static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
 {
    if (!ArraySize) ArraySize = 0x7fff; // If no ArraySize is specified then there is no imposed limit.
 
@@ -267,7 +267,7 @@ ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int E
    if (!Field->SetValue) {
       ERR error = ERR::Okay;
       if (Field->Flags & FD_ARRAY)         error = writeval_array(Object, Field, flags, Data, Elements);
-      else if (Field->Flags & FD_INT)     error = writeval_long(Object, Field, flags, Data, 0);
+      else if (Field->Flags & FD_INT)      error = writeval_long(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_INT64)    error = writeval_large(Object, Field, flags, Data, 0);
       else if (Field->Flags & (FD_DOUBLE|FD_FLOAT)) error = writeval_double(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_FUNCTION) error = writeval_function(Object, Field, flags, Data, 0);
@@ -282,7 +282,7 @@ ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int E
       else if (Field->Flags & FD_RGB)      return setval_brgb(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_ARRAY)    return setval_array(Object, Field, flags, Data, Elements);
       else if (Field->Flags & FD_FUNCTION) return setval_function(Object, Field, flags, Data, 0);
-      else if (Field->Flags & FD_INT)     return setval_long(Object, Field, flags, Data, 0);
+      else if (Field->Flags & FD_INT)      return setval_long(Object, Field, flags, Data, 0);
       else if (Field->Flags & (FD_DOUBLE|FD_FLOAT))   return setval_double(Object, Field, flags, Data, 0);
       else if (Field->Flags & (FD_POINTER|FD_STRING)) return setval_pointer(Object, Field, flags, Data, 0);
       else if (Field->Flags & FD_INT64)    return setval_large(Object, Field, flags, Data, 0);
@@ -362,7 +362,7 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
          }
          else if (Field->Arg) {
             bool reverse = false;
-            WORD op      = OP_OVERWRITE;
+            int16_t op   = OP_OVERWRITE;
             while (*str) {
                if (*str IS '&')      { op = OP_AND;       str++; }
                else if (*str IS '!') { op = OP_OR;        str++; }
@@ -392,9 +392,8 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
             // Get the current flag values from the field if special ops are requested
 
             if (op != OP_OVERWRITE) {
-               ERR error;
                int current_flags;
-               if ((error = copy_field_to_buffer(Object, Field, FT_INT, &current_flags, NULL, NULL)) IS ERR::Okay) {
+               if (auto error = Object->get<int>(Field->FieldID, current_flags); error IS ERR::Okay) {
                   if (op IS OP_OR) int64 = current_flags | int64;
                   else if (op IS OP_AND) int64 = current_flags & int64;
                }
@@ -462,7 +461,7 @@ static ERR writeval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, i
 static ERR writeval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
    auto offset = (int64_t *)((BYTE *)Object + Field->Offset);
-   if (Flags & FD_INT64)       *offset = *((int64_t *)Data);
+   if (Flags & FD_INT64)      *offset = *((int64_t *)Data);
    else if (Flags & FD_INT)   *offset = *((int *)Data);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((double *)Data));
    else if (Flags & FD_STRING) *offset = strtoll((STRING)Data, NULL, 0);
@@ -474,7 +473,7 @@ static ERR writeval_double(OBJECTPTR Object, Field *Field, int Flags, CPTR Data,
 {
    auto offset = (DOUBLE *)((BYTE *)Object + Field->Offset);
    if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = *((double *)Data);
-   else if (Flags & FD_INT)   *offset = *((int *)Data);
+   else if (Flags & FD_INT)    *offset = *((int *)Data);
    else if (Flags & FD_INT64)  *offset = (*((int64_t *)Data));
    else if (Flags & FD_STRING) *offset = strtod((STRING)Data, NULL);
    else return ERR::SetValueNotNumeric;
@@ -506,11 +505,11 @@ static ERR writeval_ptr(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
 
 //********************************************************************************************************************
 
-class FieldContext : public ObjectContext {
+class FieldContext : public extObjectContext {
    bool success;
 
    public:
-   FieldContext(OBJECTPTR Object, struct Field *Field) : ObjectContext(Object, AC::SetField, NULL) {
+   FieldContext(OBJECTPTR Object, struct Field *Field) : extObjectContext(Object, AC::SetField) {
       if ((tlContext->field IS Field) and (tlContext->object() IS Object)) { // Detect recursion
          success = false;
          return;

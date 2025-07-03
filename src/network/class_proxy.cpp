@@ -182,7 +182,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
          // Remove any existing host proxy settings
 
          ConfigGroups *groups;
-         if (glConfig->getPtr(FID_Data, &groups) IS ERR::Okay) {
+         if (glConfig->get(FID_Data, groups) IS ERR::Okay) {
             std::stack <std::string> group_list;
             for (auto& [group, keys] : groups[0]) {
                if (keys.contains("Host")) group_list.push(group);
@@ -354,7 +354,7 @@ static ERR find_proxy(extProxy *Self)
    if (!Self->Find) Self->Find = TRUE; // This is the start of the search
 
    ConfigGroups *groups;
-   if (glConfig->getPtr(FID_Data, &groups) != ERR::Okay) return ERR::NoData;
+   if (glConfig->get(FID_Data, groups) != ERR::Okay) return ERR::NoData;
 
    auto group = groups->begin();
 

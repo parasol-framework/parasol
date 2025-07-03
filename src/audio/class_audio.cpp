@@ -1304,7 +1304,7 @@ static void load_config(extAudio *Self)
       // Find the mixer section, then load the mixer information
 
       ConfigGroups *groups;
-      if (config->getPtr(FID_Data, &groups) IS ERR::Okay) {
+      if (config->get(FID_Data, groups) IS ERR::Okay) {
          for (auto& [group, keys] : groups[0]) {
             if (iequals("MIXER", group)) {
                Self->Volumes.clear();

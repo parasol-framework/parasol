@@ -78,7 +78,7 @@ static ERR process_args(void)
 {
    pf::Log log("Parasol");
 
-   if ((glTask->getPtr(FID_Parameters, &glArgs) IS ERR::Okay) and (glArgs)) {
+   if ((glTask->get(FID_Parameters, glArgs) IS ERR::Okay) and (glArgs)) {
       pf::vector<std::string> &args = *glArgs;
       for (unsigned i=0; i < args.size(); i++) {
          if (pf::iequals(args[i], "--help")) { // Print help for the user
@@ -156,8 +156,8 @@ extern "C" int main(int argc, char **argv)
          result = int(exec_source(glDialogScript.c_str(), glTime, glProcedure));
       }
       else if (!glTargetFile.empty()) {
-         STRING path;
-         if (glTask->get(FID_Path, &path) IS ERR::Okay) log.msg("Path: %s", path);
+         CSTRING path;
+         if (glTask->get(FID_Path, path) IS ERR::Okay) log.msg("Path: %s", path);
          else log.error("No working path.");
 
          LOC type;

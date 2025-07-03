@@ -9,7 +9,8 @@ void anim_base::set_orig_value(svgState &State)
 
    pf::ScopedObjectLock<objVector> obj(target_vector);
    if (obj.granted()) {
-      switch(strihash(target_attrib)) {
+      auto fid = strihash(target_attrib);
+      switch(fid) {
          case SVF_DISPLAY:
             if (obj->Visibility IS VIS::HIDDEN) target_attrib_orig = "none";
             else if (obj->Visibility IS VIS::INHERIT) target_attrib_orig = "inherit";
@@ -22,14 +23,14 @@ void anim_base::set_orig_value(svgState &State)
 
          case SVF_FILL: {
             CSTRING val;
-            if ((obj->getPtr(FID_Fill, &val) IS ERR::Okay) and (val)) target_attrib_orig = val;
+            if ((obj->get(FID_Fill, val) IS ERR::Okay) and (val)) target_attrib_orig = val;
             else target_attrib_orig = State.m_fill;
             break;
          }
 
          case SVF_STROKE: {
             CSTRING val;
-            if ((obj->getPtr(FID_Stroke, &val) IS ERR::Okay) and (val)) target_attrib_orig = val;
+            if ((obj->get(FID_Stroke, val) IS ERR::Okay) and (val)) target_attrib_orig = val;
             else target_attrib_orig = State.m_stroke;
             break;
          }
@@ -47,10 +48,8 @@ void anim_base::set_orig_value(svgState &State)
             break;
 
          default: {
-            char buffer[400];
-            if (GetFieldVariable(*obj, target_attrib.c_str(), buffer, std::ssize(buffer)) IS ERR::Okay) {
-               target_attrib_orig.assign(buffer);
-            }
+            std::string buffer;
+            if (obj->get(fid, buffer) IS ERR::Okay) target_attrib_orig.assign(buffer);
          }
       }
    }
@@ -423,9 +422,9 @@ FRGB anim_base::get_colour_value(objVector &Vector, FIELD Field)
       vec::ReadPainter(NULL, to.c_str(), &to_col, NULL);
    }
    else if (not by.empty()) {
-      FLOAT *colour;
-      LONG elements;
-      if ((GetFieldArray(&Vector, Field, (APTR *)&colour, &elements) IS ERR::Okay) and (elements IS 4)) {
+      float *colour;
+      int elements;
+      if ((Vector.get(Field, colour, elements) IS ERR::Okay) and (elements IS 4)) {
          from_col.Colour = { colour[0], colour[1], colour[2], colour[3] };
          vec::ReadPainter(NULL, to.c_str(), &to_col, NULL);
          to_col.Colour.Red   = std::clamp<float>(to_col.Colour.Red   + colour[0], 0.0, 1.0);

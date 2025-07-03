@@ -66,8 +66,8 @@ static ERR drag_callback(extVectorViewport *Viewport, const InputEvent *Events)
             glAnchorX = event->AbsX;
             glAnchorY = event->AbsY;
 
-            Viewport->get(FID_X, &glDragOriginX);
-            Viewport->get(FID_Y, &glDragOriginY);
+            Viewport->get(FID_X, glDragOriginX);
+            Viewport->get(FID_Y, glDragOriginY);
 
             // Ensure that the X,Y coordinates are fixed.
 
@@ -447,15 +447,15 @@ static ERR VIEW_GET_Height(extVectorViewport *Self, Unit &Value)
       if (dmf::hasScaledY(Self->vpDimensions)) y = Self->vpTargetY * Self->ParentView->vpFixedHeight;
       else y = Self->vpTargetY;
 
-      if (Self->ParentView) Self->ParentView->get(FID_Height, &parent_height);
+      if (Self->ParentView) Self->ParentView->get(FID_Height, parent_height);
       else parent_height = Self->Scene->PageHeight;
 
       if (dmf::hasYOffset(Self->vpDimensions)) val = parent_height - Self->vpTargetYO - y;
       else val = parent_height - (Self->vpTargetYO * parent_height) - y;
    }
    else { // If no height set by the client, the full height is inherited from the parent
-      if (Self->ParentView) return Self->ParentView->get(FID_Height, &Value);
-      else Self->Scene->get(FID_PageHeight, &val);
+      if (Self->ParentView) return Self->ParentView->get(FID_Height, Value);
+      else Self->Scene->get(FID_PageHeight, val);
    }
 
    Value.set(val);
@@ -678,15 +678,15 @@ static ERR VIEW_GET_Width(extVectorViewport *Self, Unit &Value)
       if (dmf::hasScaledX(Self->vpDimensions)) x = Self->vpTargetX * Self->ParentView->vpFixedWidth;
       else x = Self->vpTargetX;
 
-      if (Self->ParentView) Self->ParentView->get(FID_Width, &parent_width);
+      if (Self->ParentView) Self->ParentView->get(FID_Width, parent_width);
       else parent_width = Self->Scene->PageWidth;
 
       if (dmf::hasXOffset(Self->vpDimensions)) val = parent_width - Self->vpTargetXO - x;
       else val = parent_width - (Self->vpTargetXO * parent_width) - x;
    }
    else { // If no width set by the client, the full width is inherited from the parent
-      if (Self->ParentView) return Self->ParentView->get(FID_Width, &Value);
-      else Self->Scene->get(FID_PageWidth, &val);
+      if (Self->ParentView) return Self->ParentView->get(FID_Width, Value);
+      else Self->Scene->get(FID_PageWidth, val);
    }
 
    Value.set(val);

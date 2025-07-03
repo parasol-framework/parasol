@@ -97,7 +97,7 @@ void doc_menu::refresh()
    LONG total_icons = 0;
 
    std::ostringstream buf;
-   buf << "<body margins=\"" << HGAP << " " << HGAP << " " << HGAP << " " << 0 << "\" " << 
+   buf << "<body margins=\"" << HGAP << " " << HGAP << " " << HGAP << " " << 0 << "\" " <<
       "link=\"rgb(0,0,0)\" v-link=\"rgb(0,0,0)\" " <<
       "font-face=\"" << m_font_face << "\" font-size=\"" << m_font_size << "\"/>\n";
 
@@ -174,8 +174,8 @@ void doc_menu::refresh()
       m_view->setFields(fl::Height(view_height));
 
       objVectorViewport *doc_page, *doc_view;
-      if (m_doc->getPtr(FID_Page, &doc_page) IS ERR::Okay) {
-         if (m_doc->getPtr(FID_View, &doc_view) IS ERR::Okay) {
+      if (m_doc->get(FID_Page, doc_page) IS ERR::Okay) {
+         if (m_doc->get(FID_View, doc_view) IS ERR::Okay) {
             m_scroll.init((extDocument *)CurrentContext(), doc_page, doc_view);
             m_scroll.m_auto_adjust_view_size = false;
 

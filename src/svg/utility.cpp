@@ -114,7 +114,8 @@ ERR svgState::current_colour(objVector *Vector, FRGB &RGB) noexcept
    while (Vector) {
       if (Vector->Class->BaseClassID != CLASSID::VECTOR) return ERR::Failed;
 
-      if (GetFieldArray(Vector, FID_FillColour|TFLOAT, (APTR *)&RGB, NULL) IS ERR::Okay) {
+      int total;
+      if (Vector->get(FID_FillColour, (float * &)RGB, total) IS ERR::Okay) {
          if (RGB.Alpha != 0) return ERR::Okay;
       }
       Vector = (objVector *)Vector->Parent;
@@ -468,7 +469,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
    ERR error = ERR::Okay;
    if (NewLocalObject(CLASSID::XML, &xml) IS ERR::Okay) {
       objTask *task = CurrentTask();
-      STRING working_path = NULL;
+      std::string working_path;
 
       if (Path) {
          if (wildcmp("*.svgz", Path)) {
@@ -491,7 +492,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          }
          else xml->setPath(Path);
 
-         if (task->get(FID_Path, &working_path) IS ERR::Okay) working_path = strclone(working_path);
+         task->get(FID_Path, working_path);
 
          // Set a new working path based on the path
 
@@ -548,10 +549,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
       }
       else error = ERR::Init;
 
-      if (working_path) {
-         task->setPath(working_path);
-         FreeResource(working_path);
-      }
+      if (!working_path.empty()) task->setPath(working_path);
    }
    else error = ERR::NewObject;
 

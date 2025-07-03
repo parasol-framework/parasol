@@ -580,8 +580,8 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
       <param type="UINT" name="FieldID">The unique field hash to resolve.</param>
     </input>
     <description>
-<p>Resolves a field identifier to its name.  For this to work successfully, the field must have been registered with the internal dictionary.  This is handled automatically when a new class is added to the system.</p>
-<p>If the <code>FieldID</code> is not registered, the value is returned back as a hex string.  The inclusion of this feature guarantees that an empty string will never be returned.</p>
+<p>Resolves a field identifier to its name by checking the internal dictionary.  The field must have previously been referenced by a class blueprint in order for its name to be registered.</p>
+<p>If <code>FieldID</code> is not registered, the value is returned as a printable hex string.</p>
     </description>
     <result type="CSTRING">The name of the field is returned.</result>
   </function>
@@ -747,94 +747,6 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 <p>The <code>SubGroup</code> and <code>Event</code> parameters are string-based and there are no restrictions on naming.  If a <code>SubGroup</code> or <code>Event</code> name is <code>NULL</code>, this will act as a wildcard for subscribing to multiple events.  For example, subscribing to the network group with <code>SubGroup</code> and <code>Event</code> set to <code>NULL</code> will allow for a subscription to all network events that are broadcast.  A <code>Group</code> setting of zero is not allowed.</p>
     </description>
     <result type="INT64">The event ID is returned as a 64-bit integer.</result>
-  </function>
-
-  <function>
-    <name>GetField</name>
-    <category>Fields</category>
-    <comment>Retrieves single field values from objects.</comment>
-    <prototype>ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
-      <param type="FIELD" name="Field">The ID of the field to read, OR'd with a type indicator.</param>
-      <param type="APTR" name="Result">Pointer to the variable that will store the result.</param>
-    </input>
-    <description>
-<p>The GetField() function is used to read field values from objects in the safest way possible.  As long as the requested field exists, the value can most likely be read.  It is only imperative that the requested type is compatible with the field value itself.</p>
-<p>The following code segment illustrates how to read values from an object:</p>
-<pre>GetField(Object, FID_X|TINT, &amp;x);
-GetField(Object, FID_Y|TINT, &amp;y);
-</pre>
-<p>As GetField() is based on field ID's that reflect field names (<code>FID</code>'s), you will find that there are occasions where there is no reserved ID for the field that you wish to read.  To convert field names into their relevant IDs, call the C++ <code>strihash()</code> function.  Reserved field ID's are listed in the <code>parasol/system/fields.h</code> include file.</p>
-<p>The type of the <code>Result</code> parameter must be OR'd into the <code>Field</code> parameter.  When reading a field you must give consideration to the type of the source, in order to prevent a type mismatch from occurring.  All numeric types are compatible with each other and strings can also be converted to numeric types automatically.  String and pointer types are interchangeable.</p>
-<p>Available field types are as follows:</p>
-<types>
-<type name="TINT">A 32-bit integer value.</type>
-<type name="TDOUBLE">A 64-bit floating point value.</type>
-<type name="TINT64">A 64-bit integer value.</type>
-<type name="TPTR">A standard 32-bit address space pointer.</type>
-<type name="TSTR">A 32-bit pointer that refers to a string.</type>
-</types>
-    </description>
-    <result type="ERR">
-      <error code="Okay">The <code>Field</code> value was read successfully.</error>
-      <error code="Args">Invalid arguments were specified.</error>
-      <error code="NoFieldAccess">Permissions for this field indicate that it is not readable.</error>
-      <error code="UnsupportedField">The <code>Field</code> is not supported by the object's class.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>GetFieldArray</name>
-    <category>Fields</category>
-    <comment>Retrieves array field values from objects.</comment>
-    <prototype>ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, INT * Elements)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
-      <param type="FIELD" name="Field">The ID of the field that will be read.</param>
-      <param type="APTR *" name="Result">A direct pointer to the array values will be returned in this parameter.</param>
-      <param type="INT *" name="Elements">The total number of elements in the array will be returned in this parameter.</param>
-    </input>
-    <description>
-<p>Use the GetFieldArray() function to read an array field from an object, including the length of that array.  This supplements the <function>GetField</function> function, which does not support returning the array length.</p>
-<p>This function returns the array as-is with no provision for type conversion.  If the array is null terminated, it is standard practice not to count the null terminator in the total returned by <code>Elements</code>.</p>
-<p>To achieve a minimum level of type safety, the anticipated type of array values can be specified by OR'ing a field type with the field identifier, e.g. <code>TINT</code> or <code>TSTR</code>.  If no type is incorporated then a check will not be performed.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NoFieldAccess">Permissions for this field indicate that it is not readable.</error>
-      <error code="UnsupportedField">The Field is not supported by the object's class.</error>
-      <error code="Mismatch">A mis-match has been detected that prevents further processing.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>GetFieldVariable</name>
-    <category>Fields</category>
-    <comment>Retrieves field values by converting them into strings.</comment>
-    <prototype>ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, INT Size)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to an object.</param>
-      <param type="CSTRING" name="Field">The name of the field that is to be retrieved.</param>
-      <param type="STRING" name="Buffer">Pointer to a buffer space large enough to hold the expected field value.  If the buffer is not large enough, the result will be truncated.  A buffer of 256 bytes is considered large enough for most occasions.  For generic field reading purposes, a buffer as large as 64kb may be desired.</param>
-      <param type="INT" name="Size">The size of the <code>Buffer</code> that has been provided, in bytes.</param>
-    </input>
-    <description>
-<p>The GetFieldVariable() function is used to retrieve the value of a field without any advance knowledge of the field's type or details.  It also supports some advanced features such as flag name lookups and the retrieval of values from array indexes.  Although this function is simple to use, it is the slowest of the field retrieval instructions as it relies on string-based field names and converts all results into a string buffer that you must provide.</p>
-<p>This function does not support pointer based fields as they cannot be translated, although an exception is made for string field types.</p>
-<p>If the field name refers to a flag or lookup based field type, it is possible to test if a specific flag has been set. This is achieved by specifying a dot immediately after the field name, then the name of the flag or lookup to test. If the test passes, a value of <code>1</code> is returned, otherwise <code>0</code>.</p>
-<p>String conversion for flag and lookup based fields is also supported (by default, integer values are returned for these field types when no other test is applied).  This feature is enabled by prefixing the field name with a <code>$</code> symbol. If multiple fields are set, the resulting flags will be separated with the traditional OR symbol <code>|</code>.</p>
-<p>If the field name refers to an array, it is possible to index specific values within that array by specifying a dot after the field name, then the index number to lookup.</p>
-<p>To check if a string is defined (rather than retrieving the entire string content which can be time consuming), prefix the <code>Field</code> name with a question mark.  A value of <code>1</code> will be returned in the <code>Buffer</code> if the string has a minimum length of <code>1</code> character, otherwise a value of <code>0</code> is returned in the Buffer.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">The field was value retrieved.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoFieldAccess">Permissions for this field state that it is not readable.</error>
-      <error code="UnsupportedField">The requested field is not supported by the object's class.</error>
-      <error code="Mismatch">The field value cannot be converted into a string.</error>
-    </result>
   </function>
 
   <function>
@@ -1564,7 +1476,7 @@ SetArray(Object, FID_Table|TINT, array, 100);
   <function>
     <name>SetContext</name>
     <category>Objects</category>
-    <comment>Sets the nominated owner of new resources.</comment>
+    <comment>Declares the owner of future allocated resources.</comment>
     <prototype>OBJECTPTR SetContext(OBJECTPTR Object)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object that will take on the new context.  If <code>NULL</code>, no change to the context will be made.</param>

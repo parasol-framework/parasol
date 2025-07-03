@@ -2182,9 +2182,9 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERR Error)
 
       if ((InitObject(dialog) IS ERR::Okay) and (acActivate(dialog) IS ERR::Okay)) {
          CSTRING *results;
-         LONG size;
-         if ((GetFieldArray(dialog, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
-            dialog_id = strtol(results[0], NULL, 0);
+         int size;
+         if ((dialog->get(FID_Results, results, size) IS ERR::Okay) and (size > 0)) {
+            dialog_id = strtol(results[0], nullptr, 0);
          }
       }
    }
@@ -2210,7 +2210,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
          }
          else error = ERR::Failed;
       }
-      else if (file->get(FID_Size, &size) IS ERR::Okay) {
+      else if (file->get(FID_Size, size) IS ERR::Okay) {
          if (size > 0) {
             if (size < 1024 * 1024 * 10) {
                if (AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &str) IS ERR::Okay) {

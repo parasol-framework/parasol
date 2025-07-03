@@ -260,8 +260,8 @@ static ERR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
 
    LONG width = 0;
    LONG height = 0;
-   Self->Scene->get(FID_PageWidth, &width);
-   Self->Scene->get(FID_PageHeight, &height);
+   Self->Scene->get(FID_PageWidth, width);
+   Self->Scene->get(FID_PageHeight, height);
 
    if (!width) width = 1920;
    if (!height) height = 1080;
@@ -297,7 +297,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
-      if ((mc->getPtr(FID_ActionTable, &actions) IS ERR::Okay) and (actions)) {
+      if ((mc->get(FID_ActionTable, actions) IS ERR::Okay) and (actions)) {
          if ((actions[LONG(AC::SaveToObject)]) and (actions[LONG(AC::SaveToObject)] != (APTR)SVG_SaveToObject)) {
             return actions[LONG(AC::SaveToObject)](Self, Args);
          }
@@ -334,10 +334,10 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
             else {
                DOUBLE x, y, width, height;
 
-               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewX, &x);
-               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewY, &y);
-               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewWidth, &width);
-               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewHeight, &height);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewX, x);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewY, y);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewWidth, width);
+               if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewHeight, height);
 
                if (error IS ERR::Okay) {
                   char buffer[80];
@@ -347,16 +347,16 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
                if (error IS ERR::Okay) {
                   auto dim = Self->Viewport->get<DMF>(FID_Dimensions);
-                  if (dmf::hasAnyX(dim) and (Self->Viewport->get(FID_X, &x) IS ERR::Okay))
+                  if (dmf::hasAnyX(dim) and (Self->Viewport->get(FID_X, x) IS ERR::Okay))
                      set_dimension(tag, "x", x, dmf::hasScaledX(dim));
 
-                  if (dmf::hasAnyY(dim) and (Self->Viewport->get(FID_Y, &y) IS ERR::Okay))
+                  if (dmf::hasAnyY(dim) and (Self->Viewport->get(FID_Y, y) IS ERR::Okay))
                      set_dimension(tag, "y", y, dmf::hasScaledY(dim));
 
-                  if (dmf::hasAnyWidth(dim) and (Self->Viewport->get(FID_Width, &width) IS ERR::Okay))
+                  if (dmf::hasAnyWidth(dim) and (Self->Viewport->get(FID_Width, width) IS ERR::Okay))
                      set_dimension(tag, "width", width, dmf::hasScaledWidth(dim));
 
-                  if (dmf::hasAnyHeight(dim) and (Self->Viewport->get(FID_Height, &height) IS ERR::Okay))
+                  if (dmf::hasAnyHeight(dim) and (Self->Viewport->get(FID_Height, height) IS ERR::Okay))
                      set_dimension(tag, "height", height, dmf::hasScaledHeight(dim));
                }
 

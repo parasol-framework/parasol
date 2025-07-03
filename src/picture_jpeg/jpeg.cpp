@@ -49,8 +49,8 @@ static ERR JPEG_Activate(extPicture *Self)
    if (Self->Bitmap->initialised()) return ERR::Okay;
 
    if (!Self->prvFile) {
-      STRING path;
-      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::GetField);
+      CSTRING path;
+      if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          log.warning("Failed to open file \"%s\".", path);
@@ -164,9 +164,9 @@ static ERR JPEG_Init(extPicture *Self)
 {
    pf::Log log;
    UBYTE *buffer;
-   STRING path = NULL;
+   CSTRING path = nullptr;
 
-   Self->get(FID_Location, &path);
+   Self->get(FID_Location, path);
 
    if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       // If no location has been specified, assume that the picture is being created from scratch (e.g. to save an image to disk).  The
@@ -183,7 +183,7 @@ static ERR JPEG_Init(extPicture *Self)
       }
       else return log.warning(ERR::FieldNotSet);
    }
-   else if (Self->getPtr(FID_Header, &buffer) IS ERR::Okay) {
+   else if (Self->get(FID_Header, buffer) IS ERR::Okay) {
       if ((buffer[0] IS 0xff) and (buffer[1] IS 0xd8) and (buffer[2] IS 0xff) and
           ((buffer[3] IS 0xe0) or (buffer[3] IS 0xe1) or (buffer[3] IS 0xfe))) {
          log.msg("The file is a JPEG picture.");
@@ -207,8 +207,8 @@ static ERR JPEG_Query(extPicture *Self)
    log.branch();
 
    if (!Self->prvFile) {
-      STRING path;
-      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::GetField);
+      CSTRING path;
+      if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::GetField);
 
       if (!(Self->prvFile = objFile::create::local(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          return log.warning(ERR::CreateObject);
@@ -252,8 +252,8 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
-      STRING path;
-      if (Self->get(FID_Location, &path) != ERR::Okay) return log.warning(ERR::MissingPath);
+      CSTRING path;
+      if (Self->get(FID_Location, path) != ERR::Okay) return log.warning(ERR::MissingPath);
 
       if (!(file = objFile::create::local(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) {
          return log.warning(ERR::CreateObject);

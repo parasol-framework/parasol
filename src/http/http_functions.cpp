@@ -39,7 +39,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
 
          SET_ERROR(log, Self, Socket->Error);
          log.branch("Deactivating (connect failure message received).");
-         SetField(Self, FID_CurrentState, HGS::TERMINATED);
+         Self->setCurrentState(HGS::TERMINATED);
          return;
       }
       else Self->Connecting = FALSE;
@@ -50,7 +50,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
       else if (Self->CurrentState IS HGS::READING_HEADER) {
          SET_ERROR(log, Self, Socket->Error != ERR::Okay ? Socket->Error : ERR::Disconnected);
          log.trace("Received broken header as follows:\n%s", Self->Response.c_str());
-         SetField(Self, FID_CurrentState, HGS::TERMINATED);
+         Self->setCurrentState(HGS::TERMINATED);
       }
       else if (Self->CurrentState IS HGS::SEND_COMPLETE) {
          // Disconnection on completion of sending data should be no big deal
@@ -103,17 +103,17 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
             }
             else {
                SET_ERROR(log, Self, Socket->Error);
-               SetField(Self, FID_CurrentState, HGS::TERMINATED);
+               Self->setCurrentState(HGS::TERMINATED);
             }
          }
          else if (Self->Index < Self->ContentLength) {
             log.warning("Disconnected before all content was downloaded (%" PF64 " of %" PF64 ")", (long long)Self->Index, (long long)Self->ContentLength);
             SET_ERROR(log, Self, Socket->Error != ERR::Okay ? Socket->Error : ERR::Disconnected);
-            SetField(Self, FID_CurrentState, HGS::TERMINATED);
+            Self->setCurrentState(HGS::TERMINATED);
          }
          else {
             log.trace("Orderly shutdown, received %" PF64 " of the expected %" PF64 " bytes.", (long long)Self->Index, (long long)Self->ContentLength);
-            SetField(Self, FID_CurrentState, HGS::COMPLETED);
+            Self->setCurrentState(HGS::COMPLETED);
          }
       }
       else if (Self->CurrentState IS HGS::AUTHENTICATING) {
@@ -129,7 +129,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
             return;
          }
 
-         SetField(Self, FID_CurrentState, HGS::TERMINATED);
+         Self->setCurrentState(HGS::TERMINATED);
       }
    }
    else if (Self->CurrentState >= HGS::COMPLETED) {
@@ -213,7 +213,7 @@ redo_upload:
       if (error != ERR::Okay) log.warning("Input file read error: %s", GetErrorMsg(error));
 
       int64_t size;
-      Self->flInput->get(FID_Size, &size);
+      Self->flInput->get(FID_Size, size);
 
       if ((Self->flInput->Position IS size) or (len IS 0)) {
          log.trace("All file content read (%d bytes) - freeing file.", (LONG)size);

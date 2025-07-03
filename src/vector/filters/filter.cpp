@@ -635,7 +635,7 @@ static ERR VECTORFILTER_GET_EffectXML(extVectorFilter *Self, CSTRING *Value)
    for (auto e = Self->Effects; e; e = (extFilterEffect *)e->Next) {
       ss << "<";
       CSTRING def;
-      if (GetField(e, FID_XMLDef, &def) IS ERR::Okay) {
+      if (e->get(FID_XMLDef, def) IS ERR::Okay) {
          ss << def;
          FreeResource(def);
       }

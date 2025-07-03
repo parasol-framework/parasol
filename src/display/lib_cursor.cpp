@@ -500,7 +500,7 @@ ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID
                if (ScopedObjectLock<objSurface> surface(pointer->SurfaceID, 1000); surface.granted()) {
                   if (surface->DisplayID) {
                      if (ScopedObjectLock<objDisplay> display(surface->DisplayID, 1000); display.granted()) {
-                        if ((display->getPtr(FID_WindowHandle, &xwin) IS ERR::Okay) and (xwin)) {
+                        if ((display->get(FID_WindowHandle, xwin) IS ERR::Okay) and (xwin)) {
                            xcursor = get_x11_cursor(CursorID);
                            XDefineCursor(XDisplay, (Window)xwin, xcursor);
                            XFlush(XDisplay);

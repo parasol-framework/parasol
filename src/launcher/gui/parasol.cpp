@@ -80,7 +80,7 @@ extern "C" void program(void)
    // Process arguments
 
    STRING *Args;
-   if ((!glTask->getPtr(FID_ArgsList, &Args)) and (Args)) {
+   if ((!glTask->get(FID_ArgsList, &Args)) and (Args)) {
       for (i=0; Args[i]; i++) {
          if (iequals(Args[i], "--help")) {
             // Print help for the user

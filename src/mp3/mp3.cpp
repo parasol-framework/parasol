@@ -320,8 +320,8 @@ static ERR MP3_Init(objSound *Self)
 {
    pf::Log log;
 
-   STRING location;
-   Self->get(FID_Path, &location);
+   CSTRING location = nullptr;
+   Self->get(FID_Path, location);
 
    if ((!location) or ((Self->Flags & SDF::NEW) != SDF::NIL)) {
       // If no location has been specified, assume that the sound is being
@@ -387,7 +387,7 @@ static ERR MP3_Init(objSound *Self)
    if (prv->info.channels IS 2) Self->Flags |= SDF::STEREO;
    if (Self->Stream != STREAM::NEVER) Self->Flags |= SDF::STREAM;
 
-   Self->BytesPerSecond = LONG(prv->info.hz * prv->info.channels * sizeof(WORD));
+   Self->BytesPerSecond = int(prv->info.hz * prv->info.channels * sizeof(int16_t));
    Self->BitsPerSample  = 16;
    Self->Frequency      = prv->info.hz;
    Self->Playback       = Self->Frequency;
@@ -613,7 +613,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
 
             if (!prv->StreamSize) {
                int64_t size;
-               prv->File->get(FID_Size, &size);
+               prv->File->get(FID_Size, size);
                prv->StreamSize = size - prv->SeekOffset;
             }
 
@@ -633,7 +633,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
       }
 
       LONG active;
-      if (Self->get(FID_Active, &active) IS ERR::Okay) {
+      if (Self->get(FID_Active, active) IS ERR::Okay) {
          if (active) {
             log.branch("Resetting state of active sample, seek to byte %" PF64, (long long)prv->WriteOffset);
             Self->deactivate();
@@ -680,7 +680,7 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
    prv->VBR = false;
 
    LONG filesize;
-   prv->File->get(FID_Size, &filesize);
+   prv->File->get(FID_Size, filesize);
 
    UBYTE *buffer;
    if (AllocMemory(SIZE_BUFFER, MEM::DATA|MEM::NO_CLEAR, (APTR *)&buffer, NULL) IS ERR::Okay) {
@@ -789,7 +789,7 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
       }
       else {
          // For CBR we guess the total frames from the file size.
-         prv->File->get(FID_Size, &filesize);
+         prv->File->get(FID_Size, filesize);
          LONG total_frames = F2T((filesize - prv->SeekOffset - frame_start - ReduceEnd) / avg_frame_len);
          DOUBLE seconds = (total_frames * (DOUBLE)avg_frame_len) / (DOUBLE(current_bitrate) / 1000.0 * 125.0);
          prv->TotalFrames = total_frames;

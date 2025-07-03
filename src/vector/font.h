@@ -111,7 +111,7 @@ class freetype_font {
                      pf::ScopedObjectLock<objConfig> config(glFontConfig, 500);
                      if (config.granted()) {
                         ConfigGroups *groups;
-                        if (glFontConfig->getPtr(FID_Data, &groups) IS ERR::Okay) {
+                        if (glFontConfig->get(FID_Data, groups) IS ERR::Okay) {
                            for (auto & [group, keys] : groups[0]) {
                               if (pf::iequals(group, font->face->family_name)) {
                                  if (auto it = keys.find("LineSpacing"); it != keys.end()) {

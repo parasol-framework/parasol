@@ -19,6 +19,7 @@
 #include <atomic>
 #include <array>
 #include <charconv>
+#include <sstream>
 #endif
 
 #if defined(_DEBUG)
@@ -26,6 +27,9 @@
   #include <signal.h>
  #endif
 #endif
+
+template <class T> concept pcPointer = std::is_pointer_v<T>;
+template <class T> concept pcObject = std::is_base_of_v<Object, T>;
 
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
@@ -2007,6 +2011,9 @@ struct Field {
    uint16_t Offset;                                                          // Field offset within the object
    uint16_t Index;                                                           // Field array index
    uint32_t Flags;                                                           // Special flags that describe the field
+   bool readable() {
+      return (Flags & FD_READ) ? true : false;
+   }
 };
 
 struct ScriptArg { // For use with sc::Exec
@@ -2052,7 +2059,6 @@ struct CoreBase {
    ERR (*_InitObject)(OBJECTPTR Object);
    ERR (*_VirtualVolume)(CSTRING Name, ...);
    OBJECTPTR (*_CurrentContext)(void);
-   ERR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR *Result, int *Elements);
    int (*_AdjustLogLevel)(int Delta);
    ERR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, int BufferSize, int *Result);
    ERR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
@@ -2061,8 +2067,6 @@ struct CoreBase {
    ERR (*_FreeResource)(MEMORYID ID);
    CLASSID (*_GetClassID)(OBJECTID Object);
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
-   ERR (*_GetField)(OBJECTPTR Object, FIELD Field, APTR Result);
-   ERR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size);
    ERR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
    const struct SystemState * (*_GetSystemState)(void);
    ERR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> *List);
@@ -2081,6 +2085,7 @@ struct CoreBase {
    ERR (*_SendMessage)(MSGID Type, MSF Flags, APTR Data, int Size);
    ERR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
+   struct ObjectContext * (*_SetObjectContext)(struct ObjectContext *Context);
    ERR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
    CSTRING (*_FieldName)(uint32_t FieldID);
    ERR (*_ScanDir)(struct DirInfo *Info);
@@ -2150,7 +2155,6 @@ inline ERR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExi
 inline ERR InitObject(OBJECTPTR Object) { return CoreBase->_InitObject(Object); }
 template<class... Args> ERR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
-inline ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR *Result, int *Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline int AdjustLogLevel(int Delta) { return CoreBase->_AdjustLogLevel(Delta); }
 inline ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 inline ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
@@ -2159,8 +2163,6 @@ inline ERR AnalysePath(CSTRING Path, LOC *Type) { return CoreBase->_AnalysePath(
 inline ERR FreeResource(MEMORYID ID) { return CoreBase->_FreeResource(ID); }
 inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object); }
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
-inline ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreBase->_GetField(Object,Field,Result); }
-inline ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
 inline ERR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List) { return CoreBase->_ListChildren(Object,List); }
@@ -2179,6 +2181,7 @@ inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassNa
 inline ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
 inline ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
+inline struct ObjectContext * SetObjectContext(struct ObjectContext *Context) { return CoreBase->_SetObjectContext(Context); }
 template<class... Args> ERR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
 inline CSTRING FieldName(uint32_t FieldID) { return CoreBase->_FieldName(FieldID); }
 inline ERR ScanDir(struct DirInfo *Info) { return CoreBase->_ScanDir(Info); }
@@ -2242,7 +2245,6 @@ extern "C" ERR CheckMemoryExists(MEMORYID ID);
 extern "C" ERR CheckObjectExists(OBJECTID Object);
 extern "C" ERR InitObject(OBJECTPTR Object);
 extern "C" OBJECTPTR CurrentContext(void);
-extern "C" ERR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR *Result, int *Elements);
 extern "C" int AdjustLogLevel(int Delta);
 extern "C" ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, int BufferSize, int *Result);
 extern "C" ERR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID *ObjectID);
@@ -2251,8 +2253,6 @@ extern "C" ERR AnalysePath(CSTRING Path, LOC *Type);
 extern "C" ERR FreeResource(MEMORYID ID);
 extern "C" CLASSID GetClassID(OBJECTID Object);
 extern "C" OBJECTID GetOwnerID(OBJECTID Object);
-extern "C" ERR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
-extern "C" ERR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, int Size);
 extern "C" ERR CompareFilePaths(CSTRING PathA, CSTRING PathB);
 extern "C" const struct SystemState * GetSystemState(void);
 extern "C" ERR ListChildren(OBJECTID Object, pf::vector<ChildEntry> *List);
@@ -2271,6 +2271,7 @@ extern "C" CLASSID ResolveClassName(CSTRING Name);
 extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);
 extern "C" ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 extern "C" OBJECTPTR SetContext(OBJECTPTR Object);
+extern "C" struct ObjectContext * SetObjectContext(struct ObjectContext *Context);
 extern "C" ERR SetField(OBJECTPTR Object, FIELD Field, ...);
 extern "C" CSTRING FieldName(uint32_t FieldID);
 extern "C" ERR ScanDir(struct DirInfo *Info);
@@ -2581,6 +2582,22 @@ class LogLevel {
 
 } // namespace
 
+class ScopedObjectAccess {
+   private:
+      OBJECTPTR obj;
+
+   public:
+      ERR error;
+
+      inline ScopedObjectAccess(OBJECTPTR Object);
+
+      inline ~ScopedObjectAccess();
+
+      inline bool granted() { return error == ERR::Okay; }
+
+      inline void release();
+};
+
 //********************************************************************************************************************
 // Refer to Object->get() to see what this is about...
 
@@ -2595,6 +2612,29 @@ template <> inline int64_t FIELD_TAG<APTR>()      { return TPTR; }
 template <> inline int64_t FIELD_TAG<CSTRING>()   { return TSTRING; }
 template <> inline int64_t FIELD_TAG<STRING>()    { return TSTRING; }
 template <> inline int64_t FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
+
+// For testing if type T can be matched to an FD flag.
+
+template <class T> inline int FIELD_TYPECHECK()     { return FD_PTR|FD_STRUCT|FD_STRING; }
+template <> inline int FIELD_TYPECHECK<double>()    { return FD_DOUBLE; }
+template <> inline int FIELD_TYPECHECK<int>()       { return FD_INT; }
+template <> inline int FIELD_TYPECHECK<int64_t>()   { return FD_INT64; }
+template <> inline int FIELD_TYPECHECK<uint64_t>()  { return FD_INT64; }
+template <> inline int FIELD_TYPECHECK<float>()     { return FD_FLOAT; }
+template <> inline int FIELD_TYPECHECK<OBJECTPTR>() { return FD_PTR; }
+template <> inline int FIELD_TYPECHECK<APTR>()      { return FD_PTR; }
+template <> inline int FIELD_TYPECHECK<CSTRING>()   { return FD_STRING; }
+template <> inline int FIELD_TYPECHECK<STRING>()    { return FD_STRING; }
+
+//********************************************************************************************************************
+
+class ObjectContext {
+public:
+   OBJECTPTR obj = nullptr;                 // The object that currently has the operating context.
+   struct Field *field = nullptr;           // Set if the context is linked to a get/set field operation.  For logging purposes only.
+   class extObjectContext *stack = nullptr; // Call stack.
+   AC action = AC::NIL;                     // Set if the context enters an action or method routine. 
+};
 
 //********************************************************************************************************************
 // Header used for all objects.
@@ -2687,20 +2727,295 @@ struct Object { // Must be 64-bit aligned
    // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
    // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
 
-   inline ERR get(FIELD FieldID, int *Value)      { return GetField(this, FieldID|TINT, Value); }
-   inline ERR get(FIELD FieldID, int64_t *Value)  { return GetField(this, FieldID|TINT64, Value); }
-   inline ERR get(FIELD FieldID, double *Value)   { return GetField(this, FieldID|TDOUBLE, Value); }
-   inline ERR get(FIELD FieldID, STRING *Value)   { return GetField(this, FieldID|TSTRING, Value); }
-   inline ERR get(FIELD FieldID, CSTRING *Value)  { return GetField(this, FieldID|TSTRING, Value); }
-   inline ERR get(FIELD FieldID, Unit *Value)     { return GetField(this, FieldID|TUNIT, Value); }
-   inline ERR getPtr(FIELD FieldID, APTR Value)   { return GetField(this, FieldID|TPTR, Value); }
-   inline ERR getScale(FIELD FieldID, double *Value) { return GetField(this, FieldID|TDOUBLE|TSCALE, Value); }
+   private:
+   template <class T> ERR get_unit(Object *Object, struct Field &Field, T &Value) {
+      auto new_context = ObjectContext{ Object, &Field };
+      auto ctx = SetObjectContext(&new_context);
 
-   template <class T> inline T get(FIELD FieldID) { // Validity of the result is not guaranteed
-      T val(T(0));
-      GetField(this, FieldID|FIELD_TAG<T>(), &val);
-      return val;
+      ERR error = ERR::Okay;
+      if (Field.Flags & (FD_DOUBLE|FD_INT64|FD_INT)) {
+          Unit var(0, FD_DOUBLE);
+          error = Field.GetValue(Object, &var);
+          if (error IS ERR::Okay) Value = var.Value;
+      }
+      else error = ERR::FieldTypeMismatch;
+      
+      SetObjectContext(ctx);
+      return error;
+   }
+
+   inline std::pair<ERR, APTR> get_field_value(Object *Object, struct Field &Field, int8_t Buffer[8], int &ArraySize) {
+      if (Field.GetValue) {
+         auto new_context = ObjectContext{ Object, &Field };
+         auto ctx = SetObjectContext(&new_context);
+         auto get_field = (ERR (*)(APTR, APTR, int &))Field.GetValue;
+         SetObjectContext(ctx);
+         return std::make_pair(get_field(Object, Buffer, ArraySize), Buffer);
+      }
+      else return std::make_pair(ERR::Okay, ((BYTE *)Object) + Field.Offset);
+   }
+
+   public:
+
+   template <class T> ERR get(FIELD FieldID, T &Value) requires std::integral<T> || std::floating_point<T> {
+      Value = 0;
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!field->readable()) return ERR::NoFieldAccess;
+
+         ScopedObjectAccess objlock(target);
+
+         auto flags = field->Flags;
+
+         if (flags & FD_UNIT) return get_unit<T>(target, *field, Value);
+
+         int8_t field_value[8];
+         int array_size;
+         auto fv = get_field_value(target, *field, field_value, array_size);
+
+         if (flags & FD_INT)         Value = *((int *)fv.second);
+         else if (flags & FD_INT64)  Value = *((int64_t *)fv.second);
+         else if (flags & FD_DOUBLE) Value = *((double *)fv.second);
+         else {
+            if ((fv.first IS ERR::Okay) and (flags & FD_ALLOC)) FreeResource(GetMemoryID(*((APTR *)fv.second)));
+            return ERR::FieldTypeMismatch;
+         }
+         return fv.first;
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR get(FIELD FieldID, std::string &Value) { // Retrieve field as a string, supports type conversion.
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!field->readable()) return ERR::NoFieldAccess;
+
+         auto flags = field->Flags;
+         if (flags & FD_UNIT) {
+            double num;
+
+            if (auto error = get_unit<double>(target, *field, num); error IS ERR::Okay) {
+               char buffer[64];
+               snprintf(buffer, sizeof(buffer), "%f", num);
+               Value.assign(buffer);
+            }
+            else return error;
+         }
+
+         int8_t field_value[8];
+         int array_size = -1;
+         auto fv = get_field_value(target, *field, field_value, array_size);
+         APTR data = fv.second;
+
+         if (fv.first != ERR::Okay) return fv.first;
+
+         if (flags & FD_ARRAY) {
+            if (flags & FD_CPP) {
+               array_size = ((pf::vector<int> *)data)->size();
+               data = ((pf::vector<int> *)data)->data();
+            }
+
+            std::stringstream buffer;
+            if (array_size IS -1) return ERR::Failed; // Array sizing not supported by this field.
+
+            if (flags & FD_INT) {
+               auto array = (int *)data;
+               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+            }
+            else if (flags & FD_BYTE) {
+               auto array = (UBYTE *)data;
+               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+            }
+            else if (flags & FD_DOUBLE) {
+               auto array = (double *)data;
+               for (int i=0; i < array_size; i++) buffer << *array++ << ',';
+            }
+
+            Value = buffer.str();
+            if (!Value.empty()) Value.pop_back(); // Remove trailing comma
+            return ERR::Okay;
+         }
+
+         if (flags & FD_INT) {
+            if (flags & FD_LOOKUP) {
+               // Reading a lookup field as a string is permissible, we just return the string registered in the lookup table
+               if (auto lookup = (FieldDef *)field->Arg) {
+                  int v = ((int *)data)[0];
+                  while (lookup->Name) {
+                     if (v IS lookup->Value) {
+                        Value = lookup->Name;
+                        return ERR::Okay;
+                     }
+                     lookup++;
+                  }
+               }
+               Value.clear();
+            }
+            else if (flags & FD_FLAGS) {
+               if (auto lookup = (FieldDef *)field->Arg) {
+                  std::stringstream buffer;
+                  int v = ((int *)data)[0];
+                  while (lookup->Name) {
+                     if (v & lookup->Value) buffer << lookup->Name << '|';
+                     lookup++;
+                  }
+                  Value = buffer.str();
+                  if (!Value.empty()) Value.pop_back(); // Remove trailing pipe
+                  return ERR::Okay;
+               }
+            }
+            else Value = std::to_string(*((int *)data));
+         }
+         else if (flags & FD_INT64) {
+            Value = std::to_string(*((int64_t *)data));
+         }
+         else if (flags & FD_DOUBLE) {
+            char buffer[64];
+            auto written = snprintf(buffer, sizeof(buffer), "%f", *((double *)data));
+            Value.assign(buffer, written);
+         }
+         else if (flags & (FD_POINTER|FD_STRING)) {
+            Value.assign(*((CSTRING *)data));
+            if (flags & FD_ALLOC) FreeResource(GetMemoryID(*((CSTRING *)data)));
+         }
+         else return ERR::UnrecognisedFieldType;
+
+         return ERR::Okay;
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   // Retrieve a direct pointer to a string field, no-copy operation.  Result will require deallocation by the client if the field is marked with ALLOC.
+
+   inline ERR get(FIELD FieldID, CSTRING &Value) {
+      Object *target;
+      Value = nullptr;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!field->readable()) return ERR::NoFieldAccess;
+
+         int8_t field_value[8];
+         int array_size;
+         auto fv = get_field_value(target, *field, field_value, array_size);
+         if (fv.first != ERR::Okay) return fv.first;
+
+         if ((field->Flags & FD_INT) and (field->Flags & FD_LOOKUP)) {
+            // Reading a lookup field as a string is permissible, we just return the string registered in the lookup table
+            if (auto lookup = (FieldDef *)field->Arg) {
+               int value = ((int *)fv.second)[0];
+               while (lookup->Name) {
+                  if (value IS lookup->Value) {
+                     Value = lookup->Name;
+                     return ERR::Okay;
+                  }
+                  lookup++;
+               }
+            }
+            return ERR::Okay;
+         }
+         else if (field->Flags & (FD_POINTER|FD_STRING)) {
+            Value = *((CSTRING *)fv.second);
+            return ERR::Okay;
+         }
+         else return ERR::FieldTypeMismatch;
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   template <class T> ERR get(FIELD FieldID, T &Value) requires pcPointer<T> {
+      Object *target;
+      Value = nullptr;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!field->readable()) return ERR::NoFieldAccess;
+
+         int8_t field_value[8];
+         int array_size;
+         auto fv = get_field_value(target, *field, field_value, array_size);
+         if (fv.first != ERR::Okay) return fv.first;
+
+         if (field->Flags & (FD_POINTER|FD_STRING)) {
+            Value = *((T *)fv.second);
+            return ERR::Okay;
+         }
+         return ERR::FieldTypeMismatch;
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR get(FIELD FieldID, Unit &Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!field->readable()) return ERR::NoFieldAccess;
+
+         if (field->Flags & FD_UNIT) {
+            auto new_context = ObjectContext{ target, field };
+            auto ctx = SetObjectContext(&new_context);
+            auto get_field = (ERR (*)(APTR, Unit &))field->GetValue;
+            auto error = get_field(target, Value);
+            SetObjectContext(ctx);
+            return error;
+         }
+         else return ERR::FieldTypeMismatch;
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR get(FIELD FieldID, DMF &Value) {
+      uint32_t result;
+      auto error = get<uint32_t>(FieldID, result);
+      Value = DMF(result);
+      return error;
+   }
+
+   template <class T> T get(FIELD FieldID)
+   requires pcPointer<T> || std::integral<T> || std::floating_point<T> {
+      T result(0);
+      get(FieldID, result);
+      return result;
    };
+
+   template <class T> T get(FIELD FieldID) requires std::is_same_v<T, DMF> {
+      DMF result(DMF::NIL);
+      get(FieldID, result);
+      return result;
+   };
+   
+   template <class T> ERR get(FIELD FieldID, T * &Result, int &Elements, bool TypeCheck = true) {
+      Object *target;
+      Result = nullptr;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->readable()) or (!(field->Flags & FD_ARRAY))) return ERR::NoFieldAccess;
+
+         if ((TypeCheck) and (!(field->Flags & FIELD_TYPECHECK<T>()))) return ERR::FieldTypeMismatch;
+
+         ScopedObjectAccess objlock(target);
+
+         T *data;
+         Elements = -1;
+
+         if (field->GetValue) {
+            auto new_context = ObjectContext{ target, field };
+            auto ctx = SetObjectContext(&new_context);
+            auto get_field = (ERR (*)(APTR, T * &, int &))field->GetValue;
+            auto error = get_field(target, data, Elements);
+            SetObjectContext(ctx);
+            if (error != ERR::Okay) return error;
+         }
+         else data = *((T **)((int8_t *)target) + field->Offset);
+
+         if (field->Flags & FD_CPP) {
+            auto vec = *((pf::vector<T> *)data);
+            Result = vec.data();
+            Elements = vec.size();
+         }
+         else {
+            if (Elements IS -1) return ERR::Failed;
+            Result = data;
+         }
+
+         return ERR::Okay;
+      }
+      else return ERR::UnsupportedField;
+   }
 
    template <typename... Args> ERR setFields(Args&&... pFields) {
       pf::Log log("setFields");
@@ -2890,6 +3205,24 @@ class Create {
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
 inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
+
+//********************************************************************************************************************
+
+inline ScopedObjectAccess::ScopedObjectAccess(OBJECTPTR Object) {
+   error = Object->lock();
+   obj = Object;
+}
+
+inline ScopedObjectAccess::~ScopedObjectAccess() {
+   if (error IS ERR::Okay) obj->unlock();
+}
+
+inline void ScopedObjectAccess::release() {
+   if (error IS ERR::Okay) {
+      obj->unlock();
+      error = ERR::NotLocked;
+   }
+}
 
 // Action and Notification Structures
 
@@ -4093,7 +4426,7 @@ class objModule : public Object {
             return ERR::Okay;
          #else
             APTR functionbase;
-            if (module->getPtr(FID_ModBase, &functionbase) IS ERR::Okay) {
+            if (module->get(FID_ModBase, functionbase) IS ERR::Okay) {
                if (Module) *Module = module;
                if (Functions) ((APTR *)Functions)[0] = functionbase;
                return ERR::Okay;

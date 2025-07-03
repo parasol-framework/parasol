@@ -37,7 +37,6 @@ static ERR VECTOR_Push(extVector *, struct vec::Push *);
 void debug_tree(extVector *Vector, LONG &Level)
 {
    pf::Log log(__FUNCTION__);
-   char buffer[80];
    LONG i;
 
    auto indent = std::make_unique<char[]>(Level + 1);
@@ -47,17 +46,15 @@ void debug_tree(extVector *Vector, LONG &Level)
    Level++;
 
    for (auto v=Vector; v; v=(extVector *)v->Next) {
-      buffer[0] = 0;
-      if (FindField(v, FID_Dimensions, NULL)) {
-         GetFieldVariable(v, "$Dimensions", buffer, sizeof(buffer));
-      }
+      std::string dim;
+      if (FindField(v, FID_Dimensions, nullptr)) v->get(strihash("Dimensions"), dim);
 
       if ((v->Class->BaseClassID IS CLASSID::VECTOR) and (v->Child)) {
          pf::Log blog(__FUNCTION__);
-         blog.branch(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
+         blog.branch(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, dim.c_str());
          debug_tree((extVector *)v->Child, Level);
       }
-      else log.msg(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
+      else log.msg(" #%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, dim.c_str());
    }
 
    Level--;

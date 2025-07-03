@@ -26,7 +26,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
    if (glSandbox) {
       pf::vector<std::string> *params = nullptr;
-      glTask->getPtr(FID_Parameters, &params);
+      glTask->get(FID_Parameters, params);
 
       #ifdef _WIN32
          IntegrityLevel il = get_integrity_level();
@@ -172,8 +172,8 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
                return glScript->Error;
             }
 
-            STRING msg;
-            if ((glScript->get(FID_ErrorString, &msg) IS ERR::Okay) and (msg)) {
+            CSTRING msg;
+            if ((glScript->get(FID_ErrorString, msg) IS ERR::Okay) and (msg)) {
                log.msg("Script returned error message: %s", msg);
                return ERR::Failed;
             }

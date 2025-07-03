@@ -37,9 +37,9 @@ static ERR RSVG_Free(extPicture *Self)
 static ERR RSVG_Init(extPicture *Self)
 {
    pf::Log log;
-   STRING path;
+   CSTRING path = nullptr;
 
-   Self->get(FID_Path, &path);
+   Self->get(FID_Path, path);
 
    if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       return ERR::NoSupport; // Creating new SVG's is not supported in this module.
@@ -48,7 +48,7 @@ static ERR RSVG_Init(extPicture *Self)
    char *buffer;
 
    if (wildcmp("*.svg|*.svgz", path));
-   else if (Self->getPtr(FID_Header, &buffer) IS ERR::Okay) {
+   else if (Self->get(FID_Header, buffer) IS ERR::Okay) {
       if (strisearch("<svg", buffer) >= 0) {
       }
       else return ERR::NoSupport;
@@ -81,8 +81,8 @@ static ERR RSVG_Query(extPicture *Self)
    Self->Queried = TRUE;
 
    if (!prv->SVG) {
-      STRING path;
-      if (Self->get(FID_Path, &path) IS ERR::Okay) {
+      CSTRING path;
+      if (Self->get(FID_Path, path) IS ERR::Okay) {
          if ((prv->SVG = objSVG::create::local(fl::Path(path)))) {
          }
          else return log.warning(ERR::CreateObject);
@@ -92,7 +92,7 @@ static ERR RSVG_Query(extPicture *Self)
 
    objVectorScene *scene;
    ERR error;
-   if (((error = prv->SVG->getPtr(FID_Scene, &scene)) IS ERR::Okay) and (scene)) {
+   if (((error = prv->SVG->get(FID_Scene, scene)) IS ERR::Okay) and (scene)) {
       if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
          bmp->Flags |= BMF::ALPHA_CHANNEL;
          bmp->BitsPerPixel  = 32;
@@ -168,7 +168,7 @@ static ERR RSVG_Resize(extPicture *Self, struct acResize *Args)
 
       if (Action(AC::Resize, Self->Bitmap, Args) IS ERR::Okay) {
          objVectorScene *scene;
-         if ((prv->SVG->getPtr(FID_Scene, &scene) IS ERR::Okay) and (scene)) {
+         if ((prv->SVG->get(FID_Scene, scene) IS ERR::Okay) and (scene)) {
             scene->setPageWidth(Self->Bitmap->Width);
             scene->setPageHeight(Self->Bitmap->Height);
 

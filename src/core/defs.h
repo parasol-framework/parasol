@@ -137,7 +137,7 @@ enum class DEVICE : int64_t;
 enum class PERMIT : ULONG;
 enum class CCF    : ULONG;
 enum class MEM    : ULONG;
-enum class ALF    : UWORD;
+enum class ALF    : uint16_t;
 enum class EVG    : LONG;
 enum class AC     : LONG;
 enum class MSGID  : LONG;
@@ -224,7 +224,7 @@ public:
    ULONG    Size;       // 4GB max
    THREADID ThreadLockID = THREADID(0);
    MEM      Flags;
-   WORD     AccessCount = 0; // Total number of locks
+   int16_t     AccessCount = 0; // Total number of locks
 
    PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, MEM aFlags) :
       Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
@@ -246,7 +246,7 @@ struct ActionSubscription {
    void (*Callback)(OBJECTPTR, ACTIONID, ERR, APTR, APTR);
    APTR Meta;
 
-   ActionSubscription() : Subscriber(NULL), SubscriberID(0), Callback(NULL), Meta(NULL) { }
+   ActionSubscription() : Subscriber(nullptr), SubscriberID(0), Callback(nullptr), Meta(nullptr) { }
 
    ActionSubscription(OBJECTPTR pContext, void (*pCallback)(OBJECTPTR, ACTIONID, ERR, APTR, APTR), APTR pMeta) :
       Subscriber(pContext), SubscriberID(pContext->UID), Callback(pCallback), Meta(pMeta) { }
@@ -365,8 +365,8 @@ class extMetaClass : public objMetaClass {
    UBYTE Local[8];                      // Local object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
    ActionEntry ActionTable[LONG(AC::END)];
-   WORD OriginalFieldTotal;
-   UWORD BaseCeiling;                   // FieldLookup ceiling value for the base-class fields
+   int16_t OriginalFieldTotal;
+   uint16_t BaseCeiling;                   // FieldLookup ceiling value for the base-class fields
 };
 
 class extFile : public objFile {
@@ -524,7 +524,7 @@ struct ClassRecord {
       if (pClass->Icon) Icon.assign(pClass->Icon);
    }
 
-   inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL, CSTRING pIcon = NULL) {
+   inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = nullptr, CSTRING pHeader = nullptr, CSTRING pIcon = nullptr) {
       ClassID  = pClassID;
       ParentID = CLASSID::NIL;
       Category = CCF::SYSTEM;
@@ -536,9 +536,9 @@ struct ClassRecord {
    }
 
    inline ERR write(objFile *File) {
-      if (File->write(&ClassID, sizeof(ClassID), NULL) != ERR::Okay) return ERR::Write;
-      if (File->write(&ParentID, sizeof(ParentID), NULL) != ERR::Okay) return ERR::Write;
-      if (File->write(&Category, sizeof(Category), NULL) != ERR::Okay) return ERR::Write;
+      if (File->write(&ClassID, sizeof(ClassID), nullptr) != ERR::Okay) return ERR::Write;
+      if (File->write(&ParentID, sizeof(ParentID), nullptr) != ERR::Okay) return ERR::Write;
+      if (File->write(&Category, sizeof(Category), nullptr) != ERR::Okay) return ERR::Write;
 
       auto size = LONG(Name.size());
       File->write(&size, sizeof(size));
@@ -669,7 +669,7 @@ extern std::string glDisplayDriver;
 extern bool glShowIO, glShowPrivate, glEnableCrashHandler;
 extern bool glJanitorActive;
 extern bool glLogThreads;
-extern WORD glLogLevel, glMaxDepth;
+extern int16_t glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
 extern int64_t glTimeLog;
 extern RootModule *glModuleList;    // Locked with glmGeneric.  Maintained as a linked-list; hashmap unsuitable.
@@ -700,13 +700,13 @@ extern LONG glValidateProcessID; // Not a threading concern
 extern std::atomic_int glMessageIDCount;
 extern std::atomic_int glGlobalIDCount;
 extern std::atomic_int glPrivateIDCounter;
-extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
+extern int16_t glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
 extern std::atomic_ushort glFunctionID;
-extern "C" BYTE glProgramStage;
+extern "C" int8_t glProgramStage;
 extern bool glPrivileged, glSync;
 extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
-extern class ObjectContext glTopContext; // Read-only, not a threading concern.
+extern class extObjectContext glTopContext; // Read-only, not a threading concern.
 extern objTime *glTime;
 extern objFile *glClassFile;
 extern Object glDummyObject;
@@ -733,7 +733,7 @@ extern objMetaClass *glCompressedStreamClass;
 #ifdef __ANDROID__
 extern objMetaClass *glAssetClass;
 #endif
-extern BYTE fs_initialised;
+extern int8_t fs_initialised;
 extern APTR glPageFault;
 extern bool glScanClasses;
 extern UBYTE glTimerCycle;
@@ -744,15 +744,15 @@ extern std::atomic_int glUniqueMsgID;
 //********************************************************************************************************************
 // Thread specific variables - these do not require locks.
 
-extern THREADVAR class ObjectContext *tlContext;
+extern THREADVAR class extObjectContext *tlContext;
 extern THREADVAR class TaskMessage *tlCurrentMsg;
 extern THREADVAR bool tlMainThread;
-extern THREADVAR WORD tlMsgRecursion;
-extern THREADVAR WORD tlDepth;
-extern THREADVAR WORD tlLogStatus;
-extern THREADVAR WORD tlPreventSleep;
-extern THREADVAR WORD tlPublicLockCount;
-extern THREADVAR WORD tlPrivateLockCount;
+extern THREADVAR int16_t tlMsgRecursion;
+extern THREADVAR int16_t tlDepth;
+extern THREADVAR int16_t tlLogStatus;
+extern THREADVAR int16_t tlPreventSleep;
+extern THREADVAR int16_t tlPublicLockCount;
+extern THREADVAR int16_t tlPrivateLockCount;
 extern THREADVAR LONG glForceUID, glForceGID;
 extern THREADVAR PERMIT glDefaultPermissions;
 
@@ -794,32 +794,32 @@ class TaskMessage {
    // Constructors
 
    public:
-   TaskMessage() : Size(0), ExtBuffer(NULL) { }
+   TaskMessage() : Size(0), ExtBuffer(nullptr) { }
 
-   TaskMessage(MSGID pType, APTR pData = NULL, LONG pSize = 0) {
+   TaskMessage(MSGID pType, APTR pData = nullptr, LONG pSize = 0) {
       Time = PreciseTime();
       UID  = ++glUniqueMsgID;
       Type = pType;
       Size = 0;
-      ExtBuffer = NULL;
+      ExtBuffer = nullptr;
       if ((pData) and (pSize)) setBuffer(pData, pSize);
    }
 
    ~TaskMessage() {
-      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = NULL; }
+      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = nullptr; }
    }
 
    // Move constructor
    TaskMessage(TaskMessage &&other) noexcept {
-      ExtBuffer = NULL;
+      ExtBuffer = nullptr;
       copy_from(other);
       other.Size = 0;
-      other.ExtBuffer = NULL; // Source loses its buffer
+      other.ExtBuffer = nullptr; // Source loses its buffer
    }
 
    // Copy constructor
    TaskMessage(const TaskMessage &other) {
-      ExtBuffer = NULL;
+      ExtBuffer = nullptr;
       copy_from(other);
    }
 
@@ -828,7 +828,7 @@ class TaskMessage {
       if (this == &other) return *this;
       copy_from(other);
       other.Size = 0;
-      other.ExtBuffer = NULL; // Source loses its buffer
+      other.ExtBuffer = nullptr; // Source loses its buffer
       return *this;
    }
 
@@ -844,7 +844,7 @@ class TaskMessage {
    char * getBuffer() { return ExtBuffer ? ExtBuffer : Buffer.data(); }
 
    void setBuffer(APTR pData, size_t pSize) {
-      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = NULL; }
+      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = nullptr; }
 
       if (pSize <= Buffer.size()) copymem(pData, Buffer.data(), pSize);
       else {
@@ -871,26 +871,18 @@ class TaskMessage {
 // It is primarily used for the resource tracking of newly allocated memory and objects, as well as for message logs
 // and analysis of the call stack.
 
-class ObjectContext {
+class extObjectContext : public ObjectContext {
    public:
-   class ObjectContext *stack; // Call stack.
-   struct Field *field;        // Set if the context is linked to a get/set field operation.  For logging purposes only.
-   AC action;                  // Set if the context enters an action or method routine.
-
-   protected:
-   OBJECTPTR obj;           // Required.  The object that currently has the operating context.
-
-   public:
-   ObjectContext() { // Dummy initialisation
-      stack  = NULL;
-      obj = &glDummyObject;
-      field  = NULL;
+   extObjectContext() { // Dummy initialisation
+      stack  = nullptr;
+      obj    = &glDummyObject;
+      field  = nullptr;
       action = AC::NIL;
    }
 
-   ObjectContext(OBJECTPTR pObject, AC pAction, struct Field *pField = NULL) {
+   extObjectContext(OBJECTPTR pObject, AC pAction, struct Field *pField = nullptr) {
       stack  = tlContext;
-      obj = pObject;
+      obj    = pObject;
       field  = pField;
       action = pAction;
       #pragma GCC diagnostic push
@@ -899,7 +891,7 @@ class ObjectContext {
       #pragma GCC diagnostic pop
    }
 
-   ~ObjectContext() {
+   ~extObjectContext() {
       if (stack) tlContext = stack;
    }
 
@@ -916,9 +908,9 @@ class ObjectContext {
       }
    }
 
-   inline OBJECTPTR setContext(OBJECTPTR NewObject) {
+   inline OBJECTPTR setContext(OBJECTPTR pObject) {
       auto old = obj;
-      obj = NewObject;
+      obj = pObject;
       return old;
    }
 
@@ -949,7 +941,7 @@ struct FDRecord {
 
 extern std::list<FDRecord> glFDTable;
 extern LONG glInotify;
-extern BYTE glFDProtected;
+extern int8_t glFDProtected;
 extern std::vector<FDRecord> glRegisterFD;
 
 #define LRT_Exclusive 1
@@ -971,8 +963,8 @@ class RootModule : public Object {
    #endif
    std::string Name;           // Name of the module (as declared by the header)
    struct ModHeader *Table;
-   WORD   Version;
-   WORD   OpenCount;           // Amount of programs with this module open
+   int16_t   Version;
+   int16_t   OpenCount;           // Amount of programs with this module open
    FLOAT  ModVersion;          // Version of this module
    MHF    Flags;
    bool   NoUnload;
@@ -1022,7 +1014,7 @@ ERR    get_file_info(std::string_view, FileInfo *, LONG);
 extern "C" ERR convert_errno(LONG Error, ERR Default);
 void free_file_cache(void);
 
-__export void Expunge(WORD);
+__export void Expunge(int16_t);
 
 extern void add_archive(class extCompression *);
 extern void remove_archive(class extCompression *);
@@ -1033,7 +1025,6 @@ CSTRING action_name(OBJECTPTR Object, LONG ActionID);
 APTR   build_jump_table(const Function *);
 #endif
 ERR    copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
-ERR    copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
 ERR    create_archive_volume(void);
 ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
@@ -1167,7 +1158,7 @@ extern "C" ERR winWatchFile(LONG, CSTRING, APTR, WINHANDLE *, LONG *);
 extern "C" void winFindCloseChangeNotification(WINHANDLE);
 extern "C" APTR winFindDirectory(STRING, APTR *, STRING);
 extern "C" APTR winFindFile(STRING, APTR *, STRING);
-extern "C" LONG winSetFileTime(CSTRING, bool, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second);
+extern "C" LONG winSetFileTime(CSTRING, bool, int16_t Year, int16_t Month, int16_t Day, int16_t Hour, int16_t Minute, int16_t Second);
 extern "C" LONG winResetDate(STRING);
 extern "C" void winSetDllDirectory(CSTRING);
 extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, BYTE));
@@ -1185,32 +1176,6 @@ inline void set_memory_manager(APTR Address, ResourceManager *Manager)
 
 //********************************************************************************************************************
 
-class ScopedObjectAccess {
-   private:
-      OBJECTPTR obj;
-
-   public:
-      ERR error;
-
-      ScopedObjectAccess(OBJECTPTR Object) {
-         error = Object->lock();
-         obj = Object;
-      }
-
-      ~ScopedObjectAccess() { if (error IS ERR::Okay) obj->unlock(); }
-
-      bool granted() { return error == ERR::Okay; }
-
-      void release() {
-         if (error IS ERR::Okay) {
-            obj->unlock();
-            error = ERR::NotLocked;
-         }
-      }
-};
-
-//********************************************************************************************************************
-
 inline int64_t calc_timestamp(struct DateTime *Date) {
    return(Date->Second +
           ((int64_t)Date->Minute * 60LL) +
@@ -1220,7 +1185,7 @@ inline int64_t calc_timestamp(struct DateTime *Date) {
           ((int64_t)Date->Year * 60LL * 60LL * 24LL * 31LL * 12LL));
 }
 
-inline UWORD reverse_word(UWORD Value) {
+inline uint16_t reverse_word(uint16_t Value) {
     return (((Value & 0x00FF) << 8) | ((Value & 0xFF00) >> 8));
 }
 

@@ -53,7 +53,7 @@ can be problematic if the intent is to create a new file, in which case `RSF::NO
 When checking the file location, ResolvePath() requires an exact match to the provided file name.  If the file
 name can be approximated (i.e. the file extension can be ignored) then use the `RSF::APPROXIMATE` flag.
 
-To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the `PATH` 
+To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the `PATH`
 environment variable to resolve the file name specified in the `Path` parameter.
 
 The resolved path will be copied to the `std::string` provided in the `Result` parameter.  This will overwrite any
@@ -459,7 +459,7 @@ static ERR resolve_object_path(std::string &Path, std::string &Source, std::stri
       if (FindObject(Path.c_str(), CLASSID::NIL, FOF::NIL, &volume_id) IS ERR::Okay) {
          OBJECTPTR object;
          if (AccessObject(volume_id, 5000, &object) IS ERR::Okay) {
-            if ((object->getPtr(FID_ResolvePath, &resolve_virtual) IS ERR::Okay) and (resolve_virtual)) {
+            if ((object->get(FID_ResolvePath, resolve_virtual) IS ERR::Okay) and (resolve_virtual)) {
                error = resolve_virtual(object, Source, Dest);
             }
             ReleaseObject(object);

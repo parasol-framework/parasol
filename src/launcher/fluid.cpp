@@ -156,7 +156,7 @@ static ERROR process_args(void)
    CSTRING *args;
    LONG i;
 
-   if ((!CurrentTask()->getPtr(FID_Parameters, &args)) and (args)) {
+   if ((!CurrentTask()->get(FID_Parameters, args)) and (args)) {
       for (i=0; args[i]; i++) {
          if (iequals(args[i], "--help")) {
             // Print help for the user

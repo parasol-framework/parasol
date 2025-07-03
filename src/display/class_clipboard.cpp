@@ -835,7 +835,7 @@ ERR create_clipboard_class(void)
       fl::Path(MOD_PATH));
 
    int pid;
-   if (CurrentTask()->get(FID_ProcessID, &pid) IS ERR::Okay) glProcessID = std::to_string(pid);
+   if (CurrentTask()->get(FID_ProcessID, pid) IS ERR::Okay) glProcessID = std::to_string(pid);
 
    return clClipboard ? ERR::Okay : ERR::AddClass;
 }

@@ -352,7 +352,7 @@ static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
             objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
                LONG size;
-               if ((file->get(FID_Size, &size) IS ERR::Okay) and (size > 0)) {
+               if ((file->get(FID_Size, size) IS ERR::Okay) and (size > 0)) {
                   if (auto buffer = new (std::nothrow) char[size+1]) {
                      LONG result;
                      if (file->read(buffer, size, &result) IS ERR::Okay) {

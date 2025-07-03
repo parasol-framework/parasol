@@ -404,7 +404,7 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
    bool path = false;
    if (Self->Path[0] IS '/') path = true;
    else {
-     for (LONG j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
+     for (int j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
          if (Self->Path[j] IS ':') {
             path = true;
             break;
@@ -412,8 +412,8 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
       }
    }
 
-   LONG j = 0;
-   for (LONG k=0; Self->Path[k]; k++) {
+   int j = 0;
+   for (int k=0; Self->Path[k]; k++) {
       if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
    }
 
@@ -423,7 +423,7 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
    if (path) { // Extract absolute path
       Self->WorkingPath.assign(Self->Path, 0, j);
    }
-   else if ((CurrentTask()->get(FID_Path, &task_path) IS ERR::Okay) and (task_path)) {
+   else if ((CurrentTask()->get(FID_Path, task_path) IS ERR::Okay) and (task_path)) {
       std::string buf(task_path);
 
       // Using ResolvePath() can help to determine relative paths such as "../path/file"

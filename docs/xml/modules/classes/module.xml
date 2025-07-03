@@ -19,7 +19,7 @@
 <p>To load a module and interact with its API, create a module object and initialise it.  The following code segment illustrates in C++:</p>
 <pre>DisplayBase *DisplayBase;
 auto modDisplay = objModule::create::global(fl::Name("display"));
-if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
+if (modDisplay) modDisplay-&gt;get(FID_ModBase, DisplayBase);
 </pre>
 <p>To do the same in Fluid:</p>
 <pre>mGfx = mod.load('display')

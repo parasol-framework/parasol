@@ -44,7 +44,7 @@ static ERR SET_YOffset(extSurface *, Unit *);
 #define MOVE_VERTICAL   0x0001
 #define MOVE_HORIZONTAL 0x0002
 
-static ERR consume_input_events(const InputEvent *, LONG);
+static ERR consume_input_events(const InputEvent *, int);
 static void draw_region(extSurface *, extSurface *, extBitmap *);
 static ERR redraw_timer(extSurface *, LARGE, LARGE);
 
@@ -80,7 +80,7 @@ static ERR access_video(OBJECTID DisplayID, objDisplay **Display, objBitmap **Bi
    if (AccessObject(DisplayID, 5000, (OBJECTPTR *)Display) IS ERR::Okay) {
       #ifdef _WIN32
       APTR winhandle;
-      if (Display[0]->getPtr(FID_WindowHandle, &winhandle) IS ERR::Okay) {
+      if (Display[0]->get(FID_WindowHandle, winhandle) IS ERR::Okay) {
          Display[0]->Bitmap->setHandle(winGetDC(winhandle));
       }
       #endif
@@ -97,10 +97,10 @@ static void release_video(objDisplay *Display)
 {
    #ifdef _WIN32
       APTR surface;
-      Display->Bitmap->getPtr(FID_Handle, &surface);
+      Display->Bitmap->get(FID_Handle, surface);
 
       APTR winhandle;
-      if (Display->getPtr(FID_WindowHandle, &winhandle) IS ERR::Okay) {
+      if (Display->get(FID_WindowHandle, winhandle) IS ERR::Okay) {
          winReleaseDC(winhandle, surface);
       }
 
@@ -124,14 +124,14 @@ static void release_video(objDisplay *Display)
 ** up to the caller to make a decision as to whether COMPOSITE's are volatile or not.
 */
 
-static bool check_volatile(const SURFACELIST &List, LONG Index)
+static bool check_volatile(const SURFACELIST &List, int Index)
 {
    if (List[Index].isVolatile()) return true;
 
    // If there are children with custom root layers or are volatile, that will force volatility
 
-   LONG j;
-   for (LONG i=Index+1; List[i].Level > List[Index].Level; i++) {
+   int j;
+   for (int i=Index+1; List[i].Level > List[Index].Level; i++) {
       if (List[i].invisible()) {
          j = List[i].Level;
          while (List[i+1].Level > j) i++;
@@ -160,14 +160,14 @@ static bool check_volatile(const SURFACELIST &List, LONG Index)
 
 //********************************************************************************************************************
 
-static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG ScanIndex, LONG Left, LONG Top,
-                   LONG Right, LONG Bottom, OBJECTID DisplayID, extBitmap *Bitmap)
+static void expose_buffer(const SURFACELIST &list, int Limit, int Index, int ScanIndex, int Left, int Top,
+                   int Right, int Bottom, OBJECTID DisplayID, extBitmap *Bitmap)
 {
    pf::Log log(__FUNCTION__);
 
    // Scan for overlapping parent/sibling regions and avoid them
 
-   LONG i, j;
+   int i, j;
    for (i=ScanIndex+1; (i < Limit) and (list[i].Level > 1); i++) {
       if (list[i].invisible()) { // Skip past non-visible areas and their content
          j = list[i].Level;
@@ -223,7 +223,7 @@ static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG 
 
    // The region is not obscured, so perform the redraw
 
-   LONG owner = find_bitmap_owner(list, Index);
+   int owner = find_bitmap_owner(list, Index);
 
    // Set the clipping to match the source bitmap exactly (i.e. nothing fancy happening here).
    // The real clipping occurs in the display clip.
@@ -237,7 +237,7 @@ static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG 
 
    // Set the clipping so that we are only drawing to the display area that has been exposed
 
-   LONG iscr = Index;
+   int iscr = Index;
    while ((iscr > 0) and (list[iscr].ParentID)) iscr--; // Find the top-level display entry
 
    // If COMPOSITE is in use, this means we have to do compositing on the fly.  This involves copying the background
@@ -246,7 +246,7 @@ static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG 
    // Note: On hosted displays in Windows or Linux, compositing is handled by the host's graphics system if the surface
    // is at the root level (no ParentID).
 
-   LONG sx, sy;
+   int sx, sy;
    if (((list[Index].Flags & RNF::COMPOSITE) != RNF::NIL) and
        ((list[Index].ParentID) or (list[Index].isCursor()))) {
       if (glComposite) {
@@ -323,11 +323,11 @@ static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG 
 ** All coordinates are expressed in absolute format.
 */
 
-static void invalidate_overlap(extSurface *Self, const SURFACELIST &list, LONG OldIndex, LONG Index,
+static void invalidate_overlap(extSurface *Self, const SURFACELIST &list, int OldIndex, int Index,
    const ClipRectangle &Area, objBitmap *Bitmap)
 {
    pf::Log log(__FUNCTION__);
-   LONG j;
+   int j;
 
    log.traceBranch("%dx%d %dx%d, Between %d to %d", Area.Left, Area.Top, Area.width(), Area.height(), OldIndex, Index);
 
@@ -384,7 +384,7 @@ skipcontent:
 //********************************************************************************************************************
 // Handler for the display being resized.
 
-static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG Height)
+static void display_resized(OBJECTID DisplayID, int X, int Y, int Width, int Height)
 {
    OBJECTID surface_id = GetOwnerID(DisplayID);
 
@@ -424,12 +424,12 @@ static void notify_free_callback(OBJECTPTR Object, ACTIONID ActionID, ERR Result
    pf::Log log(__FUNCTION__);
    auto Self = (extSurface *)CurrentContext();
 
-   for (LONG i=0; i < Self->CallbackCount; i++) {
+   for (int i=0; i < Self->CallbackCount; i++) {
       if (Self->Callback[i].Function.isScript()) {
          if (Self->Callback[i].Function.Context->UID IS Object->UID) {
             Self->Callback[i].Function.clear();
 
-            LONG j;
+            int j;
             for (j=i; j < Self->CallbackCount-1; j++) { // Shorten the array
                Self->Callback[j] = Self->Callback[j+1];
             }
@@ -472,9 +472,9 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERR R
    if (Self->ParentID) {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      LONG i;
-      for (i=0; (i < LONG(glSurfaces.size())) and (glSurfaces[i].SurfaceID != Self->ParentID); i++);
-      if (i >= LONG(glSurfaces.size())) {
+      int i;
+      for (i=0; (i < int(glSurfaces.size())) and (glSurfaces[i].SurfaceID != Self->ParentID); i++);
+      if (i >= int(glSurfaces.size())) {
          log.warning(ERR::Search);
          return;
       }
@@ -624,7 +624,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
    if (Self->Callback) {
       // Check if the subscription is already on the list for our surface context.
 
-      LONG i;
+      int i;
       for (i=0; i < Self->CallbackCount; i++) {
          if (Self->Callback[i].Object IS context) {
             if ((Self->Callback[i].Function.isC()) and (Args->Callback->isC())) {
@@ -657,7 +657,7 @@ static ERR SURFACE_AddCallback(extSurface *Self, struct drw::AddCallback *Args)
       else if (Self->CallbackCount < 255) {
          log.detail("Expanding draw subscription array.");
 
-         LONG new_size = Self->CallbackSize + 10;
+         int new_size = Self->CallbackSize + 10;
          if (new_size > 255) new_size = 255;
          SurfaceCallback *scb;
          if (AllocMemory(sizeof(SurfaceCallback) * new_size, MEM::DATA|MEM::NO_CLEAR, &scb) IS ERR::Okay) {
@@ -779,14 +779,14 @@ static ERR SURFACE_Focus(extSurface *Self)
       return ERR::Okay|ERR::Notified;
    }
 
-   LONG j;
+   int j;
    std::vector<OBJECTID> lostfocus;
    glFocusList.clear();
 
    {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      LONG surface_index;
+      int surface_index;
       if ((surface_index = find_surface_list(Self)) IS -1) {
          // This is not a critical failure as child surfaces can be expected to disappear from the surface list
          // during the free process.
@@ -859,7 +859,7 @@ static ERR SURFACE_Focus(extSurface *Self)
    // Send a global focus event to all listeners.  The list consists of two sections with the focus-chain
    // placed first, then the lost-focus chain.
 
-   LONG event_size = sizeof(evFocus) + (glFocusList.size() * sizeof(OBJECTID)) + (lostfocus.size() * sizeof(OBJECTID));
+   int event_size = sizeof(evFocus) + (glFocusList.size() * sizeof(OBJECTID)) + (lostfocus.size() * sizeof(OBJECTID));
    auto buffer = std::make_unique<BYTE[]>(event_size);
    auto ev = (evFocus *)(buffer.get());
    ev->EventID        = EVID_GUI_SURFACE_FOCUS;
@@ -867,7 +867,7 @@ static ERR SURFACE_Focus(extSurface *Self)
    ev->TotalLostFocus = lostfocus.size();
 
    OBJECTID *outlist = &ev->FocusList[0];
-   LONG o = 0;
+   int o = 0;
    for (auto &id : glFocusList) outlist[o++] = id;
    for (auto &id : lostfocus) outlist[o++] = id;
    BroadcastEvent(ev, event_size);
@@ -1341,30 +1341,30 @@ static ERR SURFACE_Init(extSurface *Self)
          // Configure sizing hints for the display.
 
          if ((Self->MaxWidth > 0) or (Self->MaxHeight > 0) or (Self->MinWidth > 0) or (Self->MinHeight > 0)) {
-            LONG mxW = (Self->MaxWidth > 0)  ? Self->MaxWidth  : 0;
-            LONG mxH = (Self->MaxHeight > 0) ? Self->MaxHeight : 0;
-            LONG mnW = (Self->MinWidth > 0)  ? Self->MinWidth  : 0;
-            LONG mnH = (Self->MinHeight > 0) ? Self->MinHeight : 0;
+            int mxW = (Self->MaxWidth > 0)  ? Self->MaxWidth  : 0;
+            int mxH = (Self->MaxHeight > 0) ? Self->MaxHeight : 0;
+            int mnW = (Self->MinWidth > 0)  ? Self->MinWidth  : 0;
+            int mnH = (Self->MinHeight > 0) ? Self->MinHeight : 0;
             display->sizeHints(mnW, mnH, mxW, mxH, (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL);
          }
          else if ((Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL) {
             // When aspect ratio is used without min & max dimensions, the current width & height is used to set the
             // min/max values.
 
-            LONG gcd = std::gcd(Self->Width, Self->Height);
+            int gcd = std::gcd(Self->Width, Self->Height);
             Self->MinWidth  = Self->Width / gcd;
             Self->MinHeight = Self->Height / gcd;
             Self->MaxWidth  = Self->Width * 10;
             Self->MaxHeight = Self->Height * 10;
 
             if (Self->MinWidth < 140) {
-               LONG rescale = 140 / Self->MinWidth;
+               int rescale = 140 / Self->MinWidth;
                Self->MinWidth *= rescale;
                Self->MinHeight *= rescale;
             }
 
             if (Self->MinHeight < 10) {
-               LONG rescale = 10 / Self->MinHeight;
+               int rescale = 10 / Self->MinHeight;
                Self->MinWidth *= rescale;
                Self->MinHeight *= rescale;
             }
@@ -1377,7 +1377,7 @@ static ERR SURFACE_Init(extSurface *Self)
          // For hosted environments, record the window handle (NB: this is doubling up the display handle, we should
          // just make the window handle a virtual field so that we don't need a permanent record of it).
 
-         display->getPtr(FID_WindowHandle, &Self->DisplayWindow);
+         display->get(FID_WindowHandle, Self->DisplayWindow);
 
          #ifdef _WIN32
             winSetSurfaceID(Self->DisplayWindow, Self->UID);
@@ -1428,7 +1428,7 @@ static ERR SURFACE_Init(extSurface *Self)
             if ((display->Flags & SCR::NO_ACCELERATION) IS SCR::NIL) memflags = MEM::TEXTURE;
          }
 
-         LONG bpp;
+         int bpp;
          if ((Self->Flags & RNF::COMPOSITE) != RNF::NIL) {
             // If dynamic compositing will be used then we must have an alpha channel
             bpp = 32;
@@ -1488,9 +1488,9 @@ static ERR SURFACE_Init(extSurface *Self)
       Self->moveToFront();
 
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
-      LONG index;
+      int index;
       if ((index = find_surface_list(Self)) != -1) {
-         for (LONG j=index; (j >= 0) and (glSurfaces[j].SurfaceID != glSurfaces[index].ParentID); j--) {
+         for (int j=index; (j >= 0) and (glSurfaces[j].SurfaceID != glSurfaces[index].ParentID); j--) {
             if (glSurfaces[j].SurfaceID IS popover_id) {
                Self->PopOverID = popover_id;
                break;
@@ -1575,7 +1575,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 {
    pf::Log log;
    struct acMove move;
-   LONG i;
+   int i;
 
    if (!Args) return log.warning(ERR::NullArgs)|ERR::Notified;
 
@@ -1586,7 +1586,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
    // scrolling from one point to another.  Potentially the user may not see the intended effect or witness erratic
    // response times.
 
-   LONG index = 0;
+   int index = 0;
    UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
    while (ScanMessages(&index, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
@@ -1609,8 +1609,8 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 
    if ((Self->Flags & RNF::STICKY) != RNF::NIL) return ERR::Failed|ERR::Notified;
 
-   LONG xchange = Args->DeltaX;
-   LONG ychange = Args->DeltaY;
+   int xchange = Args->DeltaX;
+   int ychange = Args->DeltaY;
 
    if ((Self->Flags & RNF::NO_HORIZONTAL) != RNF::NIL) move.DeltaX = 0;
    else move.DeltaX = xchange;
@@ -1710,7 +1710,7 @@ static ERR SURFACE_MoveToBack(extSurface *Self)
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
    auto &list = glSurfaces;
 
-   LONG index; // Get our position within the chain
+   int index; // Get our position within the chain
    if ((index = find_surface_list(Self)) IS -1) return log.warning(ERR::Search)|ERR::Notified;
 
    OBJECTID parent_bitmap;
@@ -1769,7 +1769,7 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-   LONG currentindex;
+   int currentindex;
    if ((currentindex = find_surface_list(Self)) IS -1) {
       return log.warning(ERR::Search)|ERR::Notified;
    }
@@ -1823,7 +1823,7 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
 
    // Count the number of children that have been assigned to this surface object.
 
-   LONG total;
+   int total;
    for (total=1; glSurfaces[currentindex+total].Level > glSurfaces[currentindex].Level; total++) { };
 
    // Reorder the list so that this surface object is inserted at the new index.
@@ -1853,7 +1853,7 @@ static ERR SURFACE_MoveToFront(extSurface *Self)
    if (Self->PopOverID) {
       // Check if the surface that we're popped over is right behind us.  If not, move it forward.
 
-      for (LONG i=index-1; i > 0; i--) {
+      for (int i=index-1; i > 0; i--) {
          if (cplist[i].Level IS level) {
             if (cplist[i].SurfaceID != Self->PopOverID) {
                if (pf::ScopedObjectLock<objSurface> pop(Self->PopOverID); pop.granted()) {
@@ -1962,8 +1962,8 @@ static ERR SURFACE_RemoveCallback(extSurface *Self, struct drw::RemoveCallback *
    if ((!Args) or (!Args->Callback) or (!Args->Callback->defined())) {
       // Remove everything relating to this context if no callback was specified.
 
-      LONG i;
-      LONG shrink = 0;
+      int i;
+      int shrink = 0;
       for (i=0; i < Self->CallbackCount; i++) {
          if (Self->Callback[i].Object IS context) {
             shrink--;
@@ -1981,7 +1981,7 @@ static ERR SURFACE_RemoveCallback(extSurface *Self, struct drw::RemoveCallback *
 
    // Find the callback entry, then shrink the list.
 
-   LONG i;
+   int i;
    for (i=0; i < Self->CallbackCount; i++) {
       //log.msg("  %d: #%d, Routine %p", i, Self->Callback[i].Object->UID, Self->Callback[i].Function.Routine);
 
@@ -2047,7 +2047,7 @@ static ERR SURFACE_ResetDimensions(extSurface *Self, struct drw::ResetDimensions
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   log.branch("%.0f,%.0f %.0fx%.0f %.0fx%.0f, Flags: $%.8x", Args->X, Args->Y, Args->XOffset, Args->YOffset, Args->Width, Args->Height, LONG(Args->Dimensions));
+   log.branch("%.0f,%.0f %.0fx%.0f %.0fx%.0f, Flags: $%.8x", Args->X, Args->Y, Args->XOffset, Args->YOffset, Args->Width, Args->Height, int(Args->Dimensions));
 
    if (Args->Dimensions IS DMF::NIL) return log.warning(ERR::NullArgs);
 
@@ -2055,48 +2055,48 @@ static ERR SURFACE_ResetDimensions(extSurface *Self, struct drw::ResetDimensions
 
    Self->Dimensions = dimensions;
 
-   LONG cx = Self->X;
-   LONG cy = Self->Y;
-   LONG cx2 = Self->X + Self->Width;
-   LONG cy2 = Self->Y + Self->Height;
+   int cx = Self->X;
+   int cy = Self->Y;
+   int cx2 = Self->X + Self->Width;
+   int cy2 = Self->Y + Self->Height;
 
    // Turn off drawing and adjust the dimensions of the surface
 
    //gfx::ForbidDrawing();
 
    if (dmf::hasScaledX(dimensions)) SetField(Self, FID_X|TDOUBLE|TSCALE, Args->X);
-   else if (dmf::hasX(dimensions)) SetField(Self, FID_X|TDOUBLE, Args->X);
+   else if (dmf::hasX(dimensions)) Self->setX(Args->X);
 
    if (dmf::hasScaledY(dimensions)) SetField(Self, FID_Y|TDOUBLE|TSCALE, Args->Y);
-   else if (dmf::hasY(dimensions)) SetField(Self, FID_Y|TDOUBLE, Args->Y);
+   else if (dmf::hasY(dimensions)) Self->setY(Args->Y);
 
    if (dmf::hasScaledXOffset(dimensions)) SetField(Self, FID_XOffset|TDOUBLE|TSCALE, Args->XOffset);
-   else if (dmf::hasXOffset(dimensions)) SetField(Self, FID_XOffset|TDOUBLE, Args->XOffset);
+   else if (dmf::hasXOffset(dimensions)) Self->setXOffset(Args->XOffset);
 
    if (dmf::hasScaledYOffset(dimensions)) SetField(Self, FID_YOffset|TDOUBLE|TSCALE, Args->YOffset);
-   else if (dmf::hasYOffset(dimensions)) SetField(Self, FID_YOffset|TDOUBLE, Args->YOffset);
+   else if (dmf::hasYOffset(dimensions)) Self->setYOffset(Args->YOffset);
 
    if (dmf::hasScaledHeight(dimensions)) SetField(Self, FID_Height|TDOUBLE|TSCALE, Args->Height);
-   else if (dmf::hasHeight(dimensions)) SetField(Self, FID_Height|TDOUBLE, Args->Height);
+   else if (dmf::hasHeight(dimensions)) Self->setHeight(Args->Height);
 
    if (dmf::hasScaledWidth(dimensions)) SetField(Self, FID_Width|TDOUBLE|TSCALE, Args->Width);
-   else if (dmf::hasWidth(dimensions)) SetField(Self, FID_Width|TDOUBLE, Args->Width);
+   else if (dmf::hasWidth(dimensions)) Self->setWidth(Args->Width);
 
    //gfx::PermitDrawing();
 
    // Now redraw everything within the area that was adjusted
 
-   LONG nx = Self->X;
-   LONG ny = Self->Y;
-   LONG nx2 = Self->X + Self->Width;
-   LONG ny2 = Self->Y + Self->Height;
+   int nx = Self->X;
+   int ny = Self->Y;
+   int nx2 = Self->X + Self->Width;
+   int ny2 = Self->Y + Self->Height;
    if (cx < nx) nx = cx;
    if (cy < ny) ny = cy;
    if (cx2 > nx2) nx2 = cx2;
    if (cy2 > ny2) ny2 = cy2;
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
-   LONG index;
+   int index;
    if ((index = find_surface_list(Self->ParentID ? Self->ParentID : Self->UID)) != -1) {
       _redraw_surface(Self->ParentID, glSurfaces, index, nx, ny, nx2-nx, ny2-ny, IRF::RELATIVE);
       _expose_surface(Self->ParentID, glSurfaces, index, nx, ny, nx2-nx, ny2-ny, EXF::NIL);
@@ -2166,7 +2166,7 @@ specified, the user's preferred default file format is used.
 static ERR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 {
    pf::Log log;
-   LONG j, level;
+   int j, level;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -2199,7 +2199,7 @@ static ERR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 
          if (auto i = find_surface_list(Self); i != -1) {
             OBJECTID bitmapid = 0;
-            for (j=i; (j < LONG(list.size())) and ((j IS i) or (list[j].Level > list[i].Level)); j++) {
+            for (j=i; (j < int(list.size())) and ((j IS i) or (list[j].Level > list[i].Level)); j++) {
                if (list[j].invisible() or list[j].isCursor()) {
                   // Skip this surface area and all invisible children
                   level = list[j].Level;
@@ -2213,7 +2213,7 @@ static ERR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
                   bitmapid = list[j].BitmapID;
 
                   extBitmap *picbmp;
-                  picture->getPtr(FID_Bitmap, &picbmp);
+                  picture->get(FID_Bitmap, picbmp);
                   gfx::CopySurface(list[j].SurfaceID, picbmp, BDF::NIL, 0, 0, list[j].Width, list[j].Height,
                      list[j].Left - list[i].Left, list[j].Top - list[i].Top);
                }
@@ -2398,7 +2398,7 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
 
 //********************************************************************************************************************
 
-static ERR consume_input_events(const InputEvent *Events, LONG Handle)
+static ERR consume_input_events(const InputEvent *Events, int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2411,7 +2411,7 @@ static ERR consume_input_events(const InputEvent *Events, LONG Handle)
 
       if ((event->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
          DOUBLE xchange, ychange;
-         LONG dragindex;
+         int dragindex;
 
          // Dragging support
 

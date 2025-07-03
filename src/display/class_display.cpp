@@ -711,7 +711,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
          }
 
          CSTRING name;
-         if ((CurrentTask()->getPtr(FID_Name, &name) IS ERR::Okay) and (name)) {
+         if ((CurrentTask()->get(FID_Name, name) IS ERR::Okay) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
@@ -795,8 +795,8 @@ static ERR DISPLAY_Init(extDisplay *Self)
             }
          }
 
-         STRING name = NULL;
-         CurrentTask()->get(FID_Name, &name);
+         CSTRING name = nullptr;
+         CurrentTask()->get(FID_Name, name);
          HWND popover = 0;
          if (Self->PopOverID) {
             if (ScopedObjectLock<extDisplay> other_display(Self->PopOverID, 3000); other_display.granted()) {
@@ -2176,8 +2176,8 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
          log.msg("Switching window type.");
 
          bool maximise = true;
-         STRING title;
-         Self->get(FID_Title, &title); // Get the window title before we kill it
+         CSTRING title = nullptr;
+         Self->get(FID_Title, title); // Get the window title before we kill it
 
          OBJECTID surface_id = winLookupSurfaceID(Self->WindowHandle);
          winSetSurfaceID(Self->WindowHandle, 0); // Nullify the surface ID to prevent WM_DESTROY from being acted upon
@@ -2253,7 +2253,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
          }
 
          STRING name;
-         if ((CurrentTask()->getPtr(FID_Name, &name) IS ERR::Okay) and (name)) {
+         if ((CurrentTask()->get(FID_Name, name) IS ERR::Okay) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");

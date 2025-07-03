@@ -115,7 +115,7 @@ int main(int argc, CSTRING *argv)
    }
 
    pf::vector<std::string> *args;
-   if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR::Okay) and (args)) {
+   if ((CurrentTask()->get(FID_Parameters, args) IS ERR::Okay) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
          if (iequals(args[0][i], "-threads")) {
             if (++i < args->size()) glTotalThreads = strtol(args[0][i].c_str(), NULL, 0);

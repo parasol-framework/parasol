@@ -1638,7 +1638,7 @@ index in the table with a pointer to the action routine.  For example:
 
 <pre>
 if (!AccessObject(CurrentTask(), 5000, &task)) {
-   task->getPtr(FID_Actions, &amp;actions);
+   task->get(FID_Actions, actions);
    actions[AC::Seek] = PROGRAM_Seek;
    ReleaseObject(task);
 }

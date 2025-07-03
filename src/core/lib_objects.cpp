@@ -77,7 +77,7 @@ static ERR object_free(Object *Object)
    ScopedObjectAccess objlock(Object);
    if (!objlock.granted()) return ERR::AccessObject;
 
-   ObjectContext new_context(Object, AC::Free);
+   extObjectContext new_context(Object, AC::Free);
 
    auto mc = Object->ExtClass;
    if (!mc) {
@@ -394,7 +394,7 @@ ERR Action(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters)
    ScopedObjectAccess lock(Object);
    if (!lock.granted()) return ERR::AccessObject;
 
-   ObjectContext new_context(Object, ActionID);
+   extObjectContext new_context(Object, ActionID);
    Object->ActionDepth++;
    auto cl = Object->ExtClass;
 
@@ -1054,7 +1054,7 @@ ERR InitObject(OBJECTPTR Object)
    if (Object->Name[0]) log.branch("%s #%d, Name: %s, Owner: %d", cl->ClassName, Object->UID, Object->Name, Object->ownerID());
    else log.branch("%s #%d, Owner: %d", cl->ClassName, Object->UID, Object->ownerID());
 
-   ObjectContext new_context(Object, AC::Init);
+   extObjectContext new_context(Object, AC::Init);
 
    bool use_subclass = false;
    ERR error = ERR::Okay;
@@ -1139,7 +1139,7 @@ ERR InitObject(OBJECTPTR Object)
    if (use_subclass) { // If ERR::UseSubClass was set and the sub-class was not registered, do not call IdentifyFile()
       log.warning("ERR::UseSubClass was used but no suitable sub-class was registered.");
    }
-   else if ((error IS ERR::NoSupport) and (GetField(Object, FID_Path|TSTR, &path) IS ERR::Okay) and (path)) {
+   else if ((error IS ERR::NoSupport) and (Object->get(FID_Path, path) IS ERR::Okay) and (path)) {
       CLASSID class_id, subclass_id;
       if (IdentifyFile(path, cl->BaseClassID, &class_id, &subclass_id) IS ERR::Okay) {
          if ((class_id IS Object->classID()) and (subclass_id != CLASSID::NIL)) {
@@ -1681,7 +1681,7 @@ ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 /*********************************************************************************************************************
 
 -FUNCTION-
-SetContext: Sets the nominated owner of new resources.
+SetContext: Declares the owner of future allocated resources.
 
 This function defines the object that has control of the current thread.  Once called, all further resource
 allocations are assigned to that object.  This is significant for the automatic collection of memory and object
@@ -1734,6 +1734,27 @@ OBJECTPTR SetContext(OBJECTPTR Object)
 {
    if (Object) return tlContext->setContext(Object);
    else return tlContext->object();
+}
+/*********************************************************************************************************************
+
+-FUNCTION-
+SetObjectContext: Private.
+
+For internal use only.  Provides an access point for the Object class to manage object context in the Core.
+
+-INPUT-
+struct(ObjectContext) Context: Reference to an ObjectContext structure.
+
+-RESULT-
+struct(ObjectContext): Returns a pointer to the previous context.
+
+*********************************************************************************************************************/
+
+ObjectContext * SetObjectContext(ObjectContext *Context)
+{
+   auto stack = tlContext;
+   tlContext = (extObjectContext *)Context;
+   return stack;
 }
 
 /*********************************************************************************************************************

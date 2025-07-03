@@ -191,13 +191,13 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
          { "Position",   Feedback->Position },
          { "Path",       Feedback->Path },
          { "Dest",       Feedback->Dest },
-         { "FeedbackID", LONG(Feedback->FeedbackID) }
+         { "FeedbackID", int(Feedback->FeedbackID) }
       }), error) != ERR::Okay) error = ERR::Failed;
 
       if (error IS ERR::Okay) {
          CSTRING *results;
-         LONG size;
-         if ((GetFieldArray(Callback->Context, FID_Results, (APTR *)&results, &size) IS ERR::Okay) and (size > 0)) {
+         int size;
+         if ((Callback->Context->get(FID_Results, results, size) IS ERR::Okay) and (size > 0)) {
             return FFR(strtol(results[0], NULL, 0));
          }
          else return FFR::OKAY;

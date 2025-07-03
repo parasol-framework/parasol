@@ -144,7 +144,7 @@ inline void build_read_table(object *Def)
 
    MethodEntry *methods;
    LONG total_methods;
-   if (GetFieldArray(Def->Class, FID_Methods, (APTR *)&methods, &total_methods) IS ERR::Okay) {
+   if (Def->Class->get(FID_Methods, methods, total_methods) IS ERR::Okay) {
       for (LONG i=1; i < total_methods; i++) {
          if (methods[i].MethodID != AC::NIL) {
             auto hash = simple_hash(methods[i].Name, simple_hash("mt"));
@@ -155,7 +155,7 @@ inline void build_read_table(object *Def)
 
    Field *dict;
    LONG total_dict;
-   if (GetFieldArray(Def->Class, FID_Dictionary, (APTR *)&dict, &total_dict) IS ERR::Okay) {
+   if (Def->Class->get(FID_Dictionary, dict, total_dict) IS ERR::Okay) {
       jmp.insert(obj_read(simple_hash("id"), object_get_id));
 
       for (LONG i=0; i < total_dict; i++) {
@@ -219,7 +219,7 @@ inline WRITE_TABLE * get_write_table(object *Def)
          WRITE_TABLE jmp;
          Field *dict;
          LONG total_dict;
-         if (GetFieldArray(Def->Class, FID_Dictionary, (APTR *)&dict, &total_dict) IS ERR::Okay) {
+         if (Def->Class->get(FID_Dictionary, dict, total_dict) IS ERR::Okay) {
             for (LONG i=0; i < total_dict; i++) {
                if (dict[i].Flags & (FD_W|FD_I)) {
                   char ch[2] = { dict[i].Name[0], 0 };
@@ -315,7 +315,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
       MethodEntry *table;
       LONG total_methods;
       ACTIONID action_id;
-      if ((GetFieldArray(mc, FID_Methods, (APTR *)&table, &total_methods) IS ERR::Okay) and (table)) {
+      if ((mc->get(FID_Methods, table, total_methods) IS ERR::Okay) and (table)) {
          for (LONG i=1; i < total_methods; i++) {
             if ((table[i].Name) and (iequals(action, table[i].Name))) {
                action_id = table[i].MethodID;
@@ -1060,8 +1060,8 @@ static int object_tostring(lua_State *Lua)
 static int object_next_pair(lua_State *Lua)
 {
    auto fields = (Field *)lua_touserdata(Lua, lua_upvalueindex(1));
-   LONG field_total = lua_tointeger(Lua, lua_upvalueindex(2));
-   LONG field_index = lua_tointeger(Lua, lua_upvalueindex(3));
+   int field_total = lua_tointeger(Lua, lua_upvalueindex(2));
+   int field_index = lua_tointeger(Lua, lua_upvalueindex(3));
 
    if ((field_index >= 0) and (field_index < field_total)) {
       lua_pushinteger(Lua, field_index + 1);
@@ -1078,8 +1078,8 @@ static int object_pairs(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       Field *fields;
-      LONG total;
-      if (GetFieldArray(def->Class, FID_Dictionary, (APTR *)&fields, &total) IS ERR::Okay) {
+      int total;
+      if (def->Class->get(FID_Dictionary, fields, total) IS ERR::Okay) {
          lua_pushlightuserdata(Lua, fields);
          lua_pushinteger(Lua, total);
          lua_pushinteger(Lua, 0);
@@ -1098,8 +1098,8 @@ static int object_pairs(lua_State *Lua)
 static int object_next_ipair(lua_State *Lua)
 {
    auto fields = (Field *)lua_touserdata(Lua, lua_upvalueindex(1));
-   LONG field_total = lua_tointeger(Lua, lua_upvalueindex(2));
-   LONG field_index = lua_tointeger(Lua, 2); // Arg 2 is the previous index.  It's nil if this is the first iteration.
+   int field_total = lua_tointeger(Lua, lua_upvalueindex(2));
+   int field_index = lua_tointeger(Lua, 2); // Arg 2 is the previous index.  It's nil if this is the first iteration.
 
    if ((field_index >= 0) and (field_index < field_total)) {
       lua_pushinteger(Lua, field_index + 1);
@@ -1113,8 +1113,8 @@ static int object_ipairs(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       Field *fields;
-      LONG total;
-      if (GetFieldArray(def->Class, FID_Dictionary, (APTR *)&fields, &total) IS ERR::Okay) {
+      int total;
+      if (def->Class->get(FID_Dictionary, fields, total) IS ERR::Okay) {
          lua_pushlightuserdata(Lua, fields);
          lua_pushinteger(Lua, total);
          lua_pushcclosure(Lua, object_next_ipair, 2);

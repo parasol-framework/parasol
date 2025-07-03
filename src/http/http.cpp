@@ -501,7 +501,7 @@ static ERR HTTP_Activate(extHTTP *Self)
                if (Self->flInput) {
                   Self->Index = 0;
                   if (!Self->Size) {
-                     Self->flInput->get(FID_Size, &Self->ContentLength); // Use the file's size as ContentLength
+                     Self->flInput->get(FID_Size, Self->ContentLength); // Use the file's size as ContentLength
                      if (!Self->ContentLength) { // If the file is empty or size is indeterminate then assume nothing is being posted
                         SET_ERROR(log, Self, ERR::NoData);
                         return Self->Error;
@@ -518,7 +518,7 @@ static ERR HTTP_Activate(extHTTP *Self)
                if (!Self->Size) {
                   pf::ScopedObjectLock<Object> input(Self->InputObjectID, 3000);
                   if (input.granted()) {
-                     input->get(FID_Size, &Self->ContentLength);
+                     input->get(FID_Size, Self->ContentLength);
                   }
                }
                else Self->ContentLength = Self->Size;
