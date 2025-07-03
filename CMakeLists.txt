@@ -388,6 +388,10 @@ if (MSVC)
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHs-c- /GR")
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c- /GR")
    endif ()
+
+   # Specifying the fast FP option shows no descernible improvement in benchmarked release builds.
+   #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast")
+   #set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /fp:fast")
 else ()
    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
       add_compile_definitions ("_DARWIN_C_SOURCE")

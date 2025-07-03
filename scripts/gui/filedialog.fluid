@@ -125,7 +125,7 @@ gui.dialog.file = function(Options)
 
    local footer = self.window.margins.bottom
 
-   lCancelButton = gui.button({
+   local lCancelButton = gui.button({
       target  = self.viewport,
       text    = nz(Options.cancelText, 'Cancel'),
       xOffset = GAP,
@@ -142,7 +142,7 @@ gui.dialog.file = function(Options)
       }
    })
 
-   lOkayButton = gui.button({
+   local lOkayButton = gui.button({
       target     = self.viewport,
       text       = nz(Options.okText, 'Okay'),
       xOffset    = lCancelButton.viewport.width + (GAP * 2),
