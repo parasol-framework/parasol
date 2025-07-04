@@ -152,7 +152,9 @@ struct svgState {
          return (value >= 0.001);
       }
 
-      inline ERR set(OBJECTPTR Object) const noexcept { return SetField(Object, field(), value); }
+      inline ERR set(OBJECTPTR Object) const noexcept { 
+         return Object->set(field_id, Unit(value, (type == DU::SCALED) ? (FD_DOUBLE|FD_SCALED) : FD_DOUBLE)); 
+      }
    };
 
    std::string m_color;       // currentColor value, initialised to SVG.Colour

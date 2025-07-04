@@ -110,13 +110,13 @@ static ERR RSVG_Query(extPicture *Self)
 
       // Check for fixed dimensions specified by the SVG.
 
-      auto view_width = view->get<LONG>(FID_Width);
-      auto view_height = view->get<LONG>(FID_Height);
+      auto view_width = view->get<int>(FID_Width);
+      auto view_height = view->get<int>(FID_Height);
 
       // If the SVG source doesn't specify fixed dimensions, automatically force rescaling to the display width and height.
 
-      if (!view_width)  SetField(view, FID_Width|TDOUBLE|TSCALE, 1.0);
-      if (!view_height) SetField(view, FID_Height|TDOUBLE|TSCALE, 1.0);
+      if (!view_width)  view->set(FID_Width, Unit(1.0, FD_SCALED));
+      if (!view_height) view->set(FID_Height, Unit(1.0, FD_SCALED));
 
       if ((Self->DisplayWidth > 0) and (Self->DisplayHeight > 0)) { // Client specified the display size?
          // Give the vector scene a target width and height.

@@ -1291,7 +1291,7 @@ static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
          }
 
          if (total_length <= 0) {
-            log.warning("DashArray has invalid length.");
+            log.warning("DashArray total length <= 0.");
             delete Self->DashArray;
             Self->DashArray = NULL;
             return ERR::InvalidValue;
@@ -2527,14 +2527,14 @@ static const FieldArray clVectorFields[] = {
    { "ColourSpace",     FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorColourSpace },
    { "PathTimestamp",   FDF_INT|FDF_R },
    // Virtual fields
-   { "ClipRule",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, VECTOR_GET_ClipRule, VECTOR_SET_ClipRule, &clFillRule },
+   { "ClipRule",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW,  VECTOR_GET_ClipRule, VECTOR_SET_ClipRule, &clFillRule },
    { "DashArray",    FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FD_RW, VECTOR_GET_DashArray, VECTOR_SET_DashArray },
    { "DisplayScale", FDF_VIRTUAL|FDF_DOUBLE|FDF_R,           VECTOR_GET_DisplayScale },
    { "Mask",         FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Mask, VECTOR_SET_Mask },
    { "Morph",        FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Morph, VECTOR_SET_Morph },
    { "AppendPath",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_AppendPath, VECTOR_SET_AppendPath },
-   { "MorphFlags",   FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW,       VECTOR_GET_MorphFlags, VECTOR_SET_MorphFlags, &clMorphFlags },
-   { "NumericID",    FDF_VIRTUAL|FDF_INT|FDF_RW,            VECTOR_GET_NumericID, VECTOR_SET_NumericID },
+   { "MorphFlags",   FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW,        VECTOR_GET_MorphFlags, VECTOR_SET_MorphFlags, &clMorphFlags },
+   { "NumericID",    FDF_VIRTUAL|FDF_INT|FDF_RW,             VECTOR_GET_NumericID, VECTOR_SET_NumericID },
    { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_ID, VECTOR_SET_ID },
    { "ResizeEvent",  FDF_VIRTUAL|FDF_FUNCTION|FDF_W,         NULL, VECTOR_SET_ResizeEvent },
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, VECTOR_GET_Sequence },
@@ -2544,12 +2544,12 @@ static const FieldArray clVectorFields[] = {
    { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Transition, VECTOR_SET_Transition },
    { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Fill, VECTOR_SET_Fill },
    { "FillColour",   FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FDF_RW,  VECTOR_GET_FillColour, VECTOR_SET_FillColour },
-   { "FillRule",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, VECTOR_GET_FillRule, VECTOR_SET_FillRule, &clFillRule },
+   { "FillRule",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW,  VECTOR_GET_FillRule, VECTOR_SET_FillRule, &clFillRule },
    { "Filter",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Filter, VECTOR_SET_Filter },
-   { "LineJoin",     FDF_VIRTUAL|FD_INT|FD_LOOKUP|FDF_RW,   VECTOR_GET_LineJoin, VECTOR_SET_LineJoin, &clLineJoin },
-   { "LineCap",      FDF_VIRTUAL|FD_INT|FD_LOOKUP|FDF_RW,   VECTOR_GET_LineCap, VECTOR_SET_LineCap, &clLineCap },
-   { "InnerJoin",    FDF_VIRTUAL|FD_INT|FD_LOOKUP|FDF_RW,   VECTOR_GET_InnerJoin, VECTOR_SET_InnerJoin, &clInnerJoin },
-   { "TabOrder",     FDF_VIRTUAL|FD_INT|FD_RW,              VECTOR_GET_TabOrder, VECTOR_SET_TabOrder },
+   { "LineJoin",     FDF_VIRTUAL|FD_INT|FD_LOOKUP|FDF_RW,    VECTOR_GET_LineJoin, VECTOR_SET_LineJoin, &clLineJoin },
+   { "LineCap",      FDF_VIRTUAL|FD_INT|FD_LOOKUP|FDF_RW,    VECTOR_GET_LineCap, VECTOR_SET_LineCap, &clLineCap },
+   { "InnerJoin",    FDF_VIRTUAL|FD_INT|FD_LOOKUP|FDF_RW,    VECTOR_GET_InnerJoin, VECTOR_SET_InnerJoin, &clInnerJoin },
+   { "TabOrder",     FDF_VIRTUAL|FD_INT|FD_RW,               VECTOR_GET_TabOrder, VECTOR_SET_TabOrder },
    END_FIELD
 };
 

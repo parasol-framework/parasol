@@ -2014,6 +2014,9 @@ struct Field {
    bool readable() {
       return (Flags & FD_READ) ? true : false;
    }
+   bool writeable() {
+      return (Flags & (FD_WRITE|FD_INIT)) ? true : false;
+   }
 };
 
 struct ScriptArg { // For use with sc::Exec
@@ -2086,7 +2089,6 @@ struct CoreBase {
    ERR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
    struct ObjectContext * (*_SetObjectContext)(struct ObjectContext *Context);
-   ERR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
    CSTRING (*_FieldName)(uint32_t FieldID);
    ERR (*_ScanDir)(struct DirInfo *Info);
    ERR (*_SetName)(OBJECTPTR Object, CSTRING Name);
@@ -2182,7 +2184,6 @@ inline ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size) { return Core
 inline ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
 inline struct ObjectContext * SetObjectContext(struct ObjectContext *Context) { return CoreBase->_SetObjectContext(Context); }
-template<class... Args> ERR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
 inline CSTRING FieldName(uint32_t FieldID) { return CoreBase->_FieldName(FieldID); }
 inline ERR ScanDir(struct DirInfo *Info) { return CoreBase->_ScanDir(Info); }
 inline ERR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
@@ -2272,7 +2273,6 @@ extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);
 extern "C" ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 extern "C" OBJECTPTR SetContext(OBJECTPTR Object);
 extern "C" struct ObjectContext * SetObjectContext(struct ObjectContext *Context);
-extern "C" ERR SetField(OBJECTPTR Object, FIELD Field, ...);
 extern "C" CSTRING FieldName(uint32_t FieldID);
 extern "C" ERR ScanDir(struct DirInfo *Info);
 extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);
@@ -2603,6 +2603,7 @@ class ScopedObjectAccess {
 
 template <class T> inline int64_t FIELD_TAG()     { return 0; }
 template <> inline int64_t FIELD_TAG<double>()    { return TDOUBLE; }
+template <> inline int64_t FIELD_TAG<bool>()      { return TINT; }
 template <> inline int64_t FIELD_TAG<int>()       { return TINT; }
 template <> inline int64_t FIELD_TAG<int64_t>()   { return TINT64; }
 template <> inline int64_t FIELD_TAG<uint64_t>()  { return TINT64; }
@@ -2617,6 +2618,7 @@ template <> inline int64_t FIELD_TAG<SCALE>()     { return TDOUBLE|TSCALE; }
 
 template <class T> inline int FIELD_TYPECHECK()     { return FD_PTR|FD_STRUCT|FD_STRING; }
 template <> inline int FIELD_TYPECHECK<double>()    { return FD_DOUBLE; }
+template <> inline int FIELD_TYPECHECK<bool>()      { return FD_INT; }
 template <> inline int FIELD_TYPECHECK<int>()       { return FD_INT; }
 template <> inline int FIELD_TYPECHECK<int64_t>()   { return FD_INT64; }
 template <> inline int FIELD_TYPECHECK<uint64_t>()  { return FD_INT64; }
@@ -2633,7 +2635,7 @@ public:
    OBJECTPTR obj = nullptr;                 // The object that currently has the operating context.
    struct Field *field = nullptr;           // Set if the context is linked to a get/set field operation.  For logging purposes only.
    class extObjectContext *stack = nullptr; // Call stack.
-   AC action = AC::NIL;                     // Set if the context enters an action or method routine. 
+   AC action = AC::NIL;                     // Set if the context enters an action or method routine.
 };
 
 //********************************************************************************************************************
@@ -2709,20 +2711,91 @@ struct Object { // Must be 64-bit aligned
       return SetArray(this, FieldID|FIELD_TAG<T>(), const_cast<T *>(Value.data()), std::ssize(Value));
    }
 
-   inline ERR set(FIELD FieldID, const FRGB &Value)     { return SetArray(this, FieldID|TFLOAT, (FLOAT *)&Value, 4); }
-   inline ERR set(FIELD FieldID, int Value)             { return SetField(this, FieldID|TINT, Value); }
-   inline ERR set(FIELD FieldID, unsigned int Value)    { return SetField(this, FieldID|TINT, Value); }
-   inline ERR set(FIELD FieldID, int64_t Value)         { return SetField(this, FieldID|TINT64, Value); }
-   inline ERR set(FIELD FieldID, double Value)          { return SetField(this, FieldID|TDOUBLE, Value); }
-   inline ERR set(FIELD FieldID, const FUNCTION *Value) { return SetField(this, FieldID|TFUNCTION, Value); }
-   inline ERR set(FIELD FieldID, const char *Value)     { return SetField(this, FieldID|TSTRING, Value); }
-   inline ERR set(FIELD FieldID, const unsigned char *Value) { return SetField(this, FieldID|TSTRING, Value); }
-   inline ERR set(FIELD FieldID, const std::string &Value)   { return SetField(this, FieldID|TSTRING, Value.c_str()); }
-   inline ERR set(FIELD FieldID, const Unit *Value)          { return SetField(this, FieldID|TUNIT, Value); }
-   // Works both for regular data pointers and function pointers if field is defined correctly.
-   inline ERR set(FIELD FieldID, const void *Value) { return SetField(this, FieldID|TPTR, Value); }
+   template <class T> ERR set(FIELD FieldID, const T Value) requires std::integral<T> || std::floating_point<T> {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FIELD_TYPECHECK<T>(), &Value, 1);
+      }
+      else return ERR::UnsupportedField;
+   }
 
-   inline ERR setScale(FIELD FieldID, double Value) { return SetField(this, FieldID|TDOUBLE|TSCALE, Value); }
+   inline ERR set(FIELD FieldID, const FRGB &Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_FLOAT, &Value, 1);
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR set(FIELD FieldID, const FUNCTION *Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_FUNCTION, Value, 1);
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR set(FIELD FieldID, const char *Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_STRING, Value, 1);
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR set(FIELD FieldID, const unsigned char *Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_STRING, Value, 1);
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR set(FIELD FieldID, const std::string &Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_STRING, Value.c_str(), 1);
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR set(FIELD FieldID, const Unit *Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_UNIT, Value, 1);
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   inline ERR set(FIELD FieldID, const Unit &Value) {
+      return set(FieldID, &Value);
+   }
+
+   // Works both for regular data pointers and function pointers if the field is defined correctly.
+
+   inline ERR set(FIELD FieldID, const void *Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_POINTER, Value, 1);
+      }
+      else return ERR::UnsupportedField;
+   }
 
    // There are two mechanisms for retrieving object values; the first allows the value to be retrieved with an error
    // code and the value itself; the second ignores the error code and returns a value that could potentially be invalid.
@@ -2739,7 +2812,7 @@ struct Object { // Must be 64-bit aligned
           if (error IS ERR::Okay) Value = var.Value;
       }
       else error = ERR::FieldTypeMismatch;
-      
+
       SetObjectContext(ctx);
       return error;
    }
@@ -2978,7 +3051,7 @@ struct Object { // Must be 64-bit aligned
       get(FieldID, result);
       return result;
    };
-   
+
    template <class T> ERR get(FIELD FieldID, T * &Result, int &Elements, bool TypeCheck = true) {
       Object *target;
       Result = nullptr;

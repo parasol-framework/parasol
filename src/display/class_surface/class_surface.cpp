@@ -1146,15 +1146,15 @@ static ERR SURFACE_Init(extSurface *Self)
       // Recalculate coordinates if offsets are used
 
       if (dmf::hasXOffset(Self->Dimensions))         Self->setXOffset(Self->XOffset);
-      else if (dmf::hasScaledXOffset(Self->Dimensions)) Self->setScale(FID_XOffset, Self->XOffsetPercent);
+      else if (dmf::hasScaledXOffset(Self->Dimensions)) Self->set(FID_XOffset, Unit(Self->XOffsetPercent, FD_SCALED));
 
       if (dmf::hasYOffset(Self->Dimensions))         Self->setYOffset(Self->YOffset);
-      else if (dmf::hasScaledYOffset(Self->Dimensions)) Self->setScale(FID_YOffset, Self->YOffsetPercent);
+      else if (dmf::hasScaledYOffset(Self->Dimensions)) Self->set(FID_YOffset, Unit(Self->YOffsetPercent, FD_SCALED));
 
-      if (dmf::hasScaledX(Self->Dimensions))       Self->setScale(FID_X, Self->XPercent);
-      if (dmf::hasScaledY(Self->Dimensions))       Self->setScale(FID_Y, Self->YPercent);
-      if (dmf::hasScaledWidth(Self->Dimensions))   Self->setScale(FID_Width,  Self->WidthPercent);
-      if (dmf::hasScaledHeight(Self->Dimensions))  Self->setScale(FID_Height, Self->HeightPercent);
+      if (dmf::hasScaledX(Self->Dimensions))       Self->set(FID_X, Unit(Self->XPercent, FD_SCALED));
+      if (dmf::hasScaledY(Self->Dimensions))       Self->set(FID_Y, Unit(Self->YPercent, FD_SCALED));
+      if (dmf::hasScaledWidth(Self->Dimensions))   Self->set(FID_Width,  Unit(Self->WidthPercent, FD_SCALED));
+      if (dmf::hasScaledHeight(Self->Dimensions))  Self->set(FID_Height, Unit(Self->HeightPercent, FD_SCALED));
 
       if (!(dmf::hasAnyWidth(Self->Dimensions))) {
          if (dmf::hasAnyXOffset(Self->Dimensions)) {
@@ -2064,22 +2064,22 @@ static ERR SURFACE_ResetDimensions(extSurface *Self, struct drw::ResetDimensions
 
    //gfx::ForbidDrawing();
 
-   if (dmf::hasScaledX(dimensions)) SetField(Self, FID_X|TDOUBLE|TSCALE, Args->X);
+   if (dmf::hasScaledX(dimensions)) Self->set(FID_X, Unit(Args->X, FD_SCALED));
    else if (dmf::hasX(dimensions)) Self->setX(Args->X);
 
-   if (dmf::hasScaledY(dimensions)) SetField(Self, FID_Y|TDOUBLE|TSCALE, Args->Y);
+   if (dmf::hasScaledY(dimensions)) Self->set(FID_Y, Unit(Args->Y, FD_SCALED));
    else if (dmf::hasY(dimensions)) Self->setY(Args->Y);
 
-   if (dmf::hasScaledXOffset(dimensions)) SetField(Self, FID_XOffset|TDOUBLE|TSCALE, Args->XOffset);
+   if (dmf::hasScaledXOffset(dimensions)) Self->set(FID_XOffset, Unit(Args->XOffset, FD_SCALED));
    else if (dmf::hasXOffset(dimensions)) Self->setXOffset(Args->XOffset);
 
-   if (dmf::hasScaledYOffset(dimensions)) SetField(Self, FID_YOffset|TDOUBLE|TSCALE, Args->YOffset);
+   if (dmf::hasScaledYOffset(dimensions)) Self->set(FID_YOffset, Unit(Args->YOffset, FD_SCALED));
    else if (dmf::hasYOffset(dimensions)) Self->setYOffset(Args->YOffset);
 
-   if (dmf::hasScaledHeight(dimensions)) SetField(Self, FID_Height|TDOUBLE|TSCALE, Args->Height);
+   if (dmf::hasScaledHeight(dimensions)) Self->set(FID_Height, Unit(Args->Height, FD_SCALED));
    else if (dmf::hasHeight(dimensions)) Self->setHeight(Args->Height);
 
-   if (dmf::hasScaledWidth(dimensions)) SetField(Self, FID_Width|TDOUBLE|TSCALE, Args->Width);
+   if (dmf::hasScaledWidth(dimensions)) Self->set(FID_Width, Unit(Args->Width, FD_SCALED));
    else if (dmf::hasWidth(dimensions)) Self->setWidth(Args->Width);
 
    //gfx::PermitDrawing();
