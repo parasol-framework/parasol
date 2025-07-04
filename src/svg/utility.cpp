@@ -369,8 +369,8 @@ inline void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string_
    auto field = FieldID;
    auto v = Value;
    double num = read_unit(v, &field);
-   if (Units IS VUNIT::BOUNDING_BOX) field |= TSCALE;
-   SetField(Object, field, num);
+   if (Units IS VUNIT::BOUNDING_BOX) Object->set(field, Unit(num, FD_SCALED));
+   else Object->set(field, num);
 }
 
 //********************************************************************************************************************

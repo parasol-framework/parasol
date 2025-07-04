@@ -548,7 +548,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    }
 #endif
 
-   if (!newargs.empty()) SetArray(glCurrentTask, FID_Parameters, &newargs, newargs.size());
+   if (!newargs.empty()) glCurrentTask->set(FID_Parameters, newargs);
 
    // In Windows, set the PATH environment variable so that DLL's installed under modules:lib can be found.
 

@@ -195,7 +195,7 @@ void svgState::parse_lineargradient(const XMLTag &Tag, objVectorGradient *Gradie
    }
 
    auto stops = process_gradient_stops(Tag);
-   if (stops.size() >= 2) SetArray(Gradient, FID_Stops, stops);
+   if (stops.size() >= 2) Gradient->set(FID_Stops, stops);
 }
 
 //********************************************************************************************************************
@@ -275,7 +275,7 @@ void svgState::parse_radialgradient(const XMLTag &Tag, objVectorGradient &Gradie
 
    if (process_stops) {
       auto stops = process_gradient_stops(Tag);
-      if (stops.size() >= 2) SetArray(&Gradient, FID_Stops, stops);
+      if (stops.size() >= 2) Gradient.set(FID_Stops, stops);
    }
 }
 
@@ -349,7 +349,7 @@ void svgState::parse_diamondgradient(const XMLTag &Tag, objVectorGradient *Gradi
    }
 
    auto stops = process_gradient_stops(Tag);
-   if (stops.size() >= 2) SetArray(Gradient, FID_Stops, stops);
+   if (stops.size() >= 2) Gradient->set(FID_Stops, stops);
 }
 
 //********************************************************************************************************************
@@ -548,7 +548,7 @@ ERR svgState::proc_contourgradient(const XMLTag &Tag) noexcept
       state.parse_contourgradient(Tag, gradient, id);
 
       auto stops = process_gradient_stops(Tag);
-      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
+      if (stops.size() >= 2) gradient->set(FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
          if (!id.empty()) {
@@ -624,7 +624,7 @@ ERR svgState::proc_conicgradient(const XMLTag &Tag) noexcept
       }
 
       auto stops = process_gradient_stops(Tag);
-      if (stops.size() >= 2) SetArray(gradient, FID_Stops, stops);
+      if (stops.size() >= 2) gradient->set(FID_Stops, stops);
 
       if (InitObject(gradient) IS ERR::Okay) {
          if (!id.empty()) {

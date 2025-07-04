@@ -1955,7 +1955,7 @@ void parser::tag_combobox(XMLTag &Tag)
          });
 
          std::array<double, 8> round = { 0, 0, 6, 6, 6, 6, 0, 0 };
-         SetArray(rect, FID_Rounding|TDOUBLE, round);
+         rect->set(FID_Rounding, round);
 
          objVectorPath::create::global({ // Down arrow
             fl::Owner(vp->UID),

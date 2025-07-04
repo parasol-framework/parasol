@@ -88,13 +88,13 @@ void anim_value::set_value(objVector &Vector)
          //
          // TODO: Correct implementation requires inspection of the XML tags.  If the parent Vector is a group, its
          // children will need to be checked for currentColor references.
-         FRGB val = get_colour_value(Vector, FID_FillColour);
+         const FRGB val = get_colour_value(Vector, FID_FillColour);
          Vector.set(FID_FillColour, val);
          return;
       }
 
       case SVF_FILL: {
-         auto val = get_colour_value(Vector, FID_FillColour);
+         const auto val = get_colour_value(Vector, FID_FillColour);
          Vector.set(FID_FillColour, val);
          return;
       }
@@ -143,11 +143,11 @@ void anim_value::set_value(objVector &Vector)
 
       case SVF_STROKE_INNERJOIN: // AGG ONLY
          switch(strihash(get_string())) {
-            case SVF_MITER:   Vector.set(FID_InnerJoin, LONG(VIJ::MITER));  return;
-            case SVF_ROUND:   Vector.set(FID_InnerJoin, LONG(VIJ::ROUND)); return;
-            case SVF_BEVEL:   Vector.set(FID_InnerJoin, LONG(VIJ::BEVEL)); return;
-            case SVF_INHERIT: Vector.set(FID_InnerJoin, LONG(VIJ::INHERIT)); return;
-            case SVF_JAG:     Vector.set(FID_InnerJoin, LONG(VIJ::JAG)); return;
+            case SVF_MITER:   Vector.set(FID_InnerJoin, int(VIJ::MITER));  return;
+            case SVF_ROUND:   Vector.set(FID_InnerJoin, int(VIJ::ROUND)); return;
+            case SVF_BEVEL:   Vector.set(FID_InnerJoin, int(VIJ::BEVEL)); return;
+            case SVF_INHERIT: Vector.set(FID_InnerJoin, int(VIJ::INHERIT)); return;
+            case SVF_JAG:     Vector.set(FID_InnerJoin, int(VIJ::JAG)); return;
          }
          return;
 

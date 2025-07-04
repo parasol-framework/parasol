@@ -72,10 +72,8 @@ FDEF argsResolveUserID[] = { { "Result", FD_STR }, { "User", FD_INT }, { 0, 0 } 
 FDEF argsScanDir[] = { { "Error", FD_INT|FD_ERROR }, { "DirInfo:Info", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
 FDEF argsScanMessages[] = { { "Error", FD_INT|FD_ERROR }, { "Handle", FD_INT|FD_RESULT }, { "Type", FD_INT }, { "Buffer", FD_BUFFER|FD_PTR }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsSendMessage[] = { { "Error", FD_INT|FD_ERROR }, { "Type", FD_INT }, { "Flags", FD_INT }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
-FDEF argsSetArray[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_INT64 }, { "Array", FD_PTR }, { "Elements", FD_INT }, { 0, 0 } };
 FDEF argsSetContext[] = { { "Object", FD_OBJECTPTR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsSetDefaultPermissions[] = { { "Void", FD_VOID }, { "User", FD_INT }, { "Group", FD_INT }, { "Permissions", FD_INT }, { 0, 0 } };
-FDEF argsSetField[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Field", FD_INT64 }, { "Value", FD_VARTAGS }, { 0, 0 } };
 FDEF argsSetName[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Name", FD_STR }, { 0, 0 } };
 FDEF argsSetObjectContext[] = { { "ObjectContext", FD_PTR|FD_STRUCT }, { "ObjectContext:Context", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF argsSetOwner[] = { { "Error", FD_INT|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Owner", FD_OBJECTPTR }, { 0, 0 } };
@@ -137,7 +135,6 @@ const struct Function glFunctions[] = {
    { (APTR)SetOwner, "SetOwner", argsSetOwner },
    { (APTR)SetContext, "SetContext", argsSetContext },
    { (APTR)SetObjectContext, "SetObjectContext", argsSetObjectContext },
-   { (APTR)SetField, "SetField", argsSetField },
    { (APTR)FieldName, "FieldName", argsFieldName },
    { (APTR)ScanDir, "ScanDir", argsScanDir },
    { (APTR)SetName, "SetName", argsSetName },
@@ -172,7 +169,6 @@ const struct Function glFunctions[] = {
    { (APTR)GetErrorMsg, "GetErrorMsg", argsGetErrorMsg },
    { (APTR)GetActionMsg, "GetActionMsg", argsGetActionMsg },
    { (APTR)FuncError, "FuncError", argsFuncError },
-   { (APTR)SetArray, "SetArray", argsSetArray },
    { (APTR)LockObject, "LockObject", argsLockObject },
    { (APTR)ReleaseObject, "ReleaseObject", argsReleaseObject },
    { (APTR)AsyncAction, "AsyncAction", argsAsyncAction },

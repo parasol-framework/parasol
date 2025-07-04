@@ -41,7 +41,6 @@ extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);
 extern "C" ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 extern "C" OBJECTPTR SetContext(OBJECTPTR Object);
 extern "C" struct ObjectContext * SetObjectContext(struct ObjectContext * Context);
-extern "C" ERR SetField(OBJECTPTR Object, FIELD Field, ...);
 extern "C" CSTRING FieldName(uint32_t FieldID);
 extern "C" ERR ScanDir(struct DirInfo * Info);
 extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);
@@ -76,7 +75,6 @@ extern "C" struct Field * FindField(OBJECTPTR Object, uint32_t FieldID, OBJECTPT
 extern "C" CSTRING GetErrorMsg(ERR Error);
 extern "C" struct Message * GetActionMsg();
 extern "C" ERR FuncError(CSTRING Header, ERR Error);
-extern "C" ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, int Elements);
 extern "C" ERR LockObject(OBJECTPTR Object, int MilliSeconds);
 extern "C" void ReleaseObject(OBJECTPTR Object);
 extern "C" ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback);

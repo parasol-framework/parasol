@@ -360,7 +360,7 @@ void svgState::proc_pathtransition(XMLTag &Tag) noexcept
       if (!id.empty()) {
          auto stops = process_transition_stops(Self, Tag.Children);
          if (stops.size() >= 2) {
-            SetArray(trans, FID_Stops, stops);
+            trans->set(FID_Stops, stops);
 
             if (InitObject(trans) IS ERR::Okay) {
                if (!Self->Cloning) Self->Scene->addDef(id.c_str(), trans);
@@ -650,7 +650,7 @@ ERR svgState::parse_fe_merge(objVectorFilter *Filter, XMLTag &Tag) noexcept
    }
 
    if (!list.empty()) {
-      if (SetArray(fx, FID_SourceList, list) != ERR::Okay) {
+      if (fx->set(FID_SourceList, list) != ERR::Okay) {
          FreeResource(fx);
          return log.warning(ERR::SetField);
       }
@@ -779,7 +779,7 @@ ERR svgState::parse_fe_convolve_matrix(objVectorFilter *Filter, XMLTag &Tag) noe
          case SVF_KERNELMATRIX: {
             #define MAX_DIM 9
             auto matrix = read_array<DOUBLE>(val, MAX_DIM * MAX_DIM);
-            SetArray(fx, FID_Matrix|TDOUBLE, matrix);
+            fx->set(FID_Matrix, matrix);
             break;
          }
 
@@ -864,9 +864,9 @@ ERR svgState::parse_fe_lighting(objVectorFilter *Filter, XMLTag &Tag, LT Type) n
             VectorPainter painter;
             if (iequals("currentColor", val)) {
                FRGB rgb;
-               if (current_colour(Self->Scene->Viewport, rgb) IS ERR::Okay) SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
+               if (current_colour(Self->Scene->Viewport, rgb) IS ERR::Okay) fx->set(FID_Colour, rgb);
             }
-            else if (vec::ReadPainter(NULL, val.c_str(), &painter, NULL) IS ERR::Okay) SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
+            else if (vec::ReadPainter(NULL, val.c_str(), &painter, NULL) IS ERR::Okay) fx->set(FID_Colour, painter.Colour);
             break;
          }
 
@@ -1057,7 +1057,7 @@ ERR svgState::parse_fe_wavefunction(objVectorFilter *Filter, XMLTag &Tag) noexce
 
       if (Tag.hasChildTags()) {
          auto stops = process_gradient_stops(Tag);
-         if (stops.size() >= 2) SetArray(fx, FID_Stops, stops);
+         if (stops.size() >= 2) fx->set(FID_Stops, stops);
       }
 
       return ERR::Okay;
@@ -1276,9 +1276,9 @@ ERR svgState::parse_fe_flood(objVectorFilter *Filter, XMLTag &Tag) noexcept
          case SVF_FLOOD_COLOUR: {
             VectorPainter painter;
             if (iequals("currentColor", val)) {
-               if (current_colour(Self->Scene->Viewport, painter.Colour) IS ERR::Okay) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
+               if (current_colour(Self->Scene->Viewport, painter.Colour) IS ERR::Okay) error = fx->set(FID_Colour, painter.Colour);
             }
-            else if (vec::ReadPainter(NULL, val.c_str(), &painter, NULL) IS ERR::Okay) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
+            else if (vec::ReadPainter(NULL, val.c_str(), &painter, nullptr) IS ERR::Okay) error = fx->set(FID_Colour, painter.Colour);
             break;
          }
 
@@ -3697,9 +3697,7 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
       case SVF_STROKE:
          if (iequals("currentColor", StrValue)) {
             FRGB rgb;
-            if (current_colour(Vector, rgb) IS ERR::Okay) {
-               SetArray(Vector, FID_StrokeColour|TFLOAT, &rgb, 4);
-            }
+            if (current_colour(Vector, rgb) IS ERR::Okay) Vector->set(FID_StrokeColour, rgb);
          }
          else set_paint_server(Vector, FID_Stroke, StrValue);
          break;
@@ -3707,9 +3705,7 @@ ERR svgState::set_property(objVector *Vector, ULONG Hash, XMLTag &Tag, const std
       case SVF_FILL:
          if (iequals("currentColor", StrValue)) {
             FRGB rgb;
-            if (current_colour(Vector, rgb) IS ERR::Okay) {
-               SetArray(Vector, FID_FillColour|TFLOAT, &rgb, 4);
-            }
+            if (current_colour(Vector, rgb) IS ERR::Okay) Vector->set(FID_FillColour, rgb);
          }
          else set_paint_server(Vector, FID_Fill, StrValue);
          break;

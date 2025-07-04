@@ -14,6 +14,7 @@ Name: Fields
 
 #include <stdarg.h>
 #include <stdlib.h>
+#include <cmath>
 
 #define OP_OR        0
 #define OP_AND       1
@@ -35,177 +36,6 @@ static ERR setval_function(OBJECTPTR, Field *, int Flags, CPTR , int);
 static ERR setval_array(OBJECTPTR, Field *, int Flags, CPTR , int);
 static ERR setval_brgb(OBJECTPTR, Field *, int Flags, CPTR , int);
 static ERR setval_unit(OBJECTPTR, Field *, int Flags, CPTR , int);
-
-/*********************************************************************************************************************
-
--FUNCTION-
-SetArray: Used to set array fields in objects.
-
-The SetArray() function is used as an alternative to ~SetField() for the purpose of writing arrays to objects.
-
-The following code segment illustrates how to write an array to an object field:
-
-<pre>
-int array[100];
-SetArray(Object, FID_Table|TINT, array, 100);
-</pre>
-
-An indicator of the type of the elements in the `Array` must be OR'd into the `Field` parameter.  Available field
-types are listed in ~SetField().  Note that the type that you choose must be a match to the type expected for
-elements in the array.
-
--INPUT-
-obj Object:   Pointer to the target object.
-fid Field:    The universal ID of the field you wish to write to, OR'd with a type indicator.
-ptr Array:    Pointer to the array values.
-int Elements: The number of elements listed in the `Array`.
-
--ERRORS-
-Okay
-NullArgs
-FieldTypeMismatch: The specified `Field` is not an array.
-UnsupportedField: The specified `Field` is not support by the `Object` class.
-NoFieldAccess:    The field is read-only.
-
-*********************************************************************************************************************/
-
-ERR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, int Elements)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Object) return log.warning(ERR::NullArgs);
-   if (Elements <= 0) log.warning("Element count not specified.");
-
-   int type = (FieldID>>32)|FD_ARRAY;
-   FieldID = FieldID & 0xffffffff;
-
-   if (auto field = lookup_id(Object, FieldID, &Object)) {
-      if (!(field->Flags & FD_ARRAY)) return log.warning(ERR::FieldTypeMismatch);
-
-      if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s of class %s is not writeable.", FieldName(field->FieldID), Object->className());
-         else log.warning("Field \"%s\" of class %s is not writeable.", field->Name, Object->className());
-         return ERR::NoFieldAccess;
-      }
-
-      if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-         if (!field->Name) log.warning("Field %s in class %s is init-only.", FieldName(field->FieldID), Object->className());
-         else log.warning("Field \"%s\" in class %s is init-only.", field->Name, Object->className());
-         return ERR::NoFieldAccess;
-      }
-
-      ERR error = field->WriteValue(Object, field, type, Array, Elements);
-      return error;
-   }
-   else {
-      log.warning("Could not find field %s in class %s.", FieldName(FieldID), Object->className());
-      return ERR::UnsupportedField;
-   }
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-SetField: Used to set field values of objects.
-
-The SetField() function is used to write field values to objects.
-
-The following code segment illustrates how to write values to an object:
-
-<pre>
-SetField(Object, FID_X|TINT, 100);
-SetField(Object, FID_Statement|TSTR, "string");
-</pre>
-
-Fields are referenced as hashed UID's calculated from the C++ `strihash()` function.  The majority of field ID's are
-predefined in the `parasol/system/fields.h` include file.
-
-The type of the `Value` parameter must be OR'd into the `Field` parameter.  If the provided type does not match that of
-the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be
-converted to a numeric value automatically.  String and pointer types are interchangeable.
-
-Available field types are as follows:
-
-<types>
-<type name="TINT">A 32-bit integer value.</>
-<type name="TDOUBLE">A 64-bit floating point value.</>
-<type name="TSCALE">A 64-bit floating point value that represents a scaled multiplier or percentage (1.0 is equivalent to 100%).</>
-<type name="TINT64">A 64-bit integer value.</>
-<type name="TPTR">A standard address space pointer.</>
-<type name="TSTR">A pointer that refers to a string.</>
-<type name="TFUNCTION">A pointer to a `FUNCTION` structure.</>
-<type name="TUNIT">A pointer to a `Unit` structure.</>
-</>
-
-There is no requirement for the client to have a working knowledge of the target object's field configuration in
-order to write information to it.
-
-To set a field with a fixed-size array, use the ~SetArray() function.
-
--INPUT-
-obj Object: Pointer to the target object.
-fid Field:  The universal ID of the field to update, OR'd with a type indicator.
-vtags Value:  The value that will be written to the field.
-
--ERRORS-
-Okay:
-Args:
-UnsupportedField: The specified field is not support by the object's class.
-NoFieldAccess:    The field is read-only.
-
-*********************************************************************************************************************/
-
-ERR SetField(OBJECTPTR Object, FIELD FieldID, ...)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Object) return log.warning(ERR::NullArgs);
-
-   uint32_t type = FieldID>>32;
-   FieldID = FieldID & 0xffffffff;
-
-   if (auto field = lookup_id(Object, FieldID, &Object)) {
-      // Validation
-
-      if ((!(field->Flags & (FD_INIT|FD_WRITE))) and (tlContext->object() != Object)) {
-         if (field->Name) log.warning("%s.%s is immutable.", Object->className(), field->Name);
-         else log.warning("%s.%s is immutable.", Object->className(), FieldName(field->FieldID));
-         return ERR::NoFieldAccess;
-      }
-      else if ((field->Flags & FD_INIT) and (Object->initialised()) and (tlContext->object() != Object)) {
-         if (field->Name) log.warning("%s.%s is init-only.", Object->className(), field->Name);
-         else log.warning("%s.%s is init-only.", Object->className(), FieldName(field->FieldID));
-         return ERR::NoFieldAccess;
-      }
-
-      ERR error;
-      va_list list;
-      va_start(list, FieldID);
-
-         if (type & (FD_POINTER|FD_STRING|FD_FUNCTION|FD_UNIT)) {
-            error = field->WriteValue(Object, field, type, va_arg(list, APTR), 0);
-         }
-         else if (type & (FD_DOUBLE|FD_FLOAT)) {
-            double value = va_arg(list, double);
-            error = field->WriteValue(Object, field, type, &value, 1);
-         }
-         else if (type & FD_INT64) {
-            int64_t value = va_arg(list, int64_t);
-            error = field->WriteValue(Object, field, type, &value, 1);
-         }
-         else {
-            int value = va_arg(list, int);
-            error = field->WriteValue(Object, field, type, &value, 1);
-         }
-
-      va_end(list);
-      return error;
-   }
-   else {
-      log.warning("Could not find field %s in class %s.", FieldName(FieldID), Object->className());
-      return ERR::UnsupportedField;
-   }
-}
 
 //********************************************************************************************************************
 // Converts a CSV string into an array (or use "#0x123..." for a hexadecimal byte list)
@@ -644,29 +474,29 @@ static ERR setval_function(OBJECTPTR Object, Field *Field, int Flags, CPTR Data,
 
 static ERR setval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   FieldContext ctx(Object, Field);
-
    int int32;
    if (Flags & FD_INT64)       int32 = (int)(*((int64_t *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = F2I(*((double *)Data));
    else if (Flags & FD_STRING) int32 = strtol((STRING)Data, NULL, 0);
-   else if (Flags & FD_INT)   int32 = *((int *)Data);
+   else if (Flags & FD_INT)    int32 = *((int *)Data);
+   else if (Flags & FD_UNIT)   int32 = F2I(((Unit *)Data)->Value);
    else return ERR::SetValueNotNumeric;
 
+   FieldContext ctx(Object, Field);
    return ((ERR (*)(APTR, int))(Field->SetValue))(Object, int32);
 }
 
 static ERR setval_double(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   FieldContext ctx(Object, Field);
-
    double float64;
-   if (Flags & FD_INT)        float64 = *((int *)Data);
+   if (Flags & FD_INT)         float64 = *((int *)Data);
    else if (Flags & FD_INT64)  float64 = (double)(*((int64_t *)Data));
    else if (Flags & FD_STRING) float64 = strtod((CSTRING)Data, NULL);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) float64 = *((double *)Data);
+   else if (Flags & FD_UNIT)   float64 = ((Unit *)Data)->Value;
    else return ERR::SetValueNotNumeric;
 
+   FieldContext ctx(Object, Field);
    return ((ERR (*)(APTR, double))(Field->SetValue))(Object, float64);
 }
 
@@ -692,14 +522,15 @@ static ERR setval_pointer(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
 static ERR setval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
    int64_t int64;
-   FieldContext ctx(Object, Field);
 
    if (Flags & FD_INT)        int64 = *((int *)Data);
-   else if (Flags & (FD_DOUBLE|FD_FLOAT)) int64 = F2I(*((double *)Data));
+   else if (Flags & (FD_DOUBLE|FD_FLOAT)) int64 = std::llround(*((double *)Data));
    else if (Flags & FD_STRING) int64 = strtoll((CSTRING)Data, NULL, 0);
-   else if (Flags & FD_INT64)  int64 = *((int64_t *)Data);
+   else if (Flags & FD_INT64)  int64 = *((int64_t*)Data);
+   else if (Flags & FD_UNIT)   int64 = std::llround(((Unit*)Data)->Value);
    else return ERR::SetValueNotNumeric;
 
+   FieldContext ctx(Object, Field);
    return ((ERR (*)(APTR, int64_t))(Field->SetValue))(Object, int64);
 }
 

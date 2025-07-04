@@ -81,7 +81,7 @@ ERR ApplyPath(APTR Vector, objVectorPath *VectorPath)
    if ((!Vector) or (!VectorPath)) return ERR::NullArgs;
    if (VectorPath->classID() != CLASSID::VECTORPATH) return ERR::Args;
 
-   SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
+   VectorPath->set(FID_Sequence, CSTRING(nullptr)); // Clear any pre-existing path information.
 
    // TODO: Apply mPath to VectorPath
 

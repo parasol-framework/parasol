@@ -1062,7 +1062,7 @@ static ERR run_script(objScript *Self)
             log.trace("Result: %d/%d: %s", i, results, array[i]);
          }
          array[i] = nullptr;
-         SetArray(Self, FID_Results, array.data(), i);
+         Self->set(FID_Results, array.data(), i);
          lua_pop(prv->Lua, results);  // pop returned values
       }
 

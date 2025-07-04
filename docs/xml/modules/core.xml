@@ -1446,34 +1446,6 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
   </function>
 
   <function>
-    <name>SetArray</name>
-    <category>Fields</category>
-    <comment>Used to set array fields in objects.</comment>
-    <prototype>ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, INT Elements)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the target object.</param>
-      <param type="FIELD" name="Field">The universal ID of the field you wish to write to, OR'd with a type indicator.</param>
-      <param type="APTR" name="Array">Pointer to the array values.</param>
-      <param type="INT" name="Elements">The number of elements listed in the <code>Array</code>.</param>
-    </input>
-    <description>
-<p>The SetArray() function is used as an alternative to <function>SetField</function> for the purpose of writing arrays to objects.</p>
-<p>The following code segment illustrates how to write an array to an object field:</p>
-<pre>int array[100];
-SetArray(Object, FID_Table|TINT, array, 100);
-</pre>
-<p>An indicator of the type of the elements in the <code>Array</code> must be OR'd into the <code>Field</code> parameter.  Available field types are listed in <function>SetField</function>.  Note that the type that you choose must be a match to the type expected for elements in the array.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NoFieldAccess">The field is read-only.</error>
-      <error code="FieldTypeMismatch">The specified <code>Field</code> is not an array.</error>
-      <error code="UnsupportedField">The specified <code>Field</code> is not support by the <code>Object</code> class.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>SetContext</name>
     <category>Objects</category>
     <comment>Declares the owner of future allocated resources.</comment>
@@ -1524,46 +1496,6 @@ FreeResource(memory);  // Reference is no longer valid
 <p>By default, user, group and permission information for new files is inherited either from the system defaults or from the file source in copy operations.  Use this function to override this behaviour with new default values.  All threads of the process will be affected.</p>
 <p>To revert behaviour to the default settings, set the <code>User</code> and/or <code>Group</code> values to <code>-1</code> and the <code>Permissions</code> value to zero.</p>
     </description>
-  </function>
-
-  <function>
-    <name>SetField</name>
-    <category>Fields</category>
-    <comment>Used to set field values of objects.</comment>
-    <prototype>ERR SetField(OBJECTPTR Object, FIELD Field, ...)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the target object.</param>
-      <param type="FIELD" name="Field">The universal ID of the field to update, OR'd with a type indicator.</param>
-      <param type="..." name="Value">The value that will be written to the field.</param>
-    </input>
-    <description>
-<p>The SetField() function is used to write field values to objects.</p>
-<p>The following code segment illustrates how to write values to an object:</p>
-<pre>SetField(Object, FID_X|TINT, 100);
-SetField(Object, FID_Statement|TSTR, "string");
-</pre>
-<p>Fields are referenced as hashed UID's calculated from the C++ <code>strihash()</code> function.  The majority of field ID's are predefined in the <code>parasol/system/fields.h</code> include file.</p>
-<p>The type of the <code>Value</code> parameter must be OR'd into the <code>Field</code> parameter.  If the provided type does not match that of the field, a type conversion will occur.  All numeric types are compatible with each other and strings can also be converted to a numeric value automatically.  String and pointer types are interchangeable.</p>
-<p>Available field types are as follows:</p>
-<types>
-<type name="TINT">A 32-bit integer value.</type>
-<type name="TDOUBLE">A 64-bit floating point value.</type>
-<type name="TSCALE">A 64-bit floating point value that represents a scaled multiplier or percentage (1.0 is equivalent to 100%).</type>
-<type name="TINT64">A 64-bit integer value.</type>
-<type name="TPTR">A standard address space pointer.</type>
-<type name="TSTR">A pointer that refers to a string.</type>
-<type name="TFUNCTION">A pointer to a <code>FUNCTION</code> structure.</type>
-<type name="TUNIT">A pointer to a <code>Unit</code> structure.</type>
-</types>
-<p>There is no requirement for the client to have a working knowledge of the target object's field configuration in order to write information to it.</p>
-<p>To set a field with a fixed-size array, use the <function>SetArray</function> function.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoFieldAccess">The field is read-only.</error>
-      <error code="UnsupportedField">The specified field is not support by the object's class.</error>
-    </result>
   </function>
 
   <function>
