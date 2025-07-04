@@ -2123,7 +2123,6 @@ struct CoreBase {
    CSTRING (*_GetErrorMsg)(ERR Error);
    struct Message * (*_GetActionMsg)(void);
    ERR (*_FuncError)(CSTRING Header, ERR Error);
-   ERR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, int Elements);
    ERR (*_LockObject)(OBJECTPTR Object, int MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
    ERR (*_AsyncAction)(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback);
@@ -2218,7 +2217,6 @@ inline struct Field * FindField(OBJECTPTR Object, uint32_t FieldID, OBJECTPTR *T
 inline CSTRING GetErrorMsg(ERR Error) { return CoreBase->_GetErrorMsg(Error); }
 inline struct Message * GetActionMsg(void) { return CoreBase->_GetActionMsg(); }
 inline ERR FuncError(CSTRING Header, ERR Error) { return CoreBase->_FuncError(Header,Error); }
-inline ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, int Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
 inline ERR LockObject(OBJECTPTR Object, int MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
 inline ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback) { return CoreBase->_AsyncAction(Action,Object,Args,Callback); }
@@ -2307,7 +2305,6 @@ extern "C" struct Field * FindField(OBJECTPTR Object, uint32_t FieldID, OBJECTPT
 extern "C" CSTRING GetErrorMsg(ERR Error);
 extern "C" struct Message * GetActionMsg(void);
 extern "C" ERR FuncError(CSTRING Header, ERR Error);
-extern "C" ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, int Elements);
 extern "C" ERR LockObject(OBJECTPTR Object, int MilliSeconds);
 extern "C" void ReleaseObject(OBJECTPTR Object);
 extern "C" ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION *Callback);
@@ -2389,21 +2386,6 @@ inline ERR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo) {
 
 inline ERR QueueAction(AC Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
-}
-
-template <class T> inline ERR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> &Array)
-{
-   return SetArray(Object, FieldID, Array.data(), Array.size());
-}
-
-template <class T> inline ERR SetArray(OBJECTPTR Object, FIELD FieldID, std::vector<T> &Array)
-{
-   return SetArray(Object, FieldID, Array.data(), Array.size());
-}
-
-template <class T, std::size_t SIZE> inline ERR SetArray(OBJECTPTR Object, FIELD FieldID, std::array<T, SIZE> Array)
-{
-   return SetArray(Object, FieldID, Array.data(), SIZE);
 }
 #endif
 
@@ -2627,6 +2609,7 @@ template <> inline int FIELD_TYPECHECK<OBJECTPTR>() { return FD_PTR; }
 template <> inline int FIELD_TYPECHECK<APTR>()      { return FD_PTR; }
 template <> inline int FIELD_TYPECHECK<CSTRING>()   { return FD_STRING; }
 template <> inline int FIELD_TYPECHECK<STRING>()    { return FD_STRING; }
+template <> inline int FIELD_TYPECHECK<std::string>() { return FD_STRING|FD_CPP; }
 
 //********************************************************************************************************************
 
@@ -2703,13 +2686,68 @@ struct Object { // Must be 64-bit aligned
       return obj ? true : false;
    }
 
-   template <class T, std::size_t SIZE> ERR set(FIELD FieldID, const std::array<T, SIZE> &Value) {
-      return SetArray(this, FieldID|FIELD_TAG<T>(), const_cast<T *>(Value.data()), SIZE);
+   // set() support for array fields
+
+   template <class T> ERR set(FIELD FieldID, const T *Data, size_t Elements, int Type = FIELD_TYPECHECK<T>()) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_ARRAY|Type, Data, Elements);
+      }
+      else return ERR::UnsupportedField;
    }
 
-   template <class T> ERR set(FIELD FieldID, const std::vector<T> &Value) {
-      return SetArray(this, FieldID|FIELD_TAG<T>(), const_cast<T *>(Value.data()), std::ssize(Value));
+   template <class T, std::size_t SIZE> ERR set(FIELD FieldID, const std::array<T, SIZE> &Value, int Type = FIELD_TYPECHECK<T>()) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+
+         return field->WriteValue(target, field, FD_ARRAY|Type, Value.data(), SIZE);
+      }
+      else return ERR::UnsupportedField;
    }
+
+   template <class T> ERR set(FIELD FieldID, const std::vector<T> &Value, int Type = FIELD_TYPECHECK<T>()) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+
+         return field->WriteValue(target, field, FD_ARRAY|Type, const_cast<T *>(Value.data()), std::ssize(Value));
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   template <class T> ERR set(FIELD FieldID, const pf::vector<T> &Value, int Type = FIELD_TYPECHECK<T>()) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+
+         if (field->Flags & FD_CPP) return field->WriteValue(target, field, FD_ARRAY|Type, &Value, std::ssize(Value));
+         else return field->WriteValue(target, field, FD_ARRAY|Type, const_cast<T *>(Value.data()), std::ssize(Value));
+      }
+      else return ERR::UnsupportedField;
+   }
+   
+   inline ERR set(FIELD FieldID, const FRGB &Value) {
+      Object *target;
+      if (auto field = FindField(this, FieldID, &target)) {
+         if (!(field->Flags & FD_ARRAY)) return ERR::FieldTypeMismatch;
+         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
+         return field->WriteValue(target, field, FD_ARRAY|FD_FLOAT, &Value, 4);
+      }
+      else return ERR::UnsupportedField;
+   }
+
+   // set() support for numeric types
 
    template <class T> ERR set(FIELD FieldID, const T Value) requires std::integral<T> || std::floating_point<T> {
       Object *target;
@@ -2717,16 +2755,6 @@ struct Object { // Must be 64-bit aligned
          if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
          if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
          return field->WriteValue(target, field, FIELD_TYPECHECK<T>(), &Value, 1);
-      }
-      else return ERR::UnsupportedField;
-   }
-
-   inline ERR set(FIELD FieldID, const FRGB &Value) {
-      Object *target;
-      if (auto field = FindField(this, FieldID, &target)) {
-         if ((!field->writeable()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         if ((field->Flags & FD_INIT) and (target->initialised()) and (CurrentContext() != target)) return ERR::NoFieldAccess;
-         return field->WriteValue(target, field, FD_FLOAT, &Value, 1);
       }
       else return ERR::UnsupportedField;
    }

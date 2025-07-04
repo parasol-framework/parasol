@@ -1446,34 +1446,6 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
   </function>
 
   <function>
-    <name>SetArray</name>
-    <category>Fields</category>
-    <comment>Used to set array fields in objects.</comment>
-    <prototype>ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, INT Elements)</prototype>
-    <input>
-      <param type="OBJECTPTR" name="Object">Pointer to the target object.</param>
-      <param type="FIELD" name="Field">The universal ID of the field you wish to write to, OR'd with a type indicator.</param>
-      <param type="APTR" name="Array">Pointer to the array values.</param>
-      <param type="INT" name="Elements">The number of elements listed in the <code>Array</code>.</param>
-    </input>
-    <description>
-<p>The SetArray() function is used as an alternative to ~SetField() for the purpose of writing arrays to objects.</p>
-<p>The following code segment illustrates how to write an array to an object field:</p>
-<pre>int array[100];
-SetArray(Object, FID_Table|TINT, array, 100);
-</pre>
-<p>An indicator of the type of the elements in the <code>Array</code> must be OR'd into the <code>Field</code> parameter.  Available field types are listed in ~SetField().  Note that the type that you choose must be a match to the type expected for elements in the array.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NoFieldAccess">The field is read-only.</error>
-      <error code="FieldTypeMismatch">The specified <code>Field</code> is not an array.</error>
-      <error code="UnsupportedField">The specified <code>Field</code> is not support by the <code>Object</code> class.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>SetContext</name>
     <category>Objects</category>
     <comment>Declares the owner of future allocated resources.</comment>

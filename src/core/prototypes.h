@@ -75,7 +75,6 @@ extern "C" struct Field * FindField(OBJECTPTR Object, uint32_t FieldID, OBJECTPT
 extern "C" CSTRING GetErrorMsg(ERR Error);
 extern "C" struct Message * GetActionMsg();
 extern "C" ERR FuncError(CSTRING Header, ERR Error);
-extern "C" ERR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, int Elements);
 extern "C" ERR LockObject(OBJECTPTR Object, int MilliSeconds);
 extern "C" void ReleaseObject(OBJECTPTR Object);
 extern "C" ERR AsyncAction(AC Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback);

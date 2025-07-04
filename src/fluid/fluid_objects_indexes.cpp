@@ -38,14 +38,14 @@ static int object_newindex(lua_State *Lua)
 static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values, LONG total)
 {
    if (Field->Flags & FD_INT) {
-      pf::vector<LONG> values((size_t)total);
+      pf::vector<int> values((size_t)total);
       for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
-         LONG index = lua_tointeger(Lua, -2) - 1;
+         int index = lua_tointeger(Lua, -2) - 1;
          if ((index >= 0) and (index < total)) {
             values[index] = lua_tointeger(Lua, -1);
          }
       }
-      return SetArray(Object, Field->FieldID|TINT, values);
+      return Object->set(Field->FieldID, values);
    }
    else if (Field->Flags & FD_STRING) {
       pf::vector<CSTRING> values((size_t)total);
@@ -55,7 +55,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values
             values[index] = lua_tostring(Lua, -1);
          }
       }
-      return SetArray(Object, Field->FieldID|TSTR, values);
+      return Object->set(Field->FieldID, values);
    }
    else if (Field->Flags & FD_STRUCT) {
       // Array structs can be set if the Lua table consists of Fluid.struct types.
@@ -86,7 +86,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values
             }
          }
 
-         return SetArray(Object, Field->FieldID, structbuf.get(), total);
+         return Object->set(Field->FieldID, structbuf.get(), total);
       }
       else return ERR::SetValueNotArray;
    }
@@ -113,7 +113,7 @@ static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG
       else return ERR::BufferOverflow;
    }
    else if (auto farray = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array")) {
-      return SetArray(Object, ((int64_t)Field->FieldID)|((int64_t)farray->Type<<32), farray->ptrPointer, farray->Total);
+      return Object->set(Field->FieldID, farray->ptrPointer, farray->Total, farray->Type);
    }
    else return ERR::SetValueNotArray;
 }
@@ -432,7 +432,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
             else return ERR::BufferOverflow;
          }
          else if ((farray = (struct array *)get_meta(Lua, ValueIndex, "Fluid.array"))) {
-            return SetArray(target, ((int64_t)field->FieldID)|((int64_t)farray->Type<<32), farray->ptrPointer, farray->Total);
+            return target->set(field->FieldID, farray->ptrPointer, farray->Total, farray->Type);
          }
          else return ERR::SetValueNotArray;
       }
