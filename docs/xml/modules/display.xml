@@ -1199,10 +1199,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="Width" type="INT16">Pixel width of the bitmap.</field>
       <field name="Height" type="INT16">Pixel height of the bitmap.</field>
       <field name="LineWidth" type="INT">The distance between bitmap lines, measured in bytes.</field>
-      <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
-      <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if <code>CSRF::TRANSLUCENT</code> is used.</field>
-      <field name="Version" type="UBYTE">Version of this structure.</field>
+      <field name="BitsPerPixel" type="UINT8">The number of bits per pixel (8, 15, 16, 24, 32).</field>
+      <field name="BytesPerPixel" type="UINT8">The number of bytes per pixel (1, 2, 3, 4).</field>
+      <field name="Opacity" type="UINT8">Opacity level of the source if <code>CSRF::TRANSLUCENT</code> is used.</field>
+      <field name="Version" type="UINT8">Version of this structure.</field>
       <field name="Colour" type="INT">Colour index to use if <code>CSRF::TRANSPARENT</code> is used.</field>
       <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if <code>CSRF::CLIP</code> is used.</field>
       <field name="XOffset" type="INT16">Offset all X coordinate references by the given value.</field>
@@ -1211,19 +1211,19 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </struct>
 
     <struct name="ColourFormat" typeName="COLOURFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value for red (15/16 bit formats only)</field>
-      <field name="GreenShift" type="UBYTE">Right shift value for green</field>
-      <field name="BlueShift" type="UBYTE">Right shift value for blue</field>
-      <field name="AlphaShift" type="UBYTE">Right shift value for alpha</field>
-      <field name="RedMask" type="UBYTE">Unshifted mask value for red (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE">Unshifted mask value for green</field>
-      <field name="BlueMask" type="UBYTE">Unshifted mask value for blue</field>
-      <field name="AlphaMask" type="UBYTE">Unshifted mask value for alpha</field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value for red</field>
-      <field name="GreenPos" type="UBYTE">Left shift/positional value for green</field>
-      <field name="BluePos" type="UBYTE">Left shift/positional value for blue</field>
-      <field name="AlphaPos" type="UBYTE">Left shift/positional value for alpha</field>
-      <field name="BitsPerPixel" type="UBYTE">Number of bits per pixel for this format.</field>
+      <field name="RedShift" type="UINT8">Right shift value for red (15/16 bit formats only)</field>
+      <field name="GreenShift" type="UINT8">Right shift value for green</field>
+      <field name="BlueShift" type="UINT8">Right shift value for blue</field>
+      <field name="AlphaShift" type="UINT8">Right shift value for alpha</field>
+      <field name="RedMask" type="UINT8">Unshifted mask value for red (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UINT8">Unshifted mask value for green</field>
+      <field name="BlueMask" type="UINT8">Unshifted mask value for blue</field>
+      <field name="AlphaMask" type="UINT8">Unshifted mask value for alpha</field>
+      <field name="RedPos" type="UINT8">Left shift/positional value for red</field>
+      <field name="GreenPos" type="UINT8">Left shift/positional value for green</field>
+      <field name="BluePos" type="UINT8">Left shift/positional value for blue</field>
+      <field name="AlphaPos" type="UINT8">Left shift/positional value for alpha</field>
+      <field name="BitsPerPixel" type="UINT8">Number of bits per pixel for this format.</field>
     </struct>
 
     <struct name="CursorInfo">
@@ -1268,18 +1268,18 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </struct>
 
     <struct name="PixelFormat" comment="Carries instructions to pack or unpack RGBA colours." typeName="PIXELFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value</field>
-      <field name="GreenShift" type="UBYTE">Green shift value</field>
-      <field name="BlueShift" type="UBYTE">Blue shift value</field>
-      <field name="AlphaShift" type="UBYTE">Alpha shift value</field>
-      <field name="RedMask" type="UBYTE">The unshifted red mask value (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE">The unshifted green mask value (ranges from 0x00 to 0xff)</field>
-      <field name="BlueMask" type="UBYTE">The unshifted blue mask value (ranges from 0x00 to 0xff)</field>
-      <field name="AlphaMask" type="UBYTE">The unshifted alpha mask value (ranges from 0x00 to 0xff)</field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value for red</field>
-      <field name="GreenPos" type="UBYTE">Left shift/positional value for green</field>
-      <field name="BluePos" type="UBYTE">Left shift/positional value for blue</field>
-      <field name="AlphaPos" type="UBYTE">Left shift/positional value for alpha</field>
+      <field name="RedShift" type="UINT8">Right shift value</field>
+      <field name="GreenShift" type="UINT8">Green shift value</field>
+      <field name="BlueShift" type="UINT8">Blue shift value</field>
+      <field name="AlphaShift" type="UINT8">Alpha shift value</field>
+      <field name="RedMask" type="UINT8">The unshifted red mask value (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UINT8">The unshifted green mask value (ranges from 0x00 to 0xff)</field>
+      <field name="BlueMask" type="UINT8">The unshifted blue mask value (ranges from 0x00 to 0xff)</field>
+      <field name="AlphaMask" type="UINT8">The unshifted alpha mask value (ranges from 0x00 to 0xff)</field>
+      <field name="RedPos" type="UINT8">Left shift/positional value for red</field>
+      <field name="GreenPos" type="UINT8">Left shift/positional value for green</field>
+      <field name="BluePos" type="UINT8">Left shift/positional value for blue</field>
+      <field name="AlphaPos" type="UINT8">Left shift/positional value for alpha</field>
     </struct>
 
     <struct name="SurfaceCoords">
@@ -1304,8 +1304,8 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="AbsX" type="INT">Absolute X coordinate</field>
       <field name="AbsY" type="INT">Absolute Y coordinate</field>
       <field name="Level" type="INT16">Branch level within the tree</field>
-      <field name="BitsPerPixel" type="BYTE">Bits per pixel of the bitmap</field>
-      <field name="BytesPerPixel" type="BYTE">Bytes per pixel of the bitmap</field>
+      <field name="BitsPerPixel" type="INT8">Bits per pixel of the bitmap</field>
+      <field name="BytesPerPixel" type="INT8">Bytes per pixel of the bitmap</field>
       <field name="LineWidth" type="INT">Line width of the bitmap, in bytes</field>
     </struct>
 

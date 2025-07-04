@@ -237,7 +237,7 @@ struct thread_data {
    OBJECTPTR Object;
    ACTIONID  ActionID;
    FUNCTION  Callback;
-   BYTE      Parameters;
+   int8_t      Parameters;
 };
 
 static ERR thread_action(extThread *Thread)
@@ -559,7 +559,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
       // Prepare the parameter buffer for passing to the thread routine.
 
       int argssize = 0;
-      BYTE call_data[sizeof(thread_data) + SIZE_ACTIONBUFFER];
+      int8_t call_data[sizeof(thread_data) + SIZE_ACTIONBUFFER];
       bool free_args = false;
       const FunctionField *args = nullptr;
 
@@ -567,7 +567,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
          if (int(ActionID) > 0) {
             args = ActionTable[int(ActionID)].Args;
             if ((argssize = ActionTable[int(ActionID)].Size) > 0) {
-               if ((error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[int(ActionID)].Name)) IS ERR::Okay) {
+               if ((error = copy_args(args, argssize, (int8_t *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[int(ActionID)].Name)) IS ERR::Okay) {
                   free_args = true;
                }
 
@@ -578,7 +578,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
          else if (auto cl = Object->ExtClass) {
             args = cl->Methods[-int(ActionID)].Args;
             if ((argssize = cl->Methods[-int(ActionID)].Size) > 0) {
-               if ((error = copy_args(args, argssize, (BYTE *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-int(ActionID)].Name)) IS ERR::Okay) {
+               if ((error = copy_args(args, argssize, (int8_t *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-int(ActionID)].Name)) IS ERR::Okay) {
                   free_args = true;
                }
             }
@@ -1487,7 +1487,7 @@ ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
 
    struct msgAction {
       ActionMessage Action;
-      BYTE Buffer[SIZE_ACTIONBUFFER];
+      int8_t Buffer[SIZE_ACTIONBUFFER];
    } msg;
 
    msg.Action = {
@@ -1504,7 +1504,7 @@ ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
          if (ActionTable[int(ActionID)].Size) {
             auto fields   = ActionTable[int(ActionID)].Args;
             auto argssize = ActionTable[int(ActionID)].Size;
-            if (auto error = copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[int(ActionID)].Name); error != ERR::Okay) {
+            if (auto error = copy_args(fields, argssize, (int8_t *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[int(ActionID)].Name); error != ERR::Okay) {
                return error;
             }
 
@@ -1514,7 +1514,7 @@ ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
       else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
          auto fields   = cl->Methods[-int(ActionID)].Args;
          auto argssize = cl->Methods[-int(ActionID)].Size;
-         if (auto error = copy_args(fields, argssize, (BYTE *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-int(ActionID)].Name); error != ERR::Okay) {
+         if (auto error = copy_args(fields, argssize, (int8_t *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-int(ActionID)].Name); error != ERR::Okay) {
             return error;
          }
          msg.Action.SendArgs = true;
@@ -1810,7 +1810,7 @@ ERR SetName(OBJECTPTR Object, CSTRING NewName)
       if (Object->Name[0]) remove_object_hash(Object);
 
       int i;
-      for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[UBYTE(NewName[i])];
+      for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[uint8_t(NewName[i])];
       Object->Name[i] = 0;
 
       if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);

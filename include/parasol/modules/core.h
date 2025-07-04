@@ -1070,7 +1070,7 @@ enum class IDTYPE : int {
 
 // Indicates the state of a process.
 
-enum class TSTATE : BYTE {
+enum class TSTATE : int8_t {
    NIL = 0,
    RUNNING = 0,
    PAUSED = 1,
@@ -1337,13 +1337,13 @@ struct dcDeviceInput {
 };
 
 struct DateTime {
-   int16_t Year;    // Year
-   BYTE    Month;   // Month 1 to 12
-   BYTE    Day;     // Day 1 to 31
-   BYTE    Hour;    // Hour 0 to 23
-   BYTE    Minute;  // Minute 0 to 59
-   BYTE    Second;  // Second 0 to 59
-   BYTE    TimeZone; // TimeZone -13 to +13
+   int16_t Year;       // Year
+   int8_t  Month;      // Month 1 to 12
+   int8_t  Day;        // Day 1 to 31
+   int8_t  Hour;       // Hour 0 to 23
+   int8_t  Minute;     // Minute 0 to 59
+   int8_t  Second;     // Second 0 to 59
+   int8_t  TimeZone;   // TimeZone -13 to +13
 };
 
 struct HSV {
@@ -3704,7 +3704,7 @@ class objFile : public Object {
    FL       Flags;      // File flags and options.
    int      Static;     // Set to true if a file object should be static.
    OBJECTID TargetID;   // Specifies a surface ID to target for user feedback and dialog boxes.
-   BYTE *   Buffer;     // Points to the internal data buffer if the file content is held in memory.
+   int8_t * Buffer;     // Points to the internal data buffer if the file content is held in memory.
    public:
    inline CSTRING readLine() {
       struct fl::ReadLine args;

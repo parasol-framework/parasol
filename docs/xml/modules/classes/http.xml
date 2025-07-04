@@ -419,7 +419,7 @@ http.acActivate()
       <name>RecvBuffer</name>
       <comment>Refers to a data buffer that is used to store all incoming content.</comment>
       <access read="G">Get</access>
-      <type>BYTE []</type>
+      <type>INT8 []</type>
       <description>
 <p>If the <code>RECV_BUFFER</code> flag is set, all content received from the HTTP server will be stored in a managed buffer that is referred to by this field.  This field can be read at any time.  It will be set to <code>NULL</code> if no data has been received. The buffer address and all content is reset whenever the HTTP object is activated.</p>
 <p>The buffer is null-terminated if you wish to use it as a string.</p>

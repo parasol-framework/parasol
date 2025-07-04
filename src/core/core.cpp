@@ -1048,7 +1048,7 @@ static void BreakHandler(void)
 //********************************************************************************************************************
 
 #ifdef _WIN32
-static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTRING Icon, BYTE Hidden)
+static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTRING Icon, int8_t Hidden)
 {
    SetVolume(Volume, Path, Icon, Label, NULL, VOLUME::REPLACE | (Hidden ? VOLUME::HIDDEN : VOLUME::NIL));
 }

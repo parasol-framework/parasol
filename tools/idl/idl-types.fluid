@@ -7,7 +7,7 @@
 glTypes = {
    arraysize  = { fd='FD_INT|FD_ARRAYSIZE',   c_type='int', doc_type='INT' },
    bufsize    = { fd='FD_INT|FD_BUFSIZE',     c_type='int', doc_type='INT' },
-   char       = { fd='FD_BYTE',               c_type='BYTE', doc_type='BYTE' },
+   char       = { fd='FD_BYTE',               c_type='int8_t', doc_type='INT8' },
    cid        = { fd='FD_INT|FD_UNSIGNED',    c_type='CLASSID' },
    cptr       = { fd='FD_PTR',                c_type='const void *' },
    cstr       = { fd='FD_STR',                c_type='CSTRING' },
@@ -36,7 +36,7 @@ glTypes = {
    struct     = { fd='FD_STRUCT',             c_type='APTR' },
    structsize = { fd='FD_INT|FD_BUFSIZE',     c_type='int', doc_type='INT' },
    tags       = { fd='FD_TAGS',               c_type='...' },
-   uchar      = { fd='FD_BYTE',               c_type='uint8_t', doc_type='UBYTE' },
+   uchar      = { fd='FD_BYTE',               c_type='uint8_t', doc_type='UINT8' },
    uint       = { fd='FD_INT|FD_UNSIGNED',    c_type='uint32_t', doc_type='UINT' },
    ushort     = { fd='FD_WORD',               c_type='uint16_t', doc_type='UINT16' },
    va_list    = { fd='FD_PTR',                c_type='va_list' },
@@ -61,7 +61,7 @@ function getFieldType(Def, Type, CustomName, Option)
 
       if bit.band(Type, FD_CPP) != 0 then
          if bit.band(Type, FD_BYTE) != 0 then
-            Def.type = 'pf::vector<BYTE>'
+            Def.type = 'pf::vector<int8_t>'
          elseif bit.band(Type, FD_WORD) != 0 then
             Def.type = 'pf::vector<int16_t>'
          elseif bit.band(Type, FD_INT) != 0 then
@@ -81,7 +81,8 @@ function getFieldType(Def, Type, CustomName, Option)
          end
       else
          if bit.band(Type, FD_BYTE) != 0 then
-            Def.type = 'BYTE []'
+            Def.type = 'int8_t []'
+            Def.doc_type = 'INT8 []'
          elseif bit.band(Type, FD_WORD) != 0 then
             Def.type = 'int16_t []'
             Def.doc_type = 'INT16 []'

@@ -1005,9 +1005,9 @@ Z: Close Path
 
     <struct name="PathCommand" comment="Base structure for path commands.">
       <field name="Type" type="PE" lookup="PE">The command type</field>
-      <field name="LargeArc" type="UBYTE">Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when <code>TRUE</code>.</field>
-      <field name="Sweep" type="UBYTE">Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.</field>
-      <field name="Pad1" type="UBYTE">Private</field>
+      <field name="LargeArc" type="UINT8">Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when <code>TRUE</code>.</field>
+      <field name="Sweep" type="UINT8">Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.</field>
+      <field name="Pad1" type="UINT8">Private</field>
       <field name="X" type="DOUBLE">The targeted X coordinate (absolute or scaled) for the command</field>
       <field name="Y" type="DOUBLE">The targeted Y coordinate (absolute or scaled) for the command</field>
       <field name="AbsX" type="DOUBLE">Private</field>
@@ -1046,8 +1046,8 @@ Z: Close Path
     <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">
       <field name="X" type="DOUBLE">The X coordinate of this point.</field>
       <field name="Y" type="DOUBLE">The Y coordinate of this point.</field>
-      <field name="XScaled" type="UBYTE"><code>TRUE</code> if the <code>X</code> value is scaled to its viewport (between 0 and 1.0).</field>
-      <field name="YScaled" type="UBYTE"><code>TRUE</code> if the <code>Y</code> value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="XScaled" type="UINT8"><code>TRUE</code> if the <code>X</code> value is scaled to its viewport (between 0 and 1.0).</field>
+      <field name="YScaled" type="UINT8"><code>TRUE</code> if the <code>Y</code> value is scaled to its viewport (between 0 and 1.0).</field>
     </struct>
 
   </structs>

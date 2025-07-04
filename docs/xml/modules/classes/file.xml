@@ -373,7 +373,7 @@
       <name>Buffer</name>
       <comment>Points to the internal data buffer if the file content is held in memory.</comment>
       <access read="G">Get</access>
-      <type>BYTE *</type>
+      <type>INT8 *</type>
       <description>
 <p>If a file has been created with an internal buffer (by setting the <code>BUFFER</code> flag on creation), this field will point to the address of that buffer.  The size of the buffer will match the <fl>Size</fl> field.</p>
       </description>
@@ -639,12 +639,12 @@
   <structs>
     <struct name="DateTime" comment="Generic structure for date-time management.">
       <field name="Year" type="INT16">Year</field>
-      <field name="Month" type="BYTE">Month 1 to 12</field>
-      <field name="Day" type="BYTE">Day 1 to 31</field>
-      <field name="Hour" type="BYTE">Hour 0 to 23</field>
-      <field name="Minute" type="BYTE">Minute 0 to 59</field>
-      <field name="Second" type="BYTE">Second 0 to 59</field>
-      <field name="TimeZone" type="BYTE">TimeZone -13 to +13</field>
+      <field name="Month" type="INT8">Month 1 to 12</field>
+      <field name="Day" type="INT8">Day 1 to 31</field>
+      <field name="Hour" type="INT8">Hour 0 to 23</field>
+      <field name="Minute" type="INT8">Minute 0 to 59</field>
+      <field name="Second" type="INT8">Second 0 to 59</field>
+      <field name="TimeZone" type="INT8">TimeZone -13 to +13</field>
     </struct>
 
   </structs>

@@ -385,21 +385,21 @@ DEFINE_ENUM_FLAG_OPERATORS(CEF)
 #define VER_SURFACEINFO 2
 
 typedef struct SurfaceInfoV2 {
-   APTR     Data;        // Bitmap data memory ID
-   OBJECTID ParentID;    // Object that contains the surface area
-   OBJECTID BitmapID;    // Surface bitmap buffer
-   OBJECTID DisplayID;   // Refers to the display if this object is at root level
-   RNF      Flags;       // Surface flags
-   int      X;           // Horizontal coordinate
-   int      Y;           // Vertical coordinate
-   int      Width;       // Width of the surface area
-   int      Height;      // Height of the surface area
-   int      AbsX;        // Absolute X coordinate
-   int      AbsY;        // Absolute Y coordinate
-   int16_t  Level;       // Branch level within the tree
-   BYTE     BitsPerPixel; // Bits per pixel of the bitmap
-   BYTE     BytesPerPixel; // Bytes per pixel of the bitmap
-   int      LineWidth;   // Line width of the bitmap, in bytes
+   APTR     Data;           // Bitmap data memory ID
+   OBJECTID ParentID;       // Object that contains the surface area
+   OBJECTID BitmapID;       // Surface bitmap buffer
+   OBJECTID DisplayID;      // Refers to the display if this object is at root level
+   RNF      Flags;          // Surface flags
+   int      X;              // Horizontal coordinate
+   int      Y;              // Vertical coordinate
+   int      Width;          // Width of the surface area
+   int      Height;         // Height of the surface area
+   int      AbsX;           // Absolute X coordinate
+   int      AbsY;           // Absolute Y coordinate
+   int16_t  Level;          // Branch level within the tree
+   int8_t   BitsPerPixel;   // Bits per pixel of the bitmap
+   int8_t   BytesPerPixel;  // Bytes per pixel of the bitmap
+   int      LineWidth;      // Line width of the bitmap, in bytes
    inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
    inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
    inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }

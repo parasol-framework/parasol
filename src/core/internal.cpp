@@ -16,7 +16,7 @@ using namespace pf;
 //********************************************************************************************************************
 
 #ifdef __APPLE__
-struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
+struct sockaddr_un * get_socket_path(int ProcessID, socklen_t *Size)
 {
    // OSX doesn't support anonymous sockets, so we use /tmp instead.
    static THREADVAR struct sockaddr_un tlSocket;
@@ -25,7 +25,7 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
    return &tlSocket;
 }
 #elif __unix__
-struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
+struct sockaddr_un * get_socket_path(int ProcessID, socklen_t *Size)
 {
    static THREADVAR struct sockaddr_un tlSocket;
    static THREADVAR bool init = false;
@@ -40,8 +40,8 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
       init = true;
    }
 
-   ((LONG *)(tlSocket.sun_path+4))[0] = ProcessID;
-   *Size = sizeof(sa_family_t) + 4 + sizeof(LONG);
+   ((int *)(tlSocket.sun_path+4))[0] = ProcessID;
+   *Size = sizeof(sa_family_t) + 4 + sizeof(int);
    return &tlSocket;
 }
 #endif
@@ -90,7 +90,7 @@ CLASSID lookup_class_by_ext(CLASSID Filter, std::string_view Ext)
 
 //********************************************************************************************************************
 
-ERR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
+ERR process_janitor(OBJECTID SubscriberID, int Elapsed, int TotalElapsed)
 {
    if (glTasks.empty()) {
       glJanitorActive = false;
@@ -104,7 +104,7 @@ ERR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 
    // However, it can be 'blocked' from certain processes, e.g. those started from ZTerm.  Such processes are discovered in the second search routine.
 
-   LONG childprocess, status;
+   int childprocess, status;
    while ((childprocess = waitpid(-1, &status, WNOHANG)) > 0) {
       log.warning("Zombie process #%d discovered.", childprocess);
 
@@ -167,25 +167,25 @@ public|untracked and private memory flags as necessary.  Example:
 
 *********************************************************************************************************************/
 
-ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer, BYTE *Buffer, LONG BufferSize,
-                    LONG *NewSize, CSTRING ActionName)
+ERR copy_args(const struct FunctionField *Args, int ArgsSize, int8_t *ArgsBuffer, int8_t *Buffer, int BufferSize,
+                    int *NewSize, CSTRING ActionName)
 {
    pf::Log log("CopyArguments");
-   BYTE *src, *data;
-   LONG j, len;
+   int8_t *src, *data;
+   int j, len;
    ERR error;
    STRING str;
 
    if ((!Args) or (!ArgsBuffer) or (!Buffer)) return log.warning(ERR::NullArgs);
 
-   for (LONG i=0; (i < ArgsSize); i++) { // Copy the arguments to the buffer
+   for (int i=0; (i < ArgsSize); i++) { // Copy the arguments to the buffer
       if (i >= BufferSize) return log.warning(ERR::BufferOverflow);
       Buffer[i] = ArgsBuffer[i];
    }
 
-   LONG pos = 0;
-   LONG offset = ArgsSize;
-   for (LONG i=0; Args[i].Name; i++) {
+   int pos = 0;
+   int offset = ArgsSize;
+   for (int i=0; Args[i].Name; i++) {
       // If the current byte position in the argument structure exceeds the size of that structure, break immediately.
 
       if (pos >= ArgsSize) {
@@ -211,10 +211,10 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
       }
       else if (Args[i].Type & FD_PTR) {
          if (Args[i].Type & (FD_INT|FD_PTRSIZE)) { // Pointer to long.
-            if ((size_t)offset < (BufferSize - sizeof(LONG))) {
-               ((LONG *)Buffer)[offset] = ((LONG *)(ArgsBuffer + pos))[0];
+            if ((size_t)offset < (BufferSize - sizeof(int))) {
+               ((int *)Buffer)[offset] = ((int *)(ArgsBuffer + pos))[0];
                ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset;
-               offset += sizeof(LONG);
+               offset += sizeof(int);
             }
             else { error = ERR::BufferOverflow; goto looperror; }
          }
@@ -244,7 +244,7 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
                ((APTR *)(Buffer + pos))[0] = NULL;
             }
             else {
-               LONG memsize = ((LONG *)(ArgsBuffer + pos + sizeof(APTR)))[0];
+               int memsize = ((int *)(ArgsBuffer + pos + sizeof(APTR)))[0];
                if (memsize > 0) {
                   if (Args[i].Type & FD_RESULT) { // "Receive" pointer type: Prepare a buffer so that we can accept a result
                      APTR mem;
@@ -255,7 +255,7 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
                   }
                   else {
                      // "Send" pointer type: Prepare the argument structure for sending data to the other task
-                     if ((src = ((BYTE **)(ArgsBuffer + pos))[0])) { // Get the data source pointer
+                     if ((src = ((int8_t **)(ArgsBuffer + pos))[0])) { // Get the data source pointer
                         if (memsize > MSG_MAXARGSIZE) {
                            // For large data areas, we need to allocate them as public memory blocks
                            if (AllocMemory(memsize, MEM::NO_CLEAR, (void **)&data, NULL) IS ERR::Okay) {
@@ -266,7 +266,7 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
                         }
                         else {
                            ((APTR *)(Buffer + pos))[0] = ArgsBuffer + offset; // Record the address at which we are going to write the data
-                           for (LONG len=0; len < memsize; len++) {
+                           for (int len=0; len < memsize; len++) {
                               if (offset >= BufferSize) {
                                  error = ERR::BufferOverflow;
                                  goto looperror;
@@ -275,15 +275,15 @@ ERR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffer,
                            }
                         }
                      }
-                     else ((LONG *)(Buffer + pos))[0] = 0;
+                     else ((int *)(Buffer + pos))[0] = 0;
                   }
                }
-               else ((LONG *)(Buffer + pos))[0] = 0;
+               else ((int *)(Buffer + pos))[0] = 0;
             }
          }
          pos += sizeof(APTR);
       }
-      else if (Args[i].Type & (FD_INT|FD_PTRSIZE)) pos += sizeof(LONG);
+      else if (Args[i].Type & (FD_INT|FD_PTRSIZE)) pos += sizeof(int);
       else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) pos += sizeof(LARGE);
       else log.warning("Bad type definition for argument \"%s\".", Args[i].Name);
    }
@@ -303,21 +303,21 @@ looperror:
 
 void local_free_args(APTR Parameters, const struct FunctionField *Args)
 {
-   LONG pos = 0;
-   for (LONG i=0; Args[i].Name; i++) {
+   int pos = 0;
+   for (int i=0; Args[i].Name; i++) {
       if ((Args[i].Type & FD_PTR) and (Args[i+1].Type & FD_PTRSIZE)) {
-         LONG size = ((LONG *)((BYTE *)Parameters + pos + sizeof(APTR)))[0];
+         int size = ((int *)((int8_t *)Parameters + pos + sizeof(APTR)))[0];
          if ((Args[i].Type & FD_RESULT) or (size > MSG_MAXARGSIZE)) {
             APTR pointer;
-            if ((pointer = ((APTR *)((BYTE *)Parameters + pos))[0])) {
-               ((APTR *)((BYTE *)Parameters + pos))[0] = 0;
+            if ((pointer = ((APTR *)((int8_t *)Parameters + pos))[0])) {
+               ((APTR *)((int8_t *)Parameters + pos))[0] = 0;
                FreeResource(pointer);
             }
          }
          pos += sizeof(APTR);
       }
       else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) pos += sizeof(LARGE);
-      else pos += sizeof(LONG);
+      else pos += sizeof(int);
    }
 }
 
@@ -328,18 +328,18 @@ ERR resolve_args(APTR Parameters, const struct FunctionField *Args)
 {
    pf::Log log(__FUNCTION__);
 
-   auto Buffer = (BYTE *)Parameters;
-   LONG pos = 0;
-   for (LONG i=0; Args[i].Name; i++) {
+   auto Buffer = (int8_t *)Parameters;
+   int pos = 0;
+   for (int i=0; Args[i].Name; i++) {
       if (Args[i].Type & FD_STR) {
          // Replace the offset with a pointer
-         if (((LONG *)(Buffer + pos))[0]) {
-            ((STRING *)(Buffer + pos))[0] = Buffer + ((LONG *)(Buffer + pos))[0];
+         if (((int *)(Buffer + pos))[0]) {
+            ((STRING *)(Buffer + pos))[0] = (STRING)(Buffer + ((int *)(Buffer + pos))[0]);
          }
          pos += sizeof(STRING);
       }
       else if ((Args[i].Type & FD_PTR) and (Args[i+1].Type & FD_PTRSIZE)) {
-         LONG size = ((LONG *)(Buffer + pos + sizeof(APTR)))[0];
+         int size = ((int *)(Buffer + pos + sizeof(APTR)))[0];
          if ((Args[i].Type & FD_RESULT) or (size > MSG_MAXARGSIZE)) {
             // Gain exclusive access to the public memory block that was allocated for this argument, and store the pointer to it.
             // The memory block will need to be released by the routine that called our function.
@@ -349,15 +349,15 @@ ERR resolve_args(APTR Parameters, const struct FunctionField *Args)
                return ERR::AccessMemory;
             }
          }
-         else if (((LONG *)(Buffer + pos))[0] > 0) {
-            ((APTR *)(Buffer + pos))[0] = Buffer + ((LONG *)(Buffer + pos))[0];
+         else if (((int *)(Buffer + pos))[0] > 0) {
+            ((APTR *)(Buffer + pos))[0] = Buffer + ((int *)(Buffer + pos))[0];
          }
          else ((APTR *)(Buffer + pos))[0] = NULL;
 
          pos += sizeof(APTR);
       }
       else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) pos += sizeof(LARGE);
-      else pos += sizeof(LONG);
+      else pos += sizeof(int);
    }
    return ERR::Okay;
 }

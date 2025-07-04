@@ -1885,7 +1885,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 //********************************************************************************************************************
 // Generic routine for copying folders, intended to be used in conjunction with fs_copy()
 
-ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, FUNCTION *Callback, BYTE Move)
+ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, FUNCTION *Callback, int8_t Move)
 {
    pf::Log log("copy_file");
 
@@ -2151,7 +2151,7 @@ ERR fs_scandir(DirInfo *Dir)
 
 #elif _WIN32
 
-   BYTE dir, hidden, readonly, archive;
+   int8_t dir, hidden, readonly, archive;
    LONG i;
 
    while (winScan(&Dir->prvHandle, Dir->prvResolvedPath, Dir->Info->Name, &Dir->Info->Size, &Dir->Info->Created, &Dir->Info->Modified, &dir, &hidden, &readonly, &archive)) {
@@ -2382,7 +2382,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
    }
 
 #else
-   BYTE dir;
+   int8_t dir;
    LONG i;
 
    Info->Flags = RDF::NIL;

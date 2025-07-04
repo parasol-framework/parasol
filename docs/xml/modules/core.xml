@@ -2826,19 +2826,19 @@ FreeResource(memory);  // Reference is no longer valid
     </struct>
 
     <struct name="ColourFormat" typeName="COLOURFORMAT">
-      <field name="RedShift" type="UBYTE">Right shift value for red (15/16 bit formats only)</field>
-      <field name="GreenShift" type="UBYTE">Right shift value for green</field>
-      <field name="BlueShift" type="UBYTE">Right shift value for blue</field>
-      <field name="AlphaShift" type="UBYTE">Right shift value for alpha</field>
-      <field name="RedMask" type="UBYTE">Unshifted mask value for red (ranges from 0x00 to 0xff)</field>
-      <field name="GreenMask" type="UBYTE">Unshifted mask value for green</field>
-      <field name="BlueMask" type="UBYTE">Unshifted mask value for blue</field>
-      <field name="AlphaMask" type="UBYTE">Unshifted mask value for alpha</field>
-      <field name="RedPos" type="UBYTE">Left shift/positional value for red</field>
-      <field name="GreenPos" type="UBYTE">Left shift/positional value for green</field>
-      <field name="BluePos" type="UBYTE">Left shift/positional value for blue</field>
-      <field name="AlphaPos" type="UBYTE">Left shift/positional value for alpha</field>
-      <field name="BitsPerPixel" type="UBYTE">Number of bits per pixel for this format.</field>
+      <field name="RedShift" type="UINT8">Right shift value for red (15/16 bit formats only)</field>
+      <field name="GreenShift" type="UINT8">Right shift value for green</field>
+      <field name="BlueShift" type="UINT8">Right shift value for blue</field>
+      <field name="AlphaShift" type="UINT8">Right shift value for alpha</field>
+      <field name="RedMask" type="UINT8">Unshifted mask value for red (ranges from 0x00 to 0xff)</field>
+      <field name="GreenMask" type="UINT8">Unshifted mask value for green</field>
+      <field name="BlueMask" type="UINT8">Unshifted mask value for blue</field>
+      <field name="AlphaMask" type="UINT8">Unshifted mask value for alpha</field>
+      <field name="RedPos" type="UINT8">Left shift/positional value for red</field>
+      <field name="GreenPos" type="UINT8">Left shift/positional value for green</field>
+      <field name="BluePos" type="UINT8">Left shift/positional value for blue</field>
+      <field name="AlphaPos" type="UINT8">Left shift/positional value for alpha</field>
+      <field name="BitsPerPixel" type="UINT8">Number of bits per pixel for this format.</field>
     </struct>
 
     <struct name="CompressedItem">
@@ -2873,12 +2873,12 @@ FreeResource(memory);  // Reference is no longer valid
 
     <struct name="DateTime" comment="Generic structure for date-time management.">
       <field name="Year" type="INT16">Year</field>
-      <field name="Month" type="BYTE">Month 1 to 12</field>
-      <field name="Day" type="BYTE">Day 1 to 31</field>
-      <field name="Hour" type="BYTE">Hour 0 to 23</field>
-      <field name="Minute" type="BYTE">Minute 0 to 59</field>
-      <field name="Second" type="BYTE">Second 0 to 59</field>
-      <field name="TimeZone" type="BYTE">TimeZone -13 to +13</field>
+      <field name="Month" type="INT8">Month 1 to 12</field>
+      <field name="Day" type="INT8">Day 1 to 31</field>
+      <field name="Hour" type="INT8">Hour 0 to 23</field>
+      <field name="Minute" type="INT8">Minute 0 to 59</field>
+      <field name="Second" type="INT8">Second 0 to 59</field>
+      <field name="TimeZone" type="INT8">TimeZone -13 to +13</field>
     </struct>
 
     <struct name="DirInfo" comment="Used by OpenDir() only">
@@ -2930,7 +2930,7 @@ FreeResource(memory);  // Reference is no longer valid
       <field name="Path" type="STRING">Path to the file</field>
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
       <field name="FeedbackID" type="FBK" lookup="FBK">Set to one of the <code>FBK</code> values</field>
-      <field name="Reserved" type="BYTE" size="32">Reserved in case of future expansion</field>
+      <field name="Reserved" type="INT8" size="32">Reserved in case of future expansion</field>
     </struct>
 
     <struct name="FileInfo" comment="Metadata for describing a file.">
@@ -3015,10 +3015,10 @@ FreeResource(memory);  // Reference is no longer valid
     </struct>
 
     <struct name="RGB8" comment="8-bit RGB colour value." typeName="RGB8">
-      <field name="Red" type="UBYTE">Red component value</field>
-      <field name="Green" type="UBYTE">Green component value</field>
-      <field name="Blue" type="UBYTE">Blue component value</field>
-      <field name="Alpha" type="UBYTE">Alpha component value</field>
+      <field name="Red" type="UINT8">Red component value</field>
+      <field name="Green" type="UINT8">Green component value</field>
+      <field name="Blue" type="UINT8">Blue component value</field>
+      <field name="Alpha" type="UINT8">Alpha component value</field>
     </struct>
 
     <struct name="RGBPalette">
@@ -3059,7 +3059,7 @@ FreeResource(memory);  // Reference is no longer valid
 
     <struct name="dcRequest" comment="Data feed item request">
       <field name="Item" type="INT">Identifier for retrieval from the source</field>
-      <field name="Preference" type="BYTE" size="4">Data preferences for the returned item(s)</field>
+      <field name="Preference" type="INT8" size="4">Data preferences for the returned item(s)</field>
     </struct>
 
   </structs>

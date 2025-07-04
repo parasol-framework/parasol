@@ -219,7 +219,7 @@ proc.sleep()
       <name>Header</name>
       <comment>Contains the first 128 bytes of data in a sample's file header.</comment>
       <access read="G">Get</access>
-      <type>BYTE []</type>
+      <type>INT8 []</type>
       <description>
 <p>The Header field is a pointer to a 128 byte buffer that contains the first 128 bytes of information read from an audio file on initialisation.  This special field is considered to be helpful only to developers writing add-on components for the sound class.</p>
 <p>The buffer that is referred to by the Header field is not populated until the Init action is called on the sound object.</p>

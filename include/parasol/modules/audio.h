@@ -102,7 +102,7 @@ enum class LOOP : int16_t {
 
 // Loop types for the AudioLoop structure.
 
-enum class LTYPE : BYTE {
+enum class LTYPE : int8_t {
    NIL = 0,
    UNIDIRECTIONAL = 1,
    BIDIRECTIONAL = 2,
@@ -135,7 +135,7 @@ enum class STREAM : int {
 
 // Channel status types for the AudioChannel structure.
 
-enum class CHS : BYTE {
+enum class CHS : int8_t {
    NIL = 0,
    STOPPED = 0,
    FINISHED = 1,

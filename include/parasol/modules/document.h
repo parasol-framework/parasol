@@ -19,7 +19,7 @@ class objDocument;
 
 #define RIPL_VERSION "20240126"
 
-enum class TT : BYTE {
+enum class TT : int8_t {
    NIL = 0,
    VECTOR = 1,
    LINK = 2,

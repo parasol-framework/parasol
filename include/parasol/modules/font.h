@@ -40,7 +40,7 @@ DEFINE_ENUM_FLAG_OPERATORS(FMETA)
 
 // Force hinting options for a font.
 
-enum class HINT : BYTE {
+enum class HINT : int8_t {
    NIL = 0,
    NORMAL = 1,
    INTERNAL = 2,
@@ -59,10 +59,10 @@ struct FontList {
    int *  Points;             // Pointer to an array of fixed point sizes supported by the font.
    STRING Styles;             // Supported styles are listed here in CSV format.
    STRING Axes;               // For variable fonts, lists all supported axis codes in CSV format
-   BYTE   Scalable;           // TRUE if the font is scalable.
-   BYTE   Variable;           // TRUE if the font has variable metrics.
+   int8_t Scalable;           // TRUE if the font is scalable.
+   int8_t Variable;           // TRUE if the font has variable metrics.
    HINT   Hinting;            // Hinting options
-   BYTE   Hidden;             // TRUE if the font should be hidden from user font lists.
+   int8_t Hidden;             // TRUE if the font should be hidden from user font lists.
 };
 
 // Font class definition

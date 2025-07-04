@@ -302,7 +302,7 @@ static ERR FILE_BufferContent(extFile *Self)
       // Allocate buffer and load file content.  A NULL byte is added so that there is some safety in the event that
       // the file content is treated as a string.
 
-      BYTE *buffer;
+      int8_t *buffer;
       if (AllocMemory(Self->Size+1, MEM::NO_CLEAR, (APTR *)&buffer, NULL) IS ERR::Okay) {
          buffer[Self->Size] = 0;
          if (acRead(Self, buffer, Self->Size, &len) IS ERR::Okay) {
@@ -1062,14 +1062,14 @@ static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
 
    if (Self->Buffer) {
       if (Self->Position >= Self->Size) return ERR::NoData;
-      auto content = std::string_view(Self->Buffer, Self->Size);
+      auto content = std::string_view((char *)Self->Buffer, Self->Size);
       auto line_feed = content.find('\n', Self->Position);
       if (line_feed IS std::string::npos) {
-         Self->prvLine.assign(Self->Buffer, Self->Position);
+         Self->prvLine.assign((char *)Self->Buffer, Self->Position);
          Self->Position = Self->Size;
       }
       else {
-         Self->prvLine.assign(Self->Buffer, Self->Position, line_feed - Self->Position);
+         Self->prvLine.assign((char *)Self->Buffer, Self->Position, line_feed - Self->Position);
          Self->Position = line_feed + 1;
       }
       return ERR::Okay;
