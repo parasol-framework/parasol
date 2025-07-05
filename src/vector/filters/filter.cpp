@@ -39,6 +39,95 @@ struct target {
 
 static ERR get_source_bitmap(extVectorFilter *, objBitmap **, VSF, objFilterEffect *, bool);
 
+template <class T> void render_to_filter(T *Self) 
+{
+   auto filter = Self->Filter;
+
+   // The image's x,y,width,height default to (0,0,100%,100%) of the target region.
+
+   double p_x = filter->TargetX, p_y = filter->TargetY, p_width = filter->TargetWidth, p_height = filter->TargetHeight;
+
+   if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
+      // In this mode image dimensions typically remain at the default, i.e. (0,0,100%,100%) of the target.
+      // If the user does set the XYWH of the image then 'fixed' coordinates act as multipliers, as if they were relative.
+
+      // W3 spec on whether to use the bounds or the filter target region:
+      // "Any length values within the filter definitions represent fractions or percentages of the bounding box
+      // on the referencing element."
+
+      if (dmf::hasAnyX(Self->Dimensions)) p_x = trunc(filter->TargetX + (Self->X * filter->BoundWidth));
+      if (dmf::hasAnyY(Self->Dimensions)) p_y = trunc(filter->TargetY + (Self->Y * filter->BoundHeight));
+      if (dmf::hasAnyWidth(Self->Dimensions)) p_width = Self->Width * filter->BoundWidth;
+      if (dmf::hasAnyHeight(Self->Dimensions)) p_height = Self->Height * filter->BoundHeight;
+   }
+   else {
+      if (dmf::hasScaledX(Self->Dimensions)) p_x = filter->TargetX + (Self->X * filter->TargetWidth);
+      else if (dmf::hasX(Self->Dimensions))  p_x = Self->X;
+
+      if (dmf::hasScaledY(Self->Dimensions)) p_y = filter->TargetY + (Self->Y * filter->TargetHeight);
+      else if (dmf::hasY(Self->Dimensions))  p_y = Self->Y;
+
+      if (dmf::hasScaledWidth(Self->Dimensions)) p_width = filter->TargetWidth * Self->Width;
+      else if (dmf::hasWidth(Self->Dimensions))  p_width = Self->Width;
+
+      if (dmf::hasScaledHeight(Self->Dimensions)) p_height = filter->TargetHeight * Self->Height;
+      else if (dmf::hasHeight(Self->Dimensions))  p_height = Self->Height;
+   }
+   
+   double xScale = 1, yScale = 1, align_x = 0, align_y = 0;
+   calc_aspectratio("align_wavefunction", Self->AspectRatio, p_width, p_height, Self->Bitmap->Width, Self->Bitmap->Height, align_x, align_y, xScale, yScale);
+
+   p_x += align_x;
+   p_y += align_y;
+
+   // To render, no blending is performed because there is no input to the image.  Our objective is
+   // to copy across the image data with only the transforms applied (if any).  Linear RGB interpolation
+   // will wait until post processing.
+
+   agg::rasterizer_scanline_aa<> raster;
+   agg::renderer_base<agg::pixfmt_psl> renderBase;
+   agg::pixfmt_psl pixDest(*Self->Target);
+   agg::pixfmt_psl pixSource(*Self->Bitmap);
+
+   renderBase.attach(pixDest);
+   renderBase.clip_box(Self->Target->Clip.Left, Self->Target->Clip.Top, Self->Target->Clip.Right-1, Self->Target->Clip.Bottom-1);
+
+   agg::trans_affine img_transform;
+   img_transform.scale(xScale, yScale);
+   img_transform.translate(p_x, p_y);
+   img_transform *= filter->ClientVector->Transform;
+   img_transform.invert();
+   
+   if (img_transform.is_complex()) {
+      agg::span_interpolator_linear<> interpolator(img_transform);
+
+      agg::image_filter_lut ifilter;
+      set_filter(ifilter, filter->Scene->SampleMethod, img_transform);
+
+      agg::span_once<agg::pixfmt_psl> source(pixSource, 0, 0);
+      agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
+
+      set_raster_rect_path(raster, Self->Target->Clip.Left, Self->Target->Clip.Top,
+         Self->Target->Clip.Right - Self->Target->Clip.Left,
+         Self->Target->Clip.Bottom - Self->Target->Clip.Top);
+
+      renderSolidBitmap(renderBase, raster, spangen); // Solid render without blending.
+   }
+   else {
+      agg::path_storage path;
+      path.move_to(filter->TargetX, filter->TargetY);
+      path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY);
+      path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY + filter->TargetHeight);
+      path.line_to(filter->TargetX, filter->TargetY + filter->TargetHeight);
+      path.close_polygon();
+
+      agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(path, filter->ClientVector->Transform);
+      raster.add_path(final_path);
+
+      gfx::CopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, -img_transform.tx, -img_transform.ty);
+   }
+}
+
 //********************************************************************************************************************
 
 #include "filter_effect.cpp"
@@ -65,7 +154,7 @@ static ERR get_source_bitmap(extVectorFilter *, objBitmap **, VSF, objFilterEffe
 //
 // The Target* values tell the effects exactly where to render to.
 //
-// BoundsWidth/Height reflect the bounds of the client vector and its children.  These values are
+// BoundsWidth/Height reflect the bounds of the client vector and its children.  These values are to
 // be used by effects to compute their area when PrimitiveUnits = BOUNDING_BOX.
 
 static void compute_target_area(extVectorFilter *Self)

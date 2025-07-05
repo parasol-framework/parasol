@@ -227,7 +227,7 @@ function testW3Lighting5()        hashTestSVG('filters/w3-filters-light-05-f.svg
 function testW3LightingSpecular() hashTestSVG('filters/w3-filters-specular-01-f.svg', 0xc66988db) end
 function testW3LightingDiffuse()  hashTestSVG('filters/w3-filters-diffuse-01-f.svg', 0x99672f68) end
 function testMoonSurface()        hashTestSVG('filters/moon-surface.svg', 0x8fafd05c) end
-function testWaveFunction()       hashTestSVG('filters/wavefunction.svg', 0x5f98309c) end
+function testWaveFunction()       hashTestSVG('filters/wavefunction.svg', 0xdb133177) end
 
 function testTransformations()   hashTestSVG('transforms/transformations.svg', 0xfded011b) end
 function testW3AspectRatio()     hashTestSVG('transforms/w3-aspectratio.svg', 0x301ed259) end

@@ -773,9 +773,9 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
     </input>
     <description>
 <p>This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the owner of an object if only the ID is known.</p>
-<p>If the object address is already known then the fastest means of retrieval is via the <code>ownerID()</code> C++ class method.</p>
+<p>If the object address is already known, use the <code>ownerID()</code> C++ class method instead of this function.</p>
     </description>
-    <result type="OBJECTID">Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return NULL.</result>
+    <result type="OBJECTID">Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return 0.</result>
   </function>
 
   <function>

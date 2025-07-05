@@ -990,13 +990,13 @@ GetOwnerID: Returns the unique ID of an object's owner.
 This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the
 owner of an object if only the ID is known.
 
-If the object address is already known then the fastest means of retrieval is via the `ownerID()` C++ class method.
+If the object address is already known, use the `ownerID()` C++ class method instead of this function.
 
 -INPUT-
 oid Object: The ID of an object to query.
 
 -RESULT-
-oid: Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return NULL.
+oid: Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return 0.
 
 *********************************************************************************************************************/
 

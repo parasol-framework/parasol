@@ -968,6 +968,7 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2025" }, function(
     "BaseClass",
     "KeyFilter",
     "GroupFilter",
+    "Resolution",
     "SubClass",
     "Process",
     "Clip",

@@ -961,6 +961,7 @@
 #define FID_BaseClass 0x95f02736LL
 #define FID_KeyFilter 0x2ff6eaf4LL
 #define FID_GroupFilter 0x7f88a558LL
+#define FID_Resolution 0x7e01ce59LL
 #define FID_SubClass 0xb7799ba5LL
 #define FID_Process 0xc336efe4LL
 #define FID_Clip 0x7c95326dLL
