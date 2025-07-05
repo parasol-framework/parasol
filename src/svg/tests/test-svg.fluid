@@ -215,7 +215,7 @@ function testW3Filters2()         hashTestSVG('filters/w3-filters2.svg', 0x0873c
 function testW3Gauss1()           hashTestSVG('filters/w3-filters-gauss-01-b.svg', 0x8e598c4d) end
 function testW3Gauss2()           hashTestSVG('filters/w3-filters-gauss-02-f.svg', 0x079afbaf) end
 function testW3Gauss3()           hashTestSVG('filters/w3-filters-gauss-03-f.svg', 0xd4cc8f68) end
-function testW3Image()            hashTestSVG('filters/w3-image.svg', 0x4bf3b718) end
+function testW3Image()            hashTestSVG('filters/w3-image.svg', 0x50095d05) end
 function testW3Morphology()       hashTestSVG('filters/w3-morphology.svg', 0x15f5dbf3) end
 function testW3Offset()           hashTestSVG('filters/w3-offset.svg', 0x08a48622) end
 function testW3Turbulence()       hashTestSVG('filters/w3-turbulence.svg', 0xda177689) end
