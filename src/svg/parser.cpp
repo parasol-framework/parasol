@@ -1039,6 +1039,8 @@ ERR svgState::parse_fe_wavefunction(objVectorFilter *Filter, XMLTag &Tag) noexce
       if (val.empty()) continue;
 
       switch(strihash(Tag.Attribs[a].Name)) {
+         case SVF_RESOLUTION: fx->set(FID_Resolution, strtod(val.c_str(), nullptr)); break;
+         case SVF_PRESERVEASPECTRATIO: fx->set(FID_AspectRatio, int(parse_aspect_ratio(val))); break;
          case SVF_SCALE:    fx->set(FID_Scale, strtod(val.c_str(), nullptr)); break;
          case SVF_N:        fx->set(FID_N, strtod(val.c_str(), nullptr)); break;
          case SVF_L:        fx->set(FID_L, strtod(val.c_str(), nullptr)); break;
