@@ -159,7 +159,8 @@ template <class T> void render_to_filter(T *Self)
 
 static void compute_target_area(extVectorFilter *Self)
 {
-   TClipRectangle<double> bounds = { Self->ClientViewport->vpFixedWidth, Self->ClientViewport->vpFixedHeight, 0, 0 };
+   TClipRectangle<double> bounds = { std::numeric_limits<double>::max(), std::numeric_limits<double>::max(), 0, 0 };
+   //TClipRectangle<double> bounds = { Self->ClientViewport->vpFixedWidth, Self->ClientViewport->vpFixedHeight, 0, 0 };
    calc_full_boundary(Self->ClientVector, bounds, false, false);
    double boundX = trunc(bounds.left);
    double boundY = trunc(bounds.top);
@@ -440,8 +441,8 @@ static ERR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, e
       // All coordinates are relative to the client vector, or vectors if we are applied to a group.
       // The bounds are oriented to the client vector's transforms.
 
-      TClipRectangle<double> bounds = { container_width, container_height, 0, 0 };
-      calc_full_boundary(Vector, bounds, false, true);
+      TClipRectangle<double> bounds = { std::numeric_limits<double>::max(), std::numeric_limits<double>::max(), 0, 0 };
+      calc_full_boundary(Vector, bounds, false /* siblings */, true /* transforms */);
 
       if ((bounds.right <= bounds.left) or (bounds.bottom <= bounds.top)) {
          // No child vector defines a path for a SourceGraphic.  Default back to the viewport.
