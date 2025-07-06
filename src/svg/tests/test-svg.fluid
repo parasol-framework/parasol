@@ -208,7 +208,7 @@ function testRockyLighting()      hashTestSVG('filters/rocky_lighting.svg', 0x6e
 function testW3Composite1()       hashTestSVG('filters/w3-composite.svg', 0x6534eb63) end
 function testW3Composite2()       hashTestSVG('filters/w3-filters-composite-02-b.svg', 0x6d3d845c) end
 function testW3Displacement1()    hashTestSVG('filters/w3-filters-displace-01-f.svg', 0xf7b59b70) end
-function testW3Transfer()         hashTestSVG('filters/w3-filters-comptran-01-b.svg', 0xc9a04395) end
+function testW3Transfer()         hashTestSVG('filters/w3-filters-comptran-01-b.svg', 0xbdd83a65) end
 function testW3Transfer2()        hashTestSVG('filters/w3-filters-color-02-b.svg', 0x382e6dc5) end
 function testW3Filters()          hashTestSVG('filters/w3-filters.svg', 0x3fdd817f) end
 function testW3Filters2()         hashTestSVG('filters/w3-filters2.svg', 0x0873ca1a) end

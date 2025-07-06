@@ -1269,7 +1269,7 @@ ERR svgState::parse_fe_flood(objVectorFilter *Filter, XMLTag &Tag) noexcept
 
    ERR error = ERR::Okay;
    std::string result_name;
-   for (unsigned a=1; (a < Tag.Attribs.size()) and (error IS ERR::Okay); a++) {
+   for (int a=1; (a < std::ssize(Tag.Attribs)) and (error IS ERR::Okay); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -1319,7 +1319,7 @@ ERR svgState::parse_fe_turbulence(objVectorFilter *Filter, XMLTag &Tag) noexcept
    SetOwner(fx, Filter);
 
    std::string result_name;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -1377,7 +1377,7 @@ ERR svgState::parse_fe_morphology(objVectorFilter *Filter, XMLTag &Tag) noexcept
    SetOwner(fx, Filter);
 
    std::string result_name;
-   for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -1585,7 +1585,7 @@ void svgState::proc_filter(XMLTag &Tag) noexcept
       filter->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGFilter"),
          fl::Units(VUNIT::BOUNDING_BOX), fl::ColourSpace(VCS::LINEAR_RGB));
 
-      for (unsigned a=1; a < Tag.Attribs.size(); a++) {
+      for (int a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 

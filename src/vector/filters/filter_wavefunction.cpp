@@ -88,10 +88,8 @@ this will be reflected in the object once the method returns.
 
 static ERR WAVEFUNCTIONFX_Draw(extWaveFunctionFX *Self, struct acDraw *Args)
 {
-   auto filter = Self->Filter;
-
    int resolution = Self->Resolution & (~1);
-   if (!resolution) resolution = std::min(int(filter->TargetWidth), int(filter->TargetHeight)) & (~1);
+   if (!resolution) resolution = std::min(int(Self->Filter->TargetWidth), int(Self->Filter->TargetHeight)) & (~1);
    const int half_res = resolution>>1;
 
    if (Self->N < 1) Self->N = 1;
@@ -264,7 +262,7 @@ static ERR WAVEFUNCTIONFX_SET_L(extWaveFunctionFX *Self, int Value)
 -FIELD-
 M: Magnetic quantum number.
 
-This value is clamped by `-L &lt;= M &lt;= L`.
+This value is clamped by `0 &lt;= M &lt;= L`.
 
 *********************************************************************************************************************/
 

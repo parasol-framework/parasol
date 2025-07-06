@@ -39,7 +39,7 @@ struct target {
 
 static ERR get_source_bitmap(extVectorFilter *, objBitmap **, VSF, objFilterEffect *, bool);
 
-template <class T> void render_to_filter(T *Self) 
+template <class T> void render_to_filter(T *Self)
 {
    auto filter = Self->Filter;
 
@@ -73,7 +73,7 @@ template <class T> void render_to_filter(T *Self)
       if (dmf::hasScaledHeight(Self->Dimensions)) p_height = filter->TargetHeight * Self->Height;
       else if (dmf::hasHeight(Self->Dimensions))  p_height = Self->Height;
    }
-   
+
    double xScale = 1, yScale = 1, align_x = 0, align_y = 0;
    calc_aspectratio("align_wavefunction", Self->AspectRatio, p_width, p_height, Self->Bitmap->Width, Self->Bitmap->Height, align_x, align_y, xScale, yScale);
 
@@ -97,7 +97,7 @@ template <class T> void render_to_filter(T *Self)
    img_transform.translate(p_x, p_y);
    img_transform *= filter->ClientVector->Transform;
    img_transform.invert();
-   
+
    if (img_transform.is_complex()) {
       agg::span_interpolator_linear<> interpolator(img_transform);
 
@@ -422,6 +422,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
 }
 
 //********************************************************************************************************************
+// Defines the VectorClip values, which are utilised by the filter renderers.
 
 static ERR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport, extVector *Vector)
 {
