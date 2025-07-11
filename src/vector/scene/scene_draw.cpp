@@ -1024,10 +1024,13 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
                   // Clipping masks can reduce the boundary further.
 
-                  if ((!state.mClipStack->empty()) and (state.mClipStack->top().m_clip->Bounds.valid())) {
-                     // NB: This hasn't had much testing and doesn't consider nested clips.
-                     // The Clip bounds should be post-transform
-                     b.shrinking(state.mClipStack->top().m_clip->Bounds);
+                  if (!state.mClipStack->empty()) {
+                     auto &top = state.mClipStack->top();
+                     if ((top.m_clip) and (top.m_clip->Bounds.valid())) {
+                        // NB: This hasn't had much testing and doesn't consider nested clips.
+                        // The Clip bounds should be post-transform
+                        b.shrinking(top.m_clip->Bounds);
+                     }
                   }
                }
                else b = { -1, -1, -1, -1 };
