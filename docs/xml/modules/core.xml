@@ -957,7 +957,7 @@ if (!MemoryIDInfo(memid, &amp;info)) {
       <param type="INT" name="Size">Size of the <st>MemInfo</st> structure.</param>
     </input>
     <description>
-<p>This function can be used to get details on the attributes of a memory block.  It will return information on the start address, parent object, memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates correct use of this function:</p>
+<p>This function returns the attributes of a memory block.  Information includes the start address, parent object, memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates correct use of this function:</p>
 <pre>MemInfo info;
 if (!MemoryPtrInfo(ptr, &amp;info)) {
    log.msg("Address %p is %d bytes large.", info.Start, info.Size);

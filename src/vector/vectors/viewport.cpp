@@ -113,8 +113,12 @@ static ERR VECTORVIEWPORT_Free(extVectorViewport *Self)
    }
 
    if (Self->vpBuffer) { 
+      if (Self->vpBufferData) {
+         FreeResource(Self->vpBufferData);
+         Self->vpBufferData = nullptr;
+      }
       FreeResource(Self->vpBuffer); 
-      Self->vpBuffer = NULL; 
+      Self->vpBuffer = nullptr; 
       if (Self->Scene) ((extVectorScene *)Self->Scene)->BufferCount--;
    }
 

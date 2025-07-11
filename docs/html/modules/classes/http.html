@@ -289,7 +289,7 @@ http.acActivate()
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-RecvBuffer" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-RecvBuffer"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">RecvBuffer</th><td class="col-md-1"><span class="text-nowrap">BYTE []</span></td><td>Refers to a data buffer that is used to store all incoming content.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-RecvBuffer" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">RecvBuffer</th><td class="col-md-1"><span class="text-nowrap">INT8 []</span></td><td>Refers to a data buffer that is used to store all incoming content.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-RecvBuffer" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>If the <code>RECV_BUFFER</code> flag is set, all content received from the HTTP server will be stored in a managed buffer that is referred to by this field.  This field can be read at any time.  It will be set to <code>NULL</code> if no data has been received. The buffer address and all content is reset whenever the HTTP object is activated.</p>
 <p>The buffer is null-terminated if you wish to use it as a string.</p>
       

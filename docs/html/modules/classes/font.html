@@ -290,15 +290,15 @@ Charter:120%::255,128,255
 <tr><th>Points</th><td><span class="text-nowrap">INT *</span></td><td>Pointer to an array of fixed point sizes supported by the font.</td></tr>
 <tr><th>Styles</th><td><span class="text-nowrap">STRING</span></td><td>Supported styles are listed here in CSV format.</td></tr>
 <tr><th>Axes</th><td><span class="text-nowrap">STRING</span></td><td>For variable fonts, lists all supported axis codes in CSV format</td></tr>
-<tr><th>Scalable</th><td><span class="text-nowrap">BYTE</span></td><td><code>TRUE</code> if the font is scalable.</td></tr>
-<tr><th>Variable</th><td><span class="text-nowrap">BYTE</span></td><td><code>TRUE</code> if the font has variable metrics.</td></tr>
+<tr><th>Scalable</th><td><span class="text-nowrap">INT8</span></td><td><code>TRUE</code> if the font is scalable.</td></tr>
+<tr><th>Variable</th><td><span class="text-nowrap">INT8</span></td><td><code>TRUE</code> if the font has variable metrics.</td></tr>
 <tr><th>Hinting</th><td><span class="text-nowrap">HINT</span></td><td>Hinting options</td></tr>
-<tr><th>Hidden</th><td><span class="text-nowrap">BYTE</span></td><td><code>TRUE</code> if the font should be hidden from user font lists.</td></tr>
+<tr><th>Hidden</th><td><span class="text-nowrap">INT8</span></td><td><code>TRUE</code> if the font should be hidden from user font lists.</td></tr>
 </tbody></table><div class="footer copyright text-right">Font class documentation © Paul Manias © 1998-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-RGB8"><h1>RGB8 Structure</h1><p class="lead">8-bit RGB colour value.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Red</th><td><span class="text-nowrap">UBYTE</span></td><td>Red component value</td></tr>
-<tr><th>Green</th><td><span class="text-nowrap">UBYTE</span></td><td>Green component value</td></tr>
-<tr><th>Blue</th><td><span class="text-nowrap">UBYTE</span></td><td>Blue component value</td></tr>
-<tr><th>Alpha</th><td><span class="text-nowrap">UBYTE</span></td><td>Alpha component value</td></tr>
+<div class="docs-content" style="display:none;" id="struct-RGB8"><h1>RGB8 Structure</h1><p class="lead">8-bit RGB colour value.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Red</th><td><span class="text-nowrap">UINT8</span></td><td>Red component value</td></tr>
+<tr><th>Green</th><td><span class="text-nowrap">UINT8</span></td><td>Green component value</td></tr>
+<tr><th>Blue</th><td><span class="text-nowrap">UINT8</span></td><td>Blue component value</td></tr>
+<tr><th>Alpha</th><td><span class="text-nowrap">UINT8</span></td><td>Alpha component value</td></tr>
 </tbody></table><div class="footer copyright text-right">Font class documentation © Paul Manias © 1998-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

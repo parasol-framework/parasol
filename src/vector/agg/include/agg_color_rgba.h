@@ -37,20 +37,20 @@ namespace agg {
          rgba(const rgba& c, double a_) : r(c.r), g(c.g), b(c.b), a(a_), linear(c.linear) {}
 
          rgba(RGB8 &RGB) :
-            r(DOUBLE(RGB.Red) / 255.0),
-            g(DOUBLE(RGB.Green) / 255.0),
-            b(DOUBLE(RGB.Blue) / 255.0),
-            a(DOUBLE(RGB.Alpha) / 255.0),
+            r(double(RGB.Red) / 255.0),
+            g(double(RGB.Green) / 255.0),
+            b(double(RGB.Blue) / 255.0),
+            a(double(RGB.Alpha) / 255.0),
             linear(false) {}
 
          rgba(RGB8 &RGB, UBYTE Alpha) :
-            r(DOUBLE(RGB.Red) / 255.0),
-            g(DOUBLE(RGB.Green) / 255.0),
-            b(DOUBLE(RGB.Blue) / 255.0),
-            a(DOUBLE(Alpha) / 255.0),
+            r(double(RGB.Red) / 255.0),
+            g(double(RGB.Green) / 255.0),
+            b(double(RGB.Blue) / 255.0),
+            a(double(Alpha) / 255.0),
             linear(false) {}
 
-         rgba(FRGB &RGB, DOUBLE Alpha) :
+         rgba(FRGB &RGB, double Alpha) :
             r(RGB.Red),
             g(RGB.Green),
             b(RGB.Blue),
@@ -87,7 +87,7 @@ namespace agg {
          }
 
          const rgba & premultiply(double a_) {
-            if (a <= 0.0 || a_ <= 0.0) {
+            if (a <= 0.0 or a_ <= 0.0) {
                 r = g = b = a = 0.0;
                 return *this;
             }
@@ -122,51 +122,6 @@ namespace agg {
 
          static rgba no_color() { return rgba(0,0,0,0, false); }
 
-         static rgba from_wavelength(double wl, double gamma = 1.0);
-
-         explicit rgba(double wavelen, double gamma=1.0) {
-            *this = from_wavelength(wavelen, gamma);
-         }
-
-         void to_linear() {
-            if (linear == false) {
-               if (r <= 0.04045) r /= 12.92;
-               else r = std::pow((r + 0.055) / 1.055, 2.4);
-
-               if (g <= 0.04045) g /= 12.92;
-               else g = std::pow((g + 0.055) / 1.055, 2.4);
-
-               if (b <= 0.04045) b /= 12.92;
-               else b = std::pow((b + 0.055) / 1.055, 2.4);
-            }
-            linear = true;
-         }
-
-         void to_rgb() {
-            if (linear == true) {
-               if (r < 0.0031308) r *= 12.92;
-               else {
-                  r = (std::pow(r, 1.0 / 2.4) * 1.055) - 0.055;
-                  if (r < 0) r = 0;
-                  else if (r > 255) r = 255;
-               }
-
-               if (g < 0.0031308) g *= 12.92;
-               else {
-                  g = (std::pow(g, 1.0 / 2.4) * 1.055) - 0.055;
-                  if (g < 0) g = 0;
-                  else if (g > 255) g = 255;
-               }
-
-               if (b < 0.0031308) b *= 12.92;
-               else {
-                  b = (std::pow(b, 1.0 / 2.4) * 1.055) - 0.055;
-                  if (b < 0) b = 0;
-                  else if (b > 255) b = 255;
-               }
-            }
-            linear = false;
-         }
    };
 
     inline rgba rgba_pre(double r, double g, double b, double a=1.0) {
@@ -181,60 +136,22 @@ namespace agg {
         return rgba(c, a).premultiply();
     }
 
-    inline rgba rgba::from_wavelength(double wl, double gamma) {
-        rgba t(0.0, 0.0, 0.0);
-
-        if (wl >= 380.0 && wl <= 440.0) {
-            t.r = -1.0 * (wl - 440.0) / (440.0 - 380.0);
-            t.b = 1.0;
-        }
-        else if (wl >= 440.0 && wl <= 490.0) {
-            t.g = (wl - 440.0) / (490.0 - 440.0);
-            t.b = 1.0;
-        }
-        else if (wl >= 490.0 && wl <= 510.0) {
-            t.g = 1.0;
-            t.b = -1.0 * (wl - 510.0) / (510.0 - 490.0);
-        }
-        else if (wl >= 510.0 && wl <= 580.0) {
-            t.r = (wl - 510.0) / (580.0 - 510.0);
-            t.g = 1.0;
-        }
-        else if (wl >= 580.0 && wl <= 645.0) {
-            t.r = 1.0;
-            t.g = -1.0 * (wl - 645.0) / (645.0 - 580.0);
-        }
-        else if (wl >= 645.0 && wl <= 780.0) {
-            t.r = 1.0;
-        }
-
-        double s = 1.0;
-        if (wl > 700.0)       s = 0.3 + 0.7 * (780.0 - wl) / (780.0 - 700.0);
-        else if (wl <  420.0) s = 0.3 + 0.7 * (wl - 380.0) / (420.0 - 380.0);
-
-        t.r = pow(t.r * s, gamma);
-        t.g = pow(t.g * s, gamma);
-        t.b = pow(t.b * s, gamma);
-        return t;
-    }
-
-    //===================================================================
+    //--------------------------------------------------------------
 
     struct rgba8 { // RGB values from 0 - 255
-        typedef UBYTE  value_type;
-        typedef ULONG calc_type;
-        typedef LONG  long_type;
+        typedef uint8_t  value_type;
+        typedef uint32_t calc_type;
+        typedef int  long_type;
+
         enum base_scale_e {
             base_shift = 8,
             base_scale = 1 << base_shift,
             base_mask  = base_scale - 1
         };
+
         typedef rgba8 self_type;
 
-        value_type r;
-        value_type g;
-        value_type b;
-        value_type a;
+        value_type r, g, b, a;
 
         rgba8() {}
 
@@ -249,7 +166,7 @@ namespace agg {
             g(value_type(RGB.Green)),
             b(value_type(RGB.Blue)),
             a(value_type(Alpha)) {}
-        
+
         rgba8(const FRGB &RGB) :
             r((value_type)uround(RGB.Red * double(base_mask))),
             g((value_type)uround(RGB.Green * double(base_mask))),
@@ -316,8 +233,8 @@ namespace agg {
         }
 
         inline const self_type& premultiply(unsigned a_) {
-            if (a == base_mask && a_ >= base_mask) return *this;
-            if (a == 0 || a_ == 0) {
+            if (a == base_mask and a_ >= base_mask) return *this;
+            if (a == 0 or a_ == 0) {
                 r = g = b = a = 0;
                 return *this;
             }
@@ -413,23 +330,7 @@ namespace agg {
             b = gamma.inv(b);
         }
 
-        inline void to_linear() {
-           r = glLinearRGB.convert(r);
-           g = glLinearRGB.convert(g);
-           b = glLinearRGB.convert(b);
-        }
-      
-        inline void to_rgb() {
-           r = glLinearRGB.invert(r);
-           g = glLinearRGB.invert(g);
-           b = glLinearRGB.invert(b);
-        }
-
       static self_type no_color() { return self_type(0,0,0,0); }
-
-      static self_type from_wavelength(double wl, double gamma = 1.0) {
-         return self_type(rgba::from_wavelength(wl, gamma));
-      }
    };
 
     //-------------------------------------------------------------
@@ -476,12 +377,13 @@ namespace agg {
         return rgba8(gamma.inv(c.r), gamma.inv(c.g), gamma.inv(c.b), c.a);
     }
 
-    //==================================================================rgba16
+    //--------------------------------------------------------------
+
     struct rgba16
     {
-        typedef int16u value_type;
-        typedef int32u calc_type;
-        typedef int64  long_type;
+        typedef int16_t value_type;
+        typedef int32_t calc_type;
+        typedef int64_t long_type;
         enum base_scale_e
         {
             base_shift = 16,
@@ -495,9 +397,7 @@ namespace agg {
         value_type b;
         value_type a;
 
-
         rgba16() {}
-
 
         rgba16(unsigned r_, unsigned g_, unsigned b_, unsigned a_=base_mask) :
             r(value_type(r_)),
@@ -542,12 +442,10 @@ namespace agg {
             r = g = b = a = 0;
         }
 
-
         const self_type& transparent() {
             a = 0;
             return *this;
         }
-
 
         inline const self_type& opacity(double a_) {
             if (a_ < 0.0) a_ = 0.0;
@@ -556,11 +454,9 @@ namespace agg {
             return *this;
         }
 
-
         double opacity() const {
             return double(a) / double(base_mask);
         }
-
 
         inline const self_type& premultiply() {
             if (a == base_mask) return *this;
@@ -574,10 +470,9 @@ namespace agg {
             return *this;
         }
 
-
         inline const self_type& premultiply(unsigned a_) {
-            if (a == base_mask && a_ >= base_mask) return *this;
-            if (a == 0 || a_ == 0) {
+            if (a == base_mask and a_ >= base_mask) return *this;
+            if (a == 0 or a_ == 0) {
                 r = g = b = a = 0;
                 return *this;
             }
@@ -590,7 +485,6 @@ namespace agg {
             a = value_type(a_);
             return *this;
         }
-
 
         inline const self_type& demultiply() {
             if (a == base_mask) return *this;
@@ -607,7 +501,6 @@ namespace agg {
             return *this;
         }
 
-
         inline self_type gradient(const self_type& c, double k) const {
             self_type ret;
             calc_type ik = uround(k * int(base_scale));
@@ -617,7 +510,6 @@ namespace agg {
             ret.a = value_type(calc_type(a) + (((calc_type(c.a) - a) * ik) >> base_shift));
             return ret;
         }
-
 
         inline void add(const self_type& c, unsigned cover) {
             calc_type cr, cg, cb, ca;
@@ -657,10 +549,6 @@ namespace agg {
         }
 
         static self_type no_color() { return self_type(0,0,0,0); }
-
-        static self_type from_wavelength(double wl, double gamma = 1.0) {
-            return self_type(rgba::from_wavelength(wl, gamma));
-        }
     };
 
     //--------------------------------------------------------------
@@ -688,8 +576,6 @@ namespace agg {
     inline rgba16 rgba16_pre(const rgba8& c, unsigned a) {
         return rgba16(c,a).premultiply();
     }
-
-    //------------------------------------------------------rgba16_gamma_dir
 
     template<class GammaLUT>
     rgba16 rgba16_gamma_dir(rgba16 c, const GammaLUT& gamma)

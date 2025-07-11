@@ -1409,11 +1409,17 @@ struct ClipRectangle {
    int Top;     // Top coordinate
    int Right;   // Right-most coordinate
    int Bottom;  // Bottom coordinate
-  ClipRectangle() { }
-  ClipRectangle(LONG Value) : Left(Value), Top(Value), Right(Value), Bottom(Value) { }
-  ClipRectangle(LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
-  int width() const { return Right - Left; }
-  int height() const { return Bottom - Top; }
+   ClipRectangle() { }
+   ClipRectangle(int Value) : Left(Value), Top(Value), Right(Value), Bottom(Value) { }
+   ClipRectangle(int pLeft, int pTop, int pRight, int pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
+   inline int width() const { return Right - Left; }
+   inline int height() const { return Bottom - Top; }
+   inline void translate(int pX, int pY) {
+      Left   += pX;
+      Top    += pY;
+      Right  += pX;
+      Bottom += pY;
+   }
 };
 
 struct Edges {

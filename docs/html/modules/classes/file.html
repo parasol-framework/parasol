@@ -24,7 +24,7 @@
 <p>To read or write to a file, set the <a data-bs-toggle="tooltip" title="Specifies the location of a file or folder." href="#tf-Path">Path</a> of the file as well as the correct I/O file flags before initialisation. See the <a data-bs-toggle="tooltip" title="File flags and options." href="#tf-Flags">Flags</a> field for information on the available I/O flags.  Functionality for read and write operations is provided through the <a data-bs-toggle="tooltip" title="Reads data from a file." href="#ta-Read">Read()</a> and <a data-bs-toggle="tooltip" title="Writes data to a file." href="#ta-Write">Write()</a> actions.  The <a data-bs-toggle="tooltip" title="Seeks to a new read/write position within a file." href="#ta-Seek">Seek()</a> action can be used to change the read/write position in a file.</p>
 <h3>Structure</h3><p>The File class consists of the following fields:</p><table class="table"><thead><th class="col-md-1"><div data-bs-toggle="tooltip" title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead><tbody><tr data-bs-toggle="collapse" data-bs-target="#fl-Buffer" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Buffer"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Buffer</th><td class="col-md-1"><span class="text-nowrap">BYTE *</span></td><td>Points to the internal data buffer if the file content is held in memory.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Buffer" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Buffer</th><td class="col-md-1"><span class="text-nowrap">INT8 *</span></td><td>Points to the internal data buffer if the file content is held in memory.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Buffer" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>If a file has been created with an internal buffer (by setting the <code>BUFFER</code> flag on creation), this field will point to the address of that buffer.  The size of the buffer will match the <a data-bs-toggle="tooltip" title="The byte size of a file." href="#tf-Size">Size</a> field.</p>
       
 </div></div></td></tr>
@@ -461,12 +461,12 @@
 <tr><th>PERMIT::WRITE</th><td>User/Owner can write.</td></tr>
 </tbody></table><div class="footer copyright text-right">File module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-DateTime"><h1>DateTime Structure</h1><p class="lead">Generic structure for date-time management.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Year</th><td><span class="text-nowrap">INT16</span></td><td>Year</td></tr>
-<tr><th>Month</th><td><span class="text-nowrap">BYTE</span></td><td>Month 1 to 12</td></tr>
-<tr><th>Day</th><td><span class="text-nowrap">BYTE</span></td><td>Day 1 to 31</td></tr>
-<tr><th>Hour</th><td><span class="text-nowrap">BYTE</span></td><td>Hour 0 to 23</td></tr>
-<tr><th>Minute</th><td><span class="text-nowrap">BYTE</span></td><td>Minute 0 to 59</td></tr>
-<tr><th>Second</th><td><span class="text-nowrap">BYTE</span></td><td>Second 0 to 59</td></tr>
-<tr><th>TimeZone</th><td><span class="text-nowrap">BYTE</span></td><td>TimeZone -13 to +13</td></tr>
+<tr><th>Month</th><td><span class="text-nowrap">INT8</span></td><td>Month 1 to 12</td></tr>
+<tr><th>Day</th><td><span class="text-nowrap">INT8</span></td><td>Day 1 to 31</td></tr>
+<tr><th>Hour</th><td><span class="text-nowrap">INT8</span></td><td>Hour 0 to 23</td></tr>
+<tr><th>Minute</th><td><span class="text-nowrap">INT8</span></td><td>Minute 0 to 59</td></tr>
+<tr><th>Second</th><td><span class="text-nowrap">INT8</span></td><td>Second 0 to 59</td></tr>
+<tr><th>TimeZone</th><td><span class="text-nowrap">INT8</span></td><td>TimeZone -13 to +13</td></tr>
 </tbody></table><div class="footer copyright text-right">File class documentation © Paul Manias 1996-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

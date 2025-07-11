@@ -596,9 +596,9 @@ Z: Close Path
 <tr><th>Effect</th><td><span class="text-nowrap">objFilterEffect *</span></td><td>Effect pointer if the <code>SourceType</code> is <code>REFERENCE</code>.</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-PathCommand"><h1>PathCommand Structure</h1><p class="lead">Base structure for path commands.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Type</th><td><span class="text-nowrap">PE</span></td><td>The command type</td></tr>
-<tr><th>LargeArc</th><td><span class="text-nowrap">UBYTE</span></td><td>Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when <code>TRUE</code>.</td></tr>
-<tr><th>Sweep</th><td><span class="text-nowrap">UBYTE</span></td><td>Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.</td></tr>
-<tr><th>Pad1</th><td><span class="text-nowrap">UBYTE</span></td><td>Private</td></tr>
+<tr><th>LargeArc</th><td><span class="text-nowrap">UINT8</span></td><td>Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when <code>TRUE</code>.</td></tr>
+<tr><th>Sweep</th><td><span class="text-nowrap">UINT8</span></td><td>Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.</td></tr>
+<tr><th>Pad1</th><td><span class="text-nowrap">UINT8</span></td><td>Private</td></tr>
 <tr><th>X</th><td><span class="text-nowrap">DOUBLE</span></td><td>The targeted X coordinate (absolute or scaled) for the command</td></tr>
 <tr><th>Y</th><td><span class="text-nowrap">DOUBLE</span></td><td>The targeted Y coordinate (absolute or scaled) for the command</td></tr>
 <tr><th>AbsX</th><td><span class="text-nowrap">DOUBLE</span></td><td>Private</td></tr>
@@ -629,8 +629,8 @@ Z: Close Path
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-VectorPoint"><h1>VectorPoint Structure</h1><p class="lead">Structure for the VectorPolygon PointsArray field.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>X</th><td><span class="text-nowrap">DOUBLE</span></td><td>The X coordinate of this point.</td></tr>
 <tr><th>Y</th><td><span class="text-nowrap">DOUBLE</span></td><td>The Y coordinate of this point.</td></tr>
-<tr><th>XScaled</th><td><span class="text-nowrap">UBYTE</span></td><td><code>TRUE</code> if the <code>X</code> value is scaled to its viewport (between 0 and 1.0).</td></tr>
-<tr><th>YScaled</th><td><span class="text-nowrap">UBYTE</span></td><td><code>TRUE</code> if the <code>Y</code> value is scaled to its viewport (between 0 and 1.0).</td></tr>
+<tr><th>XScaled</th><td><span class="text-nowrap">UINT8</span></td><td><code>TRUE</code> if the <code>X</code> value is scaled to its viewport (between 0 and 1.0).</td></tr>
+<tr><th>YScaled</th><td><span class="text-nowrap">UINT8</span></td><td><code>TRUE</code> if the <code>Y</code> value is scaled to its viewport (between 0 and 1.0).</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
 </div></div></div><script type="text/javascript" src="../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../js/base.js"></script><script type="text/javascript">
 var glCurrentMethod;

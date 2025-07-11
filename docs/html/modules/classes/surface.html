@@ -751,29 +751,29 @@ the surface area first).</li>
 <tr><th>Width</th><td><span class="text-nowrap">INT16</span></td><td>Pixel width of the bitmap.</td></tr>
 <tr><th>Height</th><td><span class="text-nowrap">INT16</span></td><td>Pixel height of the bitmap.</td></tr>
 <tr><th>LineWidth</th><td><span class="text-nowrap">INT</span></td><td>The distance between bitmap lines, measured in bytes.</td></tr>
-<tr><th>BitsPerPixel</th><td><span class="text-nowrap">UBYTE</span></td><td>The number of bits per pixel (8, 15, 16, 24, 32).</td></tr>
-<tr><th>BytesPerPixel</th><td><span class="text-nowrap">UBYTE</span></td><td>The number of bytes per pixel (1, 2, 3, 4).</td></tr>
-<tr><th>Opacity</th><td><span class="text-nowrap">UBYTE</span></td><td>Opacity level of the source if <code>CSRF::TRANSLUCENT</code> is used.</td></tr>
-<tr><th>Version</th><td><span class="text-nowrap">UBYTE</span></td><td>Version of this structure.</td></tr>
+<tr><th>BitsPerPixel</th><td><span class="text-nowrap">UINT8</span></td><td>The number of bits per pixel (8, 15, 16, 24, 32).</td></tr>
+<tr><th>BytesPerPixel</th><td><span class="text-nowrap">UINT8</span></td><td>The number of bytes per pixel (1, 2, 3, 4).</td></tr>
+<tr><th>Opacity</th><td><span class="text-nowrap">UINT8</span></td><td>Opacity level of the source if <code>CSRF::TRANSLUCENT</code> is used.</td></tr>
+<tr><th>Version</th><td><span class="text-nowrap">UINT8</span></td><td>Version of this structure.</td></tr>
 <tr><th>Colour</th><td><span class="text-nowrap">INT</span></td><td>Colour index to use if <code>CSRF::TRANSPARENT</code> is used.</td></tr>
 <tr><th>Clip</th><td><span class="text-nowrap">struct ClipRectangle</span></td><td>A clipping rectangle will restrict drawing operations to this region if <code>CSRF::CLIP</code> is used.</td></tr>
 <tr><th>XOffset</th><td><span class="text-nowrap">INT16</span></td><td>Offset all X coordinate references by the given value.</td></tr>
 <tr><th>YOffset</th><td><span class="text-nowrap">INT16</span></td><td>Offset all Y coordinate references by the given value.</td></tr>
 <tr><th>Format</th><td><span class="text-nowrap">struct ColourFormat</span></td><td>The colour format of this bitmap's pixels, or alternatively use <code>CSRF::DEFAULT_FORMAT</code>.</td></tr>
 </tbody></table><div class="footer copyright text-right">Surface class documentation © Paul Manias 2003-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-ColourFormat"><h1>ColourFormat Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>RedShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for red (15/16 bit formats only)</td></tr>
-<tr><th>GreenShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for green</td></tr>
-<tr><th>BlueShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for blue</td></tr>
-<tr><th>AlphaShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for alpha</td></tr>
-<tr><th>RedMask</th><td><span class="text-nowrap">UBYTE</span></td><td>Unshifted mask value for red (ranges from 0x00 to 0xff)</td></tr>
-<tr><th>GreenMask</th><td><span class="text-nowrap">UBYTE</span></td><td>Unshifted mask value for green</td></tr>
-<tr><th>BlueMask</th><td><span class="text-nowrap">UBYTE</span></td><td>Unshifted mask value for blue</td></tr>
-<tr><th>AlphaMask</th><td><span class="text-nowrap">UBYTE</span></td><td>Unshifted mask value for alpha</td></tr>
-<tr><th>RedPos</th><td><span class="text-nowrap">UBYTE</span></td><td>Left shift/positional value for red</td></tr>
-<tr><th>GreenPos</th><td><span class="text-nowrap">UBYTE</span></td><td>Left shift/positional value for green</td></tr>
-<tr><th>BluePos</th><td><span class="text-nowrap">UBYTE</span></td><td>Left shift/positional value for blue</td></tr>
-<tr><th>AlphaPos</th><td><span class="text-nowrap">UBYTE</span></td><td>Left shift/positional value for alpha</td></tr>
-<tr><th>BitsPerPixel</th><td><span class="text-nowrap">UBYTE</span></td><td>Number of bits per pixel for this format.</td></tr>
+<div class="docs-content" style="display:none;" id="struct-ColourFormat"><h1>ColourFormat Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>RedShift</th><td><span class="text-nowrap">UINT8</span></td><td>Right shift value for red (15/16 bit formats only)</td></tr>
+<tr><th>GreenShift</th><td><span class="text-nowrap">UINT8</span></td><td>Right shift value for green</td></tr>
+<tr><th>BlueShift</th><td><span class="text-nowrap">UINT8</span></td><td>Right shift value for blue</td></tr>
+<tr><th>AlphaShift</th><td><span class="text-nowrap">UINT8</span></td><td>Right shift value for alpha</td></tr>
+<tr><th>RedMask</th><td><span class="text-nowrap">UINT8</span></td><td>Unshifted mask value for red (ranges from 0x00 to 0xff)</td></tr>
+<tr><th>GreenMask</th><td><span class="text-nowrap">UINT8</span></td><td>Unshifted mask value for green</td></tr>
+<tr><th>BlueMask</th><td><span class="text-nowrap">UINT8</span></td><td>Unshifted mask value for blue</td></tr>
+<tr><th>AlphaMask</th><td><span class="text-nowrap">UINT8</span></td><td>Unshifted mask value for alpha</td></tr>
+<tr><th>RedPos</th><td><span class="text-nowrap">UINT8</span></td><td>Left shift/positional value for red</td></tr>
+<tr><th>GreenPos</th><td><span class="text-nowrap">UINT8</span></td><td>Left shift/positional value for green</td></tr>
+<tr><th>BluePos</th><td><span class="text-nowrap">UINT8</span></td><td>Left shift/positional value for blue</td></tr>
+<tr><th>AlphaPos</th><td><span class="text-nowrap">UINT8</span></td><td>Left shift/positional value for alpha</td></tr>
+<tr><th>BitsPerPixel</th><td><span class="text-nowrap">UINT8</span></td><td>Number of bits per pixel for this format.</td></tr>
 </tbody></table><div class="footer copyright text-right">Surface class documentation © Paul Manias 2003-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-CursorInfo"><h1>CursorInfo Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Width</th><td><span class="text-nowrap">INT</span></td><td>Maximum cursor width for custom cursors</td></tr>
 <tr><th>Height</th><td><span class="text-nowrap">INT</span></td><td>Maximum cursor height for custom cursors</td></tr>
@@ -822,8 +822,8 @@ the surface area first).</li>
 <tr><th>AbsX</th><td><span class="text-nowrap">INT</span></td><td>Absolute X coordinate</td></tr>
 <tr><th>AbsY</th><td><span class="text-nowrap">INT</span></td><td>Absolute Y coordinate</td></tr>
 <tr><th>Level</th><td><span class="text-nowrap">INT16</span></td><td>Branch level within the tree</td></tr>
-<tr><th>BitsPerPixel</th><td><span class="text-nowrap">BYTE</span></td><td>Bits per pixel of the bitmap</td></tr>
-<tr><th>BytesPerPixel</th><td><span class="text-nowrap">BYTE</span></td><td>Bytes per pixel of the bitmap</td></tr>
+<tr><th>BitsPerPixel</th><td><span class="text-nowrap">INT8</span></td><td>Bits per pixel of the bitmap</td></tr>
+<tr><th>BytesPerPixel</th><td><span class="text-nowrap">INT8</span></td><td>Bytes per pixel of the bitmap</td></tr>
 <tr><th>LineWidth</th><td><span class="text-nowrap">INT</span></td><td>Line width of the bitmap, in bytes</td></tr>
 </tbody></table><div class="footer copyright text-right">Surface class documentation © Paul Manias 2003-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">

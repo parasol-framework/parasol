@@ -114,19 +114,19 @@ Chunky/32   = Width * 4
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">ColourFormat</th><td class="col-md-1"><span class="text-nowrap">struct ColourFormat *</span></td><td>Describes the colour format used to construct each bitmap pixel.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-ColourFormat" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The ColourFormat field points to a structure that defines the colour format used to construct each bitmap pixel.  It only applies to bitmaps that use 2-bytes per colour value or better.  The structure consists of the following fields:</p>
-<table class="table"><thead><tr><th class="col-md-1">Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">RedShift</th><td>UBYTE</td><td>Right shift value for red (15/16 bit formats only)</td></tr>
-<tr><th class="col-md-1">GreenShift</th><td>UBYTE</td><td>Right shift value for green</td></tr>
-<tr><th class="col-md-1">BlueShift</th><td>UBYTE</td><td>Right shift value for blue</td></tr>
-<tr><th class="col-md-1">AlphaShift</th><td>UBYTE</td><td>Right shift value for alpha</td></tr>
-<tr><th class="col-md-1">RedMask</th><td>UBYTE</td><td>Unshifted mask value for red (ranges from 0x00 to 0xff)</td></tr>
-<tr><th class="col-md-1">GreenMask</th><td>UBYTE</td><td>Unshifted mask value for green</td></tr>
-<tr><th class="col-md-1">BlueMask</th><td>UBYTE</td><td>Unshifted mask value for blue</td></tr>
-<tr><th class="col-md-1">AlphaMask</th><td>UBYTE</td><td>Unshifted mask value for alpha</td></tr>
-<tr><th class="col-md-1">RedPos</th><td>UBYTE</td><td>Left shift/positional value for red</td></tr>
-<tr><th class="col-md-1">GreenPos</th><td>UBYTE</td><td>Left shift/positional value for green</td></tr>
-<tr><th class="col-md-1">BluePos</th><td>UBYTE</td><td>Left shift/positional value for blue</td></tr>
-<tr><th class="col-md-1">AlphaPos</th><td>UBYTE</td><td>Left shift/positional value for alpha</td></tr>
-<tr><th class="col-md-1">BitsPerPixel</th><td>UBYTE</td><td>Number of bits per pixel for this format.</td></tr>
+<table class="table"><thead><tr><th class="col-md-1">Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">RedShift</th><td>UINT8</td><td>Right shift value for red (15/16 bit formats only)</td></tr>
+<tr><th class="col-md-1">GreenShift</th><td>UINT8</td><td>Right shift value for green</td></tr>
+<tr><th class="col-md-1">BlueShift</th><td>UINT8</td><td>Right shift value for blue</td></tr>
+<tr><th class="col-md-1">AlphaShift</th><td>UINT8</td><td>Right shift value for alpha</td></tr>
+<tr><th class="col-md-1">RedMask</th><td>UINT8</td><td>Unshifted mask value for red (ranges from 0x00 to 0xff)</td></tr>
+<tr><th class="col-md-1">GreenMask</th><td>UINT8</td><td>Unshifted mask value for green</td></tr>
+<tr><th class="col-md-1">BlueMask</th><td>UINT8</td><td>Unshifted mask value for blue</td></tr>
+<tr><th class="col-md-1">AlphaMask</th><td>UINT8</td><td>Unshifted mask value for alpha</td></tr>
+<tr><th class="col-md-1">RedPos</th><td>UINT8</td><td>Left shift/positional value for red</td></tr>
+<tr><th class="col-md-1">GreenPos</th><td>UINT8</td><td>Left shift/positional value for green</td></tr>
+<tr><th class="col-md-1">BluePos</th><td>UINT8</td><td>Left shift/positional value for blue</td></tr>
+<tr><th class="col-md-1">AlphaPos</th><td>UINT8</td><td>Left shift/positional value for alpha</td></tr>
+<tr><th class="col-md-1">BitsPerPixel</th><td>UINT8</td><td>Number of bits per pixel for this format.</td></tr>
 </tbody></table>
 <p>The following C++ methods can called on any bitmap in order to build colour values from individual RGB components:</p>
 <pre>packPixel(Red, Green, Blue)
@@ -159,7 +159,7 @@ unpackAlpha(Colour)
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Data" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Data"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Data</th><td class="col-md-1"><span class="text-nowrap">UBYTE *</span></td><td>Pointer to a bitmap's data area.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Data" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Data</th><td class="col-md-1"><span class="text-nowrap">UINT8 *</span></td><td>Pointer to a bitmap's data area.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Data" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>This field points directly to the start of a bitmap's data area.  Allocating your own bitmap memory is acceptable if creating a bitmap that is not based on video memory.  However, it is usually a better idea for the initialisation process to allocate the correct amount of memory for you by not interfering with this field.</p>
       
 </div></div></td></tr>
@@ -521,19 +521,19 @@ unpackAlpha(Colour)
 <tr><th>CS::LINEAR_RGB</th><td>Linear RGB is used to improve colour balance in blending operations.</td></tr>
 <tr><th>CS::SRGB</th><td>The default colour-space is sRGB.</td></tr>
 </tbody></table><div class="footer copyright text-right">Bitmap module documentation © Paul Manias 2003-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-ColourFormat"><h1>ColourFormat Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>RedShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for red (15/16 bit formats only)</td></tr>
-<tr><th>GreenShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for green</td></tr>
-<tr><th>BlueShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for blue</td></tr>
-<tr><th>AlphaShift</th><td><span class="text-nowrap">UBYTE</span></td><td>Right shift value for alpha</td></tr>
-<tr><th>RedMask</th><td><span class="text-nowrap">UBYTE</span></td><td>Unshifted mask value for red (ranges from 0x00 to 0xff)</td></tr>
-<tr><th>GreenMask</th><td><span class="text-nowrap">UBYTE</span></td><td>Unshifted mask value for green</td></tr>
-<tr><th>BlueMask</th><td><span class="text-nowrap">UBYTE</span></td><td>Unshifted mask value for blue</td></tr>
-<tr><th>AlphaMask</th><td><span class="text-nowrap">UBYTE</span></td><td>Unshifted mask value for alpha</td></tr>
-<tr><th>RedPos</th><td><span class="text-nowrap">UBYTE</span></td><td>Left shift/positional value for red</td></tr>
-<tr><th>GreenPos</th><td><span class="text-nowrap">UBYTE</span></td><td>Left shift/positional value for green</td></tr>
-<tr><th>BluePos</th><td><span class="text-nowrap">UBYTE</span></td><td>Left shift/positional value for blue</td></tr>
-<tr><th>AlphaPos</th><td><span class="text-nowrap">UBYTE</span></td><td>Left shift/positional value for alpha</td></tr>
-<tr><th>BitsPerPixel</th><td><span class="text-nowrap">UBYTE</span></td><td>Number of bits per pixel for this format.</td></tr>
+<div class="docs-content" style="display:none;" id="struct-ColourFormat"><h1>ColourFormat Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>RedShift</th><td><span class="text-nowrap">UINT8</span></td><td>Right shift value for red (15/16 bit formats only)</td></tr>
+<tr><th>GreenShift</th><td><span class="text-nowrap">UINT8</span></td><td>Right shift value for green</td></tr>
+<tr><th>BlueShift</th><td><span class="text-nowrap">UINT8</span></td><td>Right shift value for blue</td></tr>
+<tr><th>AlphaShift</th><td><span class="text-nowrap">UINT8</span></td><td>Right shift value for alpha</td></tr>
+<tr><th>RedMask</th><td><span class="text-nowrap">UINT8</span></td><td>Unshifted mask value for red (ranges from 0x00 to 0xff)</td></tr>
+<tr><th>GreenMask</th><td><span class="text-nowrap">UINT8</span></td><td>Unshifted mask value for green</td></tr>
+<tr><th>BlueMask</th><td><span class="text-nowrap">UINT8</span></td><td>Unshifted mask value for blue</td></tr>
+<tr><th>AlphaMask</th><td><span class="text-nowrap">UINT8</span></td><td>Unshifted mask value for alpha</td></tr>
+<tr><th>RedPos</th><td><span class="text-nowrap">UINT8</span></td><td>Left shift/positional value for red</td></tr>
+<tr><th>GreenPos</th><td><span class="text-nowrap">UINT8</span></td><td>Left shift/positional value for green</td></tr>
+<tr><th>BluePos</th><td><span class="text-nowrap">UINT8</span></td><td>Left shift/positional value for blue</td></tr>
+<tr><th>AlphaPos</th><td><span class="text-nowrap">UINT8</span></td><td>Left shift/positional value for alpha</td></tr>
+<tr><th>BitsPerPixel</th><td><span class="text-nowrap">UINT8</span></td><td>Number of bits per pixel for this format.</td></tr>
 </tbody></table><div class="footer copyright text-right">Bitmap class documentation © Paul Manias 2003-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

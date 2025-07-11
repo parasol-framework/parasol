@@ -334,7 +334,7 @@ const agg::trans_affine SceneRenderer::build_fill_transform(extVector &Vector, b
 void set_filter(agg::image_filter_lut &Filter, VSM Method, agg::trans_affine &Transform, double Kernel)
 {
    auto compute_kernel = [&Transform, &Kernel]() {
-      // For auto kernel calculation, use larger kernel sizes when shrinking.  A base-level of 3.0 is used so that 
+      // For auto kernel calculation, use larger kernel sizes when shrinking.  A base-level of 3.0 is used so that
       // the use of advanced filter algorithms is justified for the client.
       double k;
       if (Kernel > 0.0) k = Kernel;
@@ -664,7 +664,7 @@ void SceneRenderer::draw_vectors(extVector *CurrentVector, VectorState &ParentSt
 
       if (shape->dirty()) gen_vector_path(shape);
       else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Class->ClassName, shape->UID, shape->ParentView ? shape->ParentView->UID : 0);
-      
+
       if (shape->RequiresRedraw) {
          state.mDirty = true; // Carry-forward dirty marker for children
          shape->RequiresRedraw = false;

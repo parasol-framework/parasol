@@ -16,7 +16,7 @@ SVG:
 
 Filter pipelines are constructed from effects based on the @FilterEffect class, such as @CompositeFX and @FloodFX.
 Construct a new pipeline by creating effect objects and placing them under the ownership of the VectorFilter that
-will be supporting them.  The VectorFilter will automatically detect them and they will be processed in the order
+will be supporting them.  The VectorFilter will detect the filter objects and they will be processed in the order
 in which they are added.  It is most optimal to create each pipeline in advance, and a new VectorFilter object should
 be created for each pipeline as necessary.
 

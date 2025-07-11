@@ -88,7 +88,7 @@ proc.sleep()
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Header" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Header"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Header</th><td class="col-md-1"><span class="text-nowrap">BYTE []</span></td><td>Contains the first 128 bytes of data in a sample's file header.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Header" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Header</th><td class="col-md-1"><span class="text-nowrap">INT8 []</span></td><td>Contains the first 128 bytes of data in a sample's file header.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Header" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The Header field is a pointer to a 128 byte buffer that contains the first 128 bytes of information read from an audio file on initialisation.  This special field is considered to be helpful only to developers writing add-on components for the sound class.</p>
 <p>The buffer that is referred to by the Header field is not populated until the Init action is called on the sound object.</p>
       

@@ -1943,9 +1943,15 @@ class objWaveFunctionFX : public objFilterEffect {
 
    // Customised field setting
 
-   template <class T> inline ERR setColourMap(T && Value) noexcept {
+   inline ERR setAspectRatio(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
+   }
+
+   template <class T> inline ERR setColourMap(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
@@ -1964,6 +1970,12 @@ class objWaveFunctionFX : public objFilterEffect {
    inline ERR setM(const int Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
+   }
+
+   inline ERR setResolution(const int Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 

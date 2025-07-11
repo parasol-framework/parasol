@@ -519,6 +519,8 @@ class extVectorViewport : public extVector {
    TClipRectangle<double> vpBounds; // Bounding box coordinates relative to (0,0), used for clipping
    double vpAlignX, vpAlignY;
    objBitmap *vpBuffer;
+   uint8_t *vpBufferData;
+   int vpBufferSize; // Size of the vpBufferData in bytes
    bool  vpClip; // Viewport requires non-rectangular clipping, e.g. because it is rotated or sheared.
    DMF   vpDimensions;
    ARF   vpAspectRatio;
@@ -831,7 +833,7 @@ template <class T, class U> static void drawBitmapRender(U &Input,
 template <class T> static void renderSolidBitmap(agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, T &spangen, double Opacity = 1.0)
 {
-   class spanconv_image {
+   class spanconv_image { // Only used if Opacity < 1.0
       public:
          spanconv_image(double Alpha) : alpha(Alpha) { }
 

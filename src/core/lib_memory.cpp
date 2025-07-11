@@ -347,9 +347,9 @@ ERR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, LONG Size)
 -FUNCTION-
 MemoryPtrInfo: Returns information on memory addresses.
 
-This function can be used to get details on the attributes of a memory block.  It will return information on
-the start address, parent object, memory ID, size and flags of the memory address that you are querying.  The
-following code segment illustrates correct use of this function:
+This function returns the attributes of a memory block.  Information includes the start address, parent object, 
+memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates 
+correct use of this function:
 
 <pre>
 MemInfo info;

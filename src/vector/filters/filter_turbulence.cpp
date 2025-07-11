@@ -24,14 +24,14 @@ constexpr int RAND_a = 16807;      // 7**5; primitive root of m
 constexpr int RAND_q = 127773;     // m / a
 constexpr int RAND_r = 2836;       // m % a
 
-constexpr int BSIZE = 0x100;
-constexpr int BM = 0xff;
-constexpr int PerlinN = 0x1000;
-constexpr int NP = 12; // 2^PerlinN
-constexpr int NM = 0xfff;
-constexpr int GSIZE = 4;
+constexpr int BSIZE    = 0x100;
+constexpr int BM       = 0xff;
+constexpr int PerlinN  = 0x1000;
+constexpr int NP       = 12; // 2^PerlinN
+constexpr int NM       = 0xfff;
+constexpr int GSIZE    = 4;
 constexpr int GSUBSIZE = 2;
-constexpr int LSIZE = (BSIZE + BSIZE + 2);
+constexpr int LSIZE    = (BSIZE + BSIZE + 2);
 
 constexpr double s_curve(double t) { return (t * t * (3.0 - 2.0 * t)); }
 
@@ -41,13 +41,15 @@ class extTurbulenceFX : public extFilterEffect {
    static constexpr CSTRING CLASS_NAME = "TurbulenceFX";
    using create = pf::Create<extTurbulenceFX>;
 
+   objBitmap *Bitmap;
    double Gradient[GSIZE][LSIZE][GSUBSIZE];
-   int Lattice[LSIZE];
+   int    Lattice[LSIZE];
    double FX, FY;
-   int Octaves;
-   int Seed;
-   TB Type;
-   bool Stitch;
+   int    Octaves;
+   int    Seed;
+   TB     Type;
+   bool   Stitch;
+   bool   Dirty;
 
    private:
    int stitch_width, stitch_height;
@@ -250,6 +252,14 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
 
 //********************************************************************************************************************
 
+static ERR TURBULENCEFX_Free(extTurbulenceFX *Self)
+{
+   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = nullptr; }
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
 static ERR TURBULENCEFX_Init(extTurbulenceFX *Self)
 {
    int lSeed = setup_seed(Self->Seed);
@@ -299,6 +309,7 @@ static ERR TURBULENCEFX_NewObject(extTurbulenceFX *Self)
    Self->FX         = 0;
    Self->FY         = 0;
    Self->SourceType = VSF::NONE;
+   Self->Dirty      = true;
    return ERR::Okay;
 }
 
@@ -321,6 +332,7 @@ static ERR TURBULENCEFX_SET_FX(extTurbulenceFX *Self, double Value)
 {
    if (Value >= 0) {
       Self->FX = Value;
+      Self->Dirty = true;
       return ERR::Okay;
    }
    else return ERR::InvalidValue;
@@ -345,6 +357,7 @@ static ERR TURBULENCEFX_SET_FY(extTurbulenceFX *Self, double Value)
 {
    if (Value >= 0) {
       Self->FY = Value;
+      Self->Dirty = true;
       return ERR::Okay;
    }
    else return ERR::InvalidValue;
@@ -368,6 +381,7 @@ static ERR TURBULENCEFX_GET_Octaves(extTurbulenceFX *Self, int *Value)
 static ERR TURBULENCEFX_SET_Octaves(extTurbulenceFX *Self, int Value)
 {
    Self->Octaves = Value;
+   Self->Dirty = true;
    return ERR::Okay;
 }
 
@@ -390,6 +404,7 @@ static ERR TURBULENCEFX_GET_Seed(extTurbulenceFX *Self, int *Value)
 static ERR TURBULENCEFX_SET_Seed(extTurbulenceFX *Self, int Value)
 {
    Self->Seed = Value;
+   Self->Dirty = true;
    return ERR::Okay;
 }
 
@@ -421,6 +436,7 @@ static ERR TURBULENCEFX_GET_Stitch(extTurbulenceFX *Self, int *Value)
 static ERR TURBULENCEFX_SET_Stitch(extTurbulenceFX *Self, int Value)
 {
    Self->Stitch = Value;
+   Self->Dirty = true;
    return ERR::Okay;
 }
 
@@ -441,6 +457,7 @@ static ERR TURBULENCEFX_GET_Type(extTurbulenceFX *Self, TB *Value)
 static ERR TURBULENCEFX_SET_Type(extTurbulenceFX *Self, TB Value)
 {
    Self->Type = Value;
+   Self->Dirty = true;
    return ERR::Okay;
 }
 

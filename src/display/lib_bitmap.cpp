@@ -1554,7 +1554,7 @@ int(BAF) Flags: Use `FILL` to fill the rectangle.
 
 *********************************************************************************************************************/
 
-void DrawRectangle(objBitmap *Target, int X, int Y, int Width, int Height, uint32_t Colour, BAF Flags)
+void DrawRectangle(objBitmap *Target, int X, int Y, const int Width, const int Height, uint32_t Colour, BAF Flags)
 {
    pf::Log log(__FUNCTION__);
    uint8_t *data;
@@ -1584,18 +1584,20 @@ void DrawRectangle(objBitmap *Target, int X, int Y, int Width, int Height, uint3
    if (X + Width <= Bitmap->Clip.Left) return;
    if (Y + Height <= Bitmap->Clip.Top) return;
 
+   auto w = Width;
+   auto h = Height;
    if (X < Bitmap->Clip.Left) {
-      Width -= Bitmap->Clip.Left - X;
+      w -= Bitmap->Clip.Left - X;
       X = Bitmap->Clip.Left;
    }
 
    if (Y < Bitmap->Clip.Top) {
-      Height -= Bitmap->Clip.Top - Y;
+      h -= Bitmap->Clip.Top - Y;
       Y = Bitmap->Clip.Top;
    }
 
-   if ((X + Width) >= Bitmap->Clip.Right)   Width = Bitmap->Clip.Right - X;
-   if ((Y + Height) >= Bitmap->Clip.Bottom) Height = Bitmap->Clip.Bottom - Y;
+   if ((X + w) >= Bitmap->Clip.Right)   w = Bitmap->Clip.Right - X;
+   if ((Y + h) >= Bitmap->Clip.Bottom) h = Bitmap->Clip.Bottom - Y;
 
    uint16_t red   = Bitmap->unpackRed(Colour);
    uint16_t green = Bitmap->unpackGreen(Colour);
@@ -1616,7 +1618,7 @@ void DrawRectangle(objBitmap *Target, int X, int Y, int Width, int Height, uint3
 
    #ifdef _WIN32
       if (Bitmap->win.Drawable) {
-         winDrawRectangle(Bitmap->win.Drawable, X, Y, Width, Height, red, green, blue);
+         winDrawRectangle(Bitmap->win.Drawable, X, Y, w, h, red, green, blue);
          return;
       }
    #endif
@@ -1624,7 +1626,7 @@ void DrawRectangle(objBitmap *Target, int X, int Y, int Width, int Height, uint3
    #ifdef __xwindows__
       if ((Bitmap->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
          XSetForeground(XDisplay, Bitmap->getGC(), Colour);
-         XFillRectangle(XDisplay, Bitmap->x11.drawable, Bitmap->getGC(), X, Y, Width, Height);
+         XFillRectangle(XDisplay, Bitmap->x11.drawable, Bitmap->getGC(), X, Y, w, h);
          return;
       }
    #endif
@@ -1640,52 +1642,52 @@ void DrawRectangle(objBitmap *Target, int X, int Y, int Width, int Height, uint3
       if (Bitmap->Type IS BMP::CHUNKY) {
          if (Bitmap->BitsPerPixel IS 32) {
             longdata = (uint32_t *)(Bitmap->Data + (Bitmap->LineWidth * Y));
-            while (Height > 0) {
-               for (x=X; x < (X+Width); x++) longdata[x] = Colour;
+            while (h > 0) {
+               for (x=X; x < (X+w); x++) longdata[x] = Colour;
                longdata = (uint32_t *)(((uint8_t *)longdata) + Bitmap->LineWidth);
-               Height--;
+               h--;
             }
          }
          else if (Bitmap->BitsPerPixel IS 24) {
             data = Bitmap->Data + (Bitmap->LineWidth * Y);
             X = X + X + X;
-            xend = X + Width + Width + Width;
-            while (Height > 0) {
+            xend = X + w + w + w;
+            while (h > 0) {
                for (x=X; x < xend;) {
                   data[x++] = blue; data[x++] = green; data[x++] = red;
                }
                data += Bitmap->LineWidth;
-               Height--;
+               h--;
             }
          }
          else if ((Bitmap->BitsPerPixel IS 16) or (Bitmap->BitsPerPixel IS 15)) {
             word = (uint16_t *)(Bitmap->Data + (Bitmap->LineWidth * Y));
-            xend = X + Width;
-            while (Height > 0) {
+            xend = X + w;
+            while (h > 0) {
                for (x=X; x < xend; x++) word[x] = (uint16_t)Colour;
                word = (uint16_t *)(((BYTE *)word) + Bitmap->LineWidth);
-               Height--;
+               h--;
             }
          }
          else if (Bitmap->BitsPerPixel IS 8) {
             data = Bitmap->Data + (Bitmap->LineWidth * Y);
-            xend = X + Width;
-            while (Height > 0) {
+            xend = X + w;
+            while (h > 0) {
                for (x=X; x < xend;) data[x++] = Colour;
                data += Bitmap->LineWidth;
-               Height--;
+               h--;
             }
          }
-         else while (Height > 0) {
-            for (i=X; i < X + Width; i++) Bitmap->DrawUCPixel(Bitmap, i, Y, Colour);
+         else while (h > 0) {
+            for (i=X; i < X + w; i++) Bitmap->DrawUCPixel(Bitmap, i, Y, Colour);
             Y++;
-            Height--;
+            h--;
          }
       }
-      else while (Height > 0) {
-         for (i=X; i < X + Width; i++) Bitmap->DrawUCPixel(Bitmap, i, Y, Colour);
+      else while (h > 0) {
+         for (i=X; i < X + w; i++) Bitmap->DrawUCPixel(Bitmap, i, Y, Colour);
          Y++;
-         Height--;
+         h--;
       }
 
       unlock_surface(Bitmap);

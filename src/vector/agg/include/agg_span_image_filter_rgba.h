@@ -484,15 +484,13 @@ namespace agg
       void generate(color_type* span, int x, int y, unsigned len) {
          base_type::interpolator().begin(x + base_type::filter_dx_dbl(), y + base_type::filter_dy_dbl(), len);
 
-         int fg[4];
          const value_type *fg_ptr;
 
          unsigned     diameter     = base_type::filter().diameter();
          int          start        = base_type::filter().start();
          const int16* weight_array = base_type::filter().weight_array();
 
-         int x_count;
-         int weight_y;
+         int x_count, weight_y;
 
          do {
             base_type::interpolator().coordinates(&x, &y);
@@ -506,6 +504,7 @@ namespace agg
             int x_lr = x_hr >> image_subpixel_shift;
             int y_lr = y_hr >> image_subpixel_shift;
 
+            int fg[4];
             fg[0] = fg[1] = fg[2] = fg[3] = image_filter_scale / 2;
 
             int x_fract = x_hr & image_subpixel_mask;
@@ -513,11 +512,11 @@ namespace agg
 
             y_hr = image_subpixel_mask - (y_hr & image_subpixel_mask);
             fg_ptr = (const value_type*)base_type::source().span(x_lr + start, y_lr + start, diameter);
-            for(;;) {
+            while (true) {
                 x_count  = diameter;
                 weight_y = weight_array[y_hr];
                 x_hr = image_subpixel_mask - x_fract;
-                for(;;) {
+                while (true) {
                     int weight = (weight_y * weight_array[x_hr] + image_filter_scale / 2) >> image_filter_shift;
 
                     fg[0] += weight * *fg_ptr++;
@@ -525,12 +524,12 @@ namespace agg
                     fg[2] += weight * *fg_ptr++;
                     fg[3] += weight * *fg_ptr;
 
-                    if(--x_count == 0) break;
+                    if (--x_count == 0) break;
                     x_hr  += image_subpixel_scale;
                     fg_ptr = (const value_type*)base_type::source().next_x();
                 }
 
-                if(--y_count == 0) break;
+                if (--y_count == 0) break;
                 y_hr  += image_subpixel_scale;
                 fg_ptr = (const value_type*)base_type::source().next_y();
             }
