@@ -113,19 +113,7 @@ template <class T> void render_to_filter(T *Self)
 
       renderSolidBitmap(renderBase, raster, spangen); // Solid render without blending.
    }
-   else {
-      agg::path_storage path;
-      path.move_to(filter->TargetX, filter->TargetY);
-      path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY);
-      path.line_to(filter->TargetX + filter->TargetWidth, filter->TargetY + filter->TargetHeight);
-      path.line_to(filter->TargetX, filter->TargetY + filter->TargetHeight);
-      path.close_polygon();
-
-      agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(path, filter->ClientVector->Transform);
-      raster.add_path(final_path);
-
-      gfx::CopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, -img_transform.tx, -img_transform.ty);
-   }
+   else gfx::CopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, -img_transform.tx, -img_transform.ty);
 }
 
 //********************************************************************************************************************
