@@ -39,7 +39,13 @@ struct target {
 
 static ERR get_source_bitmap(extVectorFilter *, objBitmap **, VSF, objFilterEffect *, bool);
 
-template <class T> void render_to_filter(T *Self)
+//********************************************************************************************************************
+// Universal function for rendering a filter's Bitmap to the target region.
+//
+// No blending is performed because this is intended for use when there is no former input.  Copying is done
+// with only the transforms applied (if any).  Linear RGB interpolation will wait until post processing.
+
+template <class T> void render_to_filter(T *Self, objBitmap *Bitmap, ARF AspectRatio = ARF::NONE, VSM SampleMethod = VSM::AUTO)
 {
    auto filter = Self->Filter;
 
@@ -74,38 +80,35 @@ template <class T> void render_to_filter(T *Self)
       else if (dmf::hasHeight(Self->Dimensions))  p_height = Self->Height;
    }
 
-   double xScale = 1, yScale = 1, align_x = 0, align_y = 0;
-   calc_aspectratio("align_wavefunction", Self->AspectRatio, p_width, p_height, Self->Bitmap->Width, Self->Bitmap->Height, align_x, align_y, xScale, yScale);
+   double x_scale = 1, y_scale = 1, align_x = 0, align_y = 0;
+   calc_aspectratio("align_filter", AspectRatio, p_width, p_height, Bitmap->Width, Bitmap->Height, align_x, align_y, x_scale, y_scale);
 
    p_x += align_x;
    p_y += align_y;
 
-   // To render, no blending is performed because there is no input to the image.  Our objective is
-   // to copy across the image data with only the transforms applied (if any).  Linear RGB interpolation
-   // will wait until post processing.
-
-   agg::rasterizer_scanline_aa<> raster;
-   agg::renderer_base<agg::pixfmt_psl> renderBase;
-   agg::pixfmt_psl pixDest(*Self->Target);
-   agg::pixfmt_psl pixSource(*Self->Bitmap);
-
-   renderBase.attach(pixDest);
-   renderBase.clip_box(Self->Target->Clip.Left, Self->Target->Clip.Top, Self->Target->Clip.Right-1, Self->Target->Clip.Bottom-1);
-
    agg::trans_affine img_transform;
-   img_transform.scale(xScale, yScale);
+   img_transform.scale(x_scale, y_scale);
    img_transform.translate(p_x, p_y);
    img_transform *= filter->ClientVector->Transform;
    img_transform.invert();
 
    if (img_transform.is_complex()) {
+      agg::rasterizer_scanline_aa<> raster;
+      agg::renderer_base<agg::pixfmt_psl> renderBase;
+      agg::pixfmt_psl pixDest(*Self->Target);
+      agg::pixfmt_psl pixSource(*Bitmap);
+
+      renderBase.attach(pixDest);
+      renderBase.clip_box(Self->Target->Clip.Left, Self->Target->Clip.Top, Self->Target->Clip.Right-1, Self->Target->Clip.Bottom-1);
+
       agg::span_interpolator_linear<> interpolator(img_transform);
 
       agg::image_filter_lut ifilter;
-      set_filter(ifilter, filter->Scene->SampleMethod, img_transform);
+      set_filter(ifilter, SampleMethod, img_transform);
 
       agg::span_once<agg::pixfmt_psl> source(pixSource, 0, 0);
-      agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, ifilter);
+      agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>>
+         spangen(source, interpolator, ifilter);
 
       set_raster_rect_path(raster, Self->Target->Clip.Left, Self->Target->Clip.Top,
          Self->Target->Clip.Right - Self->Target->Clip.Left,
@@ -113,7 +116,7 @@ template <class T> void render_to_filter(T *Self)
 
       renderSolidBitmap(renderBase, raster, spangen); // Solid render without blending.
    }
-   else gfx::CopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, -img_transform.tx, -img_transform.ty);
+   else gfx::CopyArea(Bitmap, Self->Target, BAF::NIL, 0, 0, Bitmap->Width, Bitmap->Height, -img_transform.tx, -img_transform.ty);
 }
 
 //********************************************************************************************************************

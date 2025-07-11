@@ -44,7 +44,7 @@ Draw: Render the effect to the target bitmap.
 
 static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 {
-   render_to_filter(Self);
+   render_to_filter(Self, Self->Bitmap, Self->AspectRatio, Self->ResampleMethod);
    return ERR::Okay;
 }
 

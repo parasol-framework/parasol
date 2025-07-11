@@ -133,7 +133,7 @@ static ERR WAVEFUNCTIONFX_Draw(extWaveFunctionFX *Self, struct acDraw *Args)
       }
    }
 
-   render_to_filter(Self);   
+   render_to_filter(Self, Self->Bitmap, Self->AspectRatio, Self->Filter->Scene->SampleMethod);   
 
    return ERR::Okay;
 }
