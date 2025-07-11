@@ -202,7 +202,7 @@ function testW3Struct08() hashTestSVG('struct/w3-struct-group-01-t.svg', 0xddf12
 function testW3Struct09() hashTestSVG('struct/w3-struct-group-02-b.svg', 0xd430b77c) end
 
 function testCoarsePaper()        hashTestSVG('filters/coarse_paper.svg', 0xc4158cf1) end
-function testComposite()          hashTestSVG('filters/composite.svg', 0x316da3f1) end
+function testComposite()          hashTestSVG('filters/composite.svg', 0xc93c9029) end
 function testConvolve()           hashTestSVG('filters/convolve.svg', 0xad440144) end
 function testRockyLighting()      hashTestSVG('filters/rocky_lighting.svg', 0x6e4322a9) end
 function testW3Composite1()       hashTestSVG('filters/w3-composite.svg', 0x6534eb63) end

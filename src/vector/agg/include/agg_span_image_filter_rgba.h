@@ -466,14 +466,15 @@ namespace agg
       typedef span_image_filter<source_type, in_type> base_type;
       typedef typename color_type::value_type value_type;
       unsigned char oR, oG, oB, oA;
+      bool alpha_limit;
 
       enum base_scale_e {
          base_shift = color_type::base_shift,
          base_mask  = color_type::base_mask
       };
 
-      span_image_filter_rgba(source_type& src, in_type& inter, const image_filter_lut& filter) :
-          base_type(src, inter, &filter)
+      span_image_filter_rgba(source_type& src, in_type& inter, const image_filter_lut& filter, bool pAlphaLimit) :
+          base_type(src, inter, &filter), alpha_limit(pAlphaLimit)
       {
          oR = src.m_src->mPixelOrder.Red;
          oG = src.m_src->mPixelOrder.Green;
@@ -545,9 +546,17 @@ namespace agg
             if (fg[3] < 0) fg[3] = 0;
 
             if (fg[oA] > base_mask) fg[oA] = base_mask;
-            if (fg[oR] > fg[oA]) fg[oR] = fg[oA];
-            if (fg[oG] > fg[oA]) fg[oG] = fg[oA];
-            if (fg[oB] > fg[oA]) fg[oB] = fg[oA];
+
+            if (alpha_limit) { // Enable only if pipeline is blending with background color
+               if (fg[oR] > fg[oA]) fg[oR] = fg[oA];
+               if (fg[oG] > fg[oA]) fg[oG] = fg[oA];
+               if (fg[oB] > fg[oA]) fg[oB] = fg[oA];
+            }
+            else { // For copy-only, non-blending pipelines
+               if (fg[oR] > base_mask) fg[oR] = base_mask;
+               if (fg[oG] > base_mask) fg[oG] = base_mask;
+               if (fg[oB] > base_mask) fg[oB] = base_mask;
+            }
 
             span->r = (value_type)fg[oR];
             span->g = (value_type)fg[oG];

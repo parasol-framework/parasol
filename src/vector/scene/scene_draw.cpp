@@ -376,22 +376,22 @@ template <class T> void drawBitmap(T &Scanline, VSM SampleMethod, agg::renderer_
 
       if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_reflect_x, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_image_filter_rgba<agg::span_reflect_x, agg::span_interpolator_linear<>> spangen(source, interpolator, filter, true);
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REFLECT_Y) {
          agg::span_reflect_y source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_reflect_y, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_image_filter_rgba<agg::span_reflect_y, agg::span_interpolator_linear<>> spangen(source, interpolator, filter, true);
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else if (SpreadMethod IS VSPREAD::REPEAT) {
          agg::span_repeat_pf source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_repeat_pf, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_image_filter_rgba<agg::span_repeat_pf, agg::span_interpolator_linear<>> spangen(source, interpolator, filter, true);
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
       else { // VSPREAD::PAD and VSPREAD::CLIP modes.
          agg::span_once<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
-         agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
+         agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter, true);
          drawBitmapRender(Scanline, RenderBase, Raster, spangen, Opacity);
       }
    }
