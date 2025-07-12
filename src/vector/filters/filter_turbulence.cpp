@@ -19,6 +19,8 @@ and A.
 
 *********************************************************************************************************************/
 
+#include <thread_pool/thread_pool.h>
+
 constexpr int RAND_m = 2147483647; // 2**31 - 1
 constexpr int RAND_a = 16807;      // 7**5; primitive root of m
 constexpr int RAND_q = 127773;     // m / a
@@ -187,66 +189,97 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
 {
    if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
 
-   const uint8_t A = Self->Target->ColourFormat->AlphaPos>>3;
-   const uint8_t R = Self->Target->ColourFormat->RedPos>>3;
-   const uint8_t G = Self->Target->ColourFormat->GreenPos>>3;
-   const uint8_t B = Self->Target->ColourFormat->BluePos>>3;
+   const int width = F2I(Self->Filter->TargetWidth); //Self->Target->Clip.Right - Self->Target->Clip.Left;
+   const int height = F2I(Self->Filter->TargetHeight); //Self->Target->Clip.Bottom - Self->Target->Clip.Top;
 
-   uint8_t *data = Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth);
-
-   const int height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
-   const int width = Self->Target->Clip.Right - Self->Target->Clip.Left;
-
-   if (Self->Stitch) {
-      TClipRectangle<double> bounds = { Self->Filter->ClientViewport->vpFixedWidth, Self->Filter->ClientViewport->vpFixedHeight, 0, 0 };
-      calc_full_boundary(Self->Filter->ClientVector, bounds, false, false);
-      const double tile_width  = bounds.width();
-      const double tile_height = bounds.height();
-
-      // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
-
-      auto fx = Self->FX;
-      auto fy = Self->FY;
-
-      if (fx != 0.0) {
-         double fLoFreq = double(floor(tile_width * fx)) / tile_width;
-         double fHiFreq = double(ceil(tile_width * fx)) / tile_width;
-         if (fx / fLoFreq < fHiFreq / fx) fx = fLoFreq;
-         else fx = fHiFreq;
-      }
-
-      if (fy != 0.0) {
-         double fLoFreq = double(floor(tile_height * fy)) / tile_height;
-         double fHiFreq = double(ceil(tile_height * fy)) / tile_height;
-         if (fy / fLoFreq < fHiFreq / fy) fy = fLoFreq;
-         else fy = fHiFreq;
-      }
-
-      auto stitch_width  = F2I(tile_width * fx);
-      auto stitch_height = F2I(tile_height * fy);
-
-      for (int y=0; y < height; y++) {
-         uint8_t *pixel = data + (Self->Target->LineWidth * y);
-         for (int x=0; x < width; x++, pixel += 4) {
-            pixel[R] = glLinearRGB.invert(Self->turbulence_stitch(0, x, y, fx, fy, stitch_width, stitch_height));
-            pixel[G] = glLinearRGB.invert(Self->turbulence_stitch(1, x, y, fx, fy, stitch_width, stitch_height));
-            pixel[B] = glLinearRGB.invert(Self->turbulence_stitch(2, x, y, fx, fy, stitch_width, stitch_height));
-            pixel[A] = Self->turbulence_stitch(3, x, y, fx, fy, stitch_width, stitch_height);
-         }
-      }
+   if (!Self->Bitmap) {
+      Self->Dirty = true;
+      if (!(Self->Bitmap = objBitmap::create::local(fl::Name("turbulence_bmp"),
+         fl::Width(width),
+         fl::Height(height),
+         fl::BitsPerPixel(32),
+         fl::Flags(BMF::ALPHA_CHANNEL),
+         fl::BlendMode(BLM::NONE),
+         fl::ColourSpace(CS::SRGB)))) return ERR::CreateObject;    
    }
-   else {
-      for (int y=0; y < height; y++) {
-         uint8_t *pixel = data + (Self->Target->LineWidth * y);
-         for (int x=0; x < width; x++, pixel += 4) {
-            pixel[R] = glLinearRGB.invert(Self->turbulence(0, x, y));
-            pixel[G] = glLinearRGB.invert(Self->turbulence(1, x, y));
-            pixel[B] = glLinearRGB.invert(Self->turbulence(2, x, y));
-            pixel[A] = Self->turbulence(3, x, y);
-         }
-      }
+   else if ((Self->Bitmap->Width != width) or (Self->Bitmap->Height != height)) {
+      Self->Dirty = true;
+      Self->Bitmap->resize(width, height);
    }
 
+   if (Self->Dirty) {
+      Self->Dirty = false;
+      
+      int thread_count = std::thread::hardware_concurrency();
+      if (thread_count > 16) thread_count = 16;
+
+      dp::thread_pool pool(thread_count);
+
+      for (int i=0; i < thread_count; i++) {
+         pool.enqueue_detach([](extTurbulenceFX *Self, int Start, int End) { 
+            const uint8_t A = Self->Bitmap->ColourFormat->AlphaPos>>3;
+            const uint8_t R = Self->Bitmap->ColourFormat->RedPos>>3;
+            const uint8_t G = Self->Bitmap->ColourFormat->GreenPos>>3;
+            const uint8_t B = Self->Bitmap->ColourFormat->BluePos>>3;
+   
+            uint8_t *data = Self->Bitmap->Data;
+
+            if (Self->Stitch) {
+               TClipRectangle<double> bounds = { Self->Filter->ClientViewport->vpFixedWidth, Self->Filter->ClientViewport->vpFixedHeight, 0, 0 };
+               calc_full_boundary(Self->Filter->ClientVector, bounds, false, false);
+               const int tile_width  = F2I(bounds.width());
+               const int tile_height = F2I(bounds.height());
+
+               // When stitching tiled turbulence, the frequencies must be adjusted so that the tile borders will be continuous.
+
+               auto fx = Self->FX;
+               auto fy = Self->FY;
+
+               if (fx != 0.0) {
+                  double fLoFreq = double(floor(tile_width * fx)) / tile_width;
+                  double fHiFreq = double(ceil(tile_width * fx)) / tile_width;
+                  if (fx / fLoFreq < fHiFreq / fx) fx = fLoFreq;
+                  else fx = fHiFreq;
+               }
+
+               if (fy != 0.0) {
+                  double fLoFreq = double(floor(tile_height * fy)) / tile_height;
+                  double fHiFreq = double(ceil(tile_height * fy)) / tile_height;
+                  if (fy / fLoFreq < fHiFreq / fy) fy = fLoFreq;
+                  else fy = fHiFreq;
+               }
+
+               auto stitch_width  = F2I(tile_width * fx);
+               auto stitch_height = F2I(tile_height * fy);
+
+               for (int y=Start; y < End; y++) {
+                  uint8_t *pixel = data + (Self->Bitmap->LineWidth * y);
+                  for (int x=0; x < Self->Bitmap->Width; x++, pixel += 4) {
+                     pixel[R] = glLinearRGB.invert(Self->turbulence_stitch(0, x, y, fx, fy, stitch_width, stitch_height));
+                     pixel[G] = glLinearRGB.invert(Self->turbulence_stitch(1, x, y, fx, fy, stitch_width, stitch_height));
+                     pixel[B] = glLinearRGB.invert(Self->turbulence_stitch(2, x, y, fx, fy, stitch_width, stitch_height));
+                     pixel[A] = Self->turbulence_stitch(3, x, y, fx, fy, stitch_width, stitch_height);
+                  }
+               }
+            }
+            else {
+               for (int y=Start; y < End; y++) {
+                  uint8_t *pixel = data + (Self->Bitmap->LineWidth * y);
+                  for (int x=0; x < Self->Bitmap->Width; x++, pixel += 4) {
+                     pixel[R] = glLinearRGB.invert(Self->turbulence(0, x, y));
+                     pixel[G] = glLinearRGB.invert(Self->turbulence(1, x, y));
+                     pixel[B] = glLinearRGB.invert(Self->turbulence(2, x, y));
+                     pixel[A] = Self->turbulence(3, x, y);
+                  }
+               }
+            }
+         }, Self, (height * i) / thread_count,  (height * (i + 1)) / thread_count);
+      }
+
+      pool.wait_for_tasks();
+   }
+
+   render_to_filter(Self, Self->Bitmap, ARF::NONE, Self->Filter->Scene->SampleMethod);
    return ERR::Okay;
 }
 
