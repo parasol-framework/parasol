@@ -19,7 +19,7 @@ static ERR thread_entry(objThread *Thread) {
 }
 
 objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
-if (thread.ok()) thread->activate(thread);
+if (thread.ok()) thread->activate();
 </pre>
 
 To initialise the thread with data, call #SetData() prior to execution and read the #Data field from within the
