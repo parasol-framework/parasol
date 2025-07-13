@@ -4460,7 +4460,7 @@ class objThread : public Object {
 
    APTR Data;       // Pointer to initialisation data for the thread.
    int  DataSize;   // The size of the buffer referenced in the Data field.
-   int  StackSize;  // The stack size to allocate for the thread.
+   int  StackSize;  // Pre-set stack size
    ERR  Error;      // Reflects the error code returned by the thread routine.
    THF  Flags;      // Optional flags can be defined here.
 
@@ -4475,11 +4475,6 @@ class objThread : public Object {
    }
 
    // Customised field setting
-
-   inline ERR setStackSize(const int Value) noexcept {
-      this->StackSize = Value;
-      return ERR::Okay;
-   }
 
    inline ERR setFlags(const THF Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;

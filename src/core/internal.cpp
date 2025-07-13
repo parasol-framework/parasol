@@ -140,7 +140,7 @@ ERR process_janitor(OBJECTID SubscriberID, int Elapsed, int TotalElapsed)
 
 /*********************************************************************************************************************
 
-copy_args: Used for turning argument structures into sendable messages.
+copy_args: Serialise argument structures into sendable messages.
 
 This function searches an argument structure for pointer and string types.  If it encounters them, it attempts to
 convert them to a format that can be passed to other memory spaces.

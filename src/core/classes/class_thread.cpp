@@ -429,9 +429,6 @@ static ERR THREAD_Init(extThread *Self)
 {
    pf::Log log;
 
-   if (Self->StackSize < 1024) Self->StackSize = 1024;
-   else if (Self->StackSize > 1024 * 1024) return log.warning(ERR::OutOfRange);
-
    return ERR::Okay;
 }
 
@@ -440,7 +437,6 @@ static ERR THREAD_Init(extThread *Self)
 static ERR THREAD_NewPlacement(extThread *Self)
 {
    new (Self) extThread;
-   Self->StackSize = 16384;
    #ifdef __unix__
       Self->Msgs[0] = -1;
       Self->Msgs[1] = -1;
@@ -582,23 +578,11 @@ static ERR SET_Routine(extThread *Self, FUNCTION *Value)
    return ERR::Okay;
 }
 
-/*********************************************************************************************************************
--FIELD-
-StackSize: The stack size to allocate for the thread.
-
-The initial size of the thread's stack can be modified by setting this field.  It may also be read prior to activation
-in order to check the default stack size.  Changes to the stack size when the thread is active will have no effect.
-
-On some platforms it may not be possible to preset the stack size and the provided value will be ignored.
--END-
-*********************************************************************************************************************/
-
 #include "class_thread_def.c"
 
 static const FieldArray clFields[] = {
    { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, GET_Data },
    { "DataSize",  FDF_INT|FDF_R },
-   { "StackSize", FDF_INT|FDF_RW },
    { "Error",     FDF_INT|FDF_R },
    { "Flags",     FDF_INT|FDF_RI, nullptr, nullptr, &clThreadFlags },
    // Virtual fields

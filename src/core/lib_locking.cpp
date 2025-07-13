@@ -22,8 +22,8 @@ struct WaitLock {
    #endif
    LARGE WaitingTime;
    THREADID WaitingForThreadID;
-   LONG  WaitingForResourceID;
-   LONG  WaitingForResourceType;
+   int  WaitingForResourceID;
+   int  WaitingForResourceType;
    UBYTE Flags; // WLF flags
 
    #define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
@@ -51,9 +51,9 @@ static std::mutex glWaitLockMutex;
 //
 // Used by AccessMemory() and LockObject()
 
-ERR init_sleep(THREADID OtherThreadID, LONG ResourceID, LONG ResourceType)
+ERR init_sleep(THREADID OtherThreadID, int ResourceID, int ResourceType)
 {
-   //log.trace("Sleeping on thread %d for resource #%d, Total Threads: %d", OtherThreadID, ResourceID, LONG(glWaitLocks.size()));
+   //log.trace("Sleeping on thread %d for resource #%d, Total Threads: %d", OtherThreadID, ResourceID, int(glWaitLocks.size()));
 
    auto our_thread = get_thread_id();
    if (OtherThreadID IS our_thread) return ERR::Args;
@@ -75,7 +75,7 @@ ERR init_sleep(THREADID OtherThreadID, LONG ResourceID, LONG ResourceType)
          if (glWaitLocks[i].ThreadID IS OtherThreadID) {
             if (glWaitLocks[i].WaitingForThreadID IS our_thread) {
                pf::Log log(__FUNCTION__);
-               log.warning("Deadlock: Thread %d holds resource #%d and is waiting for us (%d) to release #%d.", LONG(glWaitLocks[i].ThreadID), ResourceID, LONG(our_thread), glWaitLocks[i].WaitingForResourceID);
+               log.warning("Deadlock: Thread %d holds resource #%d and is waiting for us (%d) to release #%d.", int(glWaitLocks[i].ThreadID), ResourceID, int(our_thread), glWaitLocks[i].WaitingForResourceID);
                return ERR::DeadLock;
             }
          }
@@ -111,7 +111,7 @@ void remove_process_waitlocks(void)
       }
       else if (glWaitLocks[i].WaitingForThreadID IS our_thread) { // A thread is waiting on us, wake it up.
          #ifdef _WIN32
-            log.warning("Waking thread %d", LONG(glWaitLocks[i].ThreadID));
+            log.warning("Waking thread %d", int(glWaitLocks[i].ThreadID));
             glWaitLocks[i].notWaiting();
             wake_waitlock(glWaitLocks[i].Lock, 1);
          #endif
@@ -144,12 +144,12 @@ WINHANDLE get_threadlock(void)
    }
 
    auto index = glThreadLockIndex++;
-   LONG end = index - 1;
+   int end = index - 1;
    while (index != end) {
       if (index >= std::ssize(glThreadLocks)) index = glThreadLockIndex = 1; // Has the array reached exhaustion?  If so, we need to wrap it.
       if (!glThreadLocks[index]) {
          WINHANDLE lock;
-         if (alloc_public_waitlock(&lock, NULL) IS ERR::Okay) {
+         if (alloc_public_waitlock(&lock, nullptr) IS ERR::Okay) {
             glThreadLocks[index] = lock; // For resource tracking.
             tlThreadLock = lock;
             log.trace("Allocated thread-lock #%d for thread #%d", index, get_thread_id());
@@ -166,7 +166,7 @@ WINHANDLE get_threadlock(void)
 
 void free_threadlocks(void)
 {
-   for (LONG i=0; i < glThreadLockIndex; i++) {
+   for (int i=0; i < glThreadLockIndex; i++) {
       free_public_waitlock(glThreadLocks[i]);
       glThreadLocks[i] = 0;
    }
@@ -175,7 +175,7 @@ void free_threadlocks(void)
 void free_threadlock(void)
 {
    if (tlThreadLock) {
-      for (LONG i=glThreadLockIndex-1; i >= 0; i--) {
+      for (int i=glThreadLockIndex-1; i >= 0; i--) {
          if (glThreadLocks[i] IS tlThreadLock) {
             glThreadLocks[i] = 0;
          }
@@ -215,7 +215,7 @@ MemoryDoesNotExist: The supplied `Memory` ID does not refer to an existing memor
 
 *********************************************************************************************************************/
 
-ERR AccessMemory(MEMORYID MemoryID, MEM Flags, LONG MilliSeconds, APTR *Result)
+ERR AccessMemory(MEMORYID MemoryID, MEM Flags, int MilliSeconds, APTR *Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -223,9 +223,9 @@ ERR AccessMemory(MEMORYID MemoryID, MEM Flags, LONG MilliSeconds, APTR *Result)
    if (MilliSeconds <= 0) return log.warning(ERR::Args);
 
    // NB: Logging AccessMemory() calls is usually a waste of time unless the process is going to sleep.
-   //log.trace("MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, LONG(Flags), MilliSeconds);
+   //log.trace("MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, int(Flags), MilliSeconds);
 
-   *Result = NULL;
+   *Result = nullptr;
    if (auto lock = std::unique_lock{glmMemory}) {
       auto mem = glPrivateMemory.find(MemoryID);
       if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
@@ -241,7 +241,7 @@ ERR AccessMemory(MEMORYID MemoryID, MEM Flags, LONG MilliSeconds, APTR *Result)
             auto timeout = end_time - (current_time / 1000LL);
             if (timeout <= 0) return log.warning(ERR::TimeOut);
             else {
-               //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (LONG)mem->second.ThreadLockID, our_thread);
+               //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (int)mem->second.ThreadLockID, our_thread);
                if (cvResources.wait_for(glmMemory, std::chrono::milliseconds{timeout}) IS std::cv_status::timeout) {
                   return log.warning(ERR::TimeOut);
                }
@@ -308,7 +308,7 @@ SystemLocked
 
 *********************************************************************************************************************/
 
-ERR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
+ERR AccessObject(OBJECTID ObjectID, int MilliSeconds, OBJECTPTR *Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -365,7 +365,7 @@ TimeOut:
 
 *********************************************************************************************************************/
 
-ERR LockObject(OBJECTPTR Object, LONG Timeout)
+ERR LockObject(OBJECTPTR Object, int Timeout)
 {
    if (!Object) {
       DEBUG_BREAK
@@ -380,11 +380,11 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
       // destroying the object when other threads could potentially be using it).
 
       if (++Object->Queue IS 1) {
-         Object->ThreadID = LONG(our_thread);
+         Object->ThreadID = int(our_thread);
          return ERR::Okay;
       }
 
-      if (LONG(our_thread) IS Object->ThreadID) { // Support nested locks.
+      if (int(our_thread) IS Object->ThreadID) { // Support nested locks.
          return ERR::Okay;
       }
 
@@ -422,7 +422,7 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
             }
             else if (++Object->Queue IS 1) { // Increment the lock count - also doubles as a lock() method call if the Queue value is 1.
                glWaitLocks[glWLIndex].notWaiting();
-               Object->ThreadID = LONG(our_thread);
+               Object->ThreadID = int(our_thread);
                Object->SleepQueue--;
                return ERR::Okay;
             }
@@ -436,7 +436,7 @@ ERR LockObject(OBJECTPTR Object, LONG Timeout)
          // Failure: Either a timeout occurred or the object no longer exists.
 
          if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
-            log.warning("TID %d: The resource no longer exists.", LONG(get_thread_id()));
+            log.warning("TID %d: The resource no longer exists.", int(get_thread_id()));
             error = ERR::DoesNotExist;
          }
          else {
