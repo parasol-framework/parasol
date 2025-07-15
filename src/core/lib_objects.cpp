@@ -313,7 +313,7 @@ does not require any additional arguments.  The second performs a move operation
 arguments to be passed to the Action() function:
 
 <pre>
-1. Action(AC::Activate, Picture, NULL);
+1. Action(AC::Activate, Picture, nullptr);
 
 2. struct acMove move = { 30, 15, 0 };
    Action(AC::Move, Window, &move);
@@ -427,28 +427,28 @@ fields will be set to `NULL`.  The following illustrates two argument definition
 <pre>
 struct FunctionField argsCopyData[] = {
    { "Destination", FD_INT  },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 struct FunctionField argsResize[] = {
    { "Width",  FD_DOUBLE },
    { "Height", FD_DOUBLE },
    { "Depth",  FD_DOUBLE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 </pre>
 
 The argument types that can be used by actions are limited to those listed in the following table:
 
 <types lookup="FD">
-<type name="LONG">A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</>
-<type name="LARGE">A 64-bit integer value.</>
+<type name="INT">A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</>
+<type name="INT64">A 64-bit integer value.</>
 <type name="PTR">A standard address space pointer.</>
 <type name="STRING">A pointer to a null-terminated string.</>
 <type name="DOUBLE">A 64-bit floating point value.</>
 <type name="OBJECT">This flag is sometimes set in conjunction with the `FD_INT` type.  It indicates that the argument refers to an object ID.</>
 <type name="PTRSIZE">This argument type can only be used if it follows an `FD_PTR` type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous `FD_PTR` argument.</>
-<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a `LONG` field in which the function will store a result, the correct argument definition will be `FD_RESULT|FD_INT|FD_PTR`. To make the definition of these argument types easier, `FD_PTRRESULT` and `FD_INTRESULT` macros are also available for use.</>
+<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to an `int` field in which the function will store a result, the correct argument definition will be `FD_RESULT|FD_INT|FD_PTR`. To make the definition of these argument types easier, `FD_PTRRESULT` and `FD_INTRESULT` macros are also available for use.</>
 </>
 
 -INPUT-
@@ -752,7 +752,7 @@ objMetaClass * FindClass(CLASSID ClassID)
    auto it = glClassMap.find(ClassID);
    if (it != glClassMap.end()) return it->second;
 
-   if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
+   if (glProgramStage IS STAGE_SHUTDOWN) return nullptr; // No new module loading during shutdown
 
    // Class is not loaded.  Try and find the class in the dictionary.  If we find one, we can
    // initialise the module and then find the new Class.

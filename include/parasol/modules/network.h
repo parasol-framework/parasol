@@ -112,11 +112,11 @@ enum class NSL : int {
 #endif
 
 #ifdef __linux__
-typedef LONG SOCKET_HANDLE;
+typedef int SOCKET_HANDLE;
 #elif _WIN32
-typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for now to avoid including winsock.h
+typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32 instead of SOCKET for now to avoid including winsock.h
 #elif __APPLE__
-typedef LONG SOCKET_HANDLE;
+typedef int SOCKET_HANDLE;
 #else
 #error "No support for this platform"
 #endif

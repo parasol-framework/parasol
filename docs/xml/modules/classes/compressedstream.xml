@@ -206,6 +206,7 @@
       <const name="CORE_END"/>
       <const name="DEBUG"/>
       <const name="EVENT"/>
+      <const name="FLUID_THREAD_CALLBACK"/>
       <const name="FREE"/>
       <const name="QUIT"/>
       <const name="THREAD_ACTION"/>

@@ -6,6 +6,7 @@
 
 #include <type_traits>
 #include <utility>
+#include <cstdint>
 
 //********************************************************************************************************************
 
@@ -46,10 +47,13 @@ struct FUNCTION {
    unsigned char PadA;
    unsigned short ID; // Unused.  Unique identifier for the function.
    OBJECTPTR Context; // The context at the time the function was created, or a Script reference
-   void * Meta;       // Additional meta data provided by the client.
+   union {
+      void * Meta;    // Additional meta data provided by the client.
+      int64_t MetaValue;
+   };
    union {
       void * Routine;    // CALL::STD_C: Pointer to a C routine
-      LARGE ProcedureID; // CALL::SCRIPT: Function identifier, usually a hash
+      int64_t ProcedureID; // CALL::SCRIPT: Function identifier, usually a hash
    };
 
    FUNCTION() : Type(CALL::NIL) { }

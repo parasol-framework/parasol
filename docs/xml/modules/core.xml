@@ -100,7 +100,7 @@
     <description>
 <p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a class implementation. You can find a complete list of available actions and their associated details in the Parasol Wiki. The actions and methods supported by any class will be referenced in their auto-generated documentation.</p>
 <p>Here are two examples that demonstrate how to make an action call.  The first performs an activation, which does not require any additional arguments.  The second performs a move operation, which requires three additional arguments to be passed to the Action() function:</p>
-<pre>1. Action(AC::Activate, Picture, NULL);
+<pre>1. Action(AC::Activate, Picture, nullptr);
 
 2. struct acMove move = { 30, 15, 0 };
    Action(AC::Move, Window, &amp;move);
@@ -137,26 +137,26 @@
 <p>The <code>Name</code> field specifies the name of the action.  The <code>Args</code> field refers to the action's argument definition structure, which lists the argument names and their relevant types.  This is matched by the <code>Size</code> field, which indicates the byte-size of the action's related argument structure.  If the action does not support arguments, the <code>Args</code> and <code>Size</code> fields will be set to <code>NULL</code>.  The following illustrates two argument definition examples:</p>
 <pre>struct FunctionField argsCopyData[] = {
    { "Destination", FD_INT  },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 struct FunctionField argsResize[] = {
    { "Width",  FD_DOUBLE },
    { "Height", FD_DOUBLE },
    { "Depth",  FD_DOUBLE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 </pre>
 <p>The argument types that can be used by actions are limited to those listed in the following table:</p>
 <types lookup="FD">
-<type name="LONG">A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</type>
-<type name="LARGE">A 64-bit integer value.</type>
+<type name="INT">A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</type>
+<type name="INT64">A 64-bit integer value.</type>
 <type name="PTR">A standard address space pointer.</type>
 <type name="STRING">A pointer to a null-terminated string.</type>
 <type name="DOUBLE">A 64-bit floating point value.</type>
 <type name="OBJECT">This flag is sometimes set in conjunction with the <code>FD_INT</code> type.  It indicates that the argument refers to an object ID.</type>
 <type name="PTRSIZE">This argument type can only be used if it follows an <code>FD_PTR</code> type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous <code>FD_PTR</code> argument.</type>
-<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a <code>LONG</code> field in which the function will store a result, the correct argument definition will be <code>FD_RESULT|FD_INT|FD_PTR</code>. To make the definition of these argument types easier, <code>FD_PTRRESULT</code> and <code>FD_INTRESULT</code> macros are also available for use.</type>
+<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to an <code>int</code> field in which the function will store a result, the correct argument definition will be <code>FD_RESULT|FD_INT|FD_PTR</code>. To make the definition of these argument types easier, <code>FD_PTRRESULT</code> and <code>FD_INTRESULT</code> macros are also available for use.</type>
 </types>
     </description>
   </function>
@@ -2511,6 +2511,7 @@ FreeResource(memory);  // Reference is no longer valid
       <const name="CORE_END"/>
       <const name="DEBUG"/>
       <const name="EVENT"/>
+      <const name="FLUID_THREAD_CALLBACK"/>
       <const name="FREE"/>
       <const name="QUIT"/>
       <const name="THREAD_ACTION"/>
