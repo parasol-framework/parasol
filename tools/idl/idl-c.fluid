@@ -26,27 +26,27 @@ glActionStubs = {
    NewPlacement  = "",
 
    -- Actions without parameters
-   Activate     = "   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }",
-   Clear        = "   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }",
-   Deactivate   = "   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }",
-   Disable      = "   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }",
-   Enable       = "   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }",
-   Flush        = "   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }",
-   Focus        = "   inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }",
-   Hide         = "   inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }",
+   Activate     = "   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }",
+   Clear        = "   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }",
+   Deactivate   = "   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, nullptr); }",
+   Disable      = "   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }",
+   Enable       = "   inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }",
+   Flush        = "   inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }",
+   Focus        = "   inline ERR focus() noexcept { return Action(AC::Focus, this, nullptr); }",
+   Hide         = "   inline ERR hide() noexcept { return Action(AC::Hide, this, nullptr); }",
    Init         = "   inline ERR init() noexcept { return InitObject(this); }",
-   Lock         = "   inline ERR lock() noexcept { return Action(AC::Lock, this, NULL); }",
-   LostFocus    = "   inline ERR lostFocus() noexcept { return Action(AC::LostFocus, this, NULL); }",
-   MoveToBack   = "   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }",
-   MoveToFront  = "   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }",
-   Next         = "   inline ERR next() noexcept { return Action(AC::Next, this, NULL); }",
-   Prev         = "   inline ERR prev() noexcept { return Action(AC::Prev, this, NULL); }",
-   Query        = "   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }",
-   Refresh      = "   inline ERR refresh() noexcept { return Action(AC::Refresh, this, NULL); }",
-   Reset        = "   inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }",
-   SaveSettings = "   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, NULL); }",
-   Show         = "   inline ERR show() noexcept { return Action(AC::Show, this, NULL); }",
-   Unlock       = "   inline ERR unlock() noexcept { return Action(AC::Unlock, this, NULL); }",
+   Lock         = "   inline ERR lock() noexcept { return Action(AC::Lock, this, nullptr); }",
+   LostFocus    = "   inline ERR lostFocus() noexcept { return Action(AC::LostFocus, this, nullptr); }",
+   MoveToBack   = "   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, nullptr); }",
+   MoveToFront  = "   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, nullptr); }",
+   Next         = "   inline ERR next() noexcept { return Action(AC::Next, this, nullptr); }",
+   Prev         = "   inline ERR prev() noexcept { return Action(AC::Prev, this, nullptr); }",
+   Query        = "   inline ERR query() noexcept { return Action(AC::Query, this, nullptr); }",
+   Refresh      = "   inline ERR refresh() noexcept { return Action(AC::Refresh, this, nullptr); }",
+   Reset        = "   inline ERR reset() noexcept { return Action(AC::Reset, this, nullptr); }",
+   SaveSettings = "   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, nullptr); }",
+   Show         = "   inline ERR show() noexcept { return Action(AC::Show, this, nullptr); }",
+   Unlock       = "   inline ERR unlock() noexcept { return Action(AC::Unlock, this, nullptr); }",
 
    CopyData = [[
    inline ERR copyData(OBJECTPTR Dest) noexcept {
@@ -64,7 +64,7 @@ glActionStubs = {
       return Action(AC::Clipboard, this, &args);
    }]],
    Draw = [[
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -84,7 +84,7 @@ glActionStubs = {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
@@ -94,7 +94,7 @@ glActionStubs = {
    template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       return Action(AC::Read, this, &read);
    }]],
    Redo = [[
@@ -173,8 +173,8 @@ glActionStubs = {
       return ERR::Okay;
    }]],
    Write = [[
-   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+   inline ERR write(CPTR Buffer, int Size, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -184,8 +184,8 @@ glActionStubs = {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -196,7 +196,7 @@ glActionStubs = {
       }
    }
    inline int writeResult(CPTR Buffer, int Size) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }]],
@@ -1103,7 +1103,7 @@ function class(Name, Options, Spec, Private, Custom)
          if name == 'delete' then name = 'del' end -- C++ keyword check
 
          local inline = '   inline ERR ' .. name .. '(' .. params .. ') noexcept {\n'
-         local args = 'NULL'
+         local args = 'nullptr'
 
          if (method.params != nil) and (#method.params > 0) then
             inline = inline .. '      struct ' .. lpfx .. '::' .. method.name .. ' args = { ' .. values .. ' };\n'
@@ -1188,7 +1188,7 @@ function class(Name, Options, Spec, Private, Custom)
          for _, action in ipairs(class.sortedActions) do
             mdef = mdef .. "   { AC::" .. action.name .. ", " .. Name:upper() .. "_" .. action.name .. " },\n"
          end
-         mdef = mdef .. "   { AC::NIL, NULL }\n};\n\n"
+         mdef = mdef .. "   { AC::NIL, nullptr }\n};\n\n"
       end
 
       local file = obj.new("file", { flags="WRITE|NEW", location=glFDLFolder .. Options.output } )
@@ -1416,7 +1416,7 @@ function outputLookup(Name, List)
         end
     end
 
-    return 'static const struct FieldDef cl' .. Name .. '[] = {\n' .. list .. '   { NULL, 0 }\n};\n\n'
+    return 'static const struct FieldDef cl' .. Name .. '[] = {\n' .. list .. '   { nullptr, 0 }\n};\n\n'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1502,7 +1502,7 @@ function processClassFields(class, ClientSpec)
 
          if not nz(f.fullType) then error('The fullType is not defined for field ' .. nz(f.name,'NIL')) end
 
-         fdef = fdef .. "   { \"" .. f.name .. "\", " .. f.fullType.fd .. ", 0, NULL, NULL },\n"
+         fdef = fdef .. "   { \"" .. f.name .. "\", " .. f.fullType.fd .. ", 0, nullptr, nullptr },\n"
       end
    end
    fdef = fdef .. '};\n\n'
@@ -2448,7 +2448,7 @@ function buildDefs()
    for _, func in ipairs(glFunctions) do
       flist = flist .. "   { (APTR)" .. prefix .. func.name .. ", \"" .. func.name .. "\", args" .. func.name .. " },\n"
    end
-   flist = flist .. "   { NULL, NULL, NULL }\n"
+   flist = flist .. "   { nullptr, nullptr, nullptr }\n"
    flist = flist .. "};\n\n"
 
    table.sort(glFunctions, function(a,b) return a.name < b.name end)

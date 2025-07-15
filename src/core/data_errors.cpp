@@ -1,5 +1,5 @@
 
-const CSTRING glMessages[LONG(ERR::END)+1] = {
+const CSTRING glMessages[int(ERR::END)+1] = {
  "Operation successful.",
  "The result is false.",
  "Limited success.",
@@ -190,7 +190,8 @@ const CSTRING glMessages[LONG(ERR::END)+1] = {
  "Attempted to set a pointer field with an incompatible value.",
  "Attempted to set an array field with an incompatible value.",
  "Attempted to set a lookup field with an incompatible value.",
- NULL // Needs to be null-terminated for Fluid support
+ "The type of a value is invalid.",
+ nullptr // Needs to be null-terminated for Fluid support
 };
 
-const LONG glTotalMessages = std::ssize(glMessages);
+const int glTotalMessages = std::ssize(glMessages);

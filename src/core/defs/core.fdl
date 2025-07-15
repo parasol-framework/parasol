@@ -302,12 +302,13 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      CORE_END         = 100,    -- End marker for Core generated messages
      ACTION           = 99,     -- Start from 99 descending (lower risk of accidental ID matches)
      FREE             = 98,
-     DEBUG            = 95,
-     EVENT            = 94,
-     VALIDATE_PROCESS = 93,
-     THREAD_CALLBACK  = 92,
-     THREAD_ACTION    = 91,
-     WAIT_FOR_OBJECTS = 90
+     DEBUG            = 97,
+     EVENT            = 96,
+     VALIDATE_PROCESS = 95,
+     THREAD_CALLBACK  = 94,
+     THREAD_ACTION    = 93,
+     FLUID_THREAD_CALLBACK = 92,
+     WAIT_FOR_OBJECTS = 91
   })
 
   enum("IDTYPE", { type="int", start=1, comment="Types for AllocateID()" },
@@ -2627,7 +2628,6 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
   class("Thread", { src="../classes/class_thread.cpp", output="../classes/class_thread_def.c" }, [[
    ptr   Data         # User data pointer.
    int   DataSize     # Size of user data.
-   int   StackSize    # Pre-set stack size
    error Error        # Error code returned by the thread on completion.
    int(THF) Flags     # Optional flags.
   ]])

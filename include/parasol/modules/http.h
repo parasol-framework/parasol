@@ -170,8 +170,8 @@ class objHTTP : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, nullptr); }
    inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
@@ -183,8 +183,8 @@ class objHTTP : public Object {
       struct acSetKey args = { FieldName, Value };
       return Action(AC::SetKey, this, &args);
    }
-   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+   inline ERR write(CPTR Buffer, int Size, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -194,8 +194,8 @@ class objHTTP : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -206,7 +206,7 @@ class objHTTP : public Object {
       }
    }
    inline int writeResult(CPTR Buffer, int Size) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }

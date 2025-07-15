@@ -182,6 +182,6 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
    { (APTR)ParentContext, "ParentContext", argsParentContext },
-   { NULL, NULL, NULL }
+   { nullptr, nullptr, nullptr }
 };
 

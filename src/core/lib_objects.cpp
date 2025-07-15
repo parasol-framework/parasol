@@ -16,13 +16,19 @@ Name: Objects
 #endif
 #endif
 
+#include <thread_pool/thread_pool.h>
+
 #include <stdlib.h>
 
 #include "defs.h"
 
 using namespace pf;
 
-static const int SIZE_ACTIONBUFFER = 2048;
+static dp::thread_pool glAsyncActions;
+
+void stop_async_actions(void) {
+   glAsyncActions.wait_for_tasks();
+}
 
 //********************************************************************************************************************
 // These globals pertain to action subscriptions.  Variables are global to all threads, so need to be locked via
@@ -230,52 +236,6 @@ CSTRING action_name(OBJECTPTR Object, ACTIONID ActionID)
 }
 
 //********************************************************************************************************************
-// Refer to AsyncAction() to see how this is used.  It calls an action on a target object and then sends a callback
-// notification via the internal message queue.
-
-struct thread_data {
-   OBJECTPTR Object;
-   ACTIONID  ActionID;
-   FUNCTION  Callback;
-   int8_t      Parameters;
-};
-
-static ERR thread_action(extThread *Thread)
-{
-   ERR error;
-   auto data = (thread_data *)Thread->Data;
-   OBJECTPTR obj = data->Object;
-
-   if ((error = LockObject(obj, 5000)) IS ERR::Okay) { // Access the object and process the action.
-      --obj->ThreadPending;
-      error = Action(data->ActionID, obj, data->Parameters ? (data + 1) : nullptr);
-
-      if (data->Parameters) { // Free any temporary buffers that were allocated.
-         if (data->ActionID > AC::NIL) local_free_args(data + 1, ActionTable[int(data->ActionID)].Args);
-         else local_free_args(data + 1, ((extMetaClass *)obj->Class)->Methods[-int(data->ActionID)].Args);
-      }
-
-      if (obj->terminating()) obj = nullptr; // Clear the obj pointer because the object will be deleted on release.
-      ReleaseObject(data->Object);
-   }
-   else --obj->ThreadPending;
-
-   // Send a callback notification via messaging if required.  The MSGID::THREAD_ACTION receiver is msg_threadaction()
-
-   if (data->Callback.defined()) {
-      ThreadActionMessage msg = {
-         .Object   = obj,
-         .ActionID = data->ActionID,
-         .Error    = error,
-         .Callback = data->Callback
-      };
-      SendMessage(MSGID::THREAD_ACTION, MSF::ADD, &msg, sizeof(msg));
-   }
-
-   threadpool_release(Thread);
-   return error;
-}
-
 // Free all private memory resources tracked to an object.
 
 static void free_children(OBJECTPTR Object)
@@ -353,7 +313,7 @@ does not require any additional arguments.  The second performs a move operation
 arguments to be passed to the Action() function:
 
 <pre>
-1. Action(AC::Activate, Picture, NULL);
+1. Action(AC::Activate, Picture, nullptr);
 
 2. struct acMove move = { 30, 15, 0 };
    Action(AC::Move, Window, &move);
@@ -467,28 +427,28 @@ fields will be set to `NULL`.  The following illustrates two argument definition
 <pre>
 struct FunctionField argsCopyData[] = {
    { "Destination", FD_INT  },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 struct FunctionField argsResize[] = {
    { "Width",  FD_DOUBLE },
    { "Height", FD_DOUBLE },
    { "Depth",  FD_DOUBLE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 </pre>
 
 The argument types that can be used by actions are limited to those listed in the following table:
 
 <types lookup="FD">
-<type name="LONG">A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</>
-<type name="LARGE">A 64-bit integer value.</>
+<type name="INT">A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</>
+<type name="INT64">A 64-bit integer value.</>
 <type name="PTR">A standard address space pointer.</>
 <type name="STRING">A pointer to a null-terminated string.</>
 <type name="DOUBLE">A 64-bit floating point value.</>
 <type name="OBJECT">This flag is sometimes set in conjunction with the `FD_INT` type.  It indicates that the argument refers to an object ID.</>
 <type name="PTRSIZE">This argument type can only be used if it follows an `FD_PTR` type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous `FD_PTR` argument.</>
-<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a `LONG` field in which the function will store a result, the correct argument definition will be `FD_RESULT|FD_INT|FD_PTR`. To make the definition of these argument types easier, `FD_PTRRESULT` and `FD_INTRESULT` macros are also available for use.</>
+<type name="RESULT">This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to an `int` field in which the function will store a result, the correct argument definition will be `FD_RESULT|FD_INT|FD_PTR`. To make the definition of these argument types easier, `FD_PTRRESULT` and `FD_INTRESULT` macros are also available for use.</>
 </>
 
 -INPUT-
@@ -551,72 +511,94 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
 
    log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p", int(ActionID), Object->UID, Parameters, Callback);
 
+   ERR error = ERR::Okay;
+   
    ++Object->ThreadPending;
+   Defer([Object, error] { if (error != ERR::Okay) --Object->ThreadPending; });
 
-   ERR error;
-   extThread *thread = nullptr;
-   if ((error = threadpool_get(&thread)) IS ERR::Okay) {
-      // Prepare the parameter buffer for passing to the thread routine.
+   // Prepare the parameter buffer for passing to the thread routine.
 
-      int argssize = 0;
-      int8_t call_data[sizeof(thread_data) + SIZE_ACTIONBUFFER];
-      bool free_args = false;
-      const FunctionField *args = nullptr;
+   int argssize = 0;
+   std::vector<int8_t> param_buffer;
+   const FunctionField *args = nullptr;
 
-      if (Parameters) {
-         if (int(ActionID) > 0) {
-            args = ActionTable[int(ActionID)].Args;
-            if ((argssize = ActionTable[int(ActionID)].Size) > 0) {
-               if ((error = copy_args(args, argssize, (int8_t *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, ActionTable[int(ActionID)].Name)) IS ERR::Okay) {
-                  free_args = true;
-               }
-
-               argssize += sizeof(thread_data);
-            }
-            else argssize = sizeof(thread_data);
+   if (Parameters) {
+      if (int(ActionID) > 0) {
+         args = ActionTable[int(ActionID)].Args;
+         if ((argssize = ActionTable[int(ActionID)].Size) > 0) {
+            error = copy_args(args, argssize, (int8_t *)Parameters, param_buffer);
          }
-         else if (auto cl = Object->ExtClass) {
-            args = cl->Methods[-int(ActionID)].Args;
-            if ((argssize = cl->Methods[-int(ActionID)].Size) > 0) {
-               if ((error = copy_args(args, argssize, (int8_t *)Parameters, call_data + sizeof(thread_data), SIZE_ACTIONBUFFER, &argssize, cl->Methods[-int(ActionID)].Name)) IS ERR::Okay) {
-                  free_args = true;
-               }
-            }
-            else log.trace("Ignoring parameters provided for method %s", cl->Methods[-int(ActionID)].Name);
-
-            argssize += sizeof(thread_data);
+      }
+      else if (auto cl = Object->ExtClass) {
+         args = cl->Methods[-int(ActionID)].Args;
+         if ((argssize = cl->Methods[-int(ActionID)].Size) > 0) {
+            error = copy_args(args, argssize, (int8_t *)Parameters, param_buffer);
          }
-         else error = log.warning(ERR::MissingClass);
       }
-      else argssize = sizeof(thread_data);
-
-      // Execute the thread that will call the action.  Refer to thread_action() for the routine.
-
-      if (error IS ERR::Okay) {
-         thread->Routine = C_FUNCTION(thread_action);
-
-         auto call = (thread_data *)call_data;
-         call->Object   = Object;
-         call->ActionID = ActionID;
-         call->Parameters = Parameters ? true : false;
-         if (Callback) call->Callback = *Callback;
-         else call->Callback.Type = CALL::NIL;
-
-         thread->setData(call, argssize);
-
-         error = thread->activate();
-      }
-
-      if (error != ERR::Okay) {
-         threadpool_release(thread);
-         if (free_args) local_free_args(call_data + sizeof(thread_data), args);
-      }
+      else error = log.warning(ERR::MissingClass);
    }
-   else error = ERR::NewObject;
 
-   if (error != ERR::Okay) --Object->ThreadPending;
+   if (error IS ERR::Okay) {
+      FUNCTION dummy;
+      if (!Callback) Callback = &dummy;
+
+      glAsyncActions.enqueue_detach([](OBJECTPTR obj, ACTIONID ActionID, int ArgsSize, std::vector<int8_t> Parameters, FUNCTION Callback, const FunctionField *ArgList) {
+         ERR error;
+         if (error = LockObject(obj, 5000); error IS ERR::Okay) { // Access the object and process the action.
+            --obj->ThreadPending;
+            error = Action(ActionID, obj, ArgsSize ? Parameters.data() : nullptr);
+
+            if (obj->terminating()) {
+               ReleaseObject(obj);
+               obj = nullptr; // Clear the obj pointer because the object will be deleted on release.
+            }
+            else ReleaseObject(obj);
+         }
+         else --obj->ThreadPending;
+
+         // Send a callback notification via messaging if required.  The MSGID::THREAD_ACTION receiver is msg_threadaction()
+
+         if (Callback.defined()) {
+            ThreadActionMessage msg = {
+               .Object   = obj,
+               .ActionID = ActionID,
+               .Error    = error,
+               .Callback = Callback
+            };
+            SendMessage(MSGID::THREAD_ACTION, MSF::ADD, &msg, sizeof(msg));
+         }
+      }, Object, ActionID, argssize, std::move(param_buffer), *Callback, args);
+   }
 
    return error;
+}
+
+//********************************************************************************************************************
+// Called whenever a MSGID::THREAD_ACTION message is caught by ProcessMessages().  See thread_action() for usage.
+
+ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
+{
+   auto msg = (ThreadActionMessage *)Message;
+   if (!msg) return ERR::Okay;
+
+   if (msg->Callback.isC()) {
+      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, int, APTR))msg->Callback.Routine;
+      routine(msg->ActionID, msg->Object, msg->Error, msg->Key, msg->Callback.Meta);
+   }
+   else if (msg->Callback.isScript()) {
+      auto script = msg->Callback.Context;
+      if (LockObject(script, 5000) IS ERR::Okay) {
+         sc::Call(msg->Callback, std::to_array<ScriptArg>({
+            { "ActionID", int(msg->ActionID) },
+            { "Object",   msg->Object, FD_OBJECTPTR },
+            { "Error",    int(msg->Error) },
+            { "Key",      msg->Key }
+         }));
+         ReleaseObject(script);
+      }
+   }
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -687,8 +669,7 @@ ERR CheckObjectExists(OBJECTID ObjectID)
 {
    if (auto lock = std::unique_lock{glmMemory}) {
       ERR result = ERR::False;
-      auto mem = glPrivateMemory.find(ObjectID);
-      if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+      if (auto mem = glPrivateMemory.find(ObjectID); (mem != glPrivateMemory.end()) and (mem->second.Object)) {
          if (mem->second.Object->defined(NF::FREE_ON_UNLOCK));
          else result = ERR::True;
       }
@@ -771,7 +752,7 @@ objMetaClass * FindClass(CLASSID ClassID)
    auto it = glClassMap.find(ClassID);
    if (it != glClassMap.end()) return it->second;
 
-   if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
+   if (glProgramStage IS STAGE_SHUTDOWN) return nullptr; // No new module loading during shutdown
 
    // Class is not loaded.  Try and find the class in the dictionary.  If we find one, we can
    // initialise the module and then find the new Class.
@@ -781,9 +762,7 @@ objMetaClass * FindClass(CLASSID ClassID)
 
    pf::Log log(__FUNCTION__);
    if (glClassDB.contains(ClassID)) {
-      auto &path = glClassDB[ClassID].Path;
-
-      if (!path.empty()) {
+      if (auto &path = glClassDB[ClassID].Path; !path.empty()) {
          // Load the module from the associated location and then find the class that it contains.  If the module fails,
          // we keep on looking for other installed modules that may handle the class.
 
@@ -1485,49 +1464,34 @@ ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
    if ((ActionID IS AC::NIL) or (!ObjectID)) log.warning(ERR::NullArgs);
    if (ActionID >= AC::END) return log.warning(ERR::OutOfRange);
 
-   struct msgAction {
-      ActionMessage Action;
-      int8_t Buffer[SIZE_ACTIONBUFFER];
-   } msg;
+   std::vector<int8_t> buffer;
 
-   msg.Action = {
-      .ObjectID = ObjectID,
-      .Time     = 0,
-      .ActionID = ActionID,
-      .SendArgs = false
-   };
-
-   int msgsize = 0;
+   ActionMessage action = { .ObjectID = ObjectID, .Time = 0, .ActionID = ActionID, .SendArgs = false };
 
    if (Args) {
       if (ActionID > AC::NIL) {
          if (ActionTable[int(ActionID)].Size) {
-            auto fields   = ActionTable[int(ActionID)].Args;
-            auto argssize = ActionTable[int(ActionID)].Size;
-            if (auto error = copy_args(fields, argssize, (int8_t *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, ActionTable[int(ActionID)].Name); error != ERR::Okay) {
+            if (auto error = copy_args(ActionTable[int(ActionID)].Args, ActionTable[int(ActionID)].Size, 
+                  (int8_t *)Args, buffer); error != ERR::Okay) {
                return error;
             }
 
-            msg.Action.SendArgs = true;
+            action.SendArgs = true;
          }
       }
       else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
-         auto fields   = cl->Methods[-int(ActionID)].Args;
-         auto argssize = cl->Methods[-int(ActionID)].Size;
-         if (auto error = copy_args(fields, argssize, (int8_t *)Args, msg.Buffer, SIZE_ACTIONBUFFER, &msgsize, cl->Methods[-int(ActionID)].Name); error != ERR::Okay) {
+         if (auto error = copy_args(cl->Methods[-int(ActionID)].Args, cl->Methods[-int(ActionID)].Size, 
+               (int8_t *)Args, buffer); error != ERR::Okay) {
             return error;
          }
-         msg.Action.SendArgs = true;
+         action.SendArgs = true;
       }
       else return log.warning(ERR::MissingClass);
    }
 
-   if (auto error = SendMessage(MSGID::ACTION, MSF::NIL, &msg.Action, msgsize + sizeof(ActionMessage)); error != ERR::Okay) {
-      if (ActionID > AC::NIL) {
-         log.warning("#%d.%s() failed, SendMsg error: %s", ObjectID, ActionTable[int(ActionID)].Name, glMessages[int(error)]);
-      }
-      else log.warning("#%d method %d failed, SendMsg error: %s", ObjectID, int(ActionID), glMessages[int(error)]);
+   buffer.insert(buffer.begin(), (int8_t *)&action, (int8_t *)&action + sizeof(ActionMessage));
 
+   if (auto error = SendMessage(MSGID::ACTION, MSF::NIL, buffer.data(), buffer.size()); error != ERR::Okay) {
       if (error IS ERR::MemoryDoesNotExist) return ERR::NoMatchingObject;
       return error;
    }
@@ -1692,7 +1656,7 @@ InitObject(display);
 auto ctx = SetContext(display);
 
    NewObject(CLASSID::BITMAP, &bitmap);
-   AllocMemory(1000, MEM::DATA, &memory, NULL);
+   AllocMemory(1000, MEM::DATA, &memory, nullptr);
 
 SetContext(ctx);
 FreeResource(display->UID);
@@ -1707,7 +1671,7 @@ InitObject(display);
 auto ctx = SetContext(display);
 
    NewObject(CLASSID::BITMAP, &bitmap);
-   AllocMemory(1000, MEM::DATA, &memory, NULL);
+   AllocMemory(1000, MEM::DATA, &memory, nullptr);
 
 SetContext(ctx);
 FreeResource(display->UID); // The bitmap and memory would be auto-collected

@@ -4,14 +4,14 @@ static const struct FieldDef clVectorFilterUnits[] = {
    { "Undefined", 0x00000000 },
    { "BoundingBox", 0x00000001 },
    { "Userspace", 0x00000002 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorFilterPrimitiveUnits[] = {
    { "Undefined", 0x00000000 },
    { "BoundingBox", 0x00000001 },
    { "Userspace", 0x00000002 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorFilterDimensions[] = {
@@ -41,20 +41,20 @@ static const struct FieldDef clVectorFilterDimensions[] = {
    { "StatusChangeV", 0x00800000 },
    { "ScaledRadiusY", 0x01000000 },
    { "FixedRadiusY", 0x02000000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorFilterColourSpace[] = {
    { "Inherit", 0x00000000 },
    { "SRGB", 0x00000001 },
    { "LinearRGB", 0x00000002 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorFilterAspectRatio[] = {
    { "Meet", 0x00000000 },
    { "None", 0x00000001 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct ActionArray clVectorFilterActions[] = {
@@ -64,6 +64,6 @@ static const struct ActionArray clVectorFilterActions[] = {
    { AC::NewChild, VECTORFILTER_NewChild },
    { AC::NewOwner, VECTORFILTER_NewOwner },
    { AC::NewPlacement, VECTORFILTER_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

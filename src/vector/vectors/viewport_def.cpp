@@ -5,7 +5,7 @@ static const struct FieldDef clVectorViewportVOF[] = {
    { "Hidden", 0x00000001 },
    { "Scroll", 0x00000002 },
    { "Inherit", 0x00000003 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorViewportDMF[] = {
@@ -35,7 +35,7 @@ static const struct FieldDef clVectorViewportDMF[] = {
    { "StatusChangeV", 0x00800000 },
    { "ScaledRadiusY", 0x01000000 },
    { "FixedRadiusY", 0x02000000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct ActionArray clVectorViewportActions[] = {
@@ -47,6 +47,6 @@ static const struct ActionArray clVectorViewportActions[] = {
    { AC::NewObject, VECTORVIEWPORT_NewObject },
    { AC::Redimension, VECTORVIEWPORT_Redimension },
    { AC::Resize, VECTORVIEWPORT_Resize },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

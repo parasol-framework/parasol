@@ -88,6 +88,6 @@ const struct Function glFunctions[] = {
    { (APTR)gfx::UnlockCursor, "UnlockCursor", argsUnlockCursor },
    { (APTR)gfx::UnsubscribeInput, "UnsubscribeInput", argsUnsubscribeInput },
    { (APTR)gfx::WindowHook, "WindowHook", argsWindowHook },
-   { NULL, NULL, NULL }
+   { nullptr, nullptr, nullptr }
 };
 

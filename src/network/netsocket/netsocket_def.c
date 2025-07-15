@@ -5,7 +5,7 @@ static const struct FieldDef clNetSocketState[] = {
    { "Connecting", 0x00000001 },
    { "ConnectingSSL", 0x00000002 },
    { "Connected", 0x00000003 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clNetSocketFlags[] = {
@@ -14,7 +14,7 @@ static const struct FieldDef clNetSocketFlags[] = {
    { "MultiConnect", 0x00000004 },
    { "Synchronous", 0x00000008 },
    { "LogAll", 0x00000010 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maConnect[] = { { "Address", FD_STR }, { "Port", FD_INT }, { 0, 0 } };
@@ -43,6 +43,6 @@ static const struct ActionArray clNetSocketActions[] = {
    { AC::NewObject, NETSOCKET_NewObject },
    { AC::Read, NETSOCKET_Read },
    { AC::Write, NETSOCKET_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

@@ -2,6 +2,6 @@
 
 static const struct ActionArray clBlurFXActions[] = {
    { AC::Draw, BLURFX_Draw },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

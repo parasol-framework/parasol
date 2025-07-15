@@ -15,6 +15,6 @@ static const struct ActionArray clLightingFXActions[] = {
    { AC::Draw, LIGHTINGFX_Draw },
    { AC::Free, LIGHTINGFX_Free },
    { AC::NewPlacement, LIGHTINGFX_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

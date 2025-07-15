@@ -171,7 +171,7 @@ void CloseCore(void)
       routine();
    }
 
-   remove_threadpool();
+   stop_async_actions();
 
    if ((glCurrentTask) or (glProcessID)) remove_process_waitlocks();
 

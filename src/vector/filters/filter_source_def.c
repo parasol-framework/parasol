@@ -5,6 +5,6 @@ static const struct ActionArray clSourceFXActions[] = {
    { AC::Free, SOURCEFX_Free },
    { AC::Init, SOURCEFX_Init },
    { AC::NewObject, SOURCEFX_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

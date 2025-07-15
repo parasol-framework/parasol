@@ -30,6 +30,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <parasol/main.h>
 #include <parasol/modules/network.h>
 #include <parasol/strings.hpp>
+#include <thread>
 
 #ifdef ENABLE_SSL
 #include <openssl/ssl.h>
@@ -205,8 +206,7 @@ class extNetLookup : public objNetLookup {
    public:
    FUNCTION Callback;
    struct DNSEntry Info;
-   std::unordered_set<OBJECTID> *Threads;
-   std::mutex *ThreadLock;
+   std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
 };
 
 //********************************************************************************************************************
@@ -456,6 +456,7 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
    Address->Data[2] = 0;
    Address->Data[3] = 0;
    Address->Type = IPADDR::V4;
+   Address->Pad = 0;
 
    return ERR::Okay;
 }

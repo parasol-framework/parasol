@@ -25,7 +25,7 @@ static const struct FieldDef clHTTPMethod[] = {
    { "Subscribe", 0x00000015 },
    { "Unlock", 0x00000016 },
    { "Unsubscribe", 0x00000017 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clHTTPObjectMode[] = {
@@ -33,7 +33,7 @@ static const struct FieldDef clHTTPObjectMode[] = {
    { "Read", 0x00000001 },
    { "ReadWrite", 0x00000001 },
    { "Write", 0x00000001 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clHTTPFlags[] = {
@@ -48,7 +48,7 @@ static const struct FieldDef clHTTPFlags[] = {
    { "RecvBuffer", 0x00000100 },
    { "LogAll", 0x00000200 },
    { "SSL", 0x00000400 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clHTTPStatus[] = {
@@ -92,7 +92,7 @@ static const struct FieldDef clHTTPStatus[] = {
    { "ServiceUnavailable", 0x000001f7 },
    { "GatewayTimeout", 0x000001f8 },
    { "VersionUnsupported", 0x000001f9 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clHTTPDatatype[] = {
@@ -108,7 +108,7 @@ static const struct FieldDef clHTTPDatatype[] = {
    { "File", 0x0000000a },
    { "Content", 0x0000000b },
    { "InputReady", 0x0000000c },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clHTTPCurrentState[] = {
@@ -120,7 +120,7 @@ static const struct FieldDef clHTTPCurrentState[] = {
    { "ReadingContent", 0x00000005 },
    { "Completed", 0x00000006 },
    { "Terminated", 0x00000007 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct ActionArray clHTTPActions[] = {
@@ -132,7 +132,7 @@ static const struct ActionArray clHTTPActions[] = {
    { AC::NewPlacement, HTTP_NewPlacement },
    { AC::SetKey, HTTP_SetKey },
    { AC::Write, HTTP_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 #undef MOD_IDL

@@ -5,6 +5,6 @@ static const struct ActionArray clWaveFunctionFXActions[] = {
    { AC::Free, WAVEFUNCTIONFX_Free },
    { AC::Init, WAVEFUNCTIONFX_Init },
    { AC::NewObject, WAVEFUNCTIONFX_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

@@ -30,7 +30,7 @@ const struct Function glFunctions[] = {
    { (APTR)net::ShortToHost, "ShortToHost", argsShortToHost },
    { (APTR)net::LongToHost, "LongToHost", argsLongToHost },
    { (APTR)net::SetSSL, "SetSSL", argsSetSSL },
-   { NULL, NULL, NULL }
+   { nullptr, nullptr, nullptr }
 };
 
 #undef MOD_IDL

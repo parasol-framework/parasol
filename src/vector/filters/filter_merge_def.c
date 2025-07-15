@@ -4,6 +4,6 @@ static const struct ActionArray clMergeFXActions[] = {
    { AC::Draw, MERGEFX_Draw },
    { AC::Free, MERGEFX_Free },
    { AC::NewPlacement, MERGEFX_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

@@ -3,7 +3,7 @@
 static const struct FieldDef clScriptFlags[] = {
    { "ExitOnError", 0x00000001 },
    { "LogAll", 0x00000002 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maExec[] = { { "Procedure", FD_STR }, { "ScriptArg:Args", FD_PTR|FD_STRUCT }, { "TotalArgs", FD_INT }, { 0, 0 } };
@@ -28,6 +28,6 @@ static const struct ActionArray clScriptActions[] = {
    { AC::NewPlacement, SCRIPT_NewPlacement },
    { AC::Reset, SCRIPT_Reset },
    { AC::SetKey, SCRIPT_SetKey },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

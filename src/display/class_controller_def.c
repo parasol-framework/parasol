@@ -17,11 +17,11 @@ static const struct FieldDef clControllerButtons[] = {
    { "RightBumper2", 0x00002000 },
    { "LeftThumb", 0x00004000 },
    { "RightThumb", 0x00008000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct ActionArray clControllerActions[] = {
    { AC::Query, CONTROLLER_Query },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

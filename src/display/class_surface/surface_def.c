@@ -33,7 +33,7 @@ static const struct FieldDef clSurfaceFlags[] = {
    { "IgnoreFocus", 0x00800000 },
    { "InitOnly", 0x00cb0e81 },
    { "AspectRatio", 0x01000000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clSurfaceAlign[] = {
@@ -45,7 +45,7 @@ static const struct FieldDef clSurfaceAlign[] = {
    { "Middle", 0x0000000c },
    { "Top", 0x00000010 },
    { "Bottom", 0x00000020 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clSurfaceDimensions[] = {
@@ -75,14 +75,14 @@ static const struct FieldDef clSurfaceDimensions[] = {
    { "StatusChangeV", 0x00800000 },
    { "ScaledRadiusY", 0x01000000 },
    { "FixedRadiusY", 0x02000000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clSurfaceDragStatus[] = {
    { "None", 0x00000000 },
    { "Anchor", 0x00000001 },
    { "Normal", 0x00000002 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clSurfaceCursor[] = {
@@ -111,12 +111,12 @@ static const struct FieldDef clSurfaceCursor[] = {
    { "Invisible", 0x00000016 },
    { "Custom", 0x00000017 },
    { "Draggable", 0x00000018 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clSurfaceType[] = {
    { "Root", 0x00000001 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clSurfaceDMF[] = {
@@ -146,7 +146,7 @@ static const struct FieldDef clSurfaceDMF[] = {
    { "StatusChangeV", 0x00800000 },
    { "ScaledRadiusY", 0x01000000 },
    { "FixedRadiusY", 0x02000000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clSurfaceALIGN[] = {
@@ -158,7 +158,7 @@ static const struct FieldDef clSurfaceALIGN[] = {
    { "Middle", 0x0000000c },
    { "Top", 0x00000010 },
    { "Bottom", 0x00000020 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clSurfaceJTYPE[] = {
@@ -174,7 +174,7 @@ static const struct FieldDef clSurfaceJTYPE[] = {
    { "DblClick", 0x00000200 },
    { "Repeated", 0x00000400 },
    { "DragItem", 0x00000800 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clSurfaceJET[] = {
@@ -201,7 +201,7 @@ static const struct FieldDef clSurfaceJET[] = {
    { "DeviceTiltXY", 0x00000012 },
    { "DeviceTiltZ", 0x00000013 },
    { "DisplayEdge", 0x00000014 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maInheritedFocus[] = { { "FocusID", FD_OBJECTID }, { "Flags", FD_INT }, { 0, 0 } };
@@ -247,6 +247,6 @@ static const struct ActionArray clSurfaceActions[] = {
    { AC::Resize, SURFACE_Resize },
    { AC::SaveImage, SURFACE_SaveImage },
    { AC::Show, SURFACE_Show },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

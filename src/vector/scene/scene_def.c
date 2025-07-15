@@ -5,7 +5,7 @@ static const struct FieldDef clVectorSceneFlags[] = {
    { "RenderTime", 0x00000002 },
    { "Resize", 0x00000004 },
    { "OutlineViewports", 0x00000008 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorSceneSampleMethod[] = {
@@ -22,7 +22,7 @@ static const struct FieldDef clVectorSceneSampleMethod[] = {
    { "Sinc", 0x0000000a },
    { "Lanczos", 0x0000000b },
    { "Blackman", 0x0000000c },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maAddDef[] = { { "Name", FD_STR }, { "Def", FD_OBJECTPTR }, { 0, 0 } };
@@ -47,6 +47,6 @@ static const struct ActionArray clVectorSceneActions[] = {
    { AC::Redimension, VECTORSCENE_Redimension },
    { AC::Reset, VECTORSCENE_Reset },
    { AC::Resize, VECTORSCENE_Resize },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

@@ -25,10 +25,10 @@ Terminating the script will not remove objects that are outside its resource hie
 #include "../defs.h"
 #include <parasol/main.h>
 
-static ERR GET_Results(objScript *, STRING **, LONG *);
+static ERR GET_Results(objScript *, STRING **, int *);
 
 static ERR SET_Procedure(objScript *, CSTRING);
-static ERR SET_Results(objScript *, CSTRING *, LONG);
+static ERR SET_Results(objScript *, CSTRING *, int);
 static ERR SET_String(objScript *, CSTRING);
 
 inline CSTRING check_bom(const unsigned char *Value)
@@ -128,7 +128,7 @@ static ERR SCRIPT_Callback(objScript *Self, struct sc::Callback *Args)
    auto save_id      = Self->ProcedureID;
    auto save_name    = Self->Procedure;
    Self->ProcedureID = Args->ProcedureID;
-   Self->Procedure   = NULL;
+   Self->Procedure   = nullptr;
 
    const ScriptArg *save_args = Self->ProcArgs;
    Self->ProcArgs  = Args->Args;
@@ -137,7 +137,7 @@ static ERR SCRIPT_Callback(objScript *Self, struct sc::Callback *Args)
    Self->TotalArgs  = Args->TotalArgs;
    auto saved_error = Self->Error;
    auto saved_error_msg = Self->ErrorString;
-   Self->ErrorString = NULL;
+   Self->ErrorString = nullptr;
    Self->Error       = ERR::Okay;
 
    ERR error = acActivate(Self);
@@ -169,9 +169,9 @@ Parameter values must be specified as an array of ScriptArg structures.  The fol
 
 <pre>
 struct ScriptArg args[] = {
-   { "Object",       FD_OBJECTID, { .Long = Self->UID } },
+   { "Object",       FD_OBJECTID, { .Int = Self->UID } },
    { "Output",       FD_PTR,      { .Address = output } },
-   { "OutputLength", FD_INT,     { .Long = len } }
+   { "OutputLength", FD_INT,      { .Int = len } }
 };
 </>
 
@@ -180,18 +180,18 @@ The ScriptArg structure follows this arrangement:
 <pre>
 struct ScriptArg {
    STRING Name;
-   LONG Type;
+   int Type;
    union {
-      APTR   Address;
-      LONG   Long;
-      LARGE  Large;
-      DOUBLE Double;
+      APTR    Address;
+      int     Int;
+      int64_t Int64;
+      double  Double;
    };
 };
 </>
 
 The Field Descriptor `FD` specified in the `Type` must be a match to whatever value is defined in the union.  For instance
-if the `Long` field is defined then an `FD_INT` `Type` must be used.  Supplementary field definition information, e.g.
+if the `Int` field is defined then an `FD_INT` `Type` must be used.  Supplementary field definition information, e.g.
 `FD_OBJECT`, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are
 documented in detail in the Parasol Wiki.
 
@@ -240,13 +240,13 @@ static ERR SCRIPT_Exec(objScript *Self, struct sc::Exec *Args)
 
 static ERR SCRIPT_Free(objScript *Self)
 {
-   if (Self->CacheFile)   { FreeResource(Self->CacheFile);   Self->CacheFile = NULL; }
-   if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
-   if (Self->String)      { FreeResource(Self->String);      Self->String = NULL; }
-   if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
-   if (Self->Procedure)   { FreeResource(Self->Procedure);   Self->Procedure = NULL; }
-   if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = NULL; }
-   if (Self->Results)     { FreeResource(Self->Results);     Self->Results = NULL; }
+   if (Self->CacheFile)   { FreeResource(Self->CacheFile);   Self->CacheFile = nullptr; }
+   if (Self->Path)        { FreeResource(Self->Path);        Self->Path = nullptr; }
+   if (Self->String)      { FreeResource(Self->String);      Self->String = nullptr; }
+   if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = nullptr; }
+   if (Self->Procedure)   { FreeResource(Self->Procedure);   Self->Procedure = nullptr; }
+   if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = nullptr; }
+   if (Self->Results)     { FreeResource(Self->Results);     Self->Results = nullptr; }
    Self->~objScript();
    return ERR::Okay;
 }
@@ -396,7 +396,7 @@ static ERR GET_CacheFile(objScript *Self, STRING *Value)
 
 static ERR SET_CacheFile(objScript *Self, CSTRING Value)
 {
-   if (Self->CacheFile) { FreeResource(Self->CacheFile); Self->CacheFile = NULL; }
+   if (Self->CacheFile) { FreeResource(Self->CacheFile); Self->CacheFile = nullptr; }
    if (Value) Self->CacheFile = strclone(Value);
    return ERR::Okay;
 }
@@ -432,7 +432,7 @@ static ERR GET_ErrorString(objScript *Self, STRING *Value)
 
 static ERR SET_ErrorString(objScript *Self, CSTRING Value)
 {
-   if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = NULL; }
+   if (Self->ErrorString) { FreeResource(Self->ErrorString); Self->ErrorString = nullptr; }
    if (Value) Self->ErrorString = strclone(Value);
    return ERR::Okay;
 }
@@ -497,11 +497,11 @@ static ERR SET_Path(objScript *Self, CSTRING Value)
       }
    }
    else {
-      if (Self->Path)        { FreeResource(Self->Path); Self->Path = NULL; }
-      if (Self->String)      { FreeResource(Self->String); Self->String = NULL; }
-      if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
+      if (Self->Path)        { FreeResource(Self->Path); Self->Path = nullptr; }
+      if (Self->String)      { FreeResource(Self->String); Self->String = nullptr; }
+      if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = nullptr; }
 
-      LONG i, len;
+      int i, len;
       if ((Value) and (*Value)) {
          for (len=0; (Value[len]) and (Value[len] != ';'); len++);
 
@@ -509,7 +509,7 @@ static ERR SET_Path(objScript *Self, CSTRING Value)
             return SET_String(Self, Value + 7);
          }
 
-         if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, NULL) IS ERR::Okay) {
+         if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, nullptr) IS ERR::Okay) {
             for (i=0; i < len; i++) Self->Path[i] = Value[i];
             Self->Path[i] = 0;
 
@@ -541,7 +541,7 @@ static ERR SET_Path(objScript *Self, CSTRING Value)
 
                      // Extract arg name
 
-                     LONG j;
+                     int j;
                      for (j=0; (Value[i] != ',') and (Value[i] != '=') and (unsigned(Value[i]) > 0x20); j++) arg[j] = Value[i++];
                      arg[j] = 0;
 
@@ -564,7 +564,7 @@ static ERR SET_Path(objScript *Self, CSTRING Value)
                         }
                      }
 
-                     if (iequals("target", arg)) Self->setTarget(strtol(argval.c_str(), NULL, 0));
+                     if (iequals("target", arg)) Self->setTarget(strtol(argval.c_str(), nullptr, 0));
                      else acSetKey(Self, arg, argval.c_str());
                   }
                }
@@ -592,43 +592,6 @@ static ERR SET_Name(objScript *Self, CSTRING Name)
 
 /*********************************************************************************************************************
 
-PRIVATE: Owner
-
-This field is implemented locally because the owner is temporarily modified during script activation (the owner is set
-to the user's task).  Our implementation returns the true owner during this time, which affects Fluid code that
-attempts to reference script.owner.  This does not affect the Core's view of the owner or C calls to GetOwner() because
-they read the OwnerID field directly.
-
-NB: It probably makes more sense to use a support routine for NewChild() to divert object resource tracking during
-script activation - something to try when we have the time?
-
-*********************************************************************************************************************/
-
-static ERR GET_Owner(objScript *Self, OBJECTID *Value)
-{
-   if (Self->ScriptOwnerID) *Value = Self->ScriptOwnerID;
-   else *Value = Self->ownerID();
-   return ERR::Okay;
-}
-
-static ERR SET_Owner(objScript *Self, OBJECTID Value)
-{
-   pf::Log log;
-
-   if (Value) {
-      OBJECTPTR newowner;
-      if (AccessObject(Value, 2000, &newowner) IS ERR::Okay) {
-         SetOwner(Self, newowner);
-         ReleaseObject(newowner);
-         return ERR::Okay;
-      }
-      else return log.warning(ERR::ExclusiveDenied);
-   }
-   else return log.warning(ERR::Args);
-}
-
-/*********************************************************************************************************************
-
 -FIELD-
 Procedure: Specifies a procedure to be executed from within a script.
 
@@ -649,7 +612,7 @@ static ERR GET_Procedure(objScript *Self, CSTRING *Value)
 
 static ERR SET_Procedure(objScript *Self, CSTRING Value)
 {
-   if (Self->Procedure) { FreeResource(Self->Procedure); Self->Procedure = NULL; }
+   if (Self->Procedure) { FreeResource(Self->Procedure); Self->Procedure = nullptr; }
    if (Value) Self->Procedure = strclone(Value);
    return ERR::Okay;
 }
@@ -666,7 +629,7 @@ For maximum compatibility in type conversion, the results are stored as an array
 
 *********************************************************************************************************************/
 
-static ERR GET_Results(objScript *Self, STRING **Value, LONG *Elements)
+static ERR GET_Results(objScript *Self, STRING **Value, int *Elements)
 {
    if (Self->Results) {
       *Value = Self->Results;
@@ -674,13 +637,13 @@ static ERR GET_Results(objScript *Self, STRING **Value, LONG *Elements)
       return ERR::Okay;
    }
    else {
-      *Value = NULL;
+      *Value = nullptr;
       *Elements = 0;
       return ERR::FieldNotSet;
    }
 }
 
-static ERR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
+static ERR SET_Results(objScript *Self, CSTRING *Value, int Elements)
 {
    pf::Log log;
 
@@ -689,21 +652,21 @@ static ERR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
    Self->ResultsTotal = 0;
 
    if (Value) {
-      LONG len = 0;
-      for (LONG i=0; i < Elements; i++) {
+      int len = 0;
+      for (int i=0; i < Elements; i++) {
          if (!Value[i]) return log.warning(ERR::InvalidData);
          len += strlen(Value[i]) + 1;
       }
       Self->ResultsTotal = Elements;
 
-      if (AllocMemory((sizeof(CSTRING) * (Elements+1)) + len, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Results, NULL) IS ERR::Okay) {
+      if (AllocMemory((sizeof(CSTRING) * (Elements+1)) + len, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Results, nullptr) IS ERR::Okay) {
          STRING str = (STRING)(Self->Results + Elements + 1);
-         LONG i;
+         int i;
          for (i=0; Value[i]; i++) {
             Self->Results[i] = str;
             str += strcopy(Value[i], str) + 1;
          }
-         Self->Results[i] = NULL;
+         Self->Results[i] = nullptr;
          return ERR::Okay;
       }
       else return ERR::AllocMemory;
@@ -730,8 +693,8 @@ static ERR GET_String(objScript *Self, CSTRING *Value)
 
 static ERR SET_String(objScript *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; } // Path removed when a statement string is being set
-   if (Self->String) { FreeResource(Self->String); Self->String = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; } // Path removed when a statement string is being set
+   if (Self->String) { FreeResource(Self->String); Self->String = nullptr; }
 
    if (Value) Self->String = strclone(check_bom((const unsigned char *)Value));
    return ERR::Okay;
@@ -753,7 +716,7 @@ in the value of this field.
 -END-
 *********************************************************************************************************************/
 
-static ERR GET_TotalArgs(objScript *Self, LONG *Value)
+static ERR GET_TotalArgs(objScript *Self, int *Value)
 {
    *Value = Self->Vars.size();
    return ERR::Okay;
@@ -800,7 +763,7 @@ static ERR GET_WorkingPath(objScript *Self, STRING *Value)
       bool path = false;
       if (Self->Path[0] IS '/') path = true;
       else {
-        for (LONG j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
+        for (int j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
             if (Self->Path[j] IS ':') {
                path = true;
                break;
@@ -808,8 +771,8 @@ static ERR GET_WorkingPath(objScript *Self, STRING *Value)
          }
       }
 
-      LONG k;
-      LONG j = 0;
+      int k;
+      int j = 0;
       for (k=0; Self->Path[k]; k++) {
          if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
       }
@@ -846,7 +809,7 @@ static ERR GET_WorkingPath(objScript *Self, STRING *Value)
 
 static ERR SET_WorkingPath(objScript *Self, STRING Value)
 {
-   if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
+   if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = nullptr; }
    if (Value) Self->WorkingPath = strclone(Value);
    return ERR::Okay;
 }
@@ -857,7 +820,7 @@ static ERR SET_WorkingPath(objScript *Self, STRING Value)
 
 static const FieldArray clScriptFields[] = {
    { "Target",      FDF_OBJECTID|FDF_RW },
-   { "Flags",       FDF_INTFLAGS|FDF_RI, NULL, NULL, &clScriptFlags },
+   { "Flags",       FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clScriptFlags },
    { "Error",       FDF_INT|FDF_R },
    { "CurrentLine", FDF_INT|FDF_R },
    { "LineOffset",  FDF_INT|FDF_RW },
@@ -865,18 +828,17 @@ static const FieldArray clScriptFields[] = {
    { "CacheFile",   FDF_STRING|FDF_RW,              GET_CacheFile, SET_CacheFile },
    { "ErrorString", FDF_STRING|FDF_RW,              GET_ErrorString, SET_ErrorString },
    { "WorkingPath", FDF_STRING|FDF_RW,              GET_WorkingPath, SET_WorkingPath },
-   { "Language",    FDF_STRING|FDF_R,               GET_Language, NULL },
+   { "Language",    FDF_STRING|FDF_R,               GET_Language, nullptr },
    { "Location",    FDF_SYNONYM|FDF_STRING|FDF_RI,  GET_Path, SET_Path },
    { "Procedure",   FDF_STRING|FDF_RW,              GET_Procedure, SET_Procedure },
-   { "Name",        FDF_STRING|FDF_SYSTEM|FDF_RW,   NULL, SET_Name },
-   { "Owner",       FDF_OBJECTID|FDF_SYSTEM|FDF_RW, GET_Owner, SET_Owner },
+   { "Name",        FDF_STRING|FDF_SYSTEM|FDF_RW,   nullptr, SET_Name },
    { "Path",        FDF_STRING|FDF_RI,              GET_Path, SET_Path },
    { "Results",     FDF_ARRAY|FDF_POINTER|FDF_STRING|FDF_RW, GET_Results, SET_Results },
    { "Src",         FDF_SYNONYM|FDF_STRING|FDF_RI,  GET_Path, SET_Path },
    { "Statement",   FDF_STRING|FDF_RW,              GET_String, SET_String },
    { "String",      FDF_SYNONYM|FDF_STRING|FDF_RW,  GET_String, SET_String },
-   { "TotalArgs",   FDF_INT|FDF_R,                 GET_TotalArgs, NULL },
-   { "Variables",   FDF_POINTER|FDF_SYSTEM|FDF_R,   GET_Variables, NULL },
+   { "TotalArgs",   FDF_INT|FDF_R,                 GET_TotalArgs, nullptr },
+   { "Variables",   FDF_POINTER|FDF_SYSTEM|FDF_R,   GET_Variables, nullptr },
    END_FIELD
 };
 

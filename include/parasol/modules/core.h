@@ -1045,12 +1045,13 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 enum class MSGID : int {
    NIL = 0,
-   WAIT_FOR_OBJECTS = 90,
-   THREAD_ACTION = 91,
-   THREAD_CALLBACK = 92,
-   VALIDATE_PROCESS = 93,
-   EVENT = 94,
-   DEBUG = 95,
+   WAIT_FOR_OBJECTS = 91,
+   FLUID_THREAD_CALLBACK = 92,
+   THREAD_ACTION = 93,
+   THREAD_CALLBACK = 94,
+   VALIDATE_PROCESS = 95,
+   EVENT = 96,
+   DEBUG = 97,
    FREE = 98,
    ACTION = 99,
    BREAK = 100,
@@ -3720,18 +3721,18 @@ class objFile : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }
+   inline ERR query() noexcept { return Action(AC::Query, this, nullptr); }
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
@@ -3741,14 +3742,14 @@ class objFile : public Object {
    template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       return Action(AC::Read, this, &read);
    }
    inline ERR rename(CSTRING Name) noexcept {
       struct acRename args = { Name };
       return Action(AC::Rename, this, &args);
    }
-   inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }
+   inline ERR reset() noexcept { return Action(AC::Reset, this, nullptr); }
    inline ERR seek(double Offset, SEEK Position = SEEK::CURRENT) noexcept {
       struct acSeek args = { Offset, Position };
       return Action(AC::Seek, this, &args);
@@ -3756,8 +3757,8 @@ class objFile : public Object {
    inline ERR seekStart(double Offset) noexcept { return seek(Offset, SEEK::START); }
    inline ERR seekEnd(double Offset) noexcept { return seek(Offset, SEEK::END); }
    inline ERR seekCurrent(double Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
-   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+   inline ERR write(CPTR Buffer, int Size, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -3767,8 +3768,8 @@ class objFile : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -3779,7 +3780,7 @@ class objFile : public Object {
       }
    }
    inline int writeResult(CPTR Buffer, int Size) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
@@ -3788,7 +3789,7 @@ class objFile : public Object {
       return(Action(AC(-1), this, &args));
    }
    inline ERR stopStream() noexcept {
-      return(Action(AC(-2), this, NULL));
+      return(Action(AC(-2), this, nullptr));
    }
    inline ERR del(FUNCTION Callback) noexcept {
       struct fl::Delete args = { &Callback };
@@ -3813,7 +3814,7 @@ class objFile : public Object {
       return(error);
    }
    inline ERR bufferContent() noexcept {
-      return(Action(AC(-8), this, NULL));
+      return(Action(AC(-8), this, nullptr));
    }
    inline ERR next(objFile ** File) noexcept {
       struct fl::Next args = { (objFile *)0 };
@@ -3989,14 +3990,14 @@ class objConfig : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
-   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, NULL); }
+   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, nullptr); }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC::SaveToObject, this, &args);
@@ -4117,7 +4118,7 @@ class objScript : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
@@ -4129,7 +4130,7 @@ class objScript : public Object {
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }
+   inline ERR reset() noexcept { return Action(AC::Reset, this, nullptr); }
    inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
       struct acSetKey args = { FieldName, Value };
       return Action(AC::SetKey, this, &args);
@@ -4287,7 +4288,7 @@ class objTask : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
    inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
@@ -4299,8 +4300,8 @@ class objTask : public Object {
       struct acSetKey args = { FieldName, Value };
       return Action(AC::SetKey, this, &args);
    }
-   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+   inline ERR write(CPTR Buffer, int Size, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -4310,8 +4311,8 @@ class objTask : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -4322,19 +4323,19 @@ class objTask : public Object {
       }
    }
    inline int writeResult(CPTR Buffer, int Size) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
    inline ERR expunge() noexcept {
-      return(Action(AC(-1), this, NULL));
+      return(Action(AC(-1), this, nullptr));
    }
    inline ERR addArgument(CSTRING Argument) noexcept {
       struct task::AddArgument args = { Argument };
       return(Action(AC(-2), this, &args));
    }
    inline ERR quit() noexcept {
-      return(Action(AC(-3), this, NULL));
+      return(Action(AC(-3), this, nullptr));
    }
    inline ERR getEnv(CSTRING Name, CSTRING * Value) noexcept {
       struct task::GetEnv args = { Name, (CSTRING)0 };
@@ -4460,14 +4461,13 @@ class objThread : public Object {
 
    APTR Data;       // Pointer to initialisation data for the thread.
    int  DataSize;   // The size of the buffer referenced in the Data field.
-   int  StackSize;  // The stack size to allocate for the thread.
    ERR  Error;      // Reflects the error code returned by the thread routine.
    THF  Flags;      // Optional flags can be defined here.
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR setData(APTR Data, int Size) noexcept {
       struct th::SetData args = { Data, Size };
@@ -4475,11 +4475,6 @@ class objThread : public Object {
    }
 
    // Customised field setting
-
-   inline ERR setStackSize(const int Value) noexcept {
-      this->StackSize = Value;
-      return ERR::Okay;
-   }
 
    inline ERR setFlags(const THF Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
@@ -4613,10 +4608,10 @@ class objTime : public Object {
 
    // Action stubs
 
-   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }
+   inline ERR query() noexcept { return Action(AC::Query, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR setTime() noexcept {
-      return(Action(AC(-1), this, NULL));
+      return(Action(AC(-1), this, nullptr));
    }
 
    // Customised field setting
@@ -4720,7 +4715,7 @@ class objCompression : public Object {
 
    // Action stubs
 
-   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR compressBuffer(APTR Input, int InputSize, APTR Output, int OutputSize, int * Result) noexcept {
       struct cmp::CompressBuffer args = { Input, InputSize, Output, OutputSize, (int)0 };
@@ -4755,7 +4750,7 @@ class objCompression : public Object {
       return(Action(AC(-7), this, &args));
    }
    inline ERR compressStreamStart() noexcept {
-      return(Action(AC(-8), this, NULL));
+      return(Action(AC(-8), this, nullptr));
    }
    inline ERR compressStreamEnd(FUNCTION Callback, APTR Output, int OutputSize) noexcept {
       struct cmp::CompressStreamEnd args = { &Callback, Output, OutputSize };
@@ -4766,7 +4761,7 @@ class objCompression : public Object {
       return(Action(AC(-10), this, &args));
    }
    inline ERR decompressStreamStart() noexcept {
-      return(Action(AC(-11), this, NULL));
+      return(Action(AC(-11), this, nullptr));
    }
    inline ERR decompressObject(CSTRING Path, OBJECTPTR Object) noexcept {
       struct cmp::DecompressObject args = { Path, Object };

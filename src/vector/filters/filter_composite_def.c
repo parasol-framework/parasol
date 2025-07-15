@@ -4,6 +4,6 @@ static const struct ActionArray clCompositeFXActions[] = {
    { AC::Draw, COMPOSITEFX_Draw },
    { AC::Init, COMPOSITEFX_Init },
    { AC::NewObject, COMPOSITEFX_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

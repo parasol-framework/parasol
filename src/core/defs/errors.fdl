@@ -197,6 +197,7 @@ function declareErrors()
     "SetValueNotPointer",      -- Attempted to set a pointer field with an incompatible value.
     "SetValueNotArray",        -- Attempted to set an array field with an incompatible value.
     "SetValueNotLookup",       -- Attempted to set a lookup field with an incompatible value.
+    "InvalidType",             -- The type of a value is invalid.
     "END",
     { Notified = 0x40000000 }
   ) -- NB: Any new error messages need to be added to data_errors.c manually.

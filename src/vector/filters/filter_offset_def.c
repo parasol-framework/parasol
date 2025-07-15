@@ -2,6 +2,6 @@
 
 static const struct ActionArray clOffsetFXActions[] = {
    { AC::Draw, OFFSETFX_Draw },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

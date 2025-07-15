@@ -17,7 +17,7 @@ static const struct FieldDef clXMLFlags[] = {
    { "ParseEntity", 0x00001000 },
    { "OmitTags", 0x00002000 },
    { "IncludeSiblings", (int)0x80000000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maSetAttrib[] = { { "Index", FD_INT }, { "Attrib", FD_INT }, { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
@@ -65,7 +65,7 @@ static const struct ActionArray clXMLActions[] = {
    { AC::Reset, XML_Reset },
    { AC::SaveToObject, XML_SaveToObject },
    { AC::SetKey, XML_SetKey },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 #undef MOD_IDL

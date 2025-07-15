@@ -9,7 +9,7 @@ static const struct FieldDef clDocumentEventMask[] = {
    { "OnCrossing", 0x00000018 },
    { "LinkActivated", 0x00000020 },
    { "WidgetState", 0x00000040 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clDocumentFlags[] = {
@@ -19,7 +19,7 @@ static const struct FieldDef clDocumentFlags[] = {
    { "Disabled", 0x00000008 },
    { "NoLayoutMsg", 0x00000010 },
    { "Unrestricted", 0x00000020 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maFeedParser[] = { { "String", FD_STR }, { 0, 0 } };
@@ -70,6 +70,6 @@ static const struct ActionArray clDocumentActions[] = {
    { AC::Refresh, DOCUMENT_Refresh },
    { AC::SaveToObject, DOCUMENT_SaveToObject },
    { AC::SetKey, DOCUMENT_SetKey },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

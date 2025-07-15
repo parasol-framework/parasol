@@ -3,6 +3,6 @@
 static const struct ActionArray clFloodFXActions[] = {
    { AC::Draw, FLOODFX_Draw },
    { AC::NewObject, FLOODFX_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

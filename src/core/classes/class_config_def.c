@@ -5,7 +5,7 @@ static const struct FieldDef clConfigFlags[] = {
    { "AutoSave", 0x00000002 },
    { "OptionalFiles", 0x00000004 },
    { "New", 0x00000008 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maReadValue[] = { { "Group", FD_STR }, { "Key", FD_STR }, { "Data", FD_STR|FD_RESULT }, { 0, 0 } };
@@ -40,6 +40,6 @@ static const struct ActionArray clConfigActions[] = {
    { AC::NewObject, CONFIG_NewObject },
    { AC::SaveSettings, CONFIG_SaveSettings },
    { AC::SaveToObject, CONFIG_SaveToObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

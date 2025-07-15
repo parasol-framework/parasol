@@ -213,6 +213,7 @@
 #define ERR_SetValueNotPointer 187
 #define ERR_SetValueNotArray 188
 #define ERR_SetValueNotLookup 189
+#define ERR_InvalidType 190
 #define ERR_END 190
 
 // Special error flags

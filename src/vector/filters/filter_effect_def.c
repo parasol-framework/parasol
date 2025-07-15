@@ -27,7 +27,7 @@ static const struct FieldDef clFilterEffectDimensions[] = {
    { "StatusChangeV", 0x00800000 },
    { "ScaledRadiusY", 0x01000000 },
    { "FixedRadiusY", 0x02000000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clFilterEffectSourceType[] = {
@@ -41,7 +41,7 @@ static const struct FieldDef clFilterEffectSourceType[] = {
    { "Stroke", 0x00000006 },
    { "Reference", 0x00000007 },
    { "Previous", 0x00000008 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clFilterEffectMixType[] = {
@@ -55,7 +55,7 @@ static const struct FieldDef clFilterEffectMixType[] = {
    { "Stroke", 0x00000006 },
    { "Reference", 0x00000007 },
    { "Previous", 0x00000008 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clFilterEffectVSF[] = {
@@ -69,7 +69,7 @@ static const struct FieldDef clFilterEffectVSF[] = {
    { "Stroke", 0x00000006 },
    { "Reference", 0x00000007 },
    { "Previous", 0x00000008 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct ActionArray clFilterEffectActions[] = {
@@ -79,6 +79,6 @@ static const struct ActionArray clFilterEffectActions[] = {
    { AC::MoveToFront, FILTEREFFECT_MoveToFront },
    { AC::NewObject, FILTEREFFECT_NewObject },
    { AC::NewOwner, FILTEREFFECT_NewOwner },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

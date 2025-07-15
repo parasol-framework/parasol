@@ -211,7 +211,7 @@ class objXML : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
@@ -223,7 +223,7 @@ class objXML : public Object {
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }
+   inline ERR reset() noexcept { return Action(AC::Reset, this, nullptr); }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC::SaveToObject, this, &args);

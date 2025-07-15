@@ -134,8 +134,8 @@ class objDocument : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
    inline ERR clipboard(CLIPMODE Mode) noexcept {
       struct acClipboard args = { Mode };
       return Action(AC::Clipboard, this, &args);
@@ -144,14 +144,14 @@ class objDocument : public Object {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
-   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
-   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
-   inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }
+   inline ERR focus() noexcept { return Action(AC::Focus, this, nullptr); }
    inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
@@ -159,7 +159,7 @@ class objDocument : public Object {
       return error;
    }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR refresh() noexcept { return Action(AC::Refresh, this, NULL); }
+   inline ERR refresh() noexcept { return Action(AC::Refresh, this, nullptr); }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC::SaveToObject, this, &args);

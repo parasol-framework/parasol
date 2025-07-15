@@ -43,7 +43,7 @@ static void dump_global_table(objScript *Self, STRING Global)
    if (lua_istable(lua, -1) ) {
       lua_pushnil(lua);
       while (lua_next(lua, -2) != 0) {
-         LONG type = lua_type(lua, -2);
+         int type = lua_type(lua, -2);
          log.msg("%s = %s", lua_tostring(lua, -2), lua_typename(lua, type));
          lua_pop(lua, 1);
       }
@@ -52,7 +52,7 @@ static void dump_global_table(objScript *Self, STRING Global)
 
 //********************************************************************************************************************
 
-static ERR GET_Procedures(objScript *, pf::vector<std::string> **, LONG *);
+static ERR GET_Procedures(objScript *, pf::vector<std::string> **, int *);
 
 static const FieldArray clFields[] = {
    { "Procedures", FDF_VIRTUAL|FDF_CPP|FDF_ARRAY|FDF_STRING|FDF_R, GET_Procedures },
@@ -65,6 +65,7 @@ static ERR FLUID_Activate(objScript *);
 static ERR FLUID_DataFeed(objScript *, struct acDataFeed *);
 static ERR FLUID_Free(objScript *);
 static ERR FLUID_Init(objScript *);
+static ERR FLUID_NewChild(objScript *, struct acNewChild &);
 static ERR FLUID_SaveToObject(objScript *, struct acSaveToObject *);
 
 static const ActionArray clActions[] = {
@@ -72,6 +73,7 @@ static const ActionArray clActions[] = {
    { AC::DataFeed,     FLUID_DataFeed },
    { AC::Free,         FLUID_Free },
    { AC::Init,         FLUID_Init },
+   { AC::NewChild,     FLUID_NewChild },
    { AC::SaveToObject, FLUID_SaveToObject },
    { AC::NIL, nullptr }
 };
@@ -118,7 +120,7 @@ static int global_newindex(lua_State *Lua) // Write global variable via proxy
    if (Lua->ProtectedGlobals) {
       lua_pushvalue(Lua, 2);
       lua_rawget(Lua, lua_upvalueindex(1));
-      LONG existing_type = lua_type(Lua, -1);
+      int existing_type = lua_type(Lua, -1);
       lua_pop(Lua, 1);
       if (existing_type == LUA_TFUNCTION) { //(existing_type != LUA_TNIL) {
          luaL_error(Lua, "Unpermitted attempt to overwrite existing global '%s' with a %s type.", luaL_checkstring(Lua, 2), lua_typename(Lua, lua_type(Lua, -1)));
@@ -150,7 +152,7 @@ void process_error(objScript *Self, CSTRING Procedure)
 
    CSTRING file = Self->Path;
    if (file) {
-      LONG i;
+      int i;
       for (i=strlen(file); (i > 0) and (file[i-1] != '/') and (file[i-1] != '\\'); i--);
       log.msg(flags, "%s: %s", file+i, str);
    }
@@ -172,13 +174,13 @@ void process_error(objScript *Self, CSTRING Procedure)
 static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *args, BYTE *Buffer)
 {
    pf::Log log(__FUNCTION__);
-   LONG j;
+   int j;
 
    if (!args) return ERR::Okay;
 
    log.traceBranch("Args: %p, Buffer: %p", args, Buffer);
 
-   for (LONG i=0; args[i].Name; i++) {
+   for (int i=0; args[i].Name; i++) {
       auto name = std::make_unique<char[]>(strlen(args[i].Name)+1);
       for (j=0; args[i].Name[j]; j++) name[j] = std::tolower(args[i].Name[j]);
       name[j] = 0;
@@ -200,8 +202,8 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
          Buffer += sizeof(APTR);
       }
       else if (args[i].Type & FD_INT) {
-         lua_pushinteger(Lua, ((LONG *)Buffer)[0]);
-         Buffer += sizeof(LONG);
+         lua_pushinteger(Lua, ((int *)Buffer)[0]);
+         Buffer += sizeof(int);
       }
       else if (args[i].Type & FD_DOUBLE) {
          lua_pushnumber(Lua, ((DOUBLE *)Buffer)[0]);
@@ -237,12 +239,12 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 
    for (auto &scan : prv->ActionList) {
       if ((Object->UID IS scan.ObjectID) and (ActionID IS scan.ActionID)) {
-         LONG depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
+         int depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
          {
             pf::Log log;
 
-            log.msg(VLF::BRANCH|VLF::DETAIL, "Action notification for object #%d, action %d.  Top: %d", Object->UID, LONG(ActionID), lua_gettop(prv->Lua));
+            log.msg(VLF::BRANCH|VLF::DETAIL, "Action notification for object #%d, action %d.  Top: %d", Object->UID, int(ActionID), lua_gettop(prv->Lua));
 
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID
@@ -252,7 +254,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
                stack_args(prv->Lua, Object->UID, scan.Args, (STRING)Args);
             }
 
-            LONG total_args = 2;
+            int total_args = 2;
 
             if (scan.Reference) { // +1: Custom reference (optional)
                lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Reference);
@@ -306,17 +308,10 @@ static ERR FLUID_Activate(objScript *Self)
    Self->CurrentLine = -1;
    Self->Error       = ERR::Okay;
 
-   // Set the script owner to the current process, prior to script execution.  Once complete, we will change back to
-   // the original owner.
-
-   Self->ScriptOwnerID = Self->ownerID();
-   OBJECTID owner_id = Self->ownerID();
-   SetOwner(Self, CurrentTask());
-
    bool reload = false;
    if (!Self->ActivationCount) reload = true;
 
-   LONG i, j;
+   int i, j;
    if ((Self->ActivationCount) and (!Self->Procedure) and (!Self->ProcedureID)) {
       // If no procedure has been specified, kill the old Lua instance to restart from scratch
 
@@ -396,10 +391,10 @@ static ERR FLUID_Activate(objScript *Self)
 
       prv->Lua->ProtectedGlobals = true;
 
-      LONG result;
+      int result;
       if (startswith(LUA_COMPILED, Self->String)) { // The source is compiled
          log.trace("Loading pre-compiled Lua script.");
-         LONG headerlen = strlen(Self->String) + 1;
+         int headerlen = strlen(Self->String) + 1;
          result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, "DefaultChunk");
       }
       else {
@@ -412,7 +407,7 @@ static ERR FLUID_Activate(objScript *Self)
             // Format: [string "..."]:Line:Error
             if ((i = strsearch("\"]:", errorstr)) != -1) {
                i += 3;
-               LONG line = strtol(errorstr + i, nullptr, 0);
+               int line = strtol(errorstr + i, nullptr, 0);
                while ((errorstr[i]) and (errorstr[i] != ':')) i++;
                if (errorstr[i] IS ':') i++;
 
@@ -423,7 +418,7 @@ static ERR FLUID_Activate(objScript *Self)
                for (j=1; j <= line+1; j++) {
                   if (j >= line-1) {
                      buf << (j + Self->LineOffset) << ": ";
-                     LONG col;
+                     int col;
                      for (col=0; (str[col]) and (str[col] != '\n') and (str[col] != '\r') and (col < 120); col++);
                      buf.write(str, col);
                      if (col IS 120) buf << "...";
@@ -488,21 +483,6 @@ failure:
       lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
    }
 
-   // Change back to the original owner if it still exists.  If it doesn't, self-terminate.
-
-   if (owner_id) {
-      OBJECTPTR owner;
-      if (AccessObject(owner_id, 5000, &owner) IS ERR::Okay) {
-         SetOwner(Self, owner);
-         ReleaseObject(owner);
-      }
-      else {
-         log.msg("Owner #%d no longer exists - self-terminating.", owner_id);
-         FreeResource(Self);
-      }
-   }
-
-   Self->ScriptOwnerID = 0;
    prv->Recurse--;
    return error;
 }
@@ -530,7 +510,7 @@ static ERR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
          if ((Args->Object) and (it->SourceID IS Args->Object->UID)) {
             // Execute the callback associated with this input subscription: function({Items...})
 
-            LONG step = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
+            int step = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
 
                lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, it->Callback); // +1 Reference to callback
                lua_newtable(prv->Lua); // +1 Item table
@@ -540,7 +520,7 @@ static ERR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
                   if (!xml->Tags.empty()) {
                      auto &tag = xml->Tags[0];
-                     LONG i = 1;
+                     int i = 1;
                      if (iequals("receipt", tag.name())) {
                         for (auto &scan : tag.Children) {
                            lua_pushinteger(prv->Lua, i++);
@@ -669,7 +649,7 @@ static ERR FLUID_Init(objScript *Self)
    STRING str;
    ERR error;
    bool compile = false;
-   LONG loaded_size = 0;
+   int loaded_size = 0;
    objFile *src_file = nullptr;
    if ((!Self->String) and (Self->Path)) {
       int64_t src_ts = 0, src_size = 0;
@@ -699,7 +679,7 @@ static ERR FLUID_Init(objScript *Self)
             if ((cache_ts IS src_ts) or (error != ERR::Okay)) {
                log.msg("Using cache '%s'", Self->CacheFile);
                if (AllocMemory(cache_size, MEM::STRING|MEM::NO_CLEAR, &Self->String) IS ERR::Okay) {
-                  LONG len;
+                  int len;
                   error = ReadFileToBuffer(Self->CacheFile, Self->String, cache_size, &len);
                   loaded_size = cache_size;
                }
@@ -710,7 +690,7 @@ static ERR FLUID_Init(objScript *Self)
 
       if ((error IS ERR::Okay) and (!loaded_size)) {
          if (AllocMemory(src_size+1, MEM::STRING|MEM::NO_CLEAR, &Self->String) IS ERR::Okay) {
-            LONG len;
+            int len;
             if (ReadFileToBuffer(Self->Path, Self->String, src_size, &len) IS ERR::Okay) {
                Self->String[len] = 0;
 
@@ -744,7 +724,7 @@ static ERR FLUID_Init(objScript *Self)
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
             if (src_file->get(FID_Date, dt) IS ERR::Okay) prv->CacheDate = *dt;
-            src_file->get(FID_Permissions, (LONG &)prv->CachePermissions);
+            src_file->get(FID_Permissions, (int &)prv->CachePermissions);
             prv->LoadedSize = loaded_size;
          }
       }
@@ -784,6 +764,22 @@ static ERR FLUID_Init(objScript *Self)
 
    if (src_file) FreeResource(src_file);
    return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// If the script is being executed, retarget the new resource to refer to the current task (because we don't want
+// client resources allocated by the script to be automatically destroyed when the script is terminated by the client).
+
+static ERR FLUID_NewChild(objScript *Self, struct acNewChild &Args)
+{
+   auto prv = (prvFluid*)Self->ChildPrivate;
+   if (!prv) return ERR::Okay;
+
+   if (prv->Recurse) {
+      SetOwner(Args.Object, CurrentTask());
+      return ERR::OwnerPassThrough;
+   }
+   else return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -833,7 +829,7 @@ It will otherwise return an empty array.
 
 *********************************************************************************************************************/
 
-static ERR GET_Procedures(objScript *Self, pf::vector<std::string> **Value, LONG *Elements)
+static ERR GET_Procedures(objScript *Self, pf::vector<std::string> **Value, int *Elements)
 {
    if (auto prv = (prvFluid *)Self->ChildPrivate) {
       prv->Procedures.clear();
@@ -864,7 +860,7 @@ static ERR save_binary(objScript *Self, OBJECTPTR Target)
    prvFluid *prv;
    OBJECTPTR dest;
    const Proto *f;
-   LONG i;
+   int i;
 
    log.branch("Save Symbols: %d", Self->Flags & SCF::LOG_ALL);
 
@@ -876,7 +872,7 @@ static ERR save_binary(objScript *Self, OBJECTPTR Target)
    // such as the persistent identifier.
 
    if (!AccessObject(FileID, 3000, &dest)) {
-      LONG result;
+      int result;
       UBYTE header[256];
 
       i = StrCopy(LUA_COMPILED, header, sizeof(header));
@@ -911,9 +907,9 @@ static ERR run_script(objScript *Self)
 
    prv->CaughtError = ERR::Okay;
    struct object * release_list[8];
-   LONG r = 0;
-   LONG top;
-   LONG pcall_failed = false;
+   int r = 0;
+   int top;
+   int pcall_failed = false;
    if ((Self->Procedure) or (Self->ProcedureID)) {
       if (Self->Procedure) lua_getglobal(prv->Lua, Self->Procedure);
       else lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Self->ProcedureID);
@@ -923,17 +919,17 @@ static ERR run_script(objScript *Self)
 
          top = lua_gettop(prv->Lua);
 
-         LONG count = 0;
+         int count = 0;
          const ScriptArg *args;
          if ((args = Self->ProcArgs)) {
-            for (LONG i=0; i < Self->TotalArgs; i++, args++) {
-               LONG type = args->Type;
+            for (int i=0; i < Self->TotalArgs; i++, args++) {
+               int type = args->Type;
 
                if (type & FD_ARRAY) {
                   log.trace("Setting arg '%s', Array: %p", args->Name, args->Address);
 
                   APTR values = args->Address;
-                  LONG total_elements = -1;
+                  int total_elements = -1;
                   CSTRING arg_name = args->Name;
                   if (args[1].Type & FD_ARRAYSIZE) {
                      if (args[1].Type & FD_INT) total_elements = args[1].Int;
@@ -1006,7 +1002,7 @@ static ERR run_script(objScript *Self)
             }
          }
 
-         LONG step = GetResource(RES::LOG_DEPTH);
+         int step = GetResource(RES::LOG_DEPTH);
 
          if (lua_pcall(prv->Lua, count, LUA_MULTRET, 0)) {
             pcall_failed = true;
@@ -1025,9 +1021,9 @@ static ERR run_script(objScript *Self)
 
          #ifdef _DEBUG
             pf::vector<std::string> *list;
-            LONG total_procedures;
+            int total_procedures;
             if (GET_Procedures(Self, &list, &total_procedures) IS ERR::Okay) {
-               for (LONG i=0; i < total_procedures; i++) log.trace("%s", list[0][i]);
+               for (int i=0; i < total_procedures; i++) log.trace("%s", list[0][i]);
             }
          #endif
 
@@ -1036,7 +1032,7 @@ static ERR run_script(objScript *Self)
       }
    }
    else {
-      LONG depth = GetResource(RES::LOG_DEPTH);
+      int depth = GetResource(RES::LOG_DEPTH);
 
          top = lua_gettop(prv->Lua);
          if (lua_pcall(prv->Lua, 0, LUA_MULTRET, 0)) {
@@ -1047,7 +1043,7 @@ static ERR run_script(objScript *Self)
    }
 
    if (!pcall_failed) { // If the procedure returned results, copy them to the Results field of the Script.
-      LONG results = lua_gettop(prv->Lua) - top + 1;
+      int results = lua_gettop(prv->Lua) - top + 1;
 
       if (results > 0) {
          std::vector<CSTRING> array;
@@ -1056,7 +1052,7 @@ static ERR run_script(objScript *Self)
          // NB: The Results field will take a clone of the Lua strings, so this sub-routine is safe to pass
          // on Lua's temporary string results.
 
-         LONG i;
+         int i;
          for (i=0; i < results; i++) {
             array[i] = lua_tostring(prv->Lua, -results+i);
             log.trace("Result: %d/%d: %s", i, results, array[i]);

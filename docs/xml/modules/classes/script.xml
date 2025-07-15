@@ -109,25 +109,25 @@
 <p>Parameter values must be specified as an array of ScriptArg structures.  The following example illustrates:</p>
 <pre>
 struct ScriptArg args[] = {
-   { "Object",       FD_OBJECTID, { .Long = Self-&gt;UID } },
+   { "Object",       FD_OBJECTID, { .Int = Self-&gt;UID } },
    { "Output",       FD_PTR,      { .Address = output } },
-   { "OutputLength", FD_INT,     { .Long = len } }
+   { "OutputLength", FD_INT,      { .Int = len } }
 };
 </pre>
 <p>The ScriptArg structure follows this arrangement:</p>
 <pre>
 struct ScriptArg {
    STRING Name;
-   LONG Type;
+   int Type;
    union {
-      APTR   Address;
-      LONG   Long;
-      LARGE  Large;
-      DOUBLE Double;
+      APTR    Address;
+      int     Int;
+      int64_t Int64;
+      double  Double;
    };
 };
 </pre>
-<p>The Field Descriptor <code>FD</code> specified in the <code>Type</code> must be a match to whatever value is defined in the union.  For instance if the <code>Long</code> field is defined then an <code>FD_INT</code> <code>Type</code> must be used.  Supplementary field definition information, e.g. <code>FD_OBJECT</code>, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are documented in detail in the Parasol Wiki.</p>
+<p>The Field Descriptor <code>FD</code> specified in the <code>Type</code> must be a match to whatever value is defined in the union.  For instance if the <code>Int</code> field is defined then an <code>FD_INT</code> <code>Type</code> must be used.  Supplementary field definition information, e.g. <code>FD_OBJECT</code>, may be used to assist in clarifying the type of the value that is being passed.  Field Descriptors are documented in detail in the Parasol Wiki.</p>
       </description>
       <result>
         <error code="Okay">The procedure was executed.</error>

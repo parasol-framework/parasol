@@ -4,7 +4,7 @@ static const struct FieldDef clClipboardFlags[] = {
    { "DragDrop", 0x00000001 },
    { "Host", 0x00000002 },
    { "HistoryBuffer", 0x00000004 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maAddFile[] = { { "Datatype", FD_INT }, { "Path", FD_STR }, { "Flags", FD_INT }, { 0, 0 } };
@@ -28,6 +28,6 @@ static const struct ActionArray clClipboardActions[] = {
    { AC::Free, CLIPBOARD_Free },
    { AC::Init, CLIPBOARD_Init },
    { AC::NewObject, CLIPBOARD_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

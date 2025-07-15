@@ -8,7 +8,7 @@ static const struct FieldDef clPictureFlags[] = {
    { "Alpha", 0x00000010 },
    { "Lazy", 0x00000020 },
    { "ForceAlpha32", 0x00000040 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct ActionArray clPictureActions[] = {
@@ -24,7 +24,7 @@ static const struct ActionArray clPictureActions[] = {
    { AC::SaveToObject, PICTURE_SaveToObject },
    { AC::Seek, PICTURE_Seek },
    { AC::Write, PICTURE_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 #undef MOD_IDL

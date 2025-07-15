@@ -20,7 +20,7 @@
 }
 
 objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
-if (thread.ok()) thread-&gt;activate(thread);
+if (thread.ok()) thread-&gt;activate();
 </pre>
 <p>To initialise the thread with data, call <method>SetData</method> prior to execution and read the <fl>Data</fl> field from within the thread routine.</p></description>
     <source>
@@ -132,17 +132,6 @@ if (thread.ok()) thread-&gt;activate(thread);
       <description>
 <p>The routine that will be executed when the thread is activated must be specified here.  The function prototype is <code>ERR routine(objThread *Thread)</code>.</p>
 <p>When the routine is called, a reference to the thread object is passed as a parameter.  Once the routine has finished processing, the resulting error code will be stored in the thread object's <fl>Error</fl> field.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>StackSize</name>
-      <comment>The stack size to allocate for the thread.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>INT</type>
-      <description>
-<p>The initial size of the thread's stack can be modified by setting this field.  It may also be read prior to activation in order to check the default stack size.  Changes to the stack size when the thread is active will have no effect.</p>
-<p>On some platforms it may not be possible to preset the stack size and the provided value will be ignored.</p>
       </description>
     </field>
 

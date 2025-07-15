@@ -10,7 +10,7 @@ static const struct FieldDef clTaskFlags[] = {
    { "Detached", 0x00000040 },
    { "Attached", 0x00000080 },
    { "Pipe", 0x00000100 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maAddArgument[] = { { "Argument", FD_STR }, { 0, 0 } };
@@ -34,6 +34,6 @@ static const struct ActionArray clTaskActions[] = {
    { AC::NewPlacement, TASK_NewPlacement },
    { AC::SetKey, TASK_SetKey },
    { AC::Write, TASK_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

@@ -2,7 +2,7 @@
 
 static const struct FieldDef clNetLookupFlags[] = {
    { "NoCache", 0x00000001 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maResolveName[] = { { "HostName", FD_STR }, { 0, 0 } };
@@ -21,7 +21,7 @@ static const struct MethodEntry clNetLookupMethods[] = {
 static const struct ActionArray clNetLookupActions[] = {
    { AC::Free, NETLOOKUP_Free },
    { AC::FreeWarning, NETLOOKUP_FreeWarning },
-   { AC::NewObject, NETLOOKUP_NewObject },
-   { AC::NIL, NULL }
+   { AC::NewPlacement, NETLOOKUP_NewPlacement },
+   { AC::NIL, nullptr }
 };
 

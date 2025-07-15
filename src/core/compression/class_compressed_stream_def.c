@@ -4,6 +4,6 @@ static const struct FieldDef clCompressedStreamFormat[] = {
    { "Gzip", 0x00000001 },
    { "Zlib", 0x00000002 },
    { "Deflate", 0x00000003 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 

@@ -6,6 +6,6 @@ static const struct ActionArray clImageFXActions[] = {
    { AC::Init, IMAGEFX_Init },
    { AC::NewChild, IMAGEFX_NewChild },
    { AC::NewObject, IMAGEFX_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

@@ -189,8 +189,10 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
 {
    if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
 
-   const int width = F2I(Self->Filter->TargetWidth); //Self->Target->Clip.Right - Self->Target->Clip.Left;
-   const int height = F2I(Self->Filter->TargetHeight); //Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+   const int width = F2I(Self->Filter->TargetWidth);
+   const int height = F2I(Self->Filter->TargetHeight);
+
+   if ((width <= 0) or (height <= 0)) return ERR::Okay;
 
    if (!Self->Bitmap) {
       Self->Dirty = true;
@@ -211,7 +213,8 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
       Self->Dirty = false;
       
       int thread_count = std::thread::hardware_concurrency();
-      if (thread_count > 16) thread_count = 16;
+      if (thread_count > height/4) thread_count = height/4;
+      if (thread_count < 1) thread_count = 1;
 
       dp::thread_pool pool(thread_count);
 
