@@ -40,7 +40,7 @@ Log levels are:
 
 #include "defs.h"
 
-static void fmsg(CSTRING, STRING, BYTE, BYTE);
+static void fmsg(CSTRING, STRING, int8_t, int8_t);
 
 #ifdef __ANDROID__
 static const int COLUMN1 = 40;
@@ -55,7 +55,7 @@ static const int COLUMN1 = 30;
 enum { MS_NONE, MS_FUNCTION, MS_MSG };
 enum { EL_NONE=0, EL_MINOR, EL_MAJOR, EL_MAJORBOLD };
 
-static THREADVAR LONG tlBaseLine = 0;
+static THREADVAR int tlBaseLine = 0;
 
 /*********************************************************************************************************************
 
@@ -82,10 +82,10 @@ int: Returns the absolute base-line value that was active prior to calling this 
 
 *********************************************************************************************************************/
 
-LONG AdjustLogLevel(LONG Delta)
+int AdjustLogLevel(int Delta)
 {
    if (glLogLevel >= 9) return tlBaseLine; // Do nothing if trace logging is active.
-   LONG old_level = tlBaseLine;
+   int old_level = tlBaseLine;
    if ((Delta >= -6) and (Delta <= 6)) tlBaseLine += Delta;
    return old_level;
 }
@@ -169,15 +169,15 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       return;
    }
 
-   LONG level = glLogLevel - tlBaseLine;
+   int level = glLogLevel - tlBaseLine;
    if (level > 9) level = 9;
    else if (level < 0) level = 0;
 
    if (((log_levels[level] & Flags) != VLF::NIL) or
        ((glLogLevel > 1) and ((Flags & (VLF::WARNING|VLF::ERROR|VLF::CRITICAL)) != VLF::NIL)))  {
       CSTRING name, action;
-      BYTE msgstate;
-      BYTE adjust = 0;
+      int8_t msgstate;
+      int8_t adjust = 0;
 
       std::lock_guard lock(glmPrint);
 
@@ -213,9 +213,9 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       auto ctx = tlContext;
       auto obj = ctx->object();
-      if (ctx->action > AC::NIL) action = ActionTable[LONG(ctx->action)].Name;
+      if (ctx->action > AC::NIL) action = ActionTable[int(ctx->action)].Name;
       else if (ctx->action < AC::NIL) {
-         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-LONG(ctx->action)].Name;
+         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-int(ctx->action)].Name;
          else action = "Method";
       }
       else action = "App";
@@ -331,9 +331,9 @@ ERR FuncError(CSTRING Header, ERR Code)
    auto ctx = tlContext;
    auto obj = tlContext->object();
    if (!Header) {
-      if (ctx->action > AC::NIL) Header = ActionTable[LONG(ctx->action)].Name;
+      if (ctx->action > AC::NIL) Header = ActionTable[int(ctx->action)].Name;
       else if (ctx->action < AC::NIL) {
-         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-LONG(ctx->action)].Name;
+         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-int(ctx->action)].Name;
          else Header = "Method";
       }
       else Header = "Function";
@@ -370,11 +370,11 @@ ERR FuncError(CSTRING Header, ERR Code)
          CSTRING name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
          if (ctx->field) {
-            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->field->Name, glMessages[LONG(Code)], hiend);
+            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->field->Name, glMessages[int(Code)], hiend);
          }
-         else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[LONG(Code)], hiend);
+         else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[int(Code)], hiend);
       }
-      else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[LONG(Code)], hiend);
+      else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[int(Code)], hiend);
 
       #if defined(__unix__) && !defined(__ANDROID__)
          if (glSync) { fflush(0); fsync(STDERR_FILENO); }
@@ -405,13 +405,13 @@ void LogReturn(void)
 
 //********************************************************************************************************************
 
-static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Sub) // Buffer must be COLUMN1+1 in size
+static void fmsg(CSTRING Header, STRING Buffer, int8_t Colon, int8_t Sub) // Buffer must be COLUMN1+1 in size
 {
    if (!Header) Header = "";
 
-   WORD pos = 0;
-   WORD depth;
-   WORD col = COLUMN1;
+   int16_t pos = 0;
+   int16_t depth;
+   int16_t col = COLUMN1;
 
    if (glLogLevel < 3) depth = 0;
    else if (tlDepth > col) depth = col;
@@ -426,8 +426,8 @@ static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Sub) // Buffer 
    }
 
    if (glTimeLog) {
-      DOUBLE time = PreciseTime() - glTimeLog;
-      pos += snprintf(Buffer+pos, col, "%09.5f ", (DOUBLE)time/1000000.0);
+      double time = PreciseTime() - glTimeLog;
+      pos += snprintf(Buffer+pos, col, "%09.5f ", time/1000000.0);
    }
 
    if (glLogLevel >= 3) {
@@ -447,7 +447,7 @@ static void fmsg(CSTRING Header, STRING Buffer, BYTE Colon, BYTE Sub) // Buffer 
    }
 
    if (pos < col) { // Print as many function letters as possible.
-      WORD len;
+      int16_t len;
       for (len=0; (Header[len]) and (pos < col); len++) Buffer[pos++] = Header[len];
       if ((!Colon) and (Header[len-1] != ':') and (Header[len-1] != ')')) Colon = MS_MSG;
       if (Colon IS MS_MSG) {

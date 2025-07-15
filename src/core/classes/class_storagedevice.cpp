@@ -123,7 +123,7 @@ static ERR SET_Volume(extStorageDevice *Self, CSTRING Value)
    if (Self->initialised()) return log.warning(ERR::Immutable);
 
    if ((Value) and (*Value)) {
-      LONG len;
+      int len;
       for (len=0; (Value[len]) and (Value[len] != ':'); len++);
 
       if (Self->Volume) FreeResource(Self->Volume);

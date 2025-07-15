@@ -64,13 +64,13 @@ constexpr int MAX_WAITLOCKS = 60;  // This value is effectively imposing a limit
 #define WIN32OPEN 0
 #endif
 
-#define LEN_VOLUME_NAME 40
+constexpr int LEN_VOLUME_NAME = 40;
 
-#define DRIVETYPE_REMOVABLE 1
-#define DRIVETYPE_CDROM     2
-#define DRIVETYPE_FIXED     3
-#define DRIVETYPE_NETWORK   4
-#define DRIVETYPE_USB       5
+constexpr int DRIVETYPE_REMOVABLE = 1;
+constexpr int DRIVETYPE_CDROM     = 2;
+constexpr int DRIVETYPE_FIXED     = 3;
+constexpr int DRIVETYPE_NETWORK   = 4;
+constexpr int DRIVETYPE_USB       = 5;
 
 #define DEFAULT_VIRTUALID 0xffffffff
 

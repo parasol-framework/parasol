@@ -211,7 +211,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The ErrorCallback field can be set with a function reference that will be called when an active process sends data via STDERR.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size)</code></p>
+<p>The ErrorCallback field can be set with a function reference that will be called when an active process sends data via STDERR.  The callback must follow the prototype <code>Function(*Task, APTR Data, int Size)</code></p>
 <p>The information read from STDERR will be returned in the Data pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The data pointer is temporary and will be invalid once the callback function has returned.</p>
       </description>
     </field>
@@ -243,7 +243,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The InputCallback field is available to the active task object only (i.e. the current process). The referenced function will be called when process receives data from STDIN.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size, ERR Status)</code></p>
+<p>The InputCallback field is available to the active task object only (i.e. the current process). The referenced function will be called when process receives data from STDIN.  The callback must follow the prototype <code>Function(*Task, APTR Data, int Size, ERR Status)</code></p>
 <p>The information read from STDOUT will be returned in the <code>Data</code> pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The data buffer is temporary and will be invalid once the callback function has returned.</p>
 <p>A status of <code>ERR::Finished</code> is sent if the stdinput handle has been closed.</p>
       </description>
@@ -286,7 +286,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The OutputCallback field can be set with a function reference that will be called when an active process sends data via STDOUT.  The callback must follow the prototype <code>Function(*Task, APTR Data, LONG Size)</code></p>
+<p>The OutputCallback field can be set with a function reference that will be called when an active process sends data via STDOUT.  The callback must follow the prototype <code>Function(*Task, APTR Data, int Size)</code></p>
 <p>The information read from STDOUT will be returned in the <code>Data</code> pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The <code>Data</code> pointer is temporary and will be invalid once the callback function has returned.</p>
       </description>
     </field>

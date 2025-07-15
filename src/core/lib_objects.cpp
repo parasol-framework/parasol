@@ -641,8 +641,7 @@ ERR CheckObjectExists(OBJECTID ObjectID)
 {
    if (auto lock = std::unique_lock{glmMemory}) {
       ERR result = ERR::False;
-      auto mem = glPrivateMemory.find(ObjectID);
-      if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
+      if (auto mem = glPrivateMemory.find(ObjectID); (mem != glPrivateMemory.end()) and (mem->second.Object)) {
          if (mem->second.Object->defined(NF::FREE_ON_UNLOCK));
          else result = ERR::True;
       }
@@ -735,9 +734,7 @@ objMetaClass * FindClass(CLASSID ClassID)
 
    pf::Log log(__FUNCTION__);
    if (glClassDB.contains(ClassID)) {
-      auto &path = glClassDB[ClassID].Path;
-
-      if (!path.empty()) {
+      if (auto &path = glClassDB[ClassID].Path; !path.empty()) {
          // Load the module from the associated location and then find the class that it contains.  If the module fails,
          // we keep on looking for other installed modules that may handle the class.
 
@@ -1631,7 +1628,7 @@ InitObject(display);
 auto ctx = SetContext(display);
 
    NewObject(CLASSID::BITMAP, &bitmap);
-   AllocMemory(1000, MEM::DATA, &memory, NULL);
+   AllocMemory(1000, MEM::DATA, &memory, nullptr);
 
 SetContext(ctx);
 FreeResource(display->UID);
@@ -1646,7 +1643,7 @@ InitObject(display);
 auto ctx = SetContext(display);
 
    NewObject(CLASSID::BITMAP, &bitmap);
-   AllocMemory(1000, MEM::DATA, &memory, NULL);
+   AllocMemory(1000, MEM::DATA, &memory, nullptr);
 
 SetContext(ctx);
 FreeResource(display->UID); // The bitmap and memory would be auto-collected
