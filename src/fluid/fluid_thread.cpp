@@ -19,6 +19,7 @@ variables with its creator, except via existing conventional means such as a Key
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
+#include <thread>
 
 extern "C" {
 #include "lauxlib.h"
@@ -28,23 +29,11 @@ extern "C" {
 #include "hashes.h"
 #include "defs.h"
 
-static ERR thread_script_entry(objThread *);
-static ERR thread_script_callback(OBJECTID);
-
-struct thread_callback {
-   objScript *threadScript;
-   int     callbackID;
-   OBJECTID mainScriptID;
-};
-
-std::unordered_map<OBJECTID, thread_callback> glThreadCB;
-
 //********************************************************************************************************************
 // Usage: thread.script(Statement, Callback)
 
 static int thread_script(lua_State *Lua)
 {
-   pf::Log log;
    CSTRING statement;
 
    if (!(statement = luaL_checkstring(Lua, 1))) {
@@ -52,59 +41,44 @@ static int thread_script(lua_State *Lua)
       return 0;
    }
 
-   if (auto thread = objThread::create::untracked(fl::Flags(THF::AUTO_FREE), fl::Routine((CPTR)thread_script_entry))) {
-      if (auto script = objScript::create::global(fl::Owner(thread->UID), fl::Statement(statement))) {
-         if (lua_isfunction(Lua, 2)) {
-            lua_pushvalue(Lua, 2);
+   if (auto script = objScript::create::global(fl::Statement(statement))) {
+      FUNCTION callback;
 
-            glThreadCB[thread->UID] = {
-               .threadScript = script,
-               .callbackID   = luaL_ref(Lua, LUA_REGISTRYINDEX),
-               .mainScriptID = Lua->Script->UID
-            };
-
-            thread->set(FID_Callback, (CPTR)&thread_script_callback);
-         }
-
-         if (thread->activate() != ERR::Okay) {
-            luaL_error(Lua, "Failed to execute thread");
-         }
-
-         // The thread is not manually removed because we've used AUTO_FREE and the script is owned by it.
+      if (lua_isfunction(Lua, 2)) {
+         lua_pushvalue(Lua, 2);
+         callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
+         callback.MetaValue = Lua->Script->UID;
       }
-      else luaL_error(Lua, "Failed to create script for threaded execution.");
+      
+      auto th = std::thread([](objScript *Script, FUNCTION Callback) {
+         acActivate(Script);
+         FreeResource(Script);
+
+         // Client callback must be executed in the main thread; send a message to do that.
+         if (Callback.isScript()) {
+            SendMessage(MSGID::FLUID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &Callback, sizeof(callback));
+         }
+      }, script, std::move(callback));
+
+      th.detach();
    }
-   else luaL_error(Lua, "Failed to create new Thread object.");
+   else luaL_error(Lua, "Failed to create script for threaded execution.");
 
    return 0;
 }
 
 //********************************************************************************************************************
-// Execute the script statement within the context of the child thread.
-
-static ERR thread_script_entry(objThread *Thread)
-{
-   if (auto it = glThreadCB.find(Thread->UID); it != glThreadCB.end()) {
-      thread_callback &cb = it->second;
-      acActivate(cb.threadScript);
-      FreeResource(cb.threadScript);
-   }
-   return ERR::Okay;
-}
-
-//********************************************************************************************************************
 // Callback following execution (executed by the main thread, not the child)
 
-static ERR thread_script_callback(OBJECTID ThreadID)
+ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
-   if (auto it = glThreadCB.find(ThreadID); it != glThreadCB.end()) {
-      thread_callback &cb = it->second;
-      if (ScopedObjectLock<objScript> script(cb.mainScriptID, 4000); script.granted()) {
+   auto cb = (FUNCTION *)Message;
+   if (cb->isScript()) {
+      if (ScopedObjectLock<objScript> script(cb->MetaValue, 4000); script.granted()) {
+         script->callback(cb->ProcedureID, nullptr, 0, nullptr);
          auto prv = (prvFluid *)script->ChildPrivate;
-         script->callback(cb.callbackID, nullptr, 0, nullptr);
-         luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb.callbackID);
+         luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb->ProcedureID);
       }
-      glThreadCB.erase(it);
    }
 
    return ERR::Okay;

@@ -2,7 +2,7 @@
 
 Some notes about object ownership and the safe handling of them:
 
-The core's technical design means that any object that is *not directly owned by the Lua Script* must be treated as
+The core's technical design means that any object that is not *directly* owned by the Lua Script must be treated as
 external to that script.  External objects must be locked appropriately whenever they are used.  Locking
 ensures that threads can interact with the object safely and that the object cannot be prematurely terminated.
 

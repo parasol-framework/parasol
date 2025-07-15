@@ -592,43 +592,6 @@ static ERR SET_Name(objScript *Self, CSTRING Name)
 
 /*********************************************************************************************************************
 
-PRIVATE: Owner
-
-This field is implemented locally because the owner is temporarily modified during script activation (the owner is set
-to the user's task).  Our implementation returns the true owner during this time, which affects Fluid code that
-attempts to reference script.owner.  This does not affect the Core's view of the owner or C calls to GetOwner() because
-they read the OwnerID field directly.
-
-NB: It probably makes more sense to use a support routine for NewChild() to divert object resource tracking during
-script activation - something to try when we have the time?
-
-*********************************************************************************************************************/
-
-static ERR GET_Owner(objScript *Self, OBJECTID *Value)
-{
-   if (Self->ScriptOwnerID) *Value = Self->ScriptOwnerID;
-   else *Value = Self->ownerID();
-   return ERR::Okay;
-}
-
-static ERR SET_Owner(objScript *Self, OBJECTID Value)
-{
-   pf::Log log;
-
-   if (Value) {
-      OBJECTPTR newowner;
-      if (AccessObject(Value, 2000, &newowner) IS ERR::Okay) {
-         SetOwner(Self, newowner);
-         ReleaseObject(newowner);
-         return ERR::Okay;
-      }
-      else return log.warning(ERR::ExclusiveDenied);
-   }
-   else return log.warning(ERR::Args);
-}
-
-/*********************************************************************************************************************
-
 -FIELD-
 Procedure: Specifies a procedure to be executed from within a script.
 
@@ -869,7 +832,6 @@ static const FieldArray clScriptFields[] = {
    { "Location",    FDF_SYNONYM|FDF_STRING|FDF_RI,  GET_Path, SET_Path },
    { "Procedure",   FDF_STRING|FDF_RW,              GET_Procedure, SET_Procedure },
    { "Name",        FDF_STRING|FDF_SYSTEM|FDF_RW,   nullptr, SET_Name },
-   { "Owner",       FDF_OBJECTID|FDF_SYSTEM|FDF_RW, GET_Owner, SET_Owner },
    { "Path",        FDF_STRING|FDF_RI,              GET_Path, SET_Path },
    { "Results",     FDF_ARRAY|FDF_POINTER|FDF_STRING|FDF_RW, GET_Results, SET_Results },
    { "Src",         FDF_SYNONYM|FDF_STRING|FDF_RI,  GET_Path, SET_Path },

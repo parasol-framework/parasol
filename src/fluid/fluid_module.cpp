@@ -23,10 +23,10 @@ template<class... Args> void RMSG(Args...) {
    //log.msg(Args)
 }
 
-#define MAX_MODULE_ARGS 16
+constexpr int MAX_MODULE_ARGS = 16;
 
 static int module_call(lua_State *);
-static LONG process_results(prvFluid *, APTR, const FunctionField *);
+static int process_results(prvFluid *, APTR, const FunctionField *);
 
 //********************************************************************************************************************
 // Usage: module = mod.load('core')
@@ -106,7 +106,7 @@ static int module_index(lua_State *Lua)
    if (auto mod = (module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
       if (auto function = luaL_checkstring(Lua, 2)) {
          if (auto list = mod->Functions) {
-            for (LONG i=0; list[i].Name; i++) {
+            for (int i=0; list[i].Name; i++) {
                if (pf::iequals(list[i].Name, function)) { // Function call stack management
                   lua_pushvalue(Lua, 1); // Arg1: Duplicate the module reference
                   lua_pushinteger(Lua, i); // Arg2: Index of the function that is being called
@@ -133,7 +133,7 @@ static int module_call(lua_State *Lua)
    pf::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
    UBYTE buffer[256]; // +8 for overflow protection
-   LONG i;
+   int i;
 
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) {
@@ -150,7 +150,7 @@ static int module_call(lua_State *Lua)
    if (!mod->Functions) return 0;
 
    auto index = lua_tointeger(Lua, lua_upvalueindex(2));
-   LONG nargs = lua_gettop(Lua);
+   int nargs = lua_gettop(Lua);
    if (nargs > MAX_MODULE_ARGS-1) nargs = MAX_MODULE_ARGS-1;
 
    UBYTE *end = buffer + sizeof(buffer);
@@ -170,11 +170,11 @@ static int module_call(lua_State *Lua)
    ffi_arg rc;
    ffi_type *arg_types[MAX_MODULE_ARGS];
    void * arg_values[MAX_MODULE_ARGS];
-   LONG in = 0;
+   int in = 0;
 
-   LONG j = 0;
+   int j = 0;
    for (i=1; (args[i].Name) and ((size_t)j < sizeof(buffer)-8); i++) {
-      LONG argtype = args[i].Type;
+      int argtype = args[i].Type;
 
       //log.trace("%s() Arg: %s, Offset: %d, Type: $%.8x (received %s)", mod->Functions[index].Name, args[i].Name, j, argtype, lua_typename(Lua, lua_type(Lua, i)));
 
@@ -201,18 +201,18 @@ static int module_call(lua_State *Lua)
 
                if (args[i+1].Type & (FD_BUFSIZE|FD_ARRAYSIZE)) {
                   if (args[i+1].Type & FD_INT) {
-                     ((LONG *)(buffer + j))[0] = mem->ArraySize;
+                     ((int *)(buffer + j))[0] = mem->ArraySize;
                      arg_values[in]  = buffer + j;
                      arg_types[in++] = &ffi_type_sint32;
                      i++;
-                     j += sizeof(LONG);
+                     j += sizeof(int);
                   }
                   else if (args[i+1].Type & FD_INT64) {
-                     ((LARGE *)(buffer + j))[0] = mem->ArraySize;
+                     ((int64_t *)(buffer + j))[0] = mem->ArraySize;
                      arg_values[in]  = buffer + j;
                      arg_types[in++] = &ffi_type_sint64;
                      i++;
-                     j += sizeof(LARGE);
+                     j += sizeof(int64_t);
                   }
                   else log.warning("Integer type unspecified for BUFSIZE argument in %s()", mod->Functions[index].Name);
                }
@@ -237,7 +237,7 @@ static int module_call(lua_State *Lua)
             else {
                end -= sizeof(APTR);
                ((APTR *)(buffer + j))[0] = end;
-               ((APTR *)end)[0] = NULL;
+               ((APTR *)end)[0] = nullptr;
                arg_values[in]  = buffer + j;
                arg_types[in++] = &ffi_type_pointer;
                j += sizeof(APTR);
@@ -246,23 +246,23 @@ static int module_call(lua_State *Lua)
          else if (argtype & (FD_PTR|FD_ARRAY)) { // FD_RESULT
             end -= sizeof(APTR);
             ((APTR *)(buffer + j))[0] = end;
-            ((APTR *)end)[0] = NULL;
+            ((APTR *)end)[0] = nullptr;
             arg_values[in]  = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
          else if (argtype & FD_INT) { // FD_RESULT
-            end -= sizeof(LONG);
+            end -= sizeof(int);
             ((APTR *)(buffer + j))[0] = end;
-            ((LONG *)end)[0] = 0;
+            ((int *)end)[0] = 0;
             arg_values[in]  = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
          else if (argtype & (FD_DOUBLE|FD_INT64)) { // FD_RESULT
-            end -= sizeof(LARGE);
+            end -= sizeof(int64_t);
             ((APTR *)(buffer + j))[0] = end;
-            ((LARGE *)end)[0] = 0;
+            ((int64_t *)end)[0] = 0;
             arg_values[in]  = buffer + j;
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
@@ -295,7 +295,7 @@ static int module_call(lua_State *Lua)
 
             case LUA_TNIL:
             case LUA_TNONE:
-               ((FUNCTION **)(buffer + j))[0] = NULL;
+               ((FUNCTION **)(buffer + j))[0] = nullptr;
                break;
 
             default:
@@ -310,7 +310,7 @@ static int module_call(lua_State *Lua)
       else if (argtype & FD_STR) {
          auto type = lua_type(Lua, i);
 
-         if (argtype & FD_CPP) { // std::string_view (enforced, cannot be NULL)
+         if (argtype & FD_CPP) { // std::string_view (enforced, cannot be nullptr)
             size_t len;
             auto str = lua_tolstring(Lua, i, &len);
             ((std::string_view **)(buffer + j))[0] = new std::string_view(str, len);
@@ -319,7 +319,7 @@ static int module_call(lua_State *Lua)
             ((CSTRING *)(buffer + j))[0] = lua_tostring(Lua, i);
          }
          else if (type <= 0) {
-            ((CSTRING *)(buffer + j))[0] = NULL;
+            ((CSTRING *)(buffer + j))[0] = nullptr;
          }
          else if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
             luaL_error(Lua, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
@@ -348,8 +348,8 @@ static int module_call(lua_State *Lua)
             if (args[i+1].Type & (FD_BUFSIZE|FD_ARRAYSIZE)) {
                if (args[i+1].Type & FD_RESULT) {
                   if (args[i+1].Type & FD_INT) {
-                     end -= sizeof(LONG);
-                     ((LONG *)end)[0] = mem->Total;
+                     end -= sizeof(int);
+                     ((int *)end)[0] = mem->Total;
                      ((APTR *)(buffer + j))[0] = end;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_pointer;
@@ -357,8 +357,8 @@ static int module_call(lua_State *Lua)
                      i++;
                   }
                   else if (args[i+1].Type & FD_INT64) {
-                     end -= sizeof(LARGE);
-                     ((LARGE *)end)[0] = mem->Total;
+                     end -= sizeof(int64_t);
+                     ((int64_t *)end)[0] = mem->Total;
                      ((APTR *)(buffer + j))[0] = end;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_pointer;
@@ -372,17 +372,17 @@ static int module_call(lua_State *Lua)
                }
                else {
                   if (args[i+1].Type & FD_INT) {
-                     ((LONG *)(buffer + j))[0] = mem->Total;
+                     ((int *)(buffer + j))[0] = mem->Total;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_sint32;
-                     j += sizeof(LONG);
+                     j += sizeof(int);
                      i++;
                   }
                   else if (args[i+1].Type & FD_INT64) {
-                     ((LARGE *)(buffer + j))[0] = mem->Total;
+                     ((int64_t *)(buffer + j))[0] = mem->Total;
                      arg_values[in] = buffer + j;
                      arg_types[in++] = &ffi_type_sint64;
-                     j += sizeof(LARGE);
+                     j += sizeof(int64_t);
                      i++;
                   }
                   else {
@@ -412,18 +412,18 @@ static int module_call(lua_State *Lua)
 
             if (args[i+1].Type & FD_BUFSIZE) {
                if (args[i+1].Type & FD_INT) {
-                  ((LONG *)(buffer + j))[0] = strlen;
+                  ((int *)(buffer + j))[0] = strlen;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint32;
-                  j += sizeof(LONG);
+                  j += sizeof(int);
                }
                else if (args[i+1].Type & FD_INT64) {
-                  ((LARGE *)(buffer + j))[0] = strlen;
+                  ((int64_t *)(buffer + j))[0] = strlen;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint64;
-                  j += sizeof(LARGE);
+                  j += sizeof(int64_t);
                }
             }
          }
@@ -435,18 +435,18 @@ static int module_call(lua_State *Lua)
 
             if (args[i+1].Type & FD_BUFSIZE) {
                if (args[i+1].Type & FD_INT) {
-                  ((LONG *)(buffer + j))[0] = array->ArraySize;
+                  ((int *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint32;
-                  j += sizeof(LONG);
+                  j += sizeof(int);
                }
                else if (args[i+1].Type & FD_INT64) {
-                  ((LARGE *)(buffer + j))[0] = array->ArraySize;
+                  ((int64_t *)(buffer + j))[0] = array->ArraySize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint64;
-                  j += sizeof(LARGE);
+                  j += sizeof(int64_t);
                }
             }
          }
@@ -459,18 +459,18 @@ static int module_call(lua_State *Lua)
             log.trace("Struct address %p inserted to arg offset %d", fstruct->Data, j);
             if (args[i+1].Type & FD_BUFSIZE) {
                if (args[i+1].Type & FD_INT) {
-                  ((LONG *)(buffer + j))[0] = fstruct->AlignedSize;
+                  ((int *)(buffer + j))[0] = fstruct->AlignedSize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint32;
-                  j += sizeof(LONG);
+                  j += sizeof(int);
                }
                else if (args[i+1].Type & FD_INT64) {
-                  ((LARGE *)(buffer + j))[0] = fstruct->AlignedSize;
+                  ((int64_t *)(buffer + j))[0] = fstruct->AlignedSize;
                   i++;
                   arg_values[in] = buffer + j;
                   arg_types[in++] = &ffi_type_sint64;
-                  j += sizeof(LARGE);
+                  j += sizeof(int64_t);
                }
             }
          }
@@ -484,7 +484,7 @@ static int module_call(lua_State *Lua)
             }
             else {
                log.warning("Unable to resolve object pointer for #%d.", obj->UID);
-               ((OBJECTPTR *)(buffer + j))[0] = NULL;
+               ((OBJECTPTR *)(buffer + j))[0] = nullptr;
             }
 
             arg_values[in] = buffer + j;
@@ -501,33 +501,33 @@ static int module_call(lua_State *Lua)
       else if (argtype & FD_INT) {
          if (argtype & FD_OBJECT) {
             if (auto obj = (object *)get_meta(Lua, i, "Fluid.obj")) {
-               ((LONG *)(buffer + j))[0] = obj->UID;
+               ((int *)(buffer + j))[0] = obj->UID;
             }
-            else ((LONG *)(buffer + j))[0] = lua_tointeger(Lua, i);
+            else ((int *)(buffer + j))[0] = lua_tointeger(Lua, i);
          }
-         else if (argtype & FD_UNSIGNED) ((ULONG *)(buffer + j))[0] = lua_tointeger(Lua, i);
-         else ((LONG *)(buffer + j))[0] = lua_tointeger(Lua, i);
+         else if (argtype & FD_UNSIGNED) ((uint32_t *)(buffer + j))[0] = lua_tointeger(Lua, i);
+         else ((int *)(buffer + j))[0] = lua_tointeger(Lua, i);
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_sint32;
-         j += sizeof(LONG);
+         j += sizeof(int);
       }
       else if (argtype & FD_DOUBLE) {
-         ((DOUBLE *)(buffer + j))[0] = lua_tonumber(Lua, i);
+         ((double *)(buffer + j))[0] = lua_tonumber(Lua, i);
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_double;
-         j += sizeof(DOUBLE);
+         j += sizeof(double);
       }
       else if (argtype & FD_INT64) {
-         ((LARGE *)(buffer + j))[0] = lua_tointeger(Lua, i);
+         ((int64_t *)(buffer + j))[0] = lua_tointeger(Lua, i);
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_sint64;
-         j += sizeof(LARGE);
+         j += sizeof(int64_t);
       }
       else if (argtype & FD_PTRSIZE) {
-         ((LONG *)(buffer + j))[0] = lua_tointeger(Lua, i);
+         ((int *)(buffer + j))[0] = lua_tointeger(Lua, i);
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_sint32;
-         j += sizeof(LONG);
+         j += sizeof(int);
       }
       else if (argtype & (FD_TAGS|FD_VARTAGS)) {
          luaL_error(Lua, "Functions using tags are not supported.");
@@ -541,9 +541,9 @@ static int module_call(lua_State *Lua)
 
    // Call the function.  The method used for execution depends on the function's result type.
 
-   LONG restype = args->Type;
-   LONG result = 1;
-   LONG total_args = i - 1;
+   int restype = args->Type;
+   int result = 1;
+   int total_args = i - 1;
 
    if (restype & FD_STR) {
       if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, arg_types) IS FFI_OK) {
@@ -601,16 +601,16 @@ static int module_call(lua_State *Lua)
       if (restype & FD_UNSIGNED) {
          if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_uint32, arg_types) IS FFI_OK) {
             ffi_call(&cif, (void (*)())function, &rc, arg_values);
-            lua_pushnumber(Lua, (ULONG)rc);
+            lua_pushnumber(Lua, (uint32_t)rc);
          }
          else lua_pushnil(Lua);
       }
       else {
          if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_sint32, arg_types) IS FFI_OK) {
             ffi_call(&cif, (void (*)())function, &rc, arg_values);
-            lua_pushinteger(Lua, (LONG)rc);
+            lua_pushinteger(Lua, (int)rc);
 
-            if ((prv->Catch) and (restype & FD_ERROR) and (rc >= LONG(ERR::ExceptionThreshold))) {
+            if ((prv->Catch) and (restype & FD_ERROR) and (rc >= int(ERR::ExceptionThreshold))) {
                prv->CaughtError = ERR(rc);
                luaL_error(prv->Lua, GetErrorMsg(ERR(rc)));
             }
@@ -621,14 +621,14 @@ static int module_call(lua_State *Lua)
    else if (restype & FD_DOUBLE) {
       if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_double, arg_types) IS FFI_OK) {
          ffi_call(&cif, (void (*)())function, &rc, arg_values);
-         lua_pushnumber(Lua, (DOUBLE)rc);
+         lua_pushnumber(Lua, (double)rc);
       }
       else lua_pushnil(Lua);
    }
    else if (restype & FD_INT64) {
       if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_sint64, arg_types) IS FFI_OK) {
          ffi_call(&cif, (void (*)())function, &rc, arg_values);
-         lua_pushnumber(Lua, (LARGE)rc);
+         lua_pushnumber(Lua, (int64_t)rc);
       }
       else lua_pushnil(Lua);
    }
@@ -651,13 +651,13 @@ static int module_call(lua_State *Lua)
 // Convert FD_RESULT parameters to the equivalent Fluid result value.
 // Also takes care of any cleanup code for dynamically allocated values.
 
-static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField *args)
+static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *args)
 {
    pf::Log log(__FUNCTION__);
 
    auto scan = (UBYTE *)resultsidx;
-   LONG results = 0;
-   for (LONG i=1; args[i].Name; i++) {
+   int results = 0;
+   for (int i=1; args[i].Name; i++) {
       const auto argtype = args[i].Type;
 
       if ((argtype & FD_ARRAY) and (!(argtype & FD_BUFFER))) {
@@ -667,12 +667,12 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
             if (var) {
                const auto argname = args[i].Name;
                APTR values = ((APTR *)var)[0];
-               LONG total_elements = -1; // If -1, make_any_table() assumes the array is null terminated.
+               int total_elements = -1; // If -1, make_any_table() assumes the array is null terminated.
 
                if (args[i+1].Type & FD_ARRAYSIZE) {
                   CPTR size_var = ((APTR *)scan)[0];
-                  if (args[i+1].Type & FD_INT) total_elements = ((LONG *)size_var)[0];
-                  else if (args[i+1].Type & FD_INT64) total_elements = ((LARGE *)size_var)[0];
+                  if (args[i+1].Type & FD_INT) total_elements = ((int *)size_var)[0];
+                  else if (args[i+1].Type & FD_INT64) total_elements = ((int64_t *)size_var)[0];
                   else log.warning("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
                }
 
@@ -734,11 +734,11 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                   else lua_pushnil(prv->Lua);
                }
                else if (argtype & FD_ALLOC) { // The result is a memory allocation.  Convert it to a binary 'string' of fixed length
-                  LARGE size = 0;
+                  int64_t size = 0;
                   if (args[i+1].Type & FD_BUFSIZE) {
                      const APTR size_var = ((APTR *)scan)[0];
-                     if (args[i+1].Type & FD_INT) size = ((LONG *)size_var)[0];
-                     else if (args[i+1].Type & FD_INT64) size = ((LARGE *)size_var)[0];
+                     if (args[i+1].Type & FD_INT) size = ((int *)size_var)[0];
+                     else if (args[i+1].Type & FD_INT64) size = ((int64_t *)size_var)[0];
                      else log.warning("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
                   }
                   else {
@@ -752,10 +752,10 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                   if (((APTR *)var)[0]) FreeResource(((APTR *)var)[0]);
                }
                else if (args[i+1].Type & FD_BUFSIZE) { // We can convert the data to a binary string rather than work with unsafe pointers.
-                  LARGE size = 0;
+                  int64_t size = 0;
                   CPTR size_var = ((APTR *)scan)[0];
-                  if (args[i+1].Type & FD_INT) size = ((LONG *)size_var)[0];
-                  else if (args[i+1].Type & FD_INT64) size = ((LARGE *)size_var)[0];
+                  if (args[i+1].Type & FD_INT) size = ((int *)size_var)[0];
+                  else if (args[i+1].Type & FD_INT64) size = ((int64_t *)size_var)[0];
                   else log.warning("Invalid arg %s, flags $%.8x", args[i+1].Name, args[i+1].Type);
 
                   if (size > 0) lua_pushlstring(prv->Lua, ((CSTRING *)var)[0], size);
@@ -770,30 +770,30 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
       }
       else if (argtype & FD_INT) {
          if (argtype & FD_RESULT) {
-            if (auto var = ((APTR *)scan)[0]) lua_pushinteger(prv->Lua, ((LONG *)var)[0]);
+            if (auto var = ((APTR *)scan)[0]) lua_pushinteger(prv->Lua, ((int *)var)[0]);
             else lua_pushnil(prv->Lua);
             scan += sizeof(APTR);
             results++;
          }
-         else scan += sizeof(LONG);
+         else scan += sizeof(int);
       }
       else if (argtype & FD_DOUBLE) {
          if (argtype & FD_RESULT) {
-            if (auto var = ((APTR *)scan)[0]) lua_pushnumber(prv->Lua, ((DOUBLE *)var)[0]);
+            if (auto var = ((APTR *)scan)[0]) lua_pushnumber(prv->Lua, ((double *)var)[0]);
             else lua_pushnil(prv->Lua);
             scan += sizeof(APTR);
             results++;
          }
-         else scan += sizeof(DOUBLE);
+         else scan += sizeof(double);
       }
       else if (argtype & FD_INT64) {
          if (argtype & FD_RESULT) {
-            if (auto var = ((APTR *)scan)[0]) lua_pushnumber(prv->Lua, ((LARGE *)var)[0]);
+            if (auto var = ((APTR *)scan)[0]) lua_pushnumber(prv->Lua, ((int64_t *)var)[0]);
             else lua_pushnil(prv->Lua);
             scan += sizeof(APTR);
             results++;
          }
-         else scan += sizeof(LARGE);
+         else scan += sizeof(int64_t);
       }
       else {
          log.warning("Unsupported arg '%s', flags $%x, aborting now.", args[i].Name, argtype);
@@ -814,14 +814,14 @@ void register_module_class(lua_State *Lua)
    static const struct luaL_Reg modlib_functions[] = {
       { "new",  module_load },
       { "load", module_load },
-      { NULL, NULL}
+      { nullptr, nullptr}
    };
 
    static const struct luaL_Reg modlib_methods[] = {
       { "__index",    module_index },
       { "__tostring", module_tostring },
       { "__gc",       module_destruct },
-      { NULL, NULL }
+      { nullptr, nullptr }
    };
 
    log.trace("Registering module interface.");
@@ -831,6 +831,6 @@ void register_module_class(lua_State *Lua)
    lua_pushvalue(Lua, -2);  // pushes the metatable
    lua_settable(Lua, -3);   // metatable.__index = metatable
 
-   luaL_openlib(Lua, NULL, modlib_methods, 0);
+   luaL_openlib(Lua, nullptr, modlib_methods, 0);
    luaL_openlib(Lua, "mod", modlib_functions, 0);
 }
