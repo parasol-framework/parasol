@@ -30,6 +30,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <parasol/main.h>
 #include <parasol/modules/network.h>
 #include <parasol/strings.hpp>
+#include <thread>
 
 #ifdef ENABLE_SSL
 #include <openssl/ssl.h>
@@ -205,8 +206,6 @@ class extNetLookup : public objNetLookup {
    public:
    FUNCTION Callback;
    struct DNSEntry Info;
-   std::unordered_set<OBJECTID> *Threads;
-   std::mutex *ThreadLock;
 };
 
 //********************************************************************************************************************
