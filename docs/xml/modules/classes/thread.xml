@@ -135,13 +135,6 @@ if (thread.ok()) thread-&gt;activate();
       </description>
     </field>
 
-    <field>
-      <name>StackSize</name>
-      <comment>Pre-set stack size</comment>
-      <access>-/-</access>
-      <type>INT</type>
-    </field>
-
   </fields>
   <types>
     <constants lookup="THF" comment="Thread flags">

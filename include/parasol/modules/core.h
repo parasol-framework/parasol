@@ -4460,7 +4460,6 @@ class objThread : public Object {
 
    APTR Data;       // Pointer to initialisation data for the thread.
    int  DataSize;   // The size of the buffer referenced in the Data field.
-   int  StackSize;  // Pre-set stack size
    ERR  Error;      // Reflects the error code returned by the thread routine.
    THF  Flags;      // Optional flags can be defined here.
 

@@ -2627,7 +2627,6 @@ inline ERR Call(const FUNCTION &Function, ERR &Result) noexcept {
   class("Thread", { src="../classes/class_thread.cpp", output="../classes/class_thread_def.c" }, [[
    ptr   Data         # User data pointer.
    int   DataSize     # Size of user data.
-   int   StackSize    # Pre-set stack size
    error Error        # Error code returned by the thread on completion.
    int(THF) Flags     # Optional flags.
   ]])

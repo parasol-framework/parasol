@@ -13,6 +13,9 @@
 #include <chrono>
 #include <array>
 #include <atomic>
+#include <thread>
+
+#include <thread_pool/thread_pool.h>
 
 using namespace std::chrono_literals;
 
@@ -37,14 +40,13 @@ using namespace std::chrono_literals;
 
 // See the makefile for optional defines
 
-#define MAX_TASKS    50  // Maximum number of tasks allowed to run at once
+constexpr int MAX_TASKS = 50;  // Maximum number of tasks allowed to run at once
 
-#define MSG_MAXARGSIZE   512   // The maximum allowable size of data based arguments before they have to be allocated as memory blocks when messaging
-#define SIZE_SYSTEM_PATH 100  // Max characters for the Parasol system path
+constexpr int SIZE_SYSTEM_PATH = 100;  // Max characters for the Parasol system path
 
-#define MAX_THREADS       20  // Maximum number of threads per process.
-#define MAX_NB_LOCKS      20  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
-#define MAX_WAITLOCKS     60  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
+constexpr int MAX_THREADS   = 20;  // Maximum number of threads per process.
+constexpr int MAX_NB_LOCKS  = 20;  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
+constexpr int MAX_WAITLOCKS = 60;  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
 
 #define CLASSDB_HEADER 0x7f887f89
 
@@ -412,18 +414,19 @@ class extStorageDevice : public objStorageDevice {
 class extThread : public objThread {
    public:
    using create = pf::Create<extThread>;
-   #ifdef __unix__
-      pthread_t PThread;
+
+   std::jthread::native_handle_type Handle;
+   std::jthread::id ThreadID;
+   std::jthread *CPPThread;
+
+#ifdef __unix__
       int Msgs[2];
    #elif _WIN32
-      WINHANDLE Handle;
-      int ThreadID;
       WINHANDLE Msgs[2];
    #endif
    FUNCTION Routine;
    FUNCTION Callback;
    std::atomic_bool Active;
-   bool Pooled;
 };
 
 class extTask : public objTask {
@@ -1022,7 +1025,8 @@ CSTRING action_name(OBJECTPTR Object, int ActionID);
 #ifndef PARASOL_STATIC
 APTR   build_jump_table(const Function *);
 #endif
-ERR    copy_args(const FunctionField *, LONG, int8_t *, int8_t *, LONG, int *, CSTRING);
+void   stop_async_actions(void);
+ERR    copy_args(const FunctionField *, int, int8_t *, std::vector<int8_t> &);
 ERR    create_archive_volume(void);
 ERR    delete_tree(std::string &, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
@@ -1032,7 +1036,6 @@ void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
 void   init_metaclass(void);
 ERR    init_sleep(THREADID, LONG, LONG);
-void   local_free_args(APTR, const FunctionField *);
 Field * lookup_id(OBJECTPTR, uint32_t, OBJECTPTR *);
 ERR    msg_event(APTR, LONG, LONG, APTR, LONG);
 ERR    msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
@@ -1042,16 +1045,12 @@ void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERR    process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
-ERR    resolve_args(APTR, const FunctionField *);
 CLASSID lookup_class_by_ext(CLASSID, std::string_view);
 
 #ifndef PARASOL_STATIC
 void   scan_classes(void);
 #endif
 
-void remove_threadpool(void);
-ERR  threadpool_get(extThread **);
-void threadpool_release(extThread *);
 ERR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
 ERR  check_paths(CSTRING, PERMIT);
 void merge_groups(ConfigGroups &, ConfigGroups &);

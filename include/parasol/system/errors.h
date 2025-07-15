@@ -218,7 +218,8 @@ enum class ERR : int32_t {
    SetValueNotPointer = 187,
    SetValueNotArray = 188,
    SetValueNotLookup = 189,
-   END = 190,
+   InvalidType = 190,
+   END = 191,
    Notified = 1073741824,
 };
 
