@@ -8,7 +8,7 @@ static const struct FieldDef clAudioFlags[] = {
    { "VolRamping", 0x00000010 },
    { "AutoSave", 0x00000020 },
    { "SystemWide", 0x00000040 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maOpenChannels[] = { { "Total", FD_INT }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
@@ -41,6 +41,6 @@ static const struct ActionArray clAudioActions[] = {
    { AC::NewPlacement, AUDIO_NewPlacement },
    { AC::SaveSettings, AUDIO_SaveSettings },
    { AC::SaveToObject, AUDIO_SaveToObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

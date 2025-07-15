@@ -679,12 +679,12 @@ class objVectorScene : public Object {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
-   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR redimension(double X, double Y, double Z, double Width, double Height, double Depth) noexcept {
       struct acRedimension args = { X, Y, Z, Width, Height, Depth };
@@ -694,7 +694,7 @@ class objVectorScene : public Object {
       struct acRedimension args = { X, Y, 0, Width, Height, 0 };
       return Action(AC::Redimension, this, &args);
    }
-   inline ERR reset() noexcept { return Action(AC::Reset, this, NULL); }
+   inline ERR reset() noexcept { return Action(AC::Reset, this, nullptr); }
    inline ERR resize(double Width, double Height, double Depth = 0) noexcept {
       struct acResize args = { Width, Height, Depth };
       return Action(AC::Resize, this, &args);
@@ -716,7 +716,7 @@ class objVectorScene : public Object {
       return(error);
    }
    inline ERR debug() noexcept {
-      return(Action(AC(-4), this, NULL));
+      return(Action(AC(-4), this, nullptr));
    }
 
    // Customised field setting
@@ -1145,8 +1145,8 @@ class objFilterEffect : public Object {
    // Action stubs
 
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
-   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
+   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, nullptr); }
+   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, nullptr); }
 
    // Customised field setting
 
@@ -1236,7 +1236,7 @@ class objImageFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1278,7 +1278,7 @@ class objSourceFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1320,7 +1320,7 @@ class objBlurFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1356,7 +1356,7 @@ class objColourFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1392,7 +1392,7 @@ class objCompositeFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1446,7 +1446,7 @@ class objConvolveFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1536,7 +1536,7 @@ class objDisplacementFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1578,7 +1578,7 @@ class objFloodFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1623,7 +1623,7 @@ class objLightingFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1701,7 +1701,7 @@ class objMergeFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1731,7 +1731,7 @@ class objMorphologyFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1773,7 +1773,7 @@ class objOffsetFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1822,7 +1822,7 @@ class objRemapFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1874,7 +1874,7 @@ class objTurbulenceFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -1934,7 +1934,7 @@ class objWaveFunctionFX : public objFilterEffect {
 
    // Action stubs
 
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
@@ -2051,7 +2051,7 @@ class objVectorFilter : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
@@ -2178,18 +2178,18 @@ class objVector : public Object {
 
    // Action stubs
 
-   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
-   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
-   inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }
+   inline ERR hide() noexcept { return Action(AC::Hide, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
-   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
-   inline ERR show() noexcept { return Action(AC::Show, this, NULL); }
+   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, nullptr); }
+   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, nullptr); }
+   inline ERR show() noexcept { return Action(AC::Show, this, nullptr); }
    inline ERR push(int Position) noexcept {
       struct vec::Push args = { Position };
       return(Action(AC(-1), this, &args));
@@ -2224,7 +2224,7 @@ class objVector : public Object {
       return(Action(AC(-7), this, &args));
    }
    inline ERR debug() noexcept {
-      return(Action(AC(-8), this, NULL));
+      return(Action(AC(-8), this, nullptr));
    }
    inline ERR newMatrix(struct VectorMatrix ** Transform, int End) noexcept {
       struct vec::NewMatrix args = { (struct VectorMatrix *)0, End };
@@ -2467,8 +2467,8 @@ class objVectorPath : public objVector {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
-   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR addCommand(struct PathCommand * Commands, int Size) noexcept {
       struct vp::AddCommand args = { Commands, Size };
@@ -3254,7 +3254,7 @@ class objVectorViewport : public objVector {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR move(double X, double Y, double Z) noexcept {
       struct acMove args = { X, Y, Z };

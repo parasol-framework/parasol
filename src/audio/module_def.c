@@ -45,7 +45,7 @@ const struct Function glFunctions[] = {
    { (APTR)snd::MixVolume, "MixVolume", argsMixVolume },
    { (APTR)snd::MixStartSequence, "MixStartSequence", argsMixStartSequence },
    { (APTR)snd::MixEndSequence, "MixEndSequence", argsMixEndSequence },
-   { NULL, NULL, NULL }
+   { nullptr, nullptr, nullptr }
 };
 
 #undef MOD_IDL

@@ -5,6 +5,6 @@ static const struct ActionArray clTurbulenceFXActions[] = {
    { AC::Free, TURBULENCEFX_Free },
    { AC::Init, TURBULENCEFX_Init },
    { AC::NewObject, TURBULENCEFX_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

@@ -616,25 +616,25 @@ class objBitmap : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
    inline ERR copyData(OBJECTPTR Dest) noexcept {
       struct acCopyData args = { .Dest = Dest };
       return Action(AC::CopyData, this, &args);
    }
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
-   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR lock() noexcept { return Action(AC::Lock, this, NULL); }
-   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }
+   inline ERR lock() noexcept { return Action(AC::Lock, this, nullptr); }
+   inline ERR query() noexcept { return Action(AC::Query, this, nullptr); }
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
@@ -644,7 +644,7 @@ class objBitmap : public Object {
    template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       return Action(AC::Read, this, &read);
    }
    inline ERR resize(double Width, double Height, double Depth = 0) noexcept {
@@ -662,9 +662,9 @@ class objBitmap : public Object {
    inline ERR seekStart(double Offset) noexcept { return seek(Offset, SEEK::START); }
    inline ERR seekEnd(double Offset) noexcept { return seek(Offset, SEEK::END); }
    inline ERR seekCurrent(double Offset) noexcept { return seek(Offset, SEEK::CURRENT); }
-   inline ERR unlock() noexcept { return Action(AC::Unlock, this, NULL); }
-   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+   inline ERR unlock() noexcept { return Action(AC::Unlock, this, nullptr); }
+   inline ERR write(CPTR Buffer, int Size, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -674,8 +674,8 @@ class objBitmap : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -686,7 +686,7 @@ class objBitmap : public Object {
       }
    }
    inline int writeResult(CPTR Buffer, int Size) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
@@ -717,16 +717,16 @@ class objBitmap : public Object {
       return(error);
    }
    inline ERR premultiply() noexcept {
-      return(Action(AC(-7), this, NULL));
+      return(Action(AC(-7), this, nullptr));
    }
    inline ERR demultiply() noexcept {
-      return(Action(AC(-8), this, NULL));
+      return(Action(AC(-8), this, nullptr));
    }
    inline ERR convertToLinear() noexcept {
-      return(Action(AC(-9), this, NULL));
+      return(Action(AC(-9), this, nullptr));
    }
    inline ERR convertToRGB() noexcept {
-      return(Action(AC(-10), this, NULL));
+      return(Action(AC(-10), this, nullptr));
    }
 
    // Customised field setting
@@ -919,35 +919,35 @@ class objDisplay : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
-   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
-   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
-   inline ERR flush() noexcept { return Action(AC::Flush, this, NULL); }
-   inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }
+   inline ERR flush() noexcept { return Action(AC::Flush, this, nullptr); }
+   inline ERR focus() noexcept { return Action(AC::Focus, this, nullptr); }
    inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
       if ((error != ERR::Okay) and (Value)) Value[0] = 0;
       return error;
    }
-   inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
+   inline ERR hide() noexcept { return Action(AC::Hide, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR move(double X, double Y, double Z) noexcept {
       struct acMove args = { X, Y, Z };
       return Action(AC::Move, this, &args);
    }
-   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
-   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
+   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, nullptr); }
+   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, nullptr); }
    inline ERR moveToPoint(double X, double Y, double Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC::MoveToPoint, this, &moveto);
@@ -968,10 +968,10 @@ class objDisplay : public Object {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC::SaveImage, this, &args);
    }
-   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, NULL); }
-   inline ERR show() noexcept { return Action(AC::Show, this, NULL); }
+   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, nullptr); }
+   inline ERR show() noexcept { return Action(AC::Show, this, nullptr); }
    inline ERR waitVBL() noexcept {
-      return(Action(AC(-1), this, NULL));
+      return(Action(AC(-1), this, nullptr));
    }
    inline ERR updatePalette(struct RGBPalette * NewPalette) noexcept {
       struct gfx::UpdatePalette args = { NewPalette };
@@ -998,10 +998,10 @@ class objDisplay : public Object {
       return(Action(AC(-7), this, &args));
    }
    inline ERR minimise() noexcept {
-      return(Action(AC(-8), this, NULL));
+      return(Action(AC(-8), this, nullptr));
    }
    inline ERR checkXWindow() noexcept {
-      return(Action(AC(-9), this, NULL));
+      return(Action(AC(-9), this, nullptr));
    }
 
    // Customised field setting
@@ -1137,7 +1137,7 @@ class objClipboard : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
@@ -1206,7 +1206,7 @@ class objController : public Object {
 
    // Action stubs
 
-   inline ERR query() noexcept { return Action(AC::Query, this, NULL); }
+   inline ERR query() noexcept { return Action(AC::Query, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
 
    // Customised field setting
@@ -1407,24 +1407,24 @@ class objSurface : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
-   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
-   inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }
-   inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }
+   inline ERR focus() noexcept { return Action(AC::Focus, this, nullptr); }
+   inline ERR hide() noexcept { return Action(AC::Hide, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR lostFocus() noexcept { return Action(AC::LostFocus, this, NULL); }
+   inline ERR lostFocus() noexcept { return Action(AC::LostFocus, this, nullptr); }
    inline ERR move(double X, double Y, double Z) noexcept {
       struct acMove args = { X, Y, Z };
       return Action(AC::Move, this, &args);
    }
-   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, NULL); }
-   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, NULL); }
+   inline ERR moveToBack() noexcept { return Action(AC::MoveToBack, this, nullptr); }
+   inline ERR moveToFront() noexcept { return Action(AC::MoveToFront, this, nullptr); }
    inline ERR moveToPoint(double X, double Y, double Z, MTF Flags) noexcept {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC::MoveToPoint, this, &moveto);
@@ -1445,7 +1445,7 @@ class objSurface : public Object {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC::SaveImage, this, &args);
    }
-   inline ERR show() noexcept { return Action(AC::Show, this, NULL); }
+   inline ERR show() noexcept { return Action(AC::Show, this, nullptr); }
    inline ERR inheritedFocus(OBJECTID FocusID, RNF Flags) noexcept {
       struct drw::InheritedFocus args = { FocusID, Flags };
       return(Action(AC(-1), this, &args));
@@ -1471,7 +1471,7 @@ class objSurface : public Object {
       return(Action(AC(-6), this, &args));
    }
    inline ERR minimise() noexcept {
-      return(Action(AC(-7), this, NULL));
+      return(Action(AC(-7), this, nullptr));
    }
    inline ERR resetDimensions(double X, double Y, double XOffset, double YOffset, double Width, double Height, DMF Dimensions) noexcept {
       struct drw::ResetDimensions args = { X, Y, XOffset, YOffset, Width, Height, Dimensions };
@@ -1482,7 +1482,7 @@ class objSurface : public Object {
       return(Action(AC(-9), this, &args));
    }
    inline ERR scheduleRedraw() noexcept {
-      return(Action(AC(-10), this, NULL));
+      return(Action(AC(-10), this, nullptr));
    }
 
    // Customised field setting

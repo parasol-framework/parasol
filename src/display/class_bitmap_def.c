@@ -3,7 +3,7 @@
 static const struct FieldDef clBitmapType[] = {
    { "Planar", 0x00000002 },
    { "Chunky", 0x00000003 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clBitmapDataFlags[] = {
@@ -29,7 +29,7 @@ static const struct FieldDef clBitmapDataFlags[] = {
    { "NoClear", 0x00040000 },
    { "Hidden", 0x00100000 },
    { "Caller", 0x00800000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clBitmapFlags[] = {
@@ -49,7 +49,7 @@ static const struct FieldDef clBitmapFlags[] = {
    { "X11DGA", 0x00002000 },
    { "FixedDepth", 0x00004000 },
    { "Premul", 0x00008000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clBitmapBlendMode[] = {
@@ -58,7 +58,7 @@ static const struct FieldDef clBitmapBlendMode[] = {
    { "SRGB", 0x00000002 },
    { "Gamma", 0x00000003 },
    { "Linear", 0x00000004 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clBitmapColourSpace[] = {
@@ -66,7 +66,7 @@ static const struct FieldDef clBitmapColourSpace[] = {
    { "LinearRGB", 0x00000002 },
    { "CieLab", 0x00000003 },
    { "CieLch", 0x00000004 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maCopyArea[] = { { "DestBitmap", FD_OBJECTPTR }, { "Flags", FD_INT }, { "X", FD_INT }, { "Y", FD_INT }, { "Width", FD_INT }, { "Height", FD_INT }, { "XDest", FD_INT }, { "YDest", FD_INT }, { 0, 0 } };
@@ -106,6 +106,6 @@ static const struct ActionArray clBitmapActions[] = {
    { AC::Seek, BITMAP_Seek },
    { AC::Unlock, BITMAP_Unlock },
    { AC::Write, BITMAP_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

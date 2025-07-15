@@ -2,7 +2,7 @@
 
 static const struct FieldDef clThreadFlags[] = {
    { "AutoFree", 0x00000001 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maSetData[] = { { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_INT|FD_BUFSIZE }, { 0, 0 } };
@@ -19,6 +19,6 @@ static const struct ActionArray clThreadActions[] = {
    { AC::FreeWarning, THREAD_FreeWarning },
    { AC::Init, THREAD_Init },
    { AC::NewPlacement, THREAD_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

@@ -5,6 +5,6 @@ static const struct ActionArray clConvolveFXActions[] = {
    { AC::Free, CONVOLVEFX_Free },
    { AC::Init, CONVOLVEFX_Init },
    { AC::NewPlacement, CONVOLVEFX_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

@@ -4,12 +4,12 @@ static const struct FieldDef clVectorClipUnits[] = {
    { "Undefined", 0x00000000 },
    { "BoundingBox", 0x00000001 },
    { "Userspace", 0x00000002 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorClipFlags[] = {
    { "ApplyFills", 0x00000001 },
    { "ApplyStrokes", 0x00000002 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 

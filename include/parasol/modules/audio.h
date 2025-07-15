@@ -189,10 +189,10 @@ class objAudio : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, NULL); }
+   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, nullptr); }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC::SaveToObject, this, &args);
@@ -338,10 +338,10 @@ class objSound : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
-   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
-   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
-   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, nullptr); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }
    inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
       auto error = Action(AC::GetKey, this, &args);
@@ -353,7 +353,7 @@ class objSound : public Object {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
@@ -363,7 +363,7 @@ class objSound : public Object {
    template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       return Action(AC::Read, this, &read);
    }
    inline ERR saveToObject(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {

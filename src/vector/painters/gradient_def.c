@@ -8,14 +8,14 @@ static const struct FieldDef clVectorGradientSpreadMethod[] = {
    { "ReflectX", 0x00000004 },
    { "ReflectY", 0x00000005 },
    { "Clip", 0x00000006 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorGradientUnits[] = {
    { "Undefined", 0x00000000 },
    { "BoundingBox", 0x00000001 },
    { "Userspace", 0x00000002 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorGradientType[] = {
@@ -24,7 +24,7 @@ static const struct FieldDef clVectorGradientType[] = {
    { "Conic", 0x00000002 },
    { "Diamond", 0x00000003 },
    { "Contour", 0x00000004 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorGradientFlags[] = {
@@ -49,20 +49,20 @@ static const struct FieldDef clVectorGradientFlags[] = {
    { "FixedRadius", 0x00040000 },
    { "FixedFocalRadius", 0x00080000 },
    { "ContainFocal", 0x00100000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorGradientColourSpace[] = {
    { "Inherit", 0x00000000 },
    { "SRGB", 0x00000001 },
    { "LinearRGB", 0x00000002 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct ActionArray clVectorGradientActions[] = {
    { AC::Free, VECTORGRADIENT_Free },
    { AC::Init, VECTORGRADIENT_Init },
    { AC::NewObject, VECTORGRADIENT_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

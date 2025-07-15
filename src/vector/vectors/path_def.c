@@ -21,6 +21,6 @@ static const struct ActionArray clVectorPathActions[] = {
    { AC::Free, VECTORPATH_Free },
    { AC::Init, VECTORPATH_Init },
    { AC::NewObject, VECTORPATH_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

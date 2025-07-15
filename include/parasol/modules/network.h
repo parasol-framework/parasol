@@ -188,7 +188,7 @@ class objClientSocket : public Object {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
@@ -198,11 +198,11 @@ class objClientSocket : public Object {
    template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       return Action(AC::Read, this, &read);
    }
-   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+   inline ERR write(CPTR Buffer, int Size, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -212,8 +212,8 @@ class objClientSocket : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -224,7 +224,7 @@ class objClientSocket : public Object {
       }
    }
    inline int writeResult(CPTR Buffer, int Size) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
@@ -280,19 +280,19 @@ class objProxy : public Object {
 
    // Action stubs
 
-   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
-   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
-   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, NULL); }
+   inline ERR saveSettings() noexcept { return Action(AC::SaveSettings, this, nullptr); }
    inline ERR deleteRecord() noexcept {
-      return(Action(AC(-1), this, NULL));
+      return(Action(AC(-1), this, nullptr));
    }
    inline ERR find(int Port, int Enabled) noexcept {
       struct prx::Find args = { Port, Enabled };
       return(Action(AC(-2), this, &args));
    }
    inline ERR findNext() noexcept {
-      return(Action(AC(-3), this, NULL));
+      return(Action(AC(-3), this, nullptr));
    }
 
    // Customised field setting
@@ -464,13 +464,13 @@ class objNetSocket : public Object {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
-   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    template <class T, class U> ERR read(APTR Buffer, T Size, U *Result) noexcept {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       if (auto error = Action(AC::Read, this, &read); error IS ERR::Okay) {
          *Result = static_cast<U>(read.Result);
          return ERR::Okay;
@@ -480,11 +480,11 @@ class objNetSocket : public Object {
    template <class T> ERR read(APTR Buffer, T Size) noexcept {
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
       const int bytes = (Size > 0x7fffffff) ? 0x7fffffff : Size;
-      struct acRead read = { (BYTE *)Buffer, bytes };
+      struct acRead read = { (int8_t *)Buffer, bytes };
       return Action(AC::Read, this, &read);
    }
-   inline ERR write(CPTR Buffer, int Size, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+   inline ERR write(CPTR Buffer, int Size, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -494,8 +494,8 @@ class objNetSocket : public Object {
          return error;
       }
    }
-   inline ERR write(std::string Buffer, int *Result = NULL) noexcept {
-      struct acWrite write = { (BYTE *)Buffer.c_str(), int(Buffer.size()) };
+   inline ERR write(std::string Buffer, int *Result = nullptr) noexcept {
+      struct acWrite write = { (int8_t *)Buffer.c_str(), int(Buffer.size()) };
       if (auto error = Action(AC::Write, this, &write); error IS ERR::Okay) {
          if (Result) *Result = write.Result;
          return ERR::Okay;
@@ -506,7 +506,7 @@ class objNetSocket : public Object {
       }
    }
    inline int writeResult(CPTR Buffer, int Size) noexcept {
-      struct acWrite write = { (BYTE *)Buffer, Size };
+      struct acWrite write = { (int8_t *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }

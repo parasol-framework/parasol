@@ -26,14 +26,14 @@ static const struct FieldDef clPointerCursorID[] = {
    { "Invisible", 0x00000016 },
    { "Custom", 0x00000017 },
    { "Draggable", 0x00000018 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clPointerFlags[] = {
    { "Unused", 0x00000001 },
    { "Visible", 0x00000002 },
    { "Anchor", 0x00000004 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clPointerPTC[] = {
@@ -62,13 +62,13 @@ static const struct FieldDef clPointerPTC[] = {
    { "Invisible", 0x00000016 },
    { "Custom", 0x00000017 },
    { "Draggable", 0x00000018 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clPointerPF[] = {
    { "Unused", 0x00000001 },
    { "Visible", 0x00000002 },
    { "Anchor", 0x00000004 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 

@@ -3,6 +3,6 @@
 static const struct ActionArray clMorphologyFXActions[] = {
    { AC::Draw, MORPHOLOGYFX_Draw },
    { AC::NewObject, MORPHOLOGYFX_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

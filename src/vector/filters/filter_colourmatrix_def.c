@@ -5,6 +5,6 @@ static const struct ActionArray clColourFXActions[] = {
    { AC::Free, COLOURFX_Free },
    { AC::Init, COLOURFX_Init },
    { AC::NewObject, COLOURFX_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

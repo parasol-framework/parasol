@@ -68,6 +68,6 @@ const struct Function glFunctions[] = {
    { (APTR)vec::StringWidth, "StringWidth", argsStringWidth },
    { (APTR)vec::FlushMatrix, "FlushMatrix", argsFlushMatrix },
    { (APTR)vec::TracePath, "TracePath", argsTracePath },
-   { NULL, NULL, NULL }
+   { nullptr, nullptr, nullptr }
 };
 

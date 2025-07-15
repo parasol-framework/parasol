@@ -23,6 +23,6 @@ static const struct ActionArray clRemapFXActions[] = {
    { AC::Draw, REMAPFX_Draw },
    { AC::Free, REMAPFX_Free },
    { AC::NewPlacement, REMAPFX_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

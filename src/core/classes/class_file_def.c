@@ -16,7 +16,7 @@ static const struct FieldDef clFileFlags[] = {
    { "Stream", 0x00000800 },
    { "ExcludeFiles", 0x00001000 },
    { "ExcludeFolders", 0x00002000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maStartStream[] = { { "Subscriber", FD_OBJECTID }, { "Flags", FD_INT }, { "Length", FD_INT }, { 0, 0 } };
@@ -54,6 +54,6 @@ static const struct ActionArray clFileActions[] = {
    { AC::Reset, FILE_Reset },
    { AC::Seek, FILE_Seek },
    { AC::Write, FILE_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

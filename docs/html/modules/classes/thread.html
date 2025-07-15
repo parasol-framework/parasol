@@ -27,7 +27,7 @@
 }
 
 objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
-if (thread.ok()) thread-&gt;activate(thread);
+if (thread.ok()) thread-&gt;activate();
 </pre>
 <p>To initialise the thread with data, call <a data-bs-toggle="tooltip" title="Attaches data to the thread." href="#tm-SetData">SetData()</a> prior to execution and read the <a data-bs-toggle="tooltip" title="Pointer to initialisation data for the thread." href="#tf-Data">Data</a> field from within the thread routine.</p>
 <h3>Structure</h3><p>The Thread class consists of the following fields:</p><table class="table"><thead><th class="col-md-1"><div data-bs-toggle="tooltip" title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead><tbody><tr data-bs-toggle="collapse" data-bs-target="#fl-Callback" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Callback"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
@@ -61,13 +61,6 @@ if (thread.ok()) thread-&gt;activate(thread);
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Routine</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>A function reference that will be called when the thread is started.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Routine" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The routine that will be executed when the thread is activated must be specified here.  The function prototype is <code>ERR routine(objThread *Thread)</code>.</p>
 <p>When the routine is called, a reference to the thread object is passed as a parameter.  Once the routine has finished processing, the resulting error code will be stored in the thread object's <a data-bs-toggle="tooltip" title="Reflects the error code returned by the thread routine." href="#tf-Error">Error</a> field.</p>
-      
-</div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-StackSize" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-StackSize"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
-                           
-                          <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">StackSize</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>The stack size to allocate for the thread.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-StackSize" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The initial size of the thread's stack can be modified by setting this field.  It may also be read prior to activation in order to check the default stack size.  Changes to the stack size when the thread is active will have no effect.</p>
-<p>On some platforms it may not be possible to preset the stack size and the provided value will be ignored.</p>
       
 </div></div></td></tr>
 </tbody></table><h3>Actions</h3><p>The following actions are currently supported:</p><table class="table"><tbody><tr data-bs-toggle="collapse" data-bs-target="#tac-Activate" style="scroll-margin:3em;" id="ta-Activate"><td style="width:1%; border-top-style: none; border-bottom-style: none;"></td><th class="col-md-1 text-primary">Activate</th><td>Spawn a new thread that calls the function referenced in the <a data-bs-toggle="tooltip" title="A function reference that will be called when the thread is started." href="#tf-Routine">Routine</a> field.</td></tr>

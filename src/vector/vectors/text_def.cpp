@@ -12,7 +12,7 @@ static const struct FieldDef clVectorTextVTXF[] = {
    { "Overwrite", 0x00000080 },
    { "Secret", 0x00000100 },
    { "Raster", 0x00000200 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorTextVTS[] = {
@@ -28,7 +28,7 @@ static const struct FieldDef clVectorTextVTS[] = {
    { "SemiExpanded", 0x00000009 },
    { "UltraExpanded", 0x0000000a },
    { "ExtraExpanded", 0x0000000b },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maDeleteLine[] = { { "Line", FD_INT }, { 0, 0 } };
@@ -42,6 +42,6 @@ static const struct ActionArray clVectorTextActions[] = {
    { AC::Free, VECTORTEXT_Free },
    { AC::Init, VECTORTEXT_Init },
    { AC::NewObject, VECTORTEXT_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

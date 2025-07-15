@@ -900,7 +900,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
 auto ctx = SetContext(display);
 
    NewObject(CLASSID::BITMAP, &amp;bitmap);
-   AllocMemory(1000, MEM::DATA, &amp;memory, NULL);
+   AllocMemory(1000, MEM::DATA, &amp;memory, nullptr);
 
 SetContext(ctx);
 FreeResource(display-&gt;UID);
@@ -910,7 +910,7 @@ FreeResource(display-&gt;UID);
 auto ctx = SetContext(display);
 
    NewObject(CLASSID::BITMAP, &amp;bitmap);
-   AllocMemory(1000, MEM::DATA, &amp;memory, NULL);
+   AllocMemory(1000, MEM::DATA, &amp;memory, nullptr);
 
 SetContext(ctx);
 FreeResource(display-&gt;UID); // The bitmap and memory would be auto-collected

@@ -5,7 +5,7 @@ static const struct FieldDef clVectorVisibility[] = {
    { "Visible", 0x00000001 },
    { "Collapse", 0x00000002 },
    { "Inherit", 0x00000003 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorFlags[] = {
@@ -13,7 +13,7 @@ static const struct FieldDef clVectorFlags[] = {
    { "HasFocus", 0x00000002 },
    { "JoinPaths", 0x00000004 },
    { "Isolated", 0x00000008 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorCursor[] = {
@@ -42,7 +42,7 @@ static const struct FieldDef clVectorCursor[] = {
    { "Invisible", 0x00000016 },
    { "Custom", 0x00000017 },
    { "Draggable", 0x00000018 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorPathQuality[] = {
@@ -51,14 +51,14 @@ static const struct FieldDef clVectorPathQuality[] = {
    { "Crisp", 0x00000002 },
    { "Precise", 0x00000003 },
    { "Best", 0x00000004 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clVectorColourSpace[] = {
    { "Inherit", 0x00000000 },
    { "SRGB", 0x00000001 },
    { "LinearRGB", 0x00000002 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maPush[] = { { "Position", FD_INT }, { 0, 0 } };
@@ -97,6 +97,6 @@ static const struct ActionArray clVectorActions[] = {
    { AC::NewOwner, VECTOR_NewOwner },
    { AC::NewPlacement, VECTOR_NewPlacement },
    { AC::Show, VECTOR_Show },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

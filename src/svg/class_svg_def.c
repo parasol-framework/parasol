@@ -4,7 +4,7 @@ static const struct FieldDef clSVGFlags[] = {
    { "Autoscale", 0x00000001 },
    { "Alpha", 0x00000002 },
    { "EnforceTracking", 0x00000004 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maRender[] = { { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Width", FD_INT }, { "Height", FD_INT }, { 0, 0 } };
@@ -25,6 +25,6 @@ static const struct ActionArray clSVGActions[] = {
    { AC::NewPlacement, SVG_NewPlacement },
    { AC::SaveImage, SVG_SaveImage },
    { AC::SaveToObject, SVG_SaveToObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

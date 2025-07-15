@@ -20,7 +20,7 @@ static const struct FieldDef clDisplayFlags[] = {
    { "Flippable", 0x20000000 },
    { "CustomWindow", 0x40000000 },
    { "Maximise", (int)0x80000000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clDisplayDisplayType[] = {
@@ -28,7 +28,7 @@ static const struct FieldDef clDisplayDisplayType[] = {
    { "X11", 0x00000002 },
    { "Wingdi", 0x00000003 },
    { "Gles", 0x00000004 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clDisplayPowerMode[] = {
@@ -36,7 +36,7 @@ static const struct FieldDef clDisplayPowerMode[] = {
    { "Off", 0x00000001 },
    { "Suspend", 0x00000002 },
    { "Standby", 0x00000003 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maUpdatePalette[] = { { "RGBPalette:NewPalette", FD_PTR|FD_STRUCT }, { 0, 0 } };
@@ -83,6 +83,6 @@ static const struct ActionArray clDisplayActions[] = {
    { AC::SaveImage, DISPLAY_SaveImage },
    { AC::SaveSettings, DISPLAY_SaveSettings },
    { AC::Show, DISPLAY_Show },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

@@ -5,7 +5,7 @@ static const struct FieldDef clScintillaEventFlags[] = {
    { "CursorPos", 0x00000002 },
    { "FailRo", 0x00000004 },
    { "NewChar", 0x00000008 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clScintillaFlags[] = {
@@ -13,7 +13,7 @@ static const struct FieldDef clScintillaFlags[] = {
    { "DetectLexer", 0x00000002 },
    { "Edit", 0x00000004 },
    { "ExtPage", 0x00000008 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clScintillaLexer[] = {
@@ -39,7 +39,7 @@ static const struct FieldDef clScintillaLexer[] = {
    { "Rebol", 0x00000047 },
    { "Vb", 0x00000008 },
    { "Properties", 0x00000009 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maSetFont[] = { { "Face", FD_STR }, { 0, 0 } };
@@ -86,6 +86,6 @@ static const struct ActionArray clScintillaActions[] = {
    { AC::SaveToObject, SCINTILLA_SaveToObject },
    { AC::Show, SCINTILLA_Show },
    { AC::Undo, SCINTILLA_Undo },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

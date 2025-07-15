@@ -5,7 +5,7 @@ static const struct FieldDef clFontFlags[] = {
    { "BaseLine", 0x00000002 },
    { "Bold", 0x20000000 },
    { "Italic", 0x40000000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clFontAlign[] = {
@@ -17,7 +17,7 @@ static const struct FieldDef clFontAlign[] = {
    { "Middle", 0x0000000c },
    { "Top", 0x00000010 },
    { "Bottom", 0x00000020 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clFontALIGN[] = {
@@ -29,7 +29,7 @@ static const struct FieldDef clFontALIGN[] = {
    { "Middle", 0x0000000c },
    { "Top", 0x00000010 },
    { "Bottom", 0x00000020 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct ActionArray clFontActions[] = {
@@ -37,6 +37,6 @@ static const struct ActionArray clFontActions[] = {
    { AC::Free, FONT_Free },
    { AC::Init, FONT_Init },
    { AC::NewPlacement, FONT_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 

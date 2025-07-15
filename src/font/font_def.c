@@ -27,7 +27,7 @@ const struct Function glFunctions[] = {
    { (APTR)fnt::RefreshFonts, "RefreshFonts", argsRefreshFonts },
    { (APTR)fnt::SelectFont, "SelectFont", argsSelectFont },
    { (APTR)fnt::ResolveFamilyName, "ResolveFamilyName", argsResolveFamilyName },
-   { NULL, NULL, NULL }
+   { nullptr, nullptr, nullptr }
 };
 
 #undef MOD_IDL

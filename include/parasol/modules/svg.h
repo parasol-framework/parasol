@@ -50,12 +50,12 @@ class objSVG : public Object {
 
    // Action stubs
 
-   inline ERR activate() noexcept { return Action(AC::Activate, this, NULL); }
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
    inline ERR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, int Size) noexcept {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
-   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, NULL); }
+   inline ERR deactivate() noexcept { return Action(AC::Deactivate, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR saveImage(OBJECTPTR Dest, CLASSID ClassID = CLASSID::NIL) noexcept {
       struct acSaveImage args = { Dest, { ClassID } };

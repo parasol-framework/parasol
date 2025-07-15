@@ -131,7 +131,7 @@ class objScintilla : public Object {
 
    // Action stubs
 
-   inline ERR clear() noexcept { return Action(AC::Clear, this, NULL); }
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
    inline ERR clipboard(CLIPMODE Mode) noexcept {
       struct acClipboard args = { Mode };
       return Action(AC::Clipboard, this, &args);
@@ -140,15 +140,15 @@ class objScintilla : public Object {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC::DataFeed, this, &args);
    }
-   inline ERR disable() noexcept { return Action(AC::Disable, this, NULL); }
-   inline ERR draw() noexcept { return Action(AC::Draw, this, NULL); }
+   inline ERR disable() noexcept { return Action(AC::Disable, this, nullptr); }
+   inline ERR draw() noexcept { return Action(AC::Draw, this, nullptr); }
    inline ERR drawArea(int X, int Y, int Width, int Height) noexcept {
       struct acDraw args = { X, Y, Width, Height };
       return Action(AC::Draw, this, &args);
    }
-   inline ERR enable() noexcept { return Action(AC::Enable, this, NULL); }
-   inline ERR focus() noexcept { return Action(AC::Focus, this, NULL); }
-   inline ERR hide() noexcept { return Action(AC::Hide, this, NULL); }
+   inline ERR enable() noexcept { return Action(AC::Enable, this, nullptr); }
+   inline ERR focus() noexcept { return Action(AC::Focus, this, nullptr); }
+   inline ERR hide() noexcept { return Action(AC::Hide, this, nullptr); }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR redo(int Steps) noexcept {
       struct acRedo args = { Steps };
@@ -158,7 +158,7 @@ class objScintilla : public Object {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC::SaveToObject, this, &args);
    }
-   inline ERR show() noexcept { return Action(AC::Show, this, NULL); }
+   inline ERR show() noexcept { return Action(AC::Show, this, nullptr); }
    inline ERR undo(int Steps) noexcept {
       struct acUndo args = { Steps };
       return Action(AC::Undo, this, &args);
@@ -196,7 +196,7 @@ class objScintilla : public Object {
       return(Action(AC(-8), this, &args));
    }
    inline ERR trimWhitespace() noexcept {
-      return(Action(AC(-9), this, NULL));
+      return(Action(AC(-9), this, nullptr));
    }
    inline ERR getPos(int Line, int Column, int * Pos) noexcept {
       struct sci::GetPos args = { Line, Column, (int)0 };
@@ -205,7 +205,7 @@ class objScintilla : public Object {
       return(error);
    }
    inline ERR reportEvent() noexcept {
-      return(Action(AC(-11), this, NULL));
+      return(Action(AC(-11), this, nullptr));
    }
    inline ERR scrollToPoint(int X, int Y) noexcept {
       struct sci::ScrollToPoint args = { X, Y };

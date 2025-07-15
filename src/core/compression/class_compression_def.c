@@ -7,7 +7,7 @@ static const struct FieldDef clCompressionFlags[] = {
    { "ReadOnly", 0x00000008 },
    { "NoLinks", 0x00000010 },
    { "ApplySecurity", 0x00000020 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const struct FieldDef clCompressionPermissions[] = {
@@ -47,7 +47,7 @@ static const struct FieldDef clCompressionPermissions[] = {
    { "Inherit", 0x00020000 },
    { "Offline", 0x00040000 },
    { "Network", 0x00080000 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 FDEF maCompressBuffer[] = { { "Input", FD_BUFFER|FD_PTR }, { "InputSize", FD_INT|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "OutputSize", FD_INT|FD_BUFSIZE }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
@@ -87,6 +87,6 @@ static const struct ActionArray clCompressionActions[] = {
    { AC::Init, COMPRESSION_Init },
    { AC::NewObject, COMPRESSION_NewObject },
    { AC::NewPlacement, COMPRESSION_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
