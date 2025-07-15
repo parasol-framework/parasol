@@ -288,13 +288,12 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
    if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
       resolve_buffer rb(Self->UID, ip, Args->Address);
 
-      auto th = std::thread([](resolve_buffer rb) {
+      Self->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](resolve_buffer rb) {
          DNSEntry *dummy;
          rb.Error = resolve_address(rb.Address.c_str(), &rb.IP, &dummy);
          auto ser = rb.serialise();
          SendMessage(glResolveAddrMsgID, MSF::WAIT, ser.data(), ser.size()); // See resolve_addr_receiver()
-      }, std::move(rb));
-      th.detach();
+      }, std::move(rb))));
 
       return ERR::Okay;
    }
@@ -341,14 +340,13 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
    }
    
    resolve_buffer rb(Self->UID, Args->HostName);
-   auto th = std::thread([Self](resolve_buffer rb) {
+   Self->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([Self](resolve_buffer rb) {
       DNSEntry *dummy;
       rb.Error = resolve_name(rb.Address.c_str(), &dummy);
       auto ser = rb.serialise();
       SendMessage(glResolveNameMsgID, MSF::WAIT, ser.data(), ser.size()); // See resolve_name_receiver()
-   }, std::move(rb));
-
-   th.detach();
+   }, std::move(rb))));
+   
    return ERR::Okay;
 }
 

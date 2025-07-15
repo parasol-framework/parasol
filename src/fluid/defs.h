@@ -8,6 +8,7 @@
 #include <set>
 #include <array>
 #include <parasol/strings.hpp>
+#include <thread>
 
 using namespace pf;
 
@@ -202,6 +203,7 @@ struct prvFluid {
    std::unordered_map<OBJECTID, LONG> StateMap;
    std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
    pf::vector<std::string> Procedures;
+   std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
    APTR   FocusEventHandle;
    struct finput *InputList;         // Managed by the input interface
    DateTime CacheDate;

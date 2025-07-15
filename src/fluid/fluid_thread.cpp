@@ -49,8 +49,10 @@ static int thread_script(lua_State *Lua)
          callback = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
          callback.MetaValue = Lua->Script->UID;
       }
+
+      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       
-      auto th = std::thread([](objScript *Script, FUNCTION Callback) {
+      prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](objScript *Script, FUNCTION Callback) {
          acActivate(Script);
          FreeResource(Script);
 
@@ -58,9 +60,7 @@ static int thread_script(lua_State *Lua)
          if (Callback.isScript()) {
             SendMessage(MSGID::FLUID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &Callback, sizeof(callback));
          }
-      }, script, std::move(callback));
-
-      th.detach();
+      }, script, std::move(callback))));
    }
    else luaL_error(Lua, "Failed to create script for threaded execution.");
 
