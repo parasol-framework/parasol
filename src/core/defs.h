@@ -418,12 +418,6 @@ class extThread : public objThread {
    std::jthread::native_handle_type Handle;
    std::jthread::id ThreadID;
    std::jthread *CPPThread;
-
-#ifdef __unix__
-      int Msgs[2];
-   #elif _WIN32
-      WINHANDLE Msgs[2];
-   #endif
    FUNCTION Routine;
    FUNCTION Callback;
    std::atomic_bool Active;

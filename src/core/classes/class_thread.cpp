@@ -59,34 +59,6 @@ THREADID get_thread_id(void)
 }
 
 //********************************************************************************************************************
-// Called whenever a MSGID::THREAD_ACTION message is caught by ProcessMessages().  See thread_action() for usage.
-
-ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
-{
-   auto msg = (ThreadActionMessage *)Message;
-   if (!msg) return ERR::Okay;
-
-   if (msg->Callback.isC()) {
-      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, int, APTR))msg->Callback.Routine;
-      routine(msg->ActionID, msg->Object, msg->Error, msg->Key, msg->Callback.Meta);
-   }
-   else if (msg->Callback.isScript()) {
-      auto script = msg->Callback.Context;
-      if (LockObject(script, 5000) IS ERR::Okay) {
-         sc::Call(msg->Callback, std::to_array<ScriptArg>({
-            { "ActionID", int(msg->ActionID) },
-            { "Object",   msg->Object, FD_OBJECTPTR },
-            { "Error",    int(msg->Error) },
-            { "Key",      msg->Key }
-         }));
-         ReleaseObject(script);
-      }
-   }
-
-   return ERR::Okay;
-}
-
-//********************************************************************************************************************
 // Called whenever a MSGID::THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
 
 ERR msg_threadcallback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
@@ -255,14 +227,6 @@ static ERR THREAD_Free(extThread *Self)
       Self->DataSize = 0;
    }
 
-   #ifdef __unix__
-      if (Self->Msgs[0] != -1) { close(Self->Msgs[0]); Self->Msgs[0] = -1; }
-      if (Self->Msgs[1] != -1) { close(Self->Msgs[1]); Self->Msgs[1] = -1; }
-   #elif _WIN32
-      if (Self->Msgs[0]) { winCloseHandle(Self->Msgs[0]); Self->Msgs[0] = 0; }
-      if (Self->Msgs[1]) { winCloseHandle(Self->Msgs[1]); Self->Msgs[1] = 0; }
-   #endif
-
    if (Self->CPPThread) { delete Self->CPPThread; Self->CPPThread = nullptr; }
 
    Self->~extThread();
@@ -296,10 +260,6 @@ static ERR THREAD_Init(extThread *Self)
 static ERR THREAD_NewPlacement(extThread *Self)
 {
    new (Self) extThread;
-   #ifdef __unix__
-      Self->Msgs[0] = -1;
-      Self->Msgs[1] = -1;
-   #endif
    return ERR::Okay;
 }
 

@@ -573,6 +573,34 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
    return error;
 }
 
+//********************************************************************************************************************
+// Called whenever a MSGID::THREAD_ACTION message is caught by ProcessMessages().  See thread_action() for usage.
+
+ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
+{
+   auto msg = (ThreadActionMessage *)Message;
+   if (!msg) return ERR::Okay;
+
+   if (msg->Callback.isC()) {
+      auto routine = (void (*)(ACTIONID, OBJECTPTR, ERR, int, APTR))msg->Callback.Routine;
+      routine(msg->ActionID, msg->Object, msg->Error, msg->Key, msg->Callback.Meta);
+   }
+   else if (msg->Callback.isScript()) {
+      auto script = msg->Callback.Context;
+      if (LockObject(script, 5000) IS ERR::Okay) {
+         sc::Call(msg->Callback, std::to_array<ScriptArg>({
+            { "ActionID", int(msg->ActionID) },
+            { "Object",   msg->Object, FD_OBJECTPTR },
+            { "Error",    int(msg->Error) },
+            { "Key",      msg->Key }
+         }));
+         ReleaseObject(script);
+      }
+   }
+
+   return ERR::Okay;
+}
+
 /*********************************************************************************************************************
 
 -FUNCTION-

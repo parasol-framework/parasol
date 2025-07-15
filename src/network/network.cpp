@@ -455,6 +455,7 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
    Address->Data[2] = 0;
    Address->Data[3] = 0;
    Address->Type = IPADDR::V4;
+   Address->Pad = 0;
 
    return ERR::Okay;
 }
