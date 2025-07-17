@@ -298,6 +298,7 @@ public:
          }
 
          Bitmap->Data = Data - (Clip.left * Bitmap->BytesPerPixel) - (Clip.top * Bitmap->LineWidth);
+         Bitmap->CreatorMeta = Data;
       }
 
       return Bitmap;
