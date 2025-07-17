@@ -84,7 +84,7 @@ class extConvolveFX : public extFilterEffect {
    inline uint8_t * getPixel(objBitmap *Bitmap, int X, int Y) const {
       if ((X >= Bitmap->Clip.Left) and (X < Bitmap->Clip.Right) and
           (Y >= Bitmap->Clip.Top) and (Y < Bitmap->Clip.Bottom)) {
-         return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
+         return Bitmap->Data + (Y * Bitmap->LineWidth) + (X * Bitmap->BytesPerPixel);
       }
 
       switch (EdgeMode) {
@@ -118,7 +118,7 @@ class extConvolveFX : public extFilterEffect {
 
       const double factor = 1.0 / Divisor;
 
-      UBYTE *input = InputBitmap->Data + (pTop * InputBitmap->LineWidth);
+      uint8_t *alpha_input = InputBitmap->Data + (pTop * InputBitmap->LineWidth);
       uint8_t *outline = output;
       for (int y=pTop; y < pBottom; y++) {
          uint8_t *out = outline;
@@ -144,40 +144,42 @@ class extConvolveFX : public extFilterEffect {
             int lr = F2I((factor * r) + Bias);
             int lg = F2I((factor * g) + Bias);
             int lb = F2I((factor * b) + Bias);
-            out[R] = glLinearRGB.invert(std::min(std::max(lr, 0), 255));
-            out[G] = glLinearRGB.invert(std::min(std::max(lg, 0), 255));
-            out[B] = glLinearRGB.invert(std::min(std::max(lb, 0), 255));
-            if (!PreserveAlpha) out[A] = std::min(std::max(F2I(factor * a + Bias), 0), 255);
-            else out[A] = (input + (x<<2))[A];
+            out[R] = glLinearRGB.invert(std::clamp(lr, 0, 255));
+            out[G] = glLinearRGB.invert(std::clamp(lg, 0, 255));
+            out[B] = glLinearRGB.invert(std::clamp(lb, 0, 255));
+            if (!PreserveAlpha) out[A] = std::clamp(F2I(factor * a + Bias), 0, 255);
+            else out[A] = (alpha_input + (x * InputBitmap->BytesPerPixel))[A];
             out += 4;
          }
-         input   += InputBitmap->LineWidth;
+         alpha_input += InputBitmap->LineWidth;
          outline += (Target->Clip.Right - Target->Clip.Left)<<2;
       }
    }
 
    // This algorithm is unclipped and performs no edge detection, so is unsafe to use near the edge of the bitmap.
 
-   void processFast(objBitmap *InputBitmap, UBYTE *output, int Left, int Top, int Right, int Bottom) {
-      const UBYTE A = InputBitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = InputBitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = InputBitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = InputBitmap->ColourFormat->BluePos>>3;
+   void processFast(objBitmap *InputBitmap, uint8_t *output, int Left, int Top, int Right, int Bottom) {
+      if ((Right <= Left) or (Bottom <= Top)) return;
+
+      const uint8_t A = InputBitmap->ColourFormat->AlphaPos>>3;
+      const uint8_t R = InputBitmap->ColourFormat->RedPos>>3;
+      const uint8_t G = InputBitmap->ColourFormat->GreenPos>>3;
+      const uint8_t B = InputBitmap->ColourFormat->BluePos>>3;
 
       const double factor = 1.0 / Divisor;
 
-      UBYTE *input = InputBitmap->Data + (Top * InputBitmap->LineWidth);
+      uint8_t *input = InputBitmap->Data + (Top * InputBitmap->LineWidth);
       for (int y=Top; y < Bottom; y++) {
-         UBYTE *out = output;
-         UBYTE *filterEdge = InputBitmap->Data + (y-TargetY) * InputBitmap->LineWidth;
+         uint8_t *out = output;
+         uint8_t *filterEdge = InputBitmap->Data + (y-TargetY) * InputBitmap->LineWidth;
          for (int x=Left; x < Right; x++) {
             double r = 0.0, g = 0.0, b = 0.0, a = 0.0;
-            UBYTE kv = 0;
+            uint8_t kv = 0;
             const int fxs = x - TargetX;
             const int fxe = x + MatrixColumns - TargetX;
-            UBYTE *currentLine = filterEdge;
+            uint8_t *currentLine = filterEdge;
             for (int fy=y-TargetY; fy < y+MatrixRows-TargetY; fy++) {
-               UBYTE *pixel = currentLine + (fxs<<2);
+               uint8_t *pixel = currentLine + (fxs<<2);
                for (int fx=fxs; fx < fxe; fx++) {
                   r += pixel[R] * Matrix[kv];
                   g += pixel[G] * Matrix[kv];
@@ -243,7 +245,7 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
 
    // Copy the resulting output back to the bitmap.
 
-   uint32_t *pixel = (uint32_t *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
+   uint32_t *pixel = (uint32_t *)(Self->Target->Data + (Self->Target->Clip.Left * bpp) + (Self->Target->Clip.Top * Self->Target->LineWidth));
    uint32_t *src   = (uint32_t *)output;
    for (int y=0; y < canvas_height; y++) {
       copymem(src, pixel, size_t(bpp) * size_t(canvas_width));
