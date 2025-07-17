@@ -81,14 +81,14 @@ class extConvolveFX : public extFilterEffect {
    extConvolveFX() : UnitX(1), UnitY(1), Divisor(0), Bias(0), TargetX(-1), TargetY(-1),
       MatrixColumns(3), MatrixRows(3), EdgeMode(EM::DUPLICATE), MatrixSize(9), PreserveAlpha(false) { }
 
-   inline UBYTE * getPixel(objBitmap *Bitmap, int X, int Y) const {
+   inline uint8_t * getPixel(objBitmap *Bitmap, int X, int Y) const {
       if ((X >= Bitmap->Clip.Left) and (X < Bitmap->Clip.Right) and
           (Y >= Bitmap->Clip.Top) and (Y < Bitmap->Clip.Bottom)) {
          return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
       }
 
       switch (EdgeMode) {
-         default: return NULL;
+         default: return nullptr;
 
          case EM::DUPLICATE:
             if (X < Bitmap->Clip.Left) X = Bitmap->Clip.Left;
@@ -209,18 +209,22 @@ class extConvolveFX : public extFilterEffect {
 
 static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
 {
-   if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
+   if (Self->Target->BytesPerPixel != 4) return ERR::InvalidValue;
 
    const int canvas_width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
    const int canvas_height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
 
    if (canvas_width * canvas_height > 4096 * 4096) return ERR::Failed; // Bail on really large bitmaps.
 
-   UBYTE *output = new (std::nothrow) UBYTE[canvas_width * canvas_height * Self->Target->BytesPerPixel];
+   int bpp = Self->Target->BytesPerPixel;
+   uint8_t *output = new (std::nothrow) uint8_t[canvas_width * canvas_height * bpp];
    if (!output) return ERR::Memory;
 
    objBitmap *inBmp;
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
+
+   // NB: The inBmp->Data pointer is adjusted to match the Clip Left and Top values (i.e. add 
+   // (Clip.Left * BPP) + (Clip.Top * LineWidth) to Data in order to get its true value)
 
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) inBmp->convertToLinear();
    inBmp->premultiply();
@@ -242,7 +246,7 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
    uint32_t *pixel = (uint32_t *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
    uint32_t *src   = (uint32_t *)output;
    for (int y=0; y < canvas_height; y++) {
-      copymem(src, pixel, size_t(4) * size_t(canvas_width));
+      copymem(src, pixel, size_t(bpp) * size_t(canvas_width));
       pixel += Self->Target->LineWidth>>2;
       src += canvas_width;
    }
