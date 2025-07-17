@@ -56,8 +56,9 @@ UnitX/Y is considerably smaller than a device pixel.
 *********************************************************************************************************************/
 
 #include <array>
+#include <thread_pool/thread_pool.h>
 
-#define MAX_DIM 9
+constexpr int MAX_DIM = 9; // Maximum matrix dimension for convolution filter effects.
 
 //********************************************************************************************************************
 
@@ -105,24 +106,28 @@ class extConvolveFX : public extFilterEffect {
       }
    }
 
-   void processClipped(objBitmap *InputBitmap, UBYTE *output, int pLeft, int pTop, int pRight, int pBottom) {
-      const UBYTE A = InputBitmap->ColourFormat->AlphaPos>>3;
-      const UBYTE R = InputBitmap->ColourFormat->RedPos>>3;
-      const UBYTE G = InputBitmap->ColourFormat->GreenPos>>3;
-      const UBYTE B = InputBitmap->ColourFormat->BluePos>>3;
+   // Standard algorithm that uses edge detection at the borders (see getPixel()).
+
+   void processClipped(objBitmap *InputBitmap, uint8_t *output, int pLeft, int pTop, int pRight, int pBottom) {
+      if ((pRight <= pLeft) or (pBottom <= pTop)) return;
+
+      const uint8_t A = InputBitmap->ColourFormat->AlphaPos>>3;
+      const uint8_t R = InputBitmap->ColourFormat->RedPos>>3;
+      const uint8_t G = InputBitmap->ColourFormat->GreenPos>>3;
+      const uint8_t B = InputBitmap->ColourFormat->BluePos>>3;
 
       const double factor = 1.0 / Divisor;
 
       UBYTE *input = InputBitmap->Data + (pTop * InputBitmap->LineWidth);
-      UBYTE *outline = output;
+      uint8_t *outline = output;
       for (int y=pTop; y < pBottom; y++) {
-         UBYTE *out = outline;
+         uint8_t *out = outline;
          for (int x=pLeft; x < pRight; x++) {
             double r = 0.0, g = 0.0, b = 0.0, a = 0.0;
 
             // Multiply every value of the filter with corresponding image pixel
 
-            UBYTE kv = 0;
+            uint8_t kv = 0;
             for (int fy=y-TargetY; fy < y+MatrixRows-TargetY; fy++) {
                for (int fx=x-TargetX; fx < x+MatrixColumns-TargetX; fx++) {
                   UBYTE *pixel = getPixel(InputBitmap, fx, fy);
@@ -187,10 +192,10 @@ class extConvolveFX : public extFilterEffect {
             int lr = F2I((factor * r) + Bias);
             int lg = F2I((factor * g) + Bias);
             int lb = F2I((factor * b) + Bias);
-            out[R] = glLinearRGB.invert(std::min(std::max(lr, 0), 255));
-            out[G] = glLinearRGB.invert(std::min(std::max(lg, 0), 255));
-            out[B] = glLinearRGB.invert(std::min(std::max(lb, 0), 255));
-            if (!PreserveAlpha) out[A] = std::min(std::max(F2I(factor * a + Bias), 0), 255);
+            out[R] = glLinearRGB.invert(std::clamp(lr, 0, 255));
+            out[G] = glLinearRGB.invert(std::clamp(lg, 0, 255));
+            out[B] = glLinearRGB.invert(std::clamp(lb, 0, 255));
+            if (!PreserveAlpha) out[A] = std::clamp(F2I(factor * a + Bias), 0, 255);
             else out[A] = (input + (x<<2))[A];
             out += 4;
          }
