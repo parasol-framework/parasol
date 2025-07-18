@@ -207,6 +207,10 @@ function testConvolve()           hashTestSVG('filters/convolve.svg', 0xad440144
 function testRockyLighting()      hashTestSVG('filters/rocky_lighting.svg', 0x2f3afd49) end
 function testW3Composite1()       hashTestSVG('filters/w3-composite.svg', 0x6534eb63) end
 function testW3Composite2()       hashTestSVG('filters/w3-filters-composite-02-b.svg', 0xc628d603) end
+function testW3Convolve1()        hashTestSVG('filters/w3-filters-conv-01-f.svg', -1) end
+function testW3Convolve2()        hashTestSVG('filters/w3-filters-conv-02-f.svg', 0xe2160428) end
+function testW3Convolve4()        hashTestSVG('filters/w3-filters-conv-04-f.svg', 0x3e4d8a13) end
+function testW3Convolve5()        hashTestSVG('filters/w3-filters-conv-05-f.svg', 0xda23deb4) end
 function testW3Displacement1()    hashTestSVG('filters/w3-filters-displace-01-f.svg', 0xf7b59b70) end
 function testW3Transfer()         hashTestSVG('filters/w3-filters-comptran-01-b.svg', 0x79c3def3) end
 function testW3Transfer2()        hashTestSVG('filters/w3-filters-color-02-b.svg', 0x49928379) end
@@ -218,7 +222,6 @@ function testW3Gauss3()           hashTestSVG('filters/w3-filters-gauss-03-f.svg
 function testW3Image()            hashTestSVG('filters/w3-image.svg', 0x2f1cdd18) end
 function testW3Morphology()       hashTestSVG('filters/w3-morphology.svg', 0x15f5dbf3) end
 function testW3Offset()           hashTestSVG('filters/w3-offset.svg', 0xa61dcfe3) end
-function testW3Turbulence()       hashTestSVG('filters/w3-turbulence.svg', 0xda177689) end
 function testW3Lighting1()        hashTestSVG('filters/w3-filters-light-01-f.svg', 0x2c65ca9d) end
 function testW3Lighting2()        hashTestSVG('filters/w3-filters-light-02-f.svg', -1) end
 function testW3Lighting3()        hashTestSVG('filters/w3-filters-light-03-f.svg', 0x0d1ccdfc) end
@@ -226,6 +229,8 @@ function testW3Lighting4()        hashTestSVG('filters/w3-filters-light-04-f.svg
 function testW3Lighting5()        hashTestSVG('filters/w3-filters-light-05-f.svg', 0xc3678ad7) end
 function testW3LightingSpecular() hashTestSVG('filters/w3-filters-specular-01-f.svg', 0x7bdb7974) end
 function testW3LightingDiffuse()  hashTestSVG('filters/w3-filters-diffuse-01-f.svg', 0xd8931275) end
+function testW3Turbulence1()      hashTestSVG('filters/w3-turbulence.svg', 0xda177689) end
+function testW3Turbulence2()      hashTestSVG('filters/w3-filters-turb-02-f.svg', 0xf2887d80) end
 function testMoonSurface()        hashTestSVG('filters/moon-surface.svg', 0x0b44505f) end
 function testWaveFunction()       hashTestSVG('filters/wavefunction.svg', 0xdb133177) end
 
@@ -458,6 +463,10 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testComposite',
         'testW3Composite1',
         'testW3Composite2',
+        'testW3Convolve1',
+        'testW3Convolve2',
+        'testW3Convolve4',
+        'testW3Convolve5',
         'testW3Displacement1',
         'testW3Filters',
         'testW3Filters2',
@@ -477,7 +486,8 @@ function testW3TextB25() hashTestSVG('text/w3-text-ws-03-t.svg', -1) end
         'testRockyLighting',
         'testW3Morphology',
         'testW3Offset',
-        'testW3Turbulence',
+        'testW3Turbulence1',
+        'testW3Turbulence2',
         'testWaveFunction',
         -- Transforms
         'testTransformations',
