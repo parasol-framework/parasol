@@ -233,14 +233,12 @@ public:
 class filter_bitmap {
 public:
    objBitmap *Bitmap;
-   uint8_t *Data;
-   int DataSize;
+   std::vector<uint8_t> Data;
 
-   filter_bitmap() : Bitmap(nullptr), Data(nullptr), DataSize(0) { };
+   filter_bitmap() : Bitmap(nullptr) { };
 
    ~filter_bitmap() {
       if (Bitmap) { FreeResource(Bitmap); Bitmap = nullptr; }
-      if (Data) { FreeResource(Data); Data = nullptr; }
    };
 
    objBitmap * get_bitmap(int Width, int Height, TClipRectangle<int> &Clip, bool Debug) {
@@ -277,27 +275,14 @@ public:
       if (Bitmap->Clip.Top < 0) Bitmap->Clip.Top = 0;
 
       if (!Debug) {
-         const int canvas_width  = Clip.width();
-         const int canvas_height = Clip.height();
-         Bitmap->LineWidth = canvas_width * Bitmap->BytesPerPixel;
+         Bitmap->LineWidth = Clip.width() * Bitmap->BytesPerPixel;
 
-         if ((Data) and (DataSize < Bitmap->LineWidth * canvas_height)) {
-            FreeResource(Data);
-            Data = nullptr;
-            Bitmap->Data = nullptr;
+         if (Data.size() < Bitmap->LineWidth * Clip.height()) {
+            Data.resize(Bitmap->LineWidth * Clip.height());
          }
 
-         if (!Bitmap->Data) {
-            if (AllocMemory(Bitmap->LineWidth * canvas_height, MEM::DATA|MEM::NO_CLEAR, &Data) IS ERR::Okay) {
-               DataSize = Bitmap->LineWidth * canvas_height;
-            }
-            else {
-               log.warning("Failed to allocate graphics area of size %d(B) x %d", Bitmap->LineWidth, canvas_height);
-               return nullptr;
-            }
-         }
-
-         Bitmap->Data = Data - (Clip.left * Bitmap->BytesPerPixel) - (Clip.top * Bitmap->LineWidth);
+         Bitmap->Data = Data.data() - (Clip.left * Bitmap->BytesPerPixel) - (Clip.top * Bitmap->LineWidth);
+         Bitmap->CreatorMeta = Data.data();
       }
 
       return Bitmap;
