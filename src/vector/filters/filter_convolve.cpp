@@ -88,21 +88,30 @@ class extConvolveFX : public extFilterEffect {
       }
 
       switch (EdgeMode) {
-         default: return nullptr;
-
          case EM::DUPLICATE:
             if (X < Bitmap->Clip.Left) X = Bitmap->Clip.Left;
             else if (X >= Bitmap->Clip.Right) X = Bitmap->Clip.Right - 1;
             if (Y < Bitmap->Clip.Top) Y = Bitmap->Clip.Top;
             else if (Y >= Bitmap->Clip.Bottom) Y = Bitmap->Clip.Bottom - 1;
-            return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
+            return Bitmap->Data + (Y * Bitmap->LineWidth) + (X * Bitmap->BytesPerPixel);
 
-         case EM::WRAP:
-            while (X < Bitmap->Clip.Left) X += Bitmap->Clip.Right - Bitmap->Clip.Left;
-            X %= Bitmap->Clip.Right - Bitmap->Clip.Left;
-            while (Y < Bitmap->Clip.Top) Y += Bitmap->Clip.Bottom - Bitmap->Clip.Top;
-            Y %= Bitmap->Clip.Bottom - Bitmap->Clip.Top;
-            return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
+         case EM::WRAP: {
+            auto width = Bitmap->Clip.Right - Bitmap->Clip.Left;
+            auto height = Bitmap->Clip.Bottom - Bitmap->Clip.Top;
+
+            X -= Bitmap->Clip.Left;
+            Y -= Bitmap->Clip.Top;
+
+            if (X < 0) X = std::abs(width + X) % width;
+            else if (X >= width) X %= width;
+
+            if (Y < 0) Y = std::abs(height + Y) % height;
+            else if (Y >= height) Y %= height;
+
+            return Bitmap->Data + ((Y + Bitmap->Clip.Top)  * Bitmap->LineWidth) + ((X + Bitmap->Clip.Left) * Bitmap->BytesPerPixel);
+         }
+
+         default: return nullptr;
       }
    }
 
@@ -117,6 +126,7 @@ class extConvolveFX : public extFilterEffect {
       const uint8_t B = InputBitmap->ColourFormat->BluePos>>3;
 
       const double factor = 1.0 / Divisor;
+      const double bias = Bias * 255.0;
 
       uint8_t *alpha_input = InputBitmap->Data + (pTop * InputBitmap->LineWidth);
       uint8_t *outline = output;
@@ -130,8 +140,7 @@ class extConvolveFX : public extFilterEffect {
             uint8_t kv = 0;
             for (int fy=y-TargetY; fy < y+MatrixRows-TargetY; fy++) {
                for (int fx=x-TargetX; fx < x+MatrixColumns-TargetX; fx++) {
-                  UBYTE *pixel = getPixel(InputBitmap, fx, fy);
-                  if (pixel) {
+                  if (auto pixel = getPixel(InputBitmap, fx, fy)) {
                      r += pixel[R] * Matrix[kv];
                      g += pixel[G] * Matrix[kv];
                      b += pixel[B] * Matrix[kv];
@@ -141,13 +150,13 @@ class extConvolveFX : public extFilterEffect {
                }
             }
 
-            int lr = F2I((factor * r) + Bias);
-            int lg = F2I((factor * g) + Bias);
-            int lb = F2I((factor * b) + Bias);
+            int lr = F2I((factor * r) + bias);
+            int lg = F2I((factor * g) + bias);
+            int lb = F2I((factor * b) + bias);
             out[R] = glLinearRGB.invert(std::clamp(lr, 0, 255));
             out[G] = glLinearRGB.invert(std::clamp(lg, 0, 255));
             out[B] = glLinearRGB.invert(std::clamp(lb, 0, 255));
-            if (!PreserveAlpha) out[A] = std::clamp(F2I(factor * a + Bias), 0, 255);
+            if (!PreserveAlpha) out[A] = std::clamp(F2I(factor * a + bias), 0, 255);
             else out[A] = (alpha_input + (x * InputBitmap->BytesPerPixel))[A];
             out += 4;
          }
@@ -167,6 +176,7 @@ class extConvolveFX : public extFilterEffect {
       const uint8_t B = InputBitmap->ColourFormat->BluePos>>3;
 
       const double factor = 1.0 / Divisor;
+      const double bias = Bias * 255.0;
 
       uint8_t *input = InputBitmap->Data + (Top * InputBitmap->LineWidth);
       for (int y=Top; y < Bottom; y++) {
@@ -191,13 +201,13 @@ class extConvolveFX : public extFilterEffect {
                currentLine += InputBitmap->LineWidth;
             }
 
-            int lr = F2I((factor * r) + Bias);
-            int lg = F2I((factor * g) + Bias);
-            int lb = F2I((factor * b) + Bias);
+            int lr = F2I((factor * r) + bias);
+            int lg = F2I((factor * g) + bias);
+            int lb = F2I((factor * b) + bias);
             out[R] = glLinearRGB.invert(std::clamp(lr, 0, 255));
             out[G] = glLinearRGB.invert(std::clamp(lg, 0, 255));
             out[B] = glLinearRGB.invert(std::clamp(lb, 0, 255));
-            if (!PreserveAlpha) out[A] = std::clamp(F2I(factor * a + Bias), 0, 255);
+            if (!PreserveAlpha) out[A] = std::clamp(F2I(factor * a + bias), 0, 255);
             else out[A] = (input + (x<<2))[A];
             out += 4;
          }
@@ -225,28 +235,66 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
    objBitmap *inBmp;
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
 
-   // NB: The inBmp->Data pointer is adjusted to match the Clip Left and Top values (i.e. add 
+   // Note: The inBmp->Data pointer is pre-adjusted to match the Clip Left and Top values (i.e. add 
    // (Clip.Left * BPP) + (Clip.Top * LineWidth) to Data in order to get its true value)
 
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) inBmp->convertToLinear();
    inBmp->premultiply();
 
    if ((canvas_width > Self->MatrixColumns*3) and (canvas_height > Self->MatrixRows*3)) {
-      const int ew = Self->MatrixColumns>>1;
-      const int eh = Self->MatrixRows>>1;
-      Self->processClipped(inBmp, output,                       Self->Target->Clip.Left,     Self->Target->Clip.Top, Self->Target->Clip.Left+ew,  Self->Target->Clip.Bottom); // Left
-      Self->processClipped(inBmp, output+((canvas_width-ew)*4), Self->Target->Clip.Right-ew, Self->Target->Clip.Top, Self->Target->Clip.Right,    Self->Target->Clip.Bottom); // Right
-      Self->processClipped(inBmp, output+(ew*4),                Self->Target->Clip.Left+ew,  Self->Target->Clip.Top, Self->Target->Clip.Right-ew, Self->Target->Clip.Top+eh); // Top
-      Self->processClipped(inBmp, output+((canvas_height-eh)*4*canvas_width), Self->Target->Clip.Left+ew,  Self->Target->Clip.Bottom-eh, Self->Target->Clip.Right-ew, Self->Target->Clip.Bottom); // Bottom
+      const int h_margin = Self->MatrixColumns>>1;
+      const int v_margin = Self->MatrixRows>>1;
+      
+      int thread_count = std::thread::hardware_concurrency();
+      if (thread_count > canvas_height / 4) thread_count = canvas_height / 4;
+
+      dp::thread_pool pool(thread_count + 4);
+
+      pool.enqueue_detach([Self, inBmp](uint8_t *Output, int L, int T, int R, int B) { // Left
+         Self->processClipped(inBmp, Output, L, T, R, B);
+      }, output, Self->Target->Clip.Left, Self->Target->Clip.Top, Self->Target->Clip.Left+h_margin, Self->Target->Clip.Bottom);
+
+      pool.enqueue_detach([Self, inBmp](uint8_t *Output, int L, int T, int R, int B) { // Right
+         Self->processClipped(inBmp, Output, L, T, R, B);
+      }, output+((canvas_width-h_margin)*bpp), Self->Target->Clip.Right-h_margin, Self->Target->Clip.Top, Self->Target->Clip.Right, Self->Target->Clip.Bottom);
+
+      pool.enqueue_detach([Self, inBmp](uint8_t *Output, int L, int T, int R, int B) { // Top
+         Self->processClipped(inBmp, Output, L, T, R, B);
+      }, output+(h_margin*bpp), Self->Target->Clip.Left+h_margin, Self->Target->Clip.Top, Self->Target->Clip.Right-h_margin, Self->Target->Clip.Top+v_margin);
+
+      pool.enqueue_detach([Self, inBmp](uint8_t *Output, int L, int T, int R, int B) { // Bottom
+         Self->processClipped(inBmp, Output, L, T, R, B);
+      }, output+((canvas_height-v_margin)*bpp*canvas_width), Self->Target->Clip.Left+h_margin,  Self->Target->Clip.Bottom-v_margin, Self->Target->Clip.Right-h_margin, Self->Target->Clip.Bottom);
+
       // Center
-      Self->processFast(inBmp, output+(ew*4)+(canvas_width*eh*4), Self->Target->Clip.Left+ew, Self->Target->Clip.Top+eh, Self->Target->Clip.Right-ew, Self->Target->Clip.Bottom-eh);
+      
+      auto out = output + (h_margin * bpp) + (canvas_width * v_margin * bpp);
+      auto left   = Self->Target->Clip.Left + h_margin;
+      auto top    = Self->Target->Clip.Top + v_margin;
+      auto right  = Self->Target->Clip.Right - h_margin;
+      
+      int lines_per_thread = canvas_height / thread_count;
+      for (int i=0; i < thread_count; i++) {
+         int bottom;
+         if (i IS thread_count - 1) bottom = Self->Target->Clip.Bottom - v_margin;
+         else bottom = top + lines_per_thread;
+
+         pool.enqueue_detach([Self](objBitmap *Bitmap, uint8_t *Output, int L, int T, int R, int B) { 
+            Self->processFast(Bitmap, Output, L, T, R, B);
+         }, inBmp, out, left, top, right, bottom);
+
+         top += lines_per_thread;
+         out += lines_per_thread * canvas_width * bpp;
+      }
+
+      pool.wait_for_tasks();
    }
    else Self->processClipped(inBmp, output, Self->Target->Clip.Left, Self->Target->Clip.Top, Self->Target->Clip.Right, Self->Target->Clip.Bottom);
 
    // Copy the resulting output back to the bitmap.
 
-   uint32_t *pixel = (uint32_t *)(Self->Target->Data + (Self->Target->Clip.Left * bpp) + (Self->Target->Clip.Top * Self->Target->LineWidth));
-   uint32_t *src   = (uint32_t *)output;
+   auto pixel = (uint32_t *)(Self->Target->Data + (Self->Target->Clip.Left * bpp) + (Self->Target->Clip.Top * Self->Target->LineWidth));
+   auto src   = (uint32_t *)output;
    for (int y=0; y < canvas_height; y++) {
       copymem(src, pixel, size_t(bpp) * size_t(canvas_width));
       pixel += Self->Target->LineWidth>>2;
