@@ -216,7 +216,7 @@ inline point3 read_light_delta(extLightingFX *Self, double X, double Y, double S
 static FRGB colour_spot_light(extLightingFX *Self, point3 &Point)
 {
    if (Self->ConeAngle) {
-      double cosAngle = -Point.dot(Self->SpotDelta);
+      const double cosAngle = -Point.dot(Self->SpotDelta);
       if (cosAngle < Self->CosOuterConeAngle) return FRGB(0.0, 0.0, 0.0, 1.0);
 
       double scale = pow(cosAngle, Self->SpotExponent);
@@ -224,13 +224,11 @@ static FRGB colour_spot_light(extLightingFX *Self, point3 &Point)
          scale = scale * (cosAngle - Self->CosOuterConeAngle);
          scale *= Self->ConeScale;
       }
-      FRGB result(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
-      return result;
+      return FRGB(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
    }
    else {
-      double scale = pow(-Point.dot(Self->SpotDelta), Self->SpotExponent);
-      FRGB result(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
-      return result;
+      const double scale = pow(-Point.dot(Self->SpotDelta), Self->SpotExponent);
+      return FRGB(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
    }
 }
 
@@ -239,9 +237,7 @@ static FRGB colour_spot_light(extLightingFX *Self, point3 &Point)
 
 static void diffuse_light(extLightingFX *Self, const point3 &Normal, const point3 &STL, const FRGB &Colour, uint8_t *Output, uint8_t R, uint8_t G, uint8_t B, uint8_t A)
 {
-   double scale = (Self->Constant * Normal.dot(STL)) * 255.0;
-   if (scale < 0) scale = 0;
-   else if (scale > 255.0) scale = 255.0;
+   double scale = std::clamp((Self->Constant * Normal.dot(STL)) * 255.0, 0.0, 255.0);
 
    Output[R] = glLinearRGB.invert(F2T(Colour.Red * scale));
    Output[G] = glLinearRGB.invert(F2T(Colour.Green * scale));
@@ -255,9 +251,7 @@ static void specular_light(extLightingFX *Self, const point3 &Normal, const poin
    halfDir.z += 1.0; // Eye position is always (0, 0, 1)
    halfDir.normalize();
 
-   double scale = (Self->Constant * std::pow(Normal.dot(halfDir), Self->SpecularExponent)) * 255.0;
-   if (scale < 0) scale = 0;
-   else if (scale > 255.0) scale = 255.0;
+   double scale = std::clamp((Self->Constant * std::pow(Normal.dot(halfDir), Self->SpecularExponent)) * 255.0, 0.0, 255.0);
 
    const uint8_t r = F2T(Colour.Red * scale);
    const uint8_t g = F2T(Colour.Green * scale);
