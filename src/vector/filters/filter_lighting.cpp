@@ -105,7 +105,7 @@ class point3 {
       return { a.x + b.x, a.y + b.y, a.z + b.z };
    }
 
-   double dot(const point3& vec) const {
+   double dot(const point3 &vec) const { // Compute the dot product between vectors
       return (this->x * vec.x) + (this->y * vec.y) + (this->z * vec.z);
    }
 };
@@ -118,43 +118,43 @@ static const double ONE_QUARTER = 0.25;
 // Shift matrix components to the left, as we advance pixels to the right.
 
 inline void shiftMatrixLeft(uint8_t m[9]) {
-    m[0] = m[1];
-    m[3] = m[4];
-    m[6] = m[7];
-    m[1] = m[2];
-    m[4] = m[5];
-    m[7] = m[8];
+   m[0] = m[1];
+   m[3] = m[4];
+   m[6] = m[7];
+   m[1] = m[2];
+   m[4] = m[5];
+   m[7] = m[8];
 }
 
 //********************************************************************************************************************
 
-inline double sobel(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t e, uint8_t f, double Scale) {
-   return (double(-a + b - 2 * c + 2 * d -e + f)) * Scale;
+inline double sobel(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t e, uint8_t f, double MapHeight) {
+   return (double(-a + b - 2 * c + 2 * d -e + f)) * MapHeight;
 }
 
-inline point3 pointToNormal(double x, double y, double Scale) {
-   point3 vector(-x * Scale, -y * Scale, 1.0);
+inline point3 pointToNormal(double x, double y, double MapHeight) {
+   point3 vector(-x * MapHeight, -y * MapHeight, 1.0);
    vector.normalize();
    return vector;
 }
 
-inline point3 leftNormal(const uint8_t m[9], const double Scale) {
+inline point3 leftNormal(const uint8_t m[9], const double MapHeight) {
    return pointToNormal(sobel(m[1], m[2], m[4], m[5], m[7], m[8], ONE_HALF),
                         sobel(0, 0, m[1], m[7], m[2], m[8], ONE_THIRD),
-                        Scale);
+                        MapHeight);
 }
 
 
-inline point3 interiorNormal(const uint8_t m[9], const double Scale) {
+inline point3 interiorNormal(const uint8_t m[9], const double MapHeight) {
    return pointToNormal(sobel(m[0], m[2], m[3], m[5], m[6], m[8], ONE_QUARTER),
                         sobel(m[0], m[6], m[1], m[7], m[2], m[8], ONE_QUARTER),
-                        Scale);
+                        MapHeight);
 }
 
-inline point3 rightNormal(const uint8_t m[9], const double Scale) {
+inline point3 rightNormal(const uint8_t m[9], const double MapHeight) {
     return pointToNormal(sobel(m[0], m[1], m[3], m[4], m[6], m[7], ONE_HALF),
                          sobel(m[0], m[6], m[1], m[7], 0, 0, ONE_THIRD),
-                         Scale);
+                         MapHeight);
 }
 
 //********************************************************************************************************************
@@ -168,7 +168,7 @@ class extLightingFX : public extFilterEffect {
    FRGB   Colour;           // Colour of the light source.
    FRGB   LinearColour;     // Colour of the light source in linear sRGB space.
    double SpecularExponent; // Exponent value for specular lighting only.
-   double Scale;            // Maximum height of the surface for bump map calculations.
+   double MapHeight;        // Maximum height of the surface for bump map calculations.
    double Constant;         // The ks/kd constant value for the light mode.
    double UnitX, UnitY;     // SVG kernel unit - scale value for X/Y
    double X, Y, Z;          // Position of light source.
@@ -181,7 +181,7 @@ class extLightingFX : public extFilterEffect {
 
    // SPOT LIGHT
    double SpotExponent, ConeAngle; // Spot light
-   double PX, PY, PZ;              // Position of spot light source.
+   point3 Spotlight;              // Position of spot light source.
    double CosInnerConeAngle;
    double CosOuterConeAngle;
    double ConeScale;
@@ -189,23 +189,23 @@ class extLightingFX : public extFilterEffect {
 
    extLightingFX() {
       SpecularExponent = 1.0;
-      Colour   = { 1.0, 1.0, 1.0, 1.0 };
+      Colour    = { 1.0, 1.0, 1.0, 1.0 };
       LinearColour = { 1.0, 1.0, 1.0, 1.0 };
-      Type     = LT::DIFFUSE;
-      Constant = 1.0;
-      Scale    = 1.0;
-      UnitX    = 1.0;
-      UnitY    = 1.0;
+      Type      = LT::DIFFUSE;
+      Constant  = 1.0;
+      MapHeight = 1.0;
+      UnitX     = 1.0;
+      UnitY     = 1.0;
    }
 };
 
 //********************************************************************************************************************
 // For point & spot light.
 
-static point3 read_light_delta(extLightingFX *Self, double X, double Y, double SZ, uint8_t Z)
+inline point3 read_light_delta(extLightingFX *Self, double X, double Y, double SZ, uint8_t Value, double MapHeight)
 {
-   // The incoming Z value is in alpha, so is scaled to 0 - 1.0.
-   point3 direction(X, Y, SZ - (double(Z) * (1.0 / 255.0) * Self->Scale));
+   // The incoming Value is an RGB component, so is scaled to 0 - 1.0.
+   point3 direction(X, Y, SZ - (double(Value) * (1.0 / 255.0) * MapHeight));
    direction.normalize();
    return direction;
 }
@@ -216,7 +216,7 @@ static point3 read_light_delta(extLightingFX *Self, double X, double Y, double S
 static FRGB colour_spot_light(extLightingFX *Self, point3 &Point)
 {
    if (Self->ConeAngle) {
-      double cosAngle = -Point.dot(Self->SpotDelta);
+      const double cosAngle = -Point.dot(Self->SpotDelta);
       if (cosAngle < Self->CosOuterConeAngle) return FRGB(0.0, 0.0, 0.0, 1.0);
 
       double scale = pow(cosAngle, Self->SpotExponent);
@@ -224,13 +224,11 @@ static FRGB colour_spot_light(extLightingFX *Self, point3 &Point)
          scale = scale * (cosAngle - Self->CosOuterConeAngle);
          scale *= Self->ConeScale;
       }
-      FRGB result(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
-      return result;
+      return FRGB(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
    }
    else {
-      double scale = pow(-Point.dot(Self->SpotDelta), Self->SpotExponent);
-      FRGB result(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
-      return result;
+      const double scale = pow(-Point.dot(Self->SpotDelta), Self->SpotExponent);
+      return FRGB(Self->LinearColour.Red * scale, Self->LinearColour.Green * scale, Self->LinearColour.Blue * scale, Self->LinearColour.Alpha * scale);
    }
 }
 
@@ -239,9 +237,7 @@ static FRGB colour_spot_light(extLightingFX *Self, point3 &Point)
 
 static void diffuse_light(extLightingFX *Self, const point3 &Normal, const point3 &STL, const FRGB &Colour, uint8_t *Output, uint8_t R, uint8_t G, uint8_t B, uint8_t A)
 {
-   double scale = (Self->Constant * Normal.dot(STL)) * 255.0;
-   if (scale < 0) scale = 0;
-   else if (scale > 255.0) scale = 255.0;
+   double scale = std::clamp((Self->Constant * Normal.dot(STL)) * 255.0, 0.0, 255.0);
 
    Output[R] = glLinearRGB.invert(F2T(Colour.Red * scale));
    Output[G] = glLinearRGB.invert(F2T(Colour.Green * scale));
@@ -255,9 +251,7 @@ static void specular_light(extLightingFX *Self, const point3 &Normal, const poin
    halfDir.z += 1.0; // Eye position is always (0, 0, 1)
    halfDir.normalize();
 
-   double scale = (Self->Constant * std::pow(Normal.dot(halfDir), Self->SpecularExponent)) * 255.0;
-   if (scale < 0) scale = 0;
-   else if (scale > 255.0) scale = 255.0;
+   double scale = std::clamp((Self->Constant * std::pow(Normal.dot(halfDir), Self->SpecularExponent)) * 255.0, 0.0, 255.0);
 
    const uint8_t r = F2T(Colour.Red * scale);
    const uint8_t g = F2T(Colour.Green * scale);
@@ -286,7 +280,7 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
    if (Self->Target->BytesPerPixel != 4) return log.warning(ERR::InvalidState);
 
    auto lt = point3(Self->X, Self->Y, Self->Z); // Light source
-   auto pt = point3(Self->PX, Self->PY, Self->PZ); // Target for the light source
+   auto pt = Self->Spotlight; // Target for the light source, used by LS::SPOT only.
 
    if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       // Light source coordinates are expressed as relative to the client vector's bounding box in this mode.
@@ -306,25 +300,29 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
    }
 
    auto &t = Self->Filter->ClientVector->Transform;
-   t.transform(&lt.x, &lt.y);
 
-   // The Z axis is affected by scaling only.  Compute this according to SVG rules.
-   const double sz = (t.sx IS t.sy) ? t.sx : sqrt((t.sx*t.sx) + (t.sy*t.sy)) * SQRT2DIV2;
-   lt.z *= sz;
+   const double scale = (t.sx IS t.sy) ? t.sx : sqrt((t.sx*t.sx) + (t.sy*t.sy)) * SQRT2DIV2;
+
+   lt.z *= scale;
+   t.transform(&lt.x, &lt.y);
+   lt.x -= Self->Target->Clip.Left; // Re-orient the light source coordinates to (0,0)
+   lt.y -= Self->Target->Clip.Top;
 
    // Rendering algorithm requires light source coordinates to be relative to the exposed bitmap.
-
-   lt.x -= Self->Target->Clip.Left;
-   lt.y -= Self->Target->Clip.Top;
 
    if (Self->LightSource IS LS::SPOT) {
       t.transform(&pt.x, &pt.y);
       pt.x -= Self->Target->Clip.Left;
       pt.y -= Self->Target->Clip.Top;
-      pt.z *= sz;
+      pt.z *= scale;
+
+      // SpotDelta gives the center of the rendered light, expressed in relative coordinates 0 - 1.0
 
       Self->SpotDelta = point3(pt.x, pt.y, pt.z) - point3(lt.x, lt.y, lt.z);
-      Self->SpotDelta.normalize();
+
+      if (Self->SpotDelta.dot(Self->SpotDelta) > 1e-10) Self->SpotDelta.normalize();
+      else Self->SpotDelta = point3(0, 0, -1);
+
 
       if (Self->ConeAngle) {
          Self->CosOuterConeAngle = cos(Self->ConeAngle * DEG2RAD);
@@ -333,6 +331,7 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
          Self->ConeScale = 1.0 / AA_THRESHOLD;
       }
    }
+   
 
    objBitmap *bmp;
    if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
@@ -358,7 +357,8 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
    uint8_t *dptr;
 
    uint8_t m[9];
-   const double scale = Self->Scale * (1.0 / 255.0); // Adjust to match the scale of alpha values.
+   const double spot_height = Self->MapHeight * scale;
+   const double map_height = spot_height * (1.0 / 255.0); // Match the scale of RGB values.
 
    if (Self->Type IS LT::DIFFUSE) {
       for (int y=0; y < height; y++) {
@@ -375,7 +375,7 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
          m[8] = row2[A]; row2 += bpp;
 
          if (Self->LightSource IS LS::DISTANT) { // Diffuse distant light
-            diffuse_light(Self, leftNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
+            diffuse_light(Self, leftNormal(m, map_height), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
 
             for (int x=1; x < width-1; ++x) {
@@ -383,16 +383,16 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
                 m[2] = row0[A]; row0 += bpp;
                 m[5] = row1[A]; row1 += bpp;
                 m[8] = row2[A]; row2 += bpp;
-                diffuse_light(Self, interiorNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
+                diffuse_light(Self, interiorNormal(m, map_height), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
                 dptr += bpp;
             }
 
             shiftMatrixLeft(m);
-            diffuse_light(Self, rightNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
+            diffuse_light(Self, rightNormal(m, map_height), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
          }
          else if (Self->LightSource IS LS::SPOT) { // Diffuse spot light
-            point3 stl = read_light_delta(Self, lt.x, lt.y - double(y), lt.z, m[4]);
-            diffuse_light(Self, leftNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
+            point3 stl = read_light_delta(Self, lt.x, lt.y - double(y), lt.z, m[4], spot_height);
+            diffuse_light(Self, leftNormal(m, map_height), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
             dptr += bpp;
 
             for (int x=1; x < width-1; ++x) {
@@ -400,18 +400,18 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
                 m[2] = row0[A]; row0 += bpp;
                 m[5] = row1[A]; row1 += bpp;
                 m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(Self, lt.x - double(x), lt.y - double(y), lt.z, m[4]);
-                diffuse_light(Self, interiorNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
+                stl = read_light_delta(Self, lt.x - double(x), lt.y - double(y), lt.z, m[4], spot_height);
+                diffuse_light(Self, interiorNormal(m, map_height), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
                 dptr += bpp;
             }
 
             shiftMatrixLeft(m);
-            stl = read_light_delta(Self, lt.x - double(width-1), lt.y - double(y), lt.z, m[4]);
-            diffuse_light(Self, rightNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
+            stl = read_light_delta(Self, lt.x - double(width-1), lt.y - double(y), lt.z, m[4], spot_height);
+            diffuse_light(Self, rightNormal(m, map_height), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
          }
          else { // Diffuse point light
-            point3 stl = read_light_delta(Self, lt.x, lt.y - double(y), lt.z, m[4]);
-            diffuse_light(Self, leftNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
+            point3 stl = read_light_delta(Self, lt.x, lt.y - double(y), lt.z, m[4], spot_height);
+            diffuse_light(Self, leftNormal(m, map_height), stl, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
 
             for (int x=1; x < width-1; ++x) {
@@ -419,14 +419,14 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
                 m[2] = row0[A]; row0 += bpp;
                 m[5] = row1[A]; row1 += bpp;
                 m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(Self, lt.x - double(x), lt.y - double(y), lt.z, m[4]);
-                diffuse_light(Self, interiorNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
+                stl = read_light_delta(Self, lt.x - double(x), lt.y - double(y), lt.z, m[4], spot_height);
+                diffuse_light(Self, interiorNormal(m, map_height), stl, Self->LinearColour, dptr, R, G, B, A);
                 dptr += bpp;
             }
 
             shiftMatrixLeft(m);
-            stl = read_light_delta(Self, lt.x - double(width-1), lt.y - double(y), lt.z, m[4]);
-            diffuse_light(Self, rightNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
+            stl = read_light_delta(Self, lt.x - double(width-1), lt.y - double(y), lt.z, m[4], spot_height);
+            diffuse_light(Self, rightNormal(m, map_height), stl, Self->LinearColour, dptr, R, G, B, A);
          }
 
          dptr += bpp;
@@ -450,7 +450,7 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
          m[8] = row2[A]; row2 += bpp;
 
          if (Self->LightSource IS LS::DISTANT) { // Specular distant light
-            specular_light(Self, leftNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
+            specular_light(Self, leftNormal(m, map_height), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
 
             for (int x=1; x < width-1; ++x) {
@@ -458,16 +458,16 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
                 m[2] = row0[A]; row0 += bpp;
                 m[5] = row1[A]; row1 += bpp;
                 m[8] = row2[A]; row2 += bpp;
-                specular_light(Self, interiorNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
+                specular_light(Self, interiorNormal(m, map_height), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
                 dptr += bpp;
             }
 
             shiftMatrixLeft(m);
-            specular_light(Self, rightNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
+            specular_light(Self, rightNormal(m, map_height), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
          }
          else if (Self->LightSource IS LS::SPOT) { // Specular spot light
-            point3 stl = read_light_delta(Self, lt.x, lt.y - double(y), lt.z, m[4]);
-            specular_light(Self, leftNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
+            point3 stl = read_light_delta(Self, lt.x, lt.y - double(y), lt.z, m[4], spot_height);
+            specular_light(Self, leftNormal(m, map_height), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
             dptr += bpp;
 
             for (int x=1; x < width-1; ++x) {
@@ -475,18 +475,18 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
                 m[2] = row0[A]; row0 += bpp;
                 m[5] = row1[A]; row1 += bpp;
                 m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(Self, lt.x - double(x), lt.y - double(y), lt.z, m[4]);
-                specular_light(Self, interiorNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
+                stl = read_light_delta(Self, lt.x - double(x), lt.y - double(y), lt.z, m[4], spot_height);
+                specular_light(Self, interiorNormal(m, map_height), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
                 dptr += bpp;
             }
 
             shiftMatrixLeft(m);
-            stl = read_light_delta(Self, lt.x - double(width-1), lt.y - double(y), lt.z, m[4]);
-            specular_light(Self, rightNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
+            stl = read_light_delta(Self, lt.x - double(width-1), lt.y - double(y), lt.z, m[4], spot_height);
+            specular_light(Self, rightNormal(m, map_height), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
          }
          else { // LS::POINT Specular point light
-            point3 stl = read_light_delta(Self, lt.x, lt.y - double(y), lt.z, m[4]);
-            specular_light(Self, leftNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
+            point3 stl = read_light_delta(Self, lt.x, lt.y - double(y), lt.z, m[4], spot_height);
+            specular_light(Self, leftNormal(m, map_height), stl, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
 
             for (int x=1; x < width-1; ++x) {
@@ -494,14 +494,14 @@ static ERR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
                 m[2] = row0[A]; row0 += bpp;
                 m[5] = row1[A]; row1 += bpp;
                 m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(Self, lt.x - double(x), lt.y - double(y), lt.z, m[4]);
-                specular_light(Self, interiorNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
+                stl = read_light_delta(Self, lt.x - double(x), lt.y - double(y), lt.z, m[4], spot_height);
+                specular_light(Self, interiorNormal(m, map_height), stl, Self->LinearColour, dptr, R, G, B, A);
                 dptr += bpp;
             }
 
             shiftMatrixLeft(m);
-            stl = read_light_delta(Self, lt.x - double(width-1), lt.y - double(y), lt.z, m[4]);
-            specular_light(Self, rightNormal(m, scale), stl, Self->LinearColour, dptr, R, G, B, A);
+            stl = read_light_delta(Self, lt.x - double(width-1), lt.y - double(y), lt.z, m[4], spot_height);
+            specular_light(Self, rightNormal(m, map_height), stl, Self->LinearColour, dptr, R, G, B, A);
          }
 
          dptr += bpp;
@@ -654,9 +654,9 @@ static ERR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct lt::SetSpotLight 
    Self->X  = Args->X;
    Self->Y  = Args->Y;
    Self->Z  = Args->Z;
-   Self->PX = Args->PX;
-   Self->PY = Args->PY;
-   Self->PZ = Args->PZ;
+   Self->Spotlight.x = Args->PX;
+   Self->Spotlight.y = Args->PY;
+   Self->Spotlight.z = Args->PZ;
 
    Self->SpotExponent = Args->Exponent;
    Self->ConeAngle    = Args->ConeAngle;
@@ -679,14 +679,14 @@ The default colour is pure white, `1.0,1.0,1.0,1.0`.
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_GET_Colour(extLightingFX *Self, FLOAT **Value, int *Elements)
+static ERR LIGHTINGFX_GET_Colour(extLightingFX *Self, float **Value, int *Elements)
 {
-   *Value = (FLOAT *)&Self->Colour;
+   *Value = (float *)&Self->Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR LIGHTINGFX_SET_Colour(extLightingFX *Self, FLOAT *Value, int Elements)
+static ERR LIGHTINGFX_SET_Colour(extLightingFX *Self, float *Value, int Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Colour.Red   = Value[0];
@@ -761,13 +761,13 @@ Scale: The maximum height of the input surface (bump map) when the alpha input i
 
 static ERR LIGHTINGFX_GET_Scale(extLightingFX *Self, double *Value)
 {
-   *Value = Self->Scale;
+   *Value = Self->MapHeight;
    return ERR::Okay;
 }
 
 static ERR LIGHTINGFX_SET_Scale(extLightingFX *Self, double Value)
 {
-   Self->Scale = Value;
+   Self->MapHeight = Value;
    return ERR::Okay;
 }
 
@@ -882,7 +882,7 @@ static const FieldArray clLightingFXFields[] = {
    { "Constant", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          LIGHTINGFX_GET_Constant, LIGHTINGFX_SET_Constant },
    { "Exponent", FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          LIGHTINGFX_GET_Exponent, LIGHTINGFX_SET_Exponent },
    { "Scale",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          LIGHTINGFX_GET_Scale, LIGHTINGFX_SET_Scale },
-   { "Type",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, LIGHTINGFX_GET_Type, LIGHTINGFX_SET_Type, &clLightingType },
+   { "Type",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW,  LIGHTINGFX_GET_Type, LIGHTINGFX_SET_Type, &clLightingType },
    { "UnitX",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          LIGHTINGFX_GET_UnitX, LIGHTINGFX_SET_UnitX },
    { "UnitY",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW,          LIGHTINGFX_GET_UnitY, LIGHTINGFX_SET_UnitY },
    { "XMLDef",   FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, LIGHTINGFX_GET_XMLDef },
