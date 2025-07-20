@@ -93,29 +93,17 @@ class point3 {
    void normalise() {
       double len_sq = dot(*this); // Compute the length squared of the vector
       if (std::abs(len_sq - 1.0) < 1e-6) return; // Already normalised
-      double scale = fast_inv_sqrt(len_sq);
+      double scale = fast_inv_sqrt(len_sq); //  1.0 / sqrt(len_sq);
       x = x * scale;
       y = y * scale;
       z = z * scale;
    }
 
-   void fastNormalise() {
-      double len_sq = dot(*this);
-      if (std::abs(len_sq - 1.0) < 1e-6) return; // Already normalised
-
-      if (len_sq > 1e-15) {
-          double inv_len = fast_inv_sqrt(len_sq);
-          x *= inv_len;
-          y *= inv_len;
-          z *= inv_len;
-      }
-   }
-
-   friend point3 operator-(const point3& a, const point3& b) {
+   friend point3 operator-(const point3 &a, const point3 &b) {
       return { a.x - b.x, a.y - b.y, a.z - b.z };
    }
 
-   friend point3 operator+(const point3& a, const point3& b) {
+   friend point3 operator+(const point3 &a, const point3 &b) {
       return { a.x + b.x, a.y + b.y, a.z + b.z };
    }
 
@@ -187,7 +175,7 @@ class extLightingFX : public extFilterEffect {
 
    inline point3 pointToNormal(double x, double y, double MapHeight) {
       point3 vector(-x * MapHeight, -y * MapHeight, 1.0);
-      vector.fastNormalise();
+      vector.normalise();
       return vector;
    }
 
@@ -373,7 +361,7 @@ void extLightingFX::draw()
    auto read_light_delta = [&lt, &m, spot_height](double X, double Y) -> point3 {
       // The incoming Value is an RGB component, so is scaled to 0 - 1.0.
       point3 direction(lt.x - X, lt.y - Y, lt.z - (double(m[4]) * (1.0 / 255.0) * spot_height));
-      direction.fastNormalise();
+      direction.normalise();
       return direction;
    };
 
