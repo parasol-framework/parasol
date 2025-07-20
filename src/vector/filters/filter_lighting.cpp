@@ -316,15 +316,11 @@ void extLightingFX::draw()
 
    lt.z *= scale;
    t.transform(&lt.x, &lt.y);
-   lt.x -= Target->Clip.Left; // Re-orient the light source coordinates to (0,0)
-   lt.y -= Target->Clip.Top;
 
    // Rendering algorithm requires light source coordinates to be relative to the exposed bitmap.
 
    if (LightSource IS LS::SPOT) {
       t.transform(&pt.x, &pt.y);
-      pt.x -= Target->Clip.Left;
-      pt.y -= Target->Clip.Top;
       pt.z *= scale;
 
       // SpotDelta gives the center of the rendered light, expressed in relative coordinates 0 - 1.0
@@ -341,6 +337,9 @@ void extLightingFX::draw()
          ConeScale = 1.0 / AA_THRESHOLD;
       }
    }
+   
+   lt.x -= Target->Clip.Left; // Re-orient the light source coordinates to (0,0)
+   lt.y -= Target->Clip.Top;
 
    objBitmap *bmp;
    if (get_source_bitmap(Filter, &bmp, SourceType, Input, false) != ERR::Okay) return;
