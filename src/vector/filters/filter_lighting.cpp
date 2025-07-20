@@ -679,14 +679,14 @@ The default colour is pure white, `1.0,1.0,1.0,1.0`.
 
 *********************************************************************************************************************/
 
-static ERR LIGHTINGFX_GET_Colour(extLightingFX *Self, FLOAT **Value, int *Elements)
+static ERR LIGHTINGFX_GET_Colour(extLightingFX *Self, float **Value, int *Elements)
 {
-   *Value = (FLOAT *)&Self->Colour;
+   *Value = (float *)&Self->Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR LIGHTINGFX_SET_Colour(extLightingFX *Self, FLOAT *Value, int Elements)
+static ERR LIGHTINGFX_SET_Colour(extLightingFX *Self, float *Value, int Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Colour.Red   = Value[0];
