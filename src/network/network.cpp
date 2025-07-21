@@ -33,14 +33,18 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <thread>
 
 #ifdef ENABLE_SSL
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/bio.h>
-#include <openssl/bn.h>
-#include <openssl/rsa.h>
-#include <openssl/evp.h>
-#include <openssl/x509.h>
-#include <openssl/pem.h>
+  #ifdef _WIN32
+    #include "win32/ssl_wrapper.h"
+  #else
+    #include <openssl/ssl.h>
+    #include <openssl/err.h>
+    #include <openssl/bio.h>
+    #include <openssl/bn.h>
+    #include <openssl/rsa.h>
+    #include <openssl/evp.h>
+    #include <openssl/x509.h>
+    #include <openssl/pem.h>
+  #endif
 #endif
 
 #include <unordered_set>
@@ -179,7 +183,9 @@ class extNetSocket : public objNetSocket {
    UBYTE  Terminating:1;         // Set to TRUE when the NetSocket is marked for deletion.
    UBYTE  ExternalSocket:1;      // Set to TRUE if the SocketHandle field was set manually by the client.
    UBYTE  InUse;                 // Recursion counter to signal that the object is doing something.
+#ifndef _WIN32
    UBYTE  SSLBusy;               // Tracks the current actions of SSL handshaking.
+#endif
    UBYTE  IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
    UBYTE  OutgoingRecursion;
    #ifdef _WIN32
@@ -196,9 +202,13 @@ class extNetSocket : public objNetSocket {
       };
    #endif
    #ifdef ENABLE_SSL
-      SSL *SSL;
-      SSL_CTX *CTX;
-      BIO *BIO;
+     #ifdef _WIN32
+        SSL_HANDLE WinSSL;
+     #else
+        SSL *SSL;
+        SSL_CTX *CTX;
+        BIO *BIO;
+     #endif
    #endif
 };
 
@@ -240,13 +250,21 @@ inline ULONG cpu_be32(ULONG x) {
 JUMPTABLE_CORE
 
 #ifdef ENABLE_SSL
-static BYTE ssl_init = FALSE;
-
-static ERR sslConnect(extNetSocket *);
-static void sslDisconnect(extNetSocket *);
-static ERR sslInit(void);
-static ERR sslLinkSocket(extNetSocket *);
-static ERR sslSetup(extNetSocket *);
+  #ifdef _WIN32
+    // Windows SSL wrapper forward declarations
+    static ERR sslConnect(extNetSocket *);
+    static void sslDisconnect(extNetSocket *);
+    static ERR sslInit(void);
+    static ERR sslSetup(extNetSocket *);
+  #else
+    // OpenSSL forward declarations (non-Windows)
+    static BYTE ssl_init = FALSE;
+    static ERR sslConnect(extNetSocket *);
+    static void sslDisconnect(extNetSocket *);
+    static ERR sslInit(void);
+    static ERR sslLinkSocket(extNetSocket *);
+    static ERR sslSetup(extNetSocket *);
+  #endif
 #endif
 
 //********************************************************************************************************************
@@ -360,11 +378,15 @@ static ERR MODExpunge(void)
    if (clNetLookup)    { FreeResource(clNetLookup); clNetLookup = nullptr; }
 
 #ifdef ENABLE_SSL
-   if (ssl_init) {
-      ERR_free_strings();
-      EVP_cleanup();
-      CRYPTO_cleanup_all_ex_data();
-   }
+  #ifdef _WIN32
+    ssl_wrapper_cleanup();
+  #else
+    if (ssl_init) {
+       ERR_free_strings();
+       EVP_cleanup();
+       CRYPTO_cleanup_all_ex_data();
+    }
+  #endif
 #endif
 
    return ERR::Okay;
@@ -586,7 +608,9 @@ ERR SetSSL(objNetSocket *Socket, ...)
             value = va_arg(list, LONG);
             if (value) { // Initiate an SSL connection on this socket
                if ((error = sslSetup((extNetSocket *)Socket)) IS ERR::Okay) {
-                  sslLinkSocket((extNetSocket *)Socket);
+                  #ifndef _WIN32
+                     sslLinkSocket((extNetSocket *)Socket);
+                  #endif
                   error = sslConnect((extNetSocket *)Socket);
                }
 
@@ -614,7 +638,11 @@ ERR SetSSL(objNetSocket *Socket, ...)
 } // namespace
 
 #ifdef ENABLE_SSL
-#include "ssl.cpp"
+  #ifdef _WIN32
+    #include "win32_ssl.cpp"
+  #else
+    #include "ssl.cpp"
+  #endif
 #endif
 
 //********************************************************************************************************************
@@ -637,24 +665,54 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG B
 {
    pf::Log log(__FUNCTION__);
 
+#ifdef _WIN32
+   log.traceBranch("Socket: %d, BufSize: %d, Flags: $%.8x", Socket, BufferSize, Flags);
+#else
    log.traceBranch("Socket: %d, BufSize: %d, Flags: $%.8x, SSLBusy: %d", Socket, BufferSize, Flags, Self->SSLBusy);
+#endif
 
    *Result = 0;
 
 #ifdef ENABLE_SSL
-   if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
-   else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
+  #ifdef _WIN32
+    // Windows SSL wrapper doesn't use handshake busy state
+  #else
+    if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
+    else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
-   if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
+    if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
+  #endif
 #endif
 
    if (!BufferSize) return ERR::Okay;
 
 #ifdef ENABLE_SSL
-   BYTE read_blocked;
-   LONG pending;
+  #ifdef _WIN32
+    if (Self->WinSSL) {
+       int result = ssl_wrapper_read(Self->WinSSL, Buffer, BufferSize);
+       if (result > 0) {
+          *Result = result;
+          return ERR::Okay;
+       }
+       else if (result == 0) {
+          return ERR::Disconnected;
+       }
+       else {
+          SSL_ERROR_CODE error = ssl_wrapper_get_error(Self->WinSSL);
+          if (error == SSL_ERROR_WOULD_BLOCK) {
+             return ERR::Okay;
+          }
+          else {
+             log.warning("Windows SSL read error: %d", error);
+             return ERR::Failed;
+          }
+       }
+    }
+  #else
+    BYTE read_blocked;
+    LONG pending;
 
-   if (Self->SSL) {
+    if (Self->SSL) {
       do {
          read_blocked = 0;
 
@@ -719,7 +777,8 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG B
       }
 
       return ERR::Okay;
-   }
+    }
+  #endif
 #endif
 
 #ifdef __linux__
@@ -757,9 +816,36 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Len
    if (!*Length) return ERR::Okay;
 
 #ifdef ENABLE_SSL
+  #ifdef _WIN32
+    if (Self->WinSSL) {
+       log.traceBranch("Windows SSL Length: %d", *Length);
 
-   if (Self->SSL) {
-      log.traceBranch("SSLBusy: %d, Length: %d", Self->SSLBusy, *Length);
+       int bytes_sent = ssl_wrapper_write(Self->WinSSL, Buffer, *Length);
+
+       if (bytes_sent > 0) {
+          if (*Length != bytes_sent) {
+             log.traceWarning("Sent %d of requested %d bytes.", bytes_sent, *Length);
+          }
+          *Length = bytes_sent;
+          return ERR::Okay;
+       }
+       else {
+          SSL_ERROR_CODE error = ssl_wrapper_get_error(Self->WinSSL);
+          *Length = 0;
+
+          if (error == SSL_ERROR_WOULD_BLOCK) {
+             log.traceWarning("Buffer overflow (SSL want write)");
+             return ERR::BufferOverflow;
+          }
+          else {
+             log.warning("Windows SSL write error: %d", error);
+             return ERR::Failed;
+          }
+       }
+    }
+  #else
+    if (Self->SSL) {
+       log.traceBranch("SSLBusy: %d, Length: %d", Self->SSLBusy, *Length);
 
       if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
       else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
@@ -814,7 +900,8 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Len
       }
 
       return ERR::Okay;
-   }
+    }
+  #endif
 #endif
 
 #ifdef __linux__

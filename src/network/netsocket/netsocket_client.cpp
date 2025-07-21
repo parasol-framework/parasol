@@ -82,16 +82,24 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
    }
 
 #ifdef ENABLE_SSL
-   if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
+  #ifdef _WIN32
+    if ((Self->WinSSL) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.traceBranch("Continuing SSL communication...");
       sslConnect(Self);
       return;
-   }
+    }
+  #else
+    if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
+      log.traceBranch("Continuing SSL communication...");
+      sslConnect(Self);
+      return;
+    }
 
-   if (Self->SSLBusy) {
+    if (Self->SSLBusy) {
       log.trace("SSL object is busy.");
       return; // SSL object is performing a background operation (e.g. handshake)
-   }
+    }
+  #endif
 #endif
 
    if (Self->IncomingRecursion) {
@@ -171,10 +179,17 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    if (Self->Terminating) return;
 
 #ifdef ENABLE_SSL
-   if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
+  #ifdef _WIN32
+    if ((Self->WinSSL) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
-   }
+    }
+  #else
+    if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
+      log.trace("Still connecting via SSL...");
+      return;
+    }
+  #endif
 #endif
 
    if (Self->OutgoingRecursion) {
@@ -187,7 +202,9 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    log.traceBranch();
 
 #ifdef ENABLE_SSL
-   if (Self->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
+  #ifndef _WIN32
+    if (Self->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
+  #endif
 #endif
 
    Self->InUse++;
@@ -201,9 +218,13 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       while (Self->WriteQueue.Buffer) {
          LONG len = Self->WriteQueue.Length - Self->WriteQueue.Index;
          #ifdef ENABLE_SSL
-         if ((!Self->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+           #ifdef _WIN32
+             if ((!Self->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+           #else
+             if ((!Self->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+           #endif
          #else
-         if (len > glMaxWriteLen) len = glMaxWriteLen;
+           if (len > glMaxWriteLen) len = glMaxWriteLen;
          #endif
 
          if (len > 0) {

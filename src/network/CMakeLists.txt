@@ -16,10 +16,18 @@ target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/network.cpp")
 
 if (OPENSSL_FOUND)
    message (STATUS "Network module will be compiled with SSL support.")
-   # Linking against the .a files is necessary to ensure a static link.
-   list (APPEND NETWORK_LIBS ssl.a crypto.a)
-   target_include_directories (${MOD} PRIVATE "${OPENSSL_INCLUDE_DIR}")
    add_definitions ("-DENABLE_SSL")
+   
+   if (WIN32)
+      message (STATUS "Using Windows native SSL (Schannel) on Windows platform.")
+      target_sources (${MOD} PRIVATE "win32/ssl_wrapper.cpp")
+      list (APPEND NETWORK_LIBS secur32 crypt32)
+   else ()
+      message (STATUS "Using OpenSSL on non-Windows platform.")
+      # Linking against the .a files is necessary to ensure a static link.
+      list (APPEND NETWORK_LIBS ssl.a crypto.a)
+      target_include_directories (${MOD} PRIVATE "${OPENSSL_INCLUDE_DIR}")
+   endif ()
 else ()
    message (STATUS "Network module will not be compiled with SSL support.")
 endif ()

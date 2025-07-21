@@ -108,7 +108,9 @@ enum class NSL : int {
 
 
 #ifdef ENABLE_SSL
-#include "openssl/ssl.h"
+  #ifndef _WIN32
+    #include "openssl/ssl.h"
+  #endif
 #endif
 
 #ifdef __linux__
