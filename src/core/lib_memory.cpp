@@ -1,7 +1,8 @@
 /*********************************************************************************************************************
 
-The memory functions use stdlib.h malloc() and free() to get the memory on Linux.  This can be changed according to the
-particular platform.  Where possible it is best to call the host platform's own memory management functions.
+The memory management functions provide a comprehensive memory allocation system with automatic ownership tracking,
+resource management, and debugging capabilities. The implementation uses platform-specific memory allocation
+functions (typically stdlib malloc/free on Linux) with additional framework features for object lifecycle management.
 
 -CATEGORY-
 Name: Memory
@@ -29,46 +30,49 @@ using namespace pf;
 /*********************************************************************************************************************
 
 -FUNCTION-
-AllocMemory: Allocates a new memory block on the heap.
+AllocMemory: Allocates a managed memory block on the heap.
 
-The AllocMemory() function will allocate a new block of memory on the program's heap.  The client will need to define
-the minimum byte `Size`, optional `Flags` and a variable to store the resulting `Address` and/or `ID` of the memory block.
-For example:
+AllocMemory() provides comprehensive memory allocation with automatic ownership tracking, resource management, and 
+debugging features. The function allocates a new block of memory and associates it with the current execution context
+for automatic cleanup during object destruction.
+
+Usage example:
 
 <pre>
 APTR address;
-if (!AllocMemory(1000, MEM::DATA, &address, NULL)) {
-   ...
+if (AllocMemory(1000, MEM::DATA, &address, NULL) == ERR::Okay) {
+   // Use memory block...
    FreeResource(address);
 }
-</>
+</pre>
 
-A number of flag definitions are available that affect the memory allocation process.  They are:
+Memory allocation behavior is controlled through MEM flags:
 
 <types lookup="MEM"/>
 
-Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private
-address with no ID reference is sufficient.
+The function can return both a memory address pointer and a unique memory identifier. For most applications, 
+retrieving only the address pointer is sufficient. When both parameters are requested, the memory block is 
+automatically locked, requiring an explicit call to ReleaseMemory() before freeing.
 
-If the client retrieves both the ID and Address pointer, an internal call will be made to ~AccessMemory() to lock the
-memory block.  This means that before freeing the memory block the client must call ~ReleaseMemory() to unlock it.
-Blocks that are persistently locked will remain in memory until the process is terminated.
+All allocated memory is automatically zero-initialized unless the MEM::NO_CLEAR flag is specified. For large 
+allocations where initialization overhead is a concern, consider using MEM::NO_CLEAR.
 
-Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large
-blocks it may be wise to turn off this feature, achieved by setting the `MEM::NO_CLEAR` flag.
+Memory blocks are automatically associated with their owning object context, enabling automatic cleanup when 
+the owner is destroyed. This prevents memory leaks in object-oriented code.
 
 -INPUT-
-int Size:     The size of the memory block.
-int(MEM) Flags: Optional flags.
-&ptr Address: Refer to an `APTR` to store the address of the allocated memory block.
-&mem ID:      Refer to a `MEMORYID` to store the UID of the allocated memory block.
+int Size:     The size of the memory block in bytes. Must be greater than zero.
+int(MEM) Flags: Optional allocation flags controlling behavior and ownership.
+&ptr Address: Pointer to store the address of the allocated memory block.
+&mem ID:      Pointer to store the unique identifier of the allocated memory block.
 
 -ERRORS-
-Okay:
-Args:
-Failed:        The block could not be allocated due to insufficient memory space.
-ArrayFull:     Although memory space for the block was available, all available memory records are in use.
-AccessMemory:  The block was allocated but access to it was not granted, causing failure.
+Okay: Memory block successfully allocated.
+Args: Invalid parameters (size <= 0 or both Address and ID are NULL).
+AllocMemory: Insufficient memory available for the requested allocation.
+ArrayFull: Memory tracking structures are full, preventing allocation tracking.
+AccessMemory: Memory block was allocated but could not be locked when both Address and ID were requested.
+SystemLocked: Memory management system is currently locked by another thread.
 -END-
 
 *********************************************************************************************************************/
@@ -169,16 +173,18 @@ ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 /*********************************************************************************************************************
 
 -FUNCTION-
-CheckMemoryExists: Checks if a memory block still exists.
+CheckMemoryExists: Verifies the existence of a memory block.
 
-Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its `ID`.
+CheckMemoryExists() validates whether a memory block with the specified identifier still exists in the system's 
+memory tracking structures. This function is useful for defensive programming when working with memory identifiers
+that may have been freed by other code paths.
 
 -INPUT-
-mem ID: The ID of the memory block that will be checked.
+mem ID: The unique identifier of the memory block to verify.
 
 -ERRORS-
-Okay: The block exists.
-False: The block does not exist.
+True: The memory block exists and is valid.
+False: The memory block does not exist or has been freed.
 -END-
 
 *********************************************************************************************************************/
@@ -194,27 +200,32 @@ ERR CheckMemoryExists(MEMORYID MemoryID)
 /*********************************************************************************************************************
 
 -FUNCTION-
-FreeResource: Frees resources originating from AllocMemory().
+FreeResource: Safely deallocates memory blocks allocated by AllocMemory().
 
-This function will free any resource that originates from AllocMemory(), using its `ID` for identification.  C++
-headers also include a variant of this function that allows a direct memory pointer to be used as the identifier
-(however we do recommend the use of IDs to improve memory safety).
+FreeResource() provides safe deallocation of memory blocks with comprehensive validation and cleanup. The function
+accepts memory identifiers for optimal safety, though C++ headers also provide pointer-based variants for convenience.
 
-In some circumstances the termination of the block will not take place immediately.  If the block is locked then
-it will be marked for deletion and not be collected until the lock count reaches zero.
+The deallocation process includes boundary validation to detect buffer overruns, lock-aware deallocation that respects 
+access counting, resource manager integration for managed memory blocks, and automatic cleanup of ownership tracking 
+structures.
 
-Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that
-code has over-written the memory boundaries.  All caught errors are reported to the application log and
-warrant priority attention.
+When a memory block is currently locked (AccessCount > 0), it is marked for delayed collection rather than 
+immediate deallocation. This prevents use-after-free errors while ensuring eventual cleanup when all references
+are released.
+
+Memory corruption detection is performed by validating header and trailer markers. Any detected corruption is
+logged as a high-priority error requiring immediate attention, as this indicates potential buffer overrun or
+memory management bugs in the application code.
 
 -INPUT-
-mem ID: The unique ID of the memory block.
+mem ID: The unique identifier of the memory block to be freed.
 
 -ERRORS-
-Okay: The memory block was freed or marked for deletion.
-NullArgs
-InvalidData: The bounds of the block are damaged.
-MemoryDoesNotExist
+Okay: The memory block was successfully freed or marked for delayed collection.
+NullArgs: Invalid memory identifier provided.
+InvalidData: Memory corruption detected - header or trailer markers are damaged.
+MemoryDoesNotExist: The specified memory block identifier is not valid or already freed.
+SystemLocked: Memory management system is currently locked by another thread.
 -END-
 
 *********************************************************************************************************************/

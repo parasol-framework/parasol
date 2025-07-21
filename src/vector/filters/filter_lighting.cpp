@@ -640,7 +640,7 @@ void extLightingFX::draw()
          else if (LightSource IS LS::SPOT) {
             render_spotlight(start_row, end_row, bmp, lt, spot_height, width, height);
          } 
-         else { // LS::POINT
+         else if (LightSource IS LS::POINT) {
             render_point(start_row, end_row, bmp, lt, spot_height, width, height);
          }
       }, start_y, end_y);

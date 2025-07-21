@@ -225,35 +225,36 @@ struct FunctionField argsResize[] = {
   <function>
     <name>AllocMemory</name>
     <category>Memory</category>
-    <comment>Allocates a new memory block on the heap.</comment>
+    <comment>Allocates a managed memory block on the heap.</comment>
     <prototype>ERR AllocMemory(INT Size, MEM Flags, APTR * Address, MEMORYID * ID)</prototype>
     <input>
-      <param type="INT" name="Size">The size of the memory block.</param>
-      <param type="MEM" name="Flags" lookup="MEM">Optional flags.</param>
-      <param type="APTR *" name="Address">Refer to an <code>APTR</code> to store the address of the allocated memory block.</param>
-      <param type="MEMORYID *" name="ID">Refer to a <code>MEMORYID</code> to store the UID of the allocated memory block.</param>
+      <param type="INT" name="Size">The size of the memory block in bytes. Must be greater than zero.</param>
+      <param type="MEM" name="Flags" lookup="MEM">Optional allocation flags controlling behavior and ownership.</param>
+      <param type="APTR *" name="Address">Pointer to store the address of the allocated memory block.</param>
+      <param type="MEMORYID *" name="ID">Pointer to store the unique identifier of the allocated memory block.</param>
     </input>
     <description>
-<p>The AllocMemory() function will allocate a new block of memory on the program's heap.  The client will need to define the minimum byte <code>Size</code>, optional <code>Flags</code> and a variable to store the resulting <code>Address</code> and/or <code>ID</code> of the memory block. For example:</p>
-<pre>
-APTR address;
-if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
-   ...
+<p>AllocMemory() provides comprehensive memory allocation with automatic ownership tracking, resource management, and debugging features. The function allocates a new block of memory and associates it with the current execution context for automatic cleanup during object destruction.</p>
+<p>Usage example:</p>
+<pre>APTR address;
+if (AllocMemory(1000, MEM::DATA, &amp;address, NULL) == ERR::Okay) {
+   // Use memory block...
    FreeResource(address);
 }
 </pre>
-<p>A number of flag definitions are available that affect the memory allocation process.  They are:</p>
+<p>Memory allocation behavior is controlled through MEM flags:</p>
 <types lookup="MEM"/>
-<p>Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private address with no ID reference is sufficient.</p>
-<p>If the client retrieves both the ID and Address pointer, an internal call will be made to <function>AccessMemory</function> to lock the memory block.  This means that before freeing the memory block the client must call <function>ReleaseMemory</function> to unlock it. Blocks that are persistently locked will remain in memory until the process is terminated.</p>
-<p>Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large blocks it may be wise to turn off this feature, achieved by setting the <code>MEM::NO_CLEAR</code> flag.</p>
+<p>The function can return both a memory address pointer and a unique memory identifier. For most applications, retrieving only the address pointer is sufficient. When both parameters are requested, the memory block is automatically locked, requiring an explicit call to ReleaseMemory() before freeing.</p>
+<p>All allocated memory is automatically zero-initialized unless the MEM::NO_CLEAR flag is specified. For large allocations where initialization overhead is a concern, consider using MEM::NO_CLEAR.</p>
+<p>Memory blocks are automatically associated with their owning object context, enabling automatic cleanup when the owner is destroyed. This prevents memory leaks in object-oriented code.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="Failed">The block could not be allocated due to insufficient memory space.</error>
-      <error code="Args">Invalid arguments passed to function.</error>
-      <error code="ArrayFull">Although memory space for the block was available, all available memory records are in use.</error>
-      <error code="AccessMemory">The block was allocated but access to it was not granted, causing failure.</error>
+      <error code="Okay">Memory block successfully allocated.</error>
+      <error code="Args">Invalid parameters (size &lt;= 0 or both Address and ID are NULL).</error>
+      <error code="ArrayFull">Memory tracking structures are full, preventing allocation tracking.</error>
+      <error code="SystemLocked">Memory management system is currently locked by another thread.</error>
+      <error code="AccessMemory">Memory block was allocated but could not be locked when both Address and ID were requested.</error>
+      <error code="AllocMemory">Insufficient memory available for the requested allocation.</error>
     </result>
   </function>
 
@@ -372,17 +373,17 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
   <function>
     <name>CheckMemoryExists</name>
     <category>Memory</category>
-    <comment>Checks if a memory block still exists.</comment>
+    <comment>Verifies the existence of a memory block.</comment>
     <prototype>ERR CheckMemoryExists(MEMORYID ID)</prototype>
     <input>
-      <param type="MEMORYID" name="ID">The ID of the memory block that will be checked.</param>
+      <param type="MEMORYID" name="ID">The unique identifier of the memory block to verify.</param>
     </input>
     <description>
-<p>Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its <code>ID</code>.</p>
+<p>CheckMemoryExists() validates whether a memory block with the specified identifier still exists in the system's memory tracking structures. This function is useful for defensive programming when working with memory identifiers that may have been freed by other code paths.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">The block exists.</error>
-      <error code="False">The block does not exist.</error>
+      <error code="True">The memory block exists and is valid.</error>
+      <error code="False">The memory block does not exist or has been freed.</error>
     </result>
   </function>
 
@@ -656,21 +657,23 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
   <function>
     <name>FreeResource</name>
     <category>Memory</category>
-    <comment>Frees resources originating from AllocMemory().</comment>
+    <comment>Safely deallocates memory blocks allocated by AllocMemory().</comment>
     <prototype>ERR FreeResource(MEMORYID ID)</prototype>
     <input>
-      <param type="MEMORYID" name="ID">The unique ID of the memory block.</param>
+      <param type="MEMORYID" name="ID">The unique identifier of the memory block to be freed.</param>
     </input>
     <description>
-<p>This function will free any resource that originates from AllocMemory(), using its <code>ID</code> for identification.  C++ headers also include a variant of this function that allows a direct memory pointer to be used as the identifier (however we do recommend the use of IDs to improve memory safety).</p>
-<p>In some circumstances the termination of the block will not take place immediately.  If the block is locked then it will be marked for deletion and not be collected until the lock count reaches zero.</p>
-<p>Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that code has over-written the memory boundaries.  All caught errors are reported to the application log and warrant priority attention.</p>
+<p>FreeResource() provides safe deallocation of memory blocks with comprehensive validation and cleanup. The function accepts memory identifiers for optimal safety, though C++ headers also provide pointer-based variants for convenience.</p>
+<p>The deallocation process includes boundary validation to detect buffer overruns, lock-aware deallocation that respects access counting, resource manager integration for managed memory blocks, and automatic cleanup of ownership tracking structures.</p>
+<p>When a memory block is currently locked (AccessCount &gt; 0), it is marked for delayed collection rather than immediate deallocation. This prevents use-after-free errors while ensuring eventual cleanup when all references are released.</p>
+<p>Memory corruption detection is performed by validating header and trailer markers. Any detected corruption is logged as a high-priority error requiring immediate attention, as this indicates potential buffer overrun or memory management bugs in the application code.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">The memory block was freed or marked for deletion.</error>
-      <error code="InvalidData">The bounds of the block are damaged.</error>
-      <error code="MemoryDoesNotExist">Memory block does not exist.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">The memory block was successfully freed or marked for delayed collection.</error>
+      <error code="InvalidData">Memory corruption detected - header or trailer markers are damaged.</error>
+      <error code="MemoryDoesNotExist">The specified memory block identifier is not valid or already freed.</error>
+      <error code="SystemLocked">Memory management system is currently locked by another thread.</error>
+      <error code="NullArgs">Invalid memory identifier provided.</error>
     </result>
   </function>
 
