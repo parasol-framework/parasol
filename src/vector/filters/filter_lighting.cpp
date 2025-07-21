@@ -337,11 +337,6 @@ void extLightingFX::draw()
    // The alpha channel of the source bitmap will function as the Z value for the bump map.  The RGB components
    // are ignored for input purposes.
 
-   const uint8_t R = Target->ColourFormat->RedPos>>3;
-   const uint8_t G = Target->ColourFormat->GreenPos>>3;
-   const uint8_t B = Target->ColourFormat->BluePos>>3;
-   const uint8_t A = Target->ColourFormat->AlphaPos>>3;
-
    int width  = Target->Clip.Right - Target->Clip.Left;
    int height = Target->Clip.Bottom - Target->Clip.Top;
    if (bmp->Clip.Right - bmp->Clip.Left < width) width = bmp->Clip.Right - bmp->Clip.Left;
@@ -352,169 +347,158 @@ void extLightingFX::draw()
    uint8_t *dest = (uint8_t *)(Target->Data + (Target->Clip.Left * bpp) + (Target->Clip.Top * Target->LineWidth));
    uint8_t *dptr;
 
-   std::array<uint8_t, 9> m;
    const double spot_height = MapHeight * scale;
    const double map_height = spot_height * (1.0 / 255.0); // Match the scale of RGB values.
    
-   // For point & spot light.
+   dp::thread_pool pool(std::thread::hardware_concurrency());
+
+   for (int y=0; y < height; y++) {
+      pool.enqueue_detach([y, bmp, lt, map_height, spot_height, bpp, width, height, this](uint8_t *Input, uint8_t *Dest) { 
+         const uint8_t R = Target->ColourFormat->RedPos>>3;
+         const uint8_t G = Target->ColourFormat->GreenPos>>3;
+         const uint8_t B = Target->ColourFormat->BluePos>>3;
+         const uint8_t A = Target->ColourFormat->AlphaPos>>3;
+
+         const uint8_t *row0 = (y IS 0) ? Input : Input - bmp->LineWidth;
+         const uint8_t *row1 = Input;
+         const uint8_t *row2 = (y IS height-1) ? Input : Input + bmp->LineWidth;
+         
+         auto dptr = Dest;
+         std::array<uint8_t, 9> m;
+         m[1] = row0[A]; row0 += bpp;
+         m[2] = row0[A]; row0 += bpp;
+         m[4] = row1[A]; row1 += bpp;
+         m[5] = row1[A]; row1 += bpp;
+         m[7] = row2[A]; row2 += bpp;
+         m[8] = row2[A]; row2 += bpp;
+         
+         // For point & spot light.
       
-   auto read_light_delta = [&lt, &m, spot_height](double X, double Y) -> point3 {
-      // The incoming Value is an RGB component, so is scaled to 0 - 1.0.
-      point3 direction(lt.x - X, lt.y - Y, lt.z - (double(m[4]) * (1.0 / 255.0) * spot_height));
-      direction.normalise();
-      return direction;
-   };
+         auto read_light_delta = [&lt, &m, spot_height](double X, double Y) -> point3 {
+            // The incoming Value is an RGB component, so is scaled to 0 - 1.0.
+            point3 direction(lt.x - X, lt.y - Y, lt.z - (double(m[4]) * (1.0 / 255.0) * spot_height));
+            direction.normalise();
+            return direction;
+         };
 
-   if (Type IS LT::DIFFUSE) {
-      for (int y=0; y < height; y++) {
-         const uint8_t *row0 = (y IS 0) ? in : in - bmp->LineWidth;
-         const uint8_t *row1 = in;
-         const uint8_t *row2 = (y IS height-1) ? in : in + bmp->LineWidth;
+         if (Type IS LT::DIFFUSE) {
+            if (LightSource IS LS::DISTANT) { // Diffuse distant light
+               diffuse_light(leftNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+               dptr += bpp;
 
-         dptr = dest;
-         m[1] = row0[A]; row0 += bpp;
-         m[2] = row0[A]; row0 += bpp;
-         m[4] = row1[A]; row1 += bpp;
-         m[5] = row1[A]; row1 += bpp;
-         m[7] = row2[A]; row2 += bpp;
-         m[8] = row2[A]; row2 += bpp;
+               for (int x=1; x < width-1; ++x) {
+                     shiftMatrixLeft(m);
+                     m[2] = row0[A]; row0 += bpp;
+                     m[5] = row1[A]; row1 += bpp;
+                     m[8] = row2[A]; row2 += bpp;
+                     diffuse_light(interiorNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+                     dptr += bpp;
+               }
 
-         if (LightSource IS LS::DISTANT) { // Diffuse distant light
-            diffuse_light(leftNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
-            dptr += bpp;
-
-            for (int x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                diffuse_light(interiorNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
-                dptr += bpp;
+               shiftMatrixLeft(m);
+               diffuse_light(rightNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
             }
+            else if (LightSource IS LS::SPOT) { // Diffuse spot light
+               point3 stl = read_light_delta(0, y);
+               diffuse_light(leftNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+               dptr += bpp;
 
-            shiftMatrixLeft(m);
-            diffuse_light(rightNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
-         }
-         else if (LightSource IS LS::SPOT) { // Diffuse spot light
-            point3 stl = read_light_delta(0, y);
-            diffuse_light(leftNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
-            dptr += bpp;
+               for (int x=1; x < width-1; ++x) {
+                     shiftMatrixLeft(m);
+                     m[2] = row0[A]; row0 += bpp;
+                     m[5] = row1[A]; row1 += bpp;
+                     m[8] = row2[A]; row2 += bpp;
+                     stl = read_light_delta(x, y);
+                     diffuse_light(interiorNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+                     dptr += bpp;
+               }
 
-            for (int x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(x, y);
-                diffuse_light(interiorNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
-                dptr += bpp;
+               shiftMatrixLeft(m);
+               stl = read_light_delta(width-1, y);
+               diffuse_light(rightNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
             }
+            else { // Diffuse point light
+               point3 stl = read_light_delta(0, y);
+               diffuse_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+               dptr += bpp;
 
-            shiftMatrixLeft(m);
-            stl = read_light_delta(width-1, y);
-            diffuse_light(rightNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
-         }
-         else { // Diffuse point light
-            point3 stl = read_light_delta(0, y);
-            diffuse_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
-            dptr += bpp;
+               for (int x=1; x < width-1; ++x) {
+                     shiftMatrixLeft(m);
+                     m[2] = row0[A]; row0 += bpp;
+                     m[5] = row1[A]; row1 += bpp;
+                     m[8] = row2[A]; row2 += bpp;
+                     stl = read_light_delta(x, y);
+                     diffuse_light(interiorNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+                     dptr += bpp;
+               }
 
-            for (int x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(x, y);
-                diffuse_light(interiorNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
-                dptr += bpp;
+               shiftMatrixLeft(m);
+               stl = read_light_delta(width-1, y);
+               diffuse_light(rightNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
             }
-
-            shiftMatrixLeft(m);
-            stl = read_light_delta(width-1, y);
-            diffuse_light(rightNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
          }
+         else { // SPECULAR
+            if (LightSource IS LS::DISTANT) { // Specular distant light
+               specular_light(leftNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+               dptr += bpp;
 
-         dptr += bpp;
+               for (int x=1; x < width-1; ++x) {
+                     shiftMatrixLeft(m);
+                     m[2] = row0[A]; row0 += bpp;
+                     m[5] = row1[A]; row1 += bpp;
+                     m[8] = row2[A]; row2 += bpp;
+                     specular_light(interiorNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+                     dptr += bpp;
+               }
 
-         in   += bmp->LineWidth;
-         dest += Target->LineWidth;
-      }
+               shiftMatrixLeft(m);
+               specular_light(rightNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
+            }
+            else if (LightSource IS LS::SPOT) { // Specular spot light
+               point3 stl = read_light_delta(0, y);
+               specular_light(leftNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+               dptr += bpp;
+
+               for (int x=1; x < width-1; ++x) {
+                     shiftMatrixLeft(m);
+                     m[2] = row0[A]; row0 += bpp;
+                     m[5] = row1[A]; row1 += bpp;
+                     m[8] = row2[A]; row2 += bpp;
+                     stl = read_light_delta(x, y);
+                     specular_light(interiorNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+                     dptr += bpp;
+               }
+
+               shiftMatrixLeft(m);
+               stl = read_light_delta(width-1, y);
+               specular_light(rightNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
+            }
+            else { // LS::POINT Specular point light
+               point3 stl = read_light_delta(0, y);
+               specular_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+               dptr += bpp;
+
+               for (int x=1; x < width-1; ++x) {
+                     shiftMatrixLeft(m);
+                     m[2] = row0[A]; row0 += bpp;
+                     m[5] = row1[A]; row1 += bpp;
+                     m[8] = row2[A]; row2 += bpp;
+                     stl = read_light_delta(x, y);
+                     specular_light(interiorNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+                     dptr += bpp;
+               }
+
+               shiftMatrixLeft(m);
+               stl = read_light_delta(width-1, y);
+               specular_light(rightNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
+            }
+         }
+      }, in, dest);
+
+      in   += bmp->LineWidth;
+      dest += Target->LineWidth;
    }
-   else { // SPECULAR
-      for (int y=0; y < height; y++) {
-         const uint8_t *row0 = (y IS 0) ? in : in - bmp->LineWidth;
-         const uint8_t *row1 = in;
-         const uint8_t *row2 = (y IS height-1) ? in : in + bmp->LineWidth;
-
-         dptr = dest;
-         m[1] = row0[A]; row0 += bpp;
-         m[2] = row0[A]; row0 += bpp;
-         m[4] = row1[A]; row1 += bpp;
-         m[5] = row1[A]; row1 += bpp;
-         m[7] = row2[A]; row2 += bpp;
-         m[8] = row2[A]; row2 += bpp;
-
-         if (LightSource IS LS::DISTANT) { // Specular distant light
-            specular_light(leftNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
-            dptr += bpp;
-
-            for (int x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                specular_light(interiorNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
-                dptr += bpp;
-            }
-
-            shiftMatrixLeft(m);
-            specular_light(rightNormal(m, map_height), Direction, LinearColour, dptr, R, G, B, A);
-         }
-         else if (LightSource IS LS::SPOT) { // Specular spot light
-            point3 stl = read_light_delta(0, y);
-            specular_light(leftNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
-            dptr += bpp;
-
-            for (int x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(x, y);
-                specular_light(interiorNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
-                dptr += bpp;
-            }
-
-            shiftMatrixLeft(m);
-            stl = read_light_delta(width-1, y);
-            specular_light(rightNormal(m, map_height), stl, colour_spot_light(stl), dptr, R, G, B, A);
-         }
-         else { // LS::POINT Specular point light
-            point3 stl = read_light_delta(0, y);
-            specular_light(leftNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
-            dptr += bpp;
-
-            for (int x=1; x < width-1; ++x) {
-                shiftMatrixLeft(m);
-                m[2] = row0[A]; row0 += bpp;
-                m[5] = row1[A]; row1 += bpp;
-                m[8] = row2[A]; row2 += bpp;
-                stl = read_light_delta(x, y);
-                specular_light(interiorNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
-                dptr += bpp;
-            }
-
-            shiftMatrixLeft(m);
-            stl = read_light_delta(width-1, y);
-            specular_light(rightNormal(m, map_height), stl, LinearColour, dptr, R, G, B, A);
-         }
-
-         dptr += bpp;
-
-         in   += bmp->LineWidth;
-         dest += Target->LineWidth;
-      }
-   }
+   pool.wait_for_tasks();
 }
 
 //********************************************************************************************************************
