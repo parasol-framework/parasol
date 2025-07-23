@@ -33,10 +33,10 @@ using namespace pf;
 AllocMemory: Allocates a managed memory block on the heap.
 
 AllocMemory() provides comprehensive memory allocation with automatic ownership tracking, resource management, and 
-debugging features. The function allocates a new block of memory and associates it with the current execution context
-for automatic cleanup during object destruction.
+debugging features. The function allocates a new block of memory and associates it with the current execution context,
+allowing it to be automatically cleaned up when the context is destroyed.
 
-Usage example:
+Example usage:
 
 <pre>
 APTR address;
@@ -54,8 +54,8 @@ The function can return both a memory address pointer and a unique memory identi
 retrieving only the address pointer is sufficient. When both parameters are requested, the memory block is 
 automatically locked, requiring an explicit call to ReleaseMemory() before freeing.
 
-All allocated memory is automatically zero-initialized unless the MEM::NO_CLEAR flag is specified. For large 
-allocations where initialization overhead is a concern, consider using MEM::NO_CLEAR.
+The resulting memory block is zero-initialized unless the `MEM::NO_CLEAR` flag is specified. For large 
+allocations where initialization overhead is a concern, utilising `MEM::NO_CLEAR` is recommended.
 
 Memory blocks are automatically associated with their owning object context, enabling automatic cleanup when 
 the owner is destroyed. This prevents memory leaks in object-oriented code.

@@ -234,8 +234,8 @@ struct FunctionField argsResize[] = {
       <param type="MEMORYID *" name="ID">Pointer to store the unique identifier of the allocated memory block.</param>
     </input>
     <description>
-<p>AllocMemory() provides comprehensive memory allocation with automatic ownership tracking, resource management, and debugging features. The function allocates a new block of memory and associates it with the current execution context for automatic cleanup during object destruction.</p>
-<p>Usage example:</p>
+<p>AllocMemory() provides comprehensive memory allocation with automatic ownership tracking, resource management, and debugging features. The function allocates a new block of memory and associates it with the current execution context, allowing it to be automatically cleaned up when the context is destroyed.</p>
+<p>Example usage:</p>
 <pre>APTR address;
 if (AllocMemory(1000, MEM::DATA, &amp;address, NULL) == ERR::Okay) {
    // Use memory block...
@@ -245,7 +245,7 @@ if (AllocMemory(1000, MEM::DATA, &amp;address, NULL) == ERR::Okay) {
 <p>Memory allocation behavior is controlled through MEM flags:</p>
 <types lookup="MEM"/>
 <p>The function can return both a memory address pointer and a unique memory identifier. For most applications, retrieving only the address pointer is sufficient. When both parameters are requested, the memory block is automatically locked, requiring an explicit call to ReleaseMemory() before freeing.</p>
-<p>All allocated memory is automatically zero-initialized unless the MEM::NO_CLEAR flag is specified. For large allocations where initialization overhead is a concern, consider using MEM::NO_CLEAR.</p>
+<p>The resulting memory block is zero-initialized unless the <code>MEM::NO_CLEAR</code> flag is specified. For large allocations where initialization overhead is a concern, utilising <code>MEM::NO_CLEAR</code> is recommended.</p>
 <p>Memory blocks are automatically associated with their owning object context, enabling automatic cleanup when the owner is destroyed. This prevents memory leaks in object-oriented code.</p>
     </description>
     <result type="ERR">

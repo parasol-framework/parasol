@@ -168,7 +168,7 @@
 </tbody></table></div></div>
 <p>This function is the key entry point for executing actions and method routines.  An action is a predefined function call that can be called on any object, while a method is a function call that is specific to a class implementation. You can find a complete list of available actions and their associated details in the Parasol Wiki. The actions and methods supported by any class will be referenced in their auto-generated documentation.</p>
 <p>Here are two examples that demonstrate how to make an action call.  The first performs an activation, which does not require any additional arguments.  The second performs a move operation, which requires three additional arguments to be passed to the Action() function:</p>
-<pre>1. Action(AC::Activate, Picture, NULL);
+<pre>1. Action(AC::Activate, Picture, nullptr);
 
 2. struct acMove move = { 30, 15, 0 };
    Action(AC::Move, Window, &amp;move);
@@ -194,25 +194,25 @@
 <p>The <code>Name</code> field specifies the name of the action.  The <code>Args</code> field refers to the action's argument definition structure, which lists the argument names and their relevant types.  This is matched by the <code>Size</code> field, which indicates the byte-size of the action's related argument structure.  If the action does not support arguments, the <code>Args</code> and <code>Size</code> fields will be set to <code>NULL</code>.  The following illustrates two argument definition examples:</p>
 <pre>struct FunctionField argsCopyData[] = {
    { "Destination", FD_INT  },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 struct FunctionField argsResize[] = {
    { "Width",  FD_DOUBLE },
    { "Height", FD_DOUBLE },
    { "Depth",  FD_DOUBLE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 </pre>
 <p>The argument types that can be used by actions are limited to those listed in the following table:</p>
-<table class="table"><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">FD::LONG</th><td>A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</td></tr>
-<tr><th class="col-md-1">FD::LARGE</th><td>A 64-bit integer value.</td></tr>
+<table class="table"><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">FD::INT</th><td>A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</td></tr>
+<tr><th class="col-md-1">FD::INT64</th><td>A 64-bit integer value.</td></tr>
 <tr><th class="col-md-1">FD::PTR</th><td>A standard address space pointer.</td></tr>
 <tr><th class="col-md-1">FD::STRING</th><td>A pointer to a null-terminated string.</td></tr>
 <tr><th class="col-md-1">FD::DOUBLE</th><td>A 64-bit floating point value.</td></tr>
 <tr><th class="col-md-1">FD::OBJECT</th><td>This flag is sometimes set in conjunction with the <code>FD_INT</code> type.  It indicates that the argument refers to an object ID.</td></tr>
 <tr><th class="col-md-1">FD::PTRSIZE</th><td>This argument type can only be used if it follows an <code>FD_PTR</code> type, and if the argument itself is intended to reflect the size of the buffer referred to by the previous <code>FD_PTR</code> argument.</td></tr>
-<tr><th class="col-md-1">FD::RESULT</th><td>This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to a <code>LONG</code> field in which the function will store a result, the correct argument definition will be <code>FD_RESULT|FD_INT|FD_PTR</code>. To make the definition of these argument types easier, <code>FD_PTRRESULT</code> and <code>FD_INTRESULT</code> macros are also available for use.</td></tr>
+<tr><th class="col-md-1">FD::RESULT</th><td>This special flag is set in conjunction with the other data-based argument types. Example: If the developer is required to supply a pointer to an <code>int</code> field in which the function will store a result, the correct argument definition will be <code>FD_RESULT|FD_INT|FD_PTR</code>. To make the definition of these argument types easier, <code>FD_PTRRESULT</code> and <code>FD_INTRESULT</code> macros are also available for use.</td></tr>
 </tbody></table>
     <div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="AddInfoTag"><h2>AddInfoTag()</h2><p class="lead">Adds new tags to FileInfo structures.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Info</td><td>Pointer to a valid <a data-toggle="tooltip" title="" href="?page=struct-FileInfo">FileInfo</a> structure.</td></tr>
@@ -244,20 +244,20 @@ struct FunctionField argsResize[] = {
 <p>The main purpose of AdjustLogLevel() is to reduce log noise.  For instance, creating a new desktop window will result in a large number of new log messages.  Raising the base-line by 2 before creating the window would eliminate the noise if the user has the log level set to 5 (API).  Re-running the program with a log level of 7 or more would make the messages visible again.</p>
 <p>Adjustments to the base-line are accumulative, so small increments of 1 or 2 are encouraged.  To revert logging to the previous base-line, call this function again with a negation of the previously passed value.</p>
     <h3>Result</h3><p>Returns the absolute base-line value that was active prior to calling this function.</p><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="AllocMemory"><h2>AllocMemory()</h2><p class="lead">Allocates a new memory block on the heap.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR AllocMemory(INT Size, MEM Flags, APTR * Address, MEMORYID * ID)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Size</td><td>The size of the memory block.</td></tr>
-<tr><td><a onclick="showPage('MEM');">Flags</a></td><td>Optional flags.</td></tr>
-<tr><td>Address</td><td>Refer to an <code>APTR</code> to store the address of the allocated memory block.</td></tr>
-<tr><td>ID</td><td>Refer to a <code>MEMORYID</code> to store the UID of the allocated memory block.</td></tr>
+<div class="docs-content" style="display:none;" id="AllocMemory"><h2>AllocMemory()</h2><p class="lead">Allocates a managed memory block on the heap.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR AllocMemory(INT Size, MEM Flags, APTR * Address, MEMORYID * ID)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Size</td><td>The size of the memory block in bytes. Must be greater than zero.</td></tr>
+<tr><td><a onclick="showPage('MEM');">Flags</a></td><td>Optional allocation flags controlling behavior and ownership.</td></tr>
+<tr><td>Address</td><td>Pointer to store the address of the allocated memory block.</td></tr>
+<tr><td>ID</td><td>Pointer to store the unique identifier of the allocated memory block.</td></tr>
 </tbody></table></div></div>
-<p>The AllocMemory() function will allocate a new block of memory on the program's heap.  The client will need to define the minimum byte <code>Size</code>, optional <code>Flags</code> and a variable to store the resulting <code>Address</code> and/or <code>ID</code> of the memory block. For example:</p>
-<pre>
-APTR address;
-if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
-   ...
+<p>AllocMemory() provides comprehensive memory allocation with automatic ownership tracking, resource management, and debugging features. The function allocates a new block of memory and associates it with the current execution context, allowing it to be automatically cleaned up when the context is destroyed.</p>
+<p>Example usage:</p>
+<pre>APTR address;
+if (AllocMemory(1000, MEM::DATA, &amp;address, NULL) == ERR::Okay) {
+   // Use memory block...
    FreeResource(address);
 }
 </pre>
-<p>A number of flag definitions are available that affect the memory allocation process.  They are:</p>
+<p>Memory allocation behavior is controlled through MEM flags:</p>
 <table class="table"><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody><tr><th>MEM::AUDIO</th><td>The memory space is reserved by an audio device such as a sound card.</td></tr>
 <tr><th>MEM::CALLER</th><td>This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself.</td></tr>
 <tr><th>MEM::CODE</th><td>Set if the memory will contain executable program code.</td></tr>
@@ -278,14 +278,15 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
 <tr><th>MEM::VIDEO</th><td>The memory space is reserved by a video device such as a graphics card for display purposes, e.g. framebuffer.</td></tr>
 <tr><th>MEM::WRITE</th><td>The memory is explicitly marked as writeable.</td></tr>
 </tbody></table>
-<p>Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private address with no ID reference is sufficient.</p>
-<p>If the client retrieves both the ID and Address pointer, an internal call will be made to <a href="?page=AccessMemory">AccessMemory()</a> to lock the memory block.  This means that before freeing the memory block the client must call <a href="?page=ReleaseMemory">ReleaseMemory()</a> to unlock it. Blocks that are persistently locked will remain in memory until the process is terminated.</p>
-<p>Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large blocks it may be wise to turn off this feature, achieved by setting the <code>MEM::NO_CLEAR</code> flag.</p>
-    <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Failed</th><td>The block could not be allocated due to insufficient memory space.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">ArrayFull</th><td>Although memory space for the block was available, all available memory records are in use.</td></tr>
-<tr><th class="col-md-1">AccessMemory</th><td>The block was allocated but access to it was not granted, causing failure.</td></tr>
+<p>The function can return both a memory address pointer and a unique memory identifier. For most applications, retrieving only the address pointer is sufficient. When both parameters are requested, the memory block is automatically locked, requiring an explicit call to ReleaseMemory() before freeing.</p>
+<p>The resulting memory block is zero-initialized unless the <code>MEM::NO_CLEAR</code> flag is specified. For large allocations where initialization overhead is a concern, utilising <code>MEM::NO_CLEAR</code> is recommended.</p>
+<p>Memory blocks are automatically associated with their owning object context, enabling automatic cleanup when the owner is destroyed. This prevents memory leaks in object-oriented code.</p>
+    <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Memory block successfully allocated.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid parameters (size &lt;= 0 or both Address and ID are NULL).</td></tr>
+<tr><th class="col-md-1">ArrayFull</th><td>Memory tracking structures are full, preventing allocation tracking.</td></tr>
+<tr><th class="col-md-1">SystemLocked</th><td>Memory management system is currently locked by another thread.</td></tr>
+<tr><th class="col-md-1">AccessMemory</th><td>Memory block was allocated but could not be locked when both Address and ID were requested.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>Insufficient memory available for the requested allocation.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="AllocateID"><h2>AllocateID()</h2><p class="lead">Generates unique ID's for general purposes.</p><div class="card card-info mb-3"><div class="card-header"><samp>INT AllocateID(IDTYPE Type)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('IDTYPE');">Type</a></td><td>The type of ID that is required.</td></tr>
 </tbody></table></div></div>
@@ -345,11 +346,11 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <tr><th class="col-md-1">LostClass</th><td>The object has lost its class reference.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="CheckMemoryExists"><h2>CheckMemoryExists()</h2><p class="lead">Checks if a memory block still exists.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR CheckMemoryExists(MEMORYID ID)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>ID</td><td>The ID of the memory block that will be checked.</td></tr>
+<div class="docs-content" style="display:none;" id="CheckMemoryExists"><h2>CheckMemoryExists()</h2><p class="lead">Verifies the existence of a memory block.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR CheckMemoryExists(MEMORYID ID)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>ID</td><td>The unique identifier of the memory block to verify.</td></tr>
 </tbody></table></div></div>
-<p>Use CheckMemoryExists() to confirm if a specific memory block still exists by referencing its <code>ID</code>.</p>
-    <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The block exists.</td></tr>
-<tr><th class="col-md-1">False</th><td>The block does not exist.</td></tr>
+<p>CheckMemoryExists() validates whether a memory block with the specified identifier still exists in the system's memory tracking structures. This function is useful for defensive programming when working with memory identifiers that may have been freed by other code paths.</p>
+    <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">True</th><td>The memory block exists and is valid.</td></tr>
+<tr><th class="col-md-1">False</th><td>The memory block does not exist or has been freed.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="CheckObjectExists"><h2>CheckObjectExists()</h2><p class="lead">Checks if a particular object is still available in the system.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR CheckObjectExists(OBJECTID Object)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Object</td><td>The object identity to verify.</td></tr>
 </tbody></table></div></div>
@@ -484,15 +485,17 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 <tr><th class="col-md-1">EmptyString</th><td>A required string value contains no characters.</td></tr>
 <tr><th class="col-md-1">DoesNotExist</th><td>Resource does not exist.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="FreeResource"><h2>FreeResource()</h2><p class="lead">Frees resources originating from AllocMemory().</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR FreeResource(MEMORYID ID)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>ID</td><td>The unique ID of the memory block.</td></tr>
+<div class="docs-content" style="display:none;" id="FreeResource"><h2>FreeResource()</h2><p class="lead">Safely deallocates memory blocks allocated by AllocMemory().</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR FreeResource(MEMORYID ID)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>ID</td><td>The unique identifier of the memory block to be freed.</td></tr>
 </tbody></table></div></div>
-<p>This function will free any resource that originates from AllocMemory(), using its <code>ID</code> for identification.  C++ headers also include a variant of this function that allows a direct memory pointer to be used as the identifier (however we do recommend the use of IDs to improve memory safety).</p>
-<p>In some circumstances the termination of the block will not take place immediately.  If the block is locked then it will be marked for deletion and not be collected until the lock count reaches zero.</p>
-<p>Crash protection measures are built-in.  If the memory header or tail is missing from the block, it is assumed that code has over-written the memory boundaries.  All caught errors are reported to the application log and warrant priority attention.</p>
-    <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The memory block was freed or marked for deletion.</td></tr>
-<tr><th class="col-md-1">InvalidData</th><td>The bounds of the block are damaged.</td></tr>
-<tr><th class="col-md-1">MemoryDoesNotExist</th><td>Memory block does not exist.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
+<p>FreeResource() provides safe deallocation of memory blocks with comprehensive validation and cleanup. The function accepts memory identifiers for optimal safety, though C++ headers also provide pointer-based variants for convenience.</p>
+<p>The deallocation process includes boundary validation to detect buffer overruns, lock-aware deallocation that respects access counting, resource manager integration for managed memory blocks, and automatic cleanup of ownership tracking structures.</p>
+<p>When a memory block is currently locked (AccessCount &gt; 0), it is marked for delayed collection rather than immediate deallocation. This prevents use-after-free errors while ensuring eventual cleanup when all references are released.</p>
+<p>Memory corruption detection is performed by validating header and trailer markers. Any detected corruption is logged as a high-priority error requiring immediate attention, as this indicates potential buffer overrun or memory management bugs in the application code.</p>
+    <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The memory block was successfully freed or marked for delayed collection.</td></tr>
+<tr><th class="col-md-1">InvalidData</th><td>Memory corruption detected - header or trailer markers are damaged.</td></tr>
+<tr><th class="col-md-1">MemoryDoesNotExist</th><td>The specified memory block identifier is not valid or already freed.</td></tr>
+<tr><th class="col-md-1">SystemLocked</th><td>Memory management system is currently locked by another thread.</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Invalid memory identifier provided.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="GenCRC32"><h2>GenCRC32()</h2><p class="lead">Generates 32-bit CRC checksum values.</p><div class="card card-info mb-3"><div class="card-header"><samp>UINT GenCRC32(UINT CRC, APTR Data, UINT Length)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>CRC</td><td>If streaming data to this function, this value should reflect the most recently returned CRC integer.  Otherwise set to zero.</td></tr>
 <tr><td>Data</td><td>The data to generate a CRC value for.</td></tr>
@@ -1707,6 +1710,7 @@ FreeResource(memory);  // Reference is no longer valid
 <tr><th>MSGID::CORE_END</th><td></td></tr>
 <tr><th>MSGID::DEBUG</th><td></td></tr>
 <tr><th>MSGID::EVENT</th><td></td></tr>
+<tr><th>MSGID::FLUID_THREAD_CALLBACK</th><td></td></tr>
 <tr><th>MSGID::FREE</th><td></td></tr>
 <tr><th>MSGID::QUIT</th><td></td></tr>
 <tr><th>MSGID::THREAD_ACTION</th><td></td></tr>

@@ -28,6 +28,7 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 * **Cross-Platform System Abstraction:** Full system abstraction for platform-agnostic development, including file I/O, clipboard management, threading, and object management.
 * **Multi-Channel Audio Playback:** Supports high-quality audio playback for WAV and MP3 files, enabling rich multimedia experiences.
 * **Enhanced Lua Framework:** Ideal for Lua developers seeking robust UI features and comprehensive system integration. Parasol serves as an enhanced Lua framework for modern application development.
+* **AI Ready:** The base repository includes everything a coding agent needs to understand and incorporate Parasol into your project, or just vibe your way to creating something new!
 
 ### Application Example
 
