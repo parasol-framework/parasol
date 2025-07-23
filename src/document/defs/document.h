@@ -10,10 +10,10 @@ static constexpr int MAX_PAGE_HEIGHT  = 100000;
 static constexpr int MIN_PAGE_WIDTH   = 20;
 static constexpr int MAX_DEPTH        = 40;    // Limits recursion from tables-within-tables
 static constexpr int WIDTH_LIMIT      = 4000;
-static constexpr std::string DEFAULT_FONTSTYLE("Medium");
-static constexpr std::string DEFAULT_FONTFACE("Noto Sans");
-static constexpr std::string DEFAULT_FONTFILL("rgb(0,0,0)");
 static constexpr int DEFAULT_FONTSIZE = 14;    // 72DPI pixel size
+static std::string DEFAULT_FONTSTYLE("Medium");
+static std::string DEFAULT_FONTFACE("Noto Sans");
+static std::string DEFAULT_FONTFILL("rgb(0,0,0)");
 
 enum class TE : char {
    NIL = 0,
