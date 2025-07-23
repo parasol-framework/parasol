@@ -44,8 +44,8 @@ enum {
 
 class socket_info { // Only the SocketHandle FD is unique.  NetSocket may be referenced multiple times for as many clients exist.
 public:
-   void *Reference = NULL;      // Reference to a NetSocket, ClientSocket
-   void *NetHost = NULL;        // For win_async_resolvename() and WM_RESOLVENAME
+   void *Reference = nullptr;      // Reference to a NetSocket, ClientSocket
+   void *NetHost = nullptr;        // For win_async_resolvename() and WM_RESOLVENAME
    HANDLE ResolveHandle = INVALID_HANDLE_VALUE; // For win_async_resolvename() and WM_RESOLVENAME
    WSW_SOCKET SocketHandle = 0; // Winsock socket FD (same as the key)
    int Flags = 0;
@@ -458,7 +458,7 @@ const char * StartupWinsock() // Return zero if succesful
       glNetClass.cbSize        = sizeof(glNetClass);
       glNetClass.style         = CS_DBLCLKS;
       glNetClass.lpfnWndProc   = win_messages;
-      glNetClass.hInstance     = GetModuleHandle(NULL);
+      glNetClass.hInstance     = GetModuleHandle(nullptr);
       glNetClass.lpszClassName = "NetClass";
       if (!RegisterClassEx(&glNetClass)) {
          return "Failed to register window class for network messages.";
@@ -475,9 +475,9 @@ const char * StartupWinsock() // Return zero if succesful
          0,
          0, 0,
          CW_USEDEFAULT, CW_USEDEFAULT,
-         (HWND)NULL,
-         (HMENU)NULL,
-         GetModuleHandle(NULL), NULL))) return "Failed to create Window for receiving network messages.";
+         (HWND)nullptr,
+         (HMENU)nullptr,
+         GetModuleHandle(nullptr), nullptr))) return "Failed to create Window for receiving network messages.";
    }
 
    if (!glWinsockInitialised) {
@@ -496,7 +496,7 @@ const char * StartupWinsock() // Return zero if succesful
       glWinsockInitialised = TRUE;
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -504,7 +504,7 @@ const char * StartupWinsock() // Return zero if succesful
 int ShutdownWinsock()
 {
    if (glNetWindow) { DestroyWindow(glNetWindow); glNetWindow = FALSE; }
-   if (glNetClassInit) { UnregisterClass("NetClass", GetModuleHandle(NULL)); glNetClassInit = FALSE; }
+   if (glNetClassInit) { UnregisterClass("NetClass", GetModuleHandle(nullptr)); glNetClassInit = FALSE; }
    if (glWinsockInitialised) { WSACleanup(); glWinsockInitialised = FALSE; }
    return 0;
 }

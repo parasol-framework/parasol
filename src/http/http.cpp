@@ -105,15 +105,15 @@ For information about the HTTP protocol, please refer to the official protocol w
 
 #include "md5.c"
 
-#define MAX_AUTH_RETRIES 5
 #define CRLF "\r\n"
-#define HASHLEN 16
-#define HASHHEXLEN 32
+constexpr int MAX_AUTH_RETRIES = 5;
+constexpr int HASHLEN = 16;
+constexpr int HASHHEXLEN = 32;
 typedef char HASH[HASHLEN];
 typedef char HASHHEX[HASHHEXLEN+1];
 
-#define BUFFER_READ_SIZE 16384  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
-#define BUFFER_WRITE_SIZE 16384 // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
+constexpr int BUFFER_READ_SIZE = 16384;  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
+constexpr int BUFFER_WRITE_SIZE = 16384; // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
 template <class T> void SET_ERROR(pf::Log log, T http, ERR code) { http->Error = code; log.detail("Set error code %d: %s", LONG(code), GetErrorMsg(code)); }
 
@@ -121,11 +121,11 @@ static ERR create_http_class(void);
 
 JUMPTABLE_CORE
 JUMPTABLE_NETWORK
-static OBJECTPTR modNetwork = NULL;
-static OBJECTPTR clHTTP = NULL;
-static objProxy *glProxy = NULL;
+static OBJECTPTR modNetwork = nullptr;
+static OBJECTPTR clHTTP = nullptr;
+static objProxy *glProxy = nullptr;
 
-extern "C" UBYTE glAuthScript[];
+extern "C" uint8_t glAuthScript[];
 static LONG glAuthScriptLength;
 
 class extHTTP : public objHTTP {
@@ -149,36 +149,36 @@ class extHTTP : public objHTTP {
    std::string AuthAlgorithm;
    std::string AuthCNonce;
    std::vector<char> RecvBuffer; // Receive buffer - aids downloading if HTF::RECVBUFFER is defined
-   UBYTE  *WriteBuffer;
-   APTR   Buffer;           // Temporary buffer for storing outgoing data
-   objFile *flOutput;
-   objFile *flInput;
+   uint8_t  *WriteBuffer;
+   APTR     Buffer;           // Temporary buffer for storing outgoing data
+   objFile  *flOutput;
+   objFile  *flInput;
    objNetSocket *Socket;    // Socket over which the communication is taking place
-   UBYTE  *Chunk;           // Chunk buffer
-   LONG   WriteSize;
-   LONG   WriteOffset;
-   LONG   ChunkSize;        // Size of the chunk buffer
-   LONG   ChunkBuffered;    // Number of bytes buffered, cannot exceed ChunkSize
-   LONG   ChunkLen;         // Length of the current chunk being processed (applies when reading the chunk data)
-   LONG   ChunkIndex;
-   TIMER  TimeoutManager;
+   uint8_t  *Chunk;           // Chunk buffer
+   int      WriteSize;
+   int      WriteOffset;
+   int      ChunkSize;        // Size of the chunk buffer
+   int      ChunkBuffered;    // Number of bytes buffered, cannot exceed ChunkSize
+   int      ChunkLen;         // Length of the current chunk being processed (applies when reading the chunk data)
+   int      ChunkIndex;
+   TIMER    TimeoutManager;
    int64_t  LastReceipt;      // Last time (microseconds) at which data was received
    int64_t  TotalSent;        // Total number of bytes sent - exists for assisting debugging only
    OBJECTID DialogWindow;
-   LONG   ResponseIndex;    // Next element to write to in 'Buffer'
-   LONG   SearchIndex;      // Current position of the CRLFCRLF search.
-   WORD   InputPos;         // File name parsing position in InputFile
-   UBYTE  RedirectCount;
-   UBYTE  AuthRetries;
-   UWORD  Connecting:1;
-   UWORD  AuthAttempt:1;
-   UWORD  AuthPreset:1;
-   UWORD  AuthDigest:1;
-   UWORD  SecurePath:1;
-   UWORD  Tunneling:1;
-   UWORD  Chunked:1;
-   UWORD  MultipleInput:1;
-   UWORD  ProxyDefined:1;   // TRUE if the ProxyServer has been manually set by the user
+   LONG     ResponseIndex;    // Next element to write to in 'Buffer'
+   LONG     SearchIndex;      // Current position of the CRLFCRLF search.
+   WORD     InputPos;         // File name parsing position in InputFile
+   uint8_t  RedirectCount;
+   uint8_t  AuthRetries;
+   uint16_t Connecting:1;
+   uint16_t AuthAttempt:1;
+   uint16_t AuthPreset:1;
+   uint16_t AuthDigest:1;
+   uint16_t SecurePath:1;
+   uint16_t Tunneling:1;
+   uint16_t Chunked:1;
+   uint16_t MultipleInput:1;
+   uint16_t ProxyDefined:1;   // TRUE if the ProxyServer has been manually set by the user
 };
 
 static ERR HTTP_Activate(extHTTP *);
@@ -235,7 +235,7 @@ static const FieldDef clStatus[] = {
    { "Service Unavailable",      HTS::SERVICE_UNAVAILABLE },
    { "Gateway Timeout",          HTS::GATEWAY_TIMEOUT },
    { "HTTP Version Unsupported", HTS::VERSION_UNSUPPORTED },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 //********************************************************************************************************************
@@ -250,7 +250,7 @@ static void writehex(HASH, HASHHEX);
 static void digest_calc_ha1(extHTTP *, HASHHEX);
 static void digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
 static ERR  write_socket(extHTTP *, CPTR, LONG, LONG *);
-static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &);
+static void set_http_method(extHTTP *, CSTRING, std::ostringstream &);
 static ERR  SET_Path(extHTTP *, CSTRING);
 static ERR  SET_Location(extHTTP *, CSTRING);
 static ERR  timeout_manager(extHTTP *, int64_t, int64_t);
@@ -261,7 +261,7 @@ static ERR  socket_outgoing(objNetSocket *);
 /*   if (Object->UID IS Self->DialogWindow) {
       Self->DialogWindow = 0;
       if ((Self->Username) and (Self->Password)) { // Make a second attempt at resolving the HTTP request
-         HTTP_Activate(Self, NULL);
+         HTTP_Activate(Self, nullptr);
       }
       else {
          log.msg("No username and password provided, deactivating...");
@@ -299,9 +299,9 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (clHTTP)     { FreeResource(clHTTP);     clHTTP     = NULL; }
-   if (glProxy)    { FreeResource(glProxy);    glProxy    = NULL; }
-   if (modNetwork) { FreeResource(modNetwork); modNetwork = NULL; }
+   if (clHTTP)     { FreeResource(clHTTP);     clHTTP     = nullptr; }
+   if (glProxy)    { FreeResource(glProxy);    glProxy    = nullptr; }
+   if (modNetwork) { FreeResource(modNetwork); modNetwork = nullptr; }
    return ERR::Okay;
 }
 
@@ -382,15 +382,15 @@ static ERR HTTP_Activate(extHTTP *Self)
    Self->Flags        &= ~(HTF::MOVED|HTF::REDIRECTED);
 
    if ((Self->Socket) and (Self->Socket->State IS NTC::DISCONNECTED)) {
-      Self->Socket->set(FID_Feedback, (APTR)NULL);
+      Self->Socket->set(FID_Feedback, (APTR)nullptr);
       FreeResource(Self->Socket);
-      Self->Socket = NULL;
+      Self->Socket = nullptr;
       Self->SecurePath = TRUE;
    }
 
    Self->Response.clear();
-   if (Self->flInput)  { FreeResource(Self->flInput); Self->flInput = NULL; }
-   if (Self->flOutput) { FreeResource(Self->flOutput); Self->flOutput = NULL; }
+   if (Self->flInput)  { FreeResource(Self->flInput); Self->flInput = nullptr; }
+   if (Self->flOutput) { FreeResource(Self->flOutput); Self->flOutput = nullptr; }
 
    Self->RecvBuffer.resize(0);
 
@@ -650,18 +650,17 @@ static ERR HTTP_Activate(extHTTP *Self)
          if ((Self->Method IS HTM::PUT) or (Self->Method IS HTM::POST)) {
             Self->Socket->setOutgoing(C_FUNCTION(socket_outgoing));
          }
-         else Self->Socket->set(FID_Outgoing, (APTR)NULL);
+         else Self->Socket->set(FID_Outgoing, (APTR)nullptr);
       }
-      else Self->Socket->set(FID_Outgoing, (APTR)NULL);
+      else Self->Socket->set(FID_Outgoing, (APTR)nullptr);
    }
 
    // Buffer the HTTP command string to the socket (will write on connect if we're not connected already).
 
    auto cstr = cmd.str();
-   if (write_socket(Self, cstr.c_str(), cstr.length(), NULL) IS ERR::Okay) {
+   if (write_socket(Self, cstr.c_str(), cstr.length(), nullptr) IS ERR::Okay) {
       if (Self->Socket->State IS NTC::DISCONNECTED) {
-         ERR result;
-         if ((result = Self->Socket->connect(Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR::Okay) {
+         if (auto result = Self->Socket->connect(Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port); result IS ERR::Okay) {
             Self->Connecting = true;
 
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
@@ -710,12 +709,12 @@ static ERR HTTP_Deactivate(extHTTP *Self)
 
    // Closing files is important for dropping the file locks
 
-   if (Self->flInput) { FreeResource(Self->flInput); Self->flInput = NULL; }
-   if (Self->flOutput) { FreeResource(Self->flOutput); Self->flOutput = NULL; }
+   if (Self->flInput) { FreeResource(Self->flInput); Self->flInput = nullptr; }
+   if (Self->flOutput) { FreeResource(Self->flOutput); Self->flOutput = nullptr; }
 
    // Free up the outgoing buffer since it is only needed during transfers and will be reallocated as necessary.
 
-   if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = NULL; }
+   if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = nullptr; }
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
    if (Self->Socket) {
@@ -725,9 +724,9 @@ static ERR HTTP_Deactivate(extHTTP *Self)
 
       if ((Self->Socket->State IS NTC::DISCONNECTED) or (Self->CurrentState IS HGS::TERMINATED)) {
          log.msg("Terminating socket (disconnected).");
-         Self->Socket->set(FID_Feedback, (APTR)NULL);
+         Self->Socket->set(FID_Feedback, (APTR)nullptr);
          FreeResource(Self->Socket);
-         Self->Socket = NULL;
+         Self->Socket = nullptr;
          Self->SecurePath = TRUE;
       }
    }
@@ -740,23 +739,23 @@ static ERR HTTP_Deactivate(extHTTP *Self)
 static ERR HTTP_Free(extHTTP *Self)
 {
    if (Self->Socket)     {
-      Self->Socket->set(FID_Feedback, (APTR)NULL);
+      Self->Socket->set(FID_Feedback, (APTR)nullptr);
       FreeResource(Self->Socket);
-      Self->Socket = NULL;
+      Self->Socket = nullptr;
    }
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
-   if (Self->flInput)     { FreeResource(Self->flInput);     Self->flInput = NULL; }
-   if (Self->flOutput)    { FreeResource(Self->flOutput);    Self->flOutput = NULL; }
-   if (Self->Buffer)      { FreeResource(Self->Buffer);      Self->Buffer = NULL; }
-   if (Self->Chunk)       { FreeResource(Self->Chunk);       Self->Chunk = NULL; }
-   if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
-   if (Self->InputFile)   { FreeResource(Self->InputFile);   Self->InputFile = NULL; }
-   if (Self->OutputFile)  { FreeResource(Self->OutputFile);  Self->OutputFile = NULL; }
-   if (Self->Host)        { FreeResource(Self->Host);        Self->Host = NULL; }
-   if (Self->UserAgent)   { FreeResource(Self->UserAgent);   Self->UserAgent = NULL; }
-   if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
+   if (Self->flInput)     { FreeResource(Self->flInput);     Self->flInput = nullptr; }
+   if (Self->flOutput)    { FreeResource(Self->flOutput);    Self->flOutput = nullptr; }
+   if (Self->Buffer)      { FreeResource(Self->Buffer);      Self->Buffer = nullptr; }
+   if (Self->Chunk)       { FreeResource(Self->Chunk);       Self->Chunk = nullptr; }
+   if (Self->Path)        { FreeResource(Self->Path);        Self->Path = nullptr; }
+   if (Self->InputFile)   { FreeResource(Self->InputFile);   Self->InputFile = nullptr; }
+   if (Self->OutputFile)  { FreeResource(Self->OutputFile);  Self->OutputFile = nullptr; }
+   if (Self->Host)        { FreeResource(Self->Host);        Self->Host = nullptr; }
+   if (Self->UserAgent)   { FreeResource(Self->UserAgent);   Self->UserAgent = nullptr; }
+   if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = nullptr; }
 
    for (LONG i=0; i < std::ssize(Self->Password); i++) Self->Password[i] = char(0xff);
 
@@ -1060,7 +1059,7 @@ The HTTP server to target for HTTP requests is defined here.  To change the host
 
 static ERR SET_Host(extHTTP *Self, CSTRING Value)
 {
-   if (Self->Host) { FreeResource(Self->Host); Self->Host = NULL; }
+   if (Self->Host) { FreeResource(Self->Host); Self->Host = nullptr; }
    Self->Host = pf::strclone(Value);
    return ERR::Okay;
 }
@@ -1129,7 +1128,7 @@ static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
 
    log.trace("InputFile: %.80s", Value);
 
-   if (Self->InputFile) { FreeResource(Self->InputFile);  Self->InputFile = NULL; }
+   if (Self->InputFile) { FreeResource(Self->InputFile);  Self->InputFile = nullptr; }
 
    Self->MultipleInput = FALSE;
    Self->InputPos = 0;
@@ -1205,9 +1204,9 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
       // Free the current socket if the entire URI changes
 
       if (Self->Socket) {
-         Self->Socket->set(FID_Feedback, (APTR)NULL);
+         Self->Socket->set(FID_Feedback, (APTR)nullptr);
          FreeResource(Self->Socket);
-         Self->Socket = NULL;
+         Self->Socket = nullptr;
       }
 
       log.msg("%s", Value);
@@ -1224,8 +1223,8 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
       Self->Flags |= HTF::SSL;
    }
 
-   if (Self->Host) { FreeResource(Self->Host); Self->Host = NULL; }
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Host) { FreeResource(Self->Host); Self->Host = nullptr; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    // Parse host name
 
@@ -1245,7 +1244,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 
    if (*str IS ':') {
       str++;
-      if (auto i = strtol(str, NULL, 0)) {
+      if (auto i = strtol(str, nullptr, 0)) {
          Self->Port = i;
          if (Self->Port IS 443) Self->Flags |= HTF::SSL;
       }
@@ -1339,7 +1338,7 @@ been set in the #Flags field.
 
 static ERR SET_OutputFile(extHTTP *Self, CSTRING Value)
 {
-   if (Self->OutputFile) { FreeResource(Self->OutputFile); Self->OutputFile = NULL; }
+   if (Self->OutputFile) { FreeResource(Self->OutputFile); Self->OutputFile = nullptr; }
    Self->OutputFile = pf::strclone(Value);
    return ERR::Okay;
 }
@@ -1390,7 +1389,7 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
 {
    Self->AuthRetries = 0; // Reset the retry counter
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    if (!Value) return ERR::Okay;
 
@@ -1461,7 +1460,7 @@ that the proxy server uses to receive requests, see the #ProxyPort field.
 
 static ERR SET_ProxyServer(extHTTP *Self, CSTRING Value)
 {
-   if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
+   if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = nullptr; }
    if ((Value) and (Value[0])) Self->ProxyServer = pf::strclone(Value);
    Self->ProxyDefined = TRUE;
    return ERR::Okay;
@@ -1479,7 +1478,7 @@ here.
 
 static ERR GET_Realm(extHTTP *Self, CSTRING *Value)
 {
-   if (Self->Realm.empty()) *Value = NULL;
+   if (Self->Realm.empty()) *Value = nullptr;
    else *Value = Self->Realm.c_str();
    return ERR::Okay;
 }
@@ -1504,9 +1503,9 @@ The buffer is null-terminated if you wish to use it as a string.
 
 *********************************************************************************************************************/
 
-static ERR GET_RecvBuffer(extHTTP *Self, UBYTE **Value, LONG *Elements)
+static ERR GET_RecvBuffer(extHTTP *Self, uint8_t **Value, LONG *Elements)
 {
-   *Value = (UBYTE *)Self->RecvBuffer.data();
+   *Value = (uint8_t *)Self->RecvBuffer.data();
    *Elements = Self->RecvBuffer.size();
    return ERR::Okay;
 }
@@ -1567,7 +1566,7 @@ This field describe the `user-agent` value that will be sent in HTTP requests.  
 
 static ERR SET_UserAgent(extHTTP *Self, CSTRING Value)
 {
-   if (Self->UserAgent) { FreeResource(Self->UserAgent); Self->UserAgent = NULL; }
+   if (Self->UserAgent) { FreeResource(Self->UserAgent); Self->UserAgent = nullptr; }
    Self->UserAgent = pf::strclone(Value);
    return ERR::Okay;
 }
@@ -1606,25 +1605,25 @@ static const FieldArray clFields[] = {
    { "Index",          FDF_INT64|FDF_RW }, // Writeable only because we update it using SetField()
    { "ContentLength",  FDF_INT64|FDF_RW },
    { "Size",           FDF_INT64|FDF_RW },
-   { "Host",           FDF_STRING|FDF_RI, NULL, SET_Host },
-   { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
-   { "OutputFile",     FDF_STRING|FDF_RW, NULL, SET_OutputFile },
-   { "InputFile",      FDF_STRING|FDF_RW, NULL, SET_InputFile },
-   { "UserAgent",      FDF_STRING|FDF_RW, NULL, SET_UserAgent },
+   { "Host",           FDF_STRING|FDF_RI, nullptr, SET_Host },
+   { "Path",           FDF_STRING|FDF_RW, nullptr, SET_Path },
+   { "OutputFile",     FDF_STRING|FDF_RW, nullptr, SET_OutputFile },
+   { "InputFile",      FDF_STRING|FDF_RW, nullptr, SET_InputFile },
+   { "UserAgent",      FDF_STRING|FDF_RW, nullptr, SET_UserAgent },
    { "ClientData",     FDF_POINTER|FDF_RW },
    { "InputObject",    FDF_OBJECTID|FDF_RW },
    { "OutputObject",   FDF_OBJECTID|FDF_RW },
-   { "Method",         FDF_INT|FDF_LOOKUP|FDF_RW, NULL, SET_Method, &clHTTPMethod },
+   { "Method",         FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_Method, &clHTTPMethod },
    { "Port",           FDF_INT|FDF_RW },
-   { "ObjectMode",     FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clHTTPObjectMode },
-   { "Flags",          FDF_INTFLAGS|FDF_RW, NULL, NULL, &clHTTPFlags },
-   { "Status",         FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clStatus },
+   { "ObjectMode",     FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clHTTPObjectMode },
+   { "Flags",          FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clHTTPFlags },
+   { "Status",         FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clStatus },
    { "Error",          FDF_INT|FDF_RW },
-   { "Datatype",       FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clHTTPDatatype },
-   { "CurrentState",   FDF_INT|FDF_LOOKUP|FDF_RW, NULL, SET_CurrentState, &clHTTPCurrentState },
-   { "ProxyServer",    FDF_STRING|FDF_RW, NULL, SET_ProxyServer },
+   { "Datatype",       FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clHTTPDatatype },
+   { "CurrentState",   FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_CurrentState, &clHTTPCurrentState },
+   { "ProxyServer",    FDF_STRING|FDF_RW, nullptr, SET_ProxyServer },
    { "ProxyPort",      FDF_INT|FDF_RW },
-   { "BufferSize",     FDF_INT|FDF_RW, NULL, SET_BufferSize },
+   { "BufferSize",     FDF_INT|FDF_RW, nullptr, SET_BufferSize },
    // Virtual fields
    { "AuthCallback",   FDF_FUNCTIONPTR|FDF_RW,   GET_AuthCallback, SET_AuthCallback },
    { "ContentType",    FDF_STRING|FDF_RW,        GET_ContentType, SET_ContentType },
@@ -1635,8 +1634,8 @@ static const FieldArray clFields[] = {
    { "RecvBuffer",     FDF_ARRAY|FDF_BYTE|FDF_R, GET_RecvBuffer },
    { "Src",            FDF_STRING|FDF_SYNONYM|FDF_RW, GET_Location, SET_Location },
    { "StateChanged",   FDF_FUNCTIONPTR|FDF_RW,   GET_StateChanged, SET_StateChanged },
-   { "Username",       FDF_STRING|FDF_W,         NULL, SET_Username },
-   { "Password",       FDF_STRING|FDF_W,         NULL, SET_Password },
+   { "Username",       FDF_STRING|FDF_W,         nullptr, SET_Username },
+   { "Password",       FDF_STRING|FDF_W,         nullptr, SET_Password },
    END_FIELD
 };
 
@@ -1659,5 +1658,5 @@ static ERR create_http_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_http_module() { return &ModHeader; }

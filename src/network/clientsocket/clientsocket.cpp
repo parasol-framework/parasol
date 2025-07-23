@@ -224,7 +224,7 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 {
 #ifdef __linux__
-   LONG non_blocking = 1;
+   int non_blocking = 1;
    ioctl(Self->Handle, FIONBIO, &non_blocking);
 #endif
 

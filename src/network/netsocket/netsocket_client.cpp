@@ -84,13 +84,18 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
 #ifdef ENABLE_SSL
   #ifdef _WIN32
     if ((Self->WinSSL) and (Self->State IS NTC::CONNECTING_SSL)) {
-      log.traceBranch("Continuing SSL communication...");
-      sslConnect(Self);
+      log.trace("Windows SSL handshake in progress, reading raw data.");
+      std::array<char, 65536> Buffer;
+      int Result;
+      ERR error = WIN_RECEIVE(Self->SocketHandle, Buffer.data(), Buffer.size(), 0, &Result);
+      if ((error IS ERR::Okay) and (Result > 0)) {
+         sslHandshakeReceived(Self, Buffer.data(), Result);
+      }
       return;
     }
   #else
     if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
-      log.traceBranch("Continuing SSL communication...");
+      log.traceBranch("Continuing SSL handshake...");
       sslConnect(Self);
       return;
     }
@@ -134,11 +139,11 @@ restart:
    }
 
    if (!Self->ReadCalled) {
-      char buffer[80];
+      std::array<char,512> buffer;
       LONG total = 0;
 
       do {
-         error = RECEIVE(Self, Self->SocketHandle, &buffer, sizeof(buffer), 0, &result);
+         error = RECEIVE(Self, Self->SocketHandle, buffer.data(), buffer.size(), 0, &result);
          total += result;
       } while (result > 0);
 

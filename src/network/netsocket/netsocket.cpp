@@ -54,7 +54,7 @@ All data that is received from client sockets will be passed to the #Incoming fe
 // The MaxWriteLen cannot exceed the size of the network queue on the host platform, otherwise all send attempts will
 // return 'could block' error codes.  Note that when using SSL, the write length is an SSL library imposition.
 
-static LONG glMaxWriteLen = 16 * 1024;
+static int glMaxWriteLen = 16 * 1024;
 
 //********************************************************************************************************************
 // Prototypes for internal methods
@@ -71,7 +71,7 @@ static void free_client(extNetSocket *, NetClient *);
 static void free_client_socket(extNetSocket *, extClientSocket *, BYTE);
 static void server_client_connect(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
-static ERR write_queue(extNetSocket *, NetQueue *, CPTR, LONG);
+static ERR write_queue(extNetSocket *, NetQueue *, CPTR, int);
 
 //********************************************************************************************************************
 
@@ -199,7 +199,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
    server_address.sin_addr.s_addr = net::HostToLong(IPs[0].Data[0]);
 
 #ifdef __linux__
-   LONG result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address));
+   int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address));
 
    if (result IS -1) {
       if (errno IS EINPROGRESS) {
@@ -271,9 +271,9 @@ static ERR NETSOCKET_Disable(extNetSocket *Self)
    log.trace("");
 
 #ifdef __linux__
-   LONG result = shutdown(Self->SocketHandle, 2);
+   int result = shutdown(Self->SocketHandle, 2);
 #elif _WIN32
-   LONG result = win_shutdown(Self->SocketHandle, 2);
+   int result = win_shutdown(Self->SocketHandle, 2);
 #endif
 
    if (result) { // Zero is success on both platforms
@@ -366,7 +366,6 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
 
 static ERR NETSOCKET_FreeWarning(extNetSocket *Self)
 {
-
    if (Self->InUse) {
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
          pf::Log log;
@@ -407,13 +406,13 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
    if ((!Args) or (!Args->Address)) return log.warning(ERR::NullArgs);
 
    struct sockaddr_in addr;
-   LONG result;
+   int result;
 
 #ifdef __linux__
    socklen_t addr_length = sizeof(addr);
    result = getsockname(Self->SocketHandle, (struct sockaddr *)&addr, &addr_length);
 #elif _WIN32
-   LONG addr_length = sizeof(addr);
+   int addr_length = sizeof(addr);
    result = win_getsockname(Self->SocketHandle, (struct sockaddr *)&addr, &addr_length);
 #endif
 
@@ -444,7 +443,6 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    // field.
 
    if ((Self->Flags & NSF::SSL) != NSF::NIL) {
-      if ((error = sslInit()) != ERR::Okay) return error;
       if ((error = sslSetup(Self)) != ERR::Okay) return error;
    }
 #endif
@@ -466,8 +464,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
    #if 0
       // Was there any reason to use ioctl() when we have fcntl()???
-      ULONG non_blocking = 1;
-      LONG result = ioctl(Self->SocketHandle, FIONBIO, &non_blocking);
+      uint32_t non_blocking = 1;
+      int result = ioctl(Self->SocketHandle, FIONBIO, &non_blocking);
       if (result) return log.warning(ERR::Failed);
    #else
       if (fcntl(Self->SocketHandle, F_SETFL, fcntl(Self->SocketHandle, F_GETFL) | O_NONBLOCK)) return log.warning(ERR::Failed);
@@ -475,7 +473,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
    // Set the send timeout so that connect() will timeout after a reasonable time
 
-   //LONG timeout = 30000;
+   //int timeout = 30000;
    //result = setsockopt(Self->SocketHandle, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
    //assert(result IS 0);
 
@@ -483,12 +481,6 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
    Self->SocketHandle = win_socket(Self, TRUE, FALSE);
    if (Self->SocketHandle IS NOHANDLE) return ERR::Failed;
-
-#endif
-
-#ifdef ENABLE_SSL
-
-   if (Self->SSL) sslLinkSocket(Self); // Link the socket handle to the SSL object
 
 #endif
 
@@ -506,8 +498,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             addr.sin6_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
             addr.sin6_addr   = in6addr_any;   // Must be passed in in network byte order
 
-            LONG result;
-            LONG value = 1;
+            int result;
+            int value = 1;
             setsockopt(Self->SocketHandle, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
 
             if ((result = bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
@@ -530,8 +522,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
          addr.sin_addr.s_addr   = INADDR_ANY;   // Must be passed in in network byte order
 
          #ifdef __linux__
-            LONG result;
-            LONG value = 1;
+            int result;
+            int value = 1;
             setsockopt(Self->SocketHandle, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
 
             if ((result = bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
@@ -682,8 +674,8 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
       }
    }
 
-   LONG msglen, result, magic;
-   ULONG total_length;
+   int msglen, result, magic;
+   uint32_t total_length;
    ERR error;
 
    if (queue->Index >= sizeof(NetMsg)) { // The complete message header has been received
@@ -771,7 +763,7 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
       else return ERR::LimitedSuccess;
    }
    else {
-      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, LONG(error));
+      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, int(error));
       queue->Index = 0;
       return error;
    }
@@ -815,7 +807,7 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    // Note that if a write queue has been setup, there is no way that we can write to the server until the queue has
    // been exhausted.  Thus we have add more data to the queue if it already exists.
 
-   LONG len;
+   int len;
    ERR error;
    if (!Self->WriteQueue.Buffer) {
       len = Args->Length;
@@ -884,7 +876,7 @@ static ERR NETSOCKET_WriteMsg(extNetSocket *Self, struct ns::WriteMsg *Args)
    UBYTE endbuffer[sizeof(NetMsgEnd) + 1];
    NetMsgEnd *end = (NetMsgEnd *)(endbuffer + 1);
    endbuffer[0] = 0; // This null terminator helps with message parsing
-   end->Magic = cpu_be32((ULONG)NETMSG_MAGIC_TAIL);
+   end->Magic = cpu_be32((uint32_t)NETMSG_MAGIC_TAIL);
    end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
    acWrite(Self, &endbuffer, sizeof(endbuffer), NULL);
    return ERR::Okay;
@@ -950,7 +942,7 @@ Feedback: A callback trigger for when the state of the NetSocket is changed.
 Refer to a custom function in this field and it will be called whenever the #State of the socket (such as
 connection or disconnection) changes.
 
-The function must be in the format `Function(*NetSocket, *ClientSocket, LONG State)`
+The function must be in the format `Function(*NetSocket, *ClientSocket, int State)`
 
 The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects
 the new value in the #State field.
@@ -1095,7 +1087,7 @@ OutQueueSize: The number of bytes on the socket's outgoing queue.
 
 *********************************************************************************************************************/
 
-static ERR GET_OutQueueSize(extNetSocket *Self, LONG *Value)
+static ERR GET_OutQueueSize(extNetSocket *Self, int *Value)
 {
    *Value = Self->WriteQueue.Length;
    return ERR::Okay;
@@ -1139,23 +1131,34 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
    pf::Log log;
 
    if (Value != Self->State) {
-      if ((Self->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("State changed from %d to %d", LONG(Self->State), LONG(Value));
+      if ((Self->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("State changed from %d to %d", int(Self->State), int(Value));
 
       #ifdef ENABLE_SSL
       if ((Self->State IS NTC::CONNECTING_SSL) and (Value IS NTC::CONNECTED)) {
          // SSL connection has just been established
 
-         if (SSL_get_verify_result(Self->SSL) != X509_V_OK) { // Handle the failed verification
-             log.trace("SSL certification was not validated.");
+         #ifdef _WIN32
+         if (Self->WinSSL) {
+            if (ssl_wrapper_get_verify_result(Self->WinSSL) != 0) { // Handle the failed verification
+               log.trace("SSL certification was not validated.");
+            }
+            else log.trace("SSL certification is valid.");
          }
-         else log.trace("SSL certification is valid.");
+         #else
+         if (Self->SSL) {
+            if (SSL_get_verify_result(Self->SSL) != X509_V_OK) { // Handle the failed verification
+               log.trace("SSL certification was not validated.");
+            }
+            else log.trace("SSL certification is valid.");
+         }
+         #endif
       }
       #endif
 
       Self->State = Value;
 
       if (Self->Feedback.defined()) {
-         log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", LONG(Self->State), Self->Feedback.Context);
+         log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", int(Self->State), Self->Feedback.Context);
 
          if (Self->Feedback.isC()) {
             pf::SwitchContext context(Self->Feedback.Context);
@@ -1166,7 +1169,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
             sc::Call(Self->Feedback, std::to_array<ScriptArg>({
                { "NetSocket",    Self, FD_OBJECTPTR },
                { "ClientSocket", APTR(NULL), FD_OBJECTPTR },
-               { "State",        LONG(Self->State) }
+               { "State",        int(Self->State) }
             }));
          }
       }
@@ -1214,13 +1217,20 @@ connection is not encrypted, a value of zero is returned to indicate that the co
 
 *********************************************************************************************************************/
 
-static ERR GET_ValidCert(extNetSocket *Self, LONG *Value)
+static ERR GET_ValidCert(extNetSocket *Self, int *Value)
 {
 #ifdef ENABLE_SSL
+   #ifdef _WIN32
+   if ((Self->WinSSL) and (Self->State IS NTC::CONNECTED)) {
+      *Value = ssl_wrapper_get_verify_result(Self->WinSSL);
+   }
+   else *Value = 0;
+   #else
    if ((Self->SSL) and (Self->State IS NTC::CONNECTED)) {
       *Value = SSL_get_verify_result(Self->SSL);
    }
    else *Value = 0;
+   #endif
 
    return ERR::Okay;
 #else
@@ -1270,14 +1280,14 @@ static void free_socket(extNetSocket *Self)
 
 //********************************************************************************************************************
 
-static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG Length)
+static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, int Length)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Queuing a socket message of %d bytes.", Length);
 
    if (Queue->Buffer) {
-      if (Queue->Index >= (ULONG)Queue->Length) {
+      if (Queue->Index >= (uint32_t)Queue->Length) {
          log.trace("Terminating the current buffer (emptied).");
          FreeResource(Queue->Buffer);
          Queue->Buffer = NULL;
@@ -1285,7 +1295,7 @@ static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG L
    }
 
    if (Queue->Buffer) { // Add more information to an existing queue
-      if (Queue->Length + Length > (ULONG)Self->MsgLimit) {
+      if (Queue->Length + Length > (uint32_t)Self->MsgLimit) {
          log.trace("Cannot buffer message of %d bytes - it will overflow the MsgLimit.", Length);
          return ERR::BufferOverflow;
       }
@@ -1326,7 +1336,7 @@ static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG L
 // reliable method of managing recursion problems, but burdens the message queue.
 
 #ifdef _WIN32
-void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG Message, ERR Error)
+void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int Message, ERR Error)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1342,9 +1352,9 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
       ClientSocket = NULL;
    }
 
-   #ifdef _DEBUG
+   #if defined(_DEBUG) || defined(ENABLE_TRACE_MSGS)
    static const CSTRING msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
-   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], LONG(Error), Socket->InUse, Socket->WinRecursion);
+   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], int(Error), Socket->InUse, Socket->WinRecursion);
    #endif
 
    pf::SwitchContext context(Socket);
@@ -1352,7 +1362,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
    Socket->InUse++;
 
    if (Message IS NTE_READ) {
-      if (Error != ERR::Okay) log.warning("Socket failed on incoming data, error %d.", LONG(Error));
+      if (Error != ERR::Okay) log.warning("Socket failed on incoming data, error %d.", int(Error));
 
       #ifdef NO_NETRECURSION
          if (Socket->WinRecursion) {
@@ -1375,7 +1385,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
       #endif
    }
    else if (Message IS NTE_WRITE) {
-      if (Error != ERR::Okay) log.warning("Socket failed on outgoing data, error %d.", LONG(Error));
+      if (Error != ERR::Okay) log.warning("Socket failed on outgoing data, error %d.", int(Error));
 
       #ifdef NO_NETRECURSION
          if (Socket->WinRecursion) {
@@ -1398,7 +1408,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
       #endif
    }
    else if (Message IS NTE_CLOSE) {
-      log.msg("Socket closed by server, error %d.", LONG(Error));
+      log.msg("Socket closed by server, error %d.", int(Error));
       if (Socket->State != NTC::DISCONNECTED) Socket->setState(NTC::DISCONNECTED);
       free_socket(Socket);
    }
@@ -1411,12 +1421,13 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
          log.msg("Connection to server granted.");
 
          #ifdef ENABLE_SSL
-            if (Socket->SSL) {
+            if (Socket->WinSSL) {
                log.traceBranch("Attempting SSL handshake.");
                sslConnect(Socket);
 
                if (Socket->State IS NTC::CONNECTING_SSL) {
-                  //RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, &client_server_incoming, Socket);
+                  // In Windows, socket handles are managed in win_messages().
+                  //RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
                }
             }
             else Socket->setState(NTC::CONNECTED);
@@ -1478,7 +1489,7 @@ static const FieldDef clValidCert[] = {
 
 static const FieldArray clSocketFields[] = {
    { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "NetClient" },
-   { "ClientData",         FDF_POINTER|FDF_RW },
+   { "ClientData",       FDF_POINTER|FDF_RW },
    { "Address",          FDF_STRING|FDF_RI, NULL, SET_Address },
    { "State",            FDF_INT|FDF_LOOKUP|FDF_RW, NULL, SET_State, &clNetSocketState },
    { "Error",            FDF_INT|FDF_R },
@@ -1493,8 +1504,8 @@ static const FieldArray clSocketFields[] = {
    { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, GET_Feedback, SET_Feedback },
    { "Incoming",         FDF_FUNCTIONPTR|FDF_RW, GET_Incoming, SET_Incoming },
    { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  GET_Outgoing, SET_Outgoing },
-   { "OutQueueSize",     FDF_INT|FDF_R,         GET_OutQueueSize },
-   { "ValidCert",        FDF_INT|FDF_LOOKUP,    GET_ValidCert, NULL, &clValidCert },
+   { "OutQueueSize",     FDF_INT|FDF_R,          GET_OutQueueSize },
+   { "ValidCert",        FDF_INT|FDF_LOOKUP,     GET_ValidCert, NULL, &clValidCert },
    END_FIELD
 };
 

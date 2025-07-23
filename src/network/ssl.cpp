@@ -1,26 +1,4 @@
 
-/*********************************************************************************************************************
-** Initialise SSL for the first time.  NB: Refer to MODExpunge() for the resource termination code.
-*/
-
-static ERR sslInit(void)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (ssl_init) return ERR::Okay;
-
-   log.traceBranch();
-
-   SSL_load_error_strings();
-   ERR_load_BIO_strings();
-   ERR_load_crypto_strings();
-   SSL_library_init();
-   OPENSSL_add_all_algorithms_noconf(); // Is this call a significant resource expense?
-
-   ssl_init = TRUE;
-   return ERR::Okay;
-}
-
 //********************************************************************************************************************
 
 static void sslDisconnect(extNetSocket *Self)
@@ -97,8 +75,15 @@ static ERR sslSetup(extNetSocket *Self)
    pf::Log log(__FUNCTION__);
 
    if (!ssl_init) {
-      error = sslInit();
-      if (error != ERR::Okay) return error;
+      log.traceBranch();
+
+      SSL_load_error_strings();
+      ERR_load_BIO_strings();
+      ERR_load_crypto_strings();
+      SSL_library_init();
+      OPENSSL_add_all_algorithms_noconf(); // Is this call a significant resource expense?
+
+      ssl_init = TRUE;
    }
 
    if (Self->CTX) return ERR::Okay;

@@ -8,18 +8,8 @@ This file provides the same interface as ssl.cpp but uses the Windows SSL wrappe
 #ifdef _WIN32
 #ifdef ENABLE_SSL
 
-/*********************************************************************************************************************
-** Initialize SSL wrapper for Windows (no-op since wrapper auto-initializes)
-*/
-
-static ERR sslInit(void)
-{
-   return ssl_wrapper_init();
-}
-
-/*********************************************************************************************************************
-** Disconnect SSL connection on Windows
-*/
+//********************************************************************************************************************
+// Disconnect SSL connection on Windows
 
 static void sslDisconnect(extNetSocket *Self)
 {
@@ -32,9 +22,8 @@ static void sslDisconnect(extNetSocket *Self)
    }
 }
 
-/*********************************************************************************************************************
-** Setup SSL context for Windows
-*/
+//********************************************************************************************************************
+// Setup SSL context for Windows
 
 static ERR sslSetup(extNetSocket *Self)
 {
@@ -43,20 +32,62 @@ static ERR sslSetup(extNetSocket *Self)
    if (Self->WinSSL) return ERR::Okay;
 
    log.traceBranch("Setting up Windows SSL context.");
-
-   Self->WinSSL = ssl_wrapper_create_context();
-   if (!Self->WinSSL) {
+  
+   if (Self->WinSSL = ssl_wrapper_create_context(); !Self->WinSSL) {
       log.warning("Failed to create Windows SSL context");
       return ERR::Failed;
    }
 
-   log.msg("Windows SSL connectivity has been configured successfully.");
+   log.trace("Windows SSL connectivity has been configured successfully.");
    return ERR::Okay;
 }
 
-/*********************************************************************************************************************
-** Connect SSL using Windows wrapper
-*/
+//********************************************************************************************************************
+// Handle SSL handshake data from server.
+// 
+// Handshaking can return error code 0x80090308 (SEC_E_INVALID_TOKEN), this can mean that Windows received malformed
+// SSL handshake data from the server.  Win32 error 87 (ERROR_INVALID_PARAMETER) can be caused by server 
+// certificate/SSL configuration issues
+
+static ERR sslHandshakeReceived(extNetSocket *Self, const void* data, int length)
+{
+   pf::Log log(__FUNCTION__);
+   
+   if (!Self->WinSSL or !data or length <= 0) return ERR::Args;
+   
+   log.traceBranch("Processing SSL handshake data (%d bytes)", length);
+   
+   SSL_ERROR_CODE result = ssl_wrapper_continue_handshake(Self->WinSSL, data, length);
+   
+   switch (result) {
+      case SSL_OK:
+         log.trace("SSL handshake completed successfully.");
+         Self->setState(NTC::CONNECTED);
+         return ERR::Okay;
+         
+      case SSL_ERROR_CONNECTING:
+         log.trace("SSL handshake continuing, waiting for more data.");
+         // Stay in CONNECTING_SSL state
+         return ERR::Okay;
+         
+      case SSL_ERROR_WOULD_BLOCK:
+         log.trace("SSL handshake would block.");
+         return ERR::Okay;
+         
+      default:
+         log.warning("SSL handshake failed: %d", result);
+         log.warning("Detailed error: %s", ssl_wrapper_get_error_description(Self->WinSSL));
+         log.warning("Security status: 0x%08X, Win32 error: %d", 
+            ssl_wrapper_get_last_security_status(Self->WinSSL),
+            ssl_wrapper_get_last_win32_error(Self->WinSSL));
+         Self->Error = ERR::Failed;
+         Self->setState(NTC::DISCONNECTED);
+         return ERR::Failed;
+   }
+}
+
+//********************************************************************************************************************
+// Connect SSL using Windows wrapper
 
 static ERR sslConnect(extNetSocket *Self)
 {
@@ -66,17 +97,8 @@ static ERR sslConnect(extNetSocket *Self)
 
    if (!Self->WinSSL) return ERR::FieldNotSet;
 
-   // Set the socket handle for the SSL wrapper
-   SSL_ERROR_CODE result = ssl_wrapper_set_socket(Self->WinSSL, Self->SocketHandle);
-   if (result != SSL_OK) {
-      log.warning("Failed to set socket for Windows SSL: %d", result);
-      Self->Error = ERR::Failed;
-      Self->setState(NTC::DISCONNECTED);
-      return ERR::Failed;
-   }
-
-   // Attempt the SSL connection
-   result = ssl_wrapper_connect(Self->WinSSL);
+   std::string hostname = Self->Address ? Self->Address : "";
+   auto result = ssl_wrapper_connect(Self->WinSSL, (void *)Self->SocketHandle, hostname);
    
    switch (result) {
       case SSL_OK:
@@ -95,7 +117,10 @@ static ERR sslConnect(extNetSocket *Self)
          return ERR::Okay;
          
       default:
-         log.warning("Windows SSL connection failed: %d", result);
+         log.warning("Windows SSL connection failed with code %d; %s", result, ssl_wrapper_get_error_description(Self->WinSSL));
+         log.warning("Security status: 0x%08X, Win32 error: %d", 
+            ssl_wrapper_get_last_security_status(Self->WinSSL),
+            ssl_wrapper_get_last_win32_error(Self->WinSSL));
          Self->Error = ERR::Failed;
          Self->setState(NTC::DISCONNECTED);
          return ERR::Failed;
