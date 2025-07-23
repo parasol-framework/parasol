@@ -5,7 +5,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
 {
    pf::Log log("http_feedback");
 
-   log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, LONG(State), CurrentContext()->UID);
+   log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, int(State), CurrentContext()->UID);
 
    auto Self = (extHTTP *)Socket->ClientData; //(extHTTP *)CurrentContext();
    if (Self->classID() != CLASSID::HTTP) { log.warning(ERR::SystemCorrupt); return; }
@@ -386,7 +386,7 @@ static ERR socket_incoming(objNetSocket *Socket)
       // Note that the response always inserts a hidden null-terminator for printing as a string.
 
       while (true) {
-         if (Self->Response.empty()) Self->Response.resize(256);
+         if (Self->Response.empty()) Self->Response.resize(512);
 
          if (Self->ResponseIndex + 1 >= std::ssize(Self->Response)) {
             Self->Response.resize(Self->Response.size() + 256);
@@ -619,6 +619,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                return ERR::Okay;
             }
          }
+         log.trace("Partial HTTP header received, awaiting full header...");
       }
    }
    else if (Self->CurrentState IS HGS::READING_CONTENT) {

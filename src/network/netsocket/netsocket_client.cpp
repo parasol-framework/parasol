@@ -82,16 +82,29 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
    }
 
 #ifdef ENABLE_SSL
-   if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
-      log.traceBranch("Continuing SSL communication...");
+  #ifdef _WIN32
+    if ((Self->WinSSL) and (Self->State IS NTC::CONNECTING_SSL)) {
+      log.trace("Windows SSL handshake in progress, reading raw data.");
+      std::array<char, 4096> buffer;
+      int result;
+      ERR error = WIN_RECEIVE(Self->SocketHandle, buffer.data(), buffer.size(), 0, &result);
+      if ((error IS ERR::Okay) and (result > 0)) {
+         sslHandshakeReceived(Self, buffer.data(), result);
+      }
+      return;
+    }
+  #else
+    if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
+      log.traceBranch("Continuing SSL handshake...");
       sslConnect(Self);
       return;
-   }
+    }
 
-   if (Self->SSLBusy) {
+    if (Self->SSLBusy) {
       log.trace("SSL object is busy.");
       return; // SSL object is performing a background operation (e.g. handshake)
-   }
+    }
+  #endif
 #endif
 
    if (Self->IncomingRecursion) {
@@ -126,11 +139,11 @@ restart:
    }
 
    if (!Self->ReadCalled) {
-      char buffer[80];
+      std::array<char,512> buffer;
       LONG total = 0;
 
       do {
-         error = RECEIVE(Self, Self->SocketHandle, &buffer, sizeof(buffer), 0, &result);
+         error = RECEIVE(Self, Self->SocketHandle, buffer.data(), buffer.size(), 0, &result);
          total += result;
       } while (result > 0);
 
@@ -171,10 +184,17 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    if (Self->Terminating) return;
 
 #ifdef ENABLE_SSL
-   if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
+  #ifdef _WIN32
+    if ((Self->WinSSL) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
-   }
+    }
+  #else
+    if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
+      log.trace("Still connecting via SSL...");
+      return;
+    }
+  #endif
 #endif
 
    if (Self->OutgoingRecursion) {
@@ -187,7 +207,9 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    log.traceBranch();
 
 #ifdef ENABLE_SSL
-   if (Self->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
+  #ifndef _WIN32
+    if (Self->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
+  #endif
 #endif
 
    Self->InUse++;
@@ -201,9 +223,13 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       while (Self->WriteQueue.Buffer) {
          LONG len = Self->WriteQueue.Length - Self->WriteQueue.Index;
          #ifdef ENABLE_SSL
-         if ((!Self->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+           #ifdef _WIN32
+             if ((!Self->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+           #else
+             if ((!Self->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+           #endif
          #else
-         if (len > glMaxWriteLen) len = glMaxWriteLen;
+           if (len > glMaxWriteLen) len = glMaxWriteLen;
          #endif
 
          if (len > 0) {

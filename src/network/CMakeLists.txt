@@ -1,4 +1,6 @@
 # Network module
+# If you need to do a deep debug of the network log, enable PARASOL_VLOG at project level (it won't work
+# at module level).
 
 set (MOD network)
 set (INC_MOD_NETWORK TRUE PARENT_SCOPE)
@@ -14,14 +16,20 @@ set_module_defaults (${MOD})
 
 target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/network.cpp")
 
-if (OPENSSL_FOUND)
-   message (STATUS "Network module will be compiled with SSL support.")
+if (DISABLE_SSL)
+   message (STATUS "Network module will not be compiled with SSL support (disabled by DISABLE_SSL).")
+elseif (WIN32)
+   message (STATUS "Using Windows native SSL support.")
+   add_definitions ("-DENABLE_SSL")
+   target_sources (${MOD} PRIVATE "win32/ssl_wrapper.cpp")
+   list (APPEND NETWORK_LIBS secur32 crypt32)
+elseif (OPENSSL_FOUND)
+   message (STATUS "Network module will be compiled with OpenSSL support.")
    # Linking against the .a files is necessary to ensure a static link.
    list (APPEND NETWORK_LIBS ssl.a crypto.a)
    target_include_directories (${MOD} PRIVATE "${OPENSSL_INCLUDE_DIR}")
-   add_definitions ("-DENABLE_SSL")
 else ()
-   message (STATUS "Network module will not be compiled with SSL support.")
+   message (STATUS "Network module will not be compiled with SSL support (OpenSSL not found).")
 endif ()
 
 if (WIN32)

@@ -2,7 +2,7 @@
 #
 # Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
 # Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
-# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DINSTALL_INCLUDES=FALSE -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
+# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DINSTALL_INCLUDES=FALSE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
 #
 # For GCC based Windows builds, -G"MinGW Makefiles" must be added to the above commands.
 #
@@ -50,7 +50,7 @@ else ()
 endif ()
 option (BUILD_TESTS       "Build/enable tests" ON)
 option (BUILD_DEFS        "Auto-generate C/C++ headers and documentation" OFF)
-option (DISABLE_SSL       "Disable built-in SSL support even if available on this system" ON)
+option (DISABLE_SSL       "Disable built-in SSL support even if available on this system" OFF)
 option (DISABLE_X11       "Disable X11 even if available on this system" OFF)
 option (DISABLE_AUDIO     "Disable audio API" OFF)
 option (DISABLE_DISPLAY   "Disable display API" OFF)
@@ -105,8 +105,12 @@ if (SYSTEM_ENDIAN_STYLE EQUAL 0) # Little endian (Intel)
 endif ()
 
 if (NOT DISABLE_SSL)
-   set (OPENSSL_USE_STATIC_LIBS TRUE) # Doesn't work as expected in MinGW env.
-   include (FindOpenSSL)
+   if (WIN32)
+      # Win32 SSL support is supported natively
+   else ()
+      set (OPENSSL_USE_STATIC_LIBS TRUE) # Doesn't work as expected in MinGW env.
+      include (FindOpenSSL)
+   endif ()
 endif ()
 
 if (NOT DISABLE_X11)

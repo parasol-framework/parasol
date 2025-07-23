@@ -83,10 +83,17 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    if (Socket->Terminating) return;
 
 #ifdef ENABLE_SSL
-   if ((Socket->SSL) and (Socket->State IS NTC::CONNECTING_SSL)) {
+  #ifdef _WIN32
+    if ((Socket->WinSSL) and (Socket->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
-   }
+    }
+  #else
+    if ((Socket->SSL) and (Socket->State IS NTC::CONNECTING_SSL)) {
+      log.trace("Still connecting via SSL...");
+      return;
+    }
+  #endif
 #endif
 
    if (ClientSocket->OutgoingRecursion) {
@@ -97,7 +104,9 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    log.traceBranch();
 
 #ifdef ENABLE_SSL
-   if (Socket->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
+  #ifndef _WIN32
+    if (Socket->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
+  #endif
 #endif
 
    ClientSocket->InUse++;
@@ -111,9 +120,13 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       while (ClientSocket->WriteQueue.Buffer) {
          LONG len = ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index;
          #ifdef ENABLE_SSL
-         if ((!Socket->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+           #ifdef _WIN32
+             if ((!Socket->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+           #else
+             if ((!Socket->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+           #endif
          #else
-         if (len > glMaxWriteLen) len = glMaxWriteLen;
+           if (len > glMaxWriteLen) len = glMaxWriteLen;
          #endif
 
          if (len > 0) {
@@ -211,7 +224,7 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 {
 #ifdef __linux__
-   LONG non_blocking = 1;
+   int non_blocking = 1;
    ioctl(Self->Handle, FIONBIO, &non_blocking);
 #endif
 

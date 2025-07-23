@@ -132,7 +132,40 @@ function testSSLProxy()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
 
+-----------------------------------------------------------------------------------------------------------------------
+
 function testHTTPS()
+   local proc = processing.new({ timeout = 5.0 })
+
+   local http = obj.new('http', {
+      src        = 'https://www.google.com',
+      method     = 'get',
+      outputFile = glOutFile,
+      flags      = '!debug',
+      stateChanged = function(HTTP, State)
+         if (State == HGS_COMPLETED) then
+            local content = file.readAll(glOutFile)
+            print(string.format('%.80s [%d bytes]', content, content:len()))
+         end
+         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+            proc.signal()
+         end
+         return ERR_Okay
+      end
+   })
+
+   local err = http.acActivate()
+   assert(err == ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
+
+   local err = proc.sleep(5.0)
+   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Making an HTTPS request to google.co.uk should cause a redirect to google.com, which should
+-- all be handled in the background.
+
+function testRedirectedHTTPS()
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
@@ -146,7 +179,7 @@ function testHTTPS()
             print(string.format('%.80s [%d bytes]', content, content:len()))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
-            HTTP.acSignal()
+            proc.signal()
          end
          return ERR_Okay
       end
@@ -158,6 +191,8 @@ function testHTTPS()
    local err = proc.sleep(5.0)
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 function testPHPPost()
    local proc = processing.new({ timeout = 5.0 })
@@ -302,7 +337,8 @@ end
 
    return {
       tests = {
-        'testPostString', 'testGet', 'testPostStringFile'
+        'testPostString', 'testGet', 'testPostStringFile',
+        'testHTTPS'
       },
       init = function(Path)
          glPath = Path

@@ -4204,12 +4204,6 @@ class objScript : public Object {
       return field->WriteValue(target, field, 0x08810300, to_cstring(Value), 1);
    }
 
-   inline ERR setOwner(OBJECTID Value) noexcept {
-      auto target = this;
-      auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, FD_INT, &Value, 1);
-   }
-
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
