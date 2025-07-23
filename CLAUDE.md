@@ -21,6 +21,7 @@ cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=loc
 **Build and install:**
 - Build: `cmake --build build/claude --config Release -j 8`
 - Install: `cmake --install build/claude`
+- To build an individual module, append `--target [module]` to the build command, e.g. `--target network`
 
 **Testing:**
 - GCC: `make -C release test ARGS=--verbose`
@@ -132,10 +133,65 @@ Unlike most vector graphics libraries that use immediate-mode rendering, Parasol
 
 ## Development Guidelines
 
-### Code Quality
+### ⚠️ CRITICAL PROJECT REQUIREMENTS (Override Standard C++ Practices)
+
+**These rules MUST be followed and override common C++ conventions:**
+
+- **NEVER use `static_cast`** - Use C-style casting instead: `int(variable)` NOT `static_cast<int>(variable)`
+- **NEVER use `&&`** - Use `and` instead of `&&`
+- **NEVER use `||`** - Use `or` instead of `||`
+- **NEVER use `==`** - Use the `IS` macro instead of `==`
+- **NEVER use C++ exceptions** - Error management relies on checking function results
+
+### 📋 MANDATORY CODING CHECKLIST
+
+Before considering ANY C++ code changes complete, verify:
+
+- [ ] All `&&` replaced with `and`
+- [ ] All `||` replaced with `or`
+- [ ] All `==` replaced with `IS` macro
+- [ ] All `static_cast` replaced with C-style casts
+- [ ] No C++ exceptions used
+- [ ] No trailing whitespace in file
+- [ ] Code compiles successfully
+- [ ] Follows formatting standards below
+
+### Additional Code Style Standards
 
 - Always use upper camel-case for the names of function arguments in C++ code.
-- Use three spaces for tabulation in C++ code.
+- Always use lower snake_case for the names of variables inside C++ functions.
+- Use three spaces for tabulation in C++ and Fluid code.
+- C++ functions that use global variables must be written with thread safety in mind.
+
+### Testing
+
+**MANDATORY: Always compile after making C++ changes**
+- After making changes to C++ source files, you MUST verify compilation by building the affected module(s)
+- This is required before considering any code changes complete
+- Use the module-specific build target to test individual modules quickly
+
+**Module Build Commands:**
+```bash
+# Build specific module (e.g., network, vector, svg, etc.)
+cmake --build build/claude --config Release --target [module_name] -j 8
+
+# Examples:
+cmake --build build/claude --config Release --target network -j 8    # For network changes
+cmake --build build/claude --config Release --target vector -j 8     # For vector changes
+cmake --build build/claude --config Release --target svg -j 8        # For SVG changes
+```
+
+**Full Build Commands:**
+```bash
+# Build everything
+cmake --build build/claude --config Release -j 8
+
+# Install after successful build
+cmake --install build/claude
+```
+
+**SSL-Specific Testing:**
+- If working with SSL code, ensure build is configured with SSL support
 
 ### Documentation
 
@@ -146,6 +202,7 @@ Unlike most vector graphics libraries that use immediate-mode rendering, Parasol
 - Embedded documentation for each class is identified by the `-CLASS-` marker.
 - Classes can export actions and methods, which are identified the `-ACTION-` and `-METHOD-` markers.
 - Embedded documentation for class fields are identified by the `-FIELD-` marker.
+- Always use British English spelling in documentation, comments and variable names.
 
 ## Module Dependencies
 
@@ -164,9 +221,12 @@ Key dependencies between modules:
 - `tools/` - Build tools and utilities (IDL processors, test runner)
 - `examples/` - Example applications and demonstrations (examine git-tracked .fluid files for current examples)
 - `data/` - Icons, fonts, styles, and configuration files
+- `docs/wiki/` - Markdown files for the GitHub Wiki, includes practical tutorials and guides on how to use Parasol.
+- `docs/html/` - Contains the entire Parasol website for offline viewing.
+- `docs/xml/` - Auto-generated API documentation in XML format.  This content is sourced from the Parasol C++ files.
 
 ### Key Examples for Learning
 
 - **`widgets.fluid`** - Primary showcase of Parasol's GUI capabilities, demonstrates standard widgets and UI patterns
-- **`vue.fluid`** - File viewer supporting SVG, RIPL, JPEG, PNG - shows document and graphics integration  
+- **`vue.fluid`** - File viewer supporting SVG, RIPL, JPEG, PNG - shows document and graphics integration
 - **`gradients.fluid`** - Interactive gradient editor demonstrating real-time vector graphics manipulation
