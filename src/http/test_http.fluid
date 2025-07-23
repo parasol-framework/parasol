@@ -132,6 +132,8 @@ function testSSLProxy()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
 
+-----------------------------------------------------------------------------------------------------------------------
+
 function testHTTPS()
    local proc = processing.new({ timeout = 5.0 })
 
@@ -159,7 +161,8 @@ function testHTTPS()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
 
--- Making an HTTPS request to google.co.uk will cause a redirect to google.com, this should
+-----------------------------------------------------------------------------------------------------------------------
+-- Making an HTTPS request to google.co.uk should cause a redirect to google.com, which should
 -- all be handled in the background.
 
 function testRedirectedHTTPS()
@@ -188,6 +191,8 @@ function testRedirectedHTTPS()
    local err = proc.sleep(5.0)
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 function testPHPPost()
    local proc = processing.new({ timeout = 5.0 })
