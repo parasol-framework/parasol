@@ -33,10 +33,10 @@ extern "C" void dsSeekData(Object *, int);
 #include "windows.h"
 
 static LPDIRECTSOUND glDirectSound;     // the DirectSound object
-static HMODULE dsModule = NULL;         // dsound.dll module handle
+static HMODULE dsModule = nullptr;         // dsound.dll module handle
 static HWND glWindow;                   // HWND for DirectSound
 
-static HRESULT (WINAPI *dsDirectSoundCreate)(const GUID *, LPDIRECTSOUND *, IUnknown FAR *) = NULL;
+static HRESULT (WINAPI *dsDirectSoundCreate)(const GUID *, LPDIRECTSOUND *, IUnknown FAR *) = nullptr;
 
 //********************************************************************************************************************
 // DirectSound uses logarithmic values for volume.  If there's a need to optimise this, generate a lookup table.
@@ -57,22 +57,22 @@ extern "C" const char * dsInitDevice(int mixRate)
 
    // If the DirectSound DLL hasn't been loaded yet, load it and get the address for DirectSoundCreate.
 
-   if ((dsModule IS NULL) or (dsDirectSoundCreate IS NULL) ) {
-      if ((dsModule = LoadLibrary("dsound.dll")) IS NULL) {
+   if ((dsModule IS nullptr) or (dsDirectSoundCreate IS nullptr) ) {
+      if ((dsModule = LoadLibrary("dsound.dll")) IS nullptr) {
          return "Couldn't load dsound.dll";
       }
 
-      if ((dsDirectSoundCreate = (HRESULT (*)(const GUID*, IDirectSound**, IUnknown*))GetProcAddress(dsModule, "DirectSoundCreate")) IS NULL) {
+      if ((dsDirectSoundCreate = (HRESULT (*)(const GUID*, IDirectSound**, IUnknown*))GetProcAddress(dsModule, "DirectSoundCreate")) IS nullptr) {
          return "Couldn't get DirectSoundCreate address";
       }
    }
 
-   if (dsDirectSoundCreate(NULL, &glDirectSound, NULL) != DS_OK) return "Failed in call to DirectSoundCreate().";
+   if (dsDirectSoundCreate(nullptr, &glDirectSound, nullptr) != DS_OK) return "Failed in call to DirectSoundCreate().";
 
    if (glDirectSound->SetCooperativeLevel(glWindow, DSSCL_PRIORITY) != DS_OK)
       return "Failed in call to SetCooperativeLevel().";
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -131,7 +131,7 @@ extern "C" const char * sndCreateBuffer(Object *Object, void *Wave, int BufferLe
                      |DSBCAPS_CTRLPOSITIONNOTIFY;
    dsbdesc.dwBufferBytes = BufferLength;
    dsbdesc.lpwfxFormat   = (LPWAVEFORMATEX)Wave;
-   if ((IDirectSound_CreateSoundBuffer(glDirectSound, &dsbdesc, &Sound->SoundBuffer, NULL) != DS_OK) or (!Sound->SoundBuffer)) {
+   if ((IDirectSound_CreateSoundBuffer(glDirectSound, &dsbdesc, &Sound->SoundBuffer, nullptr) != DS_OK) or (!Sound->SoundBuffer)) {
       return "CreateSoundBuffer() failed to create WAVE audio buffer.";
    }
 
@@ -147,7 +147,7 @@ extern "C" const char * sndCreateBuffer(Object *Object, void *Wave, int BufferLe
       IDirectSoundBuffer_Unlock(Sound->SoundBuffer, bufA, lenA, bufB, lenB); // lenA/B inform DSound as to how many bytes were written.
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -159,7 +159,7 @@ void sndFree(PlatformData *Info)
    if (Info->SoundBuffer) {
       IDirectSoundBuffer_Stop(Info->SoundBuffer);     // Stop the playback buffer
       IDirectSoundBuffer_Release(Info->SoundBuffer);  // Free the playback buffer
-      Info->SoundBuffer = NULL;
+      Info->SoundBuffer = nullptr;
    }
 }
 
@@ -262,7 +262,7 @@ extern "C" int sndStreamAudio(PlatformData *Sound)
 
    // Get the current play position.  NB: The BufferPos will cycle.
 
-   if (IDirectSoundBuffer_GetCurrentPosition(Sound->SoundBuffer, &Sound->BufferPos, NULL) IS DS_OK) {
+   if (IDirectSoundBuffer_GetCurrentPosition(Sound->SoundBuffer, &Sound->BufferPos, nullptr) IS DS_OK) {
       // If the playback marker is in the buffer's first half, we fill the second half, and vice versa.
 
       int lock_start = -1;

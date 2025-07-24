@@ -4,10 +4,10 @@
 
 static void free_alsa(extAudio *Self)
 {
-   if (Self->sndlog) { snd_output_close(Self->sndlog); Self->sndlog = NULL; }
-   if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = NULL; }
-   if (Self->MixHandle) { snd_mixer_close(Self->MixHandle); Self->MixHandle = NULL; }
-   if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
+   if (Self->sndlog) { snd_output_close(Self->sndlog); Self->sndlog = nullptr; }
+   if (Self->Handle) { snd_pcm_close(Self->Handle); Self->Handle = nullptr; }
+   if (Self->MixHandle) { snd_mixer_close(Self->MixHandle); Self->MixHandle = nullptr; }
+   if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = nullptr; }
 }
 
 //********************************************************************************************************************
@@ -111,7 +111,7 @@ static ERR init_audio(extAudio *Self)
                snd_mixer_t *mixhandle;
                if ((err = snd_mixer_open(&mixhandle, 0)) >= 0) {
                   if ((err = snd_mixer_attach(mixhandle, name.c_str())) >= 0) {
-                     if ((err = snd_mixer_selem_register(mixhandle, NULL, NULL)) >= 0) {
+                     if ((err = snd_mixer_selem_register(mixhandle, nullptr, nullptr)) >= 0) {
                         if ((err = snd_mixer_load(mixhandle)) >= 0) {
                            // Build a list of all available volume controls
 
@@ -149,7 +149,7 @@ next_card:
 
    if (Self->MixHandle) {
       snd_mixer_close(Self->MixHandle);
-      Self->MixHandle = NULL;
+      Self->MixHandle = nullptr;
    }
 
    // Mixer initialisation, for controlling volume
@@ -164,7 +164,7 @@ next_card:
       return ERR::Failed;
    }
 
-   if ((err = snd_mixer_selem_register(Self->MixHandle, NULL, NULL)) < 0) {
+   if ((err = snd_mixer_selem_register(Self->MixHandle, nullptr, nullptr)) < 0) {
       log.warning("snd_mixer_selem_register() %s", snd_strerror(err));
       return ERR::Failed;
    }
@@ -408,7 +408,7 @@ next_card:
 
    // Allocate a buffer that we will use for audio output
 
-   if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
+   if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = nullptr; }
 
    if (AllocMemory(Self->AudioBufferSize, MEM::DATA, &Self->AudioBuffer) IS ERR::Okay) {
       if ((Self->Flags & ADF::SYSTEM_WIDE) != ADF::NIL) {
@@ -422,7 +422,7 @@ next_card:
             for (j=0; j < (LONG)oldctl.size(); j++) {
                if (volctl[i].Name == oldctl[j].Name) {
                   setvol.Index   = i;
-                  setvol.Name    = NULL;
+                  setvol.Name    = nullptr;
                   setvol.Flags   = SVF::NIL;
                   setvol.Channel = -1;
                   setvol.Volume  = oldctl[j].Channels[0];
@@ -437,7 +437,7 @@ next_card:
 
             if (j IS (LONG)oldctl.size()) {
                setvol.Index   = i;
-               setvol.Name    = NULL;
+               setvol.Name    = nullptr;
                setvol.Flags   = SVF::NIL;
                setvol.Channel = -1;
                setvol.Volume  = 0.8;

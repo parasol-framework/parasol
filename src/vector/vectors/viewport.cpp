@@ -904,7 +904,7 @@ static const FieldDef clViewDimensions[] = {
    { "FixedY",       DMF::FIXED_Y },
    { "FixedWidth",   DMF::FIXED_WIDTH },
    { "FixedHeight",  DMF::FIXED_HEIGHT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clViewFields[] = {

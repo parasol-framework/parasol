@@ -19,7 +19,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
    // Remove the write callback
 
-   RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::REMOVE, &client_connect, NULL);
+   RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::REMOVE, &client_connect, nullptr);
 
    #ifdef ENABLE_SSL
    if ((Self->SSL) and (!result)) {
@@ -242,7 +242,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
          if (Self->WriteQueue.Index >= Self->WriteQueue.Length) {
             log.trace("Freeing the write queue (pos %d/%d).", Self->WriteQueue.Index, Self->WriteQueue.Length);
             FreeResource(Self->WriteQueue.Buffer);
-            Self->WriteQueue.Buffer = NULL;
+            Self->WriteQueue.Buffer = nullptr;
             Self->WriteQueue.Index = 0;
             Self->WriteQueue.Length = 0;
             break;
@@ -272,10 +272,10 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       if ((!Self->Outgoing.defined()) and (!Self->WriteQueue.Buffer)) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->UID, Self->SocketHandle);
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, NULL, NULL);
+            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
          #elif _WIN32
             win_socketstate(Self->SocketHandle, -1, 0);
-            Self->WriteSocket = NULL;
+            Self->WriteSocket = nullptr;
          #endif
       }
    }

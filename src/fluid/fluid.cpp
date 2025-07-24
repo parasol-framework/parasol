@@ -60,10 +60,10 @@ JUMPTABLE_CORE
 
 #include "defs.h"
 
-OBJECTPTR modDisplay = NULL; // Required by fluid_input.c
-OBJECTPTR modFluid = NULL;
-OBJECTPTR clFluid = NULL;
-struct ActionTable *glActions = NULL;
+OBJECTPTR modDisplay = nullptr; // Required by fluid_input.c
+OBJECTPTR modFluid = nullptr;
+OBJECTPTR clFluid = nullptr;
+struct ActionTable *glActions = nullptr;
 std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
 std::unordered_map<std::string, ULONG> glStructSizes;
 
@@ -108,7 +108,7 @@ static const struct Function JumpTableV1[] = {
    { (APTR)flTestCall6,   "TestCall6", argsTestCall6 },
    { (APTR)flTestCall7,   "TestCall7", argsTestCall7 },
    #endif
-   { NULL, NULL, NULL }
+   { nullptr, nullptr, nullptr }
 };
 
 #ifdef _DEBUG
@@ -169,14 +169,14 @@ static void flTestCall7(STRING a, STRING b, STRING c)
 
 CSTRING next_line(CSTRING String)
 {
-   if (!String) return NULL;
+   if (!String) return nullptr;
 
    while ((*String) and (*String != '\n') and (*String != '\r')) String++;
    while (*String IS '\r') String++;
    if (*String IS '\n') String++;
    while (*String IS '\r') String++;
    if (*String) return String;
-   else return NULL;
+   else return nullptr;
 }
 
 //********************************************************************************************************************
@@ -195,7 +195,7 @@ APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
       }
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -208,7 +208,7 @@ OBJECTPTR access_object(struct object *Object)
       Object->AccessCount++;
       return Object->ObjectPtr;
    }
-   else if (!Object->UID) return NULL; // Object reference is dead
+   else if (!Object->UID) return nullptr; // Object reference is dead
    else if (!Object->ObjectPtr) { // If not pointer defined then treat the object as detached.
       if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); error IS ERR::Okay) {
          Object->Locked = true;
@@ -216,7 +216,7 @@ OBJECTPTR access_object(struct object *Object)
       else if (error IS ERR::DoesNotExist) {
          pf::Log log(__FUNCTION__);
          log.trace("Object #%d has been terminated.", Object->UID);
-         Object->ObjectPtr = NULL;
+         Object->ObjectPtr = nullptr;
          Object->UID = 0;
       }
    }
@@ -233,7 +233,7 @@ void release_object(struct object *Object)
          if (Object->Locked) {
             ReleaseObject(Object->ObjectPtr);
             Object->Locked = false;
-            Object->ObjectPtr = NULL;
+            Object->ObjectPtr = nullptr;
          }
          else Object->ObjectPtr->unlock();
       }
@@ -292,7 +292,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    argModule->get(FID_Root, modFluid);
 
-   ActionList(&glActions, NULL); // Get the global action table from the Core
+   ActionList(&glActions, nullptr); // Get the global action table from the Core
 
    // Create a lookup table for converting named actions to IDs.
 
@@ -310,8 +310,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 static ERR MODExpunge(void)
 {
    if (glMsgThread) { FreeResource(glMsgThread); glMsgThread = nullptr; }
-   if (clFluid)     { FreeResource(clFluid); clFluid = NULL; }
-   if (modDisplay)  { FreeResource(modDisplay); modDisplay = NULL; }
+   if (clFluid)     { FreeResource(clFluid); clFluid = nullptr; }
+   if (modDisplay)  { FreeResource(modDisplay); modDisplay = nullptr; }
    return ERR::Okay;
 }
 
@@ -733,7 +733,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
       if (n > 0) {
          auto dt = datatype(value);
          if (dt IS 'i') {
-            lua_pushinteger(Lua, strtoll(value.c_str(), NULL, 0));
+            lua_pushinteger(Lua, strtoll(value.c_str(), nullptr, 0));
          }
          else if (dt IS 'f') {
             lua_pushnumber(Lua, strtod(value.c_str(), NULL));

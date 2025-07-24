@@ -144,7 +144,7 @@ static ERR object_set_object(lua_State *Lua, OBJECTPTR Object, Field *Field, LON
       }
       else return ERR::AccessObject;
    }
-   else return Object->set(Field->FieldID, (APTR)NULL);
+   else return Object->set(Field->FieldID, (APTR)nullptr);
 }
 
 static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
@@ -160,7 +160,7 @@ static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG V
       }
       else if (lua_tointeger(Lua, ValueIndex) IS 0) {
          // Setting pointer fields with numbers is only allowed if that number evaluates to zero (NULL)
-         return Object->set(Field->FieldID, (APTR)NULL);
+         return Object->set(Field->FieldID, (APTR)nullptr);
       }
       else return ERR::SetValueNotPointer;
    }
@@ -171,7 +171,7 @@ static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG V
       return Object->set(Field->FieldID, fstruct->Data);
    }
    else if (type IS LUA_TNIL) {
-      return Object->set(Field->FieldID, (APTR)NULL);
+      return Object->set(Field->FieldID, (APTR)nullptr);
    }
    else return ERR::SetValueNotPointer;
 }
@@ -281,8 +281,8 @@ static int object_get(lua_State *Lua)
       else if (auto field = FindField(obj, strihash(fieldname), &target)) {
          LONG result = 0;
          if (field->Flags & FD_ARRAY) {
-            if (field->Flags & FD_RGB) result = object_get_rgb(Lua, obj_read(0, NULL, field), def);
-            else result = object_get_array(Lua, obj_read(0, NULL, field), def);
+            if (field->Flags & FD_RGB) result = object_get_rgb(Lua, obj_read(0, nullptr, field), def);
+            else result = object_get_array(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_STRUCT) {
             result = object_get_struct(Lua, obj_read(0, NULL, field), def);

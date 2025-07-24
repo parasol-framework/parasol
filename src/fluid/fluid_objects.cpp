@@ -310,7 +310,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
       }
    }
 
-   *Args = NULL;
+   *Args = nullptr;
    if (auto mc = FindClass(ClassID)) {
       MethodEntry *table;
       LONG total_methods;
@@ -357,7 +357,7 @@ static int object_new(lua_State *Lua)
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       class_id = CLASSID(lua_tointeger(Lua, 1));
-      class_name = NULL;
+      class_name = nullptr;
       log.trace("$%.8x", ULONG(class_id));
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
@@ -393,7 +393,7 @@ static int object_new(lua_State *Lua)
          // preserve the order in which the fields were originally passed to the table.
 
          ERR field_error  = ERR::Okay;
-         CSTRING field_name = NULL;
+         CSTRING field_name = nullptr;
          LONG failed_type   = LUA_TNONE;
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 2) != 0) {
@@ -495,7 +495,7 @@ static int object_newchild(lua_State *Lua)
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       class_id = CLASSID(lua_tointeger(Lua, 1));
-      class_name = NULL;
+      class_name = nullptr;
       log.trace("$%.8x", class_id);
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
@@ -537,7 +537,7 @@ static int object_newchild(lua_State *Lua)
          // preserve the order in which the fields were originally passed to the table.
 
          ERR field_error = ERR::Okay;
-         CSTRING field_name = NULL;
+         CSTRING field_name = nullptr;
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 2) != 0) {
             if ((field_name = luaL_checkstring(Lua, -2))) {
@@ -569,7 +569,7 @@ static int object_newchild(lua_State *Lua)
          }
       }
 
-      def->ObjectPtr = NULL; // Objects created as children are treated as detached.
+      def->ObjectPtr = nullptr; // Objects created as children are treated as detached.
       def->Detached  = true;
       def->UID       = obj->UID;
       def->Class     = obj->Class;
@@ -592,7 +592,7 @@ object * push_object(lua_State *Lua, OBJECTPTR Object)
 
       auto_load_include(Lua, Object->Class);
 
-      newobject->ObjectPtr = NULL;
+      newobject->ObjectPtr = nullptr;
       newobject->UID       = Object->UID;
       newobject->Class     = Object->Class;
       newobject->Detached  = true; // Object is not linked to this Lua value.
@@ -602,7 +602,7 @@ object * push_object(lua_State *Lua, OBJECTPTR Object)
       return newobject;
    }
    else luaL_error(Lua, "Failed to create new object.");
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -649,7 +649,7 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
-   def->ObjectPtr   = NULL;
+   def->ObjectPtr   = nullptr;
    def->UID         = obj->UID;
    def->Class       = obj->Class;
    def->Detached    = true;
@@ -751,7 +751,7 @@ static int object_children(lua_State *Lua)
 
    CLASSID class_id;
    CSTRING classfilter;
-   if ((classfilter = luaL_optstring(Lua, 1, NULL)) and (classfilter[0])) {
+   if ((classfilter = luaL_optstring(Lua, 1, nullptr)) and (classfilter[0])) {
       class_id = CLASSID(strihash(classfilter));
    }
    else class_id = CLASSID::NIL;
@@ -769,7 +769,7 @@ static int object_children(lua_State *Lua)
 
       make_table(Lua, FD_INT, index, id.get());
    }
-   else make_table(Lua, FD_INT, 0, NULL);
+   else make_table(Lua, FD_INT, 0, nullptr);
 
    return 1; // make_table() always returns a value even if it is nil
 }
@@ -1138,7 +1138,7 @@ static const luaL_Reg objectlib_functions[] = {
    { "new",  object_new },
    { "find", object_find },
    { "class", object_class },
-   { NULL, NULL}
+   { nullptr, nullptr}
 };
 
 static const luaL_Reg objectlib_methods[] = {
@@ -1148,7 +1148,7 @@ static const luaL_Reg objectlib_methods[] = {
    { "__gc",       object_destruct },
    { "__pairs",    object_pairs },
    { "__ipairs",   object_ipairs },
-   { NULL, NULL }
+   { nullptr, nullptr }
 };
 
 void register_object_class(lua_State *Lua)
@@ -1162,7 +1162,7 @@ void register_object_class(lua_State *Lua)
    lua_pushvalue(Lua, -2);  // pushes the metatable
    lua_settable(Lua, -3);   // metatable.__index = metatable
 
-   luaL_openlib(Lua, NULL, objectlib_methods, 0);
+   luaL_openlib(Lua, nullptr, objectlib_methods, 0);
    luaL_openlib(Lua, "obj", objectlib_functions, 0);
 
    OJH_init        = simple_hash("init");

@@ -181,7 +181,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       std::lock_guard lock(glmPrint);
 
-      if ((Header) and (!*Header)) Header = NULL;
+      if ((Header) and (!*Header)) Header = nullptr;
 
       if ((Flags & (VLF::BRANCH|VLF::FUNCTION)) != VLF::NIL) msgstate = MS_FUNCTION;
       else msgstate = MS_MSG;
@@ -222,7 +222,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       if (!Header) {
          Header = action;
-         action = NULL;
+         action = nullptr;
       }
 
       #ifdef __ANDROID__

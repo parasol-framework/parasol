@@ -40,7 +40,7 @@ Example usage:
 
 <pre>
 APTR address;
-if (AllocMemory(1000, MEM::DATA, &address, NULL) == ERR::Okay) {
+if (AllocMemory(1000, MEM::DATA, &address, nullptr) == ERR::Okay) {
    // Use memory block...
    FreeResource(address);
 }

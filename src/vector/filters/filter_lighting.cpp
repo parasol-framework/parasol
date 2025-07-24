@@ -1007,7 +1007,7 @@ static ERR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, STRING *Value)
 static const FieldDef clLightingType[] = {
    { "Diffuse",  LT::DIFFUSE },
    { "Specular", LT::SPECULAR },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 #include "filter_lighting_def.c"

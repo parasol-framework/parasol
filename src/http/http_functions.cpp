@@ -122,9 +122,9 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
             // to authenticate with the dialog window.  We will close the socket
             // and create a new one once the user responds to the dialog.
 
-            Self->Socket->set(FID_Feedback, (APTR)NULL);
+            Self->Socket->set(FID_Feedback, (APTR)nullptr);
             FreeResource(Socket);
-            Self->Socket = NULL;
+            Self->Socket = nullptr;
             Self->SecurePath = TRUE;
             return;
          }
@@ -218,7 +218,7 @@ redo_upload:
       if ((Self->flInput->Position IS size) or (len IS 0)) {
          log.trace("All file content read (%d bytes) - freeing file.", (LONG)size);
          FreeResource(Self->flInput);
-         Self->flInput = NULL;
+         Self->flInput = nullptr;
          if (error IS ERR::Okay) error = ERR::Terminate;
       }
    }
@@ -337,7 +337,7 @@ continue_upload:
    if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, time_limit);
    else SubscribeTimer(time_limit, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
 
-   Self->WriteBuffer = NULL;
+   Self->WriteBuffer = nullptr;
    Self->WriteSize = 0;
 
    if (Self->Error != ERR::Okay) return ERR::Terminate;
@@ -694,7 +694,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   for (i=Self->ChunkIndex; i < Self->ChunkBuffered-1; i++) {
                      if ((Self->Chunk[i] IS '\r') and (Self->Chunk[i+1] IS '\n')) {
                         Self->Chunk[i] = 0;
-                        Self->ChunkLen = strtoll((CSTRING)Self->Chunk + Self->ChunkIndex, NULL, 0);
+                        Self->ChunkLen = strtoll((CSTRING)Self->Chunk + Self->ChunkIndex, nullptr, 0);
                         Self->Chunk[i] = '\r';
 
                         if (Self->ChunkLen <= 0) {
@@ -929,7 +929,7 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       else SET_ERROR(log, Self, ERR::CreateFile);
    }
 
-   if (Self->flOutput) Self->flOutput->write(Buffer, Length, NULL);
+   if (Self->flOutput) Self->flOutput->write(Buffer, Length, nullptr);
 
    if ((Self->Flags & HTF::RECV_BUFFER) != HTF::NIL) {
       Self->RecvBuffer.resize(Length+1);

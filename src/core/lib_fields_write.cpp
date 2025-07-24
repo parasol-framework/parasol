@@ -188,7 +188,7 @@ static ERR writeval_flags(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
          // Check if the string is a number
          for (j=0; str[j] and (str[j] >= '0') and (str[j] <= '9'); j++);
          if (!str[j]) {
-            int64 = strtoll(str, NULL, 0);
+            int64 = strtoll(str, nullptr, 0);
          }
          else if (Field->Arg) {
             bool reverse = false;
@@ -256,7 +256,7 @@ static ERR writeval_lookup(OBJECTPTR Object, Field *Field, int Flags, CPTR Data,
    if (Flags & FD_STRING) {
       if (Data) {
          FieldDef *lookup;
-         int32 = strtol((CSTRING)Data, NULL, 0); // If the Data string is a number rather than a lookup, this will extract it
+         int32 = strtol((CSTRING)Data, nullptr, 0); // If the Data string is a number rather than a lookup, this will extract it
          if ((lookup = (FieldDef *)Field->Arg)) {
             while (lookup->Name) {
                if (iequals((CSTRING)Data, lookup->Name)) {
@@ -283,7 +283,7 @@ static ERR writeval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, i
    if (Flags & FD_INT)        *offset = *((int *)Data);
    else if (Flags & FD_INT64)  *offset = (int)(*((int64_t *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((double *)Data));
-   else if (Flags & FD_STRING) *offset = strtol((STRING)Data, NULL, 0);
+   else if (Flags & FD_STRING) *offset = strtol((STRING)Data, nullptr, 0);
    else return ERR::SetValueNotNumeric;
    return ERR::Okay;
 }
@@ -294,7 +294,7 @@ static ERR writeval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
    if (Flags & FD_INT64)      *offset = *((int64_t *)Data);
    else if (Flags & FD_INT)   *offset = *((int *)Data);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((double *)Data));
-   else if (Flags & FD_STRING) *offset = strtoll((STRING)Data, NULL, 0);
+   else if (Flags & FD_STRING) *offset = strtoll((STRING)Data, nullptr, 0);
    else return ERR::SetValueNotNumeric;
    return ERR::Okay;
 }
@@ -305,7 +305,7 @@ static ERR writeval_double(OBJECTPTR Object, Field *Field, int Flags, CPTR Data,
    if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = *((double *)Data);
    else if (Flags & FD_INT)    *offset = *((int *)Data);
    else if (Flags & FD_INT64)  *offset = (*((int64_t *)Data));
-   else if (Flags & FD_STRING) *offset = strtod((STRING)Data, NULL);
+   else if (Flags & FD_STRING) *offset = strtod((STRING)Data, nullptr);
    else return ERR::SetValueNotNumeric;
    return ERR::Okay;
 }
@@ -382,7 +382,7 @@ static ERR setval_unit(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int
             unit.Value *= 0.01;
          }
       }
-      else unit.Value = strtod((CSTRING)Data, NULL);
+      else unit.Value = strtod((CSTRING)Data, nullptr);
       return ((ERR (*)(APTR, Unit *))(Field->SetValue))(Object, &unit);
    }
    else if (Flags & FD_UNIT) {
@@ -477,7 +477,7 @@ static ERR setval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int
    int int32;
    if (Flags & FD_INT64)       int32 = (int)(*((int64_t *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = F2I(*((double *)Data));
-   else if (Flags & FD_STRING) int32 = strtol((STRING)Data, NULL, 0);
+   else if (Flags & FD_STRING) int32 = strtol((STRING)Data, nullptr, 0);
    else if (Flags & FD_INT)    int32 = *((int *)Data);
    else if (Flags & FD_UNIT)   int32 = F2I(((Unit *)Data)->Value);
    else return ERR::SetValueNotNumeric;
@@ -491,7 +491,7 @@ static ERR setval_double(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, i
    double float64;
    if (Flags & FD_INT)         float64 = *((int *)Data);
    else if (Flags & FD_INT64)  float64 = (double)(*((int64_t *)Data));
-   else if (Flags & FD_STRING) float64 = strtod((CSTRING)Data, NULL);
+   else if (Flags & FD_STRING) float64 = strtod((CSTRING)Data, nullptr);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) float64 = *((double *)Data);
    else if (Flags & FD_UNIT)   float64 = ((Unit *)Data)->Value;
    else return ERR::SetValueNotNumeric;
@@ -525,7 +525,7 @@ static ERR setval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
 
    if (Flags & FD_INT)        int64 = *((int *)Data);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) int64 = std::llround(*((double *)Data));
-   else if (Flags & FD_STRING) int64 = strtoll((CSTRING)Data, NULL, 0);
+   else if (Flags & FD_STRING) int64 = strtoll((CSTRING)Data, nullptr, 0);
    else if (Flags & FD_INT64)  int64 = *((int64_t*)Data);
    else if (Flags & FD_UNIT)   int64 = std::llround(((Unit*)Data)->Value);
    else return ERR::SetValueNotNumeric;

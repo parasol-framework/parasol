@@ -437,7 +437,7 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntr
 
    log.detail("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
 
-   *Cache = NULL;
+   *Cache = nullptr;
    if ((Host->h_addrtype != AF_INET) and (Host->h_addrtype != AF_INET6)) return ERR::Args;
 
    DNSEntry cache;
@@ -472,7 +472,7 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEnt
 {
    if ((!Host) or (!Cache)) return ERR::NullArgs;
 
-   *Cache = NULL;
+   *Cache = nullptr;
 
    if (!Key) {
       if (!(Key = Host->ai_canonname)) return ERR::Args;
@@ -546,7 +546,7 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info
             .h_name      = host_name,
             .h_addrtype  = (IP->Type IS IPADDR::V4) ? AF_INET : AF_INET6,
             .h_length    = 0,
-            .h_addr_list = NULL
+            .h_addr_list = nullptr
          };
          return cache_host(glAddresses, Address, &host, Info);
       }
@@ -579,7 +579,7 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
    hints.ai_family   = AF_UNSPEC;
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_flags    = AI_CANONNAME;
-   int result = getaddrinfo(HostName, NULL, &hints, &servinfo);
+   int result = getaddrinfo(HostName, nullptr, &hints, &servinfo);
 
    switch (result) {
       case 0: {
@@ -627,7 +627,7 @@ static const FieldArray clNetLookupFields[] = {
    // Virtual fields
    { "Callback",  FDF_FUNCTIONPTR|FDF_RW, GET_Callback, SET_Callback },
    { "HostName",  FDF_STRING|FDF_R, GET_HostName },
-   { "Addresses", FDF_STRUCT|FDF_ARRAY|FDF_R, GET_Addresses, NULL, "IPAddress" },
+   { "Addresses", FDF_STRUCT|FDF_ARRAY|FDF_R, GET_Addresses, nullptr, "IPAddress" },
    END_FIELD
 };
 

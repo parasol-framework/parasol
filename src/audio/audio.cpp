@@ -55,7 +55,7 @@ static ERR MODOpen(OBJECTPTR);
 #include "module_def.c"
 
 JUMPTABLE_CORE
-static OBJECTPTR glAudioModule = NULL;
+static OBJECTPTR glAudioModule = nullptr;
 static OBJECTPTR clAudio = 0;
 static std::unordered_map<OBJECTID, LONG> glSoundChannels;
 class extAudio;
@@ -166,5 +166,5 @@ static STRUCTS glStructures = {
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_audio_module() { return &ModHeader; }

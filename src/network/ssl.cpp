@@ -8,15 +8,15 @@ static void sslDisconnect(extNetSocket *Self)
    if (Self->SSL) {
       log.traceBranch("Closing SSL connection.");
 
-      SSL_set_info_callback(Self->SSL, NULL);
+      SSL_set_info_callback(Self->SSL, nullptr);
       SSL_shutdown(Self->SSL);
       SSL_free(Self->SSL);
-      Self->SSL = NULL;
+      Self->SSL = nullptr;
    }
 
    if (Self->CTX) {
       SSL_CTX_free(Self->CTX);
-      Self->CTX = NULL;
+      Self->CTX = nullptr;
    }
 }
 
@@ -94,7 +94,7 @@ static ERR sslSetup(extNetSocket *Self)
       //if (GetResource(RES::LOG_LEVEL) > 3) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
 
       if (ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-         if (SSL_CTX_load_verify_locations(Self->CTX, NULL, path.c_str())) {
+         if (SSL_CTX_load_verify_locations(Self->CTX, nullptr, path.c_str())) {
             if ((Self->SSL = SSL_new(Self->CTX))) {
                log.msg("SSL connectivity has been configured successfully.");
 
@@ -112,10 +112,10 @@ static ERR sslSetup(extNetSocket *Self)
       else error = ERR::ResolvePath;
 
       SSL_CTX_free(Self->CTX);
-      Self->CTX = NULL;
+      Self->CTX = nullptr;
    }
    else {
-      log.warning("SSL_CTX_new: %s", ERR_error_string(ERR_get_error(), NULL));
+      log.warning("SSL_CTX_new: %s", ERR_error_string(ERR_get_error(), nullptr));
       error = ERR::Failed;
    }
 
@@ -132,9 +132,9 @@ static ERR sslLinkSocket(extNetSocket *Self)
 
    if ((Self->BIO = BIO_new_socket(Self->SocketHandle, BIO_NOCLOSE))) {
       SSL_set_bio(Self->SSL, Self->BIO, Self->BIO);
-//      SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_AUTO_RETRY), NULL);
-      SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER), NULL);
-      SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_ENABLE_PARTIAL_WRITE), NULL);
+//      SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_AUTO_RETRY), nullptr);
+      SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER), nullptr);
+      SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_ENABLE_PARTIAL_WRITE), nullptr);
    }
    else log.warning("Failed to create a SSL BIO object.");
 
@@ -190,7 +190,7 @@ static ERR sslConnect(extNetSocket *Self)
          default:                         Self->Error = ERR::Failed;
       }
 
-      log.warning("SSL_connect: %s (%s)", ERR_error_string(result, NULL), GetErrorMsg(Self->Error));
+      log.warning("SSL_connect: %s (%s)", ERR_error_string(result, nullptr), GetErrorMsg(Self->Error));
       Self->setState(NTC::DISCONNECTED);
       return Self->Error;
    }

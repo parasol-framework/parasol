@@ -105,7 +105,7 @@ struct AudioSample {
    bool     Stream;       // True if this is a stream
 
    AudioSample() {
-      Data     = NULL;
+      Data     = nullptr;
       Stream   = false;
       clear();
    }
@@ -117,7 +117,7 @@ struct AudioSample {
    void clear() {
       if (Data) FreeResource(Data);
 
-      Data         = NULL;
+      Data         = nullptr;
       SampleLength = SAMPLE(0);
       Loop1Start   = SAMPLE(0);
       Loop1End     = SAMPLE(0);

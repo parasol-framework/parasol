@@ -215,7 +215,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 #elif _WIN32
    LONG id = 0;
    #ifdef _DEBUG
-      winInitialise(&id, NULL); // Don't set a break handler, this will allow GDB intercept CTRL-C.
+      winInitialise(&id, nullptr); // Don't set a break handler, this will allow GDB intercept CTRL-C.
    #else
       winInitialise(&id, (APTR)&BreakHandler);
    #endif
@@ -475,7 +475,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          return ERR::SystemCall;
       }
 
-      RegisterFD(glSocket, RFD::READ, NULL, NULL);
+      RegisterFD(glSocket, RFD::read, nullptr, nullptr);
    #endif
 
    log.msg("Process: %d, Sync: %s, Root: %s", glProcessID, (glSync) ? "Y" : "N", glRootPath.c_str());
@@ -566,7 +566,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    // Generate the Core table for our new task
    LocalCoreBase = (struct CoreBase *)build_jump_table(glFunctions);
 #else
-   LocalCoreBase = NULL;
+   LocalCoreBase = nullptr;
 
    register_static_modules();
 
@@ -762,7 +762,7 @@ void print_diagnosis(LONG Signal)
    // Backtrace it
 #if defined(__unix__) && !defined(__ANDROID__)
    void *trace[16];
-   char **messages = (char **)NULL;
+   char **messages = (char **)nullptr;
    int i, trace_size = 0;
 
    trace_size = backtrace(trace, std::ssize(trace));
@@ -784,7 +784,7 @@ void print_diagnosis(LONG Signal)
       rewind(fd);
       if (auto len = fread(buffer, 1, sizeof(buffer)-1, fd); len > 0) {
          buffer[len] = 0;
-         fflush(NULL);
+         fflush(nullptr);
          fsync(STDERR_FILENO);
          fprintf(stderr, "%s", buffer);
 
@@ -839,7 +839,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    if (glCrashStatus IS 0) {
       if (((SignalNumber IS SIGQUIT) or (SignalNumber IS SIGHUP)))  {
          log.msg("Termination request - SIGQUIT or SIGHUP.");
-         SendMessage(MSGID::QUIT, MSF::NIL, NULL, 0);
+         SendMessage(MSGID::QUIT, MSF::NIL, nullptr, 0);
          glCrashStatus = 1;
          return;
       }
@@ -954,7 +954,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
    if (glCrashStatus > 1) {
       if ((glCodeIndex) and (glCodeIndex IS glLastCodeIndex)) {
          fprintf(stderr, "Unable to recover - exiting immediately.\n");
-         fflush(NULL);
+         fflush(nullptr);
          return 1;
       }
       glLastCodeIndex = glCodeIndex;
@@ -1050,7 +1050,7 @@ static void BreakHandler(void)
 #ifdef _WIN32
 static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTRING Icon, int8_t Hidden)
 {
-   SetVolume(Volume, Path, Icon, Label, NULL, VOLUME::REPLACE | (Hidden ? VOLUME::HIDDEN : VOLUME::NIL));
+   SetVolume(Volume, Path, Icon, Label, nullptr, VOLUME::REPLACE | (Hidden ? VOLUME::HIDDEN : VOLUME::NIL));
 }
 #endif
 
@@ -1074,7 +1074,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
    // OPF::SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
    #ifdef _WIN32
-      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
 
       #ifndef PARASOL_STATIC
@@ -1084,7 +1084,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
       else SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       #endif
    #elif __unix__
-      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
 
       #ifndef PARASOL_STATIC

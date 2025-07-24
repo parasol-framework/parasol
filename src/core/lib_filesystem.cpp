@@ -198,7 +198,7 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
          CSTRING *results;
          int size;
          if ((Callback->Context->get(FID_Results, results, size) IS ERR::Okay) and (size > 0)) {
-            return FFR(strtol(results[0], NULL, 0));
+            return FFR(strtol(results[0], nullptr, 0));
          }
          else return FFR::OKAY;
       }
@@ -215,7 +215,7 @@ static const virtual_drive * get_virtual(std::string_view Path)
    if (Path.empty() or Path.starts_with(':')) return &glVirtual[0]; // Root level counts as virtual
    auto id = get_volume_id(Path);
    if ((id) and (glVirtual.contains(id))) return &glVirtual[id];
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -503,11 +503,11 @@ CSTRING ResolveGroupID(LONG GroupID)
       group[i] = 0;
       return group;
    }
-   else return NULL;
+   else return nullptr;
 
 #else
 
-   return NULL;
+   return nullptr;
 
 #endif
 }
@@ -540,11 +540,11 @@ CSTRING ResolveUserID(LONG UserID)
       user[i] = 0;
       return user;
    }
-   else return NULL;
+   else return nullptr;
 
 #else
 
-   return NULL;
+   return nullptr;
 
 #endif
 }
@@ -711,7 +711,7 @@ ERR DeleteFile(CSTRING Path, FUNCTION *Callback)
    std::string resolve;
    if (ResolvePath(Path, RSF::NIL, &resolve) IS ERR::Okay) {
       const virtual_drive *vd = get_fs(resolve);
-      if (vd->Delete) return vd->Delete(resolve, NULL);
+      if (vd->Delete) return vd->Delete(resolve, nullptr);
       else return ERR::NoSupport;
    }
    else return ERR::ResolvePath;
@@ -950,7 +950,7 @@ ERR CreateFolder(CSTRING Path, PERMIT Permissions)
 
    if (glDefaultPermissions != PERMIT::NIL) Permissions = glDefaultPermissions;
    else if ((Permissions IS PERMIT::NIL) or ((Permissions & PERMIT::INHERIT) != PERMIT::NIL)) {
-      Permissions |= get_parent_permissions(Path, NULL, NULL);
+      Permissions |= get_parent_permissions(Path, nullptr, nullptr);
       if (Permissions IS PERMIT::NIL) Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::EXEC|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE|PERMIT::GROUP_EXEC; // If no permissions are set, give current user full access
    }
 
@@ -1070,7 +1070,7 @@ ERR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRead
    std::string res_path;
    if (auto error = ResolvePath(Path, RSF::CHECK_VIRTUAL | (approx ? RSF::APPROXIMATE : RSF::NIL), &res_path); error IS ERR::Okay) {
       if (res_path.starts_with("/dev/")) return ERR::InvalidPath;
-      else if (auto handle = open(res_path.c_str(), O_RDONLY|O_NONBLOCK|O_LARGEFILE|WIN32OPEN, NULL); handle != -1) {
+      else if (auto handle = open(res_path.c_str(), O_RDONLY|O_NONBLOCK|O_LARGEFILE|WIN32OPEN, nullptr); handle != -1) {
          if (auto result = read(handle, Buffer, BufferSize); result IS -1) {
             close(handle);
             return ERR::Read;
@@ -1138,7 +1138,7 @@ ERR ReadInfoTag(FileInfo *Info, CSTRING Name, CSTRING *Value)
       *Value = Info->Tags[0][Name].c_str();
       return ERR::Okay;
    }
-   else *Value = NULL;
+   else *Value = nullptr;
 
    return ERR::NotFound;
 }
@@ -1321,7 +1321,7 @@ ERR findfile(std::string &Path)
 
    // Find a file with the standard Path
 
-   if (auto filehandle = open(Path.c_str(), O_RDONLY|O_LARGEFILE|WIN32OPEN, NULL); filehandle != -1) {
+   if (auto filehandle = open(Path.c_str(), O_RDONLY|O_LARGEFILE|WIN32OPEN, nullptr); filehandle != -1) {
       close(filehandle);
       return ERR::Okay;
    }
@@ -1331,7 +1331,7 @@ ERR findfile(std::string &Path)
    Path.append(".*");
 
    char buffer[130];
-   APTR handle = NULL;
+   APTR handle = nullptr;
    if ((handle = winFindFile(Path.data(), &handle, buffer))) {
       auto len = Path.find_last_of(":/\\");
       if (len IS std::string::npos) len = 0;
@@ -1479,7 +1479,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       if (srcfile.ok()) {
          if ((Move) and (srcvirtual IS destvirtual)) {
             // If the source and destination use the same virtual volume, execute the move method.
-            fl::Move args = { Dest.data(), NULL };
+            fl::Move args = { Dest.data(), nullptr };
             return Action(fl::Move::id, *srcfile, &args);
          }
       }
@@ -1518,7 +1518,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
          if ((error = fs_copydir(srcbuffer, dest, &feedback, Callback, Move)) IS ERR::Okay) {
             // Delete the source if we are moving folders
-            if (Move) return DeleteFile(srcbuffer.c_str(), NULL);
+            if (Move) return DeleteFile(srcbuffer.c_str(), nullptr);
          }
          else log.warning("Folder copy process failed, error %d.", LONG(error));
 
@@ -1593,7 +1593,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          ProcessMessages(PMF::NIL, 0);
       } // while()
 
-      if ((Move) and (error IS ERR::Okay)) Action(fl::Delete::id, *srcfile, NULL);
+      if ((Move) and (error IS ERR::Okay)) Action(fl::Delete::id, *srcfile, nullptr);
 
       return error;
    }
@@ -1646,7 +1646,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       }
 
       if ((Move) and (error IS ERR::Okay)) { // Delete the source
-         return DeleteFile(src.c_str(), NULL);
+         return DeleteFile(src.c_str(), nullptr);
       }
 
       return error;
@@ -1741,7 +1741,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       std::string srcbuffer(src);
       if ((error = fs_copydir(srcbuffer, dest, &feedback, Callback, Move)) IS ERR::Okay) {
          // Delete the source if we are moving folders
-         if (Move) return DeleteFile(srcbuffer.c_str(), NULL);
+         if (Move) return DeleteFile(srcbuffer.c_str(), nullptr);
       }
       else log.warning("Folder copy process failed, error %d.", LONG(error));
 
@@ -1756,7 +1756,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       }
    }
 
-   if (LONG handle = open(src.c_str(), O_RDONLY|O_NONBLOCK|WIN32OPEN|O_LARGEFILE, NULL); handle != -1) {
+   if (LONG handle = open(src.c_str(), O_RDONLY|O_NONBLOCK|WIN32OPEN|O_LARGEFILE, nullptr); handle != -1) {
       auto dc_handle = deferred_call([&handle] { close(handle); });
 
       // Get permissions of the source file to apply to the destination file
@@ -1772,9 +1772,9 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       }
       else permissions = S_IREAD|S_IWRITE;
 
-      winFileInfo(src.c_str(), &feedback.Size, NULL, NULL);
+      winFileInfo(src.c_str(), &feedback.Size, nullptr, nullptr);
       #else
-      auto parentpermissions = get_parent_permissions(dest, NULL, NULL) & (~PERMIT::ALL_EXEC);
+      auto parentpermissions = get_parent_permissions(dest, nullptr, nullptr) & (~PERMIT::ALL_EXEC);
       if (glDefaultPermissions != PERMIT::NIL) {
          if ((glDefaultPermissions & PERMIT::INHERIT) != PERMIT::NIL) {
             permissions = convert_permissions((parentpermissions & (~(PERMIT::USERID|PERMIT::GROUPID))) | glDefaultPermissions);
@@ -1795,7 +1795,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       #if defined(__unix__) || defined(_WIN32)
       unlink(dest.c_str());
       #else
-      DeleteFile(dest.c_str(), NULL);
+      DeleteFile(dest.c_str(), nullptr);
       #endif
 
       // Check if there is enough room to copy this file to the destination
@@ -1877,7 +1877,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    else return log.warning(ERR::FileNotFound);
 
    if ((Move) and (error IS ERR::Okay)) { // Delete the source
-      return DeleteFile(src.c_str(), NULL);
+      return DeleteFile(src.c_str(), nullptr);
    }
    else return error;
 }
@@ -1917,7 +1917,7 @@ ERR fs_copydir(std::string &Source, std::string &Dest, FileFeedback *Feedback, F
 
                STRING link;
                if ((error = vsrc->ReadLink(Source, &link)) IS ERR::Okay) {
-                  DeleteFile(Dest.c_str(), NULL);
+                  DeleteFile(Dest.c_str(), nullptr);
                   error = vdest->CreateLink(Dest, link);
                }
             }
@@ -2241,17 +2241,17 @@ ERR fs_closedir(DirInfo *Dir)
       if ((Dir->prvFlags & RDF::OPENDIR) != RDF::NIL) {
          // OpenDir() allocates Dir->Info as part of the Dir structure, so no need for a FreeResource(Dir->Info) here.
 
-         if (Dir->Info->Tags) { delete Dir->Info->Tags; Dir->Info->Tags = NULL; }
+         if (Dir->Info->Tags) { delete Dir->Info->Tags; Dir->Info->Tags = nullptr; }
       }
       else {
          FileInfo *list = Dir->Info;
          while (list) {
             FileInfo *next = list->Next;
-            if (list->Tags) { delete list->Tags; list->Tags = NULL; }
+            if (list->Tags) { delete list->Tags; list->Tags = nullptr; }
             FreeResource(list);
             list = next;
          }
-         Dir->Info = NULL;
+         Dir->Info = nullptr;
       }
    }
 
@@ -2347,7 +2347,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
       Info->Name[i] = 0;
    }
 
-   Info->Tags = NULL;
+   Info->Tags = nullptr;
    Info->Size = info.st_size;
 
    // Set file security information
@@ -2426,7 +2426,7 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
    Info->Permissions = PERMIT::NIL;
    Info->UserID      = 0;
    Info->GroupID     = 0;
-   Info->Tags        = NULL;
+   Info->Tags        = nullptr;
 
 #endif
 

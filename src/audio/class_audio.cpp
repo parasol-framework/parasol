@@ -213,7 +213,7 @@ ERR AUDIO_AddSample(extAudio *Self, struct snd::AddSample *Args)
    }
 
    if ((sample.SampleType IS SFM::NIL) or (Args->DataSize <= 0) or (!Args->Data)) {
-      sample.Data = NULL;
+      sample.Data = nullptr;
    }
    else if (AllocMemory(Args->DataSize, MEM::DATA|MEM::NO_CLEAR, &sample.Data) IS ERR::Okay) {
       copymem(Args->Data, sample.Data, Args->DataSize);
@@ -455,11 +455,11 @@ static ERR AUDIO_Free(extAudio *Self)
 {
    if ((Self->Flags & ADF::AUTO_SAVE) != ADF::NIL) Self->saveSettings();
 
-   if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = NULL; }
+   if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = nullptr; }
 
    acDeactivate(Self);
 
-   if (Self->MixBuffer) { FreeResource(Self->MixBuffer); Self->MixBuffer = NULL; }
+   if (Self->MixBuffer) { FreeResource(Self->MixBuffer); Self->MixBuffer = nullptr; }
 
 #ifdef ALSA_ENABLED
 
@@ -1323,7 +1323,7 @@ static void load_config(extAudio *Self)
                   if (*str IS '[') { // Read channel volumes
                      str++;
                      while ((*str) and (*str != ']')) {
-                        Self->Volumes[j].Channels[channel] = strtol(str, NULL, 0);
+                        Self->Volumes[j].Channels[channel] = strtol(str, nullptr, 0);
                         while ((*str) and (*str != ',') and (*str != ']')) str++;
                         if (*str IS ',') str++;
                         channel++;
@@ -1348,13 +1348,13 @@ static void load_config(extAudio *Self)
 #include "audio_def.c"
 
 static const FieldArray clAudioFields[] = {
-   { "OutputRate",    FDF_INT|FDF_RI, NULL, SET_OutputRate },
+   { "OutputRate",    FDF_INT|FDF_RI, nullptr, SET_OutputRate },
    { "InputRate",     FDF_INT|FDF_RI },
-   { "Quality",       FDF_INT|FDF_RW,    NULL, SET_Quality },
-   { "Flags",         FDF_INTFLAGS|FDF_RI, NULL, NULL, &clAudioFlags },
-   { "BitDepth",      FDF_INT|FDF_RI,    NULL, SET_BitDepth },
-   { "Periods",       FDF_INT|FDF_RI,    NULL, SET_Periods },
-   { "PeriodSize",    FDF_INT|FDF_RI,    NULL, SET_PeriodSize },
+   { "Quality",       FDF_INT|FDF_RW,    nullptr, SET_Quality },
+   { "Flags",         FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clAudioFlags },
+   { "BitDepth",      FDF_INT|FDF_RI,    nullptr, SET_BitDepth },
+   { "Periods",       FDF_INT|FDF_RI,    nullptr, SET_Periods },
+   { "PeriodSize",    FDF_INT|FDF_RI,    nullptr, SET_PeriodSize },
    // VIRTUAL FIELDS
    { "Device",        FDF_STRING|FDF_RW,  GET_Device, SET_Device },
    { "MixerLag",      FDF_DOUBLE|FDF_R,   GET_MixerLag },
@@ -1384,5 +1384,5 @@ ERR add_audio_class(void)
 
 void free_audio_class(void)
 {
-   if (clAudio) { FreeResource(clAudio); clAudio = NULL; }
+   if (clAudio) { FreeResource(clAudio); clAudio = nullptr; }
 }

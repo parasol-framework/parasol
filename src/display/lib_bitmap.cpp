@@ -1058,7 +1058,7 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                        ((src->BitsPerPixel <= 8) and (dest->BitsPerPixel > 8)))) {
                      if ((src->Flags & BMF::TRANSPARENT) != BMF::NIL);
                      else {
-                        dither(src, dest, NULL, Width, Height, X, Y, DestX, DestY);
+                        dither(src, dest, nullptr, Width, Height, X, Y, DestX, DestY);
                         dithered = TRUE;
                      }
                   }

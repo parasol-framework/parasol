@@ -139,7 +139,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
          if (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Length) {
             log.trace("Freeing the write queue (pos %d/%d).", ClientSocket->WriteQueue.Index, ClientSocket->WriteQueue.Length);
             FreeResource(ClientSocket->WriteQueue.Buffer);
-            ClientSocket->WriteQueue.Buffer = NULL;
+            ClientSocket->WriteQueue.Buffer = nullptr;
             ClientSocket->WriteQueue.Index = 0;
             ClientSocket->WriteQueue.Length = 0;
             break;
@@ -172,7 +172,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       if ((!ClientSocket->Outgoing.defined()) and (!ClientSocket->WriteQueue.Buffer)) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->SocketHandle);
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, NULL, NULL);
+            RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
          #elif _WIN32
             win_socketstate(ClientSocket->SocketHandle, -1, 0);
          #endif
@@ -197,8 +197,8 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
       Self->Handle = -1;
    }
 
-   if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = NULL; }
-   if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = NULL; }
+   if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = nullptr; }
+   if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = nullptr; }
 
    if (Self->Prev) {
       Self->Prev->Next = Self->Next;
@@ -206,7 +206,7 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
    }
    else {
       Self->Client->Sockets = Self->Next;
-      if (Self->Next) Self->Next->Prev = NULL;
+      if (Self->Next) Self->Next->Prev = nullptr;
    }
 
    Self->Client->TotalSockets--;
@@ -232,7 +232,7 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 
    if (Self->Client->Sockets) {
       Self->Next = Self->Client->Sockets;
-      Self->Prev = NULL;
+      Self->Prev = nullptr;
       Self->Client->Sockets->Prev = Self;
    }
 
@@ -311,7 +311,7 @@ static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct cs::ReadClie
 
    log.traceBranch("Reading message.");
 
-   Args->Message  = NULL;
+   Args->Message  = nullptr;
    Args->Length   = 0;
    Args->CRC      = 0;
    Args->Progress = 0;
@@ -490,15 +490,15 @@ static ERR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct cs::WriteCl
    log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
 
    NetMsg msg = { .Magic = cpu_be32(NETMSG_MAGIC), .Length = cpu_be32(Args->Length) };
-   acWrite(Self, &msg, sizeof(msg), NULL);
-   acWrite(Self, Args->Message, Args->Length, NULL);
+   acWrite(Self, &msg, sizeof(msg), nullptr);
+   acWrite(Self, Args->Message, Args->Length, nullptr);
 
    UBYTE endbuffer[sizeof(NetMsgEnd) + 1];
    NetMsgEnd *end = (NetMsgEnd *)(endbuffer + 1);
    endbuffer[0] = 0; // This null terminator helps with message parsing
    end->Magic = cpu_be32((ULONG)NETMSG_MAGIC_TAIL);
    end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
-   acWrite(Self, &endbuffer, sizeof(endbuffer), NULL);
+   acWrite(Self, &endbuffer, sizeof(endbuffer), nullptr);
 
    return ERR::Okay;
 }
@@ -509,9 +509,9 @@ static ERR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct cs::WriteCl
 
 static const FieldArray clClientSocketFields[] = {
    { "ConnectTime", FDF_INT64|FDF_R },
-   { "Prev",        FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::CLIENTSOCKET },
-   { "Next",        FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::CLIENTSOCKET },
-   { "Client",      FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "NetClient" },
+   { "Prev",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::CLIENTSOCKET },
+   { "Next",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::CLIENTSOCKET },
+   { "Client",      FDF_POINTER|FDF_STRUCT|FDF_R, nullptr, nullptr, "NetClient" },
    { "ClientData",  FDF_POINTER|FDF_R },
    { "Outgoing",    FDF_FUNCTION|FDF_R },
    { "Incoming",    FDF_FUNCTION|FDF_R },

@@ -52,7 +52,7 @@ static ERR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 
 static ERR IMAGEFX_Free(extImageFX *Self)
 {
-   if (Self->Picture) { FreeResource(Self->Picture); Self->Picture = NULL; }
+   if (Self->Picture) { FreeResource(Self->Picture); Self->Picture = nullptr; }
    return ERR::Okay;
 }
 
@@ -144,7 +144,7 @@ Path: Path to an image file supported by the @Picture class.
 static ERR IMAGEFX_GET_Path(extImageFX *Self, CSTRING *Value)
 {
    if (Self->Picture) return Self->Picture->get(FID_Path, *Value);
-   else *Value = NULL;
+   else *Value = nullptr;
    return ERR::Okay;
 }
 
@@ -210,13 +210,13 @@ static const FieldDef clResampleMethod[] = {
    { "Sinc",      VSM::SINC },
    { "Lanczos",   VSM::LANCZOS },
    { "Blackman",  VSM::BLACKMAN },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 #include "filter_image_def.c"
 
 static const FieldArray clImageFXFields[] = {
-   { "Bitmap",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, IMAGEFX_GET_Bitmap, NULL, CLASSID::BITMAP },
+   { "Bitmap",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, IMAGEFX_GET_Bitmap, nullptr, CLASSID::BITMAP },
    { "Path",           FDF_VIRTUAL|FDF_STRING|FDF_RI, IMAGEFX_GET_Path, IMAGEFX_SET_Path },
    { "XMLDef",         FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, IMAGEFX_GET_XMLDef },
    { "AspectRatio",    FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, IMAGEFX_GET_AspectRatio, IMAGEFX_SET_AspectRatio, &clAspectRatio },

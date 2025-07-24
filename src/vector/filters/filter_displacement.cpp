@@ -244,7 +244,7 @@ static const FieldDef clChannel[] = {
    { "Green", CMP::GREEN },
    { "Blue",  CMP::BLUE },
    { "Alpha", CMP::ALPHA },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clDisplacementFXFields[] = {

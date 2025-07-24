@@ -95,8 +95,8 @@ static ERR set_parent(extVector *Self, OBJECTPTR Owner)
 
    // Ensure that the sibling fields are valid, if not then clear them.
 
-   if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = NULL;
-   if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = NULL;
+   if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = nullptr;
+   if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = nullptr;
 
    if (Self->Parent->Class->BaseClassID IS CLASSID::VECTOR) {
       if ((!Self->Prev) and (!Self->Next)) {
@@ -150,25 +150,25 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Ar
 static void notify_free_appendpath(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
-   if ((Self->AppendPath) and (Object->UID IS Self->AppendPath->UID)) Self->AppendPath = NULL;
+   if ((Self->AppendPath) and (Object->UID IS Self->AppendPath->UID)) Self->AppendPath = nullptr;
 }
 
 static void notify_free_transition(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
-   if ((Self->Transition) and (Object->UID IS Self->Transition->UID)) Self->Transition = NULL;
+   if ((Self->Transition) and (Object->UID IS Self->Transition->UID)) Self->Transition = nullptr;
 }
 
 static void notify_free_morph(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
-   if ((Self->Morph) and (Object->UID IS Self->Morph->UID)) Self->Morph = NULL;
+   if ((Self->Morph) and (Object->UID IS Self->Morph->UID)) Self->Morph = nullptr;
 }
 
 static void notify_free_clipmask(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
-   if ((Self->ClipMask) and (Object->UID IS Self->ClipMask->UID)) Self->ClipMask = NULL;
+   if ((Self->ClipMask) and (Object->UID IS Self->ClipMask->UID)) Self->ClipMask = nullptr;
 }
 
 //********************************************************************************************************************
@@ -283,15 +283,15 @@ static ERR VECTOR_Free(extVector *Self)
    if (Self->Morph)      UnsubscribeAction(Self->Morph, AC::Free);
    if (Self->AppendPath) UnsubscribeAction(Self->AppendPath, AC::Free);
 
-   if (Self->ID)           { FreeResource(Self->ID); Self->ID = NULL; }
-   if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = NULL; }
-   if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
-   if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
+   if (Self->ID)           { FreeResource(Self->ID); Self->ID = nullptr; }
+   if (Self->FillString)   { FreeResource(Self->FillString); Self->FillString = nullptr; }
+   if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = nullptr; }
+   if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = nullptr; }
 
-   if (Self->Fill[0].GradientTable) { delete Self->Fill[0].GradientTable; Self->Fill[0].GradientTable = NULL; }
-   if (Self->Fill[1].GradientTable) { delete Self->Fill[1].GradientTable; Self->Fill[1].GradientTable = NULL; }
-   if (Self->Stroke.GradientTable)  { delete Self->Stroke.GradientTable; Self->Stroke.GradientTable = NULL; }
-   if (Self->DashArray)             { delete Self->DashArray; Self->DashArray = NULL; }
+   if (Self->Fill[0].GradientTable) { delete Self->Fill[0].GradientTable; Self->Fill[0].GradientTable = nullptr; }
+   if (Self->Fill[1].GradientTable) { delete Self->Fill[1].GradientTable; Self->Fill[1].GradientTable = nullptr; }
+   if (Self->Stroke.GradientTable)  { delete Self->Stroke.GradientTable; Self->Stroke.GradientTable = nullptr; }
+   if (Self->DashArray)             { delete Self->DashArray; Self->DashArray = nullptr; }
 
    // Patch the nearest vectors that are linked to this one.
    if (Self->Next) Self->Next->Prev = Self->Prev;
@@ -305,7 +305,7 @@ static ERR VECTOR_Free(extVector *Self)
       // Clear the parent reference for all children of the vector (essential for maintaining pointer integrity).
       auto &scan = Self->Child;
       while (scan) {
-         scan->Parent = NULL;
+         scan->Parent = nullptr;
          scan = scan->Next;
       }
    }
@@ -351,11 +351,11 @@ static ERR VECTOR_Free(extVector *Self)
       }
    }
 
-   delete Self->StrokeRaster; Self->StrokeRaster = NULL;
-   delete Self->FillRaster;   Self->FillRaster   = NULL;
-   delete Self->InputSubscriptions;    Self->InputSubscriptions    = NULL;
-   delete Self->KeyboardSubscriptions; Self->KeyboardSubscriptions = NULL;
-   delete Self->FeedbackSubscriptions; Self->FeedbackSubscriptions = NULL;
+   delete Self->StrokeRaster; Self->StrokeRaster = nullptr;
+   delete Self->FillRaster;   Self->FillRaster   = nullptr;
+   delete Self->InputSubscriptions;    Self->InputSubscriptions    = nullptr;
+   delete Self->KeyboardSubscriptions; Self->KeyboardSubscriptions = nullptr;
+   delete Self->FeedbackSubscriptions; Self->FeedbackSubscriptions = nullptr;
 
    return ERR::Okay;
 }
@@ -647,7 +647,7 @@ static ERR VECTOR_NewMatrix(extVector *Self, struct vec::NewMatrix *Args)
       transform->TranslateY = 0;
 
       if ((Args->End) and (Self->Matrices)) {
-         transform->Next   = NULL;
+         transform->Next   = nullptr;
          VectorMatrix *last = Self->Matrices;
          while (last->Next) last = last->Next;
          last->Next = transform;
@@ -1133,7 +1133,7 @@ static ERR VECTOR_SET_AppendPath(extVector *Self, extVector *Value)
    if (!Value) {
       if (Self->AppendPath) {
          UnsubscribeAction(Self->AppendPath, AC::Free);
-         Self->AppendPath = NULL;
+         Self->AppendPath = nullptr;
       }
       return ERR::Okay;
    }
@@ -1214,7 +1214,7 @@ static ERR VECTOR_SET_Cursor(extVector *Self, PTC Value)
       gfx::GetCursorPos(&absx, &absy);
 
       const InputEvent event = {
-         .Next        = NULL,
+         .Next        = nullptr,
          .Value       = 0,
          .Timestamp   = 0,
          .RecipientID = Self->Scene->SurfaceID,
@@ -1252,7 +1252,7 @@ static ERR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Elements)
       *Elements = std::ssize(Self->DashArray->values);
    }
    else {
-      *Value    = NULL;
+      *Value    = nullptr;
       *Elements = 0;
    }
    return ERR::Okay;
@@ -1262,7 +1262,7 @@ static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
 {
    pf::Log log;
 
-   if (Self->DashArray) { delete Self->DashArray; Self->DashArray = NULL; }
+   if (Self->DashArray) { delete Self->DashArray; Self->DashArray = nullptr; }
 
    if ((Value) and (Elements >= 1)) {
       LONG total;
@@ -1282,7 +1282,7 @@ static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
             if ((Self->DashArray->values[i] < 0) or (Self->DashArray->values[i+1] < 0)) { // Negative values can cause an infinite drawing cycle.
                log.warning("Invalid dash array value pair (%f, %f)", Self->DashArray->values[i], Self->DashArray->values[i+1]);
                delete Self->DashArray;
-               Self->DashArray = NULL;
+               Self->DashArray = nullptr;
                return ERR::InvalidValue;
             }
 
@@ -1293,7 +1293,7 @@ static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
          if (total_length <= 0) {
             log.warning("DashArray total length <= 0.");
             delete Self->DashArray;
-            Self->DashArray = NULL;
+            Self->DashArray = nullptr;
             return ERR::InvalidValue;
          }
 
@@ -1374,7 +1374,7 @@ static ERR VECTOR_GET_Fill(extVector *Self, CSTRING *Value)
 static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 {
    // Note that if an internal routine sets DisableFillColour then the colour will be stored but effectively does nothing.
-   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
+   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = nullptr; }
 
    Self->FGFill = false;
 
@@ -1390,14 +1390,14 @@ static ERR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
       if (next) {
          if (*next IS ';') {
             next++;
-            vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
+            vec::ReadPainter(Self->Scene, next, &Self->Fill[1], nullptr);
             Self->FGFill = true;
          }
          else {
             // SVG rules allow for a solid colour fallback to follow the initial painter reference.
             // This typically looks something like 'url(#thing) rgb(values)'
             VectorPainter fallback;
-            vec::ReadPainter(Self->Scene, next, &fallback, NULL);
+            vec::ReadPainter(Self->Scene, next, &fallback, nullptr);
             if (fallback.Colour.Alpha) Self->Fill[0].Colour = fallback.Colour;
          }
       }
@@ -1456,7 +1456,7 @@ static ERR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
       mark_buffers_for_refresh(Self);
    }
 
-   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
+   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = nullptr; }
 
    return ERR::Okay;
 }
@@ -1518,25 +1518,25 @@ static ERR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
    mark_buffers_for_refresh(Self);
 
    if ((!Value) or (!Value[0])) {
-      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
-      Self->Filter = NULL;
+      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = nullptr; }
+      Self->Filter = nullptr;
       return ERR::Okay;
    }
 
    if (!Self->Scene) { // Vector is not yet initialised, so store the filter string for later.
-      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
+      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = nullptr; }
       Self->FilterString = strclone(Value);
       return ERR::Okay;
    }
 
-   OBJECTPTR def = NULL;
+   OBJECTPTR def = nullptr;
    if (Self->Scene->findDef(Value, &def) != ERR::Okay) {
       log.warning("Failed to resolve filter '%s'", Value);
       return ERR::Search;
    }
 
    if (def->Class->BaseClassID IS CLASSID::VECTORFILTER) {
-      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
+      if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = nullptr; }
       Self->FilterString = strclone(Value);
       Self->Filter = (extVectorFilter *)def;
       return ERR::Okay;
@@ -1594,7 +1594,7 @@ static ERR VECTOR_SET_ID(extVector *Self, CSTRING Value)
       Self->NumericID = strhash(Value);
    }
    else {
-      Self->ID = NULL;
+      Self->ID = nullptr;
       Self->NumericID = 0;
    }
    return ERR::Okay;
@@ -1740,7 +1740,7 @@ static ERR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
    if (!Value) {
       if (Self->ClipMask) {
          UnsubscribeAction(Self->ClipMask, AC::Free);
-         Self->ClipMask = NULL;
+         Self->ClipMask = nullptr;
       }
       return ERR::Okay;
    }
@@ -1823,7 +1823,7 @@ static ERR VECTOR_SET_Morph(extVector *Self, extVector *Value)
    if (!Value) {
       if (Self->Morph) {
          UnsubscribeAction(Self->Morph, AC::Free);
-         Self->Morph = NULL;
+         Self->Morph = nullptr;
       }
       return ERR::Okay;
    }
@@ -1887,8 +1887,8 @@ static ERR VECTOR_SET_Next(extVector *Self, extVector *Value)
    if ((!Value) or (Value IS Self)) return log.warning(ERR::InvalidValue);
    if (Self->Owner != Value->Owner) return log.warning(ERR::UnsupportedOwner); // Owners must match
 
-   if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
-   if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
+   if (Self->Next) Self->Next->Prev = nullptr; // Detach from the current Next object.
+   if (Self->Prev) Self->Prev->Next = nullptr; // Detach from the current Prev object.
 
    Self->Next  = Value; // Patch the chain
    Value->Prev = Self;
@@ -1926,7 +1926,7 @@ static ERR VECTOR_GET_NumericID(extVector *Self, LONG *Value)
 static ERR VECTOR_SET_NumericID(extVector *Self, LONG Value)
 {
    Self->NumericID = Value;
-   if (Self->ID) { FreeResource(Self->ID); Self->ID = NULL; }
+   if (Self->ID) { FreeResource(Self->ID); Self->ID = nullptr; }
    return ERR::Okay;
 }
 
@@ -1999,8 +1999,8 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
    if (!Value) return log.warning(ERR::InvalidValue);
    if (Self->Owner != Value->Owner) return log.warning(ERR::UnsupportedOwner); // Owners must match
 
-   if (Self->Next) Self->Next->Prev = NULL; // Detach from the current Next object.
-   if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
+   if (Self->Next) Self->Next->Prev = nullptr; // Detach from the current Next object.
+   if (Self->Prev) Self->Prev->Next = nullptr; // Detach from the current Prev object.
 
    if (Self->Parent) { // Detach from the parent
       if (Self->Parent->classID() IS CLASSID::VECTORSCENE) {
@@ -2011,7 +2011,7 @@ static ERR VECTOR_SET_Prev(extVector *Self, extVector *Value)
          ((extVector *)Self->Parent)->Child = Self->Next;
          Self->Next->Parent = Self->Parent;
       }
-      Self->Parent = NULL;
+      Self->Parent = nullptr;
    }
 
    Self->Prev = Value; // Patch the chain
@@ -2204,7 +2204,7 @@ static ERR VECTOR_GET_Stroke(extVector *Self, CSTRING *Value)
 
 static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
-   if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
+   if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = nullptr; }
 
    if (Value) {
       Self->StrokeString = strclone(Value);
@@ -2214,7 +2214,7 @@ static ERR VECTOR_SET_Stroke(extVector *Self, STRING Value)
          // SVG rules allow for a solid colour fallback to follow the initial painter reference.
          // This typically looks something like 'url(#thing) rgb(values)'
          VectorPainter fallback;
-         vec::ReadPainter(Self->Scene, next, &fallback, NULL);
+         vec::ReadPainter(Self->Scene, next, &fallback, nullptr);
          if (fallback.Colour.Alpha) Self->Stroke.Colour = fallback.Colour;
       }
    }
@@ -2376,7 +2376,7 @@ static ERR VECTOR_SET_Transition(extVector *Self, extVectorTransition *Value)
    if (!Value) {
       if (Self->Transition) {
          UnsubscribeAction(Self->Transition, AC::Free);
-         Self->Transition = NULL;
+         Self->Transition = nullptr;
       }
       return ERR::Okay;
    }
@@ -2468,7 +2468,7 @@ static const FieldDef clMorphFlags[] = {
    { "YMin",        VMF::Y_MIN },
    { "YMid",        VMF::Y_MID },
    { "YMax",        VMF::Y_MAX },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clLineJoin[] = {
@@ -2478,7 +2478,7 @@ static const FieldDef clLineJoin[] = {
    { "MiterSmart", VLJ::MITER_SMART },
    { "MiterRound", VLJ::MITER_ROUND },
    { "Inherit",    VLJ::INHERIT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clLineCap[] = {
@@ -2486,7 +2486,7 @@ static const FieldDef clLineCap[] = {
    { "Square",  VLC::SQUARE },
    { "Round",   VLC::ROUND },
    { "Inherit", VLC::INHERIT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clInnerJoin[] = {
@@ -2495,36 +2495,36 @@ static const FieldDef clInnerJoin[] = {
    { "Bevel",   VIJ::BEVEL },
    { "Jag",     VIJ::JAG },
    { "Inherit", VIJ::INHERIT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clFillRule[] = {
    { "EvenOdd", VFR::EVEN_ODD },
    { "NonZero", VFR::NON_ZERO },
    { "Inherit", VFR::INHERIT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 #include "vector_def.c"
 
 static const FieldArray clVectorFields[] = {
-   { "Child",           FDF_OBJECT|FD_R, NULL, NULL, CLASSID::VECTOR },
-   { "Scene",           FDF_OBJECT|FD_R, NULL, NULL, CLASSID::VECTORSCENE },
-   { "Next",            FDF_OBJECT|FD_RW, NULL, VECTOR_SET_Next, CLASSID::VECTOR },
-   { "Prev",            FDF_OBJECT|FD_RW, NULL, VECTOR_SET_Prev, CLASSID::VECTOR },
+   { "Child",           FDF_OBJECT|FD_R, nullptr, nullptr, CLASSID::VECTOR },
+   { "Scene",           FDF_OBJECT|FD_R, nullptr, nullptr, CLASSID::VECTORSCENE },
+   { "Next",            FDF_OBJECT|FD_RW, nullptr, VECTOR_SET_Next, CLASSID::VECTOR },
+   { "Prev",            FDF_OBJECT|FD_RW, nullptr, VECTOR_SET_Prev, CLASSID::VECTOR },
    { "Parent",          FDF_OBJECT|FD_R },
-   { "Matrices",        FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "VectorMatrix" },
+   { "Matrices",        FDF_POINTER|FDF_STRUCT|FDF_R, nullptr, nullptr, "VectorMatrix" },
    { "StrokeOpacity",   FDF_DOUBLE|FDF_RW, VECTOR_GET_StrokeOpacity, VECTOR_SET_StrokeOpacity },
    { "FillOpacity",     FDF_DOUBLE|FDF_RW, VECTOR_GET_FillOpacity, VECTOR_SET_FillOpacity },
-   { "Opacity",         FDF_DOUBLE|FD_RW, NULL, VECTOR_SET_Opacity },
-   { "MiterLimit",      FDF_DOUBLE|FD_RW, NULL, VECTOR_SET_MiterLimit },
+   { "Opacity",         FDF_DOUBLE|FD_RW, nullptr, VECTOR_SET_Opacity },
+   { "MiterLimit",      FDF_DOUBLE|FD_RW, nullptr, VECTOR_SET_MiterLimit },
    { "InnerMiterLimit", FDF_DOUBLE|FD_RW },
-   { "DashOffset",      FDF_DOUBLE|FD_RW, NULL, VECTOR_SET_DashOffset },
-   { "Visibility",      FDF_INT|FDF_LOOKUP|FDF_RW, NULL, VECTOR_SET_Visibility, &clVectorVisibility },
-   { "Flags",           FDF_INTFLAGS|FDF_RI, NULL, NULL, &clVectorFlags },
-   { "Cursor",          FDF_INT|FDF_LOOKUP|FDF_RW, NULL, VECTOR_SET_Cursor, &clVectorCursor },
-   { "PathQuality",     FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorPathQuality },
-   { "ColourSpace",     FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clVectorColourSpace },
+   { "DashOffset",      FDF_DOUBLE|FD_RW, nullptr, VECTOR_SET_DashOffset },
+   { "Visibility",      FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, VECTOR_SET_Visibility, &clVectorVisibility },
+   { "Flags",           FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clVectorFlags },
+   { "Cursor",          FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, VECTOR_SET_Cursor, &clVectorCursor },
+   { "PathQuality",     FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clVectorPathQuality },
+   { "ColourSpace",     FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clVectorColourSpace },
    { "PathTimestamp",   FDF_INT|FDF_R },
    // Virtual fields
    { "ClipRule",     FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW,  VECTOR_GET_ClipRule, VECTOR_SET_ClipRule, &clFillRule },
@@ -2536,7 +2536,7 @@ static const FieldArray clVectorFields[] = {
    { "MorphFlags",   FDF_VIRTUAL|FDF_INTFLAGS|FDF_RW,        VECTOR_GET_MorphFlags, VECTOR_SET_MorphFlags, &clMorphFlags },
    { "NumericID",    FDF_VIRTUAL|FDF_INT|FDF_RW,             VECTOR_GET_NumericID, VECTOR_SET_NumericID },
    { "ID",           FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_ID, VECTOR_SET_ID },
-   { "ResizeEvent",  FDF_VIRTUAL|FDF_FUNCTION|FDF_W,         NULL, VECTOR_SET_ResizeEvent },
+   { "ResizeEvent",  FDF_VIRTUAL|FDF_FUNCTION|FDF_W,         nullptr, VECTOR_SET_ResizeEvent },
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, VECTOR_GET_Sequence },
    { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Stroke, VECTOR_SET_Stroke },
    { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   VECTOR_GET_StrokeColour, VECTOR_SET_StrokeColour },

@@ -69,7 +69,7 @@ static const std::array<double, 12> glScale = {
    1.887704009  // B
 };
 
-static OBJECTPTR clSound = NULL;
+static OBJECTPTR clSound = nullptr;
 
 static ERR find_chunk(extSound *, objFile *, std::string_view);
 #ifdef USE_WIN32_PLAYBACK
@@ -353,7 +353,7 @@ static ERR SOUND_Activate(extSound *Self)
             stream.LoopSize = sizeof(loop);
          }
          else {
-            stream.Loop     = NULL;
+            stream.Loop     = nullptr;
             stream.LoopSize = 0;
          }
 
@@ -403,7 +403,7 @@ static ERR SOUND_Activate(extSound *Self)
                add.LoopSize = sizeof(loop);
             }
             else {
-               add.Loop     = NULL;
+               add.Loop     = nullptr;
                add.LoopSize = 0;
             }
 
@@ -438,7 +438,7 @@ static ERR SOUND_Activate(extSound *Self)
       // Restricted and streaming audio can be played on only one channel at any given time.  This search will check
       // if the sound object is already active on one of our channels.
 
-      AudioChannel *channel = NULL;
+      AudioChannel *channel = nullptr;
       if ((Self->Flags & (SDF::RESTRICT_PLAY|SDF::STREAM)) != SDF::NIL) {
          Self->ChannelIndex &= 0xffff0000;
          LONG i;
@@ -447,12 +447,12 @@ static ERR SOUND_Activate(extSound *Self)
             if ((channel) and (channel->SampleHandle IS Self->Handle)) break;
             Self->ChannelIndex++;
          }
-         if (i >= audio->MaxChannels) channel = NULL;
+         if (i >= audio->MaxChannels) channel = nullptr;
       }
 
       if (!channel) {
          // Find an available channel.  If all channels are in use, check the priorities to see if we can push anyone out.
-         AudioChannel *priority = NULL;
+         AudioChannel *priority = nullptr;
          Self->ChannelIndex &= 0xffff0000;
          LONG i;
          for (i=0; i < audio->MaxChannels; i++) {
@@ -618,8 +618,8 @@ static ERR SOUND_Free(extSound *Self)
       }
    }
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->File) { FreeResource(Self->File); Self->File = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+   if (Self->File) { FreeResource(Self->File); Self->File = nullptr; }
 
    Self->~extSound();
    return ERR::Okay;
@@ -713,7 +713,7 @@ static ERR SOUND_Init(extSound *Self)
    if ((std::string_view((char *)Self->Header, 4) != "RIFF") or
        (std::string_view((char *)Self->Header + 8, 4) != "WAVE")) {
       FreeResource(Self->File);
-      Self->File = NULL;
+      Self->File = nullptr;
       return ERR::NoSupport;
    }
 
@@ -820,7 +820,7 @@ static ERR SOUND_Init(extSound *Self)
    if ((std::string_view((char *)Self->Header, 4) != "RIFF") or
        (std::string_view((char *)Self->Header + 8, 4) != "WAVE")) {
       FreeResource(Self->File);
-      Self->File = NULL;
+      Self->File = nullptr;
       return ERR::NoSupport;
    }
 
@@ -1338,7 +1338,7 @@ static ERR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    CSTRING str = Value;
    if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-')) {
-      note = strtol(Value, NULL, 0);
+      note = strtol(Value, nullptr, 0);
    }
    else {
       note = 0;
@@ -1523,7 +1523,7 @@ static ERR SOUND_SET_Path(extSound *Self, CSTRING Value)
 {
    pf::Log log;
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    if ((Value) and (*Value)) {
       LONG i = strlen(Value);
@@ -1699,33 +1699,33 @@ static const FieldDef clFlags[] = {
    { "New",          (LONG)SDF::NEW },
    { "Stereo",       (LONG)SDF::STEREO },
    { "RestrictPlay", (LONG)SDF::RESTRICT_PLAY },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clStream[] = {
    { "Always", (LONG)STREAM::ALWAYS },
    { "Smart",  (LONG)STREAM::SMART },
    { "Never",  (LONG)STREAM::NEVER },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clFields[] = {
-   { "Volume",         FDF_DOUBLE|FDF_RW, NULL, SOUND_SET_Volume },
-   { "Pan",            FDF_DOUBLE|FDF_RW, NULL, SOUND_SET_Pan },
-   { "Position",       FDF_INT64|FDF_RW, NULL, SOUND_SET_Position },
-   { "Priority",       FDF_INT|FDF_RW, NULL, SOUND_SET_Priority },
-   { "Length",         FDF_INT|FDF_RW, NULL, SOUND_SET_Length },
-   { "Octave",         FDF_INT|FDF_RW, NULL, SOUND_SET_Octave },
-   { "Flags",          FDF_INTFLAGS|FDF_RW, NULL, SOUND_SET_Flags, &clFlags },
+   { "Volume",         FDF_DOUBLE|FDF_RW, nullptr, SOUND_SET_Volume },
+   { "Pan",            FDF_DOUBLE|FDF_RW, nullptr, SOUND_SET_Pan },
+   { "Position",       FDF_INT64|FDF_RW, nullptr, SOUND_SET_Position },
+   { "Priority",       FDF_INT|FDF_RW, nullptr, SOUND_SET_Priority },
+   { "Length",         FDF_INT|FDF_RW, nullptr, SOUND_SET_Length },
+   { "Octave",         FDF_INT|FDF_RW, nullptr, SOUND_SET_Octave },
+   { "Flags",          FDF_INTFLAGS|FDF_RW, nullptr, SOUND_SET_Flags, &clFlags },
    { "Frequency",      FDF_INT|FDF_RI },
-   { "Playback",       FDF_INT|FDF_RW, NULL, SOUND_SET_Playback },
+   { "Playback",       FDF_INT|FDF_RW, nullptr, SOUND_SET_Playback },
    { "Compression",    FDF_INT|FDF_RW },
    { "BytesPerSecond", FDF_INT|FDF_RW },
    { "BitsPerSample",  FDF_INT|FDF_RW },
    { "Audio",          FDF_OBJECTID|FDF_RI },
    { "LoopStart",      FDF_INT|FDF_RW },
    { "LoopEnd",        FDF_INT|FDF_RW },
-   { "Stream",         FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clStream },
+   { "Stream",         FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clStream },
    { "Handle",         FDF_INT|FDF_SYSTEM|FDF_R },
    { "ChannelIndex",   FDF_INT|FDF_R },
    // Virtual fields
@@ -1752,7 +1752,7 @@ static const ActionArray clActions[] = {
    { AC::SaveToObject,  SOUND_SaveToObject },
    { AC::Seek,          SOUND_Seek },
    { AC::SetKey,        SOUND_SetKey },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 //********************************************************************************************************************

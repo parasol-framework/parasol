@@ -294,9 +294,9 @@ int64_t GetResource(RES Resource)
          if (ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result) IS ERR::Okay) {
             int i = 0;
             while (i < result) {
-               if (startswith("Cached", str+i)) freemem += strtoll(str+i, NULL, 0) * 1024LL;
-               else if (startswith("Buffers", str+i)) freemem += strtoll(str+i, NULL, 0) * 1024LL;
-               else if (startswith("MemFree", str+i)) freemem += strtoll(str+i, NULL, 0) * 1024LL;
+               if (startswith("Cached", str+i)) freemem += strtoll(str+i, nullptr, 0) * 1024LL;
+               else if (startswith("Buffers", str+i)) freemem += strtoll(str+i, nullptr, 0) * 1024LL;
+               else if (startswith("MemFree", str+i)) freemem += strtoll(str+i, nullptr, 0) * 1024LL;
 
                while ((i < result) and (str[i] != '\n')) i++;
                i++;
@@ -329,7 +329,7 @@ int64_t GetResource(RES Resource)
 
          if (file.ok()) {
             while ((line = file->readLine())) {
-               if (startswith("cpu Mhz", line)) cpu_mhz = strtol(line, NULL, 0);
+               if (startswith("cpu Mhz", line)) cpu_mhz = strtol(line, nullptr, 0);
             }
          }
 
@@ -748,7 +748,7 @@ ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
       it->Cycle        = glTimerCycle - 1;
 
       if (subscriber->UID > 0) it->Subscriber = subscriber;
-      else it->Subscriber = NULL;
+      else it->Subscriber = nullptr;
 
       // For resource tracking purposes it is important for us to keep a record of the subscription so that
       // we don't treat the object address as valid when it's been removed from the system.

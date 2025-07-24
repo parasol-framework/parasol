@@ -2,7 +2,7 @@
 #define RAMPSPEED 0.01  // Default ramping speed - volume steps per output sample.  Keeping this value very low prevents clicks from occurring
 
 static LONG MixStep;
-static FLOAT *glMixDest = NULL; // TODO: Global requires deprecation
+static FLOAT *glMixDest = nullptr; // TODO: Global requires deprecation
 
 static void filter_float_mono(extAudio *, FLOAT *, LONG);
 static void filter_float_stereo(extAudio *, FLOAT *, LONG);

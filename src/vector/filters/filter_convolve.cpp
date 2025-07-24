@@ -600,7 +600,7 @@ static const FieldDef clEdgeMode[] = {
    { "Duplicate", EM::DUPLICATE },
    { "Wrap",      EM::WRAP },
    { "None",      EM::NONE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clConvolveFXFields[] = {

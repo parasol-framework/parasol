@@ -346,8 +346,8 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
    sslDisconnect(Self);
 #endif
 
-   if (Self->Address) { FreeResource(Self->Address); Self->Address = NULL; }
-   if (Self->NetLookup) { FreeResource(Self->NetLookup); Self->NetLookup = NULL; }
+   if (Self->Address) { FreeResource(Self->Address); Self->Address = nullptr; }
+   if (Self->NetLookup) { FreeResource(Self->NetLookup); Self->NetLookup = nullptr; }
 
    free_socket(Self);
 
@@ -568,8 +568,8 @@ static ERR NETSOCKET_NewObject(extNetSocket *Self)
    Self->MsgLimit     = 1024768;
    Self->ClientLimit  = 1024;
    #ifdef _WIN32
-      Self->WriteSocket = NULL;
-      Self->ReadSocket = NULL;
+      Self->WriteSocket = nullptr;
+      Self->ReadSocket = nullptr;
    #endif
    return ERR::Okay;
 }
@@ -655,7 +655,7 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
 
    log.traceBranch("Reading message.");
 
-   Args->Message = NULL;
+   Args->Message = nullptr;
    Args->Length  = 0;
    Args->CRC     = 0;
    Args->Progress = 0;
@@ -869,16 +869,16 @@ static ERR NETSOCKET_WriteMsg(extNetSocket *Self, struct ns::WriteMsg *Args)
    NetMsg msg;
    msg.Magic  = cpu_be32(NETMSG_MAGIC);
    msg.Length = cpu_be32(Args->Length);
-   acWrite(Self, &msg, sizeof(msg), NULL);
+   acWrite(Self, &msg, sizeof(msg), nullptr);
 
-   acWrite(Self, Args->Message, Args->Length, NULL);
+   acWrite(Self, Args->Message, Args->Length, nullptr);
 
    UBYTE endbuffer[sizeof(NetMsgEnd) + 1];
    NetMsgEnd *end = (NetMsgEnd *)(endbuffer + 1);
    endbuffer[0] = 0; // This null terminator helps with message parsing
    end->Magic = cpu_be32((uint32_t)NETMSG_MAGIC_TAIL);
    end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
-   acWrite(Self, &endbuffer, sizeof(endbuffer), NULL);
+   acWrite(Self, &endbuffer, sizeof(endbuffer), nullptr);
    return ERR::Okay;
 }
 
@@ -896,7 +896,7 @@ connection.
 
 static ERR SET_Address(extNetSocket *Self, CSTRING Value)
 {
-   if (Self->Address) { FreeResource(Self->Address); Self->Address = NULL; }
+   if (Self->Address) { FreeResource(Self->Address); Self->Address = nullptr; }
    if (Value) Self->Address = pf::strclone(Value);
    return ERR::Okay;
 }
@@ -1163,12 +1163,12 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
          if (Self->Feedback.isC()) {
             pf::SwitchContext context(Self->Feedback.Context);
             auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
-            if (routine) routine(Self, NULL, Self->State, Self->Feedback.Meta);
+            if (routine) routine(Self, nullptr, Self->State, Self->Feedback.Meta);
          }
          else if (Self->Feedback.isScript()) {
             sc::Call(Self->Feedback, std::to_array<ScriptArg>({
                { "NetSocket",    Self, FD_OBJECTPTR },
-               { "ClientSocket", APTR(NULL), FD_OBJECTPTR },
+               { "ClientSocket", APTR(nullptr), FD_OBJECTPTR },
                { "State",        int(Self->State) }
             }));
          }
@@ -1185,7 +1185,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
       }
    }
 
-   SetResourcePtr(RES::EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
+   SetResourcePtr(RES::EXCEPTION_HANDLER, nullptr); // Stop winsock from fooling with our exception handler
 
    return ERR::Okay;
 }
@@ -1256,14 +1256,14 @@ static void free_socket(extNetSocket *Self)
    }
 
    #ifdef _WIN32
-      Self->WriteSocket = NULL;
-      Self->ReadSocket  = NULL;
+      Self->WriteSocket = nullptr;
+      Self->ReadSocket  = nullptr;
    #endif
 
    log.trace("Freeing I/O buffer queues.");
 
-   if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = NULL; }
-   if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = NULL; }
+   if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = nullptr; }
+   if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = nullptr; }
 
    if (!Self->terminating()) {
       if (Self->State != NTC::DISCONNECTED) {
@@ -1274,7 +1274,7 @@ static void free_socket(extNetSocket *Self)
 
    log.trace("Resetting exception handler.");
 
-   SetResourcePtr(RES::EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
+   SetResourcePtr(RES::EXCEPTION_HANDLER, nullptr); // Stop winsock from fooling with our exception handler
 
 }
 
@@ -1290,7 +1290,7 @@ static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, int Le
       if (Queue->Index >= (uint32_t)Queue->Length) {
          log.trace("Terminating the current buffer (emptied).");
          FreeResource(Queue->Buffer);
-         Queue->Buffer = NULL;
+         Queue->Buffer = nullptr;
       }
    }
 
@@ -1310,7 +1310,7 @@ static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, int Le
 
       // Adjust the buffer size
 
-      if (ReallocMemory(Queue->Buffer, Queue->Length + Length, &Queue->Buffer, NULL) IS ERR::Okay) {
+      if (ReallocMemory(Queue->Buffer, Queue->Length + Length, &Queue->Buffer, nullptr) IS ERR::Okay) {
          pf::copymem(Message, (BYTE *)Queue->Buffer + Queue->Length, Length);
          Queue->Length += Length;
       }
@@ -1349,7 +1349,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    }
    else {
       Socket = (extNetSocket *)SocketObject;
-      ClientSocket = NULL;
+      ClientSocket = nullptr;
    }
 
    #if defined(_DEBUG) || defined(ENABLE_TRACE_MSGS)
@@ -1488,13 +1488,13 @@ static const FieldDef clValidCert[] = {
 #include "netsocket_def.c"
 
 static const FieldArray clSocketFields[] = {
-   { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "NetClient" },
+   { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, nullptr, nullptr, "NetClient" },
    { "ClientData",       FDF_POINTER|FDF_RW },
-   { "Address",          FDF_STRING|FDF_RI, NULL, SET_Address },
-   { "State",            FDF_INT|FDF_LOOKUP|FDF_RW, NULL, SET_State, &clNetSocketState },
+   { "Address",          FDF_STRING|FDF_RI, nullptr, SET_Address },
+   { "State",            FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_State, &clNetSocketState },
    { "Error",            FDF_INT|FDF_R },
    { "Port",             FDF_INT|FDF_RI },
-   { "Flags",            FDF_INTFLAGS|FDF_RW, NULL, NULL, &clNetSocketFlags },
+   { "Flags",            FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clNetSocketFlags },
    { "TotalClients",     FDF_INT|FDF_R },
    { "Backlog",          FDF_INT|FDF_RI },
    { "ClientLimit",      FDF_INT|FDF_RW },
@@ -1505,7 +1505,7 @@ static const FieldArray clSocketFields[] = {
    { "Incoming",         FDF_FUNCTIONPTR|FDF_RW, GET_Incoming, SET_Incoming },
    { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  GET_Outgoing, SET_Outgoing },
    { "OutQueueSize",     FDF_INT|FDF_R,          GET_OutQueueSize },
-   { "ValidCert",        FDF_INT|FDF_LOOKUP,     GET_ValidCert, NULL, &clValidCert },
+   { "ValidCert",        FDF_INT|FDF_LOOKUP,     GET_ValidCert, nullptr, &clValidCert },
    END_FIELD
 };
 

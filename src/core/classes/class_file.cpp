@@ -285,11 +285,11 @@ static ERR FILE_BufferContent(extFile *Self)
          // Allocate a 1 MB memory block, read the stream into it, then reallocate the block to the correct size.
 
          UBYTE *buffer;
-         if (AllocMemory(1024 * 1024, MEM::NO_CLEAR, (APTR *)&buffer, NULL) IS ERR::Okay) {
+         if (AllocMemory(1024 * 1024, MEM::NO_CLEAR, (APTR *)&buffer, nullptr) IS ERR::Okay) {
             acSeekStart(Self, 0);
             acRead(Self, buffer, 1024 * 1024, &len);
             if (len > 0) {
-               if (AllocMemory(len, MEM::NO_CLEAR, (APTR *)&Self->Buffer, NULL) IS ERR::Okay) {
+               if (AllocMemory(len, MEM::NO_CLEAR, (APTR *)&Self->Buffer, nullptr) IS ERR::Okay) {
                   copymem(buffer, Self->Buffer, len);
                   Self->Size = len;
                }
@@ -303,7 +303,7 @@ static ERR FILE_BufferContent(extFile *Self)
       // the file content is treated as a string.
 
       int8_t *buffer;
-      if (AllocMemory(Self->Size+1, MEM::NO_CLEAR, (APTR *)&buffer, NULL) IS ERR::Okay) {
+      if (AllocMemory(Self->Size+1, MEM::NO_CLEAR, (APTR *)&buffer, nullptr) IS ERR::Okay) {
          buffer[Self->Size] = 0;
          if (acRead(Self, buffer, Self->Size, &len) IS ERR::Okay) {
             Self->Buffer = buffer;
@@ -319,7 +319,7 @@ static ERR FILE_BufferContent(extFile *Self)
    // If the file was empty, allocate a 1-byte memory block for the Buffer field, in order to satisfy condition tests.
 
    if (!Self->Buffer) {
-      if (AllocMemory(1, MEM::DATA, (APTR *)&Self->Buffer, NULL) != ERR::Okay) {
+      if (AllocMemory(1, MEM::DATA, (APTR *)&Self->Buffer, nullptr) != ERR::Okay) {
          return log.warning(ERR::AllocMemory);
       }
    }
@@ -348,8 +348,8 @@ static ERR FILE_DataFeed(extFile *Self, struct acDataFeed *Args)
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
 
-   if (Args->Size) return acWrite(Self, Args->Buffer, Args->Size, NULL);
-   else return acWrite(Self, Args->Buffer, strlen((CSTRING)Args->Buffer), NULL);
+   if (Args->Size) return acWrite(Self, Args->Buffer, Args->Size, nullptr);
+   else return acWrite(Self, Args->Buffer, strlen((CSTRING)Args->Buffer), nullptr);
 }
 
 /*********************************************************************************************************************
@@ -492,7 +492,7 @@ static ERR FILE_Free(extFile *Self)
 {
    pf::Log log;
 
-   if (Self->prvWatch) Action(fl::Watch::id, Self, NULL);
+   if (Self->prvWatch) Action(fl::Watch::id, Self, nullptr);
 
 #ifdef _WIN32
    std::string path;
@@ -503,9 +503,9 @@ static ERR FILE_Free(extFile *Self)
    }
 #endif
 
-   if (Self->ProgressDialog) { FreeResource(Self->ProgressDialog); Self->ProgressDialog = NULL; }
-   if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
-   if (Self->Buffer)  { FreeResource(Self->Buffer); Self->Buffer = NULL; }
+   if (Self->ProgressDialog) { FreeResource(Self->ProgressDialog); Self->ProgressDialog = nullptr; }
+   if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = nullptr; }
+   if (Self->Buffer)  { FreeResource(Self->Buffer); Self->Buffer = nullptr; }
 
    if (Self->Handle != -1) {
       if (close(Self->Handle) IS -1) {
@@ -583,7 +583,7 @@ static ERR FILE_Init(extFile *Self)
          // Allocate buffer if none specified.  An extra byte is allocated for a NULL byte on the end, in case the file
          // content is treated as a string.
 
-         if (AllocMemory((Self->Size < 1) ? 1 : Self->Size+1, MEM::NO_CLEAR, (APTR *)&Self->Buffer, NULL) != ERR::Okay) {
+         if (AllocMemory((Self->Size < 1) ? 1 : Self->Size+1, MEM::NO_CLEAR, (APTR *)&Self->Buffer, nullptr) != ERR::Okay) {
             return log.warning(ERR::AllocMemory);
          }
          ((BYTE *)Self->Buffer)[Self->Size] = 0;
@@ -599,7 +599,7 @@ static ERR FILE_Init(extFile *Self)
       Self->Size = Self->Path.size() - 7;
 
       if (Self->Size > 0) {
-         if (AllocMemory(Self->Size, MEM::DATA, (APTR *)&Self->Buffer, NULL) IS ERR::Okay) {
+         if (AllocMemory(Self->Size, MEM::DATA, (APTR *)&Self->Buffer, nullptr) IS ERR::Okay) {
             Self->Flags |= FL::READ|FL::WRITE;
             copymem(Self->Path.c_str() + 7, Self->Buffer, Self->Size);
             return ERR::Okay;
@@ -621,7 +621,7 @@ static ERR FILE_Init(extFile *Self)
       }
       else {
 #ifdef __unix__
-         Self->Permissions |= get_parent_permissions(Self->Path, NULL, NULL) & (PERMIT::ALL_READ|PERMIT::ALL_WRITE);
+         Self->Permissions |= get_parent_permissions(Self->Path, nullptr, nullptr) & (PERMIT::ALL_READ|PERMIT::ALL_WRITE);
          if (Self->Permissions IS PERMIT::NIL) Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
          else log.msg("Inherited permissions: $%.8x", LONG(Self->Permissions));
 #else
@@ -910,7 +910,7 @@ static ERR FILE_NextFile(extFile *Self, struct fl::Next *Args)
       // Automatically close the list in the event of an error and repurpose the return code.  Subsequent
       // calls to Next() will start from the start of the file index.
       FreeResource(Self->prvList);
-      Self->prvList = NULL;
+      Self->prvList = nullptr;
    }
 
    return error;
@@ -1137,7 +1137,7 @@ static ERR FILE_Rename(extFile *Self, struct acRename *Args)
          std::string n(Self->Path, 0, Self->Path.find_last_of(":/\\"));
          n.append(name, 0, name.find_last_of("/\\:"));
 
-         if (fs_copy(Self->Path, n, NULL, true) IS ERR::Okay) {
+         if (fs_copy(Self->Path, n, nullptr, true) IS ERR::Okay) {
             if (!n.ends_with('/')) Self->Path = n + "/";
             else Self->Path = n;
             return ERR::Okay;
@@ -1156,7 +1156,7 @@ static ERR FILE_Rename(extFile *Self, struct acRename *Args)
          if (Self->Handle != -1) { close(Self->Handle); Self->Handle = -1; }
       #endif
 
-      if (fs_copy(Self->Path, n, NULL, true) IS ERR::Okay) {
+      if (fs_copy(Self->Path, n, nullptr, true) IS ERR::Okay) {
          Self->Path = n;
          return ERR::Okay;
       }
@@ -1173,7 +1173,7 @@ Reset: If the file represents a folder, the file list index is reset by this act
 static ERR FILE_Reset(extFile *Self)
 {
    if ((Self->Flags & FL::FOLDER) != FL::NIL) {
-      if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
+      if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = nullptr; }
    }
 
    return ERR::Okay;
@@ -1443,7 +1443,7 @@ static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
       else log.warning("Failed to find virtual volume ID $%.8x", id);
 
       FreeResource(Self->prvWatch);
-      Self->prvWatch = NULL;
+      Self->prvWatch = nullptr;
    }
 
    if ((!Args) or (!Args->Callback) or (Args->Flags IS MFF::NIL)) return ERR::Okay;
@@ -1453,7 +1453,7 @@ static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
       ERR error;
       if ((glInotify = inotify_init()) != -1) {
          fcntl(glInotify, F_SETFL, fcntl(glInotify, F_GETFL)|O_NONBLOCK);
-         error = RegisterFD(glInotify, RFD::READ, (void (*)(HOSTHANDLE, APTR))path_monitor, NULL);
+         error = RegisterFD(glInotify, RFD::READ, (void (*)(HOSTHANDLE, APTR))path_monitor, nullptr);
       }
       else error = log.warning(ERR::SystemCall);
 
@@ -1468,9 +1468,9 @@ static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
 
       if (vd->WatchPath) {
          #ifdef _WIN32
-         if (AllocMemory(sizeof(rkWatchPath) + winGetWatchBufferSize(), MEM::DATA, (APTR *)&Self->prvWatch, NULL) IS ERR::Okay) {
+         if (AllocMemory(sizeof(rkWatchPath) + winGetWatchBufferSize(), MEM::DATA, (APTR *)&Self->prvWatch, nullptr) IS ERR::Okay) {
          #else
-         if (AllocMemory(sizeof(rkWatchPath), MEM::DATA, (APTR *)&Self->prvWatch, NULL) IS ERR::Okay) {
+         if (AllocMemory(sizeof(rkWatchPath), MEM::DATA, (APTR *)&Self->prvWatch, nullptr) IS ERR::Okay) {
          #endif
             Self->prvWatch->VirtualID = vd->VirtualID;
             Self->prvWatch->Routine   = *Args->Callback;
@@ -1549,7 +1549,7 @@ static ERR FILE_Write(extFile *Self, struct acWrite *Args)
          if (Self->Position + Args->Length > Self->Size) {
             // Increase the size of the buffer to cater for the write.  A null byte (not included in the official size)
             // is always placed at the end.
-            if (ReallocMemory(Self->Buffer, Self->Position + Args->Length + 1, (APTR *)&Self->Buffer, NULL) IS ERR::Okay) {
+            if (ReallocMemory(Self->Buffer, Self->Position + Args->Length + 1, (APTR *)&Self->Buffer, nullptr) IS ERR::Okay) {
                Self->Size = Self->Position + Args->Length;
                Self->Buffer[Self->Size] = 0;
             }
@@ -2019,7 +2019,7 @@ static ERR GET_Link(extFile *Self, STRING *Value)
       return ERR::Okay;
    }
 
-   *Value = NULL;
+   *Value = nullptr;
    if ((Self->Flags & FL::LINK) != FL::NIL) {
       if (ResolvePath(Self->Path, RSF::NIL, &path) IS ERR::Okay) {
          if (path.ends_with('/')) path.pop_back();
@@ -2075,7 +2075,7 @@ static ERR GET_Path(extFile *Self, CSTRING *Value)
       return ERR::Okay;
    }
    else {
-      *Value = NULL;
+      *Value = nullptr;
       return ERR::FieldNotSet;
    }
 }
@@ -2626,20 +2626,20 @@ static const FieldDef PermissionFlags[] = {
    { "UserRead",     PERMIT::READ },
    { "UserWrite",    PERMIT::WRITE },
    { "UserExec",     PERMIT::EXEC },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 #include "class_file_def.c"
 
 static const FieldArray FileFields[] = {
-   { "Position", FDF_INT64|FDF_RW, NULL, SET_Position },
-   { "Flags",    FDF_INTFLAGS|FDF_RI, NULL, NULL, &clFileFlags },
+   { "Position", FDF_INT64|FDF_RW, nullptr, SET_Position },
+   { "Flags",    FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clFileFlags },
    { "Static",   FDF_INT|FDF_RI },
-   { "Target",   FDF_OBJECTID|FDF_RW, NULL, NULL, CLASSID::SURFACE },
+   { "Target",   FDF_OBJECTID|FDF_RW, nullptr, nullptr, CLASSID::SURFACE },
    { "Buffer",   FDF_ARRAY|FDF_BYTE|FDF_R, GET_Buffer },
    // Virtual fields
    { "Date",         FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Date, SET_Date, "DateTime" },
-   { "Created",      FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Created, NULL, "DateTime" },
+   { "Created",      FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Created, nullptr, "DateTime" },
    { "Handle",       FDF_INT64|FDF_R, GET_Handle },
    { "Icon",         FDF_STRING|FDF_R, GET_Icon },
    { "Path",         FDF_STRING|FDF_RI, GET_Path, SET_Path },

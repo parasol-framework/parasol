@@ -76,6 +76,24 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension:
 - Declarative UI creation with automatic scaling and layout management
 - Callback-driven architecture for event handling
 
+#### Fluid Script Execution Model
+
+**CRITICAL: Fluid scripts execute top-to-bottom with NO entry point function**
+- Always study existing `.fluid` files (like `docs/generate.fluid`, `examples/*.fluid`) to understand patterns
+- API documentation in `docs/html` can be utilised to understand class and module interfaces in detail.
+
+#### Fluid Coding Patterns
+
+**Always study existing examples first:**
+```bash
+# Key example files to examine:
+examples/*.fluid          # Application examples
+docs/generate.fluid       # Process execution example
+tools/*.fluid             # Build and utility scripts
+scripts/gui/*.fluid       # GUI component examples
+scripts/*.fluid           # APIs
+```
+
 ## Key Development Patterns
 
 ### Flute Testing
