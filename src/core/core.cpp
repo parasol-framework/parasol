@@ -475,7 +475,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          return ERR::SystemCall;
       }
 
-      RegisterFD(glSocket, RFD::read, nullptr, nullptr);
+      RegisterFD(glSocket, RFD::READ, nullptr, nullptr);
    #endif
 
    log.msg("Process: %d, Sync: %s, Root: %s", glProcessID, (glSync) ? "Y" : "N", glRootPath.c_str());
