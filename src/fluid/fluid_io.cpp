@@ -491,8 +491,97 @@ static int file_read(lua_State *Lua)
          return 2;
       }
 
-      // TODO: Implement various read formats (*n, *a, *l, number)
-      luaL_error(Lua, "file:read not yet implemented");
+      int nargs = lua_gettop(Lua);
+      
+      // Default to reading a line if no arguments
+      if (nargs IS 1) {
+         struct fl::ReadLine args;
+         if (Action(fl::ReadLine::id, handle->file, &args) IS ERR::Okay) {
+            lua_pushstring(Lua, args.Result);
+            return 1;
+         }
+         else {
+            lua_pushnil(Lua);
+            return 1;
+         }
+      }
+      
+      // Process read format arguments
+      for (int i = 2; i <= nargs; i++) {
+         if (lua_type(Lua, i) IS LUA_TSTRING) {
+            auto format = lua_tostring(Lua, i);
+            
+            if (format[0] IS '*') {
+               switch (format[1]) {
+                  case 'n': { // Read a number
+                     struct fl::ReadLine args;
+                     if (Action(fl::ReadLine::id, handle->file, &args) IS ERR::Okay) {
+                        lua_pushnumber(Lua, std::strtod(args.Result, nullptr));
+                     }
+                     else lua_pushnil(Lua);
+                     break;
+                  }
+                  
+                  case 'a': { // Read entire file
+                     auto current_pos = handle->file->Position;
+                     handle->file->seekEnd(0);
+                     auto file_size = handle->file->Position;
+                     handle->file->seek(current_pos, SEEK::START);
+                     
+                     auto remaining = file_size - current_pos;
+                     if (remaining > 0) {
+                        std::string buffer(remaining, '\0');
+                        int bytes_read;
+                        if (acRead(handle->file, buffer.data(), remaining, &bytes_read) IS ERR::Okay) {
+                           buffer.resize(bytes_read);
+                           lua_pushlstring(Lua, buffer.data(), bytes_read);
+                        }
+                        else lua_pushnil(Lua);
+                     }
+                     else lua_pushstring(Lua, "");
+                     break;
+                  }
+                  
+                  case 'l': { // Read a line (default behavior)
+                     struct fl::ReadLine args;
+                     if (Action(fl::ReadLine::id, handle->file, &args) IS ERR::Okay) {
+                        lua_pushstring(Lua, args.Result);
+                     }
+                     else lua_pushnil(Lua);
+                     break;
+                  }
+                  
+                  default:
+                     lua_pushnil(Lua);
+                     break;
+               }
+            }
+            else {
+               lua_pushnil(Lua);
+            }
+         }
+         else if (lua_type(Lua, i) IS LUA_TNUMBER) {
+            // Read specified number of bytes
+            auto bytes_to_read = lua_tointeger(Lua, i);
+            if (bytes_to_read > 0) {
+               std::string buffer(bytes_to_read, '\0');
+               int bytes_read;
+               if (acRead(handle->file, buffer.data(), bytes_to_read, &bytes_read) IS ERR::Okay and bytes_read > 0) {
+                  buffer.resize(bytes_read);
+                  lua_pushlstring(Lua, buffer.data(), bytes_read);
+               }
+               else lua_pushnil(Lua);
+            }
+            else {
+               lua_pushstring(Lua, "");
+            }
+         }
+         else {
+            lua_pushnil(Lua);
+         }
+      }
+      
+      return nargs - 1; // Return number of results (excluding file handle)
    }
    
    return 0;

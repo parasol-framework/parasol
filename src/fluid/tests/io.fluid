@@ -54,6 +54,7 @@ function testIoOpen()
    assert(file, 'Failed to open file for writing')
    file:write('Test content')
    file:close()
+   table.insert(glTestFiles, write_path)
    assert(fileExists(write_path), 'File should exist after writing')
 
    -- Test append mode
@@ -119,6 +120,7 @@ function testFileWrite()
    local test_path = glTestFolder .. 'test_file_write.txt'
    local file = io.open(test_path, 'w')
    assert(file, 'Failed to open file for writing')
+   table.insert(glTestFiles, test_path)
 
    -- Test single string write
    local result = file:write('Hello')
@@ -132,6 +134,52 @@ function testFileWrite()
 
    local content = readFileContent(test_path)
    assert(content == 'Hello World!', 'Written content should match expected')
+end
+
+function testFileRead()
+   print('Testing file:read()...')
+
+   -- Create test file with various content types
+   local test_content = '123\n456.789\nHello World\nLine 4\n'
+   local test_path = createTestFile('test_read.txt', test_content)
+   local file = io.open(test_path, 'r')
+   assert(file, 'Failed to open file for reading')
+
+   -- Test reading a line (default behavior)
+   local line = file:read()
+   assert(line == '123', 'Should read first line: "123", got "' .. nz(line, 'NIL') .. '"')
+
+   -- Test reading a number
+   local num = file:read('*n')
+   assert(num == 456.789, 'Should read number 456.789, got ' .. nz(num, 'NIL'))
+
+   -- Test reading specific number of bytes
+   file:seek('set', 0) -- Reset to start
+   local bytes = file:read(3)
+   assert(bytes == '123', 'Should read 3 bytes: "123", got "' .. nz(bytes, 'NIL') .. '"')
+
+   -- Test reading entire file
+   file:seek('set', 0) -- Reset to start
+   local all = file:read('*a')
+   assert(all == test_content, 'Should read entire file content')
+
+   -- Test reading line with *l format
+   file:seek('set', 0) -- Reset to start
+   local line_l = file:read('*l')
+   assert(line_l == '123', 'Should read line with *l format')
+
+   -- Test multiple read operations
+   file:seek('set', 0) -- Reset to start
+   local first, second = file:read('*l', '*l')
+   assert(first == '123', 'First line should be "123"')
+   assert(second == '456.789', 'Second line should be "456.789"')
+
+   -- Test reading at end of file
+   file:seek('end', 0)
+   local eof = file:read()
+   assert(eof == nil, 'Should return nil when reading at end of file')
+
+   file:close()
 end
 
 function testFileSeek()
@@ -166,6 +214,7 @@ function testFileFlush()
    local test_path = glTestFolder .. 'test_flush.txt'
    local file = io.open(test_path, 'w')
    assert(file, 'Failed to open file for flushing')
+   table.insert(glTestFiles, test_path)
 
    file:write('test data')
    local result = file:flush()
@@ -239,6 +288,7 @@ function testIoInputOutput()
    -- Test setting default output
    local output_path = glTestFolder .. 'test_output.txt'
    local output_file = io.output(output_path)
+   table.insert(glTestFiles, output_path)
    assert(output_file, 'io.output should return file handle when setting')
 
    -- Test getting current default output
@@ -299,6 +349,22 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Integration tests
 
+function testIoRead()
+   print('Testing io.read()...')
+
+   -- Test reading from default input
+   local input_path = createTestFile('test_io_read.txt', 'io read test\nsecond line\n')
+   io.input(input_path)
+
+   local line = io.read()
+   assert(line == 'io read test', 'Should read from default input')
+
+   local line2 = io.read('*l')
+   assert(line2 == 'second line', 'Should read second line from default input')
+
+   io.input():close()
+end
+
 function testIntegration()
    print('Testing integrated IO operations...')
 
@@ -311,6 +377,7 @@ function testIntegration()
    assert(write_file, 'Failed to open file for integration test')
    write_file:write(test_data)
    write_file:close()
+   table.insert(glTestFiles, test_path)
 
    -- Read it back and verify
    local lines_read = {}
@@ -323,11 +390,31 @@ function testIntegration()
    assert(lines_read[2] == 'Second line of data', 'Second line incorrect')
    assert(lines_read[3] == 'Third line of data', 'Third line incorrect')
 
-   -- Test seek and partial read operations
+   -- Test seek and read operations with file_read() implementation
    local read_file = io.open(test_path, 'r')
    read_file:seek('set', 6) -- Skip "First "
-   -- Note: file:read() may not be implemented yet, so we test what we can
+
+   local partial = read_file:read(4) -- Read "line"
+   assert(partial == 'line', 'Should read 4 bytes after seek, got "' .. nz(partial, 'NIL') .. '"')
+
+   -- Test reading entire remaining content
+   read_file:seek('set', 0)
+   local all_content = read_file:read('*a')
+   assert(all_content == test_data, 'Should read entire file content')
+
    read_file:close()
+
+   -- Test number reading
+   local number_path = createTestFile('test_numbers.txt', '42\n3.14159\n')
+   local num_file = io.open(number_path, 'r')
+
+   local int_num = num_file:read('*n')
+   assert(int_num == 42, 'Should read integer 42, got ' .. nz(int_num, 'NIL'))
+
+   local float_num = num_file:read('*n')
+   assert(math.abs(float_num - 3.14159) < 0.00001, 'Should read float 3.14159, got ' .. nz(float_num, 'NIL'))
+
+   num_file:close()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -340,11 +427,13 @@ return {
       'testIoType',
       'testIoTmpfile',
       'testFileWrite',
+      'testFileRead',
       'testFileSeek',
       'testFileFlush',
       'testIoLines',
       'testFileLines',
       'testIoInputOutput',
+      'testIoRead',
       'testIoConstants',
       'testErrorHandling',
       'testIntegration'
@@ -356,7 +445,8 @@ return {
 
    cleanup = function()
       for k, v in pairs(glTestFiles) do
-         print('Deleting test file ' .. k .. ', ' .. v)
+         print('Deleting test file ' .. v)
+         mSys.DeleteFile(v)
       end
    end
 }
