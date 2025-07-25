@@ -1749,8 +1749,9 @@ static ERR SET_ExitCallback(extTask *Self, FUNCTION *Value)
 InputCallback: This callback returns incoming data from STDIN.
 
 The InputCallback field is available to the active task object only (i.e. the current process).
-The referenced function will be called when process receives data from STDIN.  The callback must follow the
-prototype `Function(*Task, APTR Data, int Size, ERR Status)`
+The referenced function will be called when process receives data from STDIN.  The callback must match the
+prototype `void Function(*Task, APTR Data, int Size, ERR Status)`.  In Fluid the prototype is
+'function callback(Task, Array, Status)` where `Array` is an array interface.
 
 The information read from STDOUT will be returned in the `Data` pointer and the byte-length of the data will be indicated
 by the `Size`.  The data buffer is temporary and will be invalid once the callback function has returned.
@@ -1801,7 +1802,8 @@ static ERR SET_InputCallback(extTask *Self, FUNCTION *Value)
 OutputCallback: This callback returns incoming data from STDOUT.
 
 The OutputCallback field can be set with a function reference that will be called when an active process sends data via
-STDOUT.  The callback must follow the prototype `Function(*Task, APTR Data, int Size)`
+STDOUT.  For C++ the callback must match the prototype `void Function(*Task, APTR Data, int Size)`.  In Fluid the
+prototype is 'function callback(Task, Array)` where `Array` is an array interface.
 
 The information read from STDOUT will be returned in the `Data` pointer and the byte-length of the data will be indicated
 by the `Size`.  The `Data` pointer is temporary and will be invalid once the callback function has returned.
