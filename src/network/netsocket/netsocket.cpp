@@ -438,9 +438,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    if (Self->SocketHandle != (SOCKET_HANDLE)-1) return ERR::Okay; // The socket has been pre-configured by the developer
 
 #ifdef ENABLE_SSL
-   // Initialise the SSL structures (do not perform any connection yet).  Notice how the NSF::SSL flag is used to check
-   // for an SSL request - however after this point any SSL checks must be made on the presence of a value in the SSL
-   // field.
+   // Initialise the SSL structures (do not perform any connection yet).  Notice the NSF::SSL flag is required
+   // for an SSL request, but future SSL checks will instead be reliant on the SSL field having a value.
 
    if ((Self->Flags & NSF::SSL) != NSF::NIL) {
       if ((error = sslSetup(Self)) != ERR::Okay) return error;

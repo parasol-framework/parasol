@@ -395,6 +395,7 @@ ERR push_object_id(lua_State *, OBJECTID ObjectID);
 struct fstruct * push_struct(objScript *, APTR, std::string_view, bool, bool);
 struct fstruct * push_struct_def(lua_State *, APTR, struct struct_record &, bool);
 extern void register_array_class(lua_State *);
+extern void register_io_class(lua_State *);
 extern void register_input_class(lua_State *);
 extern void register_object_class(lua_State *);
 extern void register_module_class(lua_State *);
