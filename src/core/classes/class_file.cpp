@@ -608,6 +608,39 @@ static ERR FILE_Init(extFile *Self)
       }
       else return log.warning(ERR::Failed);
    }
+   else if (pf::startswith("std:", Self->Path)) {
+      // Special accessors for direct access to standard input/output/error streams.
+
+      Self->Flags &= ~(FL::NEW|FL::READ|FL::WRITE);
+
+      if (iequals("std:stdin", Self->Path)) {
+         Self->Flags |= FL::READ;
+         #ifdef _WIN32
+            Self->Handle = _fileno(stdin); 
+         #else
+            Self->Handle = STDIN_FILENO;
+         #endif
+      }
+      else if (iequals("std:stdout", Self->Path)) {
+         Self->Flags |= FL::WRITE;
+         #ifdef _WIN32
+            Self->Handle = _fileno(stdout); 
+         #else
+            Self->Handle = STDOUT_FILENO;
+         #endif
+      }
+      else if (iequals("std:stderr", Self->Path)) {
+         Self->Flags |= FL::WRITE;
+         #ifdef _WIN32
+            Self->Handle = _fileno(stderr); 
+         #else
+            Self->Handle = STDERR_FILENO;
+         #endif
+      }
+      else return log.warning(ERR::Failed);
+
+      return ERR::Okay;
+   }
 
    if ((Self->Permissions IS PERMIT::NIL) or ((Self->Permissions & PERMIT::INHERIT) != PERMIT::NIL)) {
       FileInfo info;
@@ -1078,12 +1111,12 @@ static ERR FILE_ReadLine(extFile *Self, struct fl::ReadLine *Args)
       if (Self->isFolder) return log.warning(ERR::ExpectedFile);
       if (Self->Handle IS -1) return log.warning(ERR::ObjectCorrupt);
 
-      Self->prvLine.reserve(4096);
-      LONG result;
-      const LONG CHUNK = 256;
+      Self->prvLine.resize(4096); // We'll shrink it later
+      int result;
+      const int CHUNK = 256;
       std::size_t line_offset = 0;
       while ((result = read(Self->Handle, Self->prvLine.data()+line_offset, CHUNK)) > 0) {
-         LONG i;
+         int i;
          for (i=0; (i < result) and (Self->prvLine[line_offset] != '\n'); i++, line_offset++);
          if (i < result) break;
 
