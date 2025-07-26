@@ -11,7 +11,7 @@ HTTP: Provides a complete working implementation of HTTP.
 The HTTP class provides a way of interacting with servers that support the HTTP protocol.  Supported HTTP methods
 include `GET`, `POST`, `PUT`, `DELETE`, `COPY`, `MOVE`, `MKCOL` and more.  The following features are included:
 
-<list type="unsorted">
+<list type="bullet">
 <li>Handling of errors and HTTP status codes.</li>
 <li>Monitoring of the server communication process.</li>
 <li>Data transfer monitoring.</li>

@@ -19,7 +19,7 @@ and readiness for outgoing data is supported by #Outgoing.
 
 After a connection has been established, data may be written using any of the following methods:
 
-<list type="unsorted">
+<list type="bullet">
 <li>Write directly to the socket with either the #Write() action or #WriteMsg() method.</li>
 <li>Subscribe to the socket by referring to a routine in the #Outgoing field.  The routine will be called to
 initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>

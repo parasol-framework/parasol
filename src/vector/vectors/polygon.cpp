@@ -5,7 +5,7 @@ VectorPolygon: Extends the Vector class with support for generating polygons.
 
 The VectorPolygon class provides support for three different types of vector:
 
-<list type="sorted">
+<list type="ordered">
 <li>Closed-point polygons consisting of at least 3 points.</li>
 <li>Open polygons consisting of at least 3 points (a 'polyline' in SVG).</li>
 <li>Single lines consisting of two points only (a 'line' in SVG).</li>
@@ -87,7 +87,7 @@ static ERR read_points(extVectorPoly *Self, std::string_view Value)
          if (!expect_x) Self->Points.emplace_back(VectorPoint{x, y});
 
          expect_x = !expect_x;
-      } 
+      }
       else Value.remove_prefix(1);
    }
 

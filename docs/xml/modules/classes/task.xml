@@ -243,9 +243,9 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The InputCallback field is available to the active task object only (i.e. the current process). The referenced function will be called when process receives data from STDIN.  The callback must follow the prototype <code>Function(*Task, APTR Data, int Size, ERR Status)</code></p>
-<p>The information read from STDOUT will be returned in the <code>Data</code> pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The data buffer is temporary and will be invalid once the callback function has returned.</p>
-<p>A status of <code>ERR::Finished</code> is sent if the stdinput handle has been closed.</p>
+<p>The InputCallback field is available to the active task object only (i.e. the current process). The referenced function will be called when process receives data from STDIN.  The callback must match the prototype <code>void Function(*Task, APTR Data, int Size, ERR Status)</code>.  In Fluid the prototype is 'function callback(Task, Array, Status)<code> where </code>Array<code> is an array interface.</code>
+<p>The information read from STDOUT will be returned in the </p>Data<code> pointer and the byte-length of the data will be indicated by the </code>Size<code>.  The data buffer is temporary and will be invalid once the callback function has returned.</code>
+<p>A status of </p>ERR::Finished` is sent if the stdinput handle has been closed.</p>
       </description>
     </field>
 
@@ -286,8 +286,8 @@
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The OutputCallback field can be set with a function reference that will be called when an active process sends data via STDOUT.  For C++ the callback must follow the prototype <code>void Function(*Task, APTR Data, int Size)</code>.</p>
-<p>The information read from STDOUT will be returned in the <code>Data</code> pointer and the byte-length of the data will be indicated by the <code>Size</code>.  The <code>Data</code> pointer is temporary and will be invalid once the callback function has returned.</p>
+<p>The OutputCallback field can be set with a function reference that will be called when an active process sends data via STDOUT.  For C++ the callback must match the prototype <code>void Function(*Task, APTR Data, int Size)</code>.  In Fluid the prototype is 'function callback(Task, Array)<code> where </code>Array<code> is an array interface.</code>
+<p>The information read from STDOUT will be returned in the </p>Data<code> pointer and the byte-length of the data will be indicated by the </code>Size<code>.  The </code>Data` pointer is temporary and will be invalid once the callback function has returned.</p>
       </description>
     </field>
 

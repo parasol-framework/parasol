@@ -512,7 +512,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
    log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p", int(ActionID), Object->UID, Parameters, Callback);
 
    ERR error = ERR::Okay;
-   
+
    ++Object->ThreadPending;
    Defer([Object, error] { if (error != ERR::Okay) --Object->ThreadPending; });
 
@@ -1471,7 +1471,7 @@ ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
    if (Args) {
       if (ActionID > AC::NIL) {
          if (ActionTable[int(ActionID)].Size) {
-            if (auto error = copy_args(ActionTable[int(ActionID)].Args, ActionTable[int(ActionID)].Size, 
+            if (auto error = copy_args(ActionTable[int(ActionID)].Args, ActionTable[int(ActionID)].Size,
                   (int8_t *)Args, buffer); error != ERR::Okay) {
                return error;
             }
@@ -1480,7 +1480,7 @@ ERR QueueAction(AC ActionID, OBJECTID ObjectID, APTR Args)
          }
       }
       else if (auto cl = (extMetaClass *)FindClass(GetClassID(ObjectID))) {
-         if (auto error = copy_args(cl->Methods[-int(ActionID)].Args, cl->Methods[-int(ActionID)].Size, 
+         if (auto error = copy_args(cl->Methods[-int(ActionID)].Args, cl->Methods[-int(ActionID)].Size,
                (int8_t *)Args, buffer); error != ERR::Okay) {
             return error;
          }
@@ -1565,7 +1565,7 @@ This function changes the ownership of an existing object.  Ownership is an attr
 placement within the object hierarchy as well as impacting on the resource tracking of the object in question.
 Internally, setting a new owner will cause three things to happen:
 
-<list type="sorted">
+<list type="ordered">
 <li>The new owner's class will receive notification via the #NewChild() action.  If the owner rejects the object by sending back an error, SetOwner() will fail immediately.</li>
 <li>The object's class will then receive notification via the #NewOwner() action.</li>
 <li>The resource tracking of the new owner will be modified so that the object is accepted as its child.  This means that if and when the owning object is destroyed, the new child object will be destroyed with it.</li>
