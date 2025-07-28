@@ -19,8 +19,9 @@
 #ifndef AGG_PIXFMT_RGBA_INCLUDED
 #define AGG_PIXFMT_RGBA_INCLUDED
 
-#include <string.h>
-#include <math.h>
+#include <cstring>
+#include <cmath>
+#include <type_traits>
 #include "agg_basics.h"
 #include "agg_color_rgba.h"
 #include "agg_rendering_buffer.h"
@@ -28,44 +29,60 @@
 namespace agg
 {
     // multiplier_rgba
-    template<class ColorT, class Order> struct multiplier_rgba {
-        typedef typename ColorT::value_type value_type;
-        typedef typename ColorT::calc_type calc_type;
+    template<typename ColorT, typename Order> struct multiplier_rgba {
+        using value_type = typename ColorT::value_type;
+        using calc_type = typename ColorT::calc_type;
 
-        static AGG_INLINE void premultiply(value_type* p) {
-            calc_type a = p[Order::A];
-            if (a < ColorT::base_mask) {
-                if (a == 0) {
-                    p[Order::R] = p[Order::G] = p[Order::B] = 0;
-                    return;
+        static constexpr void premultiply(value_type* p) noexcept {
+            const calc_type a = p[Order::A];
+            if constexpr (std::is_same_v<value_type, std::uint8_t>) {
+                // Optimized path for 8-bit values
+                if (a < ColorT::base_mask) {
+                    if (a == 0) {
+                        p[Order::R] = p[Order::G] = p[Order::B] = 0;
+                        return;
+                    }
+                    p[Order::R] = static_cast<value_type>((p[Order::R] * a + ColorT::base_mask) >> ColorT::base_shift);
+                    p[Order::G] = static_cast<value_type>((p[Order::G] * a + ColorT::base_mask) >> ColorT::base_shift);
+                    p[Order::B] = static_cast<value_type>((p[Order::B] * a + ColorT::base_mask) >> ColorT::base_shift);
                 }
-                p[Order::R] = value_type((p[Order::R] * a + ColorT::base_mask) >> ColorT::base_shift);
-                p[Order::G] = value_type((p[Order::G] * a + ColorT::base_mask) >> ColorT::base_shift);
-                p[Order::B] = value_type((p[Order::B] * a + ColorT::base_mask) >> ColorT::base_shift);
+            } else {
+                // General path for other types
+                if (a < ColorT::base_mask) {
+                    if (a == 0) {
+                        p[Order::R] = p[Order::G] = p[Order::B] = 0;
+                        return;
+                    }
+                    p[Order::R] = static_cast<value_type>((p[Order::R] * a + ColorT::base_mask) >> ColorT::base_shift);
+                    p[Order::G] = static_cast<value_type>((p[Order::G] * a + ColorT::base_mask) >> ColorT::base_shift);
+                    p[Order::B] = static_cast<value_type>((p[Order::B] * a + ColorT::base_mask) >> ColorT::base_shift);
+                }
             }
         }
 
-        static AGG_INLINE void demultiply(value_type* p) {
-            calc_type a = p[Order::A];
+        static constexpr void demultiply(value_type* p) noexcept {
+            const calc_type a = p[Order::A];
             if (a < ColorT::base_mask) {
                 if (a == 0) {
                     p[Order::R] = p[Order::G] = p[Order::B] = 0;
                     return;
                 }
-                calc_type r = (calc_type(p[Order::R]) * ColorT::base_mask) / a;
-                calc_type g = (calc_type(p[Order::G]) * ColorT::base_mask) / a;
-                calc_type b = (calc_type(p[Order::B]) * ColorT::base_mask) / a;
-                p[Order::R] = value_type((r > ColorT::base_mask) ? ColorT::base_mask : r);
-                p[Order::G] = value_type((g > ColorT::base_mask) ? ColorT::base_mask : g);
-                p[Order::B] = value_type((b > ColorT::base_mask) ? ColorT::base_mask : b);
+                const calc_type r = (static_cast<calc_type>(p[Order::R]) * ColorT::base_mask) / a;
+                const calc_type g = (static_cast<calc_type>(p[Order::G]) * ColorT::base_mask) / a;
+                const calc_type b = (static_cast<calc_type>(p[Order::B]) * ColorT::base_mask) / a;
+                
+                p[Order::R] = static_cast<value_type>(std::min(r, static_cast<calc_type>(ColorT::base_mask)));
+                p[Order::G] = static_cast<value_type>(std::min(g, static_cast<calc_type>(ColorT::base_mask)));
+                p[Order::B] = static_cast<value_type>(std::min(b, static_cast<calc_type>(ColorT::base_mask)));
             }
         }
     };
 
     // apply_gamma_dir_rgba
-    template<class ColorT, class Order, class GammaLut> class apply_gamma_dir_rgba {
+    template<typename ColorT, typename Order, typename GammaLut>
+    class apply_gamma_dir_rgba {
     public:
-        typedef typename ColorT::value_type value_type;
+        using value_type = typename ColorT::value_type;
 
         apply_gamma_dir_rgba(const GammaLut& gamma) : m_gamma(gamma) {}
 

@@ -11,7 +11,14 @@
 #ifndef AGG_BASICS_INCLUDED
 #define AGG_BASICS_INCLUDED
 
-#include <math.h>
+#include <cmath>
+#include <cstdint>
+#include <algorithm>
+#include <memory>
+#include <type_traits>
+#ifdef __cpp_lib_math_constants
+#include <numbers>
+#endif
 #include "agg_config.h"
 
 #ifdef AGG_CUSTOM_ALLOCATOR
@@ -19,57 +26,76 @@
 #else
 namespace agg
 {
+    // Modern allocator with backward compatibility
     template<class T> struct pod_allocator
     {
-        static void deallocate(T* ptr) { delete [] ptr;      }
+        using pointer_type = std::unique_ptr<T[]>;
+        
+        // Modern interface returning smart pointer
+        static pointer_type allocate_unique(std::size_t size) {
+            return std::make_unique<T[]>(size);
+        }
+        
+        // Legacy interface for backward compatibility - returns raw pointer
+        static T* allocate(std::size_t size) {
+            return new T[size];
+        }
+        
+        static void deallocate(T* ptr, std::size_t = 0) { delete [] ptr; }
     };
 
     template<class T> struct obj_allocator
     {
-        static T*   allocate()         { return new T; }
-        static void deallocate(T* ptr) { delete ptr;   }
+        using pointer_type = std::unique_ptr<T>;
+        
+        // Modern interface returning smart pointer  
+        static pointer_type allocate_unique() {
+            return std::make_unique<T>();
+        }
+        
+        template<typename... Args>
+        static pointer_type allocate_unique(Args&&... args) {
+            return std::make_unique<T>(std::forward<Args>(args)...);
+        }
+        
+        // Legacy interface for backward compatibility - returns raw pointer
+        static T* allocate() { return new T; }
+        static void deallocate(T* ptr) { delete ptr; }
     };
 }
 #endif
 
+// Modern C++ type definitions using standard integer types
 #ifndef AGG_INT8
-#define AGG_INT8 signed char
+using AGG_INT8 = std::int8_t;
 #endif
 
 #ifndef AGG_INT8U
-#define AGG_INT8U unsigned char
+using AGG_INT8U = std::uint8_t;
 #endif
 
 #ifndef AGG_INT16
-#define AGG_INT16 short
+using AGG_INT16 = std::int16_t;
 #endif
 
 #ifndef AGG_INT16U
-#define AGG_INT16U unsigned short
+using AGG_INT16U = std::uint16_t;
 #endif
 
 #ifndef AGG_INT32
-#define AGG_INT32 int
+using AGG_INT32 = std::int32_t;
 #endif
 
 #ifndef AGG_INT32U
-#define AGG_INT32U unsigned
+using AGG_INT32U = std::uint32_t;
 #endif
 
 #ifndef AGG_INT64
-#if defined(_MSC_VER) or defined(__BORLANDC__)
-#define AGG_INT64 signed __int64
-#else
-#define AGG_INT64 signed long long
-#endif
+using AGG_INT64 = std::int64_t;
 #endif
 
 #ifndef AGG_INT64U
-#if defined(_MSC_VER) or defined(__BORLANDC__)
-#define AGG_INT64U unsigned __int64
-#else
-#define AGG_INT64U unsigned long long
-#endif
+using AGG_INT64U = std::uint64_t;
 #endif
 
 //------------------------------------------------ Some fixes for MS Visual C++
@@ -85,14 +111,14 @@ namespace agg
 
 namespace agg
 {
-    typedef AGG_INT8   int8;
-    typedef AGG_INT8U  int8u;
-    typedef AGG_INT16  int16;
-    typedef AGG_INT16U int16u;
-    typedef AGG_INT32  int32;
-    typedef AGG_INT32U int32u;
-    typedef AGG_INT64  int64;
-    typedef AGG_INT64U int64u;
+    using int8   = std::int8_t;
+    using int8u  = std::uint8_t;
+    using int16  = std::int16_t;
+    using int16u = std::uint16_t;
+    using int32  = std::int32_t;
+    using int32u = std::uint32_t;
+    using int64  = std::int64_t;
+    using int64u = std::uint64_t;
 
 #if defined(AGG_FISTP)
 #pragma warning(push)
@@ -157,7 +183,7 @@ namespace agg
 #endif
 
     template<int Limit> struct saturation {
-        AGG_INLINE static int iround(double v) {
+        static constexpr int iround(double v) noexcept {
             if(v < double(-Limit)) return -Limit;
             if(v > double( Limit)) return  Limit;
             return agg::iround(v);
@@ -165,19 +191,19 @@ namespace agg
     };
 
     template<unsigned Shift> struct mul_one {
-        AGG_INLINE static unsigned mul(unsigned a, unsigned b) {
+        static constexpr unsigned mul(unsigned a, unsigned b) noexcept {
             unsigned q = a * b + (1 << (Shift-1));
             return (q + (q >> Shift)) >> Shift;
         }
     };
 
-    typedef unsigned char cover_type;
+    using cover_type = std::uint8_t;
 
-    static const int cover_shift = 8;
-    static const int cover_size  = 1 << cover_shift;
-    static const int cover_mask  = cover_size - 1;
-    static const int cover_none  = 0;
-    static const int cover_full  = cover_mask;
+    constexpr int cover_shift = 8;
+    constexpr int cover_size  = 1 << cover_shift;
+    constexpr int cover_mask  = cover_size - 1;
+    constexpr int cover_none  = 0;
+    constexpr int cover_full  = cover_mask;
 
     // These constants determine the subpixel accuracy, to be more precise,
     // the number of bits of the fractional part of the coordinates.
@@ -185,20 +211,26 @@ namespace agg
     // sizeof(int) * 8 - poly_subpixel_shift, i.e, for 32-bit integers and
     // 8-bits fractional part the capacity is 24 bits.
 
-    static const int poly_subpixel_shift = 8;
-    static const int poly_subpixel_scale = 1<<poly_subpixel_shift;
-    static const int poly_subpixel_mask  = poly_subpixel_scale-1;
+    constexpr int poly_subpixel_shift = 8;
+    constexpr int poly_subpixel_scale = 1<<poly_subpixel_shift;
+    constexpr int poly_subpixel_mask  = poly_subpixel_scale-1;
 
     enum filling_rule_e { fill_non_zero, fill_even_odd };
 
-    const double pi = 3.14159265358979323846;
+#ifdef __cpp_lib_math_constants
+    constexpr double pi = std::numbers::pi;
+#else
+    constexpr double pi = 3.14159265358979323846;
+#endif
 
-    inline double deg2rad(double deg) { return deg * pi / 180.0; }
-    inline double rad2deg(double rad) { return rad * 180.0 / pi; }
+    constexpr double deg2rad(double deg) noexcept { return deg * pi / 180.0; }
+    constexpr double rad2deg(double rad) noexcept { return rad * 180.0 / pi; }
 
-    template<class T> struct rect_base {
-        typedef T value_type;
-        typedef rect_base<T> self_type;
+    template<typename T>
+    requires std::is_arithmetic_v<T>
+    struct rect_base {
+        using value_type = T;
+        using self_type = rect_base<T>;
         T x1, y1, x2, y2;
 
         rect_base() {}
@@ -208,13 +240,13 @@ namespace agg
             x1 = x1_; y1 = y1_; x2 = x2_; y2 = y2_;
         }
 
-        const self_type & normalize() {
+        constexpr self_type& normalize() noexcept {
             if (x1 > x2) std::swap(x1, x2);
             if (y1 > y2) std::swap(y1, y2);
             return *this;
         }
 
-        bool clip(const self_type &r) {
+        constexpr bool clip(const self_type& r) noexcept {
             if (x2 > r.x2) x2 = r.x2;
             if (y2 > r.y2) y2 = r.y2;
             if (x1 < r.x1) x1 = r.x1;
@@ -222,103 +254,119 @@ namespace agg
             return x1 <= x2 and y1 <= y2;
         }
 
-        bool is_valid() const { return x1 <= x2 and y1 <= y2; }
+        constexpr bool is_valid() const noexcept { return x1 <= x2 and y1 <= y2; }
 
-        bool hit_test(T x, T y) const {
+        constexpr bool hit_test(T x, T y) const noexcept {
             return (x >= x1 and x <= x2 and y >= y1 and y <= y2);
         }
     };
 
-    template<class Rect>
-    inline Rect intersect_rectangles(const Rect& r1, const Rect& r2) {
+    // Consolidated rectangle operations - reduced code duplication  
+    template<typename Rect, bool Unite>
+    constexpr auto combine_rectangles(const Rect& r1, const Rect& r2) noexcept -> Rect {
         Rect r = r1;
-
-        if (r.x2 > r2.x2) r.x2 = r2.x2;
-        if (r.y2 > r2.y2) r.y2 = r2.y2;
-        if (r.x1 < r2.x1) r.x1 = r2.x1;
-        if (r.y1 < r2.y1) r.y1 = r2.y1;
+        if constexpr (Unite) {
+            // Unite: expand bounds
+            if (r.x2 < r2.x2) r.x2 = r2.x2;
+            if (r.y2 < r2.y2) r.y2 = r2.y2;  
+            if (r.x1 > r2.x1) r.x1 = r2.x1;
+            if (r.y1 > r2.y1) r.y1 = r2.y1;
+        } else {
+            // Intersect: shrink bounds
+            if (r.x2 > r2.x2) r.x2 = r2.x2;
+            if (r.y2 > r2.y2) r.y2 = r2.y2;
+            if (r.x1 < r2.x1) r.x1 = r2.x1;
+            if (r.y1 < r2.y1) r.y1 = r2.y1;
+        }
         return r;
     }
-
-    template<class Rect>
-    inline Rect unite_rectangles(const Rect& r1, const Rect& r2) {
-        Rect r = r1;
-        if (r.x2 < r2.x2) r.x2 = r2.x2;
-        if (r.y2 < r2.y2) r.y2 = r2.y2;
-        if (r.x1 > r2.x1) r.x1 = r2.x1;
-        if (r.y1 > r2.y1) r.y1 = r2.y1;
-        return r;
+    
+    template<typename Rect>
+    constexpr auto intersect_rectangles(const Rect& r1, const Rect& r2) noexcept -> Rect {
+        return combine_rectangles<Rect, false>(r1, r2);
+    }
+    
+    template<typename Rect>
+    constexpr auto unite_rectangles(const Rect& r1, const Rect& r2) noexcept -> Rect {
+        return combine_rectangles<Rect, true>(r1, r2);
     }
 
-    typedef rect_base<int>    rect_i;
-    typedef rect_base<float>  rect_f;
-    typedef rect_base<double> rect_d;
+    using rect_i = rect_base<int>;
+    using rect_f = rect_base<float>;
+    using rect_d = rect_base<double>;
 
-    static const int path_cmd_stop     = 0;
-    static const int path_cmd_move_to  = 1;
-    static const int path_cmd_line_to  = 2;
-    static const int path_cmd_curve3   = 3;
-    static const int path_cmd_curve4   = 4;
-    static const int path_cmd_end_poly = 0x0F;
-    static const int path_cmd_mask     = 0x0F;
+    constexpr int path_cmd_stop     = 0;
+    constexpr int path_cmd_move_to  = 1;
+    constexpr int path_cmd_line_to  = 2;
+    constexpr int path_cmd_curve3   = 3;
+    constexpr int path_cmd_curve4   = 4;
+    constexpr int path_cmd_end_poly = 0x0F;
+    constexpr int path_cmd_mask     = 0x0F;
 
-    static const int path_flags_none  = 0;
-    static const int path_flags_ccw   = 0x10;
-    static const int path_flags_cw    = 0x20;
-    static const int path_flags_close = 0x40;
-    static const int path_flags_mask  = 0xF0;
+    constexpr int path_flags_none  = 0;
+    constexpr int path_flags_ccw   = 0x10;
+    constexpr int path_flags_cw    = 0x20;
+    constexpr int path_flags_close = 0x40;
+    constexpr int path_flags_mask  = 0xF0;
 
-    inline bool is_vertex(unsigned c)    { return c >= path_cmd_move_to and c < path_cmd_end_poly; }
-    inline bool is_drawing(unsigned c)   { return c >= path_cmd_line_to and c < path_cmd_end_poly; }
-    inline bool is_stop(unsigned c)      { return c == path_cmd_stop; }
-    inline bool is_move_to(unsigned c)   { return c == path_cmd_move_to; }
-    inline bool is_line_to(unsigned c)   { return c == path_cmd_line_to; }
-    inline bool is_curve(unsigned c)     { return c == path_cmd_curve3 or c == path_cmd_curve4; }
-    inline bool is_curve3(unsigned c)    { return c == path_cmd_curve3; }
-    inline bool is_curve4(unsigned c)    { return c == path_cmd_curve4; }
-    inline bool is_end_poly(unsigned c)  { return (c & path_cmd_mask) == path_cmd_end_poly; }
-    inline bool is_close(unsigned c)     { return (c & ~(path_flags_cw | path_flags_ccw)) == (path_cmd_end_poly | path_flags_close); }
-    inline bool is_next_poly(unsigned c) { return is_stop(c) or is_move_to(c) or is_end_poly(c); }
-    inline bool is_cw(unsigned c)        { return (c & path_flags_cw) != 0; }
-    inline bool is_ccw(unsigned c)       { return (c & path_flags_ccw) != 0; }
-    inline bool is_oriented(unsigned c)  { return (c & (path_flags_cw | path_flags_ccw)) != 0; }
-    inline bool is_closed(unsigned c)    { return (c & path_flags_close) != 0; }
-    inline unsigned get_close_flag(unsigned c)    { return c & path_flags_close; }
-    inline unsigned clear_orientation(unsigned c) { return c & ~(path_flags_cw | path_flags_ccw); }
-    inline unsigned get_orientation(unsigned c)   { return c & (path_flags_cw | path_flags_ccw); }
-    inline unsigned set_orientation(unsigned c, unsigned o) { return clear_orientation(c) | o; }
+    // Consolidated path command predicates - optimized for code size
+    constexpr unsigned path_cmd(unsigned c) noexcept { return c & path_cmd_mask; }
+    constexpr bool is_vertex(unsigned c) noexcept    { return (c - 1u) < (path_cmd_end_poly - 1u); }
+    constexpr bool is_drawing(unsigned c) noexcept   { return (c - 2u) < (path_cmd_end_poly - 2u); }
+    constexpr bool is_stop(unsigned c) noexcept      { return c == path_cmd_stop; }
+    constexpr bool is_move_to(unsigned c) noexcept   { return c == path_cmd_move_to; }
+    constexpr bool is_line_to(unsigned c) noexcept   { return c == path_cmd_line_to; }
+    constexpr bool is_curve(unsigned c) noexcept     { return (c | 1) == path_cmd_curve4; } // curve3=3, curve4=4
+    constexpr bool is_curve3(unsigned c) noexcept    { return c == path_cmd_curve3; }
+    constexpr bool is_curve4(unsigned c) noexcept    { return c == path_cmd_curve4; }
+    constexpr bool is_end_poly(unsigned c) noexcept  { return path_cmd(c) == path_cmd_end_poly; }
+    constexpr bool is_close(unsigned c) noexcept     { return (c & ~(path_flags_cw | path_flags_ccw)) == (path_cmd_end_poly | path_flags_close); }
+    constexpr bool is_next_poly(unsigned c) noexcept { return c == path_cmd_stop or c == path_cmd_move_to or path_cmd(c) == path_cmd_end_poly; }
+    
+    // Bitwise flag operations - more compact
+    constexpr bool is_cw(unsigned c) noexcept        { return c & path_flags_cw; }
+    constexpr bool is_ccw(unsigned c) noexcept       { return c & path_flags_ccw; }
+    constexpr bool is_oriented(unsigned c) noexcept  { return c & (path_flags_cw | path_flags_ccw); }
+    constexpr bool is_closed(unsigned c) noexcept    { return c & path_flags_close; }
+    constexpr unsigned get_close_flag(unsigned c) noexcept    { return c & path_flags_close; }
+    constexpr unsigned clear_orientation(unsigned c) noexcept { return c & ~(path_flags_cw | path_flags_ccw); }
+    constexpr unsigned get_orientation(unsigned c) noexcept   { return c & (path_flags_cw | path_flags_ccw); }
+    constexpr unsigned set_orientation(unsigned c, unsigned o) noexcept { return clear_orientation(c) | o; }
 
-    template<class T> struct point_base {
-        typedef T value_type;
-        T x,y;
-        point_base() {}
-        point_base(T x_, T y_) : x(x_), y(y_) {}
+    // Consolidated geometric structures - reduced code duplication
+    template<typename T>
+    requires std::is_arithmetic_v<T>
+    struct point_base {
+        using value_type = T;
+        T x, y;
+        constexpr point_base() = default;
+        constexpr point_base(T x_, T y_) noexcept : x(x_), y(y_) {}
     };
 
-    typedef point_base<int>    point_i;
-    typedef point_base<float>  point_f;
-    typedef point_base<double> point_d;
-
-    template<class T> struct vertex_base {
-        typedef T value_type;
-        T x,y;
+    template<typename T>
+    requires std::is_arithmetic_v<T>
+    struct vertex_base : point_base<T> {
         unsigned cmd;
-        vertex_base() {}
-        vertex_base(T x_, T y_, unsigned cmd_ = 0) : x(x_), y(y_), cmd(cmd_) {}
+        constexpr vertex_base() = default;
+        constexpr vertex_base(T x_, T y_, unsigned cmd_ = 0) noexcept : point_base<T>(x_, y_), cmd(cmd_) {}
     };
 
-    typedef vertex_base<int>    vertex_i;
-    typedef vertex_base<float>  vertex_f;
-    typedef vertex_base<double> vertex_d;
+    // Common type aliases
+    using point_i = point_base<int>;
+    using point_f = point_base<float>;  
+    using point_d = point_base<double>;
+    using vertex_i = vertex_base<int>;
+    using vertex_f = vertex_base<float>;
+    using vertex_d = vertex_base<double>;
 
-    template<class T> struct row_info {
+    template<typename T> struct row_info {
         int x1, x2;
         T* ptr;
         row_info() {}
         row_info(int x1_, int x2_, T* ptr_) : x1(x1_), x2(x2_), ptr(ptr_) {}
     };
 
-    template<class T> struct const_row_info {
+    template<typename T> struct const_row_info {
         int x1, x2;
         const T* ptr;
         const_row_info() {}
@@ -326,8 +374,10 @@ namespace agg
             x1(x1_), x2(x2_), ptr(ptr_) {}
     };
 
-    template<class T> inline bool is_equal_eps(T v1, T v2, T epsilon) {
-        return fabs(v1 - v2) <= double(epsilon);
+    template<typename T>
+    requires std::is_floating_point_v<T>
+    constexpr bool is_equal_eps(T v1, T v2, T epsilon) noexcept {
+        return std::abs(v1 - v2) <= static_cast<T>(epsilon);
     }
 }
 

@@ -14,98 +14,100 @@
 #ifndef AGG_MATH_INCLUDED
 #define AGG_MATH_INCLUDED
 
-#include <math.h>
+#include <cmath>
+#include <cstdlib>
+#include <type_traits>
 #include "agg_basics.h"
 
 namespace agg {
     // Coinciding points maximal distance (Epsilon)
-    const double vertex_dist_epsilon = 1e-14;
+    constexpr double vertex_dist_epsilon = 1e-14;
 
     // See calc_intersection
-    const double intersection_epsilon = 1.0e-30;
+    constexpr double intersection_epsilon = 1.0e-30;
 
-    AGG_INLINE double cross_product(double x1, double y1, double x2, double y2, double x,  double y)
+    constexpr double cross_product(double x1, double y1, double x2, double y2, double x,  double y) noexcept
     {
         return (x - x2) * (y2 - y1) - (y - y2) * (x2 - x1);
     }
 
-    AGG_INLINE bool point_in_triangle(double x1, double y1, double x2, double y2, double x3, double y3, double x,  double y)
+    constexpr bool point_in_triangle(double x1, double y1, double x2, double y2, double x3, double y3, double x,  double y) noexcept
     {
-        bool cp1 = cross_product(x1, y1, x2, y2, x, y) < 0.0;
-        bool cp2 = cross_product(x2, y2, x3, y3, x, y) < 0.0;
-        bool cp3 = cross_product(x3, y3, x1, y1, x, y) < 0.0;
+        const bool cp1 = cross_product(x1, y1, x2, y2, x, y) < 0.0;
+        const bool cp2 = cross_product(x2, y2, x3, y3, x, y) < 0.0;
+        const bool cp3 = cross_product(x3, y3, x1, y1, x, y) < 0.0;
         return cp1 == cp2 and cp2 == cp3 and cp3 == cp1;
     }
 
-    AGG_INLINE double calc_distance(double x1, double y1, double x2, double y2)
+    inline double calc_distance(double x1, double y1, double x2, double y2) noexcept
     {
-        double dx = x2-x1;
-        double dy = y2-y1;
-        return sqrt(dx * dx + dy * dy);
+        const double dx = x2-x1;
+        const double dy = y2-y1;
+        return std::sqrt(dx * dx + dy * dy);
     }
 
-    AGG_INLINE double calc_sq_distance(double x1, double y1, double x2, double y2)
+    constexpr double calc_sq_distance(double x1, double y1, double x2, double y2) noexcept
     {
-        double dx = x2-x1;
-        double dy = y2-y1;
+        const double dx = x2-x1;
+        const double dy = y2-y1;
         return dx * dx + dy * dy;
     }
 
-    AGG_INLINE double calc_line_point_distance(double x1, double y1, double x2, double y2, double x,  double y)
+    inline double calc_line_point_distance(double x1, double y1, double x2, double y2, double x,  double y) noexcept
     {
-        double dx = x2-x1;
-        double dy = y2-y1;
-        double d = sqrt(dx * dx + dy * dy);
+        const double dx = x2-x1;
+        const double dy = y2-y1;
+        const double d = std::sqrt(dx * dx + dy * dy);
         if (d < vertex_dist_epsilon) return calc_distance(x1, y1, x, y);
         return ((x - x2) * dy - (y - y2) * dx) / d;
     }
 
-    AGG_INLINE double calc_segment_point_u(double x1, double y1, double x2, double y2, double x,  double y)
+    constexpr double calc_segment_point_u(double x1, double y1, double x2, double y2, double x,  double y) noexcept
     {
-        double dx = x2 - x1;
-        double dy = y2 - y1;
+        const double dx = x2 - x1;
+        const double dy = y2 - y1;
 
         if(dx == 0 and dy == 0) return 0;
 
-        double pdx = x - x1;
-        double pdy = y - y1;
+        const double pdx = x - x1;
+        const double pdy = y - y1;
 
         return (pdx * dx + pdy * dy) / (dx * dx + dy * dy);
     }
 
-    AGG_INLINE double calc_segment_point_sq_distance(double x1, double y1, double x2, double y2, double x,  double y, double u)
+    constexpr double calc_segment_point_sq_distance(double x1, double y1, double x2, double y2, double x,  double y, double u) noexcept
     {
         if (u <= 0) return calc_sq_distance(x, y, x1, y1);
         else if (u >= 1) return calc_sq_distance(x, y, x2, y2);
         return calc_sq_distance(x, y, x1 + u * (x2 - x1), y1 + u * (y2 - y1));
     }
 
-    AGG_INLINE double calc_segment_point_sq_distance(double x1, double y1, double x2, double y2, double x,  double y)
+    constexpr double calc_segment_point_sq_distance(double x1, double y1, double x2, double y2, double x,  double y) noexcept
     {
         return calc_segment_point_sq_distance(x1, y1, x2, y2, x, y, calc_segment_point_u(x1, y1, x2, y2, x, y));
     }
 
-    AGG_INLINE bool calc_intersection(double ax, double ay, double bx, double by,
+    inline bool calc_intersection(double ax, double ay, double bx, double by,
                                       double cx, double cy, double dx, double dy,
-                                      double* x, double* y)
+                                      double* x, double* y) noexcept
     {
-        double num = (ay-cy) * (dx-cx) - (ax-cx) * (dy-cy);
-        double den = (bx-ax) * (dy-cy) - (by-ay) * (dx-cx);
-        if (fabs(den) < intersection_epsilon) return false;
-        double r = num / den;
+        const double num = (ay-cy) * (dx-cx) - (ax-cx) * (dy-cy);
+        const double den = (bx-ax) * (dy-cy) - (by-ay) * (dx-cx);
+        if (std::abs(den) < intersection_epsilon) return false;
+        const double r = num / den;
         *x = ax + r * (bx-ax);
         *y = ay + r * (by-ay);
         return true;
     }
 
-    AGG_INLINE bool intersection_exists(double x1, double y1, double x2, double y2,
-                                        double x3, double y3, double x4, double y4)
+    constexpr bool intersection_exists(double x1, double y1, double x2, double y2,
+                                        double x3, double y3, double x4, double y4) noexcept
     {
         // It's less expensive but you can't control the boundary conditions: Less or LessEqual
-        double dx1 = x2 - x1;
-        double dy1 = y2 - y1;
-        double dx2 = x4 - x3;
-        double dy2 = y4 - y3;
+        const double dx1 = x2 - x1;
+        const double dy1 = y2 - y1;
+        const double dx2 = x4 - x3;
+        const double dy2 = y4 - y3;
         return ((x3 - x2) * dy1 - (y3 - y2) * dx1 < 0.0) != 
                ((x4 - x2) * dy1 - (y4 - y2) * dx1 < 0.0) and
                ((x1 - x4) * dy2 - (y1 - y4) * dx2 < 0.0) !=
@@ -123,16 +125,16 @@ namespace agg {
         //return ua >= 0.0 and ua <= 1.0 and ub >= 0.0 and ub <= 1.0;
     }
 
-    AGG_INLINE void calc_orthogonal(double thickness, double x1, double y1, double x2, double y2, double* x, double* y)
+    inline void calc_orthogonal(double thickness, double x1, double y1, double x2, double y2, double* x, double* y) noexcept
     {
-        double dx = x2 - x1;
-        double dy = y2 - y1;
-        double d = sqrt(dx*dx + dy*dy); 
+        const double dx = x2 - x1;
+        const double dy = y2 - y1;
+        const double d = std::sqrt(dx*dx + dy*dy); 
         *x =  thickness * dy / d;
         *y = -thickness * dx / d;
     }
 
-    AGG_INLINE void dilate_triangle(double x1, double y1, double x2, double y2, double x3, double y3, double *x, double* y, double d)
+    inline void dilate_triangle(double x1, double y1, double x2, double y2, double x3, double y3, double *x, double* y, double d) noexcept
     {
         double dx1=0.0;
         double dy1=0.0; 
@@ -140,8 +142,8 @@ namespace agg {
         double dy2=0.0; 
         double dx3=0.0;
         double dy3=0.0; 
-        double loc = cross_product(x1, y1, x2, y2, x3, y3);
-        if (fabs(loc) > intersection_epsilon) {
+        const double loc = cross_product(x1, y1, x2, y2, x3, y3);
+        if (std::abs(loc) > intersection_epsilon) {
             if (cross_product(x1, y1, x2, y2, x3, y3) > 0.0) d = -d;
             calc_orthogonal(d, x1, y1, x2, y2, &dx1, &dy1);
             calc_orthogonal(d, x2, y2, x3, y3, &dx2, &dy2);
@@ -155,23 +157,28 @@ namespace agg {
         *x++ = x1 + dx3;  *y++ = y1 + dy3;
     }
 
-    AGG_INLINE double calc_triangle_area(double x1, double y1, double x2, double y2, double x3, double y3)
+    constexpr double calc_triangle_area(double x1, double y1, double x2, double y2, double x3, double y3) noexcept
     {
         return (x1*y2 - x2*y1 + x2*y3 - x3*y2 + x3*y1 - x1*y3) * 0.5;
     }
 
-    template<class Storage> double calc_polygon_area(const Storage& st)
-    {
-        unsigned i;
+    template<typename Storage>
+    requires requires(const Storage& st) {
+        st.size();
+        st[0].x;
+        st[0].y;
+    }
+    constexpr auto calc_polygon_area(const Storage& st) noexcept -> double {
+        if (st.size() < 3) return 0.0;
+        
         double sum = 0.0;
         double x  = st[0].x;
         double y  = st[0].y;
-        double xs = x;
-        double ys = y;
+        const double xs = x;
+        const double ys = y;
 
-        for(i = 1; i < st.size(); i++)
-        {
-            const typename Storage::value_type& v = st[i];
+        for(unsigned i = 1; i < st.size(); i++) {
+            const auto& v = st[i];
             sum += x * v.y - y * v.x;
             x = v.x;
             y = v.y;
@@ -274,29 +281,24 @@ namespace agg {
     //--------------------
     // Adapted for use in AGG library by Andy Wilk (castor.vulgaris@gmail.com)
     //------------------------------------------------------------------------
-    inline double besj(double x, int n)
-    {
-        if(n < 0)
-        {
-            return 0;
+    constexpr double besj(double x, int n) noexcept {
+        if (n < 0) {
+            return 0.0;
         }
-        double d = 1E-6;
-        double b = 0;
-        if(fabs(x) <= d) 
-        {
-            if(n != 0) return 0;
-            return 1;
+        constexpr double d = 1E-6;
+        double b = 0.0;
+        if (std::abs(x) <= d) {
+            if (n != 0) return 0.0;
+            return 1.0;
         }
-        double b1 = 0; // b1 is the value from the previous iteration
+        double b1 = 0.0; // b1 is the value from the previous iteration
         // Set up a starting order for recurrence
-        int m1 = (int)fabs(x) + 6;
-        if(fabs(x) > 5) 
-        {
-            m1 = (int)(fabs(1.4 * x + 60 / x));
+        int m1 = static_cast<int>(std::abs(x)) + 6;
+        if (std::abs(x) > 5.0) {
+            m1 = static_cast<int>(std::abs(1.4 * x + 60.0 / x));
         }
-        int m2 = (int)(n + 2 + fabs(x) / 4);
-        if (m1 > m2) 
-        {
+        int m2 = static_cast<int>(n + 2 + std::abs(x) / 4.0);
+        if (m1 > m2) {
             m2 = m1;
         }
     
@@ -334,8 +336,7 @@ namespace agg {
             }
             c4 += c6;
             b /= c4;
-            if(fabs(b - b1) < d)
-            {
+            if (std::abs(b - b1) < d) {
                 return b;
             }
             b1 = b;

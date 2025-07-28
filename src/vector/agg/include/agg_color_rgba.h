@@ -36,19 +36,10 @@ namespace agg {
 
          rgba(const rgba& c, double a_) : r(c.r), g(c.g), b(c.b), a(a_), linear(c.linear) {}
 
-         rgba(RGB8 &RGB) :
-            r(double(RGB.Red) / 255.0),
-            g(double(RGB.Green) / 255.0),
-            b(double(RGB.Blue) / 255.0),
-            a(double(RGB.Alpha) / 255.0),
-            linear(false) {}
-
-         rgba(RGB8 &RGB, UBYTE Alpha) :
-            r(double(RGB.Red) / 255.0),
-            g(double(RGB.Green) / 255.0),
-            b(double(RGB.Blue) / 255.0),
-            a(double(Alpha) / 255.0),
-            linear(false) {}
+         // Consolidated RGB8 constructors - reduced code duplication
+         rgba(RGB8 &RGB, UBYTE Alpha = 0) :
+            r(RGB.Red / 255.0), g(RGB.Green / 255.0), b(RGB.Blue / 255.0),
+            a((Alpha ? Alpha : RGB.Alpha) / 255.0), linear(false) {}
 
          rgba(FRGB &RGB, double Alpha) :
             r(RGB.Red),
