@@ -106,9 +106,9 @@ using AGG_INT64U = std::uint64_t;
 #endif
 
 #if defined(_MSC_VER)
-#define inline __forceinline
+#define AGG_INLINE __forceinline
 #else
-#define inline inline
+#define AGG_INLINE inline
 #endif
 
 namespace agg
@@ -338,22 +338,21 @@ namespace agg
     constexpr int path_flags_close = 0x40;
     constexpr int path_flags_mask  = 0xF0;
 
-    constexpr unsigned path_cmd(unsigned c) noexcept { return c & path_cmd_mask; }
-    constexpr bool is_vertex(unsigned c) noexcept    { return (c - 1u) < (path_cmd_end_poly - 1u); }
-    constexpr bool is_drawing(unsigned c) noexcept   { return (c - 2u) < (path_cmd_end_poly - 2u); }
+    constexpr bool is_vertex(unsigned c) noexcept    { return c >= path_cmd_move_to and c < path_cmd_end_poly; }
+    constexpr bool is_drawing(unsigned c) noexcept   { return c >= path_cmd_line_to and c < path_cmd_end_poly; }
     constexpr bool is_stop(unsigned c) noexcept      { return c == path_cmd_stop; }
     constexpr bool is_move_to(unsigned c) noexcept   { return c == path_cmd_move_to; }
     constexpr bool is_line_to(unsigned c) noexcept   { return c == path_cmd_line_to; }
-    constexpr bool is_curve(unsigned c) noexcept     { return (c | 1) == path_cmd_curve4; } // curve3=3, curve4=4
+    constexpr bool is_curve(unsigned c) noexcept     { return c == path_cmd_curve3 or c == path_cmd_curve4; }
     constexpr bool is_curve3(unsigned c) noexcept    { return c == path_cmd_curve3; }
     constexpr bool is_curve4(unsigned c) noexcept    { return c == path_cmd_curve4; }
-    constexpr bool is_end_poly(unsigned c) noexcept  { return path_cmd(c) == path_cmd_end_poly; }
+    constexpr bool is_end_poly(unsigned c) noexcept  { return (c & path_cmd_mask) == path_cmd_end_poly; }
     constexpr bool is_close(unsigned c) noexcept     { return (c & ~(path_flags_cw | path_flags_ccw)) == (path_cmd_end_poly | path_flags_close); }
-    constexpr bool is_next_poly(unsigned c) noexcept { return c == path_cmd_stop or c == path_cmd_move_to or path_cmd(c) == path_cmd_end_poly; }
-    constexpr bool is_cw(unsigned c) noexcept        { return c & path_flags_cw; }
-    constexpr bool is_ccw(unsigned c) noexcept       { return c & path_flags_ccw; }
-    constexpr bool is_oriented(unsigned c) noexcept  { return c & (path_flags_cw | path_flags_ccw); }
-    constexpr bool is_closed(unsigned c) noexcept    { return c & path_flags_close; }
+    constexpr bool is_next_poly(unsigned c) noexcept { return is_stop(c) or is_move_to(c) or is_end_poly(c); }
+    constexpr bool is_cw(unsigned c) noexcept        { return (c & path_flags_cw) != 0; }
+    constexpr bool is_ccw(unsigned c) noexcept       { return (c & path_flags_ccw) != 0; }
+    constexpr bool is_oriented(unsigned c) noexcept  { return (c & (path_flags_cw | path_flags_ccw)) != 0; }
+    constexpr bool is_closed(unsigned c) noexcept    { return (c & path_flags_close) != 0; }
     constexpr unsigned get_close_flag(unsigned c) noexcept    { return c & path_flags_close; }
     constexpr unsigned clear_orientation(unsigned c) noexcept { return c & ~(path_flags_cw | path_flags_ccw); }
     constexpr unsigned get_orientation(unsigned c) noexcept   { return c & (path_flags_cw | path_flags_ccw); }
@@ -368,20 +367,20 @@ namespace agg
         point_base(T x_, T y_) : x(x_), y(y_) {}
     };
 
+    using point_i = point_base<int>;
+    using point_f = point_base<float>;
+    using point_d = point_base<double>;
+
     template<typename T>
     requires std::is_arithmetic_v<T>
     struct alignas(16) vertex_base {
         using value_type = T;
         T x, y;
         unsigned cmd;
-        constexpr vertex_base() = default;
-        constexpr vertex_base(T x_, T y_, unsigned cmd_ = 0) noexcept : point_base<T>(x_, y_), cmd(cmd_) {}
+        vertex_base() {}
+        vertex_base(T x_, T y_, unsigned cmd_ = 0) : x(x_), y(y_), cmd(cmd_) {}
     };
 
-    // Common type aliases
-    using point_i = point_base<int>;
-    using point_f = point_base<float>;
-    using point_d = point_base<double>;
     using vertex_i = vertex_base<int>;
     using vertex_f = vertex_base<float>;
     using vertex_d = vertex_base<double>;
