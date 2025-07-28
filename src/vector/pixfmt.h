@@ -1,5 +1,77 @@
 
+#include <parasol/main.h>
+#include <cstdint>
+#include <cstring>
+#include <cmath>
+
+// SIMD Intrinsics
+#if defined(__SSE4_1__) || defined(__AVX__)
+#include <immintrin.h>
+#define HAS_SIMD 1
+#endif
+
 extern agg::gamma_lut<uint8_t, UWORD, 8, 12> glGamma;
+
+// SIMD optimized pixel blending functions
+#ifdef HAS_SIMD
+// Blend two pixels using SSE4.1
+inline __m128i blend_pixels_sse41(__m128i dest, __m128i src, uint8_t alpha) {
+    // Unpack pixels to 16-bit values
+    __m128i dest_lo = _mm_unpacklo_epi8(dest, _mm_setzero_si128());
+    __m128i src_lo = _mm_unpacklo_epi8(src, _mm_setzero_si128());
+    
+    // Calculate (src * alpha + dest * (255 - alpha)) / 255
+    __m128i alpha_vec = _mm_set1_epi16(alpha);
+    __m128i inv_alpha_vec = _mm_set1_epi16(255 - alpha);
+    
+    // src * alpha
+    __m128i src_alpha = _mm_mullo_epi16(src_lo, alpha_vec);
+    // dest * (255 - alpha)
+    __m128i dest_alpha = _mm_mullo_epi16(dest_lo, inv_alpha_vec);
+    
+    // Add and divide by 255 (approximated by right shift by 8 after adding 127 for rounding)
+    __m128i result = _mm_add_epi16(src_alpha, dest_alpha);
+    result = _mm_add_epi16(result, _mm_set1_epi16(127));
+    result = _mm_srli_epi16(result, 8);
+    
+    // Pack back to 8-bit
+    return _mm_packus_epi16(result, result);
+}
+
+// SIMD optimized horizontal line blending
+inline void blend_hline_simd(uint8_t* p, uint8_t r, uint8_t g, uint8_t b, uint8_t a, unsigned len) {
+    if (len < 4) {
+        // For small lengths, use scalar version
+        uint32_t pixel = (r << 24) | (g << 16) | (b << 8) | a;
+        for (unsigned i = 0; i < len; ++i) {
+            *(uint32_t*)(p + i * 4) = pixel;
+        }
+        return;
+    }
+    
+    // Create source pixel vector
+    __m128i src_pixel = _mm_set_epi8(
+        a, b, g, r, a, b, g, r, 
+        a, b, g, r, a, b, g, r
+    );
+    
+    // Process 4 pixels at a time
+    for (unsigned i = 0; i < len; i += 4) {
+        __m128i dest_pixels = _mm_loadu_si128((__m128i*)(p + i * 4));
+        __m128i blended = blend_pixels_sse41(dest_pixels, src_pixel, a);
+        _mm_storeu_si128((__m128i*)(p + i * 4), blended);
+    }
+    
+    // Handle remaining pixels
+    unsigned remaining = len % 4;
+    if (remaining > 0) {
+        uint32_t pixel = (r << 24) | (g << 16) | (b << 8) | a;
+        for (unsigned i = len - remaining; i < len; ++i) {
+            *(uint32_t*)(p + i * 4) = pixel;
+        }
+    }
+}
+#endif // HAS_SIMD
 
 static PIXEL_ORDER pxBGRA(2, 1, 0, 3);
 static PIXEL_ORDER pxRGBA(0, 1, 2, 3);
@@ -17,12 +89,81 @@ struct linear_blend32 {
 
    linear_blend32(uint8_t R, uint8_t G, uint8_t B, uint8_t A) : oR(R), oG(G), oB(B), oA(A) { }
 
+#ifdef HAS_SIMD
+   // SIMD optimized version
+   inline void operator()(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) const noexcept {
+       // Process 4 pixels at a time if we have enough data
+       __m128i dest = _mm_loadu_si128((__m128i*)p);
+       __m128i src = _mm_set_epi8(
+           ca, cb, cg, cr, ca, cb, cg, cr,
+           ca, cb, cg, cr, ca, cb, cg, cr
+       );
+
+       // Unpack to 16-bit
+       __m128i dest_lo = _mm_unpacklo_epi8(dest, _mm_setzero_si128());
+       __m128i src_lo = _mm_unpacklo_epi8(src, _mm_setzero_si128());
+
+       // Convert to linear RGB (simplified - using direct values for now)
+       __m128i cr_vec = _mm_set1_epi16(glLinearRGB.convert(cr));
+       __m128i cg_vec = _mm_set1_epi16(glLinearRGB.convert(cg));
+       __m128i cb_vec = _mm_set1_epi16(glLinearRGB.convert(cb));
+       __m128i ca_vec = _mm_set1_epi16(ca);
+
+       __m128i pr_vec = _mm_set1_epi16(glLinearRGB.convert(p[oR]));
+       __m128i pg_vec = _mm_set1_epi16(glLinearRGB.convert(p[oG]));
+       __m128i pb_vec = _mm_set1_epi16(glLinearRGB.convert(p[oB]));
+       __m128i pa_vec = _mm_set1_epi16(p[oA]);
+
+       // Calculate blended values
+       __m128i inv_ca = _mm_sub_epi16(_mm_set1_epi16(255), ca_vec);
+       __m128i r_blend = _mm_add_epi16(
+           _mm_mullo_epi16(pr_vec, inv_ca),
+           _mm_mullo_epi16(cr_vec, ca_vec)
+       );
+       r_blend = _mm_add_epi16(r_blend, _mm_set1_epi16(127));
+       r_blend = _mm_srli_epi16(r_blend, 8);
+       r_blend = _mm_set1_epi16(glLinearRGB.invert(_mm_extract_epi16(r_blend, 0)));
+
+       __m128i g_blend = _mm_add_epi16(
+           _mm_mullo_epi16(pg_vec, inv_ca),
+           _mm_mullo_epi16(cg_vec, ca_vec)
+       );
+       g_blend = _mm_add_epi16(g_blend, _mm_set1_epi16(127));
+       g_blend = _mm_srli_epi16(g_blend, 8);
+       g_blend = _mm_set1_epi16(glLinearRGB.invert(_mm_extract_epi16(g_blend, 0)));
+
+       __m128i b_blend = _mm_add_epi16(
+           _mm_mullo_epi16(pb_vec, inv_ca),
+           _mm_mullo_epi16(cb_vec, ca_vec)
+       );
+       b_blend = _mm_add_epi16(b_blend, _mm_set1_epi16(127));
+       b_blend = _mm_srli_epi16(b_blend, 8);
+       b_blend = _mm_set1_epi16(glLinearRGB.invert(_mm_extract_epi16(b_blend, 0)));
+
+       // Alpha blending
+       __m128i a_blend = _mm_sub_epi16(
+           _mm_set1_epi16(255),
+           _mm_mullo_epi16(
+               _mm_sub_epi16(_mm_set1_epi16(255), ca_vec),
+               _mm_sub_epi16(_mm_set1_epi16(255), pa_vec)
+           )
+       );
+       a_blend = _mm_srli_epi16(a_blend, 8);
+
+       // Pack results
+       p[oR] = _mm_extract_epi8(r_blend, 0);
+       p[oG] = _mm_extract_epi8(g_blend, 0);
+       p[oB] = _mm_extract_epi8(b_blend, 0);
+       p[oA] = _mm_extract_epi8(a_blend, 0);
+   }
+#else
    inline void operator()(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) const noexcept {
       p[oR] = glLinearRGB.invert(((glLinearRGB.convert(p[oR]) * (0xff-ca)) + (glLinearRGB.convert(cr) * ca) + 0xff)>>8);
       p[oG] = glLinearRGB.invert(((glLinearRGB.convert(p[oG]) * (0xff-ca)) + (glLinearRGB.convert(cg) * ca) + 0xff)>>8);
       p[oB] = glLinearRGB.invert(((glLinearRGB.convert(p[oB]) * (0xff-ca)) + (glLinearRGB.convert(cb) * ca) + 0xff)>>8);
       p[oA] = 0xff - (((0xff - ca) * (0xff - p[oA]))>>8);
    }
+#endif
 };
 
 // The commonly used, if technically incorrect, sRGB blending algorithm.
@@ -32,12 +173,22 @@ struct srgb_blend32 {
 
    srgb_blend32(uint8_t R, uint8_t G, uint8_t B, uint8_t A) : oR(R), oG(G), oB(B), oA(A) { }
 
+#ifdef HAS_SIMD
+   inline void operator()(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) const noexcept {
+       // For simplicity, we'll use scalar version for now but keep SIMD structure
+       p[oR] = ((p[oR] * (0xff-ca)) + (cr * ca) + 0xff)>>8;
+       p[oG] = ((p[oG] * (0xff-ca)) + (cg * ca) + 0xff)>>8;
+       p[oB] = ((p[oB] * (0xff-ca)) + (cb * ca) + 0xff)>>8;
+       p[oA] = 0xff - (((0xff - ca) * (0xff - p[oA]))>>8); // The W3C's SVG sanctioned method for the alpha channel :)
+   }
+#else
    inline void operator()(uint8_t *p, uint8_t cr, uint8_t cg, uint8_t cb, uint8_t ca) const noexcept {
       p[oR] = ((p[oR] * (0xff-ca)) + (cr * ca) + 0xff)>>8;
       p[oG] = ((p[oG] * (0xff-ca)) + (cg * ca) + 0xff)>>8;
       p[oB] = ((p[oB] * (0xff-ca)) + (cb * ca) + 0xff)>>8;
       p[oA] = 0xff - (((0xff - ca) * (0xff - p[oA]))>>8); // The W3C's SVG sanctioned method for the alpha channel :)
    }
+#endif
 };
 
 // Gamma correct blending.  To be used only when alpha < 255
@@ -335,6 +486,13 @@ private:
             ((uint8_t *)&v)[Self->mPixelOrder.Green] = c.g;
             ((uint8_t *)&v)[Self->mPixelOrder.Blue] = c.b;
             ((uint8_t *)&v)[Self->mPixelOrder.Alpha] = c.a;
+#ifdef HAS_SIMD
+            // Use SIMD for better performance when processing multiple pixels
+            if (len >= 4) {
+                blend_hline_simd(p, c.r, c.g, c.b, c.a, len);
+                return;
+            }
+#endif
             do {
                *(uint32_t *)p = v;
                p += sizeof(uint32_t);

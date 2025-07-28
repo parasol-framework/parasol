@@ -3,6 +3,13 @@
 set (MOD vector)
 set (INC_MOD_VECTOR TRUE PARENT_SCOPE)
 
+# Check for SIMD support
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag("-msse4.1" HAS_SSE41)
+if(HAS_SSE41)
+    target_compile_options(${MOD} PRIVATE "-msse4.1")
+endif()
+
 idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/vector.h"
    FILES "vector_functions.cpp"
    ARGS "output-defs=module_def.c")
@@ -14,7 +21,10 @@ add_library (${MOD})
 set_module_defaults (${MOD})
 
 if (MSVC)
-
+    # Enable SSE4.1 for MSVC if available
+    if(HAS_SSE41)
+        target_compile_options(${MOD} PRIVATE "/arch:SSE4.1")
+    endif()
 else ()
 target_compile_options (${MOD} PRIVATE
   "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-Wno-narrowing;-Wno-uninitialized>>")
