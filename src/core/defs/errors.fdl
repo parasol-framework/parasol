@@ -35,7 +35,7 @@ function declareErrors()
     "ExamineFailed",
     "LostClass",
     "NoAction",
-    "NoSupport",
+    "NoSupport",                -- Operation not supported
     "Memory",
     "TimeOut",
     "NoStats",
@@ -47,8 +47,8 @@ function declareErrors()
     "OwnerNeedsBitmap",
     "CoreVersion",
     "NeedWidthHeight",
-    "NegativeSubClassID", -- DEPRECATED
-    "NegativeClassID", -- DEPRECATED
+    "ModuleValidation",        -- Module validation has failed.
+    "ProcessCreation",         -- Process creation has failed.
     "MissingClassName",
     "OutOfRange",
     "ObtainMethod",
@@ -100,7 +100,7 @@ function declareErrors()
     "FieldTypeMismatch",
     "UnrecognisedFieldType",
     "BufferOverflow",
-    "UnsupportedField",        -- Field does not exist
+    "UnsupportedField",        -- Field name does not exist in class blueprint
     "Mismatch",
     "OutOfBounds",
     "Seek",                    -- Seek failure
@@ -121,8 +121,8 @@ function declareErrors()
     "ExpectedFile",            -- The operation expected a path to a file.
     "Resize",                  -- Resize failure
     "Redimension",             -- Redimension failure
-    "AllocSemaphore",          -- DEPRECATED
-    "AccessSemaphore",         -- DEPRECATED
+    "SemaphoreOperation",      -- A semaphore operation has failed.
+    "FieldValidation",         -- Field validation has failed.
     "CreateFile",              -- Failed to create a new file
     "DeleteFile",              -- Deletion of dir/file failed (e.g. permissions, read-only media)
     "OpenFile",                -- File could not be opened
@@ -177,7 +177,7 @@ function declareErrors()
     "UseSubClass",             -- Requested to use a registered sub-class (not an error).
     "WrongType",               -- The expected type was not provided.
     "ThreadNotLocked",         -- Thread objects must be locked prior to activation.
-    "LockMutex",               -- DEPRECATED
+    "MessageOperation",        -- A message queue operation has failed.
     "SetVolume",               -- A call to SetVolume() failed.
     "Decompression",           -- Unspecified failure during decompression of a data stream.
     "Compression",             -- Unspecified failure during compression of a data stream.
@@ -198,6 +198,10 @@ function declareErrors()
     "SetValueNotArray",        -- Attempted to set an array field with an incompatible value.
     "SetValueNotLookup",       -- Attempted to set a lookup field with an incompatible value.
     "InvalidType",             -- The type of a value is invalid.
+    "CompressionStreamError",  -- A compression stream operation has failed.
+    "TaskExecutionFailed",     -- Task or process execution has failed.
+    "InvalidCompression",      -- The compression data is invalid or corrupted.
+    "SanityCheckFailed",       -- A sanity check has failed.
     "END",
     { Notified = 0x40000000 }
   ) -- NB: Any new error messages need to be added to data_errors.c manually.

@@ -325,7 +325,7 @@ static ERR MODULE_Free(extModule *Self)
 static ERR MODULE_Init(extModule *Self)
 {
    pf::Log log;
-   ERR error = ERR::Failed;
+   ERR error = ERR::ModuleValidation;
    bool root_mod = false;
 
    if (!Self->Name[0]) return log.warning(ERR::FieldNotSet);
@@ -580,7 +580,7 @@ than on disk.
 
 static ERR SET_Header(extModule *Self, struct ModHeader *Value)
 {
-   if (!Value) return ERR::Failed;
+   if (!Value) return ERR::NullArgs;
    Self->Header = Value;
    return ERR::Okay;
 }

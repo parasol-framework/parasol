@@ -3,14 +3,20 @@
 -CLASS-
 Audio: Supports a machine's audio hardware and provides a client-server audio management service.
 
-The Audio class provides a common audio service that works across multiple platforms and follows a client-server
-design model.
+The Audio class provides a comprehensive audio service that works across multiple platforms and follows a client-server
+design model. It serves as the foundation for all audio operations in the Parasol framework, managing hardware resources,
+sample mixing, and output buffering.
 
-Supported features include 8/16/32 bit output in stereo or mono, oversampling, streaming, multiple audio channels
-and command sequencing.  Audio functionality is simplified in the @Sound class interface, which we recommend when
-straight-forward audio playback is sufficient.
+The Audio class supports 8/16/32 bit output in stereo or mono configurations, with advanced features including oversampling
+for enhanced quality, intelligent streaming for large samples, multiple simultaneous audio channels, and command sequencing
+for precise timing control. The internal floating-point mixer ensures high-quality audio processing regardless of the
+target hardware bit depth.
 
-Support for audio recording is not currently available.
+For straightforward audio playback requirements, we recommend using the @Sound class interface, which provides a
+simplified API whilst utilising the Audio class internally. Direct use of the Audio class is appropriate for
+applications requiring precise mixer control, multiple simultaneous samples, or custom audio processing workflows.
+
+Note: Support for audio recording is not currently available in this implementation.
 
 -END-
 
@@ -35,12 +41,23 @@ static ERR init_audio(extAudio *Self)
 -ACTION-
 Activate: Enables access to the audio hardware and initialises the mixer.
 
-An audio object will not play or record until it has been activated.  Activating the object will result in an attempt
-to access the device hardware, which on some platforms may lead to failure if another process has permanently locked
-the audio device.  The resources and any device locks obtained by this action can be released with a call to
-#Deactivate().
+An audio object must be activated before it can play audio samples. The activation process involves several critical steps:
+hardware resource acquisition, mixer buffer allocation, and platform-specific driver initialisation.
 
-An inactive audio object can operate in a limited fashion but is without access to the audio hardware.
+Activation attempts to gain exclusive or shared access to the audio hardware device. On some platforms, this may fail if
+another process has obtained an exclusive lock on the audio device. The specific behaviour depends on the underlying
+audio system (ALSA on Linux, DirectSound on Windows).
+
+If activation fails, the audio object remains in an inactive state but retains its configuration. Common failure
+causes include hardware device unavailability, insufficient system resources, or driver compatibility issues.
+
+All resources and device locks obtained during activation can be released through #Deactivate(). An inactive audio
+object can perform configuration operations but cannot process audio samples.
+
+-ERRORS-
+Okay: Hardware activation completed successfully.
+AllocMemory: Failed to allocate internal mixing buffers.
+Failed: Hardware device unavailable or driver initialisation failed.
 
 *********************************************************************************************************************/
 
@@ -134,7 +151,7 @@ differentiate between simple attributes such as 8 or 16 bit data, mono or stereo
 whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values.  Because
 of the possible variations there are a number of sample formats, as illustrated in the following table:
 
-<types lookup="SFM"/>
+!SFM
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
 endian format, logical-or the SampleFormat value with `SFM::F_BIG_ENDIAN`.
@@ -162,9 +179,9 @@ structsize LoopSize: Must be set to `sizeof(AudioLoop)` if `Loop` is defined.
 &int Result: The resulting sample handle will be returned in this parameter.
 
 -ERRORS-
-Okay
-Args
-NullArgs
+Okay: Sample successfully added to the audio system.
+Args: Invalid argument values provided.
+NullArgs: Required parameters are null or missing.
 AllocMemory: Failed to allocate enough memory to hold the sample data.
 -END-
 
@@ -234,7 +251,7 @@ machine without over-provisioning available resources.  For small samples under 
 instead.
 
 The data source used for a stream will need to be provided by a client provided `Callback` function.  The prototype
-is `LONG callback(LONG SampleHandle, LONG Offset, UBYTE *Buffer, LONG BufferSize)`.
+is `INT callback(INT SampleHandle, INT Offset, UINT8 *Buffer, INT BufferSize)`.
 
 The `Offset` reflects the retrieval point of the decoded data and is measured in bytes.  The `Buffer` and
 `BufferSize` reflect the target for the decoded data.  The function must return the total number of bytes that were
@@ -245,7 +262,7 @@ It is important to differentiate between 8-bit, 16-bit, mono and stereo, but als
 is little or big endian, and if the sample data consists of signed or unsigned values.  Because of the possible
 variations there are a number of sample formats, as illustrated in the following table:
 
-<types lookup="SFM"/>
+!SFM
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
 endian format, logical-or the `SampleFormat` value with the flag `SFM::F_BIG_ENDIAN`.
@@ -274,9 +291,9 @@ structsize LoopSize: Must be set to `sizeof(AudioLoop)`.
 &int Result: The resulting sample handle will be returned in this parameter.
 
 -ERRORS-
-Okay
-Args
-NullArgs
+Okay: Stream successfully configured and added to the audio system.
+Args: Invalid argument values provided.
+NullArgs: Required parameters are null or missing.
 AllocMemory: Failed to allocate the stream buffer.
 -END-
 
@@ -351,11 +368,11 @@ static ERR AUDIO_AddStream(extAudio *Self, struct snd::AddStream *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-Beep: Beeps the PC audio speaker.
+Beep: Generates system alert tones through the platform's audio notification system.
 
-This method will beep the PC audio speaker, if available.  It is possible to request the specific Pitch, Duration
-and Volume for the sound although not all platforms may support the parameters.  In some cases the beep may be
-converted to a standard warning sound by the host.
+Use Beep to emit a tone from the platform's audio notification system, typically through the PC speaker or
+other system-level audio devices. This method is useful for generating simple alert sounds or notifications
+without requiring a full audio sample or stream.
 
 -INPUT-
 int Pitch: The pitch of the beep in HZ.
@@ -379,6 +396,10 @@ static ERR AUDIO_Beep(extAudio *Self, struct snd::Beep *Args)
       ioctl(console, KDMKTONE, ((1193190 / Args->Pitch) & 0xffff) | ((ULONG)Args->Duration << 16));
       return ERR::Okay;
    }
+#elif _WIN32
+   // TODO: Support beep on Windows hardware
+#else
+   // TODO: Generate a tone according to the supplied parameters and play it as a waveform.
 #endif
    return ERR::NoSupport;
 }
@@ -1084,7 +1105,7 @@ Lookup: ADF
 The audio class supports a number of special flags that affect internal behaviour.  The following table illustrates the
 publicly available flags:
 
-<types lookup="ADF"/>
+!ADF
 
 -FIELD-
 InputRate: Determines the frequency to use when recording audio data.
@@ -1186,11 +1207,21 @@ static ERR SET_OutputRate(extAudio *Self, LONG Value)
 -FIELD-
 Periods: Defines the number of periods that make up the internal audio buffer.
 
-The internal audio buffer is split into periods with each period being a certain byte size.  The minimum period is `2`
-and the maximum is `16`.  This field is supplemented with the #PeriodSize, which indicates the byte size of each
-period.  The total size of the audio buffer is calculated as the number of Periods multiplied by the #PeriodSize value.
+The Periods field controls the segmentation of the internal audio buffer, directly affecting latency, performance, and
+audio continuity. This setting is particularly relevant for ALSA-based systems where period-based buffering is fundamental
+to audio driver operation.
 
-The minimum period size is 1K and maximum 16K.
+The total audio buffer is divided into discrete periods, each representing a contiguous block of audio data. The audio
+system processes data period by period, allowing for predictable latency characteristics and efficient interrupt handling.
+
+<list type="bullet">
+<li><b>Minimum</b>: 2 periods (provides double-buffering for basic audio continuity)</li>
+<li><b>Maximum</b>: 16 periods (enables extensive buffering for demanding applications)</li>
+<li><b>Recommended</b>: 4 periods (balances latency and reliability for most use cases)</li>
+</list>
+
+Fewer periods reduce overall system latency but increase the risk of audio dropouts if processing cannot keep pace with
+audio consumption. More periods provide greater buffering security at the cost of increased latency.
 
 *********************************************************************************************************************/
 
@@ -1207,7 +1238,30 @@ static ERR SET_Periods(extAudio *Self, LONG Value)
 -FIELD-
 PeriodSize: Defines the byte size of each period allocated to the internal audio buffer.
 
-Refer to the #Periods field for further information.
+The PeriodSize field determines the granularity of audio buffer management, affecting system responsiveness, processing
+efficiency, and overall audio quality. This setting works in conjunction with the #Periods field to define the complete
+buffering architecture.
+
+<list type="bullet">
+<li><b>Minimum</b>: 1024 bytes (1KB) - Enables very low latency but requires high-performance processing.</li>
+<li><b>Maximum</b>: 16384 bytes (16KB) - Provides maximum buffering and processing time per period.</li>
+<li><b>Recommended</b>: 2048 bytes (2KB) - Optimal balance for most applications and hardware configurations.</li>
+</list>
+
+Period latency (in seconds) = `PeriodSize ÷ (SampleRate × Channels × BytesPerSample)`
+
+For example, with a 2048-byte period at 44100Hz stereo 16-bit `Latency = 2048 ÷ (44100 × 2 × 2) = 11.6ms per period`
+
+The combination of PeriodSize and #Periods creates a multi-stage buffering system where audio data flows through
+sequential periods, providing time for processing whilst maintaining continuous playback.
+
+<header>Application Guidelines</header>
+
+<list type="bullet">
+<li><b>Real-time applications</b>: Use smaller periods (1-2KB) with fewer periods for minimal latency.</li>
+<li><b>General applications</b>: Use medium periods (2-4KB) with 4 periods for reliable performance.</li>
+<li><b>Background audio</b>: Use larger periods (8-16KB) with more periods for maximum efficiency.</li>
+</list>
 
 *********************************************************************************************************************/
 
@@ -1224,13 +1278,20 @@ static ERR SET_PeriodSize(extAudio *Self, LONG Value)
 -FIELD-
 Quality: Determines the quality of the audio mixing.
 
-Alter the quality of internal audio mixing by adjusting the Quality field.  The value range is from 0 (low
-quality) and 100 (high quality).  A setting between 70 and 80 is recommended.  Setting a Quality value
-results in the following flags being automatically adjusted in the audio object: `ADF::FILTER_LOW`,
-`ADF::FILTER_HIGH` and `ADF::OVER_SAMPLING`.
+The Quality field controls the precision and filtering applied during audio mixing operations. This setting automatically
+configures multiple internal processing parameters to balance audio fidelity against computational overhead.
 
-In general, low quality mixing should only be used when the audio output needs to be raw, or if the audio speaker is
-of low quality and will not benefit from high quality output.
+The value range spans from 0 (minimal processing) to 100 (maximum fidelity), with recommended settings between 70-80
+for most applications. This range provides an optimal balance between audio clarity and system performance.
+
+Setting the Quality value automatically adjusts the following processing flags:
+
+<list type="bullet">
+<li><b>Quality 0-9</b>: Minimal processing, no filtering or oversampling applied.</li>
+<li><b>Quality 10-32</b>: Enables `ADF::FILTER_LOW` for basic output filtering.</li>
+<li><b>Quality 33-65</b>: Activates `ADF::FILTER_HIGH` for enhanced frequency response.</li>
+<li><b>Quality 66-100</b>: Implements `ADF::OVER_SAMPLING` and `ADF::FILTER_HIGH` for maximum fidelity.</li>
+</list>
 
 *********************************************************************************************************************/
 

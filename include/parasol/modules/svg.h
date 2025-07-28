@@ -40,13 +40,13 @@ class objSVG : public Object {
 
    using create = pf::Create<objSVG>;
 
-   OBJECTPTR Target;    // The container object for new SVG content can be declared here.
-   STRING    Path;      // A path referring to an SVG file.
+   OBJECTPTR Target;    // Destination container for the generated SVG scene graph elements.
+   STRING    Path;      // File system path to the source SVG document.
    STRING    Title;     // The title of the SVG document.
-   STRING    Statement; // A string containing SVG data.
-   int       Frame;     // Forces the graphics to be drawn to a specific frame.
-   SVF       Flags;     // Optional flags.
-   int       FrameRate; // The maximum frame rate to use when animating a vector scene.
+   STRING    Statement; // String containing complete SVG document markup.
+   int       Frame;     // Constrains rendering to a specific frame number for frame-based display systems.
+   SVF       Flags;     // Configuration flags that modify SVG processing behaviour.
+   int       FrameRate; // Controls the maximum frame rate for SVG animation playback.
 
    // Action stubs
 

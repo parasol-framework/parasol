@@ -14,7 +14,7 @@
     <copyright>Paul Manias © 2005-2025</copyright>
     <description>
 <p>The HTTP class provides a way of interacting with servers that support the HTTP protocol.  Supported HTTP methods include <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>DELETE</code>, <code>COPY</code>, <code>MOVE</code>, <code>MKCOL</code> and more.  The following features are included:</p>
-<list type="unsorted">
+<list type="bullet">
 <li>Handling of errors and HTTP status codes.</li>
 <li>Monitoring of the server communication process.</li>
 <li>Data transfer monitoring.</li>

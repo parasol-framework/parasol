@@ -6,21 +6,40 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -CLASS-
-XML: Provides XML data management services.
+XML: Provides XML data management services for parsing, manipulation and serialisation.
 
-The XML class provides functionality to create and maintain XML data files.  It is capable of parsing and validating
-XML files with or without correct structure, and can perform optional parsing behaviours such as stripping comments
-during processing.
+The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures.
+It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to
+accommodate various XML formats.  The class includes comprehensive support for XPath queries, content manipulation
+and document validation.
 
-Data can be loaded into an XML object either by specifying a file #Path or by giving it an XML #Statement.  If
-multiple XML statements need to be processed then reset the Path or Statement field after initialisation and the XML
-object will rebuild itself.  This saves on allocating multiple XML objects for batch processing.
+<header>Data Loading and Parsing</header>
 
-Successfully processed data can be read back by scanning the array referenced in the #Tags field.  The array contains
-an !XMLTag structure for each tag parsed from the original XML statement.  For more information on how to scan this
-information, refer to the #Tags field.  C++ developers are recommended to interact with #Tags directly, which
-is represented as `pf::vector&lt;XMLTag&gt;`.  Note that adding new Tags is a volatile action that can destabilise the
-object (taking a complete copy of the tags may be warranted instead).
+XML documents can be loaded into an XML object through multiple mechanisms:
+
+The #Path field allows loading from file system sources, with automatic parsing upon initialisation.  The class
+supports ~Core.LoadFile() caching for frequently accessed files, improving performance for repeated operations.
+
+The #Statement field enables direct parsing of XML strings, supporting dynamic content processing and in-memory
+document construction.
+
+The #Source field provides object-based input, allowing XML data to be sourced from any object supporting the Read
+action.
+
+For batch processing scenarios, the Path or Statement fields can be reset post-initialisation, causing the XML
+object to automatically rebuild itself.  This approach optimises memory usage by reusing existing object instances
+rather than creating new ones.
+
+<header>Document Structure and Access</header>
+
+Successfully parsed XML data is accessible through the #Tags field, which contains a hierarchical array of !XMLTag
+structures.  Each XMLTag represents a complete XML element including its attributes, content and child elements.
+The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.
+
+C++ developers benefit from direct access to the Tags field, represented as `pf::vector&lt;XMLTag&gt;`.  This provides
+efficient iteration and element access with standard STL semantics.  However, direct modification of the Tags array
+is discouraged as it can destabilise internal object state - developers should use the provided methods for safe
+manipulation.
 
 -END-
 
@@ -180,7 +199,9 @@ static ERR MODExpunge(void)
 
 /*********************************************************************************************************************
 -ACTION-
-Clear: Clears all of the data held in an XML object.
+Clear: Completely clears all XML data and resets the object to its initial state.
+
+The Clear action removes all parsed XML content from the object, including the complete tag hierarchy, cached data structures and internal state information.  This action effectively returns the XML object to its freshly-initialised condition, ready to accept new XML data.
 -END-
 *********************************************************************************************************************/
 
@@ -199,17 +220,20 @@ static ERR XML_Clear(extXML *Self)
 /*********************************************************************************************************************
 
 -METHOD-
-Count: Count all tags that match a given XPath.
+Count: Count all tags that match a given XPath expression.
 
-This method will count all tags that match a given `XPath` and return the value in the `Result` parameter.
+This method will count all tags that match a given `XPath` and return the value in the `Result` parameter.  It is
+optimised for performance and does not modify the XML structure in any way.  It is safe to call concurrently from
+multiple threads.
 
 -INPUT-
-cstr XPath: The XPath on which to perform the count.
-&int Result: The total number of matching tags is returned here.
+cstr XPath: A valid XPath expression string defining the elements to count.  The expression must conform to XPath 1.0 syntax with Parasol extensions.
+&int Result: Pointer to an integer variable that will receive the total count of matching tags.
 
 -ERRORS-
-Okay
-NullArgs
+Okay: The count operation completed successfully.
+NullArgs: Either the XPath parameter or Result parameter was NULL.
+
 -END-
 
 *********************************************************************************************************************/
@@ -239,7 +263,22 @@ static ERR XML_Count(extXML *Self, struct xml::Count *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-DataFeed: XML data can be added to an XML object through this action.
+DataFeed: Processes and integrates external XML data into the object's document structure.
+
+The DataFeed action provides a mechanism for supplying XML content to the object from external sources or streaming
+data.  This action supports both complete document replacement and incremental content addition, depending on the
+current state of the XML object.
+
+The action accepts data in XML or plain text format and automatically performs parsing and integration.  When the
+object contains no existing content, the provided data becomes the complete document structure.  If the object already
+contains parsed XML, the new data is parsed separately and appended to the existing tag hierarchy.
+
+If the provided data contains malformed XML or cannot be parsed according to the current validation settings, the
+action will return appropriate error codes without modifying the existing document structure.  This ensures that
+partial parsing failures do not corrupt previously loaded content.
+
+Attempts to feed data into a read-only XML object will be rejected to maintain document integrity.
+
 -END-
 *********************************************************************************************************************/
 
@@ -275,21 +314,23 @@ static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-Filter: Filters the XML data down to a single tag and its children.
+Filter: Filters the XML data structure to retain only a specific tag and its descendants.
 
-The Filter() method is used to reduce the amount of data in an XML tree, filtering out all data exclusive to the targeted
-tag and its children.  This is useful for speeding up XPath queries where interest is limited to only one area of the
-XML tree, or for reducing the memory footprint of large trees.
+The Filter method provides a mechanism for reducing large XML documents to a specific subtree, permanently removing
+all content that exists outside the targeted element and its children.  This operation is particularly valuable for
+performance optimisation when working with large documents where only a specific section is relevant.
 
-Data that has been filtered out by this method is permanently removed.
+The filtering process begins by locating the target element using the provided XPath expression.  Once found, a
+new XML structure is created containing only the matched tag and its complete descendant hierarchy.  All sibling
+tags, parent elements (excluding the direct lineage) and unrelated branches are permanently discarded.
 
 -INPUT-
-cstr XPath: Refers to a valid XPath string.
+cstr XPath: A valid XPath expression string that identifies the target tag to retain.  The expression must resolve to exactly one element for successful filtering.
 
 -ERRORS-
-Okay
-NullArgs
-Search: A matching tag could not be found.
+Okay: The filtering operation completed successfully and the XML structure now contains only the specified subtree.
+NullArgs: The XPath parameter was NULL or empty.
+Search: No matching tag could be found for the specified XPath expression.
 
 *********************************************************************************************************************/
 
@@ -309,25 +350,38 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-FindTag: Searches for a tag via XPath.
+FindTag: Searches for XML elements using XPath expressions with optional callback processing.
 
-This method will return the first tag that matches the search string specified in `XPath`.  Optionally, if the
-`XPath` uses wildcards or would match multiple tags, a `Callback` function may be passed that will be called for
-each matching tag that is discovered.  The prototype for the callback function is
-`ERR Function(*XML, XMLTag &Tag, CSTRING Attrib)`.
+The FindTag method provides the primary mechanism for locating XML elements within the document structure using
+XPath 1.0 compatible expressions.  The method supports both single-result queries and comprehensive tree traversal
+with callback-based processing for complex operations.
 
-The `Callback` routine can terminate the search early by returning `ERR::Terminate`.  All other error codes are ignored.
+The method supports comprehensive XPath syntax including absolute paths, attribute matching, content matching (a Parasol
+extension), wildcarding, deep scanning with double-slash notation, indexed access and complex expressions with multiple
+criteria.
+
+When no callback function is provided, FindTag returns the first matching element and terminates the search
+immediately.  This is optimal for simple queries where only the first occurrence is required.
+
+When a callback function is specified, FindTag continues searching through the entire document structure, calling the
+provided function for each matching element.  This enables comprehensive processing of all matching elements in a
+single traversal.
+
+The C++ prototype for the callback function is `ERR Function(*XML, XMLTag &Tag, CSTRING Attrib)`.
+
+The callback should return `ERR::Okay` to continue processing, or `ERR::Terminate` to halt the search immediately.  All
+other error codes are ignored to maintain search robustness.
 
 -INPUT-
-cstr XPath: An XPath string.
-ptr(func) Callback: Optional reference to a function that should be called for each matching tag.
-&int Result: The index of the first matching tag is returned in this parameter (not valid if a `Callback` is defined).
+cstr XPath: A valid XPath expression string conforming to XPath 1.0 syntax with Parasol extensions.  Must not be NULL or empty.
+ptr(func) Callback: Optional pointer to a callback function for processing multiple matches.
+&int Result: Pointer to an integer that will receive the unique ID of the first matching tag.  Only valid when no callback is provided.
 
 -ERRORS-
-Okay: A matching tag was found.
-NullArgs:
-NoData:
-Search: A matching tag could not be found.
+Okay: A matching tag was found (or callback processing completed successfully).
+NullArgs: The XPath parameter was NULL or the Result parameter was NULL when no callback was provided.
+NoData: The XML document contains no data to search.
+Search: No matching tag could be found for the specified XPath expression.
 
 *********************************************************************************************************************/
 
@@ -364,22 +418,43 @@ static ERR XML_Free(extXML *Self)
 /*********************************************************************************************************************
 
 -METHOD-
-GetAttrib: Retrieves the value of an XML attribute.
+GetAttrib: Retrieves the value of a specific XML attribute from a tagged element.
 
-The GetAttrib method scans a tag for a specific attribute and returns it. A tag `Index` and name of the required
-`Attrib` must be specified.  If found, the attribute value is returned in the `Value` parameter.
+The GetAttrib method provides efficient access to individual attribute values within XML elements.  Given a tag
+identifier and attribute name, the method performs a case-insensitive search through the element's attribute
+collection and returns the corresponding value.
 
-It is recommended that C/C++ programs bypass this method and access the !XMLAttrib structure directly.
+
+When a specific attribute name is provided, the method searches through all attributes of the target tag.  The search
+is case-insensitive to accommodate XML documents with varying capitalisation conventions.
+
+When the attribute name is NULL or empty, the method returns the tag name itself, providing convenient access to
+element names without requiring separate API calls.
+
+<header>Performance Considerations</header>
+
+For applications requiring frequent attribute access or high-performance scenarios, C++ developers should consider
+direct access to the !XMLAttrib structure array.  This bypasses the method call overhead and provides immediate
+access to all attributes simultaneously.
+
+The method performs a linear search through the attribute collection, so performance scales with the number of
+attributes per element.  For elements with many attributes, caching frequently accessed values may improve performance.
+
+<header>Data Integrity</header>
+
+The returned string pointer references internal XML object memory and remains valid until the XML structure is
+modified.  Callers should not attempt to modify or free the returned string.  For persistent storage, the string
+content should be copied to application-managed memory.
 
 -INPUT-
-int Index: The index of the XML tag to search.
-cstr Attrib: The name of the attribute to search for (case insensitive).  If `NULL` or an empty string, the tag name is returned as the result.
-&cstr Value: The value of the attribute is returned here, or `NULL` if the named `Attrib` does not exist.
+int Index: The unique identifier of the XML tag to search.  This must correspond to a valid tag ID as returned by methods such as #FindTag().
+cstr Attrib: The name of the attribute to retrieve (case insensitive).  If NULL or empty, the element's tag name is returned instead.
+&cstr Value: Pointer to a string pointer that will receive the attribute value.  Set to NULL if the specified attribute does not exist.
 
 -ERRORS-
-Okay: The attribute was found.
-Args: The required arguments were not specified.
-NotFound: The `Attrib` name was not found.
+Okay: The attribute was successfully found and its value returned.
+NullArgs: Required arguments were not specified correctly.
+NotFound: Either the specified tag Index does not exist, or the named attribute was not found within the tag.
 
 *********************************************************************************************************************/
 
@@ -563,32 +638,47 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-GetContent: Extracts the content of an XML tag.
+GetContent: Extracts the immediate text content of an XML element, excluding nested tags.
 
-The GetContent method is used to extract the string content from an XML tag.  It will extract content that is
-immediately embedded within the XML tag and will not perform deep analysis of the tag structure (refer to
-#Serialise() for deep extraction).  Consider the following structure:
+The GetContent method provides efficient extraction of text content from XML elements using a shallow parsing approach.
+It retrieves only the immediate text content of the specified element, deliberately excluding any text contained within
+nested child elements.  This behaviour is valuable for scenarios requiring precise content extraction without
+recursive tag processing.
+
+Consider the following XML structure:
 
 <pre>
 &lt;body&gt;
   Hello
-  &lt;bold&gt;my&lt;/bold&gt;
-  friend!
+  &lt;bold&gt;emphasis&lt;/bold&gt;
+  world!
 &lt;/body&gt;
 </pre>
 
-This will produce the result `Hello friend!` and omit everything encapsulated within the bold tag.
+The GetContent method would extract `Hello world!` and deliberately exclude `emphasis` since it is contained within the
+nested `&lt;bold&gt;` element.
+
+<header>Comparison with Deep Extraction</header>
+
+For scenarios requiring complete text extraction including all nested content, use the #Serialise() method with
+appropriate flags to perform deep content analysis.  The GetContent method is optimised for cases where nested tag
+content should be excluded from the result.
+
+If the resulting content exceeds the buffer capacity, the result will be truncated but remain null-terminated.
+
+It is recommended that C++ programs bypass this method and access the !XMLAttrib structure directly.
 
 -INPUT-
-int Index: Index of a tag that contains content.
-buf(str) Buffer: Pointer to a buffer that will receive the string data.
-bufsize Length: The length of the `Buffer` in bytes.
+int Index: The unique identifier of the XML element from which to extract content.  This must correspond to a valid tag ID as returned by search methods.
+buf(str) Buffer: Pointer to a pre-allocated character buffer that will receive the extracted content string.  Must not be NULL.
+bufsize Length: The size of the provided buffer in bytes, including space for null termination.  Must be at least 1.
 
 -ERRORS-
-Okay: The content string was successfully extracted.
-Args
-NotFound: The tag identified by `Index` was not found.
-BufferOverflow: The `Buffer` was not large enough to hold the content (the resulting string will be valid but truncated).
+Okay: The content string was successfully extracted and copied to the buffer.
+NullArgs: Either the Buffer parameter was NULL or other required arguments were missing.
+Args: The Length parameter was less than 1, indicating insufficient buffer space.
+NotFound: The tag identified by Index does not exist in the XML structure.
+BufferOverflow: The buffer was not large enough to hold the complete content.  The result is truncated but valid.
 
 *********************************************************************************************************************/
 
@@ -677,7 +767,7 @@ static ERR XML_Init(extXML *Self)
 /*********************************************************************************************************************
 
 -METHOD-
-InsertContent: Inserts XML content into the XML tree.
+InsertContent: Inserts text content into the XML document structure at specified positions.
 
 The InsertContent method will insert content strings into any position within the XML tree.  A content string
 must be provided in the `Content` parameter and the target insertion point is specified in the `Index` parameter.
@@ -688,15 +778,16 @@ inserted as a child of the target by using a `Where` value of `XMI::CHILD`.  To 
 To modify existing content, call #SetAttrib() instead.
 
 -INPUT-
-int Index: Identifies the target XML tag.
-int(XMI) Where: Use `PREV` or `NEXT` to insert behind or ahead of the target tag.  Use `CHILD` for a child insert.
-cstr Content: The content to insert.
-&int Result: The index of the new tag is returned here.
+int Index: The unique identifier of the target XML element that will serve as the reference point for insertion.
+int(XMI) Where: Specifies the insertion position relative to the target element.  Use PREV or NEXT for sibling insertion, or CHILD for child content insertion.
+cstr Content: The text content to insert.  Special XML characters will be automatically escaped to ensure document validity.
+&int Result: Pointer to an integer that will receive the unique identifier of the newly created content node.
 
 -ERRORS-
-Okay
-NullArgs
-ReadOnly
+Okay: The content was successfully inserted and a new content node was created.
+NullArgs: Required parameters were NULL or not properly specified.
+NotFound: The target Index does not correspond to a valid XML element.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
 
 *********************************************************************************************************************/
 
@@ -1517,7 +1608,7 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
 /*********************************************************************************************************************
 
 -FIELD-
-Flags: Optional flags.
+Flags: Controls XML parsing behaviour and processing options.
 
 -FIELD-
 Path: Set this field if the XML document originates from a file source.
@@ -1710,16 +1801,17 @@ static ERR SET_Statement(extXML *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Tags: Points to an array of tags loaded into an XML object.
+Tags: Provides direct access to the XML document structure.
 
-The successful parsing of XML data will make the information available via the Tags array.  The array is presented as
-a series of !XMLTag structures.
+The Tags field exposes the complete XML document structure as a hierarchical array of !XMLTag structures.  This field
+becomes available after successful XML parsing and provides the primary interface for reading XML content programmatically.
 
-Each !XMLTag will also have at least one attribute set in the `Attribs` array.  The first attribute will either reflect
+Each !XMLTag will have at least one attribute set in the `Attribs` array.  The first attribute will either reflect
 the tag name or a content string if the `Name` is undefined.  The `Children` array provides access to all child elements.
 
-Developers may treat the entire tag hierarchy as readable, but writes should be accomplished with the
-available XML methods.
+Direct read access to the Tags hierarchy is safe and efficient for traversing the document structure.  However,
+modifications should be performed using the XML object's methods (#InsertXML(), #SetAttrib(), #RemoveTag(), etc.) to
+maintain internal consistency and trigger appropriate cache invalidation.
 
 *********************************************************************************************************************/
 

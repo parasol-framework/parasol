@@ -176,7 +176,7 @@ class objXML : public Object {
 
    STRING    Path;      // Set this field if the XML document originates from a file source.
    OBJECTPTR Source;    // Set this field if the XML data is to be sourced from another object.
-   XMF       Flags;     // Optional flags.
+   XMF       Flags;     // Controls XML parsing behaviour and processing options.
    int       Start;     // Set a starting cursor to affect the starting point for some XML operations.
    int       Modified;  // A timestamp of when the XML data was last modified.
    ERR       ParseError; // Private

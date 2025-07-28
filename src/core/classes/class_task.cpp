@@ -771,7 +771,7 @@ static ERR TASK_Activate(extTask *Self)
       char msg[300];
       winFormatMessage(winerror, msg, sizeof(msg));
       log.warning("Launch Error: %s", msg);
-      error = ERR::Failed;
+      error = ERR::ProcessCreation;
    }
 
    return error;
@@ -869,7 +869,7 @@ static ERR TASK_Activate(extTask *Self)
          log.warning("Failed to create pipe: %s", strerror(errno));
          if (input_fd != -1) close(input_fd);
          if (out_fd != -1)   close(out_fd);
-         return ERR::Failed;
+         return ERR::ProcessCreation;
       }
    }
 
@@ -888,7 +888,7 @@ static ERR TASK_Activate(extTask *Self)
          log.warning("Failed to create pipe: %s", strerror(errno));
          if (input_fd != -1) close(input_fd);
          if (out_fd != -1)   close(out_fd);
-         return ERR::Failed;
+         return ERR::ProcessCreation;
       }
    }
 
@@ -910,7 +910,7 @@ static ERR TASK_Activate(extTask *Self)
       if (in_fd != -1)     close(in_fd);
       if (in_errfd != -1)  close(in_errfd);
       log.warning("Failed in an attempt to fork().");
-      return ERR::Failed;
+      return ERR::ProcessCreation;
    }
 
    if (pid) {
@@ -1182,7 +1182,7 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 
    Args->Value = nullptr;
 
-   if (glCurrentTask != Self) return ERR::Failed;
+   if (glCurrentTask != Self) return ERR::ExecViolation;
 
    if (!Self->Env) {
       if (AllocMemory(ENV_SIZE, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Env, nullptr) != ERR::Okay) {
@@ -1549,7 +1549,7 @@ static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
          }
       }
 
-      return log.warning(ERR::Failed);
+      return log.warning(ERR::TaskExecutionFailed);
    }
    else {
       winSetEnv(Args->Name, Args->Value);
@@ -1608,7 +1608,7 @@ static ERR TASK_Write(extTask *Task, struct acWrite *Args)
       }
       else return log.warning(ERR::Write);
    }
-   else return log.warning(ERR::Failed);
+   else return log.warning(ERR::TaskExecutionFailed);
 #else
    return log.warning(ERR::NoSupport);
 #endif
@@ -1771,7 +1771,7 @@ static ERR GET_InputCallback(extTask *Self, FUNCTION **Value)
 
 static ERR SET_InputCallback(extTask *Self, FUNCTION *Value)
 {
-   if (Self != glCurrentTask) return ERR::Failed;
+   if (Self != glCurrentTask) return ERR::ExecViolation;
 
    if (Value) {
       #ifdef __unix__

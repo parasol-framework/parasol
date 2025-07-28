@@ -277,12 +277,12 @@ ERR convert_zip_error(struct z_stream_s *Stream, LONG Result)
 
    ERR error;
    switch(Result) {
-      case Z_STREAM_ERROR:  error = ERR::Failed;
+      case Z_STREAM_ERROR:  error = ERR::CompressionStreamError;
       case Z_DATA_ERROR:    error = ERR::InvalidData;
       case Z_MEM_ERROR:     error = ERR::Memory;
       case Z_BUF_ERROR:     error = ERR::BufferOverflow;
       case Z_VERSION_ERROR: error = ERR::WrongVersion;
-      default:              error = ERR::Failed;
+      default:              error = ERR::CompressionStreamError;
    }
 
    if (Stream->msg) log.warning("%s", Stream->msg);
@@ -365,7 +365,7 @@ static ERR COMPRESSION_CompressBuffer(extCompression *Self, struct cmp::Compress
          return log.warning(ERR::BufferOverflow);
       }
    }
-   else return log.warning(ERR::Failed);
+   else return log.warning(ERR::InvalidCompression);
 }
 
 /*********************************************************************************************************************
@@ -551,7 +551,7 @@ static ERR COMPRESSION_CompressStreamStart(extCompression *Self)
       Self->Deflating = true;
       return ERR::Okay;
    }
-   else return log.warning(ERR::Failed);
+   else return log.warning(ERR::InvalidCompression);
 }
 
 /*********************************************************************************************************************
@@ -629,7 +629,7 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::Compress
 
    if ((!Args) or (!Args->Input) or (!Args->Callback)) return log.warning(ERR::NullArgs);
 
-   if (!Self->Deflating) return log.warning(ERR::Failed);
+   if (!Self->Deflating) return log.warning(ERR::InvalidState);
 
    Self->DeflateStream.next_in   = (Bytef *)Args->Input;
    Self->DeflateStream.avail_in  = Args->Length;
@@ -689,7 +689,7 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::Compress
                   { "Compression",  Self, FD_OBJECTPTR },
                   { "Output",       output, FD_BUFFER },
                   { "OutputLength", int64_t(len), FD_INT64|FD_BUFSIZE }
-               }), error) != ERR::Okay) error = ERR::Failed;
+               }), error) != ERR::Okay) error = ERR::Function;
          }
          else {
             log.warning("Callback function structure does not specify a recognised Type.");
@@ -778,7 +778,7 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::Compr
             { "Compression",  Self,   FD_OBJECTPTR },
             { "Output",       output, FD_BUFFER },
             { "OutputLength", int64_t(outputsize - Self->DeflateStream.avail_out), FD_INT64|FD_BUFSIZE }
-         }), error) != ERR::Okay) error = ERR::Failed;
+         }), error) != ERR::Okay) error = ERR::Function;
       }
       else error = ERR::Okay;
    }
@@ -831,7 +831,7 @@ static ERR COMPRESSION_DecompressStreamStart(extCompression *Self)
       Self->Inflating = true;
       return ERR::Okay;
    }
-   else return log.warning(ERR::Failed);
+   else return log.warning(ERR::InvalidCompression);
 }
 
 /*********************************************************************************************************************
@@ -929,7 +929,7 @@ static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmp::Decomp
                { "Compression",  Self,   FD_OBJECTPTR },
                { "Output",       output, FD_BUFFER },
                { "OutputLength", len,    FD_INT|FD_BUFSIZE }
-            }), error) != ERR::Okay) error = ERR::Failed;
+            }), error) != ERR::Okay) error = ERR::Function;
          }
          else {
             log.warning("Callback function structure does not specify a recognised Type.");
@@ -1030,7 +1030,7 @@ static ERR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmp::Decomp
          return ERR::BufferOverflow;
       }
    }
-   else return log.warning(ERR::Failed);
+   else return log.warning(ERR::InvalidCompression);
 }
 
 /*********************************************************************************************************************
@@ -1246,7 +1246,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
 
                   if ((err != Z_OK) and (err != Z_STREAM_END)) {
                      if (Self->Zip.msg) log.warning("%s", Self->Zip.msg);
-                     error = ERR::Failed;
+                     error = ERR::InvalidCompression;
                      goto exit;
                   }
 
@@ -1353,7 +1353,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
 
                      if ((err != Z_OK) and (err != Z_STREAM_END)) {
                         if (Self->Zip.msg) log.warning("%s", Self->Zip.msg);
-                        error = ERR::Failed;
+                        error = ERR::InvalidCompression;
                         goto exit;
                      }
 
@@ -1511,7 +1511,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
 
       if (list.Flags & ZIP_LINK) { // For symbolic links, decompress the data to get the destination link string
          log.warning("Unable to unzip symbolic link %s (flags $%.8x), size %d.", list.Name.c_str(), list.Flags, list.OriginalSize);
-         return ERR::Failed;
+         return ERR::InvalidCompression;
       }
       else { // Create the destination file or folder
          Self->Zip.next_in   = 0;
@@ -2026,7 +2026,7 @@ static ERR COMPRESSION_Scan(extCompression *Self, struct cmp::Scan *Args)
             if (sc::Call(*Args->Callback, std::to_array<ScriptArg>({
                { "Compression", Self, FD_OBJECTPTR },
                { "CompressedItem:Item", &meta, FD_STRUCT|FD_PTR }
-            }), error) != ERR::Okay) error = ERR::Failed;
+            }), error) != ERR::Okay) error = ERR::Function;
          }
          else error = log.warning(ERR::WrongType);
 

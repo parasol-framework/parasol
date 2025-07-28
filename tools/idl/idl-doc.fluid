@@ -495,7 +495,7 @@ function extractParagraph(Input, Caller, References)
    -- Handle <field>, <method> and <action> references
 
    if nz(Input) and (Input:len() > 12) then
-      if (Caller.meta) then
+      if (Caller) and (Caller.meta) then
          Input = substituteReferences(Input, Caller)
       else
          Input = substituteReferences(Input, nil)
@@ -876,7 +876,7 @@ function docModuleHeader()
    if nz(glModule.include)      then out = out .. '    <include>modules/' .. glModule.name:lower() .. '.h</include>\n' end
    if nz(glModule.date)         then out = out .. '    <date>' .. glModule.date .. '</date>\n' end
    if nz(glModule.copyright)    then out = out .. '    <copyright>' .. glModule.copyright:escXML() .. '</copyright>\n' end
-   if nz(glModule.description)  then out = out .. '    <description>\n' .. glModule.description .. '</description>\n' end
+   if nz(glModule.description)  then out = out .. '    <description>\n' .. extractParagraph(glModule.description, nil, nil) .. '</description>\n' end
    if nz(glModule.notes)        then out = out .. '    <notes>\n' .. glModule.notes .. '</notes>\n' end
    if nz(glModule.technical)    then out = out .. '    <technical>\n' .. glModule.technical .. '</technical>\n' end
 

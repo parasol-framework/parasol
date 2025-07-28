@@ -368,7 +368,7 @@ extern "C" ERR winGetExitCodeProcess(struct winprocess *Process, LPDWORD Code)
    }
    else {
       *Code = 0;
-      return ERR::Failed;
+      return ERR::NullArgs;
    }
 }
 

@@ -667,7 +667,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="NoSupport">This request is not supported.</error>
+      <error code="NoSupport">Operation not supported.</error>
       <error code="AccessObject">Failed to access the internally maintained image object.</error>
     </result>
   </function>

@@ -5,8 +5,62 @@
   <info>
     <name>Audio</name>
     <type>module</type>
+    <comment>Comprehensive audio processing and playback system with professional-grade mixing capabilities.</comment>
     <version>1</version>
     <copyright>Paul Manias © 2002-2025</copyright>
+    <description>
+<p>The Audio module provides a robust, cross-platform audio infrastructure that manages the complete audio pipeline from sample loading through to hardware output.  The module's architecture supports both high-level convenience interfaces and low-level professional audio control, making it suitable for applications ranging from simple media playback to sophisticated audio production environments.</p>
+<p>The module implements a client-server design pattern with two complementary class interfaces:</p>
+<list type="bullet">
+<li>
+<class name="Audio">Audio</class>: Low-level hardware interface providing precise control over audio mixing, buffering, and output configuration.  Designed for applications requiring professional audio capabilities including real-time processing, multi-channel mixing, and advanced streaming architectures</li>
+<li>
+<class name="Sound">Sound</class>: High-level sample playback interface optimised for simplicity and performance.  Automatically manages resource allocation, format conversion, and hardware abstraction whilst providing intelligent streaming decisions</li>
+</list>
+<p>The internal mixer is a floating-point engine that processes all audio internally at 32-bit precision regardless of output bit depth.  The mixer supports features that include:</p>
+<list type="bullet">
+<li>Oversampling with interpolation for enhanced quality and reduced aliasing</li>
+<li>Real-time volume ramping to eliminate audio artefacts during playback transitions</li>
+<li>Multi-stage filtering with configurable low-pass and high-pass characteristics</li>
+<li>Sample-accurate playback positioning with sub-sample interpolation</li>
+<li>Bidirectional and unidirectional looping with precision loop point handling</li>
+</list>
+<header>Platform-Specific Optimisations</header>
+<p>Audio implementation is optimised for each supported platform to maximise performance and minimise latency:</p>
+<list type="bullet">
+<li>
+<b>Linux (ALSA Integration):</b> Utilises ALSA's period-based buffering with configurable period counts and sizes.  All samples are processed through the unified mixer with support for system-wide volume control and hardware mixer integration</li>
+<li>
+<b>Windows (DirectSound Integration):</b> Implements dual-path audio where simple playback can bypass the internal mixer for reduced latency, whilst complex operations utilise the full mixing pipeline.  Automatic fallback ensures compatibility across Windows audio driver variations</li>
+<li>
+<b>Cross-Platform Consistency:</b> API behaviour remains consistent across platforms, with platform-specific optimisations operating transparently to applications</li>
+</list>
+<header>Streaming and Memory Management</header>
+<p>The module implements streaming technology that automatically adapts to sample characteristics and system resources:</p>
+<list type="bullet">
+<li>Smart streaming decisions based on sample size, available memory, and playback requirements</li>
+<li>Configurable streaming thresholds with support for forced streaming or memory-resident operation</li>
+<li>Rolling buffer architecture for large samples with automatic buffer management</li>
+<li>Loop-aware streaming that maintains loop points during streaming operations</li>
+</list>
+<header>Usage Guidelines</header>
+<p>For optimal results, choose the appropriate interface based on application requirements:</p>
+<list type="bullet">
+<li>
+<b>
+<class name="Sound">Sound</class> Class (Recommended for Most Applications):</b> Provides immediate audio playback with automatic resource management, format detection, and intelligent streaming.  Ideal for media players, games, and general-purpose audio applications</li>
+<li>
+<b>
+<class name="Audio">Audio</class> Class (Advanced Applications):</b> Offers complete control over the audio pipeline including custom mixer configurations, real-time effects processing, and professional-grade timing control.  Required for audio workstations, synthesisers, and applications with demanding audio requirements</li>
+</list>
+<header>Technical Specifications</header>
+<list type="bullet">
+<li>Internal processing: 32-bit floating-point precision</li>
+<li>Output formats: 8, 16, 24, and 32-bit with automatic conversion</li>
+<li>Sample rates: Up to 44.1 kHz (hardware dependent)</li>
+<li>Channel configurations: Mono and stereo with automatic format adaptation</li>
+<li>Latency: Platform-optimised with configurable buffering for real-time applications</li>
+</list></description>
     <classes>
       <class>Audio</class>
       <class>Sound</class>
@@ -103,7 +157,7 @@
 
   <function>
     <name>MixPlay</name>
-    <comment>Commences channel playback at a set frequency..</comment>
+    <comment>Commences channel playback at a set frequency.</comment>
     <prototype>ERR snd::MixPlay(objAudio * Audio, INT Handle, INT Position)</prototype>
     <input>
       <param type="objAudio *" name="Audio">The target Audio object.</param>
@@ -114,8 +168,10 @@
 <p>This function will start playback of the sound sample associated with the target mixer channel.  If the channel is already in playback mode, it will be stopped to facilitate the new playback request.</p>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Playback successfully initiated.</error>
+      <error code="Failed">Channel not associated with a valid sample.</error>
+      <error code="OutOfRange">Position exceeds sample boundaries.</error>
+      <error code="NullArgs">Required parameters are null or missing.</error>
     </result>
   </function>
 
@@ -166,11 +222,34 @@
     </input>
     <description>
 <p>Use this function to initiate the buffering of mix commands, up until a call to <function>MixEndSequence</function> is made.  The buffering of mix commands makes it possible to create batches of commands that are executed at timed intervals as determined by <function>MixRate</function>.</p>
+<header>Command Buffering Architecture</header>
+<p>When command buffering is activated, the mixer transitions to a batch processing mode with several key characteristics:</p>
+<list type="bullet">
+<li>
+<b>Deferred Execution:</b> All mixer operations (<function>MixPlay</function>, <function>MixVolume</function>, <function>MixPan</function>, <function>MixFrequency</function>, etc.) are queued rather than executed immediately</li>
+<li>
+<b>Atomic Batch Processing:</b> Queued commands are processed synchronously during the next mixer update cycle, ensuring sample-accurate timing coordination</li>
+<li>
+<b>Thread-Safe Queueing:</b> Commands can be safely queued from multiple threads without explicit synchronisation requirements</li>
+<li>
+<b>Overflow Protection:</b> Command buffers include overflow detection to prevent memory exhaustion during extended buffering periods</li>
+</list>
 <p>This feature can be used to implement complex sound mixes and digital music players.</p>
+<header>Advanced Usage Patterns</header>
+<list type="ordered">
+<li>
+<b>Sequence Initiation:</b> Call MixStartSequence() to begin command buffering for the target channel or channel set</li>
+<li>
+<b>Command Queuing:</b> Issue multiple mixer commands (volume, pan, play, frequency adjustments, etc.) which are automatically queued</li>
+<li>
+<b>Sequence Completion:</b> Call <function>MixEndSequence</function> to mark the end of the command batch and schedule execution</li>
+<li>
+<b>Automatic Execution:</b> Commands execute atomically at the next mixer update interval determined by <function>MixRate</function></li>
+</list>
     </description>
     <result type="ERR">
-      <error code="Okay">Operation successful.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Okay">Command buffering successfully initiated.</error>
+      <error code="NullArgs">Required parameters are null or missing.</error>
     </result>
   </function>
 

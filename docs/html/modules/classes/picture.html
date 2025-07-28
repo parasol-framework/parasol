@@ -22,7 +22,7 @@
 <div class="col-sm-9" style="max-width: 1200px;"><div class="docs-content" style="display:none;" id="default-page"><div class="page-header"><h1>Picture Class</h1></div><p class="lead">Loads and saves picture files in a variety of different data formats.</p>
 <p>The Picture class provides a standard API for programs to load picture files of any supported data type.  It is future proof in that future data formats can be supported by installing class drivers on the user's system.</p>
 <p>The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via sub-classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are also supported, but user preference may dictate whether or not the necessary driver is installed.</p>
-<h3>Technical Notes</h3>
+<h4>Technical Notes</h4>
 <p>To find out general information about a picture before initialising it, <a data-bs-toggle="tooltip" title="Retrieves the latest information from an object." href="#ta-Query">Query()</a> it first so that the picture object can load initial details on the file format.</p>
 <p>Images are also remapped automatically if the source palette and destination palettes do not match, or if there are significant differences between the source and destination bitmap types.</p>
 <p>Dynamically sized image formats like SVG will use the <a data-bs-toggle="tooltip" title="The preferred width to use when displaying the image." href="#tf-DisplayWidth">DisplayWidth</a> and <a data-bs-toggle="tooltip" title="The preferred height to use when displaying the image." href="#tf-DisplayHeight">DisplayHeight</a> values to determine the rendered image size.</p>

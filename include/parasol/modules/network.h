@@ -107,10 +107,8 @@ enum class NSL : int {
 #define SCV_APPLICATION_VERIFICATION 50
 
 
-#ifdef ENABLE_SSL
-  #ifndef _WIN32
-    #include "openssl/ssl.h"
-  #endif
+#if defined(ENABLE_SSL) && !defined(_WIN32)
+ #include "openssl/ssl.h"
 #endif
 
 #ifdef __linux__

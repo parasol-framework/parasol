@@ -207,7 +207,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
             #endif
                // Copy the destination to the source buffer and repeat the resolution process.
 
-               if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) return ERR::Failed;
+               if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) return ERR::Search;
                src = dest;
                continue; // Keep resolving
             }
@@ -224,7 +224,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
    } // for()
 
    if (loop > 0) { // Note that loop starts at 10 and decrements to zero
-      if ((error IS ERR::Okay) and dest.empty()) return ERR::Failed;
+      if ((error IS ERR::Okay) and dest.empty()) return ERR::InvalidPath;
       return error;
    }
    else return ERR::Loop;

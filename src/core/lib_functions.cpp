@@ -652,7 +652,7 @@ int64_t SetResource(RES Resource, int64_t Value)
                   }
                   else {
                      log.msg("Admin privileges not available.");
-                     oldvalue = int64_t(ERR::Failed); // Admin privileges are not available
+                     oldvalue = int64_t(ERR::NoPermission); // Admin privileges are not available
                   }
                }
                else privileged++;; // The user already has admin privileges

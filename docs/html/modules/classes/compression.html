@@ -350,7 +350,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Search</th><td>A search routine in this function failed.</td></tr>
-<tr><th class="col-md-1">NoSupport</th><td>This request is not supported.</td></tr>
+<tr><th class="col-md-1">NoSupport</th><td>Operation not supported.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-RemoveFile" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">RemoveFile</th><td id="tm-RemoveFile">Deletes one or more files from a compression object.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-RemoveFile" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cmp::RemoveFile(OBJECTPTR Object, CSTRING Path)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Path</td><td>The full path name of the file to delete from the archive.</td></tr>
@@ -359,7 +359,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>Depending on internal optimisation techniques, the compressed file may not shrink from deletions until the compression object is closed or the <a data-bs-toggle="tooltip" title="Flushes all pending actions." href="#ta-Flush">Flush()</a> action is called.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The file was successfully deleted.</td></tr>
-<tr><th class="col-md-1">NoSupport</th><td>This request is not supported.</td></tr>
+<tr><th class="col-md-1">NoSupport</th><td>Operation not supported.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Scan" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Scan</th><td id="tm-Scan">Scan the archive's index of compressed data.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Scan" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cmp::Scan(OBJECTPTR Object, CSTRING Folder, CSTRING Filter, FUNCTION * Callback)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Folder</td><td>If defined, only items within the specified folder are returned.  Use an empty string for files in the root folder.</td></tr>
@@ -383,7 +383,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
 <p>To search for a single item with a path and name already known, use the <a data-bs-toggle="tooltip" title="Find the first item that matches a given filter." href="#tm-Find">Find()</a> method instead.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">NoSupport</th><td>This request is not supported.</td></tr>
+<tr><th class="col-md-1">NoSupport</th><td>Operation not supported.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
 </tbody></table><div class="footer copyright text-right">Compression class documentation © Paul Manias 1996-2025</div></div><div class="docs-content" style="display:none;" id="CMF"><h1>CMF Type</h1><p class="lead">Compression flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>CMF::APPLY_SECURITY</th><td>When decompressing, apply individual file permissions if they are available in the compression file.</td></tr>
