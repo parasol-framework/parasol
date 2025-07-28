@@ -850,7 +850,7 @@ namespace agg
         less(a, b);
     }
     void quick_sort(Array& arr, Less less) {
-        if(arr.size() < 2) return;
+        if (arr.size() < 2) [[unlikely]] return;
 
         typename Array::value_type* e1;
         typename Array::value_type* e2;
@@ -868,7 +868,7 @@ namespace agg
             int j;
             int pivot;
 
-            if(len > quick_sort_threshold)
+            if (len > quick_sort_threshold) [[likely]] 
             {
                 // we use base + len/2 as the pivot
                 pivot = base + len / 2;
@@ -877,26 +877,25 @@ namespace agg
                 i = base + 1;
                 j = limit - 1;
 
-                // now ensure that *i <= *base <= *j
+                // now ensure that *i <= *base <= *j with branch prediction hints
                 e1 = &(arr[j]);
                 e2 = &(arr[i]);
-                if(less(*e1, *e2)) swap_elements(*e1, *e2);
+                if (less(*e1, *e2)) [[unlikely]] swap_elements(*e1, *e2);
 
                 e1 = &(arr[base]);
                 e2 = &(arr[i]);
-                if(less(*e1, *e2)) swap_elements(*e1, *e2);
+                if (less(*e1, *e2)) [[unlikely]] swap_elements(*e1, *e2);
 
                 e1 = &(arr[j]);
                 e2 = &(arr[base]);
-                if(less(*e1, *e2)) swap_elements(*e1, *e2);
+                if (less(*e1, *e2)) [[unlikely]] swap_elements(*e1, *e2);
 
                 for(;;)
                 {
                     do i++; while( less(arr[i], arr[base]) );
                     do j--; while( less(arr[base], arr[j]) );
 
-                    if( i > j )
-                    {
+                    if (i > j) [[unlikely]] {
                         break;
                     }
 
@@ -906,14 +905,11 @@ namespace agg
                 swap_elements(arr[base], arr[j]);
 
                 // now, push the largest sub-array
-                if(j - base > limit - i)
-                {
+                if (j - base > limit - i) [[likely]] {
                     top[0] = base;
                     top[1] = j;
                     base   = i;
-                }
-                else
-                {
+                } else {
                     top[0] = i;
                     top[1] = limit;
                     limit  = j;
@@ -965,28 +961,35 @@ namespace agg
         equal(a, b);
     }
     constexpr unsigned remove_duplicates(Array& arr, Equal equal) {
-        if(arr.size() < 2) return arr.size();
+        const auto size = arr.size();
+        if (size < 2) [[unlikely]] return size;
 
-        unsigned i, j;
-        for(i = 1, j = 1; i < arr.size(); i++)
-        {
-            typename Array::value_type& e = arr[i];
-            if(!equal(e, arr[i - 1]))
-            {
-                arr[j++] = e;
+        unsigned write_pos = 1;
+
+        // Optimized loop with better cache access patterns and move semantics
+        for (unsigned read_pos = 1; read_pos < size; ++read_pos) {
+            if (!equal(arr[read_pos], arr[read_pos - 1])) [[likely]] {
+                if (write_pos != read_pos) [[likely]] {
+                    arr[write_pos] = std::move(arr[read_pos]);
+                }
+                ++write_pos;
             }
         }
-        return j;
+        return write_pos;
     }
 
     //--------------------------------------------------------invert_container
-    template<class Array> void invert_container(Array& arr)
-    {
-        int i = 0;
-        int j = arr.size() - 1;
-        while(i < j)
-        {
-            swap_elements(arr[i++], arr[j--]);
+    template<typename Array>
+    constexpr void invert_container(Array& arr) noexcept {
+        const auto size = arr.size();
+        if (size < 2) [[unlikely]] return;
+
+        // Optimized with pointer arithmetic for better performance
+        auto* begin = &arr[0];
+        auto* end = &arr[size - 1];
+
+        while (begin < end) {
+            std::swap(*begin++, *end--);
         }
     }
 

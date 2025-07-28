@@ -17,6 +17,9 @@
 #include <cmath>
 #include <cstdlib>
 #include <type_traits>
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 #include "agg_basics.h"
 
 namespace agg {
@@ -28,7 +31,12 @@ namespace agg {
 
     constexpr double cross_product(double x1, double y1, double x2, double y2, double x,  double y) noexcept
     {
-        return (x - x2) * (y2 - y1) - (y - y2) * (x2 - x1);
+        // Optimized for better instruction pipelining
+        const double dx1 = x - x2;
+        const double dy1 = y2 - y1;
+        const double dx2 = x2 - x1;
+        const double dy2 = y - y2;
+        return dx1 * dy1 - dy2 * dx2;
     }
 
     constexpr bool point_in_triangle(double x1, double y1, double x2, double y2, double x3, double y3, double x,  double y) noexcept
@@ -41,9 +49,14 @@ namespace agg {
 
     inline double calc_distance(double x1, double y1, double x2, double y2) noexcept
     {
-        const double dx = x2-x1;
-        const double dy = y2-y1;
-        return std::sqrt(dx * dx + dy * dy);
+        const double dx = x2 - x1;
+        const double dy = y2 - y1;
+        const double dist_sq = dx * dx + dy * dy;
+        
+        // Fast path for zero distance
+        if (dist_sq == 0.0) [[unlikely]] return 0.0;
+        
+        return std::sqrt(dist_sq);
     }
 
     constexpr double calc_sq_distance(double x1, double y1, double x2, double y2) noexcept
@@ -55,11 +68,16 @@ namespace agg {
 
     inline double calc_line_point_distance(double x1, double y1, double x2, double y2, double x,  double y) noexcept
     {
-        const double dx = x2-x1;
-        const double dy = y2-y1;
-        const double d = std::sqrt(dx * dx + dy * dy);
-        if (d < vertex_dist_epsilon) return calc_distance(x1, y1, x, y);
-        return ((x - x2) * dy - (y - y2) * dx) / d;
+        const double dx = x2 - x1;
+        const double dy = y2 - y1;
+        const double len_sq = dx * dx + dy * dy;
+        
+        if (len_sq < vertex_dist_epsilon * vertex_dist_epsilon) [[unlikely]] {
+            return calc_distance(x1, y1, x, y);
+        }
+        
+        const double inv_len = 1.0 / std::sqrt(len_sq);
+        return ((x - x2) * dy - (y - y2) * dx) * inv_len;
     }
 
     constexpr double calc_segment_point_u(double x1, double y1, double x2, double y2, double x,  double y) noexcept
@@ -129,9 +147,16 @@ namespace agg {
     {
         const double dx = x2 - x1;
         const double dy = y2 - y1;
-        const double d = std::sqrt(dx*dx + dy*dy); 
-        *x =  thickness * dy / d;
-        *y = -thickness * dx / d;
+        const double len_sq = dx * dx + dy * dy;
+        
+        if (len_sq < 1e-20) [[unlikely]] {
+            *x = *y = 0.0;
+            return;
+        }
+        
+        const double inv_len = thickness / std::sqrt(len_sq);
+        *x =  dy * inv_len;
+        *y = -dx * inv_len;
     }
 
     inline void dilate_triangle(double x1, double y1, double x2, double y2, double x3, double y3, double *x, double* y, double d) noexcept
@@ -169,21 +194,27 @@ namespace agg {
         st[0].y;
     }
     constexpr auto calc_polygon_area(const Storage& st) noexcept -> double {
-        if (st.size() < 3) return 0.0;
+        const auto size = st.size();
+        if (size < 3) return 0.0;
         
         double sum = 0.0;
-        double x  = st[0].x;
-        double y  = st[0].y;
-        const double xs = x;
-        const double ys = y;
+        double prev_x = st[0].x;
+        double prev_y = st[0].y;
+        const double first_x = prev_x;
+        const double first_y = prev_y;
 
-        for(unsigned i = 1; i < st.size(); i++) {
-            const auto& v = st[i];
-            sum += x * v.y - y * v.x;
-            x = v.x;
-            y = v.y;
+        // Vectorization-friendly loop with minimal dependencies
+        for(unsigned i = 1; i < size; ++i) {
+            const double curr_x = st[i].x;
+            const double curr_y = st[i].y;
+            sum += prev_x * curr_y - prev_y * curr_x;
+            prev_x = curr_x;
+            prev_y = curr_y;
         }
-        return (sum + x * ys - y * xs) * 0.5;
+        
+        // Close the polygon
+        sum += prev_x * first_y - prev_y * first_x;
+        return sum * 0.5;
     }
 
     // Tables for fast sqrt
