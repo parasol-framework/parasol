@@ -10,8 +10,9 @@
 #ifndef AGG_ARRAY_INCLUDED
 #define AGG_ARRAY_INCLUDED
 
-#include <stddef.h>
-#include <string.h>
+#include <cstddef>
+#include <cstring>
+#include <algorithm>
 #include "agg_basics.h"
 
 namespace agg
@@ -21,16 +22,16 @@ namespace agg
     template<class T> class pod_array_adaptor
     {
     public:
-        typedef T value_type;
-        pod_array_adaptor(T* array, unsigned size) : 
+        using value_type = T;
+        constexpr pod_array_adaptor(T* array, unsigned size) noexcept : 
             m_array(array), m_size(size) {}
 
-        unsigned size() const { return m_size; }
-        const T& operator [] (unsigned i) const { return m_array[i]; }
-              T& operator [] (unsigned i)       { return m_array[i]; }
-        const T& at(unsigned i) const           { return m_array[i]; }
-              T& at(unsigned i)                 { return m_array[i]; }
-        T  value_at(unsigned i) const           { return m_array[i]; }
+        constexpr unsigned size() const noexcept { return m_size; }
+        constexpr const T& operator [] (unsigned i) const noexcept { return m_array[i]; }
+        constexpr       T& operator [] (unsigned i)       noexcept { return m_array[i]; }
+        constexpr const T& at(unsigned i) const           noexcept { return m_array[i]; }
+        constexpr       T& at(unsigned i)                 noexcept { return m_array[i]; }
+        constexpr T  value_at(unsigned i) const           noexcept { return m_array[i]; }
 
     private:
         T*       m_array;
@@ -42,27 +43,27 @@ namespace agg
     template<class T, unsigned Size> class pod_auto_array
     {
     public:
-        typedef T value_type;
-        typedef pod_auto_array<T, Size> self_type;
+        using value_type = T;
+        using self_type = pod_auto_array<T, Size>;
 
         pod_auto_array() {}
-        explicit pod_auto_array(const T* c)
+        explicit pod_auto_array(const T* c) noexcept
         {
-            memcpy(m_array, c, sizeof(T) * Size);
+            std::copy_n(c, Size, m_array);
         }
 
-        const self_type& operator = (const T* c)
+        constexpr const self_type& operator = (const T* c) noexcept
         {
-            memcpy(m_array, c, sizeof(T) * Size);
+            std::copy_n(c, Size, m_array);
             return *this;
         }
 
-        static unsigned size() { return Size; }
-        const T& operator [] (unsigned i) const { return m_array[i]; }
-              T& operator [] (unsigned i)       { return m_array[i]; }
-        const T& at(unsigned i) const           { return m_array[i]; }
-              T& at(unsigned i)                 { return m_array[i]; }
-        T  value_at(unsigned i) const           { return m_array[i]; }
+        static constexpr unsigned size() noexcept { return Size; }
+        constexpr const T& operator [] (unsigned i) const noexcept { return m_array[i]; }
+        constexpr       T& operator [] (unsigned i)       noexcept { return m_array[i]; }
+        constexpr const T& at(unsigned i) const           noexcept { return m_array[i]; }
+        constexpr       T& at(unsigned i)                 noexcept { return m_array[i]; }
+        constexpr T  value_at(unsigned i) const           noexcept { return m_array[i]; }
 
     private:
         T m_array[Size];
@@ -73,23 +74,23 @@ namespace agg
     template<class T, unsigned Size> class pod_auto_vector
     {
     public:
-        typedef T value_type;
-        typedef pod_auto_vector<T, Size> self_type;
+        using value_type = T;
+        using self_type = pod_auto_vector<T, Size>;
 
-        pod_auto_vector() : m_size(0) {}
+        constexpr pod_auto_vector() noexcept : m_size(0) {}
 
-        void remove_all()            { m_size = 0; }
-        void clear()                 { m_size = 0; }
-        void add(const T& v)         { m_array[m_size++] = v; }
-        void push_back(const T& v)   { m_array[m_size++] = v; }
-        void inc_size(unsigned size) { m_size += size; }
+        constexpr void remove_all()            noexcept { m_size = 0; }
+        constexpr void clear()                 noexcept { m_size = 0; }
+        constexpr void add(const T& v)         noexcept { m_array[m_size++] = v; }
+        constexpr void push_back(const T& v)   noexcept { m_array[m_size++] = v; }
+        constexpr void inc_size(unsigned size) noexcept { m_size += size; }
         
-        unsigned size() const { return m_size; }
-        const T& operator [] (unsigned i) const { return m_array[i]; }
-              T& operator [] (unsigned i)       { return m_array[i]; }
-        const T& at(unsigned i) const           { return m_array[i]; }
-              T& at(unsigned i)                 { return m_array[i]; }
-        T  value_at(unsigned i) const           { return m_array[i]; }
+        constexpr unsigned size() const noexcept { return m_size; }
+        constexpr const T& operator [] (unsigned i) const noexcept { return m_array[i]; }
+        constexpr       T& operator [] (unsigned i)       noexcept { return m_array[i]; }
+        constexpr const T& at(unsigned i) const           noexcept { return m_array[i]; }
+        constexpr       T& at(unsigned i)                 noexcept { return m_array[i]; }
+        constexpr T  value_at(unsigned i) const           noexcept { return m_array[i]; }
 
     private:
         T m_array[Size];
