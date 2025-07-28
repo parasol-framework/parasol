@@ -14,6 +14,7 @@
 #include <cmath>
 #include <cstdint>
 #include <algorithm>
+#include <memory>
 #ifdef __cpp_lib_math_constants
 #include <numbers>
 #endif
@@ -24,15 +25,41 @@
 #else
 namespace agg
 {
+    // Modern allocator with backward compatibility
     template<class T> struct pod_allocator
     {
-        static void deallocate(T* ptr) { delete [] ptr;      }
+        using pointer_type = std::unique_ptr<T[]>;
+        
+        // Modern interface returning smart pointer
+        static pointer_type allocate_unique(std::size_t size) {
+            return std::make_unique<T[]>(size);
+        }
+        
+        // Legacy interface for backward compatibility - returns raw pointer
+        static T* allocate(std::size_t size) {
+            return new T[size];
+        }
+        
+        static void deallocate(T* ptr, std::size_t = 0) { delete [] ptr; }
     };
 
     template<class T> struct obj_allocator
     {
-        static T*   allocate()         { return new T; }
-        static void deallocate(T* ptr) { delete ptr;   }
+        using pointer_type = std::unique_ptr<T>;
+        
+        // Modern interface returning smart pointer  
+        static pointer_type allocate_unique() {
+            return std::make_unique<T>();
+        }
+        
+        template<typename... Args>
+        static pointer_type allocate_unique(Args&&... args) {
+            return std::make_unique<T>(std::forward<Args>(args)...);
+        }
+        
+        // Legacy interface for backward compatibility - returns raw pointer
+        static T* allocate() { return new T; }
+        static void deallocate(T* ptr) { delete ptr; }
     };
 }
 #endif

@@ -2,8 +2,8 @@
 // Anti-Grain Geometry - Version 2.4
 // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
 //
-// Permission to copy, use, modify, sell and distribute this software 
-// is granted provided this copyright notice appears in all copies. 
+// Permission to copy, use, modify, sell and distribute this software
+// is granted provided this copyright notice appears in all copies.
 // This software is provided "as is" without express or implied
 // warranty, and with no claim as to its suitability for any purpose.
 
@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstring>
 #include <algorithm>
+#include <memory>
 #include "agg_basics.h"
 
 namespace agg
@@ -23,7 +24,7 @@ namespace agg
     {
     public:
         using value_type = T;
-        constexpr pod_array_adaptor(T* array, unsigned size) noexcept : 
+        constexpr pod_array_adaptor(T* array, unsigned size) noexcept :
             m_array(array), m_size(size) {}
 
         constexpr unsigned size() const noexcept { return m_size; }
@@ -84,7 +85,7 @@ namespace agg
         constexpr void add(const T& v)         noexcept { m_array[m_size++] = v; }
         constexpr void push_back(const T& v)   noexcept { m_array[m_size++] = v; }
         constexpr void inc_size(unsigned size) noexcept { m_size += size; }
-        
+
         constexpr unsigned size() const noexcept { return m_size; }
         constexpr const T& operator [] (unsigned i) const noexcept { return m_array[i]; }
         constexpr       T& operator [] (unsigned i)       noexcept { return m_array[i]; }
@@ -102,46 +103,75 @@ namespace agg
     template<class T> class pod_array
     {
     public:
-        typedef T value_type;
-        typedef pod_array<T> self_type;
+        using value_type = T;
+        using self_type = pod_array<T>;
 
-        ~pod_array() { delete [] m_array; }
-        pod_array() : m_array(0), m_size(0) {}
+        // Modern constructors with RAII
+        pod_array() noexcept : m_array(nullptr), m_size(0) {}
 
-        pod_array(unsigned size) : m_array(new T[size]), m_size(size) 
-        {}
+        explicit pod_array(unsigned size) :
+            m_array(std::make_unique<T[]>(size)), m_size(size) {}
 
-        pod_array(const self_type& v) : 
-            m_array(pod_allocator<T>::allocate(v.m_size)), 
-            m_size(v.m_size) 
+        // Copy constructor with proper exception safety
+        pod_array(const self_type& v) :
+            m_array(v.m_size > 0 ? std::make_unique<T[]>(v.m_size) : nullptr),
+            m_size(v.m_size)
         {
-            memcpy(m_array, v.m_array, sizeof(T) * m_size);
+            if (m_size > 0) {
+                std::copy_n(v.m_array.get(), m_size, m_array.get());
+            }
+        }
+
+        // Move constructor
+        pod_array(self_type&& v) noexcept :
+            m_array(std::move(v.m_array)), m_size(v.m_size)
+        {
+            v.m_size = 0;
+        }
+
+        // Copy assignment with strong exception safety
+        const self_type& operator = (const self_type& v) {
+            if (this != &v) {
+                self_type temp(v);  // Copy-and-swap idiom
+                swap(temp);
+            }
+            return *this;
+        }
+
+        // Move assignment
+        self_type& operator = (self_type&& v) noexcept {
+            if (this != &v) {
+                m_array = std::move(v.m_array);
+                m_size = v.m_size;
+                v.m_size = 0;
+            }
+            return *this;
         }
 
         void resize(unsigned size) {
             if (size != m_size) {
-               delete [] m_array;
-               m_array = new T[m_size = size];
+                m_array = size > 0 ? std::make_unique<T[]>(size) : nullptr;
+                m_size = size;
             }
         }
 
-        const self_type& operator = (const self_type& v) {
-            resize(v.size());
-            memcpy(m_array, v.m_array, sizeof(T) * m_size);
-            return *this;
+        void swap(self_type& other) noexcept {
+            std::swap(m_array, other.m_array);
+            std::swap(m_size, other.m_size);
         }
 
-        unsigned size() const { return m_size; }
-        const T& operator [] (unsigned i) const { return m_array[i]; }
-              T& operator [] (unsigned i)       { return m_array[i]; }
-        const T& at(unsigned i) const           { return m_array[i]; }
-              T& at(unsigned i)                 { return m_array[i]; }
-        T  value_at(unsigned i) const           { return m_array[i]; }
+        constexpr unsigned size() const noexcept { return m_size; }
+        constexpr const T& operator [] (unsigned i) const noexcept { return m_array[i]; }
+        constexpr       T& operator [] (unsigned i)       noexcept { return m_array[i]; }
+        constexpr const T& at(unsigned i) const           noexcept { return m_array[i]; }
+        constexpr       T& at(unsigned i)                 noexcept { return m_array[i]; }
+        constexpr T  value_at(unsigned i) const           noexcept { return m_array[i]; }
 
-        const T* data() const { return m_array; }
-              T* data()       { return m_array; }
+        const T* data() const noexcept { return m_array.get(); }
+              T* data()       noexcept { return m_array.get(); }
+
     private:
-        T*       m_array;
+        std::unique_ptr<T[]> m_array;
         unsigned m_size;
     };
 
@@ -152,120 +182,167 @@ namespace agg
     template<class T> class pod_vector
     {
     public:
-        typedef T value_type;
+        using value_type = T;
 
-        ~pod_vector() { pod_allocator<T>::deallocate(m_array, m_capacity); }
-        pod_vector() : m_size(0), m_capacity(0), m_array(0) {}
-        pod_vector(unsigned cap, unsigned extra_tail=0);
+        pod_vector() noexcept : m_size(0), m_capacity(0), m_array(nullptr) {}
+        explicit pod_vector(unsigned cap, unsigned extra_tail=0);
 
-        // Copying
-        pod_vector(const pod_vector<T>&);
-        const pod_vector<T>& operator = (const pod_vector<T>&);
+        // Copy constructor with exception safety
+        pod_vector(const pod_vector<T>& v);
+
+        // Move constructor
+        pod_vector(pod_vector<T>&& v) noexcept;
+
+        // Copy assignment
+        const pod_vector<T>& operator = (const pod_vector<T>& v);
+
+        // Move assignment
+        pod_vector<T>& operator = (pod_vector<T>&& v) noexcept;
 
         // Set new capacity. All data is lost, size is set to zero.
         void capacity(unsigned cap, unsigned extra_tail=0);
-        unsigned capacity() const { return m_capacity; }
+        constexpr unsigned capacity() const noexcept { return m_capacity; }
 
-        // Allocate n elements. All data is lost, 
-        // but elements can be accessed in range 0...size-1. 
+        // Allocate n elements. All data is lost,
+        // but elements can be accessed in range 0...size-1.
         void allocate(unsigned size, unsigned extra_tail=0);
 
         void resize(unsigned new_size);
 
-        void zero() {
-            memset(m_array, 0, sizeof(T) * m_size);
+        void zero() noexcept {
+            if (m_array and m_size > 0) {
+                std::fill_n(m_array.get(), m_size, T{});
+            }
         }
 
         void add(const T& v)         { m_array[m_size++] = v; }
         void push_back(const T& v)   { m_array[m_size++] = v; }
+        void push_back(T&& v)        { m_array[m_size++] = std::move(v); }
         void insert_at(unsigned pos, const T& val);
         void inc_size(unsigned size) { m_size += size; }
-        unsigned size()      const   { return m_size; }
-        unsigned byte_size() const   { return m_size * sizeof(T); }
+        constexpr unsigned size()      const noexcept { return m_size; }
+        constexpr unsigned byte_size() const noexcept { return m_size * sizeof(T); }
         void serialize(int8u* ptr) const;
         void deserialize(const int8u* data, unsigned byte_size);
-        const T& operator [] (unsigned i) const { return m_array[i]; }
-              T& operator [] (unsigned i)       { return m_array[i]; }
-        const T& at(unsigned i) const           { return m_array[i]; }
-              T& at(unsigned i)                 { return m_array[i]; }
-        T  value_at(unsigned i) const           { return m_array[i]; }
+        constexpr const T& operator [] (unsigned i) const noexcept { return m_array[i]; }
+        constexpr       T& operator [] (unsigned i)       noexcept { return m_array[i]; }
+        constexpr const T& at(unsigned i) const           noexcept { return m_array[i]; }
+        constexpr       T& at(unsigned i)                 noexcept { return m_array[i]; }
+        constexpr T  value_at(unsigned i) const           noexcept { return m_array[i]; }
 
-        const T* data() const { return m_array; }
-              T* data()       { return m_array; }
+        const T* data() const noexcept { return m_array.get(); }
+              T* data()       noexcept { return m_array.get(); }
 
-        void remove_all()         { m_size = 0; }
-        void clear()              { m_size = 0; }
-        void cut_at(unsigned num) { if(num < m_size) m_size = num; }
+        void remove_all()         noexcept { m_size = 0; }
+        void clear()              noexcept { m_size = 0; }
+        void cut_at(unsigned num) noexcept { if(num < m_size) m_size = num; }
+
+        void swap(pod_vector<T>& other) noexcept {
+            std::swap(m_array, other.m_array);
+            std::swap(m_size, other.m_size);
+            std::swap(m_capacity, other.m_capacity);
+        }
 
     private:
         unsigned m_size;
         unsigned m_capacity;
-        T*       m_array;
+        std::unique_ptr<T[]> m_array;
     };
 
-    template<class T> 
+    template<class T>
     void pod_vector<T>::capacity(unsigned cap, unsigned extra_tail) {
         m_size = 0;
         if (cap > m_capacity) {
-            pod_allocator<T>::deallocate(m_array, m_capacity);
             m_capacity = cap + extra_tail;
-            m_array = m_capacity ? pod_allocator<T>::allocate(m_capacity) : 0;
+            m_array = m_capacity > 0 ? std::make_unique<T[]>(m_capacity) : nullptr;
         }
     }
 
-    template<class T> 
+    template<class T>
     void pod_vector<T>::allocate(unsigned size, unsigned extra_tail) {
         capacity(size, extra_tail);
         m_size = size;
     }
 
-    template<class T> 
+    template<class T>
     void pod_vector<T>::resize(unsigned new_size) {
         if (new_size > m_size) {
             if (new_size > m_capacity) {
-                T* data = pod_allocator<T>::allocate(new_size);
-                memcpy(data, m_array, m_size * sizeof(T));
-                pod_allocator<T>::deallocate(m_array, m_capacity);
-                m_array = data;
+                auto new_array = std::make_unique<T[]>(new_size);
+                if (m_array and m_size > 0) {
+                    std::copy_n(m_array.get(), m_size, new_array.get());
+                }
+                m_array = std::move(new_array);
+                m_capacity = new_size;
             }
         }
-        else m_size = new_size;
+        m_size = new_size;
     }
 
     template<class T> pod_vector<T>::pod_vector(unsigned cap, unsigned extra_tail) :
-        m_size(0), m_capacity(cap + extra_tail), 
-        m_array(pod_allocator<T>::allocate(m_capacity)) {}
+        m_size(0), m_capacity(cap + extra_tail),
+        m_array(m_capacity > 0 ? std::make_unique<T[]>(m_capacity) : nullptr) {}
 
     template<class T> pod_vector<T>::pod_vector(const pod_vector<T>& v) :
         m_size(v.m_size), m_capacity(v.m_capacity),
-        m_array(v.m_capacity ? pod_allocator<T>::allocate(v.m_capacity) : 0)
+        m_array(v.m_capacity > 0 ? std::make_unique<T[]>(v.m_capacity) : nullptr)
     {
-        memcpy(m_array, v.m_array, sizeof(T) * v.m_size);
+        if (m_array and v.m_array and m_size > 0) {
+            std::copy_n(v.m_array.get(), m_size, m_array.get());
+        }
     }
 
-    template<class T> const pod_vector<T>& 
-    pod_vector<T>::operator = (const pod_vector<T>&v) {
-        allocate(v.m_size);
-        if(v.m_size) memcpy(m_array, v.m_array, sizeof(T) * v.m_size);
+    template<class T> pod_vector<T>::pod_vector(pod_vector<T>&& v) noexcept :
+        m_size(v.m_size), m_capacity(v.m_capacity), m_array(std::move(v.m_array))
+    {
+        v.m_size = 0;
+        v.m_capacity = 0;
+    }
+
+    template<class T> const pod_vector<T>&
+    pod_vector<T>::operator = (const pod_vector<T>& v) {
+        if (this != &v) {
+            allocate(v.m_size);
+            if (v.m_size > 0 and m_array and v.m_array) {
+                std::copy_n(v.m_array.get(), v.m_size, m_array.get());
+            }
+        }
         return *this;
     }
 
-    template<class T> void pod_vector<T>::serialize(int8u* ptr) const { 
-        if(m_size) memcpy(ptr, m_array, m_size * sizeof(T)); 
+    template<class T> pod_vector<T>&
+    pod_vector<T>::operator = (pod_vector<T>&& v) noexcept {
+        if (this != &v) {
+            m_array = std::move(v.m_array);
+            m_size = v.m_size;
+            m_capacity = v.m_capacity;
+            v.m_size = 0;
+            v.m_capacity = 0;
+        }
+        return *this;
     }
 
-    template<class T> 
+    template<class T> void pod_vector<T>::serialize(int8u* ptr) const {
+        if (m_size > 0 and m_array) {
+            std::memcpy(ptr, m_array.get(), m_size * sizeof(T));
+        }
+    }
+
+    template<class T>
     void pod_vector<T>::deserialize(const int8u* data, unsigned byte_size) {
         byte_size /= sizeof(T);
         allocate(byte_size);
-        if(byte_size) memcpy(m_array, data, byte_size * sizeof(T));
+        if (byte_size > 0 and m_array and data) {
+            std::memcpy(m_array.get(), data, byte_size * sizeof(T));
+        }
     }
 
-    template<class T> 
+    template<class T>
     void pod_vector<T>::insert_at(unsigned pos, const T& val) {
-        if (pos >= m_size) m_array[m_size] = val;
-        else {
-            memmove(m_array + pos + 1, m_array + pos, (m_size - pos) * sizeof(T));
+        if (pos >= m_size) {
+            m_array[m_size] = val;
+        } else {
+            std::memmove(m_array.get() + pos + 1, m_array.get() + pos, (m_size - pos) * sizeof(T));
             m_array[pos] = val;
         }
         ++m_size;
@@ -273,12 +350,12 @@ namespace agg
 
     //---------------------------------------------------------------pod_bvector
     // A simple class template to store Plain Old Data, similar to std::deque
-    // It doesn't reallocate memory but instead, uses blocks of data of size 
-    // of (1 << S), that is, power of two. The data is NOT contiguous in memory, 
+    // It doesn't reallocate memory but instead, uses blocks of data of size
+    // of (1 << S), that is, power of two. The data is NOT contiguous in memory,
     // so the only valid access method is operator [] or curr(), prev(), next()
-    // 
-    // There reallocs occure only when the pool of pointers to blocks needs 
-    // to be extended (it happens very rarely). You can control the value 
+    //
+    // There reallocs occure only when the pool of pointers to blocks needs
+    // to be extended (it happens very rarely). You can control the value
     // of increment to reallocate the pointer buffer. See the second constructor.
     // By default, the incremeent value equals (1 << S), i.e., the block size.
     //------------------------------------------------------------------------
@@ -286,7 +363,7 @@ namespace agg
     {
     public:
         enum block_scale_e
-        {   
+        {
             block_shift = S,
             block_size  = 1 << block_shift,
             block_mask  = block_size - 1
@@ -348,17 +425,17 @@ namespace agg
         }
 
         const T& at(unsigned i) const
-        { 
+        {
             return m_blocks[i >> block_shift][i & block_mask];
         }
 
-        T& at(unsigned i) 
-        { 
+        T& at(unsigned i)
+        {
             return m_blocks[i >> block_shift][i & block_mask];
         }
 
         T value_at(unsigned i) const
-        { 
+        {
             return m_blocks[i >> block_shift][i & block_mask];
         }
 
@@ -405,10 +482,10 @@ namespace agg
         unsigned byte_size() const;
         void serialize(int8u* ptr) const;
         void deserialize(const int8u* data, unsigned byte_size);
-        void deserialize(unsigned start, const T& empty_val, 
+        void deserialize(unsigned start, const T& empty_val,
                          const int8u* data, unsigned byte_size);
 
-        template<class ByteAccessor> 
+        template<class ByteAccessor>
         void deserialize(ByteAccessor data)
         {
             remove_all();
@@ -482,7 +559,7 @@ namespace agg
         pod_allocator<T*>::deallocate(m_blocks);
     }
 
-    template<class T, unsigned S> 
+    template<class T, unsigned S>
     void pod_bvector<T, S>::free_tail(unsigned size)
     {
         if(size < m_size)
@@ -511,7 +588,7 @@ namespace agg
     {
     }
 
-    template<class T, unsigned S> 
+    template<class T, unsigned S>
     pod_bvector<T, S>::pod_bvector(unsigned block_ptr_inc) :
         m_size(0),
         m_num_blocks(0),
@@ -521,7 +598,7 @@ namespace agg
     {
     }
 
-    template<class T, unsigned S> 
+    template<class T, unsigned S>
     pod_bvector<T, S>::pod_bvector(const pod_bvector<T, S>& v) :
         m_size(v.m_size),
         m_num_blocks(v.m_num_blocks),
@@ -538,8 +615,8 @@ namespace agg
 
 
     //------------------------------------------------------------------------
-    template<class T, unsigned S> 
-    const pod_bvector<T, S>& 
+    template<class T, unsigned S>
+    const pod_bvector<T, S>&
     pod_bvector<T, S>::operator = (const pod_bvector<T, S>& v)
     {
         unsigned i;
@@ -558,14 +635,14 @@ namespace agg
     template<class T, unsigned S>
     void pod_bvector<T, S>::allocate_block(unsigned nb)
     {
-        if(nb >= m_max_blocks) 
+        if(nb >= m_max_blocks)
         {
             T** new_blocks = new T * [m_max_blocks + m_block_ptr_inc];
 
             if(m_blocks)
             {
-                memcpy(new_blocks, 
-                       m_blocks, 
+                memcpy(new_blocks,
+                       m_blocks,
                        m_num_blocks * sizeof(T*));
 
                 pod_allocator<T*>::deallocate(m_blocks);
@@ -585,20 +662,20 @@ namespace agg
         return m_blocks[nb] + (m_size & block_mask);
     }
 
-    template<class T, unsigned S> 
+    template<class T, unsigned S>
     inline void pod_bvector<T, S>::add(const T& val)
     {
         *data_ptr() = val;
         ++m_size;
     }
 
-    template<class T, unsigned S> 
+    template<class T, unsigned S>
     inline void pod_bvector<T, S>::remove_last()
     {
         if(m_size) --m_size;
     }
 
-    template<class T, unsigned S> 
+    template<class T, unsigned S>
     void pod_bvector<T, S>::modify_last(const T& val)
     {
         remove_last();
@@ -607,7 +684,7 @@ namespace agg
 
 
     //------------------------------------------------------------------------
-    template<class T, unsigned S> 
+    template<class T, unsigned S>
     int pod_bvector<T, S>::allocate_continuous_block(unsigned num_elements)
     {
         if(num_elements < block_size)
@@ -637,7 +714,7 @@ namespace agg
 
 
     //------------------------------------------------------------------------
-    template<class T, unsigned S> 
+    template<class T, unsigned S>
     unsigned pod_bvector<T, S>::byte_size() const
     {
         return m_size * sizeof(T);
@@ -645,7 +722,7 @@ namespace agg
 
 
     //------------------------------------------------------------------------
-    template<class T, unsigned S> 
+    template<class T, unsigned S>
     void pod_bvector<T, S>::serialize(int8u* ptr) const
     {
         unsigned i;
@@ -657,7 +734,7 @@ namespace agg
     }
 
     //------------------------------------------------------------------------
-    template<class T, unsigned S> 
+    template<class T, unsigned S>
     void pod_bvector<T, S>::deserialize(const int8u* data, unsigned byte_size)
     {
         remove_all();
@@ -674,8 +751,8 @@ namespace agg
 
     // Replace or add a number of elements starting from "start" position
     //------------------------------------------------------------------------
-    template<class T, unsigned S> 
-    void pod_bvector<T, S>::deserialize(unsigned start, const T& empty_val, 
+    template<class T, unsigned S>
+    void pod_bvector<T, S>::deserialize(unsigned start, const T& empty_val,
                                         const int8u* data, unsigned byte_size)
     {
         while(m_size < start)
@@ -711,7 +788,7 @@ namespace agg
         quick_sort_threshold = 9
     };
 
-    
+
     //-----------------------------------------------------------swap_elements
     template<class T> inline void swap_elements(T& a, T& b)
     {
@@ -731,7 +808,7 @@ namespace agg
         typename Array::value_type* e2;
 
         int  stack[80];
-        int* top = stack; 
+        int* top = stack;
         int  limit = arr.size();
         int  base = 0;
 
@@ -752,16 +829,16 @@ namespace agg
                 i = base + 1;
                 j = limit - 1;
 
-                // now ensure that *i <= *base <= *j 
-                e1 = &(arr[j]); 
+                // now ensure that *i <= *base <= *j
+                e1 = &(arr[j]);
                 e2 = &(arr[i]);
                 if(less(*e1, *e2)) swap_elements(*e1, *e2);
 
-                e1 = &(arr[base]); 
+                e1 = &(arr[base]);
                 e2 = &(arr[i]);
                 if(less(*e1, *e2)) swap_elements(*e1, *e2);
 
-                e1 = &(arr[j]); 
+                e1 = &(arr[j]);
                 e2 = &(arr[base]);
                 if(less(*e1, *e2)) swap_elements(*e1, *e2);
 
@@ -830,7 +907,7 @@ namespace agg
 
 
     //------------------------------------------------------remove_duplicates
-    // Remove duplicates from a sorted array. It doesn't cut the 
+    // Remove duplicates from a sorted array. It doesn't cut the
     // tail of the array, it just returns the number of remaining elements.
     //-----------------------------------------------------------------------
     template<class Array, class Equal>
@@ -876,12 +953,12 @@ namespace agg
         while(end - beg > 1)
         {
             unsigned mid = (end + beg) >> 1;
-            if(less(val, arr[mid])) end = mid; 
+            if(less(val, arr[mid])) end = mid;
             else                    beg = mid;
         }
 
-        //if(beg <= 0 && less(val, arr[0])) return 0;
-        //if(end >= arr.size() - 1 && less(arr[end], val)) ++end;
+        //if(beg <= 0 and less(val, arr[0])) return 0;
+        //if(end >= arr.size() - 1 and less(arr[end], val)) ++end;
 
         return end;
     }
