@@ -19,6 +19,9 @@
 #ifdef __cpp_lib_math_constants
 #include <numbers>
 #endif
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 #include "agg_config.h"
 
 #ifdef AGG_CUSTOM_ALLOCATOR
@@ -184,16 +187,38 @@ namespace agg
 
     template<int Limit> struct saturation {
         static constexpr int iround(double v) noexcept {
-            if(v < double(-Limit)) return -Limit;
-            if(v > double( Limit)) return  Limit;
-            return agg::iround(v);
+            // Branch-free saturation optimized for modern CPUs
+            const int rounded = agg::iround(v);
+            
+            // Branchless clamping using conditional moves
+            const int mask_low = -(rounded < -Limit);
+            const int mask_high = -(rounded > Limit);
+            
+            return (rounded & ~mask_low & ~mask_high) | 
+                   (-Limit & mask_low) | 
+                   (Limit & mask_high);
+        }
+        
+        // Compile-time version for constant values
+        static consteval int iround_ct(double v) noexcept {
+            const int rounded = static_cast<int>(v < 0.0 ? v - 0.5 : v + 0.5);
+            return rounded < -Limit ? -Limit : (rounded > Limit ? Limit : rounded);
         }
     };
 
     template<unsigned Shift> struct mul_one {
         static constexpr unsigned mul(unsigned a, unsigned b) noexcept {
-            unsigned q = a * b + (1 << (Shift-1));
-            return (q + (q >> Shift)) >> Shift;
+            // Optimized fixed-point multiplication with better instruction scheduling
+            const unsigned product = a * b;
+            const unsigned rounded = product + (1u << (Shift - 1));
+            return (rounded + (rounded >> Shift)) >> Shift;
+        }
+        
+        // Compile-time version for constant multiplication
+        static consteval unsigned mul_ct(unsigned a, unsigned b) noexcept {
+            const unsigned product = a * b;
+            const unsigned rounded = product + (1u << (Shift - 1));
+            return (rounded + (rounded >> Shift)) >> Shift;
         }
     };
 
@@ -223,12 +248,17 @@ namespace agg
     constexpr double pi = 3.14159265358979323846;
 #endif
 
+    // Compile-time angle conversion functions
+    consteval double deg2rad_ct(double deg) noexcept { return deg * pi / 180.0; }
+    consteval double rad2deg_ct(double rad) noexcept { return rad * 180.0 / pi; }
+    
+    // Runtime angle conversion functions
     constexpr double deg2rad(double deg) noexcept { return deg * pi / 180.0; }
     constexpr double rad2deg(double rad) noexcept { return rad * 180.0 / pi; }
 
     template<typename T>
     requires std::is_arithmetic_v<T>
-    struct rect_base {
+    struct alignas(32) rect_base {
         using value_type = T;
         using self_type = rect_base<T>;
         T x1, y1, x2, y2;
@@ -322,9 +352,9 @@ namespace agg
 
     template<typename T>
     requires std::is_arithmetic_v<T>
-    struct point_base {
+    struct alignas(16) point_base {
         using value_type = T;
-        T x,y;
+        T x, y;
         point_base() {}
         point_base(T x_, T y_) : x(x_), y(y_) {}
     };
@@ -335,9 +365,9 @@ namespace agg
 
     template<typename T>
     requires std::is_arithmetic_v<T>
-    struct vertex_base {
+    struct alignas(16) vertex_base {
         using value_type = T;
-        T x,y;
+        T x, y;
         unsigned cmd;
         vertex_base() {}
         vertex_base(T x_, T y_, unsigned cmd_ = 0) : x(x_), y(y_), cmd(cmd_) {}

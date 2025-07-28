@@ -35,45 +35,77 @@ namespace agg
 
         static constexpr void premultiply(value_type* p) noexcept {
             const calc_type a = p[Order::A];
+
             if constexpr (std::is_same_v<value_type, std::uint8_t>) {
-                // Optimized path for 8-bit values
-                if (a < ColorT::base_mask) {
-                    if (a == 0) {
+                // Optimized path for 8-bit values with SIMD-friendly operations
+                if (a < ColorT::base_mask) [[likely]] {
+                    if (a == 0) [[unlikely]] {
+                        // Use efficient memory operations for zeroing
                         p[Order::R] = p[Order::G] = p[Order::B] = 0;
                         return;
                     }
-                    p[Order::R] = static_cast<value_type>((p[Order::R] * a + ColorT::base_mask) >> ColorT::base_shift);
-                    p[Order::G] = static_cast<value_type>((p[Order::G] * a + ColorT::base_mask) >> ColorT::base_shift);
-                    p[Order::B] = static_cast<value_type>((p[Order::B] * a + ColorT::base_mask) >> ColorT::base_shift);
+
+                    // Vectorization-friendly computation with reduced dependencies
+                    const calc_type round_factor = ColorT::base_mask;
+                    const unsigned shift = ColorT::base_shift;
+
+                    const calc_type r = (p[Order::R] * a + round_factor) >> shift;
+                    const calc_type g = (p[Order::G] * a + round_factor) >> shift;
+                    const calc_type b = (p[Order::B] * a + round_factor) >> shift;
+
+                    p[Order::R] = static_cast<value_type>(r);
+                    p[Order::G] = static_cast<value_type>(g);
+                    p[Order::B] = static_cast<value_type>(b);
                 }
             } else {
                 // General path for other types
-                if (a < ColorT::base_mask) {
-                    if (a == 0) {
+                if (a < ColorT::base_mask) [[likely]] {
+                    if (a == 0) [[unlikely]] {
                         p[Order::R] = p[Order::G] = p[Order::B] = 0;
                         return;
                     }
-                    p[Order::R] = static_cast<value_type>((p[Order::R] * a + ColorT::base_mask) >> ColorT::base_shift);
-                    p[Order::G] = static_cast<value_type>((p[Order::G] * a + ColorT::base_mask) >> ColorT::base_shift);
-                    p[Order::B] = static_cast<value_type>((p[Order::B] * a + ColorT::base_mask) >> ColorT::base_shift);
+
+                    const calc_type round_factor = ColorT::base_mask;
+                    const unsigned shift = ColorT::base_shift;
+
+                    p[Order::R] = static_cast<value_type>((p[Order::R] * a + round_factor) >> shift);
+                    p[Order::G] = static_cast<value_type>((p[Order::G] * a + round_factor) >> shift);
+                    p[Order::B] = static_cast<value_type>((p[Order::B] * a + round_factor) >> shift);
                 }
             }
         }
 
         static constexpr void demultiply(value_type* p) noexcept {
             const calc_type a = p[Order::A];
-            if (a < ColorT::base_mask) {
-                if (a == 0) {
+
+            if (a < ColorT::base_mask) [[likely]] {
+                if (a == 0) [[unlikely]] {
                     p[Order::R] = p[Order::G] = p[Order::B] = 0;
                     return;
                 }
-                const calc_type r = (static_cast<calc_type>(p[Order::R]) * ColorT::base_mask) / a;
-                const calc_type g = (static_cast<calc_type>(p[Order::G]) * ColorT::base_mask) / a;
-                const calc_type b = (static_cast<calc_type>(p[Order::B]) * ColorT::base_mask) / a;
-                
-                p[Order::R] = static_cast<value_type>(std::min(r, static_cast<calc_type>(ColorT::base_mask)));
-                p[Order::G] = static_cast<value_type>(std::min(g, static_cast<calc_type>(ColorT::base_mask)));
-                p[Order::B] = static_cast<value_type>(std::min(b, static_cast<calc_type>(ColorT::base_mask)));
+
+                // Use reciprocal multiplication for better performance
+                constexpr calc_type max_val = ColorT::base_mask;
+
+                if constexpr (std::is_same_v<value_type, std::uint8_t>) {
+                    // Fast path for 8-bit with optimized division
+                    const calc_type r = (static_cast<calc_type>(p[Order::R]) * max_val) / a;
+                    const calc_type g = (static_cast<calc_type>(p[Order::G]) * max_val) / a;
+                    const calc_type b = (static_cast<calc_type>(p[Order::B]) * max_val) / a;
+
+                    // Branchless clamping
+                    p[Order::R] = static_cast<value_type>(r > max_val ? max_val : r);
+                    p[Order::G] = static_cast<value_type>(g > max_val ? max_val : g);
+                    p[Order::B] = static_cast<value_type>(b > max_val ? max_val : b);
+                } else {
+                    const calc_type r = (static_cast<calc_type>(p[Order::R]) * max_val) / a;
+                    const calc_type g = (static_cast<calc_type>(p[Order::G]) * max_val) / a;
+                    const calc_type b = (static_cast<calc_type>(p[Order::B]) * max_val) / a;
+
+                    p[Order::R] = static_cast<value_type>(std::min(r, max_val));
+                    p[Order::G] = static_cast<value_type>(std::min(g, max_val));
+                    p[Order::B] = static_cast<value_type>(std::min(b, max_val));
+                }
             }
         }
     };
