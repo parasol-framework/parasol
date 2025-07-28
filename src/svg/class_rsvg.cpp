@@ -1,3 +1,17 @@
+/*********************************************************************************************************************
+
+-CLASS-
+RSVG: Picture-based SVG renderer providing bitmap integration for SVG documents.
+
+The RSVG class extends the @Picture class to provide seamless integration of SVG documents within bitmap-based image
+workflows.  This renderer automatically handles SVG-to-bitmap conversion, enabling SVG content to be treated as
+standard raster images within applications that primarily work with bitmap formats.
+
+Key features include automatic format detection, scalable rendering with resolution adaptation, and transparent
+handling of both standard (.svg) and compressed (.svgz) SVG files.
+
+*********************************************************************************************************************/
+
 // SVG renderer for the Picture class
 
 #include "../picture/picture.h"
