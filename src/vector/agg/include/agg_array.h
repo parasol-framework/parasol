@@ -87,18 +87,19 @@ namespace agg
 
         constexpr pod_auto_vector() noexcept : m_size(0) {}
 
+        // Consolidated mutation methods
         constexpr void remove_all()            noexcept { m_size = 0; }
         constexpr void clear()                 noexcept { m_size = 0; }
         constexpr void add(const T& v)         noexcept { m_array[m_size++] = v; }
-        constexpr void push_back(const T& v)   noexcept { m_array[m_size++] = v; }
+        constexpr void push_back(const T& v)   noexcept { add(v); }
         constexpr void inc_size(unsigned size) noexcept { m_size += size; }
 
         constexpr unsigned size() const noexcept { return m_size; }
         constexpr const T& operator [] (unsigned i) const noexcept { return m_array[i]; }
         constexpr       T& operator [] (unsigned i)       noexcept { return m_array[i]; }
-        constexpr const T& at(unsigned i) const           noexcept { return m_array[i]; }
-        constexpr       T& at(unsigned i)                 noexcept { return m_array[i]; }
-        constexpr T  value_at(unsigned i) const           noexcept { return m_array[i]; }
+        constexpr const T& at(unsigned i) const           noexcept { return (*this)[i]; }
+        constexpr       T& at(unsigned i)                 noexcept { return (*this)[i]; }
+        constexpr T  value_at(unsigned i) const           noexcept { return (*this)[i]; }
 
     private:
         T m_array[Size];
