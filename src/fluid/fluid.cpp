@@ -46,6 +46,8 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include <parasol/modules/fluid.h>
 
 #include <inttypes.h>
+#include <thread>
+#include <chrono>
 
 extern "C" {
 #include "lua.h"
@@ -72,6 +74,7 @@ static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread c
 static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
 static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
 static ERR flSetVariable(objScript *, CSTRING, LONG, ...);
+void hook_debug_step(lua_State *Lua, lua_Debug *Info);
 
 //********************************************************************************************************************
 
@@ -397,6 +400,63 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
       }
       else log.warning("lua_getinfo() failed.");
 */
+   }
+}
+
+//********************************************************************************************************************
+// Debug stepping hook - pauses execution on line events when in debug mode
+
+void hook_debug_step(lua_State *Lua, lua_Debug *Info)
+{
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   if (!prv) return;
+
+   if (Info->event IS LUA_HOOKLINE) {
+      Lua->Script->CurrentLine = Info->currentline - 1; // Our line numbers start from zero
+      if (Lua->Script->CurrentLine < 0) Lua->Script->CurrentLine = 0;
+
+      bool should_break = false;
+
+      // Check if we should break for stepping mode
+      if (prv->DebugStep) {
+         should_break = true;
+      }
+
+      // Check if we should break for breakpoints
+      if (prv->BreakpointsEnabled and !prv->Breakpoints.empty()) {
+         // Get current source info
+         lua_getinfo(Lua, "S", Info);
+         std::string current_file = Info->source ? Info->source : "";
+         
+         // Remove leading '@' from filename if present
+         if (!current_file.empty() and current_file[0] IS '@') {
+            current_file = current_file.substr(1);
+         }
+
+         // Check if current line/file matches any breakpoint
+         for (const auto& bp : prv->Breakpoints) {
+            if ((bp.filename.empty() or bp.filename IS current_file) and 
+                bp.line IS (Info->currentline - 1)) { // Convert to 0-based line numbers
+               should_break = true;
+               break;
+            }
+         }
+      }
+
+      if (should_break) {
+         // Break execution by waiting for continue signal
+         prv->DebugBroken = true;
+         while (prv->DebugBroken and !prv->DebugContinue) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+         }
+         prv->DebugContinue = false; // Reset for next step
+      }
+   }
+   else if (Info->event IS LUA_HOOKCALL) {
+      if (lua_getinfo(Lua, "nSl", Info)) {
+         pf::Log log("Lua");
+         if (Info->name) log.msg("Call: %s.%s(), Line: %d", Info->namewhat, Info->name, Lua->Script->CurrentLine + Lua->Script->LineOffset);
+      }
    }
 }
 

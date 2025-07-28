@@ -21,6 +21,7 @@ extern "C" {
 static ERR run_script(objScript *);
 static ERR stack_args(lua_State *, OBJECTID, const FunctionField *, BYTE *);
 static ERR save_binary(objScript *, OBJECTPTR);
+extern void hook_debug_step(lua_State *Lua, lua_Debug *Info);
 
 inline CSTRING check_bom(CSTRING Value)
 {
@@ -82,10 +83,16 @@ static const ActionArray clActions[] = {
 
 static ERR FLUID_GetProcedureID(objScript *, struct sc::GetProcedureID *);
 static ERR FLUID_DerefProcedure(objScript *, struct sc::DerefProcedure *);
+static ERR FLUID_Step(objScript *, APTR);
+static ERR FLUID_SetBreakpoint(objScript *, struct sc::SetBreakpoint *);
+static ERR FLUID_ClearBreakpoint(objScript *, struct sc::ClearBreakpoint *);
 
 static const MethodEntry clMethods[] = {
    { sc::GetProcedureID::id, (APTR)FLUID_GetProcedureID, "GetProcedureID", nullptr, 0 },
    { sc::DerefProcedure::id, (APTR)FLUID_DerefProcedure, "DerefProcedure", nullptr, 0 },
+   { AC(-10), (APTR)FLUID_Step, "Step", nullptr, 0 },
+   { AC(-11), (APTR)FLUID_SetBreakpoint, "SetBreakpoint", nullptr, 0 },
+   { AC(-12), (APTR)FLUID_ClearBreakpoint, "ClearBreakpoint", nullptr, 0 },
    { AC::NIL, nullptr, nullptr, nullptr, 0 }
 };
 
@@ -363,7 +370,11 @@ static ERR FLUID_Activate(objScript *Self)
 
       // Line hook, executes on the execution of a new line
 
-      if ((Self->Flags & SCF::LOG_ALL) != SCF::NIL) {
+      if (prv->BreakpointsEnabled) {
+         // Breakpoint mode - break on specific lines
+         lua_sethook(prv->Lua, hook_debug_step, LUA_MASKCALL|LUA_MASKLINE, 0);
+      }
+      else if ((Self->Flags & SCF::LOG_ALL) != SCF::NIL) {
          // LUA_MASKLINE:  Interpreter is executing a line.
          // LUA_MASKCALL:  Interpreter is calling a function.
          // LUA_MASKRET:   Interpreter returns from a function.
@@ -1074,6 +1085,181 @@ static ERR run_script(objScript *Self)
       process_error(Self, Self->Procedure ? Self->Procedure : "run_script");
       return Self->Error;
    }
+}
+
+//********************************************************************************************************************
+
+struct SetBreakpointArgs {
+   CSTRING filename;
+   int line;
+};
+
+struct ClearBreakpointArgs {
+   CSTRING filename;
+   int line;
+};
+
+/*********************************************************************************************************************
+
+-METHOD-
+Step: Steps the script forward by one line when paused at a breakpoint.
+
+This method is used to step through the script line by line when it is paused at a breakpoint.  It will only work if
+the script is currently paused at a breakpoint and debug stepping is enabled.  If the script is not paused, or if
+debug stepping is not enabled, it will return an error.
+
+-ERRORS-
+Okay:
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR FLUID_Step(objScript *Self, APTR Args)
+{
+   pf::Log log;
+
+   auto prv = (prvFluid *)Self->ChildPrivate;
+   if (!prv) return log.warning(ERR::ObjectCorrupt);
+
+   if (!prv->DebugStep) {
+      log.warning("Debug stepping is not enabled for this script.");
+      return ERR::Failed;
+   }
+
+   if (!prv->DebugBroken) {
+      log.trace("Script is not currently paused at a breakpoint.");
+      return ERR::Failed;
+   }
+
+   log.trace("Stepping forward one line.");
+
+   // Signal the debug hook to continue execution for one step
+   prv->DebugContinue = true;
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SetBreakpoint: Adds a breakpoint at the specified line in the script.
+
+This method allows the client to set a breakpoint at a specific line in the script.  If the script is currently
+running, it will enable debug stepping and set the breakpoint.  If the script is not running, it will add the
+breakpoint to the list of breakpoints.  The script will pause execution when it reaches the breakpoint during
+execution.
+
+-INPUT-
+cstr File: The name of the script file (optional, can be empty).
+int Line: The line number to set the breakpoint at (0-based).
+function Callback: Function to call when the breakpoint is triggered.
+
+-ERRORS-
+Okay:
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR FLUID_SetBreakpoint(objScript *Self, struct sc::SetBreakpoint *Args)
+{
+   pf::Log log;
+
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (Args->Line < 0) return log.warning(ERR::OutOfRange);
+
+   auto prv = (prvFluid *)Self->ChildPrivate;
+   if (!prv) return log.warning(ERR::ObjectCorrupt);
+
+   breakpoint bp;
+   if (Args->File) bp.filename = Args->File;
+   bp.line = Args->Line;
+
+   prv->Breakpoints.insert(bp);
+   prv->BreakpointsEnabled = true;
+
+   log.trace("Breakpoint set at %s:%d", bp.filename.empty() ? "(current script)" : bp.filename.c_str(), bp.line + 1);
+
+   // If the script is already running and doesn't have debug hooks, we need to set them
+   if ((prv->Lua) and (prv->Recurse > 0)) {
+      if (!prv->DebugStep) {
+         lua_sethook(prv->Lua, hook_debug_step, LUA_MASKCALL|LUA_MASKLINE, 0);
+      }
+   }
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+ClearBreakpoint: Remove an existing breakpoint.
+
+This method allows the client to remove a breakpoint that was previously set in the script.  If the script is currently
+running, it will disable debug stepping if there are no breakpoints left.  If the script is not running, it will simply
+remove the breakpoint from the list of breakpoints.  If the specified breakpoint does not exist, it will return an error.
+
+-INPUT-
+cstr File: The name of the script file (optional, can be empty).
+int Line: The line number to set the breakpoint at (0-based).
+
+-ERRORS-
+Okay:
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR FLUID_ClearBreakpoint(objScript *Self, struct sc::ClearBreakpoint *Args)
+{
+   pf::Log log;
+
+   auto prv = (prvFluid *)Self->ChildPrivate;
+   if (!prv) return log.warning(ERR::ObjectCorrupt);
+
+   if (!Args) {
+      // If no args provided, clear all breakpoints
+      log.trace("Clearing all breakpoints (%d total)", (int)prv->Breakpoints.size());
+      prv->Breakpoints.clear();
+      prv->BreakpointsEnabled = false;
+
+      // Remove debug hook if no stepping is active
+      if ((prv->Lua) and (!prv->DebugStep)) {
+         lua_sethook(prv->Lua, nullptr, 0, 0);
+      }
+
+      return ERR::Okay;
+   }
+
+   if (Args->Line < 0) return ERR::OutOfRange;
+
+   breakpoint bp;
+   if (Args->File) bp.filename = Args->File;
+   bp.line = Args->Line;
+
+   // Remove from breakpoints set
+   auto it = prv->Breakpoints.find(bp);
+   if (it != prv->Breakpoints.end()) {
+      prv->Breakpoints.erase(it);
+      log.trace("Breakpoint cleared at %s:%d", bp.filename.empty() ? "(current script)" : bp.filename.c_str(), bp.line + 1);
+   }
+   else {
+      log.warning("Breakpoint not found at %s:%d", bp.filename.empty() ? "(current script)" : bp.filename.c_str(), bp.line + 1);
+      return ERR::NotFound;
+   }
+
+   // If no breakpoints remain, disable breakpoint checking
+   if (prv->Breakpoints.empty()) {
+      prv->BreakpointsEnabled = false;
+
+      // Remove debug hook if no stepping is active
+      if ((prv->Lua) and (!prv->DebugStep)) {
+         lua_sethook(prv->Lua, nullptr, 0, 0);
+      }
+   }
+
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
