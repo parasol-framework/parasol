@@ -31,9 +31,9 @@
 <li>User authentication, either automated or with user login dialogs.</li>
 </ul>
 <p>For information on command execution and a technical overview of HTTP processing, please refer to the <a data-bs-toggle="tooltip" title="Executes an HTTP method." href="#ta-Activate">Activate()</a> action.</p>
-<h3>Sending Content</h3>
+<h4>Sending Content</h4>
 <p>There are a variety of ways to send content to a server when using methods such as <code>PUT</code> and <code>POST</code>.  Content can be sent from objects by setting the <a data-bs-toggle="tooltip" title="Allows data to be sent from an object on execution of a POST command." href="#tf-InputObject">InputObject</a> field.  To send content from files, set the <a data-bs-toggle="tooltip" title="To upload HTTP content from a file, set a file path here." href="#tf-InputFile">InputFile</a> field.  To send string content, use an <a data-bs-toggle="tooltip" title="To upload HTTP content from a file, set a file path here." href="#tf-InputFile">InputFile</a> location that starts with <code>string:</code> followed by the text to send.</p>
-<h3>Receiving Content</h3>
+<h4>Receiving Content</h4>
 <p>There are three possible methods for content download.  This first example downloads content to a temporary file for further processing:</p>
 <pre>http = obj.new('http', {
    src        = 'http://www.parasol.ws/index.html',
@@ -59,9 +59,9 @@ http.acActivate()
 </pre>
 <p>Note that the target object needs to support the datatype that you specify, or it will ignore the incoming data.  The default datatype is <code>RAW</code> (binary format), but the most commonly supported datatype is <code>TEXT</code>.</p>
 <p>The third method is to use function callbacks.  Refer to the <a data-bs-toggle="tooltip" title="A callback routine can be defined here for incoming data." href="#tf-Incoming">Incoming</a> field for further information on receiving data through callbacks.</p>
-<h3>Progress Monitoring</h3>
+<h4>Progress Monitoring</h4>
 <p>Progress of a data transfer can be monitored through the <a data-bs-toggle="tooltip" title="Indicates download progress in terms of bytes received." href="#tf-Index">Index</a> field.  If the callback features are not being used for a data transfer, consider using a timer to read from the <a data-bs-toggle="tooltip" title="Indicates download progress in terms of bytes received." href="#tf-Index">Index</a> periodically.</p>
-<h3>SSL Support (HTTPS)</h3>
+<h4>SSL Support (HTTPS)</h4>
 <p>Secure sockets are supported and can be enabled by setting the <a data-bs-toggle="tooltip" title="The HTTP port to use when targeting a server." href="#tf-Port">Port</a> to 443 prior to connection, or by using <code>https://</code> in URI strings.  Methods of communication remain unchanged when using SSL, as encrypted communication is handled transparently.</p>
 <h3>Structure</h3><p>The HTTP class consists of the following fields:</p><table class="table"><thead><th class="col-md-1"><div data-bs-toggle="tooltip" title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead><tbody><tr data-bs-toggle="collapse" data-bs-target="#fl-BufferSize" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-BufferSize"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            

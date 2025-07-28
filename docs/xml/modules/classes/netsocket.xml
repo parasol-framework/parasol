@@ -17,7 +17,7 @@
 <p>The design of the NetSocket class caters to asynchronous (non-blocking) communication.  This is achieved primarily through callback fields - connection alerts are managed by <fl>Feedback</fl>, incoming data is received through <fl>Incoming</fl> and readiness for outgoing data is supported by <fl>Outgoing</fl>.</p>
 <header>Client-Server Connections</header>
 <p>After a connection has been established, data may be written using any of the following methods:</p>
-<list type="unsorted">
+<list type="bullet">
 <li>Write directly to the socket with either the <action>Write</action> action or <method>WriteMsg</method> method.</li>
 <li>Subscribe to the socket by referring to a routine in the <fl>Outgoing</fl> field.  The routine will be called to
 initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>
@@ -279,7 +279,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <type>FUNCTION</type>
       <description>
 <p>Refer to a custom function in this field and it will be called whenever the <fl>State</fl> of the socket (such as connection or disconnection) changes.</p>
-<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, LONG State)</code></p>
+<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, int State)</code></p>
 <p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <fl>State</fl> field.</p>
       </description>
     </field>

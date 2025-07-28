@@ -6,32 +6,39 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -CLASS-
-Sound: Plays and records sound samples in multiple media formats.
+Sound: High-level audio sample playback interface with intelligent resource management and format detection.
 
-The Sound class provides an interface for the playback of audio sample files. By default, all loading and saving of
-sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound class extensions,
-if available.
+The Sound class provides a comprehensive, user-friendly interface for audio sample playback that abstracts the complexities
+of audio hardware management whilst delivering professional-quality results.  Designed as the primary interface for
+general-purpose audio operations, the Sound class automatically handles resource allocation, format detection, hardware
+abstraction, and intelligent streaming decisions to provide optimal performance across diverse system configurations.
 
-Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum
-buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the #Stream
-field.
+The Sound class implements robust file format support with automatic detection and validation:
 
-The following example illustrates playback of a sound sample that is one octave higher than its normal frequency.
-The subscription to the #OnStop callback will result in the program waking once the sample has finished
-playback.
+<list type="bullet">
+<li><b>Native WAVE Support:</b> Complete support for WAVE format files including all standard PCM encodings, multiple bit depths (8/16-bit), and both mono and stereo configurations</li>
+<li><b>Automatic Format Detection:</b> File format identification occurs automatically during initialisation based on file headers and content analysis</li>
+<li><b>Extensible Architecture:</b> Additional audio formats (MP3, OGG, FLAC, AAC) can be supported through Sound class extensions and codec plugins</li>
+<li><b>Validation and Error Handling:</b> Comprehensive file validation prevents playback of corrupted or unsupported audio data</li>
+</list>
+
+<header>Practical Usage Example</header>
+
+The following demonstrates advanced Sound class usage including pitch control and event handling:
 
 <pre>
 local snd = obj.new('sound', {
-   path = 'audio:samples/doorbell.wav',
-   note = 'C6',
+   path = 'audio:samples/piano_c4.wav',
+   note = 'C6',    -- Play two octaves higher
+   volume = 0.8,   -- Reduce volume to 80%
    onStop = function(Sound)
+      print('Playback completed')
       proc.signal()
    end
 })
 
 snd.acActivate()
-
-proc.sleep()
+proc.sleep()  -- Wait for completion
 </pre>
 
 -END-
@@ -46,9 +53,8 @@ individual samples with more immediacy.
 
 #include <array>
 
-#define SECONDS_STREAM_BUFFER 2
-
-#define SIZE_RIFF_CHUNK 12
+constexpr int SECONDS_STREAM_BUFFER = 2;
+constexpr int SIZE_RIFF_CHUNK = 12;
 
 static ERR SOUND_GET_Active(extSound *, LONG *);
 
@@ -1612,6 +1618,24 @@ static ERR SOUND_SET_Priority(extSound *Self, LONG Value)
 -FIELD-
 Stream: Defines the preferred streaming method for the sample.
 Lookup: STREAM
+
+The Stream field controls how the Sound class manages memory and playback for audio samples. This setting directly
+influences memory consumption, playback latency, and system resource utilisation.
+
+Available streaming modes:
+
+!STREAM
+
+Smart and Always streaming modes use significantly less memory for large samples, making them suitable for applications
+that handle extensive audio libraries. Never streaming provides the fastest playback initiation but may exhaust
+system memory with large or numerous samples.
+
+Memory-resident samples (Never streaming) offer zero-latency playback initiation, whilst streamed samples may have
+a brief delay as the initial buffer is populated. However, once streaming begins, there should be no perceptible
+difference in audio quality or continuity.
+
+The Smart streaming mode monitors system resources and sample characteristics to make optimal decisions. This mode
+adapts to changing conditions and provides the best balance for most applications without requiring manual configuration.
 
 -FIELD-
 Volume: The volume to use when playing the sound sample.

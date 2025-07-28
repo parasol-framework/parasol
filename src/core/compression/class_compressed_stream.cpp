@@ -55,7 +55,7 @@ static ERR CSTREAM_Init(extCompressedStream *Self)
 
    if ((Self->Input) and (Self->Output)) {
       log.warning("A CompressedStream can operate in either read or write mode, not both.");
-      return ERR::Failed;
+      return ERR::InvalidState;
    }
 
    return ERR::Okay;
@@ -366,7 +366,7 @@ static ERR CSTREAM_GET_Size(extCompressedStream *Self, LARGE *Value)
 
       return ERR::Okay;
    }
-   else return ERR::Failed;
+   else return ERR::InvalidState;
 }
 
 /*********************************************************************************************************************

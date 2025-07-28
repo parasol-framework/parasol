@@ -5,11 +5,14 @@
   <info>
     <name>Fluid</name>
     <type>module</type>
-    <comment>Fluid is a customised scripting language for the Script class.</comment>
+    <comment>Fluid is a LuaJIT based scripting language for the Script class.</comment>
     <version>1</version>
     <status>beta</status>
     <prefix>fl</prefix>
     <copyright>Paul Manias © 2006-2025</copyright>
+    <classes>
+      <class>Fluid</class>
+    </classes>
   </info>
 
   <function>

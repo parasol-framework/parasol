@@ -101,7 +101,7 @@ static ERR seek_to_item(extFile *Self)
          Self->Size = item.OriginalSize;
          return ERR::Okay;
       }
-      else return ERR::Failed;
+      else return ERR::InvalidCompression;
    }
    else { // Folder or empty file
       if (item.IsFolder) Self->Flags |= FL::FOLDER;

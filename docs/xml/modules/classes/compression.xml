@@ -326,7 +326,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="Search">A search routine in this function failed.</error>
-        <error code="NoSupport">This request is not supported.</error>
+        <error code="NoSupport">Operation not supported.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -344,7 +344,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       </description>
       <result>
         <error code="Okay">The file was successfully deleted.</error>
-        <error code="NoSupport">This request is not supported.</error>
+        <error code="NoSupport">Operation not supported.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -366,7 +366,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="NoSupport">This request is not supported.</error>
+        <error code="NoSupport">Operation not supported.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>

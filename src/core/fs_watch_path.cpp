@@ -188,7 +188,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
                      { "Path",   path },
                      { "Custom", glFileMonitor[i].Custom },
                      { "Flags",  LONG(flags) }
-                  }), error)) error = ERR::Failed;
+                  }), error)) error = ERR::Function;
             }
 
             if (error IS ERR::Terminate) Action(fl::Watch::id, glFileMonitor[i].File, NULL);
@@ -256,7 +256,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
                { "Path",   path },
                { "Custom", File->prvWatch->Custom },
                { "Flags",  0 }
-            }), error) != ERR::Okay) error = ERR::Failed;
+            }), error) != ERR::Okay) error = ERR::Function;
          }
          else error = ERR::Terminate;
 

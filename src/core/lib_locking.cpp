@@ -446,7 +446,7 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
 
          glWaitLocks[glWLIndex].notWaiting();
       }
-      else error = log.error(ERR::Failed);
+      else error = log.error(ERR::LockFailed);
 
       Object->SleepQueue--;
       return error;
@@ -494,7 +494,7 @@ ERR ReleaseMemory(MEMORYID MemoryID)
       return ERR::Search;
    }
 
-   WORD access;
+   int16_t access;
    if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
       access = --mem->second.AccessCount;
       tlPrivateLockCount--;

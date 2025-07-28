@@ -150,7 +150,7 @@ static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Sour
    }
 
    log.warning("Field array '%s' is poorly defined.", Field->Name);
-   return ERR::Failed;
+   return ERR::SanityCheckFailed;
 }
 
 [[nodiscard]] inline bool flag_match(const std::string_view CamelFlag, const std::string_view ClientFlag) noexcept

@@ -348,6 +348,29 @@ function module(Options, Function)
       priority()
    end
 
+   if (glModule.src != nil) then -- Primary source file
+      local content = file.readAll(glFDLFolder .. glModule.src)
+      content = content:gsub('\r\n', '\n')
+
+      -- Extract possible content from within comments so that we don't get interference from the code while parsing.
+
+      local extracted_content = nz(string.match(content, '^/%*+(.-)%*+/'),'') -- The first line might start with a comment.
+      for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
+         extracted_content = extracted_content .. '\n' .. extract
+      end
+
+      mod_desc = string.match(extracted_content, '%-MODULE%-(.-)%-END%-')
+
+      if mod_desc then
+         local name
+         name, glModule.comment, glModule.description = mod_desc:match('\n(%w+):%s+(.-)\n\n(.+)')
+
+         if (name:lower() != glModule.name:lower()) then
+            error("The name specified in the -MODULE- header '" .. name .. "' does not match the name specified in the module() call '" .. glModule.name .. "'")
+         end
+      end
+   end
+
    Function()
 end
 

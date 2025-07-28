@@ -192,7 +192,7 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
          { "Path",       Feedback->Path },
          { "Dest",       Feedback->Dest },
          { "FeedbackID", int(Feedback->FeedbackID) }
-      }), error) != ERR::Okay) error = ERR::Failed;
+      }), error) != ERR::Okay) error = ERR::Function;
 
       if (error IS ERR::Okay) {
          CSTRING *results;
@@ -656,7 +656,7 @@ ERR CreateLink(CSTRING From, CSTRING To)
          auto err = symlink(dest.c_str(), src.c_str());
 
          if (!err) return ERR::Okay;
-         else return convert_errno(err, ERR::Failed);
+         else return convert_errno(err, ERR::SystemCall);
       }
       else return ERR::ResolvePath;
    }
@@ -1418,7 +1418,7 @@ ERR check_paths(CSTRING Path, PERMIT Permissions)
       path.resize(i);
       return CreateFolder(path.c_str(), Permissions);
    }
-   else return ERR::Failed;
+   else return ERR::InvalidPath;
 }
 
 //********************************************************************************************************************
@@ -2016,7 +2016,7 @@ ERR fs_readlink(std::string_view Source, STRING *Link)
       *Link = strclone(buffer);
       return ERR::Okay;
    }
-   else return ERR::Failed;
+   else return ERR::SystemCall;
 #else
    return ERR::NoSupport;
 #endif
@@ -2057,7 +2057,7 @@ ERR fs_delete(std::string_view ResolvedPath, FUNCTION *Callback)
       if ((Callback) and (Callback->defined())) feedback.FeedbackID = FBK::DELETE_FILE;
       return delete_tree(buffer, Callback, &feedback);
    }
-   else return convert_errno(errno, ERR::Failed);
+   else return convert_errno(errno, ERR::SystemCall);
 #endif
 }
 
@@ -2608,7 +2608,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
 
       if (i < std::ssize(Path)) {
          log.warning("Failed to create folder \"%s\".", Path.data());
-         return ERR::Failed;
+         return ERR::SystemCall;
       }
       else if (!Path.ends_with('/')) {
          // If the path did not end with a slash, there is still one last folder to create

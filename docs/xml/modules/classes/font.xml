@@ -21,7 +21,7 @@
 <p>Initialisation of a new font object can be as simple as declaring its <fl>Point</fl> size and <fl>Face</fl> name.  Font objects can be difficult to alter post-initialisation, so all style and graphical selections must be defined on creation.  For example, it is not possible to change styling from regular to bold format dynamically.  To support multiple styles of the same font, create a font object for every style that requires support.  Basic settings such as colour, the font string and text positioning are not affected by these limitations.</p>
 <p>To draw a font string to a Bitmap object, start by setting the <fl>Bitmap</fl> and <fl>String</fl> fields.  The <fl>X</fl> and <fl>Y</fl> fields determine string positioning and you can also use the <fl>Align</fl> field to position a string to the right or center of the surface area.</p>
 <p>To clarify the terminology used in this documentation, please note the definitions for the following terms:</p>
-<list type="unsorted">
+<list type="bullet">
 <li>'Point' determines the size of a font.  The value is relative only to other point sizes of the same font face, i.e. two faces at the same point size are not necessarily the same height.</li>
 <li>'Height' represents the 'vertical bearing' or point of the font, expressed as a pixel value.  The height does not cover for any leading at the top of the font, or the gutter space used for the tails on characters like 'g' and 'y'.</li>
 <li>'Gutter' is the amount of space that a character can descend below the base line.  Characters like 'g' and 'y' are examples of characters that utilise the gutter space.  The gutter is also sometimes known as the 'external leading' or 'descent' of a character.</li>

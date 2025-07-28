@@ -450,7 +450,7 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
 
    // Register a blocking (message style) semaphore for signalling that process validation is required.
 
-   if (plAllocPrivateSemaphore(&glValidationSemaphore, 1) != ERR::Okay) return ERR::Failed;
+   if (plAllocPrivateSemaphore(&glValidationSemaphore, 1) != ERR::Okay) return ERR::SemaphoreOperation;
 
    glDeadProcessMsg = RegisterWindowMessage("RKL_DeadProcess");
 
@@ -483,7 +483,7 @@ extern "C" ERR plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue)
       .lpSecurityDescriptor = NULL,
       .bInheritHandle = FALSE
    };
-   if (!(*Semaphore = CreateSemaphore(&security, 0, InitialValue, NULL))) return ERR::Failed;
+   if (!(*Semaphore = CreateSemaphore(&security, 0, InitialValue, NULL))) return ERR::SemaphoreOperation;
    else return ERR::Okay;
 }
 
@@ -1009,7 +1009,7 @@ extern "C" ERR winCreatePipe(HANDLE *Read, HANDLE *Write)
    if (CreatePipe(Read, Write, &sa, 0)) {
       return ERR::Okay;
    }
-   else return ERR::Failed;
+   else return ERR::SystemCall;
 }
 
 //********************************************************************************************************************
@@ -1202,7 +1202,7 @@ extern "C" ERR winTerminateApp(int dwPID, int dwTimeout)
 
    hProc = OpenProcess(SYNCHRONIZE|PROCESS_TERMINATE, FALSE, dwPID);
 
-   if (hProc IS NULL) return ERR::Failed;
+   if (hProc IS NULL) return ERR::ProcessCreation;
 
    // TerminateAppEnum() posts WM_CLOSE to all windows whose PID matches your process's.
 
@@ -1211,7 +1211,7 @@ extern "C" ERR winTerminateApp(int dwPID, int dwTimeout)
    // Wait on the handle. If it signals, great. If it times out, then you kill it.
 
    if (WaitForSingleObject(hProc, dwTimeout) != WAIT_OBJECT_0) {
-      dwRet = (TerminateProcess(hProc,0) ? ERR::Okay : ERR::Failed);
+      dwRet = (TerminateProcess(hProc,0) ? ERR::Okay : ERR::ProcessCreation);
    }
    else dwRet = ERR::Okay;
 
@@ -1360,7 +1360,7 @@ extern "C" ERR winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *Read
 {
    WIN32_FILE_ATTRIBUTE_DATA info;
 
-   if (!GetFileAttributesEx(Path, GetFileExInfoStandard, &info)) return ERR::Failed;
+   if (!GetFileAttributesEx(Path, GetFileExInfoStandard, &info)) return ERR::SystemCall;
 
    if (info.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) *Hidden = TRUE;
    else *Hidden = FALSE;
@@ -1396,7 +1396,7 @@ extern "C" ERR winCreateDir(const char *Path)
        result = GetLastError();
        if (result IS ERROR_ALREADY_EXISTS) return ERR::FileExists;
        else if (result IS ERROR_PATH_NOT_FOUND) return ERR::FileNotFound;
-       else return ERR::Failed;
+       else return ERR::SystemCall;
    }
 }
 
@@ -1880,16 +1880,16 @@ extern ERR delete_tree(std::string &Path, FUNCTION *Callback, struct FileFeedbac
 
    if (attrib & FILE_ATTRIBUTE_DIRECTORY) {
       if (RemoveDirectory(Path.c_str())) return ERR::Okay;
-      else return ERR::Failed;
+      else return ERR::SystemCall;
    }
    else if (!unlink(Path.c_str())) {
       return ERR::Okay;
    }
    else {
       #ifdef __CYGWIN__
-      return convert_errno(*__errno(), ERR::Failed);
+      return convert_errno(*__errno(), ERR::SystemCall);
       #else
-      return convert_errno(errno, ERR::Failed);
+      return convert_errno(errno, ERR::SystemCall);
       #endif
    }
 }

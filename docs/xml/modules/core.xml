@@ -1533,7 +1533,7 @@ FreeResource(memory);  // Reference is no longer valid
     </input>
     <description>
 <p>This function changes the ownership of an existing object.  Ownership is an attribute that affects an object's placement within the object hierarchy as well as impacting on the resource tracking of the object in question. Internally, setting a new owner will cause three things to happen:</p>
-<list type="sorted">
+<list type="ordered">
 <li>The new owner's class will receive notification via the <action>NewChild</action> action.  If the owner rejects the object by sending back an error, SetOwner() will fail immediately.</li>
 <li>The object's class will then receive notification via the <action>NewOwner</action> action.</li>
 <li>The resource tracking of the new owner will be modified so that the object is accepted as its child.  This means that if and when the owning object is destroyed, the new child object will be destroyed with it.</li>

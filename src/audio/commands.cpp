@@ -78,15 +78,34 @@ Use this function to initiate the buffering of mix commands, up until a call to 
 buffering of mix commands makes it possible to create batches of commands that are executed at timed intervals
 as determined by ~MixRate().
 
+<header>Command Buffering Architecture</header>
+
+When command buffering is activated, the mixer transitions to a batch processing mode with several key characteristics:
+
+<list type="bullet">
+<li><b>Deferred Execution:</b> All mixer operations (~MixPlay(), ~MixVolume(), ~MixPan(), ~MixFrequency(), etc.) are queued rather than executed immediately</li>
+<li><b>Atomic Batch Processing:</b> Queued commands are processed synchronously during the next mixer update cycle, ensuring sample-accurate timing coordination</li>
+<li><b>Thread-Safe Queueing:</b> Commands can be safely queued from multiple threads without explicit synchronisation requirements</li>
+<li><b>Overflow Protection:</b> Command buffers include overflow detection to prevent memory exhaustion during extended buffering periods</li>
+</list>
+
 This feature can be used to implement complex sound mixes and digital music players.
+<header>Advanced Usage Patterns</header>
+
+<list type="ordered">
+<li><b>Sequence Initiation:</b> Call MixStartSequence() to begin command buffering for the target channel or channel set</li>
+<li><b>Command Queuing:</b> Issue multiple mixer commands (volume, pan, play, frequency adjustments, etc.) which are automatically queued</li>
+<li><b>Sequence Completion:</b> Call ~MixEndSequence() to mark the end of the command batch and schedule execution</li>
+<li><b>Automatic Execution:</b> Commands execute atomically at the next mixer update interval determined by ~MixRate()</li>
+</list>
 
 -INPUT-
 obj(Audio) Audio: The target Audio object.
 int Handle: The target channel.
 
 -ERRORS-
-Okay
-NullArgs
+Okay: Command buffering successfully initiated.
+NullArgs: Required parameters are null or missing.
 -END-
 
 *********************************************************************************************************************/
@@ -322,7 +341,7 @@ ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
 /*********************************************************************************************************************
 
 -FUNCTION-
-MixPlay: Commences channel playback at a set frequency..
+MixPlay: Commences channel playback at a set frequency.
 
 This function will start playback of the sound sample associated with the target mixer channel.  If the channel is
 already in playback mode, it will be stopped to facilitate the new playback request.
@@ -333,8 +352,10 @@ int Handle: The target channel.
 int Position: The new playing position, measured in bytes.
 
 -ERRORS-
-Okay
-NullArgs
+Okay: Playback successfully initiated.
+NullArgs: Required parameters are null or missing.
+OutOfRange: Position exceeds sample boundaries.
+Failed: Channel not associated with a valid sample.
 -END-
 
 *********************************************************************************************************************/
@@ -547,7 +568,7 @@ ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate)
       return ERR::Okay;
    }
 
-   WORD index = Handle>>16;
+   int16_t index = Handle>>16;
    if ((index >= 0) and (index < (LONG)((extAudio *)Audio)->Sets.size())) {
       ((extAudio *)Audio)->Sets[index].UpdateRate = Rate;
       return ERR::Okay;

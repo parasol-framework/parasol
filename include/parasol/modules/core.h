@@ -3472,9 +3472,9 @@ inline ERR acSetKeys(OBJECTPTR Object, CSTRING tags, ...) {
    va_start(list, tags);
    while ((args.Key = va_arg(list, STRING)) != TAGEND) {
       args.Value = va_arg(list, STRING);
-      if (Action(AC::SetKey, Object, &args) != ERR::Okay) {
+      if (auto error = Action(AC::SetKey, Object, &args); error != ERR::Okay) {
          va_end(list);
-         return ERR::Failed;
+         return error;
       }
    }
    va_end(list);

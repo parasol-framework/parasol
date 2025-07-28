@@ -9,8 +9,8 @@ module({ name="Network", copyright="Paul Manias © 2005-2025", version=1.0, pref
 
   c_insert([[
 
-#ifdef ENABLE_SSL
-#include "openssl/ssl.h"
+#if defined(ENABLE_SSL) && !defined(_WIN32)
+ #include "openssl/ssl.h"
 #endif
 
 #ifdef __linux__

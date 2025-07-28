@@ -75,6 +75,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension:
 - Test scripts use `.fluid` extension
 - Declarative UI creation with automatic scaling and layout management
 - Callback-driven architecture for event handling
+- Fluid APIs and reference manuals are available in multiple files at `docs/wiki/Fluid-*.md`.
 
 #### Fluid Script Execution Model
 

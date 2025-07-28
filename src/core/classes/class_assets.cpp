@@ -95,7 +95,7 @@ ERR add_asset_class(void)
 
    if (!(openinfo = GetResourcePtr(RES::OPENINFO))) {
       log.warning("No OpenInfo structure set during Core initialisation.");
-      return ERR::Failed;
+      return ERR::InvalidState;
    }
 
    classname = NULL;
@@ -126,7 +126,7 @@ ERR add_asset_class(void)
 
       if ((!env) or (!classname)) {
          log.warning("Android env and class name must be defined when opening the Core.");
-         return ERR::Failed;
+         return ERR::InvalidState;
       }
 
       jclass glActivityClass = ((*env)->FindClass)(env, classname);
@@ -255,7 +255,7 @@ static ERR ASSET_Init(objFile *Self)
 
          FreeResource(Self->ChildPrivate);
          Self->ChildPrivate = NULL;
-         return ERR::Failed;
+         return ERR::InvalidState;
       }
    }
    else return log.warning(ERR::AllocMemory);
@@ -322,7 +322,7 @@ static ERR ASSET_Seek(objFile *Self, struct acSeek *Args)
 
    off_t offset = AAsset_seek(prv->Asset, Args->Offset, method);
    if (offset != -1) Self->Position = offset;
-   else return ERR::Failed;
+   else return ERR::InvalidState;
 
    return ERR::Okay;
 }
@@ -360,9 +360,9 @@ static ERR GET_Size(objFile *Self, LARGE *Value)
    if (prv->Asset) {
       *Value = AAsset_getLength(prv->Asset);
       if (*Value >= 0) return ERR::Okay;
-      else return ERR::Failed;
+      else return ERR::InvalidState;
    }
-   else return ERR::Failed; // Either the file is a folder or hasn't been opened.
+   else return ERR::InvalidState; // Either the file is a folder or hasn't been opened.
 }
 
 //********************************************************************************************************************

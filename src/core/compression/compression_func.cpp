@@ -193,7 +193,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    if ((Link) and ((file->Flags & FL::LINK) IS FL::NIL)) {
       log.warning("Internal Error: Expected a link, but the file is not.");
-      return ERR::Failed;
+      return ERR::SanityCheckFailed;
    }
 
    // Determine the name that will be used for storing this file
@@ -264,7 +264,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
       Self->Zip.next_out  = Self->Output;
       Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
    }
-   else return ERR::Failed;
+   else return ERR::InvalidData;
 
    // If a matching file name already exists in the archive, make a note of its position
 
@@ -327,7 +327,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
       Self->Zip.avail_out = SIZE_COMPRESSION_BUFFER;
       if (deflate(&Self->Zip, Z_NO_FLUSH) != Z_OK) {
          log.warning("Failure during data compression.");
-         return ERR::Failed;
+         return ERR::Compression;
       }
       entry.CRC = GenCRC32(entry.CRC, (APTR)symlink, len);
    }
@@ -354,7 +354,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
             if (deflate(&Self->Zip, Z_NO_FLUSH) != Z_OK) {
                log.warning("Failure during data compression.");
-               return ERR::Failed;
+               return ERR::Compression;
             }
          }
 
@@ -362,7 +362,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
       }
    }
 
-   if (acFlush(Self) != ERR::Okay) return ERR::Failed;
+   if (acFlush(Self) != ERR::Okay) return ERR::Compression;
    deflateEnd(&Self->Zip);
    deflateend = false;
 
@@ -694,7 +694,7 @@ static ERR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
       if (sc::Call(Self->Feedback, std::to_array<ScriptArg>({
          { "Compression", Self, FD_OBJECTPTR },
          { "CompressionFeedback:Feedback", Feedback, FD_POINTER|FD_STRUCT }
-      }), error) != ERR::Okay) error = ERR::Failed;
+      }), error) != ERR::Okay) error = ERR::Function;
    }
    else {
       log.warning("Callback function structure does not specify a recognised Type.");

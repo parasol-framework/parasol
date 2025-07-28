@@ -217,7 +217,7 @@ static ERR FILE_Activate(extFile *Self)
             case ENOENT: return log.warning(ERR::FileNotFound);
             default:
                log.warning("Could not open \"%s\", error: %s", path, strerror(errno));
-               return ERR::Failed;
+               return ERR::SystemCall;
          }
       }
    }
@@ -479,7 +479,7 @@ static ERR FILE_Delete(extFile *Self, struct fl::Delete *Args)
          if (!unlink(buffer.c_str())) return ERR::Okay;
          else {
             log.warning("unlink() failed on file \"%s\": %s", buffer.c_str(), strerror(errno));
-            return convert_errno(errno, ERR::Failed);
+            return convert_errno(errno, ERR::SystemCall);
          }
       }
       else return log.warning(ERR::ResolvePath);
@@ -606,7 +606,7 @@ static ERR FILE_Init(extFile *Self)
          }
          else return log.warning(ERR::AllocMemory);
       }
-      else return log.warning(ERR::Failed);
+      else return log.warning(ERR::InvalidPath);
    }
    else if (pf::startswith("std:", Self->Path)) {
       // Special accessors for direct access to standard input/output/error streams.
@@ -616,7 +616,7 @@ static ERR FILE_Init(extFile *Self)
       if (iequals("std:stdin", Self->Path)) {
          Self->Flags |= FL::READ;
          #ifdef _WIN32
-            Self->Handle = _fileno(stdin); 
+            Self->Handle = _fileno(stdin);
          #else
             Self->Handle = STDIN_FILENO;
          #endif
@@ -624,7 +624,7 @@ static ERR FILE_Init(extFile *Self)
       else if (iequals("std:stdout", Self->Path)) {
          Self->Flags |= FL::WRITE;
          #ifdef _WIN32
-            Self->Handle = _fileno(stdout); 
+            Self->Handle = _fileno(stdout);
          #else
             Self->Handle = STDOUT_FILENO;
          #endif
@@ -632,12 +632,12 @@ static ERR FILE_Init(extFile *Self)
       else if (iequals("std:stderr", Self->Path)) {
          Self->Flags |= FL::WRITE;
          #ifdef _WIN32
-            Self->Handle = _fileno(stderr); 
+            Self->Handle = _fileno(stderr);
          #else
             Self->Handle = STDERR_FILENO;
          #endif
       }
-      else return log.warning(ERR::Failed);
+      else return log.warning(ERR::InvalidPath);
 
       return ERR::Okay;
    }
@@ -1164,7 +1164,7 @@ static ERR FILE_Rename(extFile *Self, struct acRename *Args)
             Self->Path = n + ":";
             return ERR::Okay;
          }
-         else return log.warning(ERR::Failed);
+         else return log.warning(ERR::SystemCall);
       }
       else { // We are renaming a folder
          std::string n(Self->Path, 0, Self->Path.find_last_of(":/\\"));
@@ -1175,7 +1175,7 @@ static ERR FILE_Rename(extFile *Self, struct acRename *Args)
             else Self->Path = n;
             return ERR::Okay;
          }
-         else return log.warning(ERR::Failed);
+         else return log.warning(ERR::SystemCall);
       }
    }
    else { // We are renaming a file
@@ -1193,7 +1193,7 @@ static ERR FILE_Rename(extFile *Self, struct acRename *Args)
          Self->Path = n;
          return ERR::Okay;
       }
-      else return log.warning(ERR::Failed);
+      else return log.warning(ERR::SystemCall);
    }
 }
 
@@ -1895,7 +1895,7 @@ static ERR SET_Group(extFile *Self, LONG Value)
    if (Self->initialised()) {
       log.msg("Changing group to #%d", Value);
       if (!fchown(Self->Handle, -1, Value)) return ERR::Okay;
-      else return log.warning(convert_errno(errno, ERR::Failed));
+      else return log.warning(convert_errno(errno, ERR::SystemCall));
    }
    else return log.warning(ERR::NotInitialised);
 #else
@@ -2064,12 +2064,12 @@ static ERR GET_Link(extFile *Self, STRING *Value)
          }
 
          if (*Value) return ERR::Okay;
-         else return ERR::Failed;
+         else return ERR::SystemCall;
       }
       else return ERR::ResolvePath;
    }
 
-   return ERR::Failed;
+   return ERR::SanityCheckFailed;
 #else
    return ERR::NoSupport;
 #endif
@@ -2311,7 +2311,7 @@ static ERR set_permissions(extFile *Self, PERMIT Permissions)
    CSTRING path;
    if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
       ERR error;
-      if (winSetAttrib(path, LONG(Permissions))) error = log.warning(ERR::Failed);
+      if (winSetAttrib(path, LONG(Permissions))) error = log.warning(ERR::SystemCall);
       else error = ERR::Okay;
       return error;
    }
@@ -2498,7 +2498,7 @@ static ERR SET_Size(extFile *Self, int64_t Size)
          }
          else return ERR::ResolvePath;
       }
-      else return ERR::Failed;
+      else return ERR::SystemCall;
    }
 #else
    log.trace("No support for truncating file sizes on this platform.");
@@ -2624,9 +2624,9 @@ static ERR SET_User(extFile *Self, LONG Value)
       if (!fchown(Self->Handle, Value, -1)) {
          return ERR::Okay;
       }
-      else return log.warning(convert_errno(errno, ERR::Failed));
+      else return log.warning(convert_errno(errno, ERR::SystemCall));
    }
-   else return log.warning(ERR::Failed);
+   else return log.warning(ERR::SystemCall);
 #else
    return ERR::NoSupport;
 #endif

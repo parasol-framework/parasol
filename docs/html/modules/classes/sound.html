@@ -19,21 +19,32 @@
 <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#gfx-collapse" aria-expanded="false">Graphics</button><div class="collapse" id="gfx-collapse"><ul class="btn-toggle-nav list-unstyled pb-1"><li class="api-ref"><a class="rounded" href="bitmap.html">Bitmap</a></li><li class="api-ref"><a class="rounded" href="clipboard.html">Clipboard</a></li><li class="api-ref"><a class="rounded" href="display.html">Display</a></li><li class="api-ref"><a class="rounded" href="document.html">Document</a></li><li class="api-ref"><a class="rounded" href="font.html">Font</a></li><li class="api-ref"><a class="rounded" href="picture.html">Picture</a></li><li class="api-ref"><a class="rounded" href="pointer.html">Pointer</a></li><li class="api-ref"><a class="rounded" href="surface.html">Surface</a></li><li class="api-ref"><a class="rounded" href="svg.html">SVG</a></li></ul></div></li>
 <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#net-collapse" aria-expanded="false">Network</button><div class="collapse" id="net-collapse"><ul class="btn-toggle-nav list-unstyled pb-1"><li class="api-ref"><a class="rounded" href="clientsocket.html">ClientSocket</a></li><li class="api-ref"><a class="rounded" href="http.html">HTTP</a></li><li class="api-ref"><a class="rounded" href="netsocket.html">NetSocket</a></li><li class="api-ref"><a class="rounded" href="proxy.html">Proxy</a></li></ul></div></li>
 <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#vectors-collapse" aria-expanded="false">Vectors</button><div class="collapse" id="vectors-collapse"><ul class="btn-toggle-nav list-unstyled pb-1"><li class="api-ref"><a class="rounded" href="vector.html">Vector</a></li><li class="api-ref"><a class="rounded" href="vectorclip.html">VectorClip</a></li><li class="api-ref"><a class="rounded" href="vectorcolour.html">VectorColour</a></li><li class="api-ref"><a class="rounded" href="vectorellipse.html">VectorEllipse</a></li><li class="api-ref"><a class="rounded" href="vectorfilter.html">VectorFilter</a></li><li class="api-ref"><a class="rounded" href="vectorgradient.html">VectorGradient</a></li><li class="api-ref"><a class="rounded" href="vectorgroup.html">VectorGroup</a></li><li class="api-ref"><a class="rounded" href="vectorimage.html">VectorImage</a></li><li class="api-ref"><a class="rounded" href="vectorpath.html">VectorPath</a></li><li class="api-ref"><a class="rounded" href="vectorpattern.html">VectorPattern</a></li><li class="api-ref"><a class="rounded" href="vectorpolygon.html">VectorPolygon</a></li><li class="api-ref"><a class="rounded" href="vectorrectangle.html">VectorRectangle</a></li><li class="api-ref"><a class="rounded" href="vectorscene.html">VectorScene</a></li><li class="api-ref"><a class="rounded" href="vectorshape.html">VectorShape</a></li><li class="api-ref"><a class="rounded" href="vectorspiral.html">VectorSpiral</a></li><li class="api-ref"><a class="rounded" href="vectortext.html">VectorText</a></li><li class="api-ref"><a class="rounded" href="vectortransition.html">VectorTransition</a></li><li class="api-ref"><a class="rounded" href="vectorviewport.html">VectorViewport</a></li><li class="api-ref"><a class="rounded" href="vectorwave.html">VectorWave</a></li></ul></div></li></ul></div></div>
-<div class="col-sm-9" style="max-width: 1200px;"><div class="docs-content" style="display:none;" id="default-page"><div class="page-header"><h1>Sound Class</h1></div><p class="lead">Plays and records sound samples in multiple media formats.</p>
-<p>The Sound class provides an interface for the playback of audio sample files. By default, all loading and saving of sound data is in WAVE format.  Other audio formats such as MP3 can be supported through Sound class extensions, if available.</p>
-<p>Automatic streaming is enabled by default.  If an attempt is made to play an audio file that exceeds the maximum buffer size, it will be streamed from the source location.  Streaming behaviour can be modified via the <a data-bs-toggle="tooltip" title="Defines the preferred streaming method for the sample." href="#tf-Stream">Stream</a> field.</p>
-<p>The following example illustrates playback of a sound sample that is one octave higher than its normal frequency. The subscription to the <a data-bs-toggle="tooltip" title="This callback is triggered when sample playback stops." href="#tf-OnStop">OnStop</a> callback will result in the program waking once the sample has finished playback.</p>
+<div class="col-sm-9" style="max-width: 1200px;"><div class="docs-content" style="display:none;" id="default-page"><div class="page-header"><h1>Sound Class</h1></div><p class="lead">High-level audio sample playback interface with intelligent resource management and format detection.</p>
+<p>The Sound class provides a comprehensive, user-friendly interface for audio sample playback that abstracts the complexities of audio hardware management whilst delivering professional-quality results.  Designed as the primary interface for general-purpose audio operations, the Sound class automatically handles resource allocation, format detection, hardware abstraction, and intelligent streaming decisions to provide optimal performance across diverse system configurations.</p>
+<p>The Sound class implements robust file format support with automatic detection and validation:</p>
+<ul>
+<li>
+<b>Native WAVE Support:</b> Complete support for WAVE format files including all standard PCM encodings, multiple bit depths (8/16-bit), and both mono and stereo configurations</li>
+<li>
+<b>Automatic Format Detection:</b> File format identification occurs automatically during initialisation based on file headers and content analysis</li>
+<li>
+<b>Extensible Architecture:</b> Additional audio formats (MP3, OGG, FLAC, AAC) can be supported through Sound class extensions and codec plugins</li>
+<li>
+<b>Validation and Error Handling:</b> Comprehensive file validation prevents playback of corrupted or unsupported audio data</li>
+</ul>
+<p>The following demonstrates advanced Sound class usage including pitch control and event handling:</p>
 <pre>local snd = obj.new('sound', {
-   path = 'audio:samples/doorbell.wav',
-   note = 'C6',
+   path = 'audio:samples/piano_c4.wav',
+   note = 'C6',    -- Play two octaves higher
+   volume = 0.8,   -- Reduce volume to 80%
    onStop = function(Sound)
+      print('Playback completed')
       proc.signal()
    end
 })
 
 snd.acActivate()
-
-proc.sleep()
+proc.sleep()  -- Wait for completion
 </pre>
 <h3>Structure</h3><p>The Sound class consists of the following fields:</p><table class="table"><thead><th class="col-md-1"><div data-bs-toggle="tooltip" title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead><tbody><tr data-bs-toggle="collapse" data-bs-target="#fl-Active" style="scroll-margin:3em;"><td class="col-md-1" id="tf-Active"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
@@ -183,10 +194,15 @@ proc.sleep()
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Stream" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Stream"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">Stream</th><td class="col-md-1"><span class="text-nowrap">STREAM</span></td><td>Defines the preferred streaming method for the sample.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Stream" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+<p>The Stream field controls how the Sound class manages memory and playback for audio samples. This setting directly influences memory consumption, playback latency, and system resource utilisation.</p>
+<p>Available streaming modes:</p>
 <table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">STREAM::ALWAYS</th><td>Stream if the sample length exceeds 64k.</td></tr>
 <tr><th class="col-md-1">STREAM::NEVER</th><td>No streaming - load all data into memory.</td></tr>
 <tr><th class="col-md-1">STREAM::SMART</th><td>Smart streaming is the default.  If the sample appears to be relatively small with respect to available system RAM, it will be loaded into memory.  Otherwise it will be streamed.</td></tr>
 </tbody></table>
+<p>Smart and Always streaming modes use significantly less memory for large samples, making them suitable for applications that handle extensive audio libraries. Never streaming provides the fastest playback initiation but may exhaust system memory with large or numerous samples.</p>
+<p>Memory-resident samples (Never streaming) offer zero-latency playback initiation, whilst streamed samples may have a brief delay as the initial buffer is populated. However, once streaming begins, there should be no perceptible difference in audio quality or continuity.</p>
+<p>The Smart streaming mode monitors system resources and sample characteristics to make optimal decisions. This mode adapts to changing conditions and provides the best balance for most applications without requiring manual configuration.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Volume" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Volume"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>

@@ -169,7 +169,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    #endif
    LONG i;
 
-   if (!Info) return ERR::Failed;
+   if (!Info) return ERR::NullArgs;
    if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR::Failed;
    glOpenInfo   = Info;
    tlMainThread = true;
@@ -254,7 +254,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          else if (winGetCurrentDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
          else {
             fprintf(stderr, "Failed to determine root folder.\n");
-            return ERR::Failed;
+            return ERR::SystemCall;
          }
          if (glRootPath.back() != '\\') glRootPath += '\\';
       #else
@@ -508,7 +508,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    if (init_volumes(volumes) != ERR::Okay) {
       KERR("Failed to initialise the filesystem.");
       CloseCore();
-      return ERR::Failed;
+      return ERR::File;
    }
 
    fs_initialised = true;
@@ -531,7 +531,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
                if (glClassDB.contains(item.ClassID)) {
                   log.warning("Invalid class dictionary file, %s is registered twice.", item.Name.c_str());
-                  error = ERR::Failed;
+                  error = ERR::AlreadyDefined;
                   break;
                }
                glClassDB[item.ClassID] = item;
@@ -1014,7 +1014,7 @@ extern "C" ERR convert_errno(LONG Error, ERR Default)
       case EEXIST:  return ERR::FileExists;
       case ENOSPC:  return ERR::OutOfSpace;
       case EFAULT:  return ERR::IllegalAddress;
-      case EIO:     return ERR::Failed;
+      case EIO:     return ERR::InputOutput;
       #ifdef ELOOP
       case ELOOP:   return ERR::Loop;
       #endif

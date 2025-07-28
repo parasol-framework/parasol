@@ -152,7 +152,7 @@
   </xsl:template>
 
   <xsl:template match="header">
-    <h3><xsl:value-of select="."/></h3>
+    <h4><xsl:value-of select="."/></h4>
   </xsl:template>
 
   <xsl:template match="code">

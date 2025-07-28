@@ -649,7 +649,7 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
                    (SubscribeAction(ObjectSignals[i].Object, AC::Signal, C_FUNCTION(notify_signal_wfo)) IS ERR::Okay)) {
                   glWFOList.insert(std::make_pair(ObjectSignals[i].Object->UID, ObjectSignals[i]));
                }
-               else error = ERR::Failed;
+               else error = ERR::MessageOperation;
             }
          }
       }
@@ -837,7 +837,7 @@ ERR sleep_task(int Timeout)
 
    if (!tlMainThread) {
       log.warning("Only the main thread can call this function.");
-      return ERR::Failed;
+      return ERR::MessageOperation;
    }
    else if (tlPublicLockCount > 0) {
       log.warning("Cannot sleep while holding %d global locks.", tlPublicLockCount);
@@ -1006,7 +1006,7 @@ ERR sleep_task(int Timeout, BYTE SystemOnly)
 
    if (!tlMainThread) {
       log.warning("Only the main thread can call this function.");
-      return ERR::Failed;
+      return ERR::MessageOperation;
    }
    else if (tlPublicLockCount > 0) {
       log.warning("You cannot sleep while still holding %d global locks!", tlPublicLockCount);

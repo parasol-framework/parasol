@@ -117,12 +117,29 @@
     </xsl:choose>
   </xsl:template>
 
+  <xsl:template match="class">
+    <xsl:variable name="class_name"><xsl:value-of select="@name"/></xsl:variable>
+    <xsl:variable name="class_lower" select="translate($class_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+
+    <xsl:choose>
+      <xsl:when test="@field">
+        <a><xsl:attribute name="href">classes/<xsl:value-of select="$class_lower"/>.html#tf-<xsl:value-of select="@field"/></xsl:attribute><xsl:value-of select="@name"/>&#8658;<xsl:value-of select="@field"/></a>
+      </xsl:when>
+      <xsl:when test="@method">
+        <a><xsl:attribute name="href">classes/<xsl:value-of select="$class_lower"/>.html#tm-<xsl:value-of select="@method"/></xsl:attribute><xsl:value-of select="@name"/>&#8658;<xsl:value-of select="@method"/>()</a>
+      </xsl:when>
+      <xsl:otherwise>
+        <a><xsl:attribute name="href">classes/<xsl:value-of select="$class_lower"/>.html</xsl:attribute><xsl:value-of select="@name"/></a>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
   <xsl:template match="include">
     <code><xsl:value-of select="."/></code>
   </xsl:template>
 
   <xsl:template match="header">
-    <h3><xsl:value-of select="."/></h3>
+    <h4><xsl:value-of select="."/></h4>
   </xsl:template>
 
   <xsl:template match="code">
@@ -460,6 +477,13 @@
             <div class="col-sm-9" style="max-width: 1200px;">
               <div class="docs-content" style="display:none;" id="default-page">
                 <div class="page-header"><h1><xsl:value-of select="/book/info/name"/> Module</h1></div>
+
+                <p class="lead"><xsl:value-of select="/book/info/comment"/></p>
+                <xsl:for-each select="/book/info/description">
+                  <xsl:apply-templates/>
+                  <xsl:text>&#xa;</xsl:text>
+                </xsl:for-each>
+
                 <h3>Functions</h3>
 
                 <!-- Non-categorised functions -->

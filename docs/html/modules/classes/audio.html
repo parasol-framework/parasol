@@ -20,9 +20,10 @@
 <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#net-collapse" aria-expanded="false">Network</button><div class="collapse" id="net-collapse"><ul class="btn-toggle-nav list-unstyled pb-1"><li class="api-ref"><a class="rounded" href="clientsocket.html">ClientSocket</a></li><li class="api-ref"><a class="rounded" href="http.html">HTTP</a></li><li class="api-ref"><a class="rounded" href="netsocket.html">NetSocket</a></li><li class="api-ref"><a class="rounded" href="proxy.html">Proxy</a></li></ul></div></li>
 <li><button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#vectors-collapse" aria-expanded="false">Vectors</button><div class="collapse" id="vectors-collapse"><ul class="btn-toggle-nav list-unstyled pb-1"><li class="api-ref"><a class="rounded" href="vector.html">Vector</a></li><li class="api-ref"><a class="rounded" href="vectorclip.html">VectorClip</a></li><li class="api-ref"><a class="rounded" href="vectorcolour.html">VectorColour</a></li><li class="api-ref"><a class="rounded" href="vectorellipse.html">VectorEllipse</a></li><li class="api-ref"><a class="rounded" href="vectorfilter.html">VectorFilter</a></li><li class="api-ref"><a class="rounded" href="vectorgradient.html">VectorGradient</a></li><li class="api-ref"><a class="rounded" href="vectorgroup.html">VectorGroup</a></li><li class="api-ref"><a class="rounded" href="vectorimage.html">VectorImage</a></li><li class="api-ref"><a class="rounded" href="vectorpath.html">VectorPath</a></li><li class="api-ref"><a class="rounded" href="vectorpattern.html">VectorPattern</a></li><li class="api-ref"><a class="rounded" href="vectorpolygon.html">VectorPolygon</a></li><li class="api-ref"><a class="rounded" href="vectorrectangle.html">VectorRectangle</a></li><li class="api-ref"><a class="rounded" href="vectorscene.html">VectorScene</a></li><li class="api-ref"><a class="rounded" href="vectorshape.html">VectorShape</a></li><li class="api-ref"><a class="rounded" href="vectorspiral.html">VectorSpiral</a></li><li class="api-ref"><a class="rounded" href="vectortext.html">VectorText</a></li><li class="api-ref"><a class="rounded" href="vectortransition.html">VectorTransition</a></li><li class="api-ref"><a class="rounded" href="vectorviewport.html">VectorViewport</a></li><li class="api-ref"><a class="rounded" href="vectorwave.html">VectorWave</a></li></ul></div></li></ul></div></div>
 <div class="col-sm-9" style="max-width: 1200px;"><div class="docs-content" style="display:none;" id="default-page"><div class="page-header"><h1>Audio Class</h1></div><p class="lead">Supports a machine's audio hardware and provides a client-server audio management service.</p>
-<p>The Audio class provides a common audio service that works across multiple platforms and follows a client-server design model.</p>
-<p>Supported features include 8/16/32 bit output in stereo or mono, oversampling, streaming, multiple audio channels and command sequencing.  Audio functionality is simplified in the <a href="sound.html">Sound</a> class interface, which we recommend when straight-forward audio playback is sufficient.</p>
-<p>Support for audio recording is not currently available.</p>
+<p>The Audio class provides a comprehensive audio service that works across multiple platforms and follows a client-server design model. It serves as the foundation for all audio operations in the Parasol framework, managing hardware resources, sample mixing, and output buffering.</p>
+<p>The Audio class supports 8/16/32 bit output in stereo or mono configurations, with advanced features including oversampling for enhanced quality, intelligent streaming for large samples, multiple simultaneous audio channels, and command sequencing for precise timing control. The internal floating-point mixer ensures high-quality audio processing regardless of the target hardware bit depth.</p>
+<p>For straightforward audio playback requirements, we recommend using the <a href="sound.html">Sound</a> class interface, which provides a simplified API whilst utilising the Audio class internally. Direct use of the Audio class is appropriate for applications requiring precise mixer control, multiple simultaneous samples, or custom audio processing workflows.</p>
+<p>Note: Support for audio recording is not currently available in this implementation.</p>
 <h3>Structure</h3><p>The Audio class consists of the following fields:</p><table class="table"><thead><th class="col-md-1"><div data-bs-toggle="tooltip" title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead><tbody><tr data-bs-toggle="collapse" data-bs-target="#fl-BitDepth" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-BitDepth"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">BitDepth</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>The bit depth affects the overall quality of audio input and output.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-BitDepth" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
@@ -85,31 +86,76 @@
 <tr data-bs-toggle="collapse" data-bs-target="#fl-PeriodSize" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-PeriodSize"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">PeriodSize</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Defines the byte size of each period allocated to the internal audio buffer.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-PeriodSize" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>Refer to the <a data-bs-toggle="tooltip" title="Defines the number of periods that make up the internal audio buffer." href="#tf-Periods">Periods</a> field for further information.</p>
+<p>The PeriodSize field determines the granularity of audio buffer management, affecting system responsiveness, processing efficiency, and overall audio quality. This setting works in conjunction with the <a data-bs-toggle="tooltip" title="Defines the number of periods that make up the internal audio buffer." href="#tf-Periods">Periods</a> field to define the complete buffering architecture.</p>
+<ul>
+<li>
+<b>Minimum</b>: 1024 bytes (1KB) - Enables very low latency but requires high-performance processing.</li>
+<li>
+<b>Maximum</b>: 16384 bytes (16KB) - Provides maximum buffering and processing time per period.</li>
+<li>
+<b>Recommended</b>: 2048 bytes (2KB) - Optimal balance for most applications and hardware configurations.</li>
+</ul>
+<p>Period latency (in seconds) = <code>PeriodSize ÷ (SampleRate × Channels × BytesPerSample)</code></p>
+<p>For example, with a 2048-byte period at 44100Hz stereo 16-bit <code>Latency = 2048 ÷ (44100 × 2 × 2) = 11.6ms per period</code></p>
+<p>The combination of PeriodSize and <a data-bs-toggle="tooltip" title="Defines the number of periods that make up the internal audio buffer." href="#tf-Periods">Periods</a> creates a multi-stage buffering system where audio data flows through sequential periods, providing time for processing whilst maintaining continuous playback.</p>
+<h4>Application Guidelines</h4>
+<ul>
+<li>
+<b>Real-time applications</b>: Use smaller periods (1-2KB) with fewer periods for minimal latency.</li>
+<li>
+<b>General applications</b>: Use medium periods (2-4KB) with 4 periods for reliable performance.</li>
+<li>
+<b>Background audio</b>: Use larger periods (8-16KB) with more periods for maximum efficiency.</li>
+</ul>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Periods" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Periods"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Periods</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Defines the number of periods that make up the internal audio buffer.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Periods" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The internal audio buffer is split into periods with each period being a certain byte size.  The minimum period is <code>2</code> and the maximum is <code>16</code>.  This field is supplemented with the <a data-bs-toggle="tooltip" title="Defines the byte size of each period allocated to the internal audio buffer." href="#tf-PeriodSize">PeriodSize</a>, which indicates the byte size of each period.  The total size of the audio buffer is calculated as the number of Periods multiplied by the <a data-bs-toggle="tooltip" title="Defines the byte size of each period allocated to the internal audio buffer." href="#tf-PeriodSize">PeriodSize</a> value.</p>
-<p>The minimum period size is 1K and maximum 16K.</p>
+<p>The Periods field controls the segmentation of the internal audio buffer, directly affecting latency, performance, and audio continuity. This setting is particularly relevant for ALSA-based systems where period-based buffering is fundamental to audio driver operation.</p>
+<p>The total audio buffer is divided into discrete periods, each representing a contiguous block of audio data. The audio system processes data period by period, allowing for predictable latency characteristics and efficient interrupt handling.</p>
+<ul>
+<li>
+<b>Minimum</b>: 2 periods (provides double-buffering for basic audio continuity)</li>
+<li>
+<b>Maximum</b>: 16 periods (enables extensive buffering for demanding applications)</li>
+<li>
+<b>Recommended</b>: 4 periods (balances latency and reliability for most use cases)</li>
+</ul>
+<p>Fewer periods reduce overall system latency but increase the risk of audio dropouts if processing cannot keep pace with audio consumption. More periods provide greater buffering security at the cost of increased latency.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Quality" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Quality"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Quality</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Determines the quality of the audio mixing.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Quality" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>Alter the quality of internal audio mixing by adjusting the Quality field.  The value range is from 0 (low quality) and 100 (high quality).  A setting between 70 and 80 is recommended.  Setting a Quality value results in the following flags being automatically adjusted in the audio object: <code>ADF::FILTER_LOW</code>, <code>ADF::FILTER_HIGH</code> and <code>ADF::OVER_SAMPLING</code>.</p>
-<p>In general, low quality mixing should only be used when the audio output needs to be raw, or if the audio speaker is of low quality and will not benefit from high quality output.</p>
+<p>The Quality field controls the precision and filtering applied during audio mixing operations. This setting automatically configures multiple internal processing parameters to balance audio fidelity against computational overhead.</p>
+<p>The value range spans from 0 (minimal processing) to 100 (maximum fidelity), with recommended settings between 70-80 for most applications. This range provides an optimal balance between audio clarity and system performance.</p>
+<p>Setting the Quality value automatically adjusts the following processing flags:</p>
+<ul>
+<li>
+<b>Quality 0-9</b>: Minimal processing, no filtering or oversampling applied.</li>
+<li>
+<b>Quality 10-32</b>: Enables <code>ADF::FILTER_LOW</code> for basic output filtering.</li>
+<li>
+<b>Quality 33-65</b>: Activates <code>ADF::FILTER_HIGH</code> for enhanced frequency response.</li>
+<li>
+<b>Quality 66-100</b>: Implements <code>ADF::OVER_SAMPLING</code> and <code>ADF::FILTER_HIGH</code> for maximum fidelity.</li>
+</ul>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Stereo" style="scroll-margin:3em;"><td class="col-md-1" id="tf-Stereo"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Stereo</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Set to <code>true</code> for stereo output and <code>false</code> for mono output.</td></tr>
 </tbody></table><h3>Actions</h3><p>The following actions are currently supported:</p><table class="table"><tbody><tr data-bs-toggle="collapse" data-bs-target="#tac-Activate" style="scroll-margin:3em;" id="ta-Activate" role="button"><td style="width:1%; border-top-style: none; border-bottom-style: none;"><i class="bi bi-chevron-double-right text-secondary"></i></td><th class="col-md-1 text-primary">Activate</th><td>Enables access to the audio hardware and initialises the mixer.</td></tr><tr><td class="hiddenRow" style="width:1%; border-top-style: none; border-bottom-style: none;"></td><td colspan="2" class="hiddenRow"><div id="tac-Activate" class="collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR acActivate(*Object)</samp></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>An audio object will not play or record until it has been activated.  Activating the object will result in an attempt to access the device hardware, which on some platforms may lead to failure if another process has permanently locked the audio device.  The resources and any device locks obtained by this action can be released with a call to <a data-bs-toggle="tooltip" title="Disables the audio mixer and returns device resources to the system." href="#ta-Deactivate">Deactivate()</a>.</p>
-<p>An inactive audio object can operate in a limited fashion but is without access to the audio hardware.</p>
+<p>An audio object must be activated before it can play audio samples. The activation process involves several critical steps: hardware resource acquisition, mixer buffer allocation, and platform-specific driver initialisation.</p>
+<p>Activation attempts to gain exclusive or shared access to the audio hardware device. On some platforms, this may fail if another process has obtained an exclusive lock on the audio device. The specific behaviour depends on the underlying audio system (ALSA on Linux, DirectSound on Windows).</p>
+<p>If activation fails, the audio object remains in an inactive state but retains its configuration. Common failure causes include hardware device unavailability, insufficient system resources, or driver compatibility issues.</p>
+<p>All resources and device locks obtained during activation can be released through <a data-bs-toggle="tooltip" title="Disables the audio mixer and returns device resources to the system." href="#ta-Deactivate">Deactivate()</a>. An inactive audio object can perform configuration operations but cannot process audio samples.</p>
       
-</div></div></td></tr>
+<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Hardware activation completed successfully.</td></tr>
+<tr><th class="col-md-1">Failed</th><td>Hardware device unavailable or driver initialisation failed.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>Failed to allocate internal mixing buffers.</td></tr>
+</tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tac-Deactivate" style="scroll-margin:3em;" id="ta-Deactivate" role="button"><td style="width:1%; border-top-style: none; border-bottom-style: none;"><i class="bi bi-chevron-double-right text-secondary"></i></td><th class="col-md-1 text-primary">Deactivate</th><td>Disables the audio mixer and returns device resources to the system.</td></tr><tr><td class="hiddenRow" style="width:1%; border-top-style: none; border-bottom-style: none;"></td><td colspan="2" class="hiddenRow"><div id="tac-Deactivate" class="collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR acDeactivate(*Object)</samp></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>Deactivating an audio object will switch off the mixer, clear the output buffer and return any allocated device resources back to the host system.  The audio object will remain in a suspended state until it is reactivated.</p>
       
@@ -156,10 +202,10 @@
 <tr><th class="col-md-1">LTYPE::UNIDIRECTIONAL</th><td>The sample playback position returns to the byte position specified in the Loop1Start field.</td></tr>
 </tbody></table>
       
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Sample successfully added to the audio system.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid argument values provided.</td></tr>
 <tr><th class="col-md-1">AllocMemory</th><td>Failed to allocate enough memory to hold the sample data.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Required parameters are null or missing.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-AddStream" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">AddStream</th><td id="tm-AddStream">Adds a new sample-stream to an Audio object for channel-based playback.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-AddStream" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR snd::AddStream(OBJECTPTR Object, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, INT SampleLength, INT PlayOffset, struct AudioLoop * Loop, INT LoopSize, INT * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Callback</td><td>This callback function must be able to return raw audio data for streaming.</td></tr>
 <tr><td>OnStop</td><td>This optional callback function will be called when the stream stops playing.</td></tr>
@@ -171,7 +217,7 @@
 <tr><td>Result</td><td>The resulting sample handle will be returned in this parameter.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>Use AddStream to load large sound samples to an Audio object, allowing it to play those samples on the client machine without over-provisioning available resources.  For small samples under 256k consider using <a data-bs-toggle="tooltip" title="Adds a new sample to an audio object for channel-based playback." href="#tm-AddSample">AddSample()</a> instead.</p>
-<p>The data source used for a stream will need to be provided by a client provided <code>Callback</code> function.  The prototype is <code>LONG callback(LONG SampleHandle, LONG Offset, UBYTE *Buffer, LONG BufferSize)</code>.</p>
+<p>The data source used for a stream will need to be provided by a client provided <code>Callback</code> function.  The prototype is <code>INT callback(INT SampleHandle, INT Offset, UINT8 *Buffer, INT BufferSize)</code>.</p>
 <p>The <code>Offset</code> reflects the retrieval point of the decoded data and is measured in bytes.  The <code>Buffer</code> and <code>BufferSize</code> reflect the target for the decoded data.  The function must return the total number of bytes that were written to the <code>Buffer</code>. If an error occurs, return zero.</p>
 <p>When creating a new stream, pay attention to the audio format that is being used for the sample data. It is important to differentiate between 8-bit, 16-bit, mono and stereo, but also be aware of whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values.  Because of the possible variations there are a number of sample formats, as illustrated in the following table:</p>
 <table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">SFM::F_BIG_ENDIAN</th><td>Combine this flag with any audio format to declare it as big endian.</td></tr>
@@ -199,16 +245,16 @@
 </tbody></table>
 <p>The <code>Loop1Type</code> and <code>Loop2Type</code> fields normally determine the style of the loop, however only unidirectional looping is currently supported for streams.  For that reason, set the type variables to either <code>LTYPE::NIL</code> or <code>LTYPE::UNIDIRECTIONAL</code>.</p>
       
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Stream successfully configured and added to the audio system.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid argument values provided.</td></tr>
 <tr><th class="col-md-1">AllocMemory</th><td>Failed to allocate the stream buffer.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Required parameters are null or missing.</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-Beep" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Beep</th><td id="tm-Beep">Beeps the PC audio speaker.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Beep" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR snd::Beep(OBJECTPTR Object, INT Pitch, INT Duration, INT Volume)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Pitch</td><td>The pitch of the beep in HZ.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-Beep" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Beep</th><td id="tm-Beep">Generates system alert tones through the platform's audio notification system.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Beep" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR snd::Beep(OBJECTPTR Object, INT Pitch, INT Duration, INT Volume)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Pitch</td><td>The pitch of the beep in HZ.</td></tr>
 <tr><td>Duration</td><td>The duration of the beep in milliseconds.</td></tr>
 <tr><td>Volume</td><td>The volume of the beep, from 0 to 100.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>This method will beep the PC audio speaker, if available.  It is possible to request the specific Pitch, Duration and Volume for the sound although not all platforms may support the parameters.  In some cases the beep may be converted to a standard warning sound by the host.</p>
+<p>Use Beep to emit a tone from the platform's audio notification system, typically through the PC speaker or other system-level audio devices. This method is useful for generating simple alert sounds or notifications without requiring a full audio sample or stream.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NoSupport</th><td>PC speaker support is not available.</td></tr>

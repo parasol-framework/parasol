@@ -22,7 +22,7 @@
 <div class="col-sm-9" style="max-width: 1200px;"><div class="docs-content" style="display:none;" id="default-page"><div class="page-header"><h1>NetSocket Class</h1></div><p class="lead">Manages network connections via TCP/IP sockets.</p>
 <p>The NetSocket class provides a simple way of managing TCP/IP socket communications.  Connections from a single client to the server and from the server to multiple clients are supported.  SSL functionality is also integrated.</p>
 <p>The design of the NetSocket class caters to asynchronous (non-blocking) communication.  This is achieved primarily through callback fields - connection alerts are managed by <a data-bs-toggle="tooltip" title="A callback trigger for when the state of the NetSocket is changed." href="#tf-Feedback">Feedback</a>, incoming data is received through <a data-bs-toggle="tooltip" title="Callback that is triggered when the socket receives data." href="#tf-Incoming">Incoming</a> and readiness for outgoing data is supported by <a data-bs-toggle="tooltip" title="Callback that is triggered when a socket is ready to send data." href="#tf-Outgoing">Outgoing</a>.</p>
-<h3>Client-Server Connections</h3>
+<h4>Client-Server Connections</h4>
 <p>After a connection has been established, data may be written using any of the following methods:</p>
 <ul>
 <li>Write directly to the socket with either the <a data-bs-toggle="tooltip" title="Writes data to the socket." href="#ta-Write">Write()</a> action or <a data-bs-toggle="tooltip" title="Writes a message to the socket." href="#tm-WriteMsg">WriteMsg()</a> method.</li>
@@ -30,7 +30,7 @@
 initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>
 </ul>
 <p>It is possible to write to a NetSocket object before the connection to a server is established.  Doing so will buffer the data in the socket until the connection with the server has been initiated, at which point the data will be immediately sent.</p>
-<h3>Server-Client Connections</h3>
+<h4>Server-Client Connections</h4>
 <p>To accept incoming client connections, create a NetSocket object with the <code>SERVER</code> flag set and define the <a data-bs-toggle="tooltip" title="The port number to use for initiating a connection." href="#tf-Port">Port</a> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the <code>MULTICONNECT</code> flag.</p>
 <p>When a new connection is detected, the <a data-bs-toggle="tooltip" title="A callback trigger for when the state of the NetSocket is changed." href="#tf-Feedback">Feedback</a> function will be called as <code>Feedback(*NetSocket, *ClientSocket, LONG State)</code></p>
 <p>The NetSocket parameter refers to the original NetSocket object, <a href="clientsocket.html">ClientSocket</a> applies if a client connection is involved and the State value will be set to <code>NTC::CONNECTED</code>.  If a client disconnects, the <a data-bs-toggle="tooltip" title="A callback trigger for when the state of the NetSocket is changed." href="#tf-Feedback">Feedback</a> function will be called in the same manner but with a State value of <code>NTC::DISCONNECTED</code>.</p>
@@ -81,7 +81,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Feedback</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>A callback trigger for when the state of the NetSocket is changed.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Feedback" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>Refer to a custom function in this field and it will be called whenever the <a data-bs-toggle="tooltip" title="The current connection state of the netsocket object." href="#tf-State">State</a> of the socket (such as connection or disconnection) changes.</p>
-<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, LONG State)</code></p>
+<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, int State)</code></p>
 <p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <a data-bs-toggle="tooltip" title="The current connection state of the netsocket object." href="#tf-State">State</a> field.</p>
       
 </div></div></td></tr>
