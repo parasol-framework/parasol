@@ -22,8 +22,6 @@ The Sound class implements robust file format support with automatic detection a
 <li><b>Validation and Error Handling:</b> Comprehensive file validation prevents playback of corrupted or unsupported audio data</li>
 </list>
 
-<header>Practical Usage Example</header>
-
 The following demonstrates advanced Sound class usage including pitch control and event handling:
 
 <pre>

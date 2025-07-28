@@ -391,8 +391,7 @@ static ERR AUDIO_Beep(extAudio *Self, struct snd::Beep *Args)
    if (!Args) return ERR::NullArgs;
 
 #ifdef __linux__
-   LONG console;
-   if ((console = GetResource(RES::CONSOLE_FD)) != -1) {
+   if (auto console = GetResource(RES::CONSOLE_FD); console != -1) {
       ioctl(console, KDMKTONE, ((1193190 / Args->Pitch) & 0xffff) | ((ULONG)Args->Duration << 16));
       return ERR::Okay;
    }
