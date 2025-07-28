@@ -267,6 +267,21 @@ int64_t GetResource(RES Resource)
       case RES::CORE_IDL:        return (MAXINT)glIDL;
       case RES::DISPLAY_DRIVER:  if (!glDisplayDriver.empty()) return (MAXINT)glDisplayDriver.c_str(); else return 0;
 
+      case RES::MEMORY_USAGE: {
+         #ifdef __linux__
+            struct rusage usage;
+            if (!getrusage(RUSAGE_SELF, &usage)) {
+               // Return the maximum resident set size in bytes.
+               return (int64_t)usage.ru_maxrss * 1024LL; // Convert to bytes
+            }
+            else return -1; // Error retrieving resource usage
+         #elif _WIN32
+            return winGetProcessMemoryUsage(glProcessID);
+         #else 
+            return -1;
+         #endif
+      }
+
       case RES::STATIC_BUILD:
          #ifdef PARASOL_STATIC
             return 1;

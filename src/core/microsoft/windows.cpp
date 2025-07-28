@@ -822,6 +822,22 @@ extern "C" LONG winGetCurrentProcessId(void)
 
 //********************************************************************************************************************
 
+extern "C" size_t winGetProcessMemoryUsage(LONG ProcessID)
+{
+   PROCESS_MEMORY_COUNTERS pmc;
+   HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, ProcessID);
+   if (process) {
+      if (GetProcessMemoryInfo(process, &pmc, sizeof(pmc))) {
+         CloseHandle(process);
+         return pmc.WorkingSetSize; // Return the working set size in bytes
+      }
+      CloseHandle(process);
+   }
+   return -1; // Failed to retrieve memory usage
+}
+
+//********************************************************************************************************************
+
 static BYTE glConsoleMode = TRUE; // Assume running from a terminal by default.
 
 extern "C" LONG winReadStdInput(HANDLE FD, APTR Buffer, DWORD BufferSize, DWORD *Size)

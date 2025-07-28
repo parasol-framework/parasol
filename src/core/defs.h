@@ -1089,6 +1089,7 @@ extern "C" WINHANDLE winGetCurrentProcess(void);
 extern "C" int winGetCurrentProcessId(void);
 extern "C" int winGetExitCodeProcess(WINHANDLE, int *Code);
 extern "C" long long winGetFileSize(STRING);
+extern "C" size_t winGetProcessMemoryUsage(LONG ProcessID);
 extern "C" APTR winGetProcAddress(WINHANDLE, CSTRING);
 extern "C" WINHANDLE winGetStdInput(void);
 extern "C" int64_t winGetTickCount(void);
