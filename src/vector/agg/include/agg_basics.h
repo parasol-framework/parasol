@@ -261,25 +261,34 @@ namespace agg
         }
     };
 
-    template<typename Rect>
-    constexpr auto intersect_rectangles(const Rect& r1, const Rect& r2) noexcept -> Rect {
+    // Consolidated rectangle operations - reduced code duplication  
+    template<typename Rect, bool Unite>
+    constexpr auto combine_rectangles(const Rect& r1, const Rect& r2) noexcept -> Rect {
         Rect r = r1;
-
-        if (r.x2 > r2.x2) r.x2 = r2.x2;
-        if (r.y2 > r2.y2) r.y2 = r2.y2;
-        if (r.x1 < r2.x1) r.x1 = r2.x1;
-        if (r.y1 < r2.y1) r.y1 = r2.y1;
+        if constexpr (Unite) {
+            // Unite: expand bounds
+            if (r.x2 < r2.x2) r.x2 = r2.x2;
+            if (r.y2 < r2.y2) r.y2 = r2.y2;  
+            if (r.x1 > r2.x1) r.x1 = r2.x1;
+            if (r.y1 > r2.y1) r.y1 = r2.y1;
+        } else {
+            // Intersect: shrink bounds
+            if (r.x2 > r2.x2) r.x2 = r2.x2;
+            if (r.y2 > r2.y2) r.y2 = r2.y2;
+            if (r.x1 < r2.x1) r.x1 = r2.x1;
+            if (r.y1 < r2.y1) r.y1 = r2.y1;
+        }
         return r;
     }
-
+    
+    template<typename Rect>
+    constexpr auto intersect_rectangles(const Rect& r1, const Rect& r2) noexcept -> Rect {
+        return combine_rectangles<Rect, false>(r1, r2);
+    }
+    
     template<typename Rect>
     constexpr auto unite_rectangles(const Rect& r1, const Rect& r2) noexcept -> Rect {
-        Rect r = r1;
-        if (r.x2 < r2.x2) r.x2 = r2.x2;
-        if (r.y2 < r2.y2) r.y2 = r2.y2;
-        if (r.x1 > r2.x1) r.x1 = r2.x1;
-        if (r.y1 > r2.y1) r.y1 = r2.y1;
-        return r;
+        return combine_rectangles<Rect, true>(r1, r2);
     }
 
     using rect_i = rect_base<int>;
@@ -300,49 +309,52 @@ namespace agg
     constexpr int path_flags_close = 0x40;
     constexpr int path_flags_mask  = 0xF0;
 
-    constexpr bool is_vertex(unsigned c) noexcept    { return c >= path_cmd_move_to and c < path_cmd_end_poly; }
-    constexpr bool is_drawing(unsigned c) noexcept   { return c >= path_cmd_line_to and c < path_cmd_end_poly; }
+    // Consolidated path command predicates - optimized for code size
+    constexpr unsigned path_cmd(unsigned c) noexcept { return c & path_cmd_mask; }
+    constexpr bool is_vertex(unsigned c) noexcept    { return (c - 1u) < (path_cmd_end_poly - 1u); }
+    constexpr bool is_drawing(unsigned c) noexcept   { return (c - 2u) < (path_cmd_end_poly - 2u); }
     constexpr bool is_stop(unsigned c) noexcept      { return c == path_cmd_stop; }
     constexpr bool is_move_to(unsigned c) noexcept   { return c == path_cmd_move_to; }
     constexpr bool is_line_to(unsigned c) noexcept   { return c == path_cmd_line_to; }
-    constexpr bool is_curve(unsigned c) noexcept     { return c == path_cmd_curve3 or c == path_cmd_curve4; }
+    constexpr bool is_curve(unsigned c) noexcept     { return (c | 1) == path_cmd_curve4; } // curve3=3, curve4=4
     constexpr bool is_curve3(unsigned c) noexcept    { return c == path_cmd_curve3; }
     constexpr bool is_curve4(unsigned c) noexcept    { return c == path_cmd_curve4; }
-    constexpr bool is_end_poly(unsigned c) noexcept  { return (c & path_cmd_mask) == path_cmd_end_poly; }
+    constexpr bool is_end_poly(unsigned c) noexcept  { return path_cmd(c) == path_cmd_end_poly; }
     constexpr bool is_close(unsigned c) noexcept     { return (c & ~(path_flags_cw | path_flags_ccw)) == (path_cmd_end_poly | path_flags_close); }
-    constexpr bool is_next_poly(unsigned c) noexcept { return is_stop(c) or is_move_to(c) or is_end_poly(c); }
-    constexpr bool is_cw(unsigned c) noexcept        { return (c & path_flags_cw) != 0; }
-    constexpr bool is_ccw(unsigned c) noexcept       { return (c & path_flags_ccw) != 0; }
-    constexpr bool is_oriented(unsigned c) noexcept  { return (c & (path_flags_cw | path_flags_ccw)) != 0; }
-    constexpr bool is_closed(unsigned c) noexcept    { return (c & path_flags_close) != 0; }
+    constexpr bool is_next_poly(unsigned c) noexcept { return c == path_cmd_stop or c == path_cmd_move_to or path_cmd(c) == path_cmd_end_poly; }
+    
+    // Bitwise flag operations - more compact
+    constexpr bool is_cw(unsigned c) noexcept        { return c & path_flags_cw; }
+    constexpr bool is_ccw(unsigned c) noexcept       { return c & path_flags_ccw; }
+    constexpr bool is_oriented(unsigned c) noexcept  { return c & (path_flags_cw | path_flags_ccw); }
+    constexpr bool is_closed(unsigned c) noexcept    { return c & path_flags_close; }
     constexpr unsigned get_close_flag(unsigned c) noexcept    { return c & path_flags_close; }
     constexpr unsigned clear_orientation(unsigned c) noexcept { return c & ~(path_flags_cw | path_flags_ccw); }
     constexpr unsigned get_orientation(unsigned c) noexcept   { return c & (path_flags_cw | path_flags_ccw); }
     constexpr unsigned set_orientation(unsigned c, unsigned o) noexcept { return clear_orientation(c) | o; }
 
+    // Consolidated geometric structures - reduced code duplication
     template<typename T>
     requires std::is_arithmetic_v<T>
     struct point_base {
         using value_type = T;
-        T x,y;
-        point_base() {}
-        point_base(T x_, T y_) : x(x_), y(y_) {}
+        T x, y;
+        constexpr point_base() = default;
+        constexpr point_base(T x_, T y_) noexcept : x(x_), y(y_) {}
     };
-
-    using point_i = point_base<int>;
-    using point_f = point_base<float>;
-    using point_d = point_base<double>;
 
     template<typename T>
     requires std::is_arithmetic_v<T>
-    struct vertex_base {
-        using value_type = T;
-        T x,y;
+    struct vertex_base : point_base<T> {
         unsigned cmd;
-        vertex_base() {}
-        vertex_base(T x_, T y_, unsigned cmd_ = 0) : x(x_), y(y_), cmd(cmd_) {}
+        constexpr vertex_base() = default;
+        constexpr vertex_base(T x_, T y_, unsigned cmd_ = 0) noexcept : point_base<T>(x_, y_), cmd(cmd_) {}
     };
 
+    // Common type aliases
+    using point_i = point_base<int>;
+    using point_f = point_base<float>;  
+    using point_d = point_base<double>;
     using vertex_i = vertex_base<int>;
     using vertex_f = vertex_base<float>;
     using vertex_d = vertex_base<double>;
