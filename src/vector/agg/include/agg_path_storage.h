@@ -11,9 +11,10 @@
 #ifndef AGG_PATH_STORAGE_INCLUDED
 #define AGG_PATH_STORAGE_INCLUDED
 
-#include <string.h>
-#include <math.h>
+#include <cstring>
+#include <cmath>
 #include <vector>
+#include <type_traits>
 
 #include "agg_math.h"
 #include "agg_array.h"
@@ -22,19 +23,21 @@
 
 namespace agg
 {
-   template<class T> class poly_plain_adaptor {
+   template<typename T>
+   requires std::is_arithmetic_v<T>
+   class poly_plain_adaptor {
    public:
-      typedef T value_type;
+      using value_type = T;
 
-      poly_plain_adaptor() :
-         m_data(0),
-         m_ptr(0),
-         m_end(0),
+      constexpr poly_plain_adaptor() noexcept :
+         m_data(nullptr),
+         m_ptr(nullptr),
+         m_end(nullptr),
          m_closed(false),
          m_stop(false)
       {}
 
-      poly_plain_adaptor(const T* data, unsigned num_points, bool closed) :
+      constexpr poly_plain_adaptor(const T* data, unsigned num_points, bool closed) noexcept :
          m_data(data),
          m_ptr(data),
          m_end(data + num_points * 2),
@@ -42,7 +45,7 @@ namespace agg
          m_stop(false)
       {}
 
-      void init(const T* data, unsigned num_points, bool closed) {
+      constexpr void init(const T* data, unsigned num_points, bool closed) noexcept {
          m_data = data;
          m_ptr = data;
          m_end = data + num_points * 2;
@@ -50,16 +53,16 @@ namespace agg
          m_stop = false;
       }
 
-      void rewind(unsigned) {
+      constexpr void rewind(unsigned) noexcept {
          m_ptr = m_data;
          m_stop = false;
       }
 
-      unsigned vertex(double* x, double* y) {
+      constexpr unsigned vertex(double* x, double* y) noexcept {
          if (m_ptr < m_end) {
-            bool first = m_ptr == m_data;
-            *x = *m_ptr++;
-            *y = *m_ptr++;
+            const bool first = m_ptr == m_data;
+            *x = static_cast<double>(*m_ptr++);
+            *y = static_cast<double>(*m_ptr++);
             return first ? path_cmd_move_to : path_cmd_line_to;
          }
          *x = *y = 0.0;
@@ -78,18 +81,23 @@ namespace agg
         bool     m_stop;
     };
 
-   template<class Container> class poly_container_adaptor {
+   template<typename Container>
+   requires requires(const Container& c) {
+       c.size();
+       c[0];
+   }
+   class poly_container_adaptor {
    public:
-        typedef typename Container::value_type vertex_type;
+        using vertex_type = typename Container::value_type;
 
-        poly_container_adaptor() :
-            m_container(0),
+        constexpr poly_container_adaptor() noexcept :
+            m_container(nullptr),
             m_index(0),
             m_closed(false),
             m_stop(false)
         {}
 
-        poly_container_adaptor(const Container& data, bool closed) :
+        constexpr poly_container_adaptor(const Container& data, bool closed) noexcept :
             m_container(&data),
             m_index(0),
             m_closed(closed),

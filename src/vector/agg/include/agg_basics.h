@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <memory>
+#include <type_traits>
 #ifdef __cpp_lib_math_constants
 #include <numbers>
 #endif
@@ -182,7 +183,7 @@ namespace agg
 #endif
 
     template<int Limit> struct saturation {
-        AGG_INLINE static int iround(double v) {
+        static constexpr int iround(double v) noexcept {
             if(v < double(-Limit)) return -Limit;
             if(v > double( Limit)) return  Limit;
             return agg::iround(v);
@@ -190,7 +191,7 @@ namespace agg
     };
 
     template<unsigned Shift> struct mul_one {
-        AGG_INLINE static unsigned mul(unsigned a, unsigned b) {
+        static constexpr unsigned mul(unsigned a, unsigned b) noexcept {
             unsigned q = a * b + (1 << (Shift-1));
             return (q + (q >> Shift)) >> Shift;
         }
@@ -225,7 +226,9 @@ namespace agg
     constexpr double deg2rad(double deg) noexcept { return deg * pi / 180.0; }
     constexpr double rad2deg(double rad) noexcept { return rad * 180.0 / pi; }
 
-    template<class T> struct rect_base {
+    template<typename T>
+    requires std::is_arithmetic_v<T>
+    struct rect_base {
         using value_type = T;
         using self_type = rect_base<T>;
         T x1, y1, x2, y2;
@@ -258,8 +261,8 @@ namespace agg
         }
     };
 
-    template<class Rect>
-    inline Rect intersect_rectangles(const Rect& r1, const Rect& r2) {
+    template<typename Rect>
+    constexpr auto intersect_rectangles(const Rect& r1, const Rect& r2) noexcept -> Rect {
         Rect r = r1;
 
         if (r.x2 > r2.x2) r.x2 = r2.x2;
@@ -269,8 +272,8 @@ namespace agg
         return r;
     }
 
-    template<class Rect>
-    inline Rect unite_rectangles(const Rect& r1, const Rect& r2) {
+    template<typename Rect>
+    constexpr auto unite_rectangles(const Rect& r1, const Rect& r2) noexcept -> Rect {
         Rect r = r1;
         if (r.x2 < r2.x2) r.x2 = r2.x2;
         if (r.y2 < r2.y2) r.y2 = r2.y2;
@@ -317,7 +320,9 @@ namespace agg
     constexpr unsigned get_orientation(unsigned c) noexcept   { return c & (path_flags_cw | path_flags_ccw); }
     constexpr unsigned set_orientation(unsigned c, unsigned o) noexcept { return clear_orientation(c) | o; }
 
-    template<class T> struct point_base {
+    template<typename T>
+    requires std::is_arithmetic_v<T>
+    struct point_base {
         using value_type = T;
         T x,y;
         point_base() {}
@@ -328,7 +333,9 @@ namespace agg
     using point_f = point_base<float>;
     using point_d = point_base<double>;
 
-    template<class T> struct vertex_base {
+    template<typename T>
+    requires std::is_arithmetic_v<T>
+    struct vertex_base {
         using value_type = T;
         T x,y;
         unsigned cmd;
@@ -340,14 +347,14 @@ namespace agg
     using vertex_f = vertex_base<float>;
     using vertex_d = vertex_base<double>;
 
-    template<class T> struct row_info {
+    template<typename T> struct row_info {
         int x1, x2;
         T* ptr;
         row_info() {}
         row_info(int x1_, int x2_, T* ptr_) : x1(x1_), x2(x2_), ptr(ptr_) {}
     };
 
-    template<class T> struct const_row_info {
+    template<typename T> struct const_row_info {
         int x1, x2;
         const T* ptr;
         const_row_info() {}
@@ -355,8 +362,10 @@ namespace agg
             x1(x1_), x2(x2_), ptr(ptr_) {}
     };
 
-    template<class T> constexpr bool is_equal_eps(T v1, T v2, T epsilon) noexcept {
-        return std::abs(v1 - v2) <= double(epsilon);
+    template<typename T>
+    requires std::is_floating_point_v<T>
+    constexpr bool is_equal_eps(T v1, T v2, T epsilon) noexcept {
+        return std::abs(v1 - v2) <= static_cast<T>(epsilon);
     }
 }
 

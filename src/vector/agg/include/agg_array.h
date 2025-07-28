@@ -14,13 +14,16 @@
 #include <cstring>
 #include <algorithm>
 #include <memory>
+#include <type_traits>
 #include "agg_basics.h"
 
 namespace agg
 {
 
     //-------------------------------------------------------pod_array_adaptor
-    template<class T> class pod_array_adaptor
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    class pod_array_adaptor
     {
     public:
         using value_type = T;
@@ -41,7 +44,9 @@ namespace agg
 
 
     //---------------------------------------------------------pod_auto_array
-    template<class T, unsigned Size> class pod_auto_array
+    template<typename T, unsigned Size>
+    requires std::is_trivially_copyable_v<T> && (Size > 0)
+    class pod_auto_array
     {
     public:
         using value_type = T;
@@ -72,7 +77,9 @@ namespace agg
 
 
     //--------------------------------------------------------pod_auto_vector
-    template<class T, unsigned Size> class pod_auto_vector
+    template<typename T, unsigned Size>
+    requires std::is_trivially_copyable_v<T> && (Size > 0)
+    class pod_auto_vector
     {
     public:
         using value_type = T;
@@ -100,7 +107,9 @@ namespace agg
 
 
     //---------------------------------------------------------------pod_array
-    template<class T> class pod_array
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    class pod_array
     {
     public:
         using value_type = T;
@@ -179,7 +188,9 @@ namespace agg
     // A simple class template to store Plain Old Data, a vector
     // of a fixed size. The data is continous in memory
     //------------------------------------------------------------------------
-    template<class T> class pod_vector
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    class pod_vector
     {
     public:
         using value_type = T;
@@ -249,7 +260,8 @@ namespace agg
         std::unique_ptr<T[]> m_array;
     };
 
-    template<class T>
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
     void pod_vector<T>::capacity(unsigned cap, unsigned extra_tail) {
         m_size = 0;
         if (cap > m_capacity) {
@@ -258,13 +270,15 @@ namespace agg
         }
     }
 
-    template<class T>
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
     void pod_vector<T>::allocate(unsigned size, unsigned extra_tail) {
         capacity(size, extra_tail);
         m_size = size;
     }
 
-    template<class T>
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
     void pod_vector<T>::resize(unsigned new_size) {
         if (new_size > m_size) {
             if (new_size > m_capacity) {
@@ -279,11 +293,15 @@ namespace agg
         m_size = new_size;
     }
 
-    template<class T> pod_vector<T>::pod_vector(unsigned cap, unsigned extra_tail) :
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    pod_vector<T>::pod_vector(unsigned cap, unsigned extra_tail) :
         m_size(0), m_capacity(cap + extra_tail),
         m_array(m_capacity > 0 ? std::make_unique<T[]>(m_capacity) : nullptr) {}
 
-    template<class T> pod_vector<T>::pod_vector(const pod_vector<T>& v) :
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    pod_vector<T>::pod_vector(const pod_vector<T>& v) :
         m_size(v.m_size), m_capacity(v.m_capacity),
         m_array(v.m_capacity > 0 ? std::make_unique<T[]>(v.m_capacity) : nullptr)
     {
@@ -292,15 +310,18 @@ namespace agg
         }
     }
 
-    template<class T> pod_vector<T>::pod_vector(pod_vector<T>&& v) noexcept :
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    pod_vector<T>::pod_vector(pod_vector<T>&& v) noexcept :
         m_size(v.m_size), m_capacity(v.m_capacity), m_array(std::move(v.m_array))
     {
         v.m_size = 0;
         v.m_capacity = 0;
     }
 
-    template<class T> const pod_vector<T>&
-    pod_vector<T>::operator = (const pod_vector<T>& v) {
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    const pod_vector<T>& pod_vector<T>::operator = (const pod_vector<T>& v) {
         if (this != &v) {
             allocate(v.m_size);
             if (v.m_size > 0 and m_array and v.m_array) {
@@ -310,8 +331,9 @@ namespace agg
         return *this;
     }
 
-    template<class T> pod_vector<T>&
-    pod_vector<T>::operator = (pod_vector<T>&& v) noexcept {
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    pod_vector<T>& pod_vector<T>::operator = (pod_vector<T>&& v) noexcept {
         if (this != &v) {
             m_array = std::move(v.m_array);
             m_size = v.m_size;
@@ -322,13 +344,16 @@ namespace agg
         return *this;
     }
 
-    template<class T> void pod_vector<T>::serialize(int8u* ptr) const {
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
+    void pod_vector<T>::serialize(int8u* ptr) const {
         if (m_size > 0 and m_array) {
             std::memcpy(ptr, m_array.get(), m_size * sizeof(T));
         }
     }
 
-    template<class T>
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
     void pod_vector<T>::deserialize(const int8u* data, unsigned byte_size) {
         byte_size /= sizeof(T);
         allocate(byte_size);
@@ -337,7 +362,8 @@ namespace agg
         }
     }
 
-    template<class T>
+    template<typename T>
+    requires std::is_trivially_copyable_v<T>
     void pod_vector<T>::insert_at(unsigned pos, const T& val) {
         if (pos >= m_size) {
             m_array[m_size] = val;
@@ -359,7 +385,9 @@ namespace agg
     // of increment to reallocate the pointer buffer. See the second constructor.
     // By default, the incremeent value equals (1 << S), i.e., the block size.
     //------------------------------------------------------------------------
-    template<class T, unsigned S=6> class pod_bvector
+    template<typename T, unsigned S=6>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
+    class pod_bvector
     {
     public:
         enum block_scale_e
@@ -369,7 +397,7 @@ namespace agg
             block_mask  = block_size - 1
         };
 
-        typedef T value_type;
+        using value_type = T;
 
         ~pod_bvector();
         pod_bvector();
@@ -545,7 +573,9 @@ namespace agg
         unsigned        m_block_ptr_inc;
     };
 
-    template<class T, unsigned S> pod_bvector<T, S>::~pod_bvector()
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
+    pod_bvector<T, S>::~pod_bvector()
     {
         if(m_num_blocks)
         {
@@ -559,7 +589,8 @@ namespace agg
         pod_allocator<T*>::deallocate(m_blocks);
     }
 
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     void pod_bvector<T, S>::free_tail(unsigned size)
     {
         if(size < m_size)
@@ -579,7 +610,9 @@ namespace agg
         }
     }
 
-    template<class T, unsigned S> pod_bvector<T, S>::pod_bvector() :
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
+    pod_bvector<T, S>::pod_bvector() :
         m_size(0),
         m_num_blocks(0),
         m_max_blocks(0),
@@ -588,7 +621,8 @@ namespace agg
     {
     }
 
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     pod_bvector<T, S>::pod_bvector(unsigned block_ptr_inc) :
         m_size(0),
         m_num_blocks(0),
@@ -598,7 +632,8 @@ namespace agg
     {
     }
 
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     pod_bvector<T, S>::pod_bvector(const pod_bvector<T, S>& v) :
         m_size(v.m_size),
         m_num_blocks(v.m_num_blocks),
@@ -615,9 +650,9 @@ namespace agg
 
 
     //------------------------------------------------------------------------
-    template<class T, unsigned S>
-    const pod_bvector<T, S>&
-    pod_bvector<T, S>::operator = (const pod_bvector<T, S>& v)
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
+    const pod_bvector<T, S>& pod_bvector<T, S>::operator = (const pod_bvector<T, S>& v)
     {
         unsigned i;
         for(i = m_num_blocks; i < v.m_num_blocks; ++i)
@@ -632,7 +667,8 @@ namespace agg
         return *this;
     }
 
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     void pod_bvector<T, S>::allocate_block(unsigned nb)
     {
         if(nb >= m_max_blocks)
@@ -654,7 +690,8 @@ namespace agg
         m_num_blocks++;
     }
 
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     inline T* pod_bvector<T, S>::data_ptr()
     {
         unsigned nb = m_size >> block_shift;
@@ -662,20 +699,23 @@ namespace agg
         return m_blocks[nb] + (m_size & block_mask);
     }
 
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     inline void pod_bvector<T, S>::add(const T& val)
     {
         *data_ptr() = val;
         ++m_size;
     }
 
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     inline void pod_bvector<T, S>::remove_last()
     {
         if(m_size) --m_size;
     }
 
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     void pod_bvector<T, S>::modify_last(const T& val)
     {
         remove_last();
@@ -684,7 +724,8 @@ namespace agg
 
 
     //------------------------------------------------------------------------
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     int pod_bvector<T, S>::allocate_continuous_block(unsigned num_elements)
     {
         if(num_elements < block_size)
@@ -714,7 +755,8 @@ namespace agg
 
 
     //------------------------------------------------------------------------
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     unsigned pod_bvector<T, S>::byte_size() const
     {
         return m_size * sizeof(T);
@@ -722,7 +764,8 @@ namespace agg
 
 
     //------------------------------------------------------------------------
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     void pod_bvector<T, S>::serialize(int8u* ptr) const
     {
         unsigned i;
@@ -734,7 +777,8 @@ namespace agg
     }
 
     //------------------------------------------------------------------------
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     void pod_bvector<T, S>::deserialize(const int8u* data, unsigned byte_size)
     {
         remove_all();
@@ -751,7 +795,8 @@ namespace agg
 
     // Replace or add a number of elements starting from "start" position
     //------------------------------------------------------------------------
-    template<class T, unsigned S>
+    template<typename T, unsigned S>
+    requires std::is_trivially_copyable_v<T> && (S > 0)
     void pod_bvector<T, S>::deserialize(unsigned start, const T& empty_val,
                                         const int8u* data, unsigned byte_size)
     {
@@ -790,18 +835,20 @@ namespace agg
 
 
     //-----------------------------------------------------------swap_elements
-    template<class T> inline void swap_elements(T& a, T& b)
-    {
-        T temp = a;
-        a = b;
-        b = temp;
+    template<typename T>
+    constexpr void swap_elements(T& a, T& b) noexcept {
+        std::swap(a, b);
     }
 
 
     //--------------------------------------------------------------quick_sort
-    template<class Array, class Less>
-    void quick_sort(Array& arr, Less less)
-    {
+    template<typename Array, typename Less>
+    requires requires(Array& arr, Less less, typename Array::value_type a, typename Array::value_type b) {
+        arr.size();
+        arr[0];
+        less(a, b);
+    }
+    void quick_sort(Array& arr, Less less) {
         if(arr.size() < 2) return;
 
         typename Array::value_type* e1;
@@ -910,9 +957,13 @@ namespace agg
     // Remove duplicates from a sorted array. It doesn't cut the
     // tail of the array, it just returns the number of remaining elements.
     //-----------------------------------------------------------------------
-    template<class Array, class Equal>
-    unsigned remove_duplicates(Array& arr, Equal equal)
-    {
+    template<typename Array, typename Equal>
+    requires requires(Array& arr, Equal equal, typename Array::value_type a, typename Array::value_type b) {
+        arr.size();
+        arr[0];
+        equal(a, b);
+    }
+    constexpr unsigned remove_duplicates(Array& arr, Equal equal) {
         if(arr.size() < 2) return arr.size();
 
         unsigned i, j;
@@ -939,9 +990,13 @@ namespace agg
     }
 
     //------------------------------------------------------binary_search_pos
-    template<class Array, class Value, class Less>
-    unsigned binary_search_pos(const Array& arr, const Value& val, Less less)
-    {
+    template<typename Array, typename Value, typename Less>
+    requires requires(const Array& arr, const Value& val, Less less) {
+        arr.size();
+        arr[0];
+        less(val, arr[0]);
+    }
+    constexpr unsigned binary_search_pos(const Array& arr, const Value& val, Less less) {
         if(arr.size() == 0) return 0;
 
         unsigned beg = 0;
@@ -964,18 +1019,24 @@ namespace agg
     }
 
     //----------------------------------------------------------range_adaptor
-    template<class Array> class range_adaptor
+    template<typename Array>
+    requires requires(Array& arr) {
+        arr.size();
+        arr[0];
+        typename Array::value_type;
+    }
+    class range_adaptor
     {
     public:
-        typedef typename Array::value_type value_type;
+        using value_type = typename Array::value_type;
 
-        range_adaptor(Array& array, unsigned start, unsigned size) :
+        constexpr range_adaptor(Array& array, unsigned start, unsigned size) noexcept :
             m_array(array), m_start(start), m_size(size)
         {}
 
-        unsigned size() const { return m_size; }
-        const value_type& operator [] (unsigned i) const { return m_array[m_start + i]; }
-              value_type& operator [] (unsigned i)       { return m_array[m_start + i]; }
+        constexpr unsigned size() const noexcept { return m_size; }
+        constexpr const value_type& operator [] (unsigned i) const noexcept { return m_array[m_start + i]; }
+        constexpr       value_type& operator [] (unsigned i)       noexcept { return m_array[m_start + i]; }
         const value_type& at(unsigned i) const           { return m_array[m_start + i]; }
               value_type& at(unsigned i)                 { return m_array[m_start + i]; }
         value_type  value_at(unsigned i) const           { return m_array[m_start + i]; }

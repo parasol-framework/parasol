@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <type_traits>
 #include "agg_basics.h"
 
 namespace agg {
@@ -161,17 +162,22 @@ namespace agg {
         return (x1*y2 - x2*y1 + x2*y3 - x3*y2 + x3*y1 - x1*y3) * 0.5;
     }
 
-    template<class Storage> double calc_polygon_area(const Storage& st)
-    {
-        unsigned i;
+    template<typename Storage>
+    requires requires(const Storage& st) {
+        st.size();
+        st[0].x;
+        st[0].y;
+    }
+    constexpr auto calc_polygon_area(const Storage& st) noexcept -> double {
+        if (st.size() < 3) return 0.0;
+        
         double sum = 0.0;
         double x  = st[0].x;
         double y  = st[0].y;
-        double xs = x;
-        double ys = y;
+        const double xs = x;
+        const double ys = y;
 
-        for(i = 1; i < st.size(); i++)
-        {
+        for(unsigned i = 1; i < st.size(); i++) {
             const auto& v = st[i];
             sum += x * v.y - y * v.x;
             x = v.x;
@@ -275,29 +281,24 @@ namespace agg {
     //--------------------
     // Adapted for use in AGG library by Andy Wilk (castor.vulgaris@gmail.com)
     //------------------------------------------------------------------------
-    inline double besj(double x, int n)
-    {
-        if(n < 0)
-        {
-            return 0;
+    constexpr double besj(double x, int n) noexcept {
+        if (n < 0) {
+            return 0.0;
         }
-        double d = 1E-6;
-        double b = 0;
-        if(fabs(x) <= d) 
-        {
-            if(n != 0) return 0;
-            return 1;
+        constexpr double d = 1E-6;
+        double b = 0.0;
+        if (std::abs(x) <= d) {
+            if (n != 0) return 0.0;
+            return 1.0;
         }
-        double b1 = 0; // b1 is the value from the previous iteration
+        double b1 = 0.0; // b1 is the value from the previous iteration
         // Set up a starting order for recurrence
-        int m1 = (int)fabs(x) + 6;
-        if(fabs(x) > 5) 
-        {
-            m1 = (int)(fabs(1.4 * x + 60 / x));
+        int m1 = static_cast<int>(std::abs(x)) + 6;
+        if (std::abs(x) > 5.0) {
+            m1 = static_cast<int>(std::abs(1.4 * x + 60.0 / x));
         }
-        int m2 = (int)(n + 2 + fabs(x) / 4);
-        if (m1 > m2) 
-        {
+        int m2 = static_cast<int>(n + 2 + std::abs(x) / 4.0);
+        if (m1 > m2) {
             m2 = m1;
         }
     
@@ -335,8 +336,7 @@ namespace agg {
             }
             c4 += c6;
             b /= c4;
-            if(fabs(b - b1) < d)
-            {
+            if (std::abs(b - b1) < d) {
                 return b;
             }
             b1 = b;
