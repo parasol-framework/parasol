@@ -28,25 +28,34 @@ function runTests()
    local i = 0
    for _,func in ipairs(body.tests) do
       i = i + 1
+      skip = false
       if (type(func) == "string") then
          print("-- Test " .. i .. ": " .. func .. " --")
+         if (glTest) and (func != glTest) then
+            skip = true
+         end
          func = _G[func]
       else
          print(i .. ". <Unnamed>")
       end
 
-      local startTime = mSys.PreciseTime()
-      local status, result = pcall(func)
-      local totalTime = (mSys.PreciseTime() - startTime) / 1000000
+      if not skip then
+         local startTime = mSys.PreciseTime()
+         local status, result = pcall(func)
+         local totalTime = (mSys.PreciseTime() - startTime) / 1000000
 
-      collectgarbage()
+         collectgarbage()
 
-      if (status == false) then
-         print(result)
+         if (status == false) then
+            print(result)
+         else
+            if nz(result) then logOutput(result) end
+            print(string.format("PASS: %.6f sec", totalTime))
+            glTestsPassed = glTestsPassed + 1
+         end
       else
-         if nz(result) then logOutput(result) end
-         print(string.format("PASS: %.6f sec", totalTime))
-         glTestsPassed = glTestsPassed + 1
+         print('SKIPPED')
+         glTestTotal = glTestTotal - 1
       end
    end
 
@@ -73,7 +82,8 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-   glFile = arg("file")
+   glFile = arg('file')
+   glTest = arg('test')
    glSelf = obj.find('self')
 
    mSys = mod.load("core")
