@@ -33,26 +33,20 @@ struct InterpolationWeights {
    double weight0, weight1;
    
    inline InterpolationWeights(int fracPos) {
-      const double frac = double(fracPos & 0xFFFF) / 65536.0;
-      weight0 = 1.0 - frac;
-      weight1 = frac;
+      weight0 = double(65536 - (fracPos & 0xFFFF));
+      weight1 = double(fracPos & 0xFFFF);
    }
 };
 
 //********************************************************************************************************************
 // Template-based mixer core - handles all sample types and channel configurations
+// Interpolation is used when the Audio object has over-sampling enabled.
 
 template<typename SampleType, bool IsStereoSample, bool IsStereoOutput, bool UseInterpolation>
-static int mix_template(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, 
-                        float LeftVol, float RightVol, float **MixDest)
+static int mix_template(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest)
 {
    auto dest = *MixDest;
-   auto sample = (SampleType *)Src;
-   
-   // Pre-calculate volume multipliers for interpolated mixing
-   const double volMulL = UseInterpolation ? LeftVol / 65536.0 : LeftVol;
-   const double volMulR = UseInterpolation ? RightVol / 65536.0 : RightVol;
-   
+   auto sample = (SampleType *)Src;   
    constexpr int srcChannels = IsStereoSample ? 2 : 1;
    
    if constexpr (UseInterpolation) {
@@ -67,71 +61,71 @@ static int mix_template(APTR Src, int SrcPos, int TotalSamples, int nextSampleOf
          
          if constexpr (IsStereoSample and IsStereoOutput) {
             // Stereo sample to stereo output with interpolation
-            const double leftSample = weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
-                                     weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx]);
-            const double rightSample = weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx + 1]) +
-                                      weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx + 1]);
+            const double leftSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
+                                      weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx])) / 65536.0;
+            const double rightSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx + 1]) +
+                                       weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx + 1])) / 65536.0;
             
-            dest[0] += volMulL * leftSample;
-            dest[1] += volMulR * rightSample;
+            dest[0] += LeftVol * leftSample;
+            dest[1] += RightVol * rightSample;
             dest += 2;
             
-         } else if constexpr (IsStereoSample and !IsStereoOutput) {
+         } 
+         else if constexpr (IsStereoSample and !IsStereoOutput) {
             // Stereo sample to mono output with interpolation
-            const double leftSample = weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
-                                     weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx]);
-            const double rightSample = weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx + 1]) +
-                                      weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx + 1]);
+            const double leftSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
+                                      weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx])) / 65536.0;
+            const double rightSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx + 1]) +
+                                       weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx + 1])) / 65536.0;
             
-            *(dest++) += volMulL * (leftSample + rightSample);
+            *(dest++) += LeftVol * (leftSample + rightSample);
             
-         } else if constexpr (!IsStereoSample and IsStereoOutput) {
+         } 
+         else if constexpr (!IsStereoSample and IsStereoOutput) {
             // Mono sample to stereo output with interpolation
-            const double monoSample = weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
-                                     weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx]);
+            const double monoSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
+                                      weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx])) / 65536.0;
             
-            dest[0] += volMulL * monoSample;
-            dest[1] += volMulR * monoSample;
-            dest += 2;
-            
-         } else {
-            // Mono sample to mono output with interpolation
-            const double monoSample = weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
-                                     weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx]);
-            
-            *(dest++) += volMulL * monoSample;
-         }
-         
-         SrcPos += MixStep;
-         TotalSamples--;
-      }
-      
-   } else {
-      // Non-interpolated mixing - optimized for speed
-      while (TotalSamples > 0) {
-         const int baseIdx = (SrcPos >> 16) * srcChannels;
-         
-         if constexpr (IsStereoSample and IsStereoOutput) {
-            // Stereo sample to stereo output
-            dest[0] += LeftVol * SampleTraits<SampleType>::normalize(sample[baseIdx]);
-            dest[1] += RightVol * SampleTraits<SampleType>::normalize(sample[baseIdx + 1]);
-            dest += 2;
-            
-         } else if constexpr (IsStereoSample and !IsStereoOutput) {
-            // Stereo sample to mono output
-            const double combined = SampleTraits<SampleType>::normalize(sample[baseIdx]) +
-                                   SampleTraits<SampleType>::normalize(sample[baseIdx + 1]);
-            *(dest++) += LeftVol * combined;
-            
-         } else if constexpr (!IsStereoSample and IsStereoOutput) {
-            // Mono sample to stereo output
-            const double monoSample = SampleTraits<SampleType>::normalize(sample[baseIdx]);
             dest[0] += LeftVol * monoSample;
             dest[1] += RightVol * monoSample;
             dest += 2;
             
          } else {
-            // Mono sample to mono output
+            // Mono sample to mono output with interpolation
+            const double monoSample = (weights.weight0 * SampleTraits<SampleType>::normalize(sample[baseIdx]) +
+                                      weights.weight1 * SampleTraits<SampleType>::normalize(sample[nextIdx])) / 65536.0;
+            
+            *(dest++) += LeftVol * monoSample;
+         }
+         
+         SrcPos += MixStep;
+         TotalSamples--;
+      }
+   } 
+   else { // Non-interpolated mixing - optimized for speed
+      while (TotalSamples > 0) {
+         const int baseIdx = (SrcPos >> 16) * srcChannels;
+         
+         if constexpr (IsStereoSample and IsStereoOutput) { // Stereo sample to stereo output
+            dest[0] += LeftVol * SampleTraits<SampleType>::normalize(sample[baseIdx]);
+            dest[1] += RightVol * SampleTraits<SampleType>::normalize(sample[baseIdx + 1]);
+            dest += 2;
+            
+         } 
+         else if constexpr (IsStereoSample and !IsStereoOutput) { // Stereo sample to mono output
+            const double combined = SampleTraits<SampleType>::normalize(sample[baseIdx]) +
+                                   SampleTraits<SampleType>::normalize(sample[baseIdx + 1]);
+            *(dest++) += LeftVol * combined;
+            
+         } 
+         else if constexpr (!IsStereoSample and IsStereoOutput) { // Mono sample to stereo output
+            const double monoSample = SampleTraits<SampleType>::normalize(sample[baseIdx]);
+            dest[0] += LeftVol * monoSample;
+            dest[1] += RightVol * monoSample;
+            dest += 2;
+            
+         } 
+         else { // Mono sample to mono output
             *(dest++) += LeftVol * SampleTraits<SampleType>::normalize(sample[baseIdx]);
          }
          
