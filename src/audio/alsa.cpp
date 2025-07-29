@@ -1,5 +1,7 @@
 #ifdef ALSA_ENABLED
 
+#include "device_enum.h"
+
 //********************************************************************************************************************
 
 static void free_alsa(extAudio *Self)
@@ -23,20 +25,16 @@ static ERR init_audio(extAudio *Self)
    snd_mixer_elem_t *elem;
    snd_mixer_selem_id_t *sid;
    snd_pcm_uframes_t periodsize;
-   snd_ctl_card_info_t *info;
    LONG err, index;
    WORD channel;
    long pmin, pmax;
    int dir;
-   WORD voltotal;
    std::string pcm_name;
 
    if (Self->Handle) {
       log.msg("Audio system is already active.");
       return ERR::Okay;
    }
-
-   snd_ctl_card_info_alloca(&info);
 
    log.msg("Initialising sound card device.");
 
@@ -46,101 +44,34 @@ static ERR init_audio(extAudio *Self)
    if (!Self->Device.empty()) pcm_name = Self->Device;
    else pcm_name = "default";
 
-   // Convert english pcm_name to the device number
-
-   if (!iequals("default", pcm_name)) {
-      STRING cardid, cardname;
-
-      LONG card = -1;
-      if ((snd_card_next(&card) < 0) or (card < 0)) {
-         log.warning("There are no sound cards supported by audio drivers.");
-         return ERR::NoSupport;
-      }
-
-      while (card >= 0) {
-         std::string name = "hw:" + std::to_string(card);
-
-         if ((err = snd_ctl_open(&ctlhandle, name.c_str(), 0)) >= 0) {
-            if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {
-               cardid = (STRING)snd_ctl_card_info_get_id(info);
-               cardname = (STRING)snd_ctl_card_info_get_name(info);
-
-               if (iequals(cardid, pcm_name)) {
-                  pcm_name = name;
-                  snd_ctl_close(ctlhandle);
-                  break;
-               }
-            }
-            snd_ctl_close(ctlhandle);
-         }
-
-         if (snd_card_next(&card) < 0) card = -1;
-      }
-   }
-
-   // Check if the default ALSA device is a real sound card.  We don't want to use it if it's a modem or other
-   // unexpected device.
-
+   // Use unified device enumeration to find the appropriate audio device
+   ALSADeviceInfo selected_device;
+   
    if (iequals("default", pcm_name)) {
-      // If there are no sound devices in the system, abort
-
-      LONG card = -1;
-      if ((snd_card_next(&card) < 0) or (card < 0)) {
+      // Select best available device (most mixer controls, not a modem)
+      selected_device = ALSADeviceEnumerator::select_best_device();
+      if (selected_device.card_number IS -1) {
          log.warning("There are no sound cards supported by audio drivers.");
          return ERR::NoSupport;
       }
-
-      // Check the number of mixer controls for all cards that support output.  We'll choose the card that has the most
-      // mixer controls as the default.
-
-      WORD volmax = 0;
-      while (card >= 0) {
-         std::string name = "hw:" + std::to_string(card);
-         log.msg("Opening card %s", name.c_str());
-
-         if ((err = snd_ctl_open(&ctlhandle, name.c_str(), 0)) >= 0) {
-            if ((err = snd_ctl_card_info(ctlhandle, info)) >= 0) {
-
-               auto cardid   = (STRING)snd_ctl_card_info_get_id(info);
-               auto cardname = (STRING)snd_ctl_card_info_get_name(info);
-
-               log.msg("Identified card %s, name %s", cardid, cardname);
-
-               if (iequals("modem", cardid)) goto next_card;
-
-               snd_mixer_t *mixhandle;
-               if ((err = snd_mixer_open(&mixhandle, 0)) >= 0) {
-                  if ((err = snd_mixer_attach(mixhandle, name.c_str())) >= 0) {
-                     if ((err = snd_mixer_selem_register(mixhandle, nullptr, nullptr)) >= 0) {
-                        if ((err = snd_mixer_load(mixhandle)) >= 0) {
-                           // Build a list of all available volume controls
-
-                           snd_mixer_selem_id_alloca(&sid);
-                           voltotal = 0;
-                           for (elem=snd_mixer_first_elem(mixhandle); elem; elem=snd_mixer_elem_next(elem)) voltotal++;
-
-                           log.msg("Card %s has %d mixer controls.", cardid, voltotal);
-
-                           if (voltotal > volmax) {
-                              volmax = voltotal;
-                              Self->Device = cardid;
-                              pcm_name = name;
-                           }
-                        }
-                        else log.warning("snd_mixer_load() %s", snd_strerror(err));
-                     }
-                     else log.warning("snd_mixer_selem_register() %s", snd_strerror(err));
-                  }
-                  else log.warning("snd_mixer_attach() %s", snd_strerror(err));
-                  snd_mixer_close(mixhandle);
-               }
-               else log.warning("snd_mixer_open() %s", snd_strerror(err));
-            }
-next_card:
-            snd_ctl_close(ctlhandle);
-         }
-         if (snd_card_next(&card) < 0) card = -1;
+      
+      Self->Device = selected_device.card_id;
+      pcm_name = selected_device.device_name;
+      log.msg("Selected default device: %s (%s) with %d mixer controls", 
+              selected_device.card_id.c_str(), selected_device.card_name.c_str(), 
+              selected_device.mixer_controls);
+   }
+   else {
+      // Find specific device by ID
+      selected_device = ALSADeviceEnumerator::find_device_by_id(pcm_name);
+      if (selected_device.card_number IS -1) {
+         log.warning("Requested device '%s' not found.", pcm_name.c_str());
+         return ERR::NoSupport;
       }
+      
+      pcm_name = selected_device.device_name;
+      log.msg("Using specified device: %s (%s)", 
+              selected_device.card_id.c_str(), selected_device.card_name.c_str());
    }
 
    snd_output_stdio_attach(&Self->sndlog, stderr, 0);
