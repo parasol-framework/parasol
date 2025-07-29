@@ -98,9 +98,9 @@ static int processing_new(lua_State *Lua)
 //********************************************************************************************************************
 // Usage: err = proc.sleep([Seconds], [WakeOnSignal=true])
 //
-// Puts a process to sleep with message processing in the background.  Can be woken early with a signal (i.e. 
+// Puts a process to sleep with message processing in the background.  Can be woken early with a signal (i.e.
 // proc.signal()).
-// 
+//
 // Setting seconds to zero will process outstanding messages and return immediately.
 //
 // NOTE: Can be called directly as an interface function or as a member of a processing object.
@@ -180,7 +180,20 @@ static int processing_signal(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Internal: Processing index call
+// Usage: task = processing.task()
+//
+// Returns a Fluid object that references the current task.
+
+static int processing_task(lua_State *Lua)
+{
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   object *obj = push_object(prv->Lua, CurrentTask());
+   obj->Detached = true;  // External reference
+   return 1;
+}
+
+//********************************************************************************************************************
+// Internal: Processing index call - for objects returned from processing.new() only.
 
 static int processing_get(lua_State *Lua)
 {
@@ -218,6 +231,7 @@ static const luaL_Reg processinglib_functions[] = {
    { "new",    processing_new },
    { "sleep",  processing_sleep },
    { "signal", processing_signal },
+   { "task",   processing_task },
    { NULL, NULL }
 };
 

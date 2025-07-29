@@ -1772,7 +1772,9 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
       }
       else permissions = S_IREAD|S_IWRITE;
 
-      winFileInfo(src.c_str(), &feedback.Size, nullptr, nullptr);
+      size_t fsize;
+      winFileInfo(src.c_str(), &fsize, nullptr, nullptr);
+      feedback.Size = fsize;
       #else
       auto parentpermissions = get_parent_permissions(dest, nullptr, nullptr) & (~PERMIT::ALL_EXEC);
       if (glDefaultPermissions != PERMIT::NIL) {
@@ -2386,7 +2388,9 @@ ERR fs_getinfo(std::string_view Path, FileInfo *Info, LONG InfoSize)
    LONG i;
 
    Info->Flags = RDF::NIL;
-   if (!winFileInfo(Path.data(), &Info->Size, &Info->Modified, &dir)) return ERR::File;
+   size_t isize;
+   if (!winFileInfo(Path.data(), &isize, &Info->Modified, &dir)) return ERR::File;
+   Info->Size = isize;
 
    // TimeStamp has to match that produced by GET_TimeStamp
 

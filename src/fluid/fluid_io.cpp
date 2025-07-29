@@ -83,7 +83,11 @@ static int io_open(lua_State *Lua)
       switch (mode[i]) {
          case 'r': flags |= FL::READ; break;
          case 'w': flags |= FL::WRITE | FL::NEW; break;
-         case 'a': flags |= FL::WRITE; break;  // Append mode - will seek to end after open
+         case 'a': 
+            if (AnalysePath(path, nullptr) IS ERR::Okay) flags |= FL::WRITE;
+            else flags |= FL::WRITE | FL::NEW;
+
+            break;  // Append mode - will seek to end after open
          case '+': flags |= FL::READ | FL::WRITE; break;
          case 'b': break; // Binary mode - ignored as all files are binary in Parasol
       }

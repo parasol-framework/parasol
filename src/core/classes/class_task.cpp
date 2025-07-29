@@ -41,6 +41,7 @@ The task object that represents the active process can be acquired from ~Current
  #include <sys/poll.h>
  #include <sys/time.h>
  #include <sys/wait.h>
+ #include <sched.h>
 #endif
 
 #ifdef _WIN32
@@ -2072,19 +2073,104 @@ Set the Priority field to change the priority of the process associated with the
 processes is zero.  High positive values will give the process more CPU time while negative values will yield
 CPU time to other active processes.
 
+Behaviour varies between platforms, but for consistency the client can assume that the behaviour is equivalent
+to the niceness value on Unix-like systems, and the available range is -20 to 20.
+
 Note that depending on the platform, there may be limits as to whether one process can change the priority level
 of a foreign process.  Other factors such as the scheduler used by the host system should be considered in the
 effect of prioritisation.
 
 *********************************************************************************************************************/
 
+static ERR GET_Priority(extTask *Self, int *Value)
+{
+#ifdef __unix__
+   *Value = -getpriority(PRIO_PROCESS, 0);
+#elif _WIN32
+   auto priorityClass = winGetProcessPriority();
+   if (priorityClass < 0) return ERR::SystemCall;
+   *Value = priorityClass;
+#endif
+   return ERR::Okay;
+}
+
 static ERR SET_Priority(extTask *Self, int Value)
 {
 #ifdef __unix__
-   int priority, unused;
-   priority = -getpriority(PRIO_PROCESS, 0);
-   unused = nice(-(Value - priority));
+   auto priority = -getpriority(PRIO_PROCESS, 0);
+   nice(-(Value - priority));
+#elif _WIN32
+   if (winSetProcessPriority(Value) != 0) return ERR::SystemCall;
 #endif
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+AffinityMask: Controls which CPU cores the process can run on.
+
+The AffinityMask field sets the CPU affinity for the current process, determining which CPU cores the process
+is allowed to run on. This is expressed as a bitmask where each bit represents a CPU core (bit 0 = core 0,
+bit 1 = core 1, etc.).
+
+Setting CPU affinity is particularly useful for benchmarking applications where consistent performance timing
+is required, as it prevents the OS from moving the process between different CPU cores during execution.
+
+Note: This field affects the current process only and requires appropriate system privileges on some platforms.
+
+*********************************************************************************************************************/
+
+static ERR GET_AffinityMask(extTask *Self, LARGE *Value)
+{
+#ifdef __unix__
+   cpu_set_t cpuset;
+   if (sched_getaffinity(0, sizeof(cpuset), &cpuset) != 0) {
+      return ERR::SystemCall;
+   }
+
+   // Convert cpu_set_t to bitmask
+   LARGE mask = 0;
+   for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+      if (CPU_ISSET(cpu, &cpuset)) {
+         mask |= (1LL << cpu);
+      }
+   }
+   *Value = mask;
+#elif _WIN32
+   auto mask = winGetProcessAffinityMask();
+   if (mask IS 0) return ERR::SystemCall;
+   *Value = mask;
+#endif
+
+   return ERR::Okay;
+}
+
+static ERR SET_AffinityMask(extTask *Self, LARGE Value)
+{
+   if (Value <= 0) return ERR::InvalidValue;
+
+   Self->AffinityMask = Value;
+
+#ifdef __unix__
+   cpu_set_t cpuset;
+   CPU_ZERO(&cpuset);
+
+   // Convert bitmask to cpu_set_t
+   for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+      if (Value & (1LL << cpu)) {
+         CPU_SET(cpu, &cpuset);
+      }
+   }
+
+   // Set affinity for current process
+   if (sched_setaffinity(0, sizeof(cpuset), &cpuset) != 0) {
+      return ERR::SystemCall;
+   }
+#elif _WIN32
+   if (winSetProcessAffinityMask(Value) != 0) return ERR::SystemCall;
+#endif
+
    return ERR::Okay;
 }
 
@@ -2179,6 +2265,7 @@ static const FieldArray clFields[] = {
    { "ProcessID",       FDF_INT|FDF_RI },
    // Virtual fields
    { "Actions",        FDF_POINTER|FDF_R,  GET_Actions },
+   { "AffinityMask",   FDF_INT64|FDF_RW,   GET_AffinityMask, SET_AffinityMask },
    { "Args",           FDF_STRING|FDF_W,   nullptr, SET_Args },
    { "Parameters",     FDF_CPP|FDF_ARRAY|FDF_STRING|FDF_RW, GET_Parameters, SET_Parameters },
    { "ErrorCallback",  FDF_FUNCTIONPTR|FDF_RI, GET_ErrorCallback,   SET_ErrorCallback }, // STDERR
@@ -2190,7 +2277,7 @@ static const FieldArray clFields[] = {
    { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, GET_OutputCallback,  SET_OutputCallback }, // STDOUT
    { "Path",           FDF_STRING|FDF_RW,      GET_Path,            SET_Path },
    { "ProcessPath",    FDF_STRING|FDF_R,       GET_ProcessPath },
-   { "Priority",       FDF_INT|FDF_W,         nullptr, SET_Priority },
+   { "Priority",       FDF_INT|FDF_RW,        GET_Priority, SET_Priority },
    // Synonyms
    { "Src",            FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Location, SET_Location },
    END_FIELD

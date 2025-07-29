@@ -358,7 +358,7 @@ static int object_getkey(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: obj.set("Width", Value)
+// Usage: error = obj.set("Width", Value)
 
 static int object_set(lua_State *Lua)
 {
@@ -369,7 +369,7 @@ static int object_set(lua_State *Lua)
 
    if (auto obj = access_object(def)) {
       LONG type = lua_type(Lua, 2);
-      ULONG fieldhash = strihash(fieldname);
+      auto fieldhash = strihash(fieldname);
 
       ERR error;
       if (type IS LUA_TNUMBER) error = obj->set(fieldhash, luaL_checknumber(Lua, 2));

@@ -43,7 +43,6 @@
 #include <parasol/system/errors.h>
 
 #define STD_TIMEOUT 1000
-#define IS ==
 
 #ifdef _DEBUG
 #define MSG(...) printf(__VA_ARGS__)
@@ -138,7 +137,7 @@ static CRITICAL_SECTION csJob;
 
 
 //typedef unsigned char * STRING;
-typedef long long LARGE;
+typedef long long int64_t;
 typedef void * APTR;
 //typedef void * OBJECTPTR;
 typedef unsigned char UBYTE;
@@ -153,8 +152,6 @@ typedef struct DateTime {
    BYTE Second;
    BYTE TimeZone;
 } DateTime;
-
-#define IS ==
 
 #define DRIVETYPE_REMOVABLE 1
 #define DRIVETYPE_CDROM     2
@@ -226,18 +223,18 @@ enum class FFR : LONG {
 #define PERMIT_GROUP (PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_GROUP_EXEC|PERMIT_GROUP_DELETE)
 #define PERMIT_OTHERS (PERMIT_OTHERS_READ|PERMIT_OTHERS_WRITE|PERMIT_OTHERS_EXEC|PERMIT_OTHERS_DELETE)
 
-#define LOC_DIRECTORY 1
-#define LOC_FOLDER 1
-#define LOC_VOLUME 2
-#define LOC_FILE 3
+constexpr int LOC_DIRECTORY = 1;
+constexpr int LOC_FOLDER = 1;
+constexpr int LOC_VOLUME = 2;
+constexpr int LOC_FILE = 3;
 
 struct FileFeedback {
-   LARGE  Size;          // Size of the file
-   LARGE  Position;      // Current seek position within the file if moving or copying
-   STRING Path;
-   STRING Dest;          // Destination file/path if moving or copying
-   LONG   FeedbackID;    // Set to one of the FDB integers
-   char   Reserved[32];  // Reserved in case of future expansion
+   int64_t Size;          // Size of the file
+   int64_t Position;      // Current seek position within the file if moving or copying
+   STRING  Path;
+   STRING  Dest;          // Destination file/path if moving or copying
+   int     FeedbackID;    // Set to one of the FDB integers
+   char    Reserved[32];  // Reserved in case of future expansion
 };
 
 extern "C" FFR CALL_FEEDBACK(struct FUNCTION *, struct FileFeedback *);
@@ -268,7 +265,7 @@ static void printerror(void)
 
 BYTE is_console(HANDLE h)
 {
-   if (FILE_TYPE_UNKNOWN == GetFileType(h) and ERROR_INVALID_HANDLE == GetLastError()) {
+   if (FILE_TYPE_UNKNOWN IS GetFileType(h) and ERROR_INVALID_HANDLE IS GetLastError()) {
        if ((h = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL))) {
            CloseHandle(h);
            return TRUE;
@@ -756,6 +753,86 @@ extern "C" void winLowerPriority(void)
 
 //********************************************************************************************************************
 
+extern "C" int winSetProcessPriority(int Priority)
+{
+   // Map Parasol priority values to Windows priority classes
+   // Parasol uses: negative = lower priority, positive = higher priority, 0 = normal
+   DWORD priorityClass;
+
+   if (Priority <= -20) priorityClass = IDLE_PRIORITY_CLASS;              // Lowest priority
+   else if (Priority <= -10) priorityClass = BELOW_NORMAL_PRIORITY_CLASS; // Below normal
+   else if (Priority < 10) priorityClass = NORMAL_PRIORITY_CLASS;         // Normal priority (default)
+   else if (Priority < 20) priorityClass = ABOVE_NORMAL_PRIORITY_CLASS;   // Above normal
+   else priorityClass = HIGH_PRIORITY_CLASS;                              // High priority
+
+   // Set the priority class for the current process
+   if (SetPriorityClass(GetCurrentProcess(), priorityClass)) return 0; // Success
+   else return GetLastError();
+}
+
+//********************************************************************************************************************
+
+extern "C" int winGetProcessPriority(void)
+{
+   // Get current process priority class and map to Parasol priority values
+   DWORD priorityClass = GetPriorityClass(GetCurrentProcess());
+   if (priorityClass IS 0) return -1; // Error occurred
+   
+   // Map Windows priority classes to Parasol values
+   switch (priorityClass) {
+      case IDLE_PRIORITY_CLASS:         return -20;  // Lowest priority
+      case BELOW_NORMAL_PRIORITY_CLASS: return -10;  // Below normal
+      case NORMAL_PRIORITY_CLASS:       return 0;    // Normal priority (default)
+      case ABOVE_NORMAL_PRIORITY_CLASS: return 10;   // Above normal
+      case HIGH_PRIORITY_CLASS:         return 15;   // High priority
+      case REALTIME_PRIORITY_CLASS:     return 20;   // Realtime (highest)
+      default:                          return 0;    // Default to normal if unknown
+   }
+}
+
+extern "C" int64_t winGetProcessAffinityMask(void)
+{
+   DWORD_PTR processAffinityMask = 0;
+   DWORD_PTR systemAffinityMask = 0;
+   
+   // Get current process affinity mask
+   if (GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask)) {
+      return (int64_t)processAffinityMask;
+   }
+   else {
+      return 0; // Error - return 0 to indicate failure
+   }
+}
+
+extern "C" int winSetProcessAffinityMask(int64_t AffinityMask)
+{
+   // Set CPU affinity mask for the current process
+   // AffinityMask is a bitmask where each bit represents a CPU core
+   // Bit 0 = Core 0, Bit 1 = Core 1, etc.
+   
+   if (AffinityMask IS 0) return ERROR_INVALID_PARAMETER; // Invalid mask
+   
+   DWORD_PTR processAffinityMask = (DWORD_PTR)AffinityMask;
+   DWORD_PTR systemAffinityMask;
+   
+   // Get system affinity mask to validate our request
+   if (not GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask)) {
+      return GetLastError();
+   }
+   
+   // Ensure requested mask is valid for this system
+   DWORD_PTR requestedMask = (DWORD_PTR)AffinityMask;
+   if ((requestedMask & systemAffinityMask) != requestedMask) {
+      return ERROR_INVALID_PARAMETER; // Requested cores not available
+   }
+   
+   // Set the process affinity mask
+   if (SetProcessAffinityMask(GetCurrentProcess(), requestedMask)) return 0; // Success
+   else return GetLastError();
+}
+
+//********************************************************************************************************************
+
 extern "C" LONG winGetCurrentThreadId(void)
 {
    return GetCurrentThreadId();
@@ -818,6 +895,22 @@ extern "C" HANDLE winGetCurrentProcess(void)
 extern "C" LONG winGetCurrentProcessId(void)
 {
    return GetCurrentProcessId();
+}
+
+//********************************************************************************************************************
+
+extern "C" size_t winGetProcessMemoryUsage(LONG ProcessID)
+{
+   PROCESS_MEMORY_COUNTERS pmc;
+   HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, ProcessID);
+   if (process) {
+      if (GetProcessMemoryInfo(process, &pmc, sizeof(pmc))) {
+         CloseHandle(process);
+         return pmc.WorkingSetSize; // Return the working set size in bytes
+      }
+      CloseHandle(process);
+   }
+   return -1; // Failed to retrieve memory usage
 }
 
 //********************************************************************************************************************
@@ -960,7 +1053,7 @@ extern "C" LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)
    DWORD avail = 0;
    if (!PeekNamedPipe(FD, NULL, 0, NULL, &avail, NULL)) {
       *Size = 0;
-      if (GetLastError() == ERROR_BROKEN_PIPE) return -2;
+      if (GetLastError() IS ERROR_BROKEN_PIPE) return -2;
       else return -1;
    }
 
@@ -974,7 +1067,7 @@ extern "C" LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)
    }
    else {
       *Size = 0;
-      if (GetLastError() == ERROR_BROKEN_PIPE) return -2;
+      if (GetLastError() IS ERROR_BROKEN_PIPE) return -2;
       else return -1;
    }
 }
@@ -990,7 +1083,7 @@ extern "C" LONG winWritePipe(HANDLE FD, APTR Buffer, DWORD *Size)
       return 0; // Success
    }
    else {
-      if (GetLastError() == ERROR_BROKEN_PIPE) return -2;
+      if (GetLastError() IS ERROR_BROKEN_PIPE) return -2;
       else return -1;
    }
 }
@@ -1017,7 +1110,7 @@ extern "C" ERR winCreatePipe(HANDLE *Read, HANDLE *Write)
 
 extern "C" LONG winCloseHandle(HANDLE Handle)
 {
-   if (Handle == (HANDLE)-1) return 1;
+   if (Handle IS (HANDLE)-1) return 1;
    return CloseHandle(Handle);
 }
 
@@ -1031,7 +1124,7 @@ extern "C" LONG winUnmapViewOfFile(void *Address)
 
 //********************************************************************************************************************
 
-extern "C" long long winGetFileSize(char *Path)
+extern "C" size_t winGetFileSize(char *Path)
 {
    WIN32_FIND_DATA find;
    HANDLE handle;
@@ -1040,7 +1133,7 @@ extern "C" long long winGetFileSize(char *Path)
       return 0;
    }
 
-   long long size = (find.nFileSizeHigh * (MAXDWORD+1)) + find.nFileSizeLow;
+   auto size = (find.nFileSizeHigh * (MAXDWORD+1)) + find.nFileSizeLow;
 
    FindClose(handle);
    return size;
@@ -1355,7 +1448,7 @@ static void convert_time(FILETIME *Source, struct DateTime *Dest)
 
 //********************************************************************************************************************
 
-extern "C" ERR winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, LARGE *Size,
+extern "C" ERR winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, int64_t *Size,
    struct DateTime *LastWrite, struct DateTime *LastAccess, struct DateTime *LastCreate)
 {
    WIN32_FILE_ATTRIBUTE_DATA info;
@@ -1381,8 +1474,8 @@ extern "C" ERR winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *Read
    }
 
    if (LastWrite) convert_time(&info.ftLastWriteTime, LastWrite);
-   if (LastAccess) convert_time(&info.ftLastWriteTime, LastAccess);
-   if (LastCreate) convert_time(&info.ftLastWriteTime, LastCreate);
+   if (LastAccess) convert_time(&info.ftLastAccessTime, LastAccess);
+   if (LastCreate) convert_time(&info.ftCreationTime, LastCreate);
 
    return ERR::Okay;
 }
@@ -1487,7 +1580,8 @@ extern "C" ERR winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *
    if (nflags) {
       LONG i;
       char strip_path[MAX_PATH];
-      for (i=0; (Path[i]) and (i < MAX_PATH); i++) strip_path[i] = Path[i];
+      for (i=0; (Path[i]) and (i < MAX_PATH-1); i++) strip_path[i] = Path[i];
+      strip_path[i] = 0;
       if (strip_path[i-1] IS '\\') strip_path[i-1] = 0;
 
       *Handle = CreateFile(strip_path, FILE_LIST_DIRECTORY, FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
@@ -1600,8 +1694,8 @@ extern "C" LONG winReadKey(LPCSTR Key, LPCSTR Value, LPBYTE Buffer, LONG Length)
    HKEY handle;
    LONG err = 0;
    DWORD length = Length;
-   if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, Key, 0, KEY_READ, &handle) == ERROR_SUCCESS) {
-      if (RegQueryValueEx(handle, Value, 0, 0, Buffer, &length) == ERROR_SUCCESS) {
+   if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, Key, 0, KEY_READ, &handle) IS ERROR_SUCCESS) {
+      if (RegQueryValueEx(handle, Value, 0, 0, Buffer, &length) IS ERROR_SUCCESS) {
          err = length-1;
       }
       CloseHandle(handle);
@@ -1616,8 +1710,8 @@ extern "C" LONG winReadRootKey(LPCSTR Key, LPCSTR Value, LPBYTE Buffer, LONG Len
    HKEY handle;
    LONG err = 0;
    DWORD length = Length;
-   if (RegOpenKeyEx(HKEY_CLASSES_ROOT, Key, 0, KEY_READ, &handle) == ERROR_SUCCESS) {
-      if (RegQueryValueEx(handle, Value, 0, 0, Buffer, &length) == ERROR_SUCCESS) {
+   if (RegOpenKeyEx(HKEY_CLASSES_ROOT, Key, 0, KEY_READ, &handle) IS ERROR_SUCCESS) {
+      if (RegQueryValueEx(handle, Value, 0, 0, Buffer, &length) IS ERROR_SUCCESS) {
          err = length-1;
       }
       CloseHandle(handle);
@@ -1640,7 +1734,7 @@ extern "C" LONG winGetUserFolder(STRING Buffer, LONG Size)
    LPITEMIDLIST list;
    char path[MAX_PATH];
    LONG i = 0;
-   if (SHGetSpecialFolderLocation(NULL, CSIDL_APPDATA, &list) == NOERROR) {
+   if (SHGetSpecialFolderLocation(NULL, CSIDL_APPDATA, &list) IS NOERROR) {
       if (SHGetPathFromIDList(list, path)) {
          for (i=0; (i < Size-1) and (path[i]); i++) Buffer[i] = path[i];
          if (Buffer[i-1] != '\\') Buffer[i++] = '\\';
@@ -2016,7 +2110,7 @@ extern "C" LONG winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Si
 extern "C" int winSetAttrib(CSTRING Path, LONG Flags)
 {
    auto attrib = GetFileAttributes(Path);
-   if (attrib == INVALID_FILE_ATTRIBUTES) return 1;
+   if (attrib IS INVALID_FILE_ATTRIBUTES) return 1;
 
    if (Flags & PERMIT_HIDDEN) attrib |= FILE_ATTRIBUTE_HIDDEN;
    else attrib &= ~FILE_ATTRIBUTE_HIDDEN;
@@ -2039,7 +2133,7 @@ extern "C" void winGetAttrib(CSTRING Path, LONG *Flags)
    *Flags = 0;
 
    auto attrib = GetFileAttributes(Path);
-   if (attrib == INVALID_FILE_ATTRIBUTES) return;
+   if (attrib IS INVALID_FILE_ATTRIBUTES) return;
 
    if (attrib & FILE_ATTRIBUTE_HIDDEN)   *Flags |= PERMIT_HIDDEN;
    if (attrib & FILE_ATTRIBUTE_ARCHIVE)  *Flags |= PERMIT_ARCHIVE;
@@ -2051,7 +2145,7 @@ extern "C" void winGetAttrib(CSTRING Path, LONG *Flags)
 
 //********************************************************************************************************************
 
-extern "C" LONG winFileInfo(CSTRING Path, long long *Size, struct DateTime *Time, BYTE *Folder)
+extern "C" LONG winFileInfo(CSTRING Path, size_t *Size, struct DateTime *Time, BYTE *Folder)
 {
    if (!Path) return 0;
 
