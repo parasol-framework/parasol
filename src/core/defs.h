@@ -267,11 +267,11 @@ struct virtual_drive {
    ERR (*Delete)(std::string_view, FUNCTION *);
    ERR (*OpenDir)(DirInfo *);
    ERR (*CloseDir)(DirInfo *);
-   ERR (*Obsolete)(std::string_view, DirInfo **, LONG);
+   ERR (*Obsolete)(std::string_view, DirInfo **, int);
    ERR (*TestPath)(std::string &, RSF, LOC *);
    ERR (*WatchPath)(class extFile *);
    void  (*IgnoreFile)(class extFile *);
-   ERR (*GetInfo)(std::string_view, FileInfo *, LONG);
+   ERR (*GetInfo)(std::string_view, FileInfo *, int);
    ERR (*GetDeviceInfo)(std::string_view, objStorageDevice *);
    ERR (*IdentifyFile)(std::string_view, CLASSID *, CLASSID *);
    ERR (*CreateFolder)(std::string_view, PERMIT);
@@ -332,7 +332,7 @@ public:
    int64_t     Interval;       // The amount of microseconds to wait at each interval
    OBJECTPTR Subscriber;     // The object that is subscribed (pointer, if private)
    OBJECTID  SubscriberID;   // The object that is subscribed
-   FUNCTION  Routine;        // Routine to call if not using AC::Timer - ERR Routine(OBJECTID, LONG, LONG);
+   FUNCTION  Routine;        // Routine to call if not using AC::Timer - ERR Routine(OBJECTID, int, int);
    uint8_t     Cycle;
    bool      Locked;
 };
@@ -366,7 +366,7 @@ class extMetaClass : public objMetaClass {
    class RootModule *Root;              // Root module that owns this class, if any.
    uint8_t Local[8];                      // Local object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
-   ActionEntry ActionTable[LONG(AC::END)];
+   ActionEntry ActionTable[int(AC::END)];
    int16_t OriginalFieldTotal;
    uint16_t BaseCeiling;                   // FieldLookup ceiling value for the base-class fields
 };
@@ -428,6 +428,7 @@ class extTask : public objTask {
    using create = pf::Create<extTask>;
    std::map<std::string, std::string, CaseInsensitiveMap> Fields; // Variable field storage
    pf::vector<std::string> Parameters; // Arguments (string array)
+   uint64_t AffinityMask;  // CPU affinity mask for process/thread binding
    MEMORYID MessageMID;
    STRING   LaunchPath;
    STRING   Path;
@@ -456,7 +457,7 @@ class extTask : public objTask {
       STRING Env;
       APTR Platform;
    #endif
-   struct ActionEntry Actions[LONG(AC::END)]; // Action routines to be intercepted by the program
+   struct ActionEntry Actions[int(AC::END)]; // Action routines to be intercepted by the program
 };
 
 //********************************************************************************************************************
@@ -502,7 +503,7 @@ struct ClassRecord {
    std::string Header;
    std::string Icon;
 
-   static const int MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(LONG) + (sizeof(LONG) * 4);
+   static const int MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(int) + (sizeof(int) * 4);
 
    ClassRecord() { }
 
@@ -537,7 +538,7 @@ struct ClassRecord {
       if (File->write(&ParentID, sizeof(ParentID), nullptr) != ERR::Okay) return ERR::Write;
       if (File->write(&Category, sizeof(Category), nullptr) != ERR::Okay) return ERR::Write;
 
-      auto size = LONG(Name.size());
+      auto size = int(Name.size());
       File->write(&size, sizeof(size));
       File->write(Name.c_str(), size);
 
@@ -688,7 +689,7 @@ extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // Volum
 extern std::unordered_multimap<uint32_t, CLASSID> glWildClassMap; // Fast lookup for identifying classes by file extension
 extern int glWildClassMapTotal;
 extern std::vector<TaskRecord> glTasks;
-extern const CSTRING glMessages[LONG(ERR::END)+1];       // Read-only table of error messages.
+extern const CSTRING glMessages[int(ERR::END)+1];       // Read-only table of error messages.
 extern const int glTotalMessages;
 extern "C" int glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
@@ -758,7 +759,7 @@ extern THREADVAR PERMIT glDefaultPermissions;
 extern ERR (*glMessageHandler)(struct Message *);
 extern void (*glVideoRecovery)(void);
 extern void (*glKeyboardRecovery)(void);
-extern void (*glNetProcessMessages)(LONG, APTR);
+extern void (*glNetProcessMessages)(int, APTR);
 
 #ifdef _WIN32
 extern "C" WINHANDLE glProcessHandle;
@@ -970,7 +971,7 @@ class RootModule : public Object {
    void   (*Close)(OBJECTPTR);
    ERR    (*Open)(OBJECTPTR);
    ERR    (*Expunge)(void);
-   struct ActionEntry prvActions[LONG(AC::END)]; // Action routines to be intercepted by the program
+   struct ActionEntry prvActions[int(AC::END)]; // Action routines to be intercepted by the program
    std::string LibraryName; // Name of the library loaded from disk
 };
 
@@ -981,7 +982,7 @@ THREADID get_thread_id(void);
 ERR fs_closedir(DirInfo *);
 ERR fs_createlink(std::string_view, std::string_view);
 ERR fs_delete(std::string_view, FUNCTION *);
-ERR fs_getinfo(std::string_view, FileInfo *, LONG);
+ERR fs_getinfo(std::string_view, FileInfo *, int);
 ERR fs_getdeviceinfo(std::string_view, objStorageDevice *);
 void  fs_ignore_file(class extFile *);
 ERR fs_makedir(std::string_view, PERMIT);
@@ -996,17 +997,17 @@ ERR fs_watch_path(class extFile *);
 const virtual_drive * get_fs(std::string_view Path);
 void  free_storage_class(void);
 
-ERR    convert_zip_error(struct z_stream_s *, LONG);
+ERR    convert_zip_error(struct z_stream_s *, int);
 ERR    check_cache(OBJECTPTR, int64_t, int64_t);
 ERR    fs_copy(std::string_view, std::string_view, FUNCTION *, bool);
 ERR    fs_copydir(std::string &, std::string &, FileFeedback *, FUNCTION *, int8_t);
 PERMIT get_parent_permissions(std::string_view, int *, int *);
 ERR    RenameVolume(CSTRING, CSTRING);
 ERR    findfile(std::string &);
-PERMIT convert_fs_permissions(LONG);
-LONG   convert_permissions(PERMIT);
-ERR    get_file_info(std::string_view, FileInfo *, LONG);
-extern "C" ERR convert_errno(LONG Error, ERR Default);
+PERMIT convert_fs_permissions(int);
+int   convert_permissions(PERMIT);
+ERR    get_file_info(std::string_view, FileInfo *, int);
+extern "C" ERR convert_errno(int Error, ERR Default);
 void free_file_cache(void);
 
 __export void Expunge(int16_t);
@@ -1014,7 +1015,7 @@ __export void Expunge(int16_t);
 extern void add_archive(class extCompression *);
 extern void remove_archive(class extCompression *);
 
-void   print_diagnosis(LONG);
+void   print_diagnosis(int);
 CSTRING action_name(OBJECTPTR Object, int ActionID);
 #ifndef PARASOL_STATIC
 APTR   build_jump_table(const Function *);
@@ -1029,15 +1030,15 @@ void   free_events(void);
 void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
 void   init_metaclass(void);
-ERR    init_sleep(THREADID, LONG, LONG);
+ERR    init_sleep(THREADID, int, int);
 Field * lookup_id(OBJECTPTR, uint32_t, OBJECTPTR *);
-ERR    msg_event(APTR, LONG, LONG, APTR, LONG);
-ERR    msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
-ERR    msg_threadaction(APTR, LONG, LONG, APTR, LONG);
-ERR    msg_free(APTR, LONG, LONG, APTR, LONG);
+ERR    msg_event(APTR, int, int, APTR, int);
+ERR    msg_threadcallback(APTR, int, int, APTR, int);
+ERR    msg_threadaction(APTR, int, int, APTR, int);
+ERR    msg_free(APTR, int, int, APTR, int);
 void   optimise_write_field(Field &);
 void   PrepareSleep(void);
-ERR    process_janitor(OBJECTID, LONG, LONG);
+ERR    process_janitor(OBJECTID, int, int);
 void   remove_process_waitlocks(void);
 CLASSID lookup_class_by_ext(CLASSID, std::string_view);
 
@@ -1045,51 +1046,51 @@ CLASSID lookup_class_by_ext(CLASSID, std::string_view);
 void   scan_classes(void);
 #endif
 
-ERR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
+ERR  writeval_default(OBJECTPTR, Field *, int, const void *, int);
 ERR  check_paths(CSTRING, PERMIT);
 void merge_groups(ConfigGroups &, ConfigGroups &);
-extern "C" ERR validate_process(LONG);
+extern "C" ERR validate_process(int);
 
 #ifdef _WIN32
    extern "C" WINHANDLE get_threadlock(void);
    extern "C" ERR  open_public_waitlock(WINHANDLE *, CSTRING);
    extern "C" void free_threadlocks(void);
-   extern "C" ERR  wake_waitlock(WINHANDLE, LONG);
+   extern "C" ERR  wake_waitlock(WINHANDLE, int);
    extern "C" ERR  alloc_public_waitlock(WINHANDLE *, const char *Name);
    extern "C" void free_public_waitlock(WINHANDLE);
-   extern "C" ERR  send_thread_msg(WINHANDLE, int Type, APTR, LONG);
-   extern "C" int sleep_waitlock(WINHANDLE, LONG);
+   extern "C" ERR  send_thread_msg(WINHANDLE, int Type, APTR, int);
+   extern "C" int sleep_waitlock(WINHANDLE, int);
 #else
-   struct sockaddr_un * get_socket_path(LONG, socklen_t *);
+   struct sockaddr_un * get_socket_path(int, socklen_t *);
    ERR alloc_public_cond(CONDLOCK *, ALF);
    void  free_public_cond(CONDLOCK *);
-   ERR public_cond_wait(THREADLOCK *, CONDLOCK *, LONG);
-   ERR send_thread_msg(LONG, LONG, APTR, LONG);
+   ERR public_cond_wait(THREADLOCK *, CONDLOCK *, int);
+   ERR send_thread_msg(int, int, APTR, int);
 #endif
 
 #ifdef _WIN32
 extern "C" void activate_console(int8_t);
 extern "C" void free_threadlock(void);
-extern "C" int winCheckProcessExists(LONG);
+extern "C" int winCheckProcessExists(int);
 extern "C" int winCloseHandle(WINHANDLE);
 extern "C" int winCreatePipe(WINHANDLE *Read, WINHANDLE *Write);
-extern "C" int winCreateSharedMemory(STRING, LONG, LONG, WINHANDLE *, APTR *);
+extern "C" int winCreateSharedMemory(STRING, int, int, WINHANDLE *, APTR *);
 extern "C" WINHANDLE winCreateThread(APTR Function, APTR Arg, int StackSize, int *ID);
 extern "C" int winGetCurrentThreadId(void);
-extern "C" void winDeathBringer(LONG Value);
-extern "C" int winDuplicateHandle(LONG, LONG, LONG, int *);
+extern "C" void winDeathBringer(int Value);
+extern "C" int winDuplicateHandle(int, int, int, int *);
 extern "C" void winEnterCriticalSection(APTR);
-extern "C" STRING winFormatMessage(LONG, char *, LONG);
+extern "C" STRING winFormatMessage(int, char *, int);
 extern "C" int winFreeLibrary(WINHANDLE);
 extern "C" void winFreeProcess(APTR);
-extern "C" int winGetEnv(CSTRING, STRING, LONG);
-extern "C" int winGetExeDirectory(LONG, STRING);
-extern "C" int winGetCurrentDirectory(LONG, STRING);
+extern "C" int winGetEnv(CSTRING, STRING, int);
+extern "C" int winGetExeDirectory(int, STRING);
+extern "C" int winGetCurrentDirectory(int, STRING);
 extern "C" WINHANDLE winGetCurrentProcess(void);
 extern "C" int winGetCurrentProcessId(void);
 extern "C" int winGetExitCodeProcess(WINHANDLE, int *Code);
-extern "C" long long winGetFileSize(STRING);
-extern "C" size_t winGetProcessMemoryUsage(LONG ProcessID);
+extern "C" size_t winGetFileSize(STRING);
+extern "C" size_t winGetProcessMemoryUsage(int ProcessID);
 extern "C" APTR winGetProcAddress(WINHANDLE, CSTRING);
 extern "C" WINHANDLE winGetStdInput(void);
 extern "C" int64_t winGetTickCount(void);
@@ -1101,53 +1102,56 @@ extern "C" int winLaunchProcess(APTR, STRING, STRING, int8_t Group, int8_t Redir
 extern "C" void winLeaveCriticalSection(APTR);
 extern "C" WINHANDLE winLoadLibrary(CSTRING);
 extern "C" void winLowerPriority(void);
+extern "C" int winGetProcessPriority(void);
 extern "C" int winSetProcessPriority(int Priority);
+extern "C" LARGE winGetProcessAffinityMask(void);
+extern "C" int winSetProcessAffinityMask(LARGE AffinityMask);
 extern "C" void winProcessMessages(void);
-extern "C" int winReadStd(APTR, LONG, APTR Buffer, int *Size);
+extern "C" int winReadStd(APTR, int, APTR Buffer, int *Size);
 extern "C" int winReadPipe(WINHANDLE FD, APTR Buffer, int *Size);
 extern "C" void winResetStdOut(APTR, APTR Buffer, int *Size);
 extern "C" void winResetStdErr(APTR, APTR Buffer, int *Size);
 extern "C" int winWritePipe(WINHANDLE FD, CPTR Buffer, int *Size);
 extern "C" void winSelect(WINHANDLE FD, char *Read, char *Write);
 extern "C" void winSetEnv(CSTRING, CSTRING);
-extern "C" void winSetUnhandledExceptionFilter(LONG (*Function)(LONG, APTR, LONG, int *));
+extern "C" void winSetUnhandledExceptionFilter(int (*Function)(int, APTR, int, int *));
 extern "C" void winShutdown(void);
-extern "C" void winSleep(LONG);
+extern "C" void winSleep(int);
 extern "C" int winTerminateApp(int dwPID, int dwTimeout);
 extern "C" void winTerminateThread(WINHANDLE);
 extern "C" int winTryEnterCriticalSection(APTR);
 extern "C" int winUnmapViewOfFile(APTR);
-extern "C" int winWaitForSingleObject(WINHANDLE, LONG);
-extern "C" int winWaitForObjects(LONG Total, WINHANDLE *, int Time, int8_t WinMsgs);
-extern "C" int winWaitThread(WINHANDLE, LONG);
+extern "C" int winWaitForSingleObject(WINHANDLE, int);
+extern "C" int winWaitForObjects(int Total, WINHANDLE *, int Time, int8_t WinMsgs);
+extern "C" int winWaitThread(WINHANDLE, int);
 extern "C" int winWriteStd(APTR, CPTR Buffer, int Size);
 extern "C" int winDeleteFile(char *Path);
 extern "C" int winCheckDirectoryExists(CSTRING);
 extern "C" ERR winCreateDir(CSTRING);
-extern "C" int winCurrentDirectory(STRING, LONG);
-extern "C" int winFileInfo(CSTRING, long long *, struct DateTime *, int8_t *);
+extern "C" int winCurrentDirectory(STRING, int);
+extern "C" int winFileInfo(CSTRING, size_t *, struct DateTime *, int8_t *);
 extern "C" void winFindClose(WINHANDLE);
 extern "C" void winFindNextChangeNotification(WINHANDLE);
 extern "C" void winGetAttrib(CSTRING, int *);
-extern "C" int8_t winGetCommand(char *, char *, LONG);
+extern "C" int8_t winGetCommand(char *, char *, int);
 extern "C" int winGetFreeDiskSpace(char, int64_t *, int64_t *);
 extern "C" int winGetLogicalDrives(void);
-extern "C" int winGetLogicalDriveStrings(STRING, LONG);
+extern "C" int winGetLogicalDriveStrings(STRING, int);
 extern ERR winGetVolumeInformation(STRING Volume, std::string &Label, std::string &FileSystem, int &Type);
 extern "C" int winGetFullPathName(const char *Path, int PathLength, char *Output, char **NamePart);
-extern "C" int winGetUserFolder(STRING, LONG);
-extern "C" int winGetUserName(STRING, LONG);
+extern "C" int winGetUserFolder(STRING, int);
+extern "C" int winGetUserName(STRING, int);
 extern "C" int winGetWatchBufferSize(void);
 extern "C" int winMoveFile(STRING, STRING);
-extern "C" int winReadChanges(WINHANDLE, APTR, int NotifyFlags, char *, LONG, int *);
-extern "C" int winReadKey(CSTRING, CSTRING, STRING, LONG);
-extern "C" int winReadRootKey(CSTRING, STRING, STRING, LONG);
+extern "C" int winReadChanges(WINHANDLE, APTR, int NotifyFlags, char *, int, int *);
+extern "C" int winReadKey(CSTRING, CSTRING, STRING, int);
+extern "C" int winReadRootKey(CSTRING, STRING, STRING, int);
 extern "C" int winReadStdInput(WINHANDLE FD, APTR Buffer, int BufferSize, int *Size);
 extern "C" int winScan(APTR *, STRING, STRING, int64_t *, struct DateTime *, struct DateTime *, int8_t *, int8_t *, int8_t *, int8_t *);
-extern "C" int winSetAttrib(CSTRING, LONG);
+extern "C" int winSetAttrib(CSTRING, int);
 extern "C" int winSetEOF(CSTRING, int64_t);
 extern "C" int winTestLocation(CSTRING, int8_t);
-extern "C" ERR winWatchFile(LONG, CSTRING, APTR, WINHANDLE *, int *);
+extern "C" ERR winWatchFile(int, CSTRING, APTR, WINHANDLE *, int *);
 extern "C" void winFindCloseChangeNotification(WINHANDLE);
 extern "C" APTR winFindDirectory(STRING, APTR *, STRING);
 extern "C" APTR winFindFile(STRING, APTR *, STRING);
@@ -1163,7 +1167,7 @@ extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING
 
 inline void set_memory_manager(APTR Address, ResourceManager *Manager)
 {
-   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
+   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(int) - sizeof(int) - sizeof(ResourceManager *));
    address_mgr[0] = Manager;
 }
 

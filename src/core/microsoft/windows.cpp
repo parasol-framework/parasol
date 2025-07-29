@@ -138,7 +138,7 @@ static CRITICAL_SECTION csJob;
 
 
 //typedef unsigned char * STRING;
-typedef long long LARGE;
+typedef long long int64_t;
 typedef void * APTR;
 //typedef void * OBJECTPTR;
 typedef unsigned char UBYTE;
@@ -226,18 +226,18 @@ enum class FFR : LONG {
 #define PERMIT_GROUP (PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_GROUP_EXEC|PERMIT_GROUP_DELETE)
 #define PERMIT_OTHERS (PERMIT_OTHERS_READ|PERMIT_OTHERS_WRITE|PERMIT_OTHERS_EXEC|PERMIT_OTHERS_DELETE)
 
-#define LOC_DIRECTORY 1
-#define LOC_FOLDER 1
-#define LOC_VOLUME 2
-#define LOC_FILE 3
+constexpr int LOC_DIRECTORY = 1;
+constexpr int LOC_FOLDER = 1;
+constexpr int LOC_VOLUME = 2;
+constexpr int LOC_FILE = 3;
 
 struct FileFeedback {
-   LARGE  Size;          // Size of the file
-   LARGE  Position;      // Current seek position within the file if moving or copying
-   STRING Path;
-   STRING Dest;          // Destination file/path if moving or copying
-   LONG   FeedbackID;    // Set to one of the FDB integers
-   char   Reserved[32];  // Reserved in case of future expansion
+   int64_t Size;          // Size of the file
+   int64_t Position;      // Current seek position within the file if moving or copying
+   STRING  Path;
+   STRING  Dest;          // Destination file/path if moving or copying
+   int     FeedbackID;    // Set to one of the FDB integers
+   char    Reserved[32];  // Reserved in case of future expansion
 };
 
 extern "C" FFR CALL_FEEDBACK(struct FUNCTION *, struct FileFeedback *);
@@ -775,6 +775,67 @@ extern "C" int winSetProcessPriority(int Priority)
 
 //********************************************************************************************************************
 
+extern "C" int winGetProcessPriority(void)
+{
+   // Get current process priority class and map to Parasol priority values
+   DWORD priorityClass = GetPriorityClass(GetCurrentProcess());
+   if (priorityClass IS 0) return -1; // Error occurred
+   
+   // Map Windows priority classes to Parasol values
+   switch (priorityClass) {
+      case IDLE_PRIORITY_CLASS:         return -20;  // Lowest priority
+      case BELOW_NORMAL_PRIORITY_CLASS: return -10;  // Below normal
+      case NORMAL_PRIORITY_CLASS:       return 0;    // Normal priority (default)
+      case ABOVE_NORMAL_PRIORITY_CLASS: return 10;   // Above normal
+      case HIGH_PRIORITY_CLASS:         return 15;   // High priority
+      case REALTIME_PRIORITY_CLASS:     return 20;   // Realtime (highest)
+      default:                          return 0;    // Default to normal if unknown
+   }
+}
+
+extern "C" int64_t winGetProcessAffinityMask(void)
+{
+   DWORD_PTR processAffinityMask = 0;
+   DWORD_PTR systemAffinityMask = 0;
+   
+   // Get current process affinity mask
+   if (GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask)) {
+      return (int64_t)processAffinityMask;
+   }
+   else {
+      return 0; // Error - return 0 to indicate failure
+   }
+}
+
+extern "C" int winSetProcessAffinityMask(int64_t AffinityMask)
+{
+   // Set CPU affinity mask for the current process
+   // AffinityMask is a bitmask where each bit represents a CPU core
+   // Bit 0 = Core 0, Bit 1 = Core 1, etc.
+   
+   if (AffinityMask IS 0) return ERROR_INVALID_PARAMETER; // Invalid mask
+   
+   DWORD_PTR processAffinityMask = (DWORD_PTR)AffinityMask;
+   DWORD_PTR systemAffinityMask;
+   
+   // Get system affinity mask to validate our request
+   if (not GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask)) {
+      return GetLastError();
+   }
+   
+   // Ensure requested mask is valid for this system
+   DWORD_PTR requestedMask = (DWORD_PTR)AffinityMask;
+   if ((requestedMask & systemAffinityMask) != requestedMask) {
+      return ERROR_INVALID_PARAMETER; // Requested cores not available
+   }
+   
+   // Set the process affinity mask
+   if (SetProcessAffinityMask(GetCurrentProcess(), requestedMask)) return 0; // Success
+   else return GetLastError();
+}
+
+//********************************************************************************************************************
+
 extern "C" LONG winGetCurrentThreadId(void)
 {
    return GetCurrentThreadId();
@@ -1066,7 +1127,7 @@ extern "C" LONG winUnmapViewOfFile(void *Address)
 
 //********************************************************************************************************************
 
-extern "C" long long winGetFileSize(char *Path)
+extern "C" size_t winGetFileSize(char *Path)
 {
    WIN32_FIND_DATA find;
    HANDLE handle;
@@ -1075,7 +1136,7 @@ extern "C" long long winGetFileSize(char *Path)
       return 0;
    }
 
-   long long size = (find.nFileSizeHigh * (MAXDWORD+1)) + find.nFileSizeLow;
+   auto size = (find.nFileSizeHigh * (MAXDWORD+1)) + find.nFileSizeLow;
 
    FindClose(handle);
    return size;
@@ -1390,7 +1451,7 @@ static void convert_time(FILETIME *Source, struct DateTime *Dest)
 
 //********************************************************************************************************************
 
-extern "C" ERR winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, LARGE *Size,
+extern "C" ERR winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, int64_t *Size,
    struct DateTime *LastWrite, struct DateTime *LastAccess, struct DateTime *LastCreate)
 {
    WIN32_FILE_ATTRIBUTE_DATA info;
@@ -2086,7 +2147,7 @@ extern "C" void winGetAttrib(CSTRING Path, LONG *Flags)
 
 //********************************************************************************************************************
 
-extern "C" LONG winFileInfo(CSTRING Path, long long *Size, struct DateTime *Time, BYTE *Folder)
+extern "C" LONG winFileInfo(CSTRING Path, size_t *Size, struct DateTime *Time, BYTE *Folder)
 {
    if (!Path) return 0;
 

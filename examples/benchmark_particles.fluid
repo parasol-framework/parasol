@@ -221,6 +221,8 @@ end
 
    setBenchmarkMode()
 
+   processing.task().affinityMask = 6
+
    glTimes = {}
 
    if (glMode == MODE_PRIMITIVE) then
