@@ -1,4 +1,46 @@
 
+// Key for the gradient cache
+
+struct GradientCacheKey {
+   long long gradient_uid;
+   double opacity;
+   agg::trans_affine transform;
+   VSPREAD spread_method;
+   VGT gradient_type;
+
+   bool operator<(const GradientCacheKey& other) const {
+      if (gradient_uid != other.gradient_uid) return gradient_uid < other.gradient_uid;
+      if (opacity != other.opacity) return opacity < other.opacity;
+      if (spread_method != other.spread_method) return spread_method < other.spread_method;
+      if (gradient_type != other.gradient_type) return gradient_type < other.gradient_type;
+      return memcmp(&transform, &other.transform, sizeof(agg::trans_affine)) < 0;
+   }
+};
+
+//********************************************************************************************************************
+
+class GradientCache {
+public:
+   static GradientCache& instance() {
+      static GradientCache instance;
+      return instance;
+   }
+
+   GRADIENT_TABLE* get(const GradientCacheKey& key) {
+      auto it = cache.find(key);
+      if (it != cache.end()) return &it->second;
+      return nullptr;
+   }
+
+   void put(const GradientCacheKey& key, const GRADIENT_TABLE& table) {
+      cache[key] = table;
+   }
+
+private:
+   GradientCache() {}
+   std::map<GradientCacheKey, GRADIENT_TABLE> cache;
+};
+
 //********************************************************************************************************************
 
 void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster, extPainter &Painter)
@@ -45,9 +87,23 @@ void SceneRenderer::render_fill(VectorState &State, extVector &Vector, agg::rast
    }
 
    if (Painter.Gradient) {
-      if (auto table = get_fill_gradient_table(Painter, State.mOpacity * Vector.FillOpacity)) {
+      GradientCacheKey key;
+      key.gradient_uid = Painter.Gradient->UID;
+      key.opacity = State.mOpacity * Vector.FillOpacity;
+      key.transform = build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State);
+      key.spread_method = ((extVectorGradient*)Painter.Gradient)->SpreadMethod;
+      key.gradient_type = ((extVectorGradient*)Painter.Gradient)->Type;
+
+      GRADIENT_TABLE *table = GradientCache::instance().get(key);
+
+      if (!table) {
+         table = get_fill_gradient_table(Painter, State.mOpacity * Vector.FillOpacity);
+         if (table) GradientCache::instance().put(key, *table);
+      }
+
+      if (table) {
          fill_gradient(State, Vector.Bounds, &Vector.BasePath,
-            build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
+            key.transform,
             mView->vpFixedWidth, mView->vpFixedHeight, *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster);
       }
    }
@@ -583,7 +639,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
    transform *= Transform;
    transform.invert();
-   
+
    if (SampleMethod IS VSM::AUTO) {
       // Using anything more sophisticated than bicubic sampling for tiling is a CPU killer.
       // If the client requires a different method, they will need to set it explicitly.
