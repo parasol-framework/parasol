@@ -43,7 +43,6 @@
 #include <parasol/system/errors.h>
 
 #define STD_TIMEOUT 1000
-#define IS ==
 
 #ifdef _DEBUG
 #define MSG(...) printf(__VA_ARGS__)
@@ -153,8 +152,6 @@ typedef struct DateTime {
    BYTE Second;
    BYTE TimeZone;
 } DateTime;
-
-#define IS ==
 
 #define DRIVETYPE_REMOVABLE 1
 #define DRIVETYPE_CDROM     2
@@ -268,7 +265,7 @@ static void printerror(void)
 
 BYTE is_console(HANDLE h)
 {
-   if (FILE_TYPE_UNKNOWN == GetFileType(h) and ERROR_INVALID_HANDLE == GetLastError()) {
+   if (FILE_TYPE_UNKNOWN IS GetFileType(h) and ERROR_INVALID_HANDLE IS GetLastError()) {
        if ((h = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL))) {
            CloseHandle(h);
            return TRUE;
@@ -1056,7 +1053,7 @@ extern "C" LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)
    DWORD avail = 0;
    if (!PeekNamedPipe(FD, NULL, 0, NULL, &avail, NULL)) {
       *Size = 0;
-      if (GetLastError() == ERROR_BROKEN_PIPE) return -2;
+      if (GetLastError() IS ERROR_BROKEN_PIPE) return -2;
       else return -1;
    }
 
@@ -1070,7 +1067,7 @@ extern "C" LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)
    }
    else {
       *Size = 0;
-      if (GetLastError() == ERROR_BROKEN_PIPE) return -2;
+      if (GetLastError() IS ERROR_BROKEN_PIPE) return -2;
       else return -1;
    }
 }
@@ -1086,7 +1083,7 @@ extern "C" LONG winWritePipe(HANDLE FD, APTR Buffer, DWORD *Size)
       return 0; // Success
    }
    else {
-      if (GetLastError() == ERROR_BROKEN_PIPE) return -2;
+      if (GetLastError() IS ERROR_BROKEN_PIPE) return -2;
       else return -1;
    }
 }
@@ -1113,7 +1110,7 @@ extern "C" ERR winCreatePipe(HANDLE *Read, HANDLE *Write)
 
 extern "C" LONG winCloseHandle(HANDLE Handle)
 {
-   if (Handle == (HANDLE)-1) return 1;
+   if (Handle IS (HANDLE)-1) return 1;
    return CloseHandle(Handle);
 }
 
@@ -1477,8 +1474,8 @@ extern "C" ERR winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *Read
    }
 
    if (LastWrite) convert_time(&info.ftLastWriteTime, LastWrite);
-   if (LastAccess) convert_time(&info.ftLastWriteTime, LastAccess);
-   if (LastCreate) convert_time(&info.ftLastWriteTime, LastCreate);
+   if (LastAccess) convert_time(&info.ftLastAccessTime, LastAccess);
+   if (LastCreate) convert_time(&info.ftCreationTime, LastCreate);
 
    return ERR::Okay;
 }
@@ -1583,7 +1580,8 @@ extern "C" ERR winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *
    if (nflags) {
       LONG i;
       char strip_path[MAX_PATH];
-      for (i=0; (Path[i]) and (i < MAX_PATH); i++) strip_path[i] = Path[i];
+      for (i=0; (Path[i]) and (i < MAX_PATH-1); i++) strip_path[i] = Path[i];
+      strip_path[i] = 0;
       if (strip_path[i-1] IS '\\') strip_path[i-1] = 0;
 
       *Handle = CreateFile(strip_path, FILE_LIST_DIRECTORY, FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
@@ -1696,8 +1694,8 @@ extern "C" LONG winReadKey(LPCSTR Key, LPCSTR Value, LPBYTE Buffer, LONG Length)
    HKEY handle;
    LONG err = 0;
    DWORD length = Length;
-   if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, Key, 0, KEY_READ, &handle) == ERROR_SUCCESS) {
-      if (RegQueryValueEx(handle, Value, 0, 0, Buffer, &length) == ERROR_SUCCESS) {
+   if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, Key, 0, KEY_READ, &handle) IS ERROR_SUCCESS) {
+      if (RegQueryValueEx(handle, Value, 0, 0, Buffer, &length) IS ERROR_SUCCESS) {
          err = length-1;
       }
       CloseHandle(handle);
@@ -1712,8 +1710,8 @@ extern "C" LONG winReadRootKey(LPCSTR Key, LPCSTR Value, LPBYTE Buffer, LONG Len
    HKEY handle;
    LONG err = 0;
    DWORD length = Length;
-   if (RegOpenKeyEx(HKEY_CLASSES_ROOT, Key, 0, KEY_READ, &handle) == ERROR_SUCCESS) {
-      if (RegQueryValueEx(handle, Value, 0, 0, Buffer, &length) == ERROR_SUCCESS) {
+   if (RegOpenKeyEx(HKEY_CLASSES_ROOT, Key, 0, KEY_READ, &handle) IS ERROR_SUCCESS) {
+      if (RegQueryValueEx(handle, Value, 0, 0, Buffer, &length) IS ERROR_SUCCESS) {
          err = length-1;
       }
       CloseHandle(handle);
@@ -1736,7 +1734,7 @@ extern "C" LONG winGetUserFolder(STRING Buffer, LONG Size)
    LPITEMIDLIST list;
    char path[MAX_PATH];
    LONG i = 0;
-   if (SHGetSpecialFolderLocation(NULL, CSIDL_APPDATA, &list) == NOERROR) {
+   if (SHGetSpecialFolderLocation(NULL, CSIDL_APPDATA, &list) IS NOERROR) {
       if (SHGetPathFromIDList(list, path)) {
          for (i=0; (i < Size-1) and (path[i]); i++) Buffer[i] = path[i];
          if (Buffer[i-1] != '\\') Buffer[i++] = '\\';
@@ -2112,7 +2110,7 @@ extern "C" LONG winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Si
 extern "C" int winSetAttrib(CSTRING Path, LONG Flags)
 {
    auto attrib = GetFileAttributes(Path);
-   if (attrib == INVALID_FILE_ATTRIBUTES) return 1;
+   if (attrib IS INVALID_FILE_ATTRIBUTES) return 1;
 
    if (Flags & PERMIT_HIDDEN) attrib |= FILE_ATTRIBUTE_HIDDEN;
    else attrib &= ~FILE_ATTRIBUTE_HIDDEN;
@@ -2135,7 +2133,7 @@ extern "C" void winGetAttrib(CSTRING Path, LONG *Flags)
    *Flags = 0;
 
    auto attrib = GetFileAttributes(Path);
-   if (attrib == INVALID_FILE_ATTRIBUTES) return;
+   if (attrib IS INVALID_FILE_ATTRIBUTES) return;
 
    if (attrib & FILE_ATTRIBUTE_HIDDEN)   *Flags |= PERMIT_HIDDEN;
    if (attrib & FILE_ATTRIBUTE_ARCHIVE)  *Flags |= PERMIT_ARCHIVE;

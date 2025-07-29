@@ -195,6 +195,18 @@
     </field>
 
     <field>
+      <name>AffinityMask</name>
+      <comment>Controls which CPU cores the process can run on.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT64</type>
+      <description>
+<p>The AffinityMask field sets the CPU affinity for the current process, determining which CPU cores the process is allowed to run on. This is expressed as a bitmask where each bit represents a CPU core (bit 0 = core 0, bit 1 = core 1, etc.).</p>
+<p>Setting CPU affinity is particularly useful for benchmarking applications where consistent performance timing is required, as it prevents the OS from moving the process between different CPU cores during execution.</p>
+<p>Note: This field affects the current process only and requires appropriate system privileges on some platforms.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Args</name>
       <comment>Command line arguments (string format).</comment>
       <access write="S">Set</access>
@@ -324,11 +336,11 @@
     <field>
       <name>Priority</name>
       <comment>The task priority in relation to other tasks is be defined here.</comment>
-      <access write="S">Set</access>
+      <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
 <p>Set the Priority field to change the priority of the process associated with the task.  The default value for all processes is zero.  High positive values will give the process more CPU time while negative values will yield CPU time to other active processes.</p>
-<p>Behaviour varies between platforms, but for consistency the client should assume that the behaviour is equivalent to the niceness value on Linux systems.</p>
+<p>Behaviour varies between platforms, but for consistency the client can assume that the behaviour is equivalent to the niceness value on Unix-like systems, and the available range is -20 to 20.</p>
 <p>Note that depending on the platform, there may be limits as to whether one process can change the priority level of a foreign process.  Other factors such as the scheduler used by the host system should be considered in the effect of prioritisation.</p>
       </description>
     </field>

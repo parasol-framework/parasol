@@ -4368,6 +4368,12 @@ class objTask : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setAffinityMask(const int64_t Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_INT64, &Value, 1);
+   }
+
    template <class T> inline ERR setArgs(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
@@ -4418,7 +4424,7 @@ class objTask : public Object {
 
    inline ERR setOutputCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
