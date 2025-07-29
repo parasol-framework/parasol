@@ -51,6 +51,7 @@
 #endif
 
 #include <string>
+#include <array>
 
 #define WAITLOCK_EVENTS 1 // Use events instead of semaphores for waitlocks (recommended)
 
@@ -64,9 +65,9 @@ extern "C" LONG glProcessID;
 extern "C" HANDLE glProcessHandle;
 extern "C" int8_t glProgramStage;
 
-static HANDLE glInstance = 0;
-static HANDLE glMsgWindow = 0;
-HANDLE glValidationSemaphore = 0;
+static HANDLE glInstance = nullptr;
+static HANDLE glMsgWindow = nullptr;
+HANDLE glValidationSemaphore = nullptr;
 
 #ifndef _MSC_VER
 WINBASEAPI VOID WINAPI InitializeConditionVariable(PCONDITION_VARIABLE ConditionVariable);
@@ -95,8 +96,8 @@ LONG ExceptionFilter(LPEXCEPTION_POINTERS Args);
 extern "C" char * winFormatMessage(LONG, char *Buffer, LONG BufferSize);
 static BOOL break_handler(DWORD CtrlType);
 
-static LONG (*glCrashHandler)(LONG, APTR, LONG, APTR) = 0;
-static void (*glBreakHandler)(void) = 0;
+static LONG (*glCrashHandler)(LONG, APTR, LONG, APTR) = nullptr;
+static void (*glBreakHandler)(void) = nullptr;
 
 struct stdpipe {
    HANDLE Read;
@@ -314,7 +315,7 @@ extern "C" void activate_console(BYTE AllowOpenConsole)
 
 //********************************************************************************************************************
 
-static inline unsigned int LCASEHASH(char *String)
+static inline unsigned int LCASEHASH(const char* String) noexcept
 {
    unsigned int hash = 5381;
    unsigned char c;
@@ -486,7 +487,10 @@ extern "C" ERR plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue)
 
 extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore)
 {
-   if (*Semaphore) { CloseHandle(*Semaphore); *Semaphore = 0; }
+   if (Semaphore and *Semaphore) { 
+      CloseHandle(*Semaphore); 
+      *Semaphore = nullptr; 
+   }
 }
 
 //********************************************************************************************************************
@@ -516,7 +520,7 @@ extern "C" void winShutdown(void)
 {
    if (glValidationSemaphore) plFreePrivateSemaphore(&glValidationSemaphore);
 
-   if (glMsgWindow) { DestroyWindow(glMsgWindow); glMsgWindow = 0; }
+   if (glMsgWindow) { DestroyWindow(glMsgWindow); glMsgWindow = nullptr; }
    UnregisterClass(glMsgClass, glInstance);
 
    EnterCriticalSection(&csHandleBank);
@@ -576,8 +580,10 @@ static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
 
 extern "C" ERR alloc_public_waitlock(HANDLE *Lock, const char *Name)
 {
+   if (!Lock) return ERR::NullArgs;
+   
 #ifdef WAITLOCK_EVENTS
-   HANDLE event;
+   HANDLE event = nullptr;
 
    if (Name) {
       if ((event = OpenEvent(SYNCHRONIZE|EVENT_MODIFY_STATE, FALSE, Name))) {
@@ -586,10 +592,11 @@ extern "C" ERR alloc_public_waitlock(HANDLE *Lock, const char *Name)
       }
    }
 
-   SECURITY_ATTRIBUTES sa;
-   sa.nLength = sizeof(sa);
-   sa.lpSecurityDescriptor = NULL;
-   sa.bInheritHandle = FALSE;
+   SECURITY_ATTRIBUTES sa = {
+      .nLength = sizeof(SECURITY_ATTRIBUTES),
+      .lpSecurityDescriptor = nullptr,
+      .bInheritHandle = FALSE
+   };
 
    if ((event = CreateEvent(&sa, FALSE, FALSE, Name))) {
       *Lock = event;
@@ -600,19 +607,19 @@ extern "C" ERR alloc_public_waitlock(HANDLE *Lock, const char *Name)
    SECURITY_ATTRIBUTES security;
 
    security.nLength = sizeof(SECURITY_ATTRIBUTES);
-   security.lpSecurityDescriptor = NULL;
+   security.lpSecurityDescriptor = nullptr;
    security.bInheritHandle = FALSE;
    if ((*Lock = CreateSemaphore(&security, 0, 1, Name))) return ERR::Okay;
    else return ERR::SystemCall;
 #endif
 }
 
-extern "C" void free_public_waitlock(HANDLE Lock)
+extern "C" void free_public_waitlock(HANDLE Lock) noexcept
 {
-   CloseHandle(Lock);
+   if (Lock) CloseHandle(Lock);
 }
 
-extern "C" ERR wake_waitlock(HANDLE Lock, LONG TotalSleepers)
+extern "C" ERR wake_waitlock(HANDLE Lock, LONG TotalSleepers) noexcept
 {
    if (!Lock) return ERR::NullArgs;
 
@@ -621,8 +628,8 @@ extern "C" ERR wake_waitlock(HANDLE Lock, LONG TotalSleepers)
    #ifdef WAITLOCK_EVENTS
       while (TotalSleepers-- > 0) {
          if (!SetEvent(Lock)) {
-            char msg[100];
-            fprintf(stderr, "SetEvent() failed: %s\n", winFormatMessage(GetLastError(), msg, sizeof(msg)));
+            std::array<char, 100> msg{};
+            fprintf(stderr, "SetEvent() failed: %s\n", winFormatMessage(GetLastError(), msg.data(), msg.size()));
             error = ERR::SystemCall;
             break;
          }
@@ -746,14 +753,14 @@ extern "C" void winProcessMessages(void)
 
 //********************************************************************************************************************
 
-extern "C" void winLowerPriority(void)
+extern "C" void winLowerPriority(void) noexcept
 {
    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 }
 
 //********************************************************************************************************************
 
-extern "C" int winSetProcessPriority(int Priority)
+extern "C" int winSetProcessPriority(int Priority) noexcept
 {
    // Map Parasol priority values to Windows priority classes
    // Parasol uses: negative = lower priority, positive = higher priority, 0 = normal
@@ -772,10 +779,10 @@ extern "C" int winSetProcessPriority(int Priority)
 
 //********************************************************************************************************************
 
-extern "C" int winGetProcessPriority(void)
+extern "C" int winGetProcessPriority(void) noexcept
 {
    // Get current process priority class and map to Parasol priority values
-   DWORD priorityClass = GetPriorityClass(GetCurrentProcess());
+   const DWORD priorityClass = GetPriorityClass(GetCurrentProcess());
    if (priorityClass IS 0) return -1; // Error occurred
    
    // Map Windows priority classes to Parasol values
@@ -790,7 +797,7 @@ extern "C" int winGetProcessPriority(void)
    }
 }
 
-extern "C" int64_t winGetProcessAffinityMask(void)
+extern "C" int64_t winGetProcessAffinityMask(void) noexcept
 {
    DWORD_PTR processAffinityMask = 0;
    DWORD_PTR systemAffinityMask = 0;
@@ -804,7 +811,7 @@ extern "C" int64_t winGetProcessAffinityMask(void)
    }
 }
 
-extern "C" int winSetProcessAffinityMask(int64_t AffinityMask)
+extern "C" int winSetProcessAffinityMask(int64_t AffinityMask) noexcept
 {
    // Set CPU affinity mask for the current process
    // AffinityMask is a bitmask where each bit represents a CPU core

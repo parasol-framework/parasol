@@ -97,7 +97,7 @@ static ERR sslConnect(extNetSocket *Self)
    if (!Self->WinSSL) return ERR::FieldNotSet;
 
    std::string hostname = Self->Address ? Self->Address : "";
-   auto result = ssl_wrapper_connect(Self->WinSSL, (void *)Self->SocketHandle, hostname);
+   auto result = ssl_wrapper_connect(Self->WinSSL, (void *)(size_t)Self->SocketHandle, hostname);
 
    switch (result) {
       case SSL_OK:
