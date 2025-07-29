@@ -2098,7 +2098,7 @@ static ERR SET_Priority(extTask *Self, int Value)
 {
 #ifdef __unix__
    auto priority = -getpriority(PRIO_PROCESS, 0);
-   auto unused = nice(-(Value - priority));
+   nice(-(Value - priority));
 #elif _WIN32
    if (winSetProcessPriority(Value) != 0) return ERR::SystemCall;
 #endif

@@ -15,6 +15,7 @@ Name: System
  #include <stdio.h>
  #include <unistd.h>
  #include <signal.h>
+ #include <sys/resource.h>
 
  #ifndef __ANDROID__
   #include <sys/msg.h>
