@@ -75,7 +75,7 @@ typedef struct {
   GUID SubFormat;
 } WAVEFORMATEXTENSIBLE;
 
-typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT);
+typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT, FLOAT **);
 
 static const WORD WAVE_RAW   = 0x0001;  // Uncompressed waveform data.
 static const WORD WAVE_ADPCM = 0x0002;  // ADPCM compressed waveform data.

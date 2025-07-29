@@ -2,7 +2,6 @@
 #define RAMPSPEED 0.01  // Default ramping speed - volume steps per output sample.  Keeping this value very low prevents clicks from occurring
 
 static LONG MixStep;
-static FLOAT *glMixDest = nullptr; // TODO: Global requires deprecation
 
 static void filter_float_mono(extAudio *, FLOAT *, LONG);
 static void filter_float_stereo(extAudio *, FLOAT *, LONG);
@@ -723,7 +722,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
       mastervol *= conversion;
    }
 
-   glMixDest = (FLOAT *)Dest;
+   FLOAT *mix_dest = (FLOAT *)Dest;
    while (TotalSamples > 0) {
       if (Channel.isStopped()) return;
 
@@ -755,7 +754,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
          // If volume ramping is enabled, mix one sample element at a time and adjust volume by RAMPSPEED.
 
          while (((Channel.Flags & CHF::VOL_RAMP) != CHF::NIL) and (mix_now > 0)) {
-            mix_pos = mix_routine(MixSample, mix_pos, 1, next_offset, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
+            mix_pos = mix_routine(MixSample, mix_pos, 1, next_offset, mastervol * Channel.LVolume, mastervol * Channel.RVolume, &mix_dest);
             mix_now--;
 
             bool cont = false;
@@ -797,19 +796,19 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
             // Ensure proper alignment and do all mixing if next_offset != 1
 
             LONG num;
-            if ((mix_now > 0) and ((next_offset != 1) or ((((MAXINT)glMixDest) % 1) != 0))) {
+            if ((mix_now > 0) and ((next_offset != 1) or ((((MAXINT)mix_dest) % 1) != 0))) {
                if (next_offset IS 1) {
-                  num = 1 - (((MAXINT)glMixDest) % 1);
+                  num = 1 - (((MAXINT)mix_dest) % 1);
                   if (num > mix_now) num = mix_now;
                }
                else num = mix_now;
 
-               mix_pos = mix_routine(MixSample, mix_pos, num, next_offset, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
+               mix_pos = mix_routine(MixSample, mix_pos, num, next_offset, mastervol * Channel.LVolume, mastervol * Channel.RVolume, &mix_dest);
                mix_now -= num;
             }
 
             if (mix_now > 0) { // Main mixing loop
-               mix_pos = mix_routine(MixSample, mix_pos, mix_now, 1, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
+               mix_pos = mix_routine(MixSample, mix_pos, mix_now, 1, mastervol * Channel.LVolume, mastervol * Channel.RVolume, &mix_dest);
             }
          }
 
