@@ -400,7 +400,7 @@ static ERR AUDIO_Beep(extAudio *Self, struct snd::Beep *Args)
       return ERR::Okay;
    }
 #else
-   // TODO: Generate a tone according to the supplied parameters and play it as a waveform.
+   #warning Platform requires support for Beep()
 #endif
    return ERR::NoSupport;
 }

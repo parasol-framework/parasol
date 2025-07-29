@@ -54,7 +54,7 @@ individual samples with more immediacy.
 constexpr int SECONDS_STREAM_BUFFER = 2;
 constexpr int SIZE_RIFF_CHUNK = 12;
 
-static ERR SOUND_GET_Active(extSound *, LONG *);
+static ERR SOUND_GET_Active(extSound *, int *);
 
 static ERR SOUND_SET_Note(extSound *, CSTRING);
 
@@ -98,14 +98,14 @@ static void sound_stopped_event(extSound *Self)
 //********************************************************************************************************************
 
 #ifndef USE_WIN32_PLAYBACK
-static LONG read_stream(LONG Handle, LONG Offset, APTR Buffer, LONG Length)
+static int read_stream(int Handle, int Offset, APTR Buffer, int Length)
 {
    auto Self = (extSound *)CurrentContext();
 
    if ((Offset >= 0) and (Self->Position != Offset)) Self->seekStart(Offset);
 
    if (Length > 0) {
-      LONG result;
+      int result;
       Self->read(Buffer, Length, &result);
       return result;
    }
@@ -113,7 +113,7 @@ static LONG read_stream(LONG Handle, LONG Offset, APTR Buffer, LONG Length)
    return 0;
 }
 
-static void onstop_event(LONG SampleHandle)
+static void onstop_event(int SampleHandle)
 {
    sound_stopped_event((extSound *)CurrentContext());
 }
@@ -144,7 +144,7 @@ static ERR set_playback_trigger(extSound *Self)
 {
    if (Self->OnStop.defined()) {
       pf::Log log(__FUNCTION__);
-      const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
+      const int bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
       const double playback_time = double((Self->Length - Self->Position) / bytes_per_sample) / double(Self->Playback);
       if (playback_time < 0.01) {
          if (Self->PlaybackTimer) { UpdateTimer(Self->PlaybackTimer, 0); Self->PlaybackTimer = 0; }
@@ -163,14 +163,14 @@ static ERR set_playback_trigger(extSound *Self)
 #endif
 
 #ifdef _WIN32
-extern "C" void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
+extern "C" void end_of_stream(OBJECTPTR Object, int BytesRemaining)
 {
    if (Object->Class->BaseClassID IS CLASSID::SOUND) {
       auto Self = (extSound *)Object;
       if (Self->OnStop.defined()) {
          pf::Log log(__FUNCTION__);
          pf::SwitchContext context(Object);
-         const LONG bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
+         const int bytes_per_sample = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3));
          const double playback_time = (double(BytesRemaining / bytes_per_sample) / double(Self->Playback)) + 0.01;
 
          if (!Self->PlaybackTimer) {
@@ -254,18 +254,18 @@ static ERR SOUND_Activate(extSound *Self)
    // Optimised playback for Windows - this does not use our internal mixer.
 
    if (!Self->Active) {
-      WORD channels = ((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1;
+      int16_t channels = ((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1;
       WAVEFORMATEX wave = {
          .Format            = WAVE_RAW,
          .Channels          = channels,
          .Frequency         = Self->Frequency,
          .AvgBytesPerSecond = Self->BytesPerSecond,
-         .BlockAlign        = WORD(channels * (Self->BitsPerSample>>3)),
-         .BitsPerSample     = WORD(Self->BitsPerSample),
+         .BlockAlign        = int16_t(channels * (Self->BitsPerSample>>3)),
+         .BitsPerSample     = int16_t(Self->BitsPerSample),
          .ExtraLength       = 0
       };
 
-      LONG buffer_len;
+      int buffer_len;
       if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 16 * 1024)) {
          buffer_len = Self->BytesPerSecond * SECONDS_STREAM_BUFFER;
       }
@@ -342,7 +342,7 @@ static ERR SOUND_Activate(extSound *Self)
 
       BYTE *buffer;
       if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
-         log.msg("Streaming enabled for playback in format $%.8x; Length: %d", LONG(sampleformat), Self->Length);
+         log.msg("Streaming enabled for playback in format $%.8x; Length: %d", int(sampleformat), Self->Length);
 
          struct snd::AddStream stream;
          AudioLoop loop;
@@ -387,7 +387,7 @@ static ERR SOUND_Activate(extSound *Self)
          auto client_pos = Self->Position;
          if (Self->Position) Self->seekStart(0); // Ensure we're reading the entire sample from the start
 
-         LONG result;
+         int result;
          if (Self->read(buffer, Self->Length, &result) IS ERR::Okay) {
             if (result != Self->Length) log.warning("Expected %d bytes, read %d", Self->Length, result);
 
@@ -445,7 +445,7 @@ static ERR SOUND_Activate(extSound *Self)
       AudioChannel *channel = nullptr;
       if ((Self->Flags & (SDF::RESTRICT_PLAY|SDF::STREAM)) != SDF::NIL) {
          Self->ChannelIndex &= 0xffff0000;
-         LONG i;
+         int i;
          for (i=0; i < audio->MaxChannels; i++) {
             channel = audio->GetChannel(Self->ChannelIndex);
             if ((channel) and (channel->SampleHandle IS Self->Handle)) break;
@@ -458,7 +458,7 @@ static ERR SOUND_Activate(extSound *Self)
          // Find an available channel.  If all channels are in use, check the priorities to see if we can push anyone out.
          AudioChannel *priority = nullptr;
          Self->ChannelIndex &= 0xffff0000;
-         LONG i;
+         int i;
          for (i=0; i < audio->MaxChannels; i++) {
             if (auto channel = audio->GetChannel(Self->ChannelIndex)) {
                if (channel->isStopped()) break;
@@ -670,7 +670,7 @@ Init: Prepares a sound object for usage.
 static ERR SOUND_Init(extSound *Self)
 {
    pf::Log log;
-   LONG id, len;
+   int id, len;
    ERR error;
 
    // Find the local audio object or create one to ease the developer's workload.
@@ -712,7 +712,7 @@ static ERR SOUND_Init(extSound *Self)
    }
    else Self->File->seekStart(0);
 
-   Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
+   Self->File->read(Self->Header, (int)sizeof(Self->Header));
 
    if ((std::string_view((char *)Self->Header, 4) != "RIFF") or
        (std::string_view((char *)Self->Header + 8, 4) != "WAVE")) {
@@ -728,7 +728,7 @@ static ERR SOUND_Init(extSound *Self)
    if (fl::ReadLE(Self->File, &len) != ERR::Okay) return ERR::Read; // Length of data in this chunk
 
    WAVEFormat WAVE;
-   LONG result;
+   int result;
    if ((Self->File->read(&WAVE, len, &result) != ERR::Okay) or (result != len)) {
       return log.warning(ERR::Read);
    }
@@ -752,7 +752,7 @@ static ERR SOUND_Init(extSound *Self)
 
    // Setup the sound structure
 
-   Self->DataOffset = Self->File->get<LONG>(FID_Position);
+   Self->DataOffset = Self->File->get<int>(FID_Position);
 
    Self->Format         = WAVE.Format;
    Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
@@ -776,7 +776,7 @@ static ERR SOUND_Init(extSound *Self)
 static ERR SOUND_Init(extSound *Self)
 {
    pf::Log log;
-   LONG id, len, result, pos;
+   int id, len, result, pos;
    ERR error;
 
    if (!Self->AudioID) {
@@ -819,7 +819,7 @@ static ERR SOUND_Init(extSound *Self)
    }
    else Self->File->seekStart(0);
 
-   Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
+   Self->File->read(Self->Header, (int)sizeof(Self->Header));
 
    if ((std::string_view((char *)Self->Header, 4) != "RIFF") or
        (std::string_view((char *)Self->Header + 8, 4) != "WAVE")) {
@@ -849,7 +849,7 @@ static ERR SOUND_Init(extSound *Self)
 
    // Look for the cue chunk for loop information
 
-   pos = Self->File->get<LONG>(FID_Position);
+   pos = Self->File->get<int>(FID_Position);
 #if 0
    if (find_chunk(Self, Self->File, "cue ") IS ERR::Okay) {
       data_p += 32;
@@ -876,7 +876,7 @@ static ERR SOUND_Init(extSound *Self)
 
    fl::ReadLE(Self->File, &Self->Length); // Length of audio data in this chunk
 
-   Self->DataOffset = Self->File->get<LONG>(FID_Position);
+   Self->DataOffset = Self->File->get<int>(FID_Position);
 
    Self->Format         = WAVE.Format;
    Self->BytesPerSecond = WAVE.AvgBytesPerSecond;
@@ -940,7 +940,7 @@ static ERR SOUND_Read(extSound *Self, struct acRead *Args)
 
    // Don't read more than the known raw sample length
 
-   LONG result;
+   int result;
    if (Self->Position + Args->Length > Self->Length) {
       if (auto error = Self->File->read(Args->Buffer, Self->Length - Self->Position, &result); error != ERR::Okay) return error;
    }
@@ -962,26 +962,70 @@ static ERR SOUND_SaveToObject(extSound *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   // This routine is used if the developer is trying to save the sound data as a specific subclass type.
+   // Divert this call if the developer is trying to save the sound data as a specific subclass type.
 
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SOUND)) {
       auto mclass = (objMetaClass *)FindClass(Args->ClassID);
 
       ERR (**routine)(OBJECTPTR, APTR);
       if ((mclass->get(FID_ActionTable, routine) IS ERR::Okay) and (routine)) {
-         if (routine[LONG(AC::SaveToObject)]) {
-            return routine[LONG(AC::SaveToObject)](Self, Args);
+         if (routine[int(AC::SaveToObject)]) {
+            return routine[int(AC::SaveToObject)](Self, Args);
          }
          else return log.warning(ERR::NoSupport);
       }
       else return log.warning(ERR::GetField);
    }
 
-   // TODO: Save the sound data as a wave file
+   if (!Self->Length) return log.warning(ERR::FieldNotSet);
 
+   struct {
+      char    ChunkID[4] = { 'R', 'I', 'F', 'F' };
+      int     ChunkSize;      // File size - 8
+      char    Format[4] = { 'W', 'A', 'V', 'E' };
+      char    FmtChunkID[4] = { 'f', 'm', 't', ' ' };
+      int     FmtChunkSize = 16;  // Size of format chunk (16 for PCM)
+      int16_t AudioFormat = 1;    // 1 for PCM
+      int16_t NumChannels;    // Number of channels
+      int     SampleRate;     // Sample rate
+      int     ByteRate;       // Byte rate
+      int16_t BlockAlign;     // Block align
+      int16_t BitsPerSample;  // Bits per sample
+      char    DataChunkID[4] = { 'd', 'a', 't', 'a' }; // "data"
+      int     DataChunkSize;  // Size of data
+   } header;
 
+   header.NumChannels   = ((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1;
+   header.SampleRate    = Self->Frequency;
+   header.BitsPerSample = Self->BitsPerSample;
+   header.BlockAlign    = (header.NumChannels * header.BitsPerSample) / 8;
+   header.ByteRate      = header.SampleRate * header.BlockAlign;
 
+   const int audio_data_size = Self->Length;
 
+   header.DataChunkSize = audio_data_size;
+   header.ChunkSize     = 36 + audio_data_size; // Header size (44) - 8 + data size
+
+   if (acWrite(Args->Dest, &header, sizeof(header)) != ERR::Okay) return log.warning(ERR::Write);
+
+   // Read and write audio data in chunks
+   const int chunk_size = 8192;
+   int bytes_remaining = audio_data_size;
+   int original_position = Self->Position;
+
+   if (Self->seekStart(0) != ERR::Okay) return log.warning(ERR::Seek);
+
+   while (bytes_remaining > 0) {
+      int read_size = (bytes_remaining < chunk_size) ? bytes_remaining : chunk_size;
+      uint8_t buffer[8192];
+      int bytes_read;
+      if (acRead(Self, buffer, read_size, &bytes_read) != ERR::Okay) return log.warning(ERR::Read);
+      if (acWrite(Args->Dest, buffer, bytes_read) != ERR::Okay) return log.warning(ERR::Write);
+      bytes_remaining -= bytes_read;
+      if (bytes_read < read_size) break;
+   }
+
+   Self->seekStart(original_position);
    return ERR::Okay;
 }
 
@@ -1013,7 +1057,7 @@ static ERR SOUND_Seek(extSound *Self, struct acSeek *Args)
    if (Self->Position < 0) Self->Position = 0;
    else if (Self->Position > Self->Length) Self->Position = Self->Length;
    else { // Retain correct byte alignment.
-      LONG align = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3)) - 1;
+      int align = ((((Self->Flags & SDF::STEREO) != SDF::NIL) ? 2 : 1) * (Self->BitsPerSample>>3)) - 1;
       Self->Position &= ~align;
    }
 
@@ -1073,13 +1117,13 @@ Active: Returns `true` if the sound sample is being played back.
 -END-
 *********************************************************************************************************************/
 
-static ERR SOUND_GET_Active(extSound *Self, LONG *Value)
+static ERR SOUND_GET_Active(extSound *Self, int *Value)
 {
 #ifdef USE_WIN32_PLAYBACK
    pf::Log log;
 
    if (Self->Active) {
-      WORD status = sndCheckActivity((PlatformData *)Self->PlatformData);
+      int16_t status = sndCheckActivity((PlatformData *)Self->PlatformData);
 
       if (status IS 0) *Value = FALSE;
       else if (status > 0) *Value = TRUE;
@@ -1160,9 +1204,9 @@ Lookup: SDF
 
 *********************************************************************************************************************/
 
-static ERR SOUND_SET_Flags(extSound *Self, LONG Value)
+static ERR SOUND_SET_Flags(extSound *Self, int Value)
 {
-   Self->Flags = SDF((LONG(Self->Flags) & 0xffff0000) | (Value & 0x0000ffff));
+   Self->Flags = SDF((int(Self->Flags) & 0xffff0000) | (Value & 0x0000ffff));
    return ERR::Okay;
 }
 
@@ -1187,7 +1231,7 @@ The buffer that is referred to by the Header field is not populated until the In
 
 *********************************************************************************************************************/
 
-static ERR SOUND_GET_Header(extSound *Self, BYTE **Value, LONG *Elements)
+static ERR SOUND_GET_Header(extSound *Self, BYTE **Value, int *Elements)
 {
    *Value = (BYTE *)Self->Header;
    *Elements = std::ssize(Self->Header);
@@ -1203,7 +1247,7 @@ value by the #BytesPerSecond field.
 
 *********************************************************************************************************************/
 
-static ERR SOUND_SET_Length(extSound *Self, LONG Value)
+static ERR SOUND_SET_Length(extSound *Self, int Value)
 {
    pf::Log log;
    if (Value >= 0) {
@@ -1336,7 +1380,7 @@ static ERR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    if (!*Value) return ERR::Okay;
 
-   LONG i, note;
+   int i, note;
    for (i=0; (Value[i]) and (i < 3); i++) Self->NoteString[i] = Value[i];
    Self->NoteString[i] = 0;
 
@@ -1397,7 +1441,7 @@ static ERR SOUND_SET_Note(extSound *Self, CSTRING Value)
 
    // Tune the playback frequency to match the requested note
 
-   Self->Playback = (LONG)(Self->Playback * glScale[Self->Note]);
+   Self->Playback = (int)(Self->Playback * glScale[Self->Note]);
 
    // If the sound is playing, set the new playback frequency immediately
 
@@ -1431,7 +1475,7 @@ you need to quickly double or halve the playback rate.
 
 *********************************************************************************************************************/
 
-static ERR SOUND_SET_Octave(extSound *Self, LONG Value)
+static ERR SOUND_SET_Octave(extSound *Self, int Value)
 {
    if ((Value < -10) or (Value > 10))
    Self->Octave = Value;
@@ -1530,7 +1574,7 @@ static ERR SOUND_SET_Path(extSound *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    if ((Value) and (*Value)) {
-      LONG i = strlen(Value);
+      int i = strlen(Value);
       if (AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path) IS ERR::Okay) {
          for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
          Self->Path[i] = 0;
@@ -1550,7 +1594,7 @@ any time, including during audio playback if real-time adjustments to a sample's
 
 *********************************************************************************************************************/
 
-static ERR SOUND_SET_Playback(extSound *Self, LONG Value)
+static ERR SOUND_SET_Playback(extSound *Self, int Value)
 {
    pf::Log log;
 
@@ -1603,7 +1647,7 @@ The minimum priority value allowed is -100, the maximum is 100.
 
 *********************************************************************************************************************/
 
-static ERR SOUND_SET_Priority(extSound *Self, LONG Value)
+static ERR SOUND_SET_Priority(extSound *Self, int Value)
 {
    Self->Priority = Value;
    if (Self->Priority < -100) Self->Priority = -100;
@@ -1676,7 +1720,7 @@ static ERR find_chunk(extSound *Self, objFile *File, std::string_view ChunkName)
 {
    while (true) {
       char chunk[4];
-      LONG len;
+      int len;
       if ((File->read(chunk, sizeof(chunk), &len) != ERR::Okay) or (len != sizeof(chunk))) {
          return ERR::Read;
       }
@@ -1717,17 +1761,17 @@ static ERR win32_audio_stream(extSound *Self, int64_t Elapsed, int64_t CurrentTi
 //********************************************************************************************************************
 
 static const FieldDef clFlags[] = {
-   { "Loop",         (LONG)SDF::LOOP },
-   { "New",          (LONG)SDF::NEW },
-   { "Stereo",       (LONG)SDF::STEREO },
-   { "RestrictPlay", (LONG)SDF::RESTRICT_PLAY },
+   { "Loop",         (int)SDF::LOOP },
+   { "New",          (int)SDF::NEW },
+   { "Stereo",       (int)SDF::STEREO },
+   { "RestrictPlay", (int)SDF::RESTRICT_PLAY },
    { nullptr, 0 }
 };
 
 static const FieldDef clStream[] = {
-   { "Always", (LONG)STREAM::ALWAYS },
-   { "Smart",  (LONG)STREAM::SMART },
-   { "Never",  (LONG)STREAM::NEVER },
+   { "Always", (int)STREAM::ALWAYS },
+   { "Smart",  (int)STREAM::SMART },
+   { "Never",  (int)STREAM::NEVER },
    { nullptr, 0 }
 };
 
