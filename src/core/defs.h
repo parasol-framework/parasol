@@ -1101,6 +1101,7 @@ extern "C" int winLaunchProcess(APTR, STRING, STRING, int8_t Group, int8_t Redir
 extern "C" void winLeaveCriticalSection(APTR);
 extern "C" WINHANDLE winLoadLibrary(CSTRING);
 extern "C" void winLowerPriority(void);
+extern "C" int winSetProcessPriority(int Priority);
 extern "C" void winProcessMessages(void);
 extern "C" int winReadStd(APTR, LONG, APTR Buffer, int *Size);
 extern "C" int winReadPipe(WINHANDLE FD, APTR Buffer, int *Size);

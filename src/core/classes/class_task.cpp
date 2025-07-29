@@ -2072,6 +2072,9 @@ Set the Priority field to change the priority of the process associated with the
 processes is zero.  High positive values will give the process more CPU time while negative values will yield
 CPU time to other active processes.
 
+Behaviour varies between platforms, but for consistency the client should assume that the behaviour is equivalent
+to the niceness value on Linux systems.
+
 Note that depending on the platform, there may be limits as to whether one process can change the priority level
 of a foreign process.  Other factors such as the scheduler used by the host system should be considered in the
 effect of prioritisation.
@@ -2081,9 +2084,10 @@ effect of prioritisation.
 static ERR SET_Priority(extTask *Self, int Value)
 {
 #ifdef __unix__
-   int priority, unused;
-   priority = -getpriority(PRIO_PROCESS, 0);
-   unused = nice(-(Value - priority));
+   auto priority = -getpriority(PRIO_PROCESS, 0);
+   auto unused = nice(-(Value - priority));
+#elif _WIN32
+   if (winSetProcessPriority(Value) != 0) return ERR::SystemCall;
 #endif
    return ERR::Okay;
 }

@@ -756,6 +756,25 @@ extern "C" void winLowerPriority(void)
 
 //********************************************************************************************************************
 
+extern "C" int winSetProcessPriority(int Priority)
+{
+   // Map Parasol priority values to Windows priority classes
+   // Parasol uses: negative = lower priority, positive = higher priority, 0 = normal
+   DWORD priorityClass;
+
+   if (Priority <= -20) priorityClass = IDLE_PRIORITY_CLASS;              // Lowest priority
+   else if (Priority <= -10) priorityClass = BELOW_NORMAL_PRIORITY_CLASS; // Below normal
+   else if (Priority < 10) priorityClass = NORMAL_PRIORITY_CLASS;         // Normal priority (default)
+   else if (Priority < 20) priorityClass = ABOVE_NORMAL_PRIORITY_CLASS;   // Above normal
+   else priorityClass = HIGH_PRIORITY_CLASS;                              // High priority
+
+   // Set the priority class for the current process
+   if (SetPriorityClass(GetCurrentProcess(), priorityClass)) return 0; // Success
+   else return GetLastError();
+}
+
+//********************************************************************************************************************
+
 extern "C" LONG winGetCurrentThreadId(void)
 {
    return GetCurrentThreadId();
