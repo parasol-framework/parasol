@@ -193,7 +193,7 @@ static int processing_task(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Internal: Processing index call
+// Internal: Processing index call - for objects returned from processing.new() only.
 
 static int processing_get(lua_State *Lua)
 {
@@ -206,11 +206,6 @@ static int processing_get(lua_State *Lua)
       else if (std::string_view("signal") IS fieldname) {
          lua_pushvalue(Lua, 1);
          lua_pushcclosure(Lua, &processing_signal, 1);
-         return 1;
-      }
-      else if (std::string_view("task") IS fieldname) {
-         lua_pushvalue(Lua, 1);
-         lua_pushcclosure(Lua, &processing_task, 1);
          return 1;
       }
       else return luaL_error(Lua, "Unrecognised field name '%s'", fieldname);
