@@ -139,12 +139,19 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function testBeep()
+   glAudio.mtBeep(3000, 100, 5)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
    return {
       tests = {
         'testSequentialPlayback',
         'testPan',
         'testVolume',
-        'testTones'
+        'testTones',
+        'testBeep'
       },
       init = function(Folder)
          glFolder = Folder

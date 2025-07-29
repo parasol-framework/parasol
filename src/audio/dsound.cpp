@@ -367,3 +367,11 @@ void sndSetPosition(PlatformData *Sound, int Offset)
       Sound->Position = Offset;
    }
 }
+
+//********************************************************************************************************************
+// Windows system beep using hardware speaker
+
+extern "C" int sndBeep(int Pitch, int Duration)
+{
+   return Beep(Pitch, Duration) ? 1 : 0;
+}
