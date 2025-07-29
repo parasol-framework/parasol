@@ -77,6 +77,9 @@ typedef struct {
 
 typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT, FLOAT **);
 
+// Function to set mixing step for thread-safe operation
+void set_mix_step(LONG step);
+
 static const WORD WAVE_RAW   = 0x0001;  // Uncompressed waveform data.
 static const WORD WAVE_ADPCM = 0x0002;  // ADPCM compressed waveform data.
 static const WORD WAVE_FLOAT = 0x0003;  // Uncompressed floating point waveform
