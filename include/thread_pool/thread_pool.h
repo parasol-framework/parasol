@@ -103,6 +103,14 @@ namespace dp {
         } // InitializationFunction
 
         ~thread_pool() {
+#ifdef __MINGW32__
+           // MinGW may have a bug relating to thread termination when CTRL-C is used (process hangs).
+           for (std::size_t i = 0; i < threads_.size(); ++i) {
+              if (threads_[i].joinable()) {
+                 threads_[i].detach();
+              }
+           }
+#else
             // stop all threads
             for (std::size_t i = 0; i < threads_.size(); ++i) {
                 threads_[i].request_stop();
@@ -124,6 +132,7 @@ namespace dp {
                     }
                 }
             }
+#endif
         }
 
         /// thread pool is non-copyable
