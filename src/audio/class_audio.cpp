@@ -22,6 +22,8 @@ Note: Support for audio recording is not currently available in this implementat
 
 *********************************************************************************************************************/
 
+#include "mixer_dispatch.h"
+
 #ifndef ALSA_ENABLED
 static ERR init_audio(extAudio *Self)
 {
@@ -36,6 +38,42 @@ static ERR init_audio(extAudio *Self)
    return ERR::Okay;
 }
 #endif
+
+inline DOUBLE extAudio::MixerLag() {
+   if (!mixerLag) {
+      pf::Log log(__FUNCTION__);
+      #ifdef _WIN32
+         // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
+         mixerLag = MIX_INTERVAL + (DOUBLE(MixElements>>1) / DOUBLE(OutputRate));
+      #elif ALSA_ENABLED
+         mixerLag = MIX_INTERVAL + (AudioBufferSize / DriverBitSize) / DOUBLE(OutputRate);
+      #endif
+      log.trace("Mixer lag: %.2f", mixerLag);
+   }
+   return mixerLag;
+}
+
+inline void extAudio::finish(AudioChannel &Channel, bool Notify) {
+   if (!Channel.isStopped()) {
+      Channel.State = CHS::FINISHED;
+      if ((Channel.SampleHandle) and (Notify)) {
+         #ifdef ALSA_ENABLED
+            if ((Channel.EndTime) and (PreciseTime() < Channel.EndTime)) {
+               this->MixTimers.emplace_back(Channel.EndTime, Channel.SampleHandle);
+               Channel.EndTime = 0;
+            }
+            else audio_stopped_event(*this, Channel.SampleHandle);
+         #else
+            audio_stopped_event(*this, Channel.SampleHandle);
+         #endif
+      }
+   }
+   else Channel.State = CHS::FINISHED;
+}
+
+//********************************************************************************************************************
+// The individual mixing functions and function pointer arrays have been replaced by the 
+// consolidated AudioMixer::dispatch_mix() function in mixer_dispatch.cpp
 
 /*********************************************************************************************************************
 -ACTION-
@@ -94,14 +132,10 @@ static ERR AUDIO_Activate(extAudio *Self)
    Self->MixElements   = SAMPLE(Self->MixBufferSize / mixbitsize);
 
    if (AllocMemory(Self->MixBufferSize, MEM::DATA, &Self->MixBuffer) IS ERR::Okay) {
-      // Pick the correct mixing routines
+      // Configure the mixing system
 
-      if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
-         if (Self->Stereo) Self->MixRoutines = MixStereoFloatInterp;
-         else Self->MixRoutines = MixMonoFloatInterp;
-      }
-      else if (Self->Stereo) Self->MixRoutines = MixStereoFloat;
-      else Self->MixRoutines = MixMonoFloat;
+      bool use_interpolation = (Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL;
+      Self->MixConfig = AudioConfig(Self->Stereo, use_interpolation);
 
       #ifdef _WIN32
          WAVEFORMATEX wave = {

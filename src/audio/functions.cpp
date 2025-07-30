@@ -1,23 +1,178 @@
 
-#define RAMPSPEED 0.01  // Default ramping speed - volume steps per output sample.  Keeping this value very low prevents clicks from occurring
+const double RAMPSPEED = 0.01;  // Default ramping speed - volume steps per output sample.  Keeping this value very low prevents clicks from occurring
 
-static LONG MixStep;
-static FLOAT *glMixDest = nullptr; // TODO: Global requires deprecation
+#include <type_traits>  // For SFINAE and template metaprogramming
+#include "mixer_dispatch.h"
 
-static void filter_float_mono(extAudio *, FLOAT *, LONG);
-static void filter_float_stereo(extAudio *, FLOAT *, LONG);
-static void mix_channel(extAudio *, AudioChannel &, LONG, APTR);
-static ERR mix_data(extAudio *, LONG, APTR);
+static void filter_float_mono(extAudio *, float *, int);
+static void filter_float_stereo(extAudio *, float *, int);
+static void mix_channel(extAudio *, AudioChannel &, int, APTR);
+static ERR mix_data(extAudio *, int, APTR);
 static ERR process_commands(extAudio *, SAMPLE);
+
+inline bool adjust_volume_ramp(double &current, double target, double ramp_speed) {
+   if (current < target) {
+      current += ramp_speed;
+      if (current >= target) {
+         current = target;
+         return false;
+      }
+      return true;
+   }
+   else if (current > target) {
+      current -= ramp_speed;
+      if (current <= target) {
+         current = target;
+         return false;
+      }
+      return true;
+   }
+   return false;
+}
+
+// Template-based sample format traits for compile-time optimization
+template<SFM format>
+struct SampleFormatTraits;
+
+template<>
+struct SampleFormatTraits<SFM::S16_BIT_STEREO> {
+   using type = int16_t;
+   static constexpr int size = sizeof(int16_t) * 2;
+   static constexpr double conversion = 1.0 / 32767.0;
+   static constexpr bool is_stereo = true;
+};
+
+template<>
+struct SampleFormatTraits<SFM::S16_BIT_MONO> {
+   using type = int16_t;
+   static constexpr int size = sizeof(int16_t);
+   static constexpr double conversion = 1.0 / 32767.0;
+   static constexpr bool is_stereo = false;
+};
+
+template<>
+struct SampleFormatTraits<SFM::U8_BIT_STEREO> {
+   using type = uint8_t;
+   static constexpr int size = sizeof(uint8_t) * 2;
+   static constexpr double conversion = 1.0 / 127.0;
+   static constexpr bool is_stereo = true;
+};
+
+template<>
+struct SampleFormatTraits<SFM::U8_BIT_MONO> {
+   using type = uint8_t;
+   static constexpr int size = sizeof(uint8_t);
+   static constexpr double conversion = 1.0 / 127.0;
+   static constexpr bool is_stereo = false;
+};
+
+// Template-based loop type handler using constexpr if (C++17)
+template<LTYPE loop_type>
+constexpr int calculate_samples_until_end(
+   int position, int sample_length, int loop_start, int loop_end, 
+   bool over_sampling, int *next_offset) {
+   
+   *next_offset = 1;
+ 
+   if constexpr (loop_type IS LTYPE::UNIDIRECTIONAL) {
+      if (over_sampling) {
+         if ((position + 1) < loop_end) return (loop_end - 1) - position;
+         else {
+            *next_offset = loop_start - position;
+            return loop_end - position;
+         }
+      } 
+      else return loop_end - position;
+   } 
+   else { // Default/no loop
+      if (over_sampling) {
+         if ((position + 1) < sample_length) return (sample_length - 1) - position;
+         else {
+            *next_offset = 0;
+            return sample_length - position;
+         }
+      } 
+      else return sample_length - position;
+   }
+}
+
+// Constexpr clamping functions for compile-time optimization
+
+template<typename T>
+constexpr T clamp_sample(T value, T min_val, T max_val) noexcept {
+   return (value < min_val) ? min_val : ((value > max_val) ? max_val : value);
+}
+
+// SIMD-aware conversion with template specialization and loop unrolling
+
+template<typename OutputType, typename InputType = float, std::size_t UnrollFactor = 4>
+void convert_samples(const InputType* input, int count, OutputType* output) {
+   static_assert(std::is_arithmetic_v<OutputType>, "Output type must be arithmetic");
+   static_assert(UnrollFactor > 0 and UnrollFactor <= 8, "Unroll factor must be 1-8");
+   
+   const InputType* end = input + count;
+   const InputType* unroll_end = input + (count - count % UnrollFactor);
+   
+   if constexpr (std::is_same_v<OutputType, uint8_t>) {
+      // 8-bit conversion with loop unrolling
+      while (input < unroll_end) {
+         for (std::size_t i = 0; i < UnrollFactor; ++i) {
+            const int sample = int(input[i]) >> 8;
+            output[i] = uint8_t(128 + clamp_sample(sample, int(-128), int(127)));
+         }
+         input += UnrollFactor;
+         output += UnrollFactor;
+      }
+      // Handle remaining samples
+      while (input < end) {
+         const int sample = int(*input) >> 8;
+         *output = uint8_t(128 + clamp_sample(sample, int(-128), int(127)));
+         ++input; ++output;
+      }
+   } 
+   else if constexpr (std::is_same_v<OutputType, int16_t>) {
+      // 16-bit conversion with loop unrolling
+      while (input < unroll_end) {
+         for (std::size_t i = 0; i < UnrollFactor; ++i) {
+            const int sample = int(input[i]);
+            output[i] = int16_t(clamp_sample(sample, int(-32768), int(32767)));
+         }
+         input += UnrollFactor;
+         output += UnrollFactor;
+      }
+      while (input < end) {
+         const int sample = int(*input);
+         *output = int16_t(clamp_sample(sample, int(-32768), int(32767)));
+         ++input; ++output;
+      }
+   } 
+   else if constexpr (std::is_same_v<OutputType, float>) {
+      // Float conversion with vectorization hints
+      while (input < unroll_end) {
+         for (std::size_t i = 0; i < UnrollFactor; ++i) {
+            output[i] = clamp_sample(float(input[i]), -1.0f, 1.0f);
+         }
+         input += UnrollFactor;
+         output += UnrollFactor;
+      }
+      while (input < end) {
+         *output = clamp_sample(float(*input), -1.0f, 1.0f);
+         ++input; ++output;
+      }
+   } 
+   else {
+      static_assert(std::is_same_v<OutputType, void>, "Unsupported output type");
+   }
+}
 
 //********************************************************************************************************************
 
-static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
+static void audio_stopped_event(extAudio &Audio, int SampleHandle)
 {
    auto &sample = Audio.Samples[SampleHandle];
    if (sample.OnStop.isC()) {
       pf::SwitchContext context(sample.OnStop.Context);
-      auto routine = (void (*)(extAudio *, LONG, APTR))sample.OnStop.Routine;
+      auto routine = (void (*)(extAudio *, int, APTR))sample.OnStop.Routine;
       routine(&Audio, SampleHandle, sample.OnStop.Meta);
    }
    else if (sample.OnStop.isScript()) {
@@ -28,11 +183,11 @@ static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
 //********************************************************************************************************************
 // The callback must return the number of bytes written to the buffer.
 
-static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
+static BYTELEN fill_stream_buffer(int Handle, AudioSample &Sample, int Offset)
 {
    if (Sample.Callback.isC()) {
       pf::SwitchContext context(Sample.Callback.Context);
-      auto routine = (BYTELEN (*)(LONG, LONG, UBYTE *, LONG, APTR))Sample.Callback.Routine;
+      auto routine = (BYTELEN (*)(int, int, uint8_t *, int, APTR))Sample.Callback.Routine;
       return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType), Sample.Callback.Meta);
    }
    else if (Sample.Callback.isScript()) {
@@ -56,7 +211,7 @@ static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
 static ERR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
 {
    auto ml = SAMPLE(0x7fffffff);
-   for (LONG i=1; i < (LONG)Self->Sets.size(); i++) {
+   for (int i=1; i < (int)Self->Sets.size(); i++) {
       if ((Self->Sets[i].MixLeft > 0) and (Self->Sets[i].MixLeft < ml)) {
          ml = Self->Sets[i].MixLeft;
       }
@@ -72,7 +227,7 @@ static ERR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
 #ifdef _WIN32
 extern "C" int dsReadData(Object *Self, void *Buffer, int Length) {
    if (Self->Class->BaseClassID IS CLASSID::SOUND) {
-      LONG result;
+      int result;
       if (((objSound *)Self)->read(Buffer, Length, &result) != ERR::Okay) return 0;
       else return result;
    }
@@ -93,7 +248,7 @@ extern "C" int dsReadData(Object *Self, void *Buffer, int Length) {
 
          process_commands((extAudio *)Self, elements);
 
-         Buffer = (UBYTE *)Buffer + (elements * ((extAudio *)Self)->DriverBitSize);
+         Buffer = (uint8_t *)Buffer + (elements * ((extAudio *)Self)->DriverBitSize);
          space_left -= elements;
       }
 
@@ -102,7 +257,7 @@ extern "C" int dsReadData(Object *Self, void *Buffer, int Length) {
    else return 0;
 }
 
-extern "C" void dsSeekData(Object *Self, LONG Offset) {
+extern "C" void dsSeekData(Object *Self, int Offset) {
    if (Self->Class->BaseClassID IS CLASSID::SOUND) {
       ((objSound *)Self)->seek(Offset, SEEK::START);
    }
@@ -127,7 +282,7 @@ static ERR set_channel_volume(extAudio *Self, AudioChannel *Channel)
 
    // Convert the volume into left/right volume parameters
 
-   DOUBLE leftvol, rightvol;
+   double leftvol, rightvol;
    if ((Channel->Flags & CHF::MUTE) != CHF::NIL) {
       leftvol  = 0;
       rightvol = 0;
@@ -172,7 +327,7 @@ ERR process_commands(extAudio *Self, SAMPLE Elements)
 {
    pf::Log log(__FUNCTION__);
 
-   for (LONG index=1; index < (LONG)Self->Sets.size(); index++) {
+   for (int index=1; index < (int)Self->Sets.size(); index++) {
       Self->Sets[index].MixLeft -= Elements;
       if (Self->Sets[index].MixLeft <= 0) {
          // Reset the amount of mixing elements left and execute the next set of channel commands
@@ -181,30 +336,30 @@ ERR process_commands(extAudio *Self, SAMPLE Elements)
 
          if (Self->Sets[index].Commands.empty()) continue;
 
-         LONG i;
+         int i;
          bool stop = false;
          auto &cmds = Self->Sets[index].Commands;
-         for (i=0; (i < (LONG)cmds.size()) and (!stop); i++) {
+         for (i=0; (i < (int)cmds.size()) and (!stop); i++) {
             switch(cmds[i].CommandID) {
                case CMD::CONTINUE:     snd::MixContinue(Self, cmds[i].Handle); break;
-               case CMD::MUTE:         snd::MixMute(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::PLAY:         snd::MixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::FREQUENCY:    snd::MixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::PAN:          snd::MixPan(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::RATE:         snd::MixRate(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::SAMPLE:       snd::MixSample(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::VOLUME:       snd::MixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::MUTE:         snd::MixMute(Self, cmds[i].Handle,  std::get<bool>(cmds[i].Data)); break;
+               case CMD::PLAY:         snd::MixPlay(Self, cmds[i].Handle, std::get<int>(cmds[i].Data)); break;
+               case CMD::FREQUENCY:    snd::MixFrequency(Self, cmds[i].Handle, std::get<int>(cmds[i].Data)); break;
+               case CMD::PAN:          snd::MixPan(Self, cmds[i].Handle, std::get<double>(cmds[i].Data)); break;
+               case CMD::RATE:         snd::MixRate(Self, cmds[i].Handle, std::get<int>(cmds[i].Data)); break;
+               case CMD::SAMPLE:       snd::MixSample(Self, cmds[i].Handle, std::get<int>(cmds[i].Data)); break;
+               case CMD::VOLUME:       snd::MixVolume(Self, cmds[i].Handle, std::get<double>(cmds[i].Data)); break;
                case CMD::STOP:         snd::MixStop(Self, cmds[i].Handle); break;
                case CMD::STOP_LOOPING: snd::MixStopLoop(Self, cmds[i].Handle); break;
                case CMD::END_SEQUENCE: stop = true; break;
 
                default:
-                  log.warning("Unrecognised command ID #%d at index %d.", LONG(cmds[i].CommandID), i);
+                  log.warning("Unrecognised command ID #%d at index %d.", int(cmds[i].CommandID), i);
                   break;
             }
          }
 
-         if (i IS (LONG)cmds.size()) cmds.clear();
+         if (i IS (int)cmds.size()) cmds.clear();
          else cmds.erase(cmds.begin(), cmds.begin()+i);
       }
    }
@@ -219,7 +374,7 @@ static ERR audio_timer(extAudio *Self, int64_t Elapsed, int64_t CurrentTime)
 #ifdef ALSA_ENABLED
 
    pf::Log log(__FUNCTION__);
-   static WORD errcount = 0;
+   static int16_t errcount = 0;
 
    // Check if we need to send out any OnStop events
 
@@ -274,7 +429,7 @@ static ERR audio_timer(extAudio *Self, int64_t Elapsed, int64_t CurrentTime)
    // Fill our entire audio buffer with data to be sent to alsa
 
    auto space = space_left;
-   UBYTE *buffer = Self->AudioBuffer;
+   uint8_t *buffer = Self->AudioBuffer;
    while (space_left) {
       // Scan channels to check if an update rate is going to be met
 
@@ -298,7 +453,7 @@ static ERR audio_timer(extAudio *Self, int64_t Elapsed, int64_t CurrentTime)
    // Write the audio to alsa
 
    if (Self->Handle) {
-      LONG err;
+      int err;
       if ((err = snd_pcm_writei(Self->Handle, Self->AudioBuffer, space)) < 0) {
          // If an EPIPE error is returned, a buffer underrun has probably occurred
 
@@ -346,123 +501,121 @@ static ERR audio_timer(extAudio *Self, int64_t Elapsed, int64_t CurrentTime)
 }
 
 //********************************************************************************************************************
+// Template-based conversion functions (legacy wrappers for compatibility)
 
-static void convert_float8(FLOAT *buf, LONG TotalSamples, UBYTE *dest)
-{
-   while (TotalSamples) {
-      LONG n = ((LONG)(*(buf++)))>>8;
-      if (n < -128) n = -128;
-      else if (n > 127)  n = 127;
-      *dest++ = (UBYTE)(128 + n);
-      TotalSamples--;
-   }
+static void convert_float8(float *buf, int TotalSamples, uint8_t *dest) {
+   convert_samples<uint8_t>(buf, TotalSamples, dest);
 }
 
-static void convert_float16(FLOAT *buf, LONG TotalSamples, WORD *dest)
-{
-   while (TotalSamples) {
-      LONG n = (LONG)(*(buf++));
-      if (n < -32768) n = -32768;
-      else if (n > 32767) n = 32767;
-      *dest++ = (WORD)n;
-      TotalSamples--;
-   }
+static void convert_float16(float *buf, int TotalSamples, int16_t *dest) {
+   convert_samples<int16_t>(buf, TotalSamples, dest);
 }
 
-// No conversion is necessary if the output is float, but we do ensure that values are clamped.
-
-static void convert_float(FLOAT *buf, LONG TotalSamples, FLOAT *dest)
-{
-   while (TotalSamples) {
-      FLOAT n = buf[0];
-      if (n < -1.0) *dest++ = -1.0;
-      else if (n > 1.0) *dest++ = 1.0;
-      else *dest++ = n;
-      buf++;
-      TotalSamples--;
-   }
+static void convert_float(float *buf, int TotalSamples, float *dest) {
+   convert_samples<float>(buf, TotalSamples, dest);
 }
 
 //********************************************************************************************************************
 // Return a maximum of 32k-1 samples to prevent overflow problems
 
-static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextOffset)
+// Template dispatch table for loop types with compile-time optimization
+template<LTYPE loop_type>
+static int samples_until_end_impl(int position, int sample_length, int lp_start, int lp_end, 
+   bool over_sampling, bool is_backward, int &next_offset) 
+{
+   next_offset = 1;
+   
+   if constexpr (loop_type IS LTYPE::UNIDIRECTIONAL) {
+      if (over_sampling) {
+         if ((position + 1) < lp_end) {
+            return (lp_end - 1) - position;
+         } 
+         else {
+            next_offset = lp_start - position;
+            return lp_end - position;
+         }
+      } 
+      else return lp_end - position;
+   } 
+   else if constexpr (loop_type IS LTYPE::BIDIRECTIONAL) {
+      if (is_backward) {
+         if (over_sampling) {
+            if (position IS (lp_end - 1)) {
+               next_offset = 0;
+               return 1;
+            } 
+            else return position - lp_start;
+         } 
+         else return position - lp_start;
+      } 
+      else if (over_sampling) {
+         if ((position + 1) < lp_end) {
+            return (lp_end - 1) - position;
+         } 
+         else {
+            next_offset = 0;
+            return 1;
+         }
+      } 
+      else return lp_end - position;
+   } 
+   else { // Default/no loop
+      if (over_sampling) {
+         if ((position + 1) < sample_length) {
+            return (sample_length - 1) - position;
+         } 
+         else {
+            next_offset = 0;
+            return sample_length - position;
+         }
+      } 
+      else return sample_length - position;
+   }
+}
+
+static int samples_until_end(extAudio *Self, AudioChannel &Channel, int &NextOffset)
 {
    pf::Log log(__FUNCTION__);
-   LONG num, lp_start, lp_end;
-   LTYPE lp_type;
-
-   *NextOffset = 1;
-
+   
    auto &sample = Self->Samples[Channel.SampleHandle];
+   
+   // Use structured bindings and conditional operator for cleaner loop parameter selection
+   const auto [lp_start, lp_end, lp_type] = (Channel.LoopIndex IS 2) ?
+      std::make_tuple(sample.Loop2Start, sample.Loop2End, sample.Loop2Type) :
+      std::make_tuple(sample.Loop1Start, sample.Loop1End, sample.Loop1Type);
 
-   if (Channel.LoopIndex IS 2) {
-      lp_start = sample.Loop2Start;
-      lp_end   = sample.Loop2End;
-      lp_type  = sample.Loop2Type;
-   }
-   else {
-      lp_start = sample.Loop1Start;
-      lp_end   = sample.Loop1End;
-      lp_type  = sample.Loop1Type;
-   }
+   const bool over_sampling = (Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL;
+   const bool is_backward = (Channel.Flags & CHF::BACKWARD) != CHF::NIL;
 
-   // When using interpolating mixing, we'll first mix everything normally until the very last sample of the
-   // loop/sample/stream. Then the last sample will be mixed separately, setting *NextOffset to a correct value, to
-   // make sure we won't interpolate past the end.  This doesn't make this code exactly pretty, but saves us from
-   // quite a bit of headache elsewhere.
-
+   // Template dispatch for compile-time optimization based on loop type
+   int num;
    switch (lp_type) {
-      default:
-         if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
-            if ((Channel.Position + 1) < sample.SampleLength) {
-               num = (sample.SampleLength - 1) - Channel.Position;
-            }
-            else { // The last sample
-               *NextOffset = 0;
-               num = sample.SampleLength - Channel.Position;
-            }
-         }
-         else num = sample.SampleLength - Channel.Position;
-         break;
-
       case LTYPE::UNIDIRECTIONAL:
-         if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
-            if ((Channel.Position + 1) < lp_end) num = (lp_end - 1) - Channel.Position;
-            else { // The last sample of the loop
-               *NextOffset = lp_start - Channel.Position;
-               num = lp_end - Channel.Position;
-            }
-         }
-         else num = lp_end - Channel.Position;
+         num = samples_until_end_impl<LTYPE::UNIDIRECTIONAL>(
+            Channel.Position, sample.SampleLength, lp_start, lp_end, over_sampling, is_backward, NextOffset);
          break;
-
       case LTYPE::BIDIRECTIONAL:
-         if ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) { // Backwards
-            if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
-               if (Channel.Position IS (lp_end-1)) { // First sample of the loop backwards
-                  *NextOffset = 0;
-                  num = 1;
+         num = samples_until_end_impl<LTYPE::BIDIRECTIONAL>(
+            Channel.Position, sample.SampleLength, lp_start, lp_end, over_sampling, is_backward, NextOffset);
+         break;
+      default: // Handle all other loop types (SINGLE, etc.) using default template behavior
+         // Use a compile-time value that triggers the else branch in the template
+         if constexpr (true) {
+            if (over_sampling) {
+               if ((Channel.Position + 1) < sample.SampleLength) {
+                  num = (sample.SampleLength - 1) - Channel.Position;
+               } 
+               else {
+                  NextOffset = 0;
+                  num = sample.SampleLength - Channel.Position;
                }
-               else num = Channel.Position - lp_start;
-            }
-            else num = Channel.Position - lp_start;
-            break;
+            } 
+            else num = sample.SampleLength - Channel.Position;
          }
-         else { // Forward
-            if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
-               if ((Channel.Position + 1) < lp_end) num = (lp_end - 1) - Channel.Position;
-               else { // The last sample of the loop
-                  *NextOffset = 0;
-                  num = lp_end - Channel.Position;
-               }
-            }
-            else num = lp_end - Channel.Position;
-            break;
-         }
+         break;
    }
 
-   LONG result;
+   int result;
    if (num > 0x7FFF) result = 0x7FFF0000; // 16.16 fixed point
    else result = ((num << 16) - Channel.PositionLow);
 
@@ -501,7 +654,7 @@ static bool amiga_change(extAudio *Self, AudioChannel &Channel)
 static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 {
    pf::Log log(__FUNCTION__);
-   LONG lp_start, lp_end;
+   int lp_start, lp_end;
    LTYPE lp_type;
 
    auto &sample = Self->Samples[Channel.SampleHandle];
@@ -537,7 +690,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
       // Going backwards - did we reach loop start? (signed comparison takes care of possible wraparound)
       if ((Channel.Position < lp_start) or ((Channel.Position IS lp_start) and (Channel.PositionLow IS 0)) ) {
          Channel.Flags &= ~CHF::BACKWARD;
-         LONG n = ((lp_start - Channel.Position) << 16) - Channel.PositionLow - 1;
+         int n = ((lp_start - Channel.Position) << 16) - Channel.PositionLow - 1;
          // -1 is compensation for the fudge factor at loop end, see below
          Channel.Position = lp_start + (n>>16);
          Channel.PositionLow = n & 0xffff;
@@ -588,7 +741,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
       if (lp_type IS LTYPE::BIDIRECTIONAL ) {
          // Bidirectional loop - change direction
          Channel.Flags |= CHF::BACKWARD;
-         LONG n = ((Channel.Position - lp_end) << 16) + Channel.PositionLow + 1;
+         int n = ((Channel.Position - lp_end) << 16) + Channel.PositionLow + 1;
 
          // +1 is a fudge factor to make sure we'll access the correct samples all the time - a similar adjustment is
          // also done at the other end of the loop. This screws up interpolation a little when sample rate IS mixing
@@ -627,7 +780,7 @@ static bool handle_sample_end(extAudio *Self, AudioChannel &Channel)
 //********************************************************************************************************************
 // Main entry point for mixing sound data to destination
 
-static ERR mix_data(extAudio *Self, LONG Elements, APTR Dest)
+static ERR mix_data(extAudio *Self, int Elements, APTR Dest)
 {
    pf::Log log(__FUNCTION__);
 
@@ -638,10 +791,10 @@ static ERR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 
       // Clear the mix buffer, then mix all channels to the buffer
 
-      LONG window_size = sizeof(FLOAT) * (Self->Stereo ? (window<<1) : window);
+      int window_size = sizeof(float) * (Self->Stereo ? (window<<1) : window);
       clearmem(Self->MixBuffer, window_size);
 
-      for (auto n=1; n < (LONG)Self->Sets.size(); n++) {
+      for (auto n=1; n < (int)Self->Sets.size(); n++) {
          for (auto &c : Self->Sets[n].Channel) {
             if (c.active()) mix_channel(Self, c, window, Self->MixBuffer);
          }
@@ -654,26 +807,24 @@ static ERR mix_data(extAudio *Self, LONG Elements, APTR Dest)
       // Do optional post-processing
 
       if ((Self->Flags & (ADF::FILTER_LOW|ADF::FILTER_HIGH)) != ADF::NIL) {
-         if (Self->Stereo) filter_float_stereo(Self, (FLOAT *)Self->MixBuffer, window);
-         else filter_float_mono(Self, (FLOAT *)Self->MixBuffer, window);
+         if (Self->Stereo) filter_float_stereo(Self, (float *)Self->MixBuffer, window);
+         else filter_float_mono(Self, (float *)Self->MixBuffer, window);
       }
 
       // Convert the floating point data to the correct output format
 
       if (Self->BitDepth IS 32) { // Presumes a floating point target identical to our own
-         convert_float((FLOAT *)Self->MixBuffer, (Self->Stereo) ? window<<1 : window, (FLOAT *)Dest);
+         convert_float((float *)Self->MixBuffer, (Self->Stereo) ? window<<1 : window, (float *)Dest);
       }
       else if (Self->BitDepth IS 24) {
 
       }
       else if (Self->BitDepth IS 16) {
-         convert_float16((FLOAT *)Self->MixBuffer, (Self->Stereo) ? window<<1 : window, (WORD *)Dest);
+         convert_float16((float *)Self->MixBuffer, (Self->Stereo) ? window<<1 : window, (int16_t *)Dest);
       }
-      else {
-         convert_float8((FLOAT *)Self->MixBuffer,  (Self->Stereo) ? window<<1 : window, (UBYTE *)Dest);
-      }
+      else convert_float8((float *)Self->MixBuffer,  (Self->Stereo) ? window<<1 : window, (uint8_t *)Dest);
 
-      Dest = ((UBYTE *)Dest) + (window * Self->DriverBitSize);
+      Dest = ((uint8_t *)Dest) + (window * Self->DriverBitSize);
       Elements -= window;
    }
 
@@ -682,7 +833,7 @@ static ERR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 
 //********************************************************************************************************************
 
-static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples, APTR Dest)
+static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples, APTR Dest)
 {
    pf::Log log(__FUNCTION__);
 
@@ -694,27 +845,39 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
 
    // Calculate resampling step (16.16 fixed point)
 
-   LONG step = ((int64_t(Channel.Frequency / Self->OutputRate) << 16) + (int64_t(Channel.Frequency % Self->OutputRate) << 16) / Self->OutputRate);
+   int step = ((int64_t(Channel.Frequency / Self->OutputRate) << 16) + (int64_t(Channel.Frequency % Self->OutputRate) << 16) / Self->OutputRate);
 
-   DOUBLE stereo_mul = 1.0;
-   if (!Self->Stereo) {
-      if ((sample.SampleType IS SFM::U8_BIT_STEREO) or (sample.SampleType IS SFM::S16_BIT_STEREO)) {
-         stereo_mul = 0.5;
+   // Advanced template metaprogramming: constexpr format dispatch table
+   // This eliminates runtime switches with compile-time lookups
+   constexpr auto format_dispatch = [](SFM format) constexpr -> std::tuple<int, double, bool> {
+      // Using constexpr if-else chain for optimal code generation
+      if (format IS SFM::S16_BIT_STEREO) {
+         return {SampleFormatTraits<SFM::S16_BIT_STEREO>::size, 
+                 SampleFormatTraits<SFM::S16_BIT_STEREO>::conversion,
+                 SampleFormatTraits<SFM::S16_BIT_STEREO>::is_stereo};
+      } 
+      else if (format IS SFM::S16_BIT_MONO) {
+         return {SampleFormatTraits<SFM::S16_BIT_MONO>::size,
+                 SampleFormatTraits<SFM::S16_BIT_MONO>::conversion,
+                 SampleFormatTraits<SFM::S16_BIT_MONO>::is_stereo};
+      } 
+      else if (format IS SFM::U8_BIT_STEREO) {
+         return {SampleFormatTraits<SFM::U8_BIT_STEREO>::size,
+                 SampleFormatTraits<SFM::U8_BIT_STEREO>::conversion,
+                 SampleFormatTraits<SFM::U8_BIT_STEREO>::is_stereo};
+      } 
+      else {
+         return {SampleFormatTraits<SFM::U8_BIT_MONO>::size,
+                 SampleFormatTraits<SFM::U8_BIT_MONO>::conversion,
+                 SampleFormatTraits<SFM::U8_BIT_MONO>::is_stereo};
       }
-   }
+   };
 
-   DOUBLE mastervol = Self->Mute ? 0 : Self->MasterVolume * stereo_mul;
-
-   // Determine bit size of the sample, not necessarily a match to that of the mixer.
-
-   DOUBLE conversion;
-   LONG sample_size;
-   switch (sample.SampleType) {
-      case SFM::S16_BIT_STEREO: sample_size = sizeof(WORD) * 2; conversion = 1.0 / 32767.0; break;
-      case SFM::S16_BIT_MONO:   sample_size = sizeof(WORD); conversion = 1.0 / 32767.0; break;
-      case SFM::U8_BIT_STEREO:  sample_size = sizeof(BYTE) * 2; conversion = 1.0 / 127.0; break;
-      default:                 sample_size = sizeof(BYTE); conversion = 1.0 / 127.0; break;
-   }
+   const auto [sample_size, conversion, sample_is_stereo] = format_dispatch(sample.SampleType);
+   
+   // Calculate stereo multiplier using template information
+   const double stereo_mul = (!Self->Stereo and sample_is_stereo) ? 0.5 : 1.0;
+   double mastervol = Self->Mute ? 0 : Self->MasterVolume * stereo_mul;
 
    if (Self->BitDepth IS 32) {
       // If our hardware output format is floating point, the values need to range from -1.0 to 1.0.
@@ -723,19 +886,19 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
       mastervol *= conversion;
    }
 
-   glMixDest = (FLOAT *)Dest;
+   float *mix_dest = (float *)Dest;
    while (TotalSamples > 0) {
       if (Channel.isStopped()) return;
 
-      LONG next_offset;
-      LONG sue = samples_until_end(Self, Channel, &next_offset);
+      int next_offset = 0;
+      int sue = samples_until_end(Self, Channel, next_offset);
 
       // Calculate the number of destination samples (note rounding)
 
-      LONG mixUntilEnd = sue / step;
+      int mixUntilEnd = sue / step;
       if (sue % step) mixUntilEnd++;
 
-      LONG mix_now = (mixUntilEnd > TotalSamples) ? TotalSamples : mixUntilEnd;
+      int mix_now = (mixUntilEnd > TotalSamples) ? TotalSamples : mixUntilEnd;
       TotalSamples -= mix_now;
 
       if (mix_now > 0) {
@@ -744,50 +907,40 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
             return;
          }
 
-         LONG mix_pos = Channel.PositionLow;
-         UBYTE *MixSample = sample.Data + (sample_size * Channel.Position); // source of sample data to mix into destination
+         int mix_pos = Channel.PositionLow;
+         uint8_t *MixSample = sample.Data + (sample_size * Channel.Position); // source of sample data to mix into destination
 
-         auto mix_routine = Self->MixRoutines[LONG(sample.SampleType)];
-
-         if ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) MixStep = -step;
-         else MixStep = step;
+         // Thread-safe: pass step direction as parameter instead of using global
+         const int mix_step = ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) ? -step : step;
+         set_mix_step(mix_step);
 
          // If volume ramping is enabled, mix one sample element at a time and adjust volume by RAMPSPEED.
-
+         // Using helper function to reduce code duplication
          while (((Channel.Flags & CHF::VOL_RAMP) != CHF::NIL) and (mix_now > 0)) {
-            mix_pos = mix_routine(MixSample, mix_pos, 1, next_offset, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
+            MixingParams params = {
+               .src = MixSample,
+               .src_pos = mix_pos,
+               .total_samples = 1,
+               .next_sample_offset = next_offset,
+               .left_vol = float(mastervol * Channel.LVolume),
+               .right_vol = float(mastervol * Channel.RVolume),
+               .mix_dest = &mix_dest
+            };
+            mix_pos = AudioMixer::dispatch_mix(Self->MixConfig, sample.SampleType, params);
             mix_now--;
 
-            bool cont = false;
+            // Use helper function for cleaner volume ramping logic
+            const bool left_ramping = adjust_volume_ramp(Channel.LVolume, Channel.LVolumeTarget, RAMPSPEED);
+            const bool right_ramping = adjust_volume_ramp(Channel.RVolume, Channel.RVolumeTarget, RAMPSPEED);
 
-            if (Channel.LVolume < Channel.LVolumeTarget) {
-               Channel.LVolume += RAMPSPEED;
-               if (Channel.LVolume >= Channel.LVolumeTarget) Channel.LVolume = Channel.LVolumeTarget;
-               else cont = true;
+            if (!left_ramping and !right_ramping) {
+               Channel.Flags &= ~CHF::VOL_RAMP;
             }
-            else if (Channel.LVolume > Channel.LVolumeTarget) {
-               Channel.LVolume -= RAMPSPEED;
-               if (Channel.LVolume <= Channel.LVolumeTarget) Channel.LVolume = Channel.LVolumeTarget;
-               else cont = true;
-            }
-
-            if (Channel.RVolume < Channel.RVolumeTarget) {
-               Channel.RVolume += RAMPSPEED;
-               if (Channel.RVolume >= Channel.RVolumeTarget) Channel.RVolume = Channel.RVolumeTarget;
-               else cont = true;
-            }
-            else if (Channel.RVolume > Channel.RVolumeTarget) {
-               Channel.RVolume -= RAMPSPEED;
-               if (Channel.RVolume <= Channel.RVolumeTarget) Channel.RVolume = Channel.RVolumeTarget;
-               else cont = true;
-            }
-
-            if (!cont) Channel.Flags &= ~CHF::VOL_RAMP;
          }
 
          if ((Channel.LVolume <= 0.01) and (Channel.RVolume <= 0.01)) {
             // If the volume is zero we can just increment the position and not mix anything
-            mix_pos += mix_now * MixStep;
+            mix_pos += mix_now * mix_step;
             if (Channel.State IS CHS::FADE_OUT) {
                Self->finish(Channel, true);
                Channel.Flags &= ~CHF::VOL_RAMP;
@@ -796,20 +949,38 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
          else {
             // Ensure proper alignment and do all mixing if next_offset != 1
 
-            LONG num;
-            if ((mix_now > 0) and ((next_offset != 1) or ((((MAXINT)glMixDest) % 1) != 0))) {
+            int num;
+            if ((mix_now > 0) and ((next_offset != 1) or ((((MAXINT)mix_dest) % 1) != 0))) {
                if (next_offset IS 1) {
-                  num = 1 - (((MAXINT)glMixDest) % 1);
+                  num = 1 - (((MAXINT)mix_dest) % 1);
                   if (num > mix_now) num = mix_now;
                }
                else num = mix_now;
 
-               mix_pos = mix_routine(MixSample, mix_pos, num, next_offset, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
+               MixingParams params = {
+                  .src = MixSample,
+                  .src_pos = mix_pos,
+                  .total_samples = num,
+                  .next_sample_offset = next_offset,
+                  .left_vol = float(mastervol * Channel.LVolume),
+                  .right_vol = float(mastervol * Channel.RVolume),
+                  .mix_dest = &mix_dest
+               };
+               mix_pos = AudioMixer::dispatch_mix(Self->MixConfig, sample.SampleType, params);
                mix_now -= num;
             }
 
             if (mix_now > 0) { // Main mixing loop
-               mix_pos = mix_routine(MixSample, mix_pos, mix_now, 1, mastervol * Channel.LVolume, mastervol * Channel.RVolume);
+               MixingParams params = {
+                  .src = MixSample,
+                  .src_pos = mix_pos,
+                  .total_samples = mix_now,
+                  .next_sample_offset = 1,
+                  .left_vol = float(mastervol * Channel.LVolume),
+                  .right_vol = float(mastervol * Channel.RVolume),
+                  .mix_dest = &mix_dest
+               };
+               mix_pos = AudioMixer::dispatch_mix(Self->MixConfig, sample.SampleType, params);
             }
          }
 
@@ -831,12 +1002,12 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
 //********************************************************************************************************************
 // Mono output filtering routines.
 
-static void filter_float_mono(extAudio *Self, FLOAT *Data, LONG TotalSamples)
+static void filter_float_mono(extAudio *Self, float *Data, int TotalSamples)
 {
-   static FLOAT d1l=0, d2l=0;
+   static float d1l=0, d2l=0;
    if ((Self->Flags & ADF::FILTER_LOW) != ADF::NIL) {
       while (TotalSamples > 0) {
-         FLOAT s = (d1l + 2.0f * Data[0]) * (1.0f / 3.0f);
+         float s = (d1l + 2.0f * Data[0]) * (1.0f / 3.0f);
          d1l = Data[0];
          *(Data++) = s;
          TotalSamples--;
@@ -844,7 +1015,7 @@ static void filter_float_mono(extAudio *Self, FLOAT *Data, LONG TotalSamples)
    }
    else if ((Self->Flags & ADF::FILTER_HIGH) != ADF::NIL) {
       while (TotalSamples > 0) {
-         FLOAT s = (d1l + 3.0f * d2l + 4.0f * Data[0]) * (1.0f / 8.0f);
+         float s = (d1l + 3.0f * d2l + 4.0f * Data[0]) * (1.0f / 8.0f);
          d1l = d2l;
          d2l = Data[0];
          *(Data++) = s;
@@ -856,13 +1027,13 @@ static void filter_float_mono(extAudio *Self, FLOAT *Data, LONG TotalSamples)
 //********************************************************************************************************************
 // Stereo output filtering routines.
 
-static void filter_float_stereo(extAudio *Self, FLOAT *Data, LONG TotalSamples)
+static void filter_float_stereo(extAudio *Self, float *Data, int TotalSamples)
 {
-   static DOUBLE d1l = 0, d1r = 0, d2l = 0, d2r = 0;
+   static double d1l = 0, d1r = 0, d2l = 0, d2r = 0;
 
    if ((Self->Flags & ADF::FILTER_LOW) != ADF::NIL) {
       while (TotalSamples > 0) {
-         FLOAT s = (d1l + 2.0 * Data[0]) * (1.0 / 3.0);
+         float s = (d1l + 2.0 * Data[0]) * (1.0 / 3.0);
          d1l = Data[0];
          *(Data++) = s;
 
@@ -875,7 +1046,7 @@ static void filter_float_stereo(extAudio *Self, FLOAT *Data, LONG TotalSamples)
    }
    else if ((Self->Flags & ADF::FILTER_HIGH) != ADF::NIL) {
       while (TotalSamples > 0) {
-         FLOAT s = (d1l + 3.0 * d2l + 4.0 * Data[0]) * (1.0 / 8.0);
+         float s = (d1l + 3.0 * d2l + 4.0 * Data[0]) * (1.0 / 8.0);
          d1l = d2l;
          d2l = Data[0];
          *(Data++) = s;

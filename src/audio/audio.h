@@ -1,6 +1,9 @@
 
 using namespace pf;
 
+#include <variant>
+#include "mixer_dispatch.h"
+
 #ifdef _WIN32
 #define MIX_INTERVAL 0.1
 #else
@@ -75,7 +78,10 @@ typedef struct {
   GUID SubFormat;
 } WAVEFORMATEXTENSIBLE;
 
-typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT);
+typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT, FLOAT **);
+
+// Function to set mixing step for thread-safe operation
+void set_mix_step(LONG step);
 
 static const WORD WAVE_RAW   = 0x0001;  // Uncompressed waveform data.
 static const WORD WAVE_ADPCM = 0x0002;  // ADPCM compressed waveform data.
@@ -134,10 +140,12 @@ struct AudioSample {
 struct AudioCommand {
    CMD  CommandID;    // Command ID
    LONG Handle;       // Channel handle
-   DOUBLE Data;       // Special data related to the command ID
+   std::variant<double,int,bool> Data; // Special data related to the command ID
 
-   AudioCommand(CMD pCommandID, LONG pHandle, LONG pData = 0) :
+   AudioCommand(CMD pCommandID, LONG pHandle, double pData = 0) :
       CommandID(pCommandID), Handle(pHandle), Data(pData) { }
+
+   AudioCommand() = default;
 };
 
 struct AudioChannel {
@@ -219,7 +227,7 @@ class extAudio : public objAudio {
    std::vector<AudioSample> Samples; // Buffered samples loaded into the audio object.
    std::vector<VolumeCtl> Volumes;
    std::vector<MixTimer> MixTimers;
-   MixRoutine *MixRoutines;
+   AudioConfig MixConfig;
    APTR  MixBuffer;
    APTR  TaskRemovedHandle;
    APTR  UserLoginHandle;
@@ -257,37 +265,11 @@ class extAudio : public objAudio {
       return SAMPLE((((100 * (LARGE)OutputRate) / (Value * 40)) + 1) & 0xfffffffe);
    }
 
-   inline DOUBLE MixerLag() {
-      if (!mixerLag) {
-         pf::Log log(__FUNCTION__);
-         #ifdef _WIN32
-            // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
-            mixerLag = MIX_INTERVAL + (DOUBLE(MixElements>>1) / DOUBLE(OutputRate));
-         #elif ALSA_ENABLED
-            mixerLag = MIX_INTERVAL + (AudioBufferSize / DriverBitSize) / DOUBLE(OutputRate);
-         #endif
-         log.trace("Mixer lag: %.2f", mixerLag);
-      }
-      return mixerLag;
-   }
+   inline DOUBLE MixerLag();
 
-   inline void finish(AudioChannel &Channel, bool Notify) {
-      if (!Channel.isStopped()) {
-         Channel.State = CHS::FINISHED;
-         if ((Channel.SampleHandle) and (Notify)) {
-            #ifdef ALSA_ENABLED
-               if ((Channel.EndTime) and (PreciseTime() < Channel.EndTime)) {
-                  this->MixTimers.emplace_back(Channel.EndTime, Channel.SampleHandle);
-                  Channel.EndTime = 0;
-               }
-               else audio_stopped_event(*this, Channel.SampleHandle);
-            #else
-               audio_stopped_event(*this, Channel.SampleHandle);
-            #endif
-         }
-      }
-      else Channel.State = CHS::FINISHED;
-   }
+   inline void finish(AudioChannel &Channel, bool Notify);
+
+   extAudio() = default;
 
    private:
       DOUBLE mixerLag;

@@ -34,8 +34,25 @@ if (WIN32)
 else ()
    if (ALSA_INSTALLED)
       add_definitions ("-DALSA_ENABLED")
+      target_sources (${MOD} PRIVATE "device_enum.cpp")
       target_link_libraries (${MOD} PRIVATE "asound")
    endif ()
 endif ()
 
 flute_test (audio "tests/test-audio.fluid")
+
+if (BUILD_TESTS)
+   add_executable (test_audio_mixers tests/test_mixers.cpp)
+   target_include_directories (test_audio_mixers PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+   target_compile_features (test_audio_mixers PRIVATE cxx_std_20)
+   set_target_properties (test_audio_mixers PROPERTIES
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
+      CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+
+   enable_testing()
+   add_test (NAME AudioMixerFull COMMAND test_audio_mixers "--log-warning")
+
+   set_tests_properties (AudioMixerFull PROPERTIES
+      TIMEOUT 60
+      LABELS "audio;unit;comprehensive")
+endif()

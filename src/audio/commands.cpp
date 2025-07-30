@@ -1,36 +1,37 @@
-//********************************************************************************************************************
 // Buffered command handling.  The execution of these commands is managed by process_commands()
 
-template <class T> void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle, T Data)
-{
-   pf::Log log(__FUNCTION__);
-   auto ea = (extAudio *)Audio;
-   LONG index = Handle>>16;
+#include <type_traits>
 
-   if ((index < 1) or (index >= (LONG)ea->Sets.size())) return;
-
-   if (ea->Sets[index].Commands.capacity() > 0) {
-      if (ea->Sets[index].Commands.size() > 1024) {
-         log.warning("Command buffer overflow detected.");
-      }
-      else ea->Sets[index].Commands.emplace_back(Command, Handle, Data);
+// Template helper to extract data parameter with type conversion
+template<typename T>
+inline double extract_data_parameter(T&& value) {
+   if constexpr (std::is_arithmetic_v<std::decay_t<T>>) {
+      return double(value);
+   }
+   else {
+      static_assert(std::is_arithmetic_v<std::decay_t<T>>, "Command data parameter must be numeric type");
+      return 0.0; // Unreachable, but needed for compilation
    }
 }
 
-static void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle)
-{
+template<typename... tArgs>
+static ERR add_command(objAudio* Audio, CMD Command, int Handle, tArgs&&... pArgs) {
+   auto ea = (extAudio *)(Audio);
+   int index = Handle >> 16;
+   
    pf::Log log(__FUNCTION__);
-   auto ea = (extAudio *)Audio;
-   LONG index = Handle>>16;
+   if ((index < 1) or (index >= int(ea->Sets.size()))) return log.warning(ERR::OutOfRange);
+   if (ea->Sets[index].Commands.capacity() == 0) return log.warning(ERR::OutOfRange);
+   if (ea->Sets[index].Commands.size() > 1024) return log.warning(ERR::BufferOverflow);
 
-   if ((index < 1) or (index >= (LONG)ea->Sets.size())) return;
-
-   if (ea->Sets[index].Commands.capacity() > 0) {
-      if (ea->Sets[index].Commands.size() > 1024) {
-         log.warning("Command buffer overflow detected.");
-      }
-      else ea->Sets[index].Commands.emplace_back(Command, Handle, 0);
+   double data = 0.0;
+   if constexpr (sizeof...(pArgs) > 0) {
+      static_assert(sizeof...(pArgs) == 1, "Command can only accept one data parameter");
+      data = extract_data_parameter(std::forward<tArgs>(pArgs)...);
    }
+
+   ea->Sets[index].Commands.emplace_back(Command, Handle, data);
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -154,7 +155,7 @@ ERR MixEndSequence(objAudio *Audio, LONG Handle)
 
    // Inserting an END_SEQUENCE informs the mixer that the instructions for this period have concluded.
 
-   add_mix_cmd(Audio, CMD::END_SEQUENCE, Handle);
+   add_command(Audio, CMD::END_SEQUENCE, Handle);
 
    return ERR::Okay;
 }
@@ -188,7 +189,7 @@ ERR MixContinue(objAudio *Audio, LONG Handle)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::CONTINUE, Handle);
+      add_command(Audio, CMD::CONTINUE, Handle);
       return ERR::Okay;
    }
 
@@ -248,7 +249,7 @@ ERR MixMute(objAudio *Audio, LONG Handle, LONG Mute)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::MUTE, Handle, Mute);
+      add_command(Audio, CMD::MUTE, Handle, bool(Mute));
       return ERR::Okay;
    }
 
@@ -288,7 +289,7 @@ ERR MixFrequency(objAudio *Audio, LONG Handle, LONG Frequency)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::FREQUENCY, Handle, Frequency);
+      add_command(Audio, CMD::FREQUENCY, Handle, Frequency);
       return ERR::Okay;
    }
 
@@ -326,7 +327,7 @@ ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::PAN, Handle, Pan);
+      add_command(Audio, CMD::PAN, Handle, Pan);
       return ERR::Okay;
    }
 
@@ -373,7 +374,7 @@ ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position)
    log.traceBranch("Audio: #%d, Channel: $%.8x, Position: %d", Audio->UID, Handle, Position);
 
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::PLAY, Position);
+      add_command(Audio, CMD::PLAY, Handle, Position);
       return ERR::Okay;
    }
 
@@ -564,7 +565,7 @@ ERR MixRate(objAudio *Audio, LONG Handle, LONG Rate)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::RATE, Handle, Rate);
+      add_command(Audio, CMD::RATE, Handle, Rate);
       return ERR::Okay;
    }
 
@@ -624,7 +625,7 @@ ERR MixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::SAMPLE, Handle, SampleIndex);
+      add_command(Audio, CMD::SAMPLE, Handle, SampleIndex);
       return ERR::Okay;
    }
 
@@ -678,7 +679,7 @@ ERR MixStop(objAudio *Audio, LONG Handle)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::STOP, Handle);
+      add_command(Audio, CMD::STOP, Handle);
       return ERR::Okay;
    }
 
@@ -723,7 +724,7 @@ ERR MixStopLoop(objAudio *Audio, LONG Handle)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::STOP_LOOPING, Handle);
+      add_command(Audio, CMD::STOP_LOOPING, Handle);
       return ERR::Okay;
    }
 
@@ -769,7 +770,7 @@ ERR MixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
-      add_mix_cmd(Audio, CMD::VOLUME, Volume);
+      add_command(Audio, CMD::VOLUME, Volume);
       return ERR::Okay;
    }
 
