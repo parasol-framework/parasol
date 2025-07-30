@@ -15,7 +15,7 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 
 **Recommended Visual Studio 2022 Configuration:**
 ```bash
-cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=local-claude -DRUN_ANYWHERE=TRUE -DBUILD_DEFS=OFF -DPARASOL_STATIC=ON -DINSTALL_EXAMPLES=FALSE -DINSTALL_INCLUDES=FALSE -DBUILD_TESTS=OFF
+cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=local-claude -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DINSTALL_EXAMPLES=FALSE -DINSTALL_INCLUDES=FALSE
 ```
 
 **Build and install:**
@@ -24,8 +24,8 @@ cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=loc
 - To build an individual module, append `--target [module]` to the build command, e.g. `--target network`
 
 **Testing:**
-- GCC: `make -C release test ARGS=--verbose`
-- MSVC: `cd local-claude; ctest -V -C Release`
+- Run all integration tests: `ctest -C Release test`
+- Run single integration test: `ctest -C Release test -L TEST_LABEL`
 - Individual Flute tests (see Flute Testing section below)
 
 ### CMake Configuration Options
@@ -54,7 +54,6 @@ Key build options (use with `-D` flag):
 
 The framework uses a modular architecture where each major feature is implemented as a separate module:
 - Each module is in `src/[module_name]/` with its own `CMakeLists.txt`
-- Modules can be disabled at build time using `DISABLE_*` options
 - Static builds link all modules into the core, while modular builds load them dynamically
 - Module definitions are stored in `.fdl` files which generate C headers and IDL strings
 
@@ -156,7 +155,7 @@ Unlike most vector graphics libraries that use immediate-mode rendering, Parasol
 
 **These rules MUST be followed and override common C++ conventions:**
 
-- **NEVER use `static_cast`** - Use C-style casting instead: `int(variable)` NOT `static_cast<int>(variable)`
+- **NEVER use `static_cast`** - Use C-style casting instead, e.g. `int(variable)` NOT `static_cast<int>(variable)`
 - **NEVER use `&&`** - Use `and` instead of `&&`
 - **NEVER use `||`** - Use `or` instead of `||`
 - **NEVER use `==`** - Use the `IS` macro instead of `==`
@@ -171,9 +170,14 @@ Before considering ANY C++ code changes complete, verify:
 - [ ] All `==` replaced with `IS` macro
 - [ ] All `static_cast` replaced with C-style casts
 - [ ] No C++ exceptions used
-- [ ] No trailing whitespace in file
+- [ ] All trailing whitespace removed
 - [ ] Code compiles successfully
 - [ ] Follows formatting standards below
+
+For Fluid code, verify:
+
+- [ ] All `~=` replaced with `!=`
+- [ ] All trailing whitespace removed
 
 ### Additional Code Style Standards
 
@@ -249,3 +253,4 @@ Key dependencies between modules:
 - **`widgets.fluid`** - Primary showcase of Parasol's GUI capabilities, demonstrates standard widgets and UI patterns
 - **`vue.fluid`** - File viewer supporting SVG, RIPL, JPEG, PNG - shows document and graphics integration
 - **`gradients.fluid`** - Interactive gradient editor demonstrating real-time vector graphics manipulation
+- **`tools/idl/idl-c.fluid`** - Extensive file I/O and general API usage
