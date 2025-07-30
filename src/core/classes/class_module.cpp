@@ -439,7 +439,7 @@ static ERR MODULE_Init(extModule *Self)
    root_mod = false;
 
    if (master->Open) {
-      log.trace("Opening %s module.", Self->Name);
+      log.trace("Opening %s module.", Self->Name.c_str());
       if (master->Open(Self) != ERR::Okay) {
          log.warning(ERR::ModuleOpenFailed);
          goto exit;

@@ -50,9 +50,8 @@ if (BUILD_TESTS)
       CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 
    enable_testing()
-   add_test (NAME AudioMixerFull COMMAND test_audio_mixers)
+   add_test (NAME AudioMixerFull COMMAND test_audio_mixers "--log-warning")
 
-   # Set test properties
    set_tests_properties (AudioMixerFull PROPERTIES
       TIMEOUT 60
       LABELS "audio;unit;comprehensive")

@@ -139,10 +139,12 @@ struct AudioSample {
 struct AudioCommand {
    CMD  CommandID;    // Command ID
    LONG Handle;       // Channel handle
-   DOUBLE Data;       // Special data related to the command ID
+   double Data;       // Special data related to the command ID
 
-   AudioCommand(CMD pCommandID, LONG pHandle, LONG pData = 0) :
+   AudioCommand(CMD pCommandID, LONG pHandle, double pData = 0) :
       CommandID(pCommandID), Handle(pHandle), Data(pData) { }
+
+   AudioCommand() = default;
 };
 
 struct AudioChannel {
@@ -262,37 +264,11 @@ class extAudio : public objAudio {
       return SAMPLE((((100 * (LARGE)OutputRate) / (Value * 40)) + 1) & 0xfffffffe);
    }
 
-   inline DOUBLE MixerLag() {
-      if (!mixerLag) {
-         pf::Log log(__FUNCTION__);
-         #ifdef _WIN32
-            // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
-            mixerLag = MIX_INTERVAL + (DOUBLE(MixElements>>1) / DOUBLE(OutputRate));
-         #elif ALSA_ENABLED
-            mixerLag = MIX_INTERVAL + (AudioBufferSize / DriverBitSize) / DOUBLE(OutputRate);
-         #endif
-         log.trace("Mixer lag: %.2f", mixerLag);
-      }
-      return mixerLag;
-   }
+   inline DOUBLE MixerLag();
 
-   inline void finish(AudioChannel &Channel, bool Notify) {
-      if (!Channel.isStopped()) {
-         Channel.State = CHS::FINISHED;
-         if ((Channel.SampleHandle) and (Notify)) {
-            #ifdef ALSA_ENABLED
-               if ((Channel.EndTime) and (PreciseTime() < Channel.EndTime)) {
-                  this->MixTimers.emplace_back(Channel.EndTime, Channel.SampleHandle);
-                  Channel.EndTime = 0;
-               }
-               else audio_stopped_event(*this, Channel.SampleHandle);
-            #else
-               audio_stopped_event(*this, Channel.SampleHandle);
-            #endif
-         }
-      }
-      else Channel.State = CHS::FINISHED;
-   }
+   inline void finish(AudioChannel &Channel, bool Notify);
+
+   extAudio() = default;
 
    private:
       DOUBLE mixerLag;

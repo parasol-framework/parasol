@@ -20,6 +20,9 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef _DEBUG
+#include <crtdbg.h>
+#endif
 #ifdef _MSC_VER
  #include <io.h>
 #else
