@@ -1,6 +1,11 @@
+// NB: Be aware that this code is sensitive and can hang the process if CTRL-C is used for an unclean shutdown.
+// This behaviour can vary between compilers and platforms, but the implementation currently tests OK for MSVC,
+// MSYS2 and Linux.
+
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <concepts>
 #include <deque>
 #include <functional>
@@ -45,8 +50,12 @@ namespace dp {
                      std::invoke(init, id);
 
                      do {
-                        // wait until signaled
+                        // wait until signaled or stop requested
+                        if (stop_tok.stop_requested()) break;
                         tasks_[id].signal.acquire();
+
+                        // check again after waking up
+                        if (stop_tok.stop_requested()) break;
 
                         do {
                             // invoke the task
@@ -61,7 +70,7 @@ namespace dp {
                                 // executed because now it's now longer "in flight"
                                 in_flight_tasks_.fetch_sub(1, std::memory_order_release);
                             }
-                        
+
                             // try to steal a task
                             for (std::size_t j = 1; j < tasks_.size(); ++j) {
                                 const std::size_t index = (id + j) % tasks_.size();
@@ -94,13 +103,26 @@ namespace dp {
         } // InitializationFunction
 
         ~thread_pool() {
-            wait_for_tasks();
-
             // stop all threads
             for (std::size_t i = 0; i < threads_.size(); ++i) {
                 threads_[i].request_stop();
                 tasks_[i].signal.release();
-                threads_[i].join();
+            }
+
+            // Join threads with timeout
+            auto start_time = std::chrono::steady_clock::now();
+            constexpr auto timeout = std::chrono::milliseconds(1000); // 1 second timeout
+
+            for (std::size_t i = 0; i < threads_.size(); ++i) {
+                if (threads_[i].joinable()) {
+                    auto elapsed = std::chrono::steady_clock::now() - start_time;
+                    if (elapsed < timeout) { // Try to join for remaining time
+                        threads_[i].join();
+                    }
+                    else { // Timeout exceeded, detach the thread
+                        threads_[i].detach();
+                    }
+                }
             }
         }
 
@@ -130,7 +152,7 @@ namespace dp {
             if constexpr (std::is_same_v<ReturnType, void>) {
                func(largs...);
                promise.set_value();
-            } 
+            }
             else promise.set_value(func(largs...));
          };
          enqueue_task(std::move(task));
@@ -142,7 +164,7 @@ namespace dp {
             if constexpr (std::is_same_v<ReturnType, void>) {
                func(largs...);
                promise->set_value();
-            } 
+            }
             else promise->set_value(func(largs...));
          };
 
@@ -168,7 +190,7 @@ namespace dp {
          enqueue_task(std::move([f = std::forward<Function>(func), ... largs = std::forward<Args>(args)]() mutable -> decltype(auto) {
             if constexpr (std::is_same_v<void, std::invoke_result_t<Function &&, Args &&...>>) {
                std::invoke(f, largs...);
-            } 
+            }
             else {
                // the function returns an argument, but can be ignored
                std::ignore = std::invoke(f, largs...);
