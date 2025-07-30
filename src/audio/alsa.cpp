@@ -20,7 +20,6 @@ static ERR init_audio(extAudio *Self)
    struct snd::SetVolume setvol;
    snd_pcm_hw_params_t *hwparams;
    snd_pcm_stream_t stream;
-   snd_ctl_t *ctlhandle;
    snd_pcm_t *pcmhandle;
    snd_mixer_elem_t *elem;
    snd_mixer_selem_id_t *sid;
@@ -108,7 +107,7 @@ static ERR init_audio(extAudio *Self)
    // Build a list of all available volume controls
 
    snd_mixer_selem_id_alloca(&sid);
-   voltotal = 0;
+   int voltotal = 0;
    for (elem=snd_mixer_first_elem(Self->MixHandle); elem; elem=snd_mixer_elem_next(elem)) voltotal++;
 
    log.msg("%d mixer controls have been reported by alsa.", voltotal);

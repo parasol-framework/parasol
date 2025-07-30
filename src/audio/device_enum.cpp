@@ -18,7 +18,7 @@ bool ALSADeviceEnumerator::populate_device_info(LONG card_number, ALSADeviceInfo
          info.card_id = snd_ctl_card_info_get_id(card_info);
          info.card_name = snd_ctl_card_info_get_name(card_info);
          info.device_name = device_name;
-         info.is_modem = iequals("modem", info.card_id);
+         info.is_modem = pf::iequals("modem", info.card_id);
          
          // Get mixer control count
          info.mixer_controls = 0;
@@ -72,14 +72,14 @@ ALSADeviceInfo ALSADeviceEnumerator::find_device_by_id(const std::string& device
    ALSADeviceInfo result;
    
    // Handle special case for "default"
-   if (iequals("default", device_id)) {
+   if (pf::iequals("default", device_id)) {
       return select_best_device();
    }
 
    // Search for device by card ID
    auto devices = enumerate_devices();
    for (const auto& device : devices) {
-      if (iequals(device.card_id, device_id)) {
+      if (pf::iequals(device.card_id, device_id)) {
          return device;
       }
    }
