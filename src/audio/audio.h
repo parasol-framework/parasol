@@ -1,6 +1,7 @@
 
 using namespace pf;
 
+#include <variant>
 #include "mixer_dispatch.h"
 
 #ifdef _WIN32
@@ -139,7 +140,7 @@ struct AudioSample {
 struct AudioCommand {
    CMD  CommandID;    // Command ID
    LONG Handle;       // Channel handle
-   double Data;       // Special data related to the command ID
+   std::variant<double,int,bool> Data; // Special data related to the command ID
 
    AudioCommand(CMD pCommandID, LONG pHandle, double pData = 0) :
       CommandID(pCommandID), Handle(pHandle), Data(pData) { }

@@ -1,4 +1,3 @@
-//********************************************************************************************************************
 // Buffered command handling.  The execution of these commands is managed by process_commands()
 
 #include <type_traits>
@@ -250,7 +249,7 @@ ERR MixMute(objAudio *Audio, LONG Handle, LONG Mute)
    auto channel = ((extAudio *)Audio)->GetChannel(Handle);
 
    if (channel->Buffering) {
-      add_command(Audio, CMD::MUTE, Handle, Mute);
+      add_command(Audio, CMD::MUTE, Handle, bool(Mute));
       return ERR::Okay;
    }
 
@@ -375,7 +374,7 @@ ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position)
    log.traceBranch("Audio: #%d, Channel: $%.8x, Position: %d", Audio->UID, Handle, Position);
 
    if (channel->Buffering) {
-      add_command(Audio, CMD::PLAY, Position);
+      add_command(Audio, CMD::PLAY, Handle, Position);
       return ERR::Okay;
    }
 

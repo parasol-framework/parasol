@@ -342,13 +342,13 @@ ERR process_commands(extAudio *Self, SAMPLE Elements)
          for (i=0; (i < (int)cmds.size()) and (!stop); i++) {
             switch(cmds[i].CommandID) {
                case CMD::CONTINUE:     snd::MixContinue(Self, cmds[i].Handle); break;
-               case CMD::MUTE:         snd::MixMute(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::PLAY:         snd::MixPlay(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::FREQUENCY:    snd::MixFrequency(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::PAN:          snd::MixPan(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::RATE:         snd::MixRate(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::SAMPLE:       snd::MixSample(Self, cmds[i].Handle, cmds[i].Data); break;
-               case CMD::VOLUME:       snd::MixVolume(Self, cmds[i].Handle, cmds[i].Data); break;
+               case CMD::MUTE:         snd::MixMute(Self, cmds[i].Handle,  std::get<bool>(cmds[i].Data)); break;
+               case CMD::PLAY:         snd::MixPlay(Self, cmds[i].Handle, std::get<int>(cmds[i].Data)); break;
+               case CMD::FREQUENCY:    snd::MixFrequency(Self, cmds[i].Handle, std::get<int>(cmds[i].Data)); break;
+               case CMD::PAN:          snd::MixPan(Self, cmds[i].Handle, std::get<double>(cmds[i].Data)); break;
+               case CMD::RATE:         snd::MixRate(Self, cmds[i].Handle, std::get<int>(cmds[i].Data)); break;
+               case CMD::SAMPLE:       snd::MixSample(Self, cmds[i].Handle, std::get<int>(cmds[i].Data)); break;
+               case CMD::VOLUME:       snd::MixVolume(Self, cmds[i].Handle, std::get<double>(cmds[i].Data)); break;
                case CMD::STOP:         snd::MixStop(Self, cmds[i].Handle); break;
                case CMD::STOP_LOOPING: snd::MixStopLoop(Self, cmds[i].Handle); break;
                case CMD::END_SEQUENCE: stop = true; break;
