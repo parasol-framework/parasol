@@ -2,6 +2,7 @@
 const double RAMPSPEED = 0.01;  // Default ramping speed - volume steps per output sample.  Keeping this value very low prevents clicks from occurring
 
 #include <type_traits>  // For SFINAE and template metaprogramming
+#include "mixer_dispatch.h"
 
 static void filter_float_mono(extAudio *, float *, int);
 static void filter_float_stereo(extAudio *, float *, int);
@@ -909,8 +910,6 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
          int mix_pos = Channel.PositionLow;
          uint8_t *MixSample = sample.Data + (sample_size * Channel.Position); // source of sample data to mix into destination
 
-         auto mix_routine = Self->MixRoutines[int(sample.SampleType)];
-
          // Thread-safe: pass step direction as parameter instead of using global
          const int mix_step = ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) ? -step : step;
          set_mix_step(mix_step);
@@ -918,7 +917,16 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
          // If volume ramping is enabled, mix one sample element at a time and adjust volume by RAMPSPEED.
          // Using helper function to reduce code duplication
          while (((Channel.Flags & CHF::VOL_RAMP) != CHF::NIL) and (mix_now > 0)) {
-            mix_pos = mix_routine(MixSample, mix_pos, 1, next_offset, mastervol * Channel.LVolume, mastervol * Channel.RVolume, &mix_dest);
+            MixingParams params = {
+               .src = MixSample,
+               .src_pos = mix_pos,
+               .total_samples = 1,
+               .next_sample_offset = next_offset,
+               .left_vol = float(mastervol * Channel.LVolume),
+               .right_vol = float(mastervol * Channel.RVolume),
+               .mix_dest = &mix_dest
+            };
+            mix_pos = AudioMixer::dispatch_mix(Self->MixConfig, sample.SampleType, params);
             mix_now--;
 
             // Use helper function for cleaner volume ramping logic
@@ -949,12 +957,30 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, int TotalSamples,
                }
                else num = mix_now;
 
-               mix_pos = mix_routine(MixSample, mix_pos, num, next_offset, mastervol * Channel.LVolume, mastervol * Channel.RVolume, &mix_dest);
+               MixingParams params = {
+                  .src = MixSample,
+                  .src_pos = mix_pos,
+                  .total_samples = num,
+                  .next_sample_offset = next_offset,
+                  .left_vol = float(mastervol * Channel.LVolume),
+                  .right_vol = float(mastervol * Channel.RVolume),
+                  .mix_dest = &mix_dest
+               };
+               mix_pos = AudioMixer::dispatch_mix(Self->MixConfig, sample.SampleType, params);
                mix_now -= num;
             }
 
             if (mix_now > 0) { // Main mixing loop
-               mix_pos = mix_routine(MixSample, mix_pos, mix_now, 1, mastervol * Channel.LVolume, mastervol * Channel.RVolume, &mix_dest);
+               MixingParams params = {
+                  .src = MixSample,
+                  .src_pos = mix_pos,
+                  .total_samples = mix_now,
+                  .next_sample_offset = 1,
+                  .left_vol = float(mastervol * Channel.LVolume),
+                  .right_vol = float(mastervol * Channel.RVolume),
+                  .mix_dest = &mix_dest
+               };
+               mix_pos = AudioMixer::dispatch_mix(Self->MixConfig, sample.SampleType, params);
             }
          }
 

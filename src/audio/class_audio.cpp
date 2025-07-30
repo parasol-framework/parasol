@@ -22,6 +22,8 @@ Note: Support for audio recording is not currently available in this implementat
 
 *********************************************************************************************************************/
 
+#include "mixer_dispatch.h"
+
 #ifndef ALSA_ENABLED
 static ERR init_audio(extAudio *Self)
 {
@@ -38,103 +40,8 @@ static ERR init_audio(extAudio *Self)
 #endif
 
 //********************************************************************************************************************
-// Function instantiations 
-
-// Non-interpolated mono output mixers
-static int mixmf8Mono(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<uint8_t, false, false, false>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixmf16Mono(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<int16_t, false, false, false>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixmf8Stereo(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<uint8_t, true, false, false>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixmf16Stereo(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<int16_t, true, false, false>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-// Non-interpolated stereo output mixers
-static int mixsf8Mono(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-#ifdef __AVX2__
-   if (TotalSamples >= 8) {
-      return mix_vectorized_mono_to_stereo<uint8_t>(Src, SrcPos, TotalSamples, LeftVol, RightVol, MixDest);
-   }
-#endif
-   return mix_template<uint8_t, false, true, false>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixsf16Mono(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-#ifdef __AVX2__
-   if (TotalSamples >= 8) {
-      return mix_vectorized_mono_to_stereo<int16_t>(Src, SrcPos, TotalSamples, LeftVol, RightVol, MixDest);
-   }
-#endif
-   return mix_template<int16_t, false, true, false>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixsf8Stereo(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<uint8_t, true, true, false>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixsf16Stereo(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<int16_t, true, true, false>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-// Interpolated mono output mixers
-static int mixmi8Mono(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<uint8_t, false, false, true>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixmi16Mono(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<int16_t, false, false, true>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixmi8Stereo(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<uint8_t, true, false, true>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixmi16Stereo(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<int16_t, true, false, true>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-// Interpolated stereo output mixers
-static int mixsi8Mono(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<uint8_t, false, true, true>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixsi16Mono(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<int16_t, false, true, true>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixsi8Stereo(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<uint8_t, true, true, true>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-static int mixsi16Stereo(APTR Src, int SrcPos, int TotalSamples, int nextSampleOffset, float LeftVol, float RightVol, float **MixDest) {
-   return mix_template<int16_t, true, true, true>(Src, SrcPos, TotalSamples, nextSampleOffset, LeftVol, RightVol, MixDest);
-}
-
-//********************************************************************************************************************
-
-static MixRoutine MixMonoFloat[int(SFM::END)] = { 
-   nullptr, &mixmf8Mono, &mixmf16Mono, &mixmf8Stereo, &mixmf16Stereo 
-};
-
-static MixRoutine MixStereoFloat[int(SFM::END)] = { 
-   nullptr, &mixsf8Mono, &mixsf16Mono, &mixsf8Stereo, &mixsf16Stereo 
-};
-
-static MixRoutine MixMonoFloatInterp[int(SFM::END)] = { 
-   nullptr, &mixmi8Mono, &mixmi16Mono, &mixmi8Stereo, &mixmi16Stereo 
-};
-
-static MixRoutine MixStereoFloatInterp[int(SFM::END)] = { 
-   nullptr, &mixsi8Mono, &mixsi16Mono, &mixsi8Stereo, &mixsi16Stereo 
-};
+// The individual mixing functions and function pointer arrays have been replaced by the 
+// consolidated AudioMixer::dispatch_mix() function in mixer_dispatch.cpp
 
 /*********************************************************************************************************************
 -ACTION-
@@ -193,14 +100,10 @@ static ERR AUDIO_Activate(extAudio *Self)
    Self->MixElements   = SAMPLE(Self->MixBufferSize / mixbitsize);
 
    if (AllocMemory(Self->MixBufferSize, MEM::DATA, &Self->MixBuffer) IS ERR::Okay) {
-      // Pick the correct mixing routines
+      // Configure the mixing system
 
-      if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
-         if (Self->Stereo) Self->MixRoutines = MixStereoFloatInterp;
-         else Self->MixRoutines = MixMonoFloatInterp;
-      }
-      else if (Self->Stereo) Self->MixRoutines = MixStereoFloat;
-      else Self->MixRoutines = MixMonoFloat;
+      bool use_interpolation = (Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL;
+      Self->MixConfig = AudioConfig(Self->Stereo, use_interpolation);
 
       #ifdef _WIN32
          WAVEFORMATEX wave = {

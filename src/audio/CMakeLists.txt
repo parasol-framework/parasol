@@ -41,19 +41,19 @@ endif ()
 
 flute_test (audio "tests/test-audio.fluid")
 
-if (BUILD_TESTS)   
+if (BUILD_TESTS)
    add_executable (test_audio_mixers tests/test_mixers.cpp)
    target_include_directories (test_audio_mixers PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
    target_compile_features (test_audio_mixers PRIVATE cxx_std_20)
    set_target_properties (test_audio_mixers PROPERTIES
-      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests" 
-      CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
-   
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
+      CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+
    enable_testing()
    add_test (NAME AudioMixerFull COMMAND test_audio_mixers)
-   
+
    # Set test properties
-   set_tests_properties (AudioMixerFull PROPERTIES  
+   set_tests_properties (AudioMixerFull PROPERTIES
       TIMEOUT 60
       LABELS "audio;unit;comprehensive")
 endif()

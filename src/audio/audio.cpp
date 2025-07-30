@@ -8,9 +8,9 @@ that is distributed with this package.  Please refer to it for further informati
 -MODULE-
 Audio: Comprehensive audio processing and playback system with professional-grade mixing capabilities.
 
-The Audio module provides a robust, cross-platform audio infrastructure that manages the complete audio pipeline from sample 
-loading through to hardware output.  The module's architecture supports both high-level convenience interfaces and low-level 
-professional audio control, making it suitable for applications ranging from simple media playback to sophisticated audio 
+The Audio module provides a robust, cross-platform audio infrastructure that manages the complete audio pipeline from sample
+loading through to hardware output.  The module's architecture supports both high-level convenience interfaces and low-level
+professional audio control, making it suitable for applications ranging from simple media playback to sophisticated audio
 production environments.
 
 The module implements a client-server design pattern with two complementary class interfaces:
@@ -20,7 +20,7 @@ The module implements a client-server design pattern with two complementary clas
 <li>@Sound: High-level sample playback interface optimised for simplicity and performance.  Automatically manages resource allocation, format conversion, and hardware abstraction whilst providing intelligent streaming decisions</li>
 </list>
 
-The internal mixer is a floating-point engine that processes all audio internally at 32-bit precision regardless of 
+The internal mixer is a floating-point engine that processes all audio internally at 32-bit precision regardless of
 output bit depth.  The mixer supports features that include:
 
 <list type="bullet">
@@ -208,14 +208,13 @@ static ERR MODExpunge(void)
 #include "commands.cpp"
 #include "class_audio.cpp"
 #include "class_sound.cpp"
+#include "mixer_dispatch.cpp"
 
 //********************************************************************************************************************
 
 static STRUCTS glStructures = {
    { "AudioLoop", sizeof(AudioLoop) }
 };
-
-//********************************************************************************************************************
 
 PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_audio_module() { return &ModHeader; }

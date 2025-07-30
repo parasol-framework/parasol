@@ -1,6 +1,8 @@
 
 using namespace pf;
 
+#include "mixer_dispatch.h"
+
 #ifdef _WIN32
 #define MIX_INTERVAL 0.1
 #else
@@ -222,7 +224,7 @@ class extAudio : public objAudio {
    std::vector<AudioSample> Samples; // Buffered samples loaded into the audio object.
    std::vector<VolumeCtl> Volumes;
    std::vector<MixTimer> MixTimers;
-   MixRoutine *MixRoutines;
+   AudioConfig MixConfig;
    APTR  MixBuffer;
    APTR  TaskRemovedHandle;
    APTR  UserLoginHandle;
