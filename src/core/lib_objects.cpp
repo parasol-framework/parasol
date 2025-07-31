@@ -514,7 +514,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
    ERR error = ERR::Okay;
 
    ++Object->ThreadPending;
-   Defer([Object, error] { if (error != ERR::Okay) --Object->ThreadPending; });
+   auto defer = Defer([Object, error] { if (error != ERR::Okay) --Object->ThreadPending; });
 
    // Prepare the parameter buffer for passing to the thread routine.
 

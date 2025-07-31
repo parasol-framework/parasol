@@ -172,7 +172,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
-   pf::Defer([Self, deflateend] {
+   auto defer = pf::Defer([Self, deflateend] {
       if (deflateend) deflateEnd(&Self->Zip);
       Self->FileIndex++;
    });
