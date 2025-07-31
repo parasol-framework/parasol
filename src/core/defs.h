@@ -1204,4 +1204,42 @@ inline void remove_object_hash(OBJECTPTR Object)
    if (glObjectLookup[Object->Name].empty()) glObjectLookup.erase(Object->Name);
 }
 
+//********************************************************************************************************************
+// Binary search helper.  Requires a sorted container.
+
+template<typename Container, typename Key, typename Compare>
+typename Container::const_iterator binary_search(const Container& container, const Key& key, Compare comp) {
+    unsigned floor = 0;
+    unsigned ceiling = (unsigned)container.size();
+    while (floor < ceiling) {
+        unsigned i = (floor + ceiling) >> 1;
+        if (comp(container[i], key) < 0) floor = i + 1;
+        else if (comp(container[i], key) > 0) ceiling = i;
+        else return container.begin() + i;
+    }
+    return container.end();
+}
+
+//********************************************************************************************************************
+// Type conversion helper for field operations
+
+template<typename T>
+ERR convert_data_to_type(CPTR Data, int Flags, T& result) {
+    if constexpr (std::is_integral_v<T>) {
+        if (Flags & FD_INT) result = *((int*)Data);
+        else if (Flags & FD_INT64) result = T(*((int64_t*)Data));
+        else if (Flags & (FD_DOUBLE|FD_FLOAT)) result = T(*((double*)Data));
+        else if (Flags & FD_STRING) result = T(strtoll((STRING)Data, nullptr, 0));
+        else return ERR::SetValueNotNumeric;
+    }
+    else if constexpr (std::is_floating_point_v<T>) {
+        if (Flags & FD_DOUBLE) result = *((double*)Data);
+        else if (Flags & FD_FLOAT) result = *((float*)Data);
+        else if (Flags & (FD_INT|FD_INT64)) result = T(*((int64_t*)Data));
+        else if (Flags & FD_STRING) result = T(strtod((STRING)Data, nullptr));
+        else return ERR::SetValueNotNumeric;
+    }
+    return ERR::Okay;
+}
+
 #endif // DEFS_H

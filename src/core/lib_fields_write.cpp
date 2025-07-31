@@ -280,34 +280,19 @@ static ERR writeval_lookup(OBJECTPTR Object, Field *Field, int Flags, CPTR Data,
 static ERR writeval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
    auto offset = (int *)((BYTE *)Object + Field->Offset);
-   if (Flags & FD_INT)        *offset = *((int *)Data);
-   else if (Flags & FD_INT64)  *offset = (int)(*((int64_t *)Data));
-   else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((double *)Data));
-   else if (Flags & FD_STRING) *offset = strtol((STRING)Data, nullptr, 0);
-   else return ERR::SetValueNotNumeric;
-   return ERR::Okay;
+   return convert_data_to_type(Data, Flags, *offset);
 }
 
 static ERR writeval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
    auto offset = (int64_t *)((BYTE *)Object + Field->Offset);
-   if (Flags & FD_INT64)      *offset = *((int64_t *)Data);
-   else if (Flags & FD_INT)   *offset = *((int *)Data);
-   else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((double *)Data));
-   else if (Flags & FD_STRING) *offset = strtoll((STRING)Data, nullptr, 0);
-   else return ERR::SetValueNotNumeric;
-   return ERR::Okay;
+   return convert_data_to_type(Data, Flags, *offset);
 }
 
 static ERR writeval_double(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
    auto offset = (DOUBLE *)((BYTE *)Object + Field->Offset);
-   if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = *((double *)Data);
-   else if (Flags & FD_INT)    *offset = *((int *)Data);
-   else if (Flags & FD_INT64)  *offset = (*((int64_t *)Data));
-   else if (Flags & FD_STRING) *offset = strtod((STRING)Data, nullptr);
-   else return ERR::SetValueNotNumeric;
-   return ERR::Okay;
+   return convert_data_to_type(Data, Flags, *offset);
 }
 
 static ERR writeval_function(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
@@ -475,12 +460,8 @@ static ERR setval_function(OBJECTPTR Object, Field *Field, int Flags, CPTR Data,
 static ERR setval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
    int int32;
-   if (Flags & FD_INT64)       int32 = (int)(*((int64_t *)Data));
-   else if (Flags & (FD_DOUBLE|FD_FLOAT)) int32 = F2I(*((double *)Data));
-   else if (Flags & FD_STRING) int32 = strtol((STRING)Data, nullptr, 0);
-   else if (Flags & FD_INT)    int32 = *((int *)Data);
-   else if (Flags & FD_UNIT)   int32 = F2I(((Unit *)Data)->Value);
-   else return ERR::SetValueNotNumeric;
+   if (Flags & FD_UNIT) int32 = F2I(((Unit *)Data)->Value);
+   else if (auto error = convert_data_to_type(Data, Flags, int32); error != ERR::Okay) return error;
 
    FieldContext ctx(Object, Field);
    return ((ERR (*)(APTR, int))(Field->SetValue))(Object, int32);
@@ -489,12 +470,8 @@ static ERR setval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int
 static ERR setval_double(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
    double float64;
-   if (Flags & FD_INT)         float64 = *((int *)Data);
-   else if (Flags & FD_INT64)  float64 = (double)(*((int64_t *)Data));
-   else if (Flags & FD_STRING) float64 = strtod((CSTRING)Data, nullptr);
-   else if (Flags & (FD_DOUBLE|FD_FLOAT)) float64 = *((double *)Data);
-   else if (Flags & FD_UNIT)   float64 = ((Unit *)Data)->Value;
-   else return ERR::SetValueNotNumeric;
+   if (Flags & FD_UNIT) float64 = ((Unit *)Data)->Value;
+   else if (auto error = convert_data_to_type(Data, Flags, float64); error != ERR::Okay) return error;
 
    FieldContext ctx(Object, Field);
    return ((ERR (*)(APTR, double))(Field->SetValue))(Object, float64);
@@ -522,13 +499,8 @@ static ERR setval_pointer(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
 static ERR setval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
    int64_t int64;
-
-   if (Flags & FD_INT)        int64 = *((int *)Data);
-   else if (Flags & (FD_DOUBLE|FD_FLOAT)) int64 = std::llround(*((double *)Data));
-   else if (Flags & FD_STRING) int64 = strtoll((CSTRING)Data, nullptr, 0);
-   else if (Flags & FD_INT64)  int64 = *((int64_t*)Data);
-   else if (Flags & FD_UNIT)   int64 = std::llround(((Unit*)Data)->Value);
-   else return ERR::SetValueNotNumeric;
+   if (Flags & FD_UNIT) int64 = std::llround(((Unit*)Data)->Value);
+   else if (auto error = convert_data_to_type(Data, Flags, int64); error != ERR::Okay) return error;
 
    FieldContext ctx(Object, Field);
    return ((ERR (*)(APTR, int64_t))(Field->SetValue))(Object, int64);
