@@ -959,10 +959,10 @@ class RootModule : public Object {
    #else
       MODHANDLE LibraryBase;
    #endif
-   std::string Name;           // Name of the module (as declared by the header)
+   std::string Name;       // Name of the module (as declared by the header)
    struct ModHeader *Table;
    int16_t Version;
-   int16_t OpenCount;           // Amount of programs with this module open
+   int16_t OpenCount;          // Amount of programs with this module open
    float  ModVersion;          // Version of this module
    MHF    Flags;
    bool   NoUnload;
@@ -973,6 +973,8 @@ class RootModule : public Object {
    ERR    (*Expunge)(void);
    struct ActionEntry prvActions[int(AC::END)]; // Action routines to be intercepted by the program
    std::string LibraryName; // Name of the library loaded from disk
+
+   RootModule() = default;
 };
 
 THREADID get_thread_id(void);
