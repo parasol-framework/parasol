@@ -175,7 +175,7 @@ class objClientSocket : public Object {
    objClientSocket * Prev;       // Previous socket in the chain
    objClientSocket * Next;       // Next socket in the chain
    struct NetClient * Client;    // Parent client structure
-   APTR     ClientData;          // Free for user data storage.
+   APTR     ClientData;          // Available for client data storage.
    FUNCTION Outgoing;            // Callback for data being sent over the socket
    FUNCTION Incoming;            // Callback for data being received from the socket
    int      MsgLen;              // Length of the current incoming message

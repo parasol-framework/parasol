@@ -941,7 +941,7 @@ Feedback: A callback trigger for when the state of the NetSocket is changed.
 Refer to a custom function in this field and it will be called whenever the #State of the socket (such as
 connection or disconnection) changes.
 
-The function must be in the format `Function(*NetSocket, *ClientSocket, int State)`
+The function must be in the format `Function(*NetSocket, *ClientSocket, NTC State)`
 
 The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects
 the new value in the #State field.
@@ -1356,6 +1356,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], int(Error), Socket->InUse, Socket->WinRecursion);
    #endif
 
+   pf::ScopedObjectLock lock(Socket);
    pf::SwitchContext context(Socket);
 
    Socket->InUse++;

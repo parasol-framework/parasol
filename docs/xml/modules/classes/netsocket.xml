@@ -279,7 +279,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <type>FUNCTION</type>
       <description>
 <p>Refer to a custom function in this field and it will be called whenever the <fl>State</fl> of the socket (such as connection or disconnection) changes.</p>
-<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, int State)</code></p>
+<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, NTC State)</code></p>
 <p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <fl>State</fl> field.</p>
       </description>
     </field>

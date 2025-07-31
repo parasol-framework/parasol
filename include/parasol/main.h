@@ -45,11 +45,11 @@ template <class T = double> struct POINT {
    }
 };
 
-template <class T = double> bool operator==(const POINT<T> &a, const POINT<T> &b) {
+template <class T = double> [[nodiscard]] bool operator==(const POINT<T> &a, const POINT<T> &b) {
    return (a.x == b.x) and (a.y == b.y);
 }
 
-template <class T = double> T operator-(const POINT<T> A, const POINT<T> &B) {
+template <class T = double> [[nodiscard]] T operator-(const POINT<T> A, const POINT<T> &B) {
    if (A == B) return 0;
    double a = std::abs(B.x - A.x);
    double b = std::abs(B.y - A.y);
@@ -58,7 +58,7 @@ template <class T = double> T operator-(const POINT<T> A, const POINT<T> &B) {
    //return T(std::sqrt((a * a) + (b * b))); // Full accuracy
 }
 
-template <class T = double> POINT<T> operator * (const POINT<T> &lhs, const double &Multiplier) {
+template <class T = double> [[nodiscard]] POINT<T> operator * (const POINT<T> &lhs, const double &Multiplier) {
    return POINT<T> { lhs.x * Multiplier, lhs.y * Multiplier };
 }
 
@@ -82,7 +82,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing locked mem
 
       ~ScopedAccessMemory() { if (error IS ERR::Okay) ReleaseMemory(ptr); }
 
-      bool granted() { return error == ERR::Okay; }
+      [[nodiscard]] bool granted() { return error == ERR::Okay; }
 
       void release() {
          if (error IS ERR::Okay) {
@@ -107,7 +107,7 @@ private:
    FUNC func;
 };
 
-template <typename F> deferred_call<F> Defer(F &&f) {
+template <typename F> [[nodiscard]]  deferred_call<F> Defer(F &&f) {
    return deferred_call<F>(std::forward<F>(f));
 }
 
@@ -151,7 +151,12 @@ class ScopedObjectLock {
       }
 
       inline ScopedObjectLock(T *Object, int Milliseconds = 3000) {
-         if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
+         if (!Object) { // Null objects are permitted - it can be very convenient in certain code patterns
+            obj = nullptr;
+            error = ERR::NotLocked;
+            quicklock = false;
+         }
+         else if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
             obj = (T *)Object;
             quicklock = true;
          }
@@ -165,7 +170,7 @@ class ScopedObjectLock {
       }
 
       inline ScopedObjectLock() { obj = NULL; error = ERR::NotLocked; }
-      inline bool granted() { return error == ERR::Okay; }
+      [[nodiscard]] inline bool granted() { return error == ERR::Okay; }
 
       inline T * operator->() { return obj; }; // Promotes underlying methods and fields
       inline T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
@@ -281,7 +286,7 @@ class GuardedObject {
          else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
       }
 
-      constexpr bool empty() { return !object; } // Returns true if no object is being guarded.
+      [[nodiscard]] constexpr bool empty() { return !object; } // Returns true if no object is being guarded.
 
       T * operator->() { return object; }; // Promotes underlying methods and fields
       T * & operator*() { return object; }; // To allow object pointer referencing when calling functions
@@ -376,7 +381,7 @@ class GuardedResource {
          else { pf::Log log(__FUNCTION__); log.warning(ERR::InUse); }
       }
 
-      constexpr bool empty() { return !resource; } // Returns true if no resource is being guarded.
+      [[nodiscard]] constexpr bool empty() { return !resource; } // Returns true if no resource is being guarded.
 
       T * operator->() { return resource; }; // Promotes underlying methods and fields
       T * & operator*() { return resource; }; // To allow resource pointer referencing when calling functions
@@ -488,57 +493,58 @@ inline FieldValue Points(const std::string &Value) { return FieldValue(FID_Point
 constexpr FieldValue Pretext(CSTRING Value) { return FieldValue(FID_Pretext, Value); }
 inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pretext, Value.c_str()); }
 
-constexpr FieldValue Acceleration(double Value) { return FieldValue(FID_Acceleration, Value); }
-constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
-constexpr FieldValue AmtColours(int Value) { return FieldValue(FID_AmtColours, Value); }
-constexpr FieldValue BaseClassID(CLASSID Value) { return FieldValue(FID_BaseClassID, int(Value)); }
-constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
-constexpr FieldValue BitsPerPixel(int Value) { return FieldValue(FID_BitsPerPixel, Value); }
-constexpr FieldValue BytesPerPixel(int Value) { return FieldValue(FID_BytesPerPixel, Value); }
-constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, int(Value)); }
-constexpr FieldValue ClassID(CLASSID Value) { return FieldValue(FID_ClassID, int(Value)); }
-constexpr FieldValue ClassVersion(double Value) { return FieldValue(FID_ClassVersion, Value); }
-constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
-constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, int(Value)); }
-constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, int(Value)); }
-constexpr FieldValue DoubleClick(double Value) { return FieldValue(FID_DoubleClick, Value); }
-constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
-constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
-constexpr FieldValue Flags(int Value) { return FieldValue(FID_Flags, Value); }
-constexpr FieldValue Font(OBJECTPTR Value) { return FieldValue(FID_Font, Value); }
-constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
-constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
-constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
-constexpr FieldValue LineLimit(int Value) { return FieldValue(FID_LineLimit, Value); }
-constexpr FieldValue Listener(int Value) { return FieldValue(FID_Listener, Value); }
-constexpr FieldValue MatrixColumns(int Value) { return FieldValue(FID_MatrixColumns, Value); }
-constexpr FieldValue MatrixRows(int Value) { return FieldValue(FID_MatrixRows, Value); }
-constexpr FieldValue MaxHeight(int Value) { return FieldValue(FID_MaxHeight, Value); }
-constexpr FieldValue MaxSpeed(double Value) { return FieldValue(FID_MaxSpeed, Value); }
-constexpr FieldValue MaxWidth(int Value) { return FieldValue(FID_MaxWidth, Value); }
-constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
-constexpr FieldValue Opacity(double Value) { return FieldValue(FID_Opacity, Value); }
-constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value); }
-constexpr FieldValue Parent(OBJECTID Value) { return FieldValue(FID_Parent, Value); }
-constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, int(Value)); }
-constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
-constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }
-constexpr FieldValue RefreshRate(double Value) { return FieldValue(FID_RefreshRate, Value); }
-constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
-constexpr FieldValue Size(int Value) { return FieldValue(FID_Size, Value); }
-constexpr FieldValue Speed(double Value) { return FieldValue(FID_Speed, Value); }
-constexpr FieldValue StrokeWidth(double Value) { return FieldValue(FID_StrokeWidth, Value); }
-constexpr FieldValue Surface(OBJECTID Value) { return FieldValue(FID_Surface, Value); }
-constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
-constexpr FieldValue Target(OBJECTPTR Value) { return FieldValue(FID_Target, Value); }
-constexpr FieldValue ClientData(CPTR Value) { return FieldValue(FID_ClientData, Value); }
-constexpr FieldValue Version(double Value) { return FieldValue(FID_Version, Value); }
-constexpr FieldValue Viewport(OBJECTID Value) { return FieldValue(FID_Viewport, Value); }
-constexpr FieldValue Viewport(OBJECTPTR Value) { return FieldValue(FID_Viewport, Value); }
-constexpr FieldValue Weight(int Value) { return FieldValue(FID_Weight, Value); }
-constexpr FieldValue WheelSpeed(double Value) { return FieldValue(FID_WheelSpeed, Value); }
-constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
-constexpr FieldValue WindowHandle(int Value) { return FieldValue(FID_WindowHandle, Value); }
+[[nodiscard]] constexpr FieldValue Acceleration(double Value) { return FieldValue(FID_Acceleration, Value); }
+[[nodiscard]] constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
+[[nodiscard]] constexpr FieldValue AmtColours(int Value) { return FieldValue(FID_AmtColours, Value); }
+[[nodiscard]] constexpr FieldValue BaseClassID(CLASSID Value) { return FieldValue(FID_BaseClassID, int(Value)); }
+[[nodiscard]] constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
+[[nodiscard]] constexpr FieldValue BitsPerPixel(int Value) { return FieldValue(FID_BitsPerPixel, Value); }
+[[nodiscard]] constexpr FieldValue BytesPerPixel(int Value) { return FieldValue(FID_BytesPerPixel, Value); }
+[[nodiscard]] constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, int(Value)); }
+[[nodiscard]] constexpr FieldValue ClassID(CLASSID Value) { return FieldValue(FID_ClassID, int(Value)); }
+[[nodiscard]] constexpr FieldValue ClassVersion(double Value) { return FieldValue(FID_ClassVersion, Value); }
+[[nodiscard]] constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
+[[nodiscard]] constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, int(Value)); }
+[[nodiscard]] constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, int(Value)); }
+[[nodiscard]] constexpr FieldValue DoubleClick(double Value) { return FieldValue(FID_DoubleClick, Value); }
+[[nodiscard]] constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
+[[nodiscard]] constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
+[[nodiscard]] constexpr FieldValue Flags(int Value) { return FieldValue(FID_Flags, Value); }
+[[nodiscard]] constexpr FieldValue Font(OBJECTPTR Value) { return FieldValue(FID_Font, Value); }
+[[nodiscard]] constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
+[[nodiscard]] constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
+[[nodiscard]] constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
+[[nodiscard]] constexpr FieldValue LineLimit(int Value) { return FieldValue(FID_LineLimit, Value); }
+[[nodiscard]] constexpr FieldValue Listener(int Value) { return FieldValue(FID_Listener, Value); }
+[[nodiscard]] constexpr FieldValue MatrixColumns(int Value) { return FieldValue(FID_MatrixColumns, Value); }
+[[nodiscard]] constexpr FieldValue MatrixRows(int Value) { return FieldValue(FID_MatrixRows, Value); }
+[[nodiscard]] constexpr FieldValue MaxHeight(int Value) { return FieldValue(FID_MaxHeight, Value); }
+[[nodiscard]] constexpr FieldValue MaxSpeed(double Value) { return FieldValue(FID_MaxSpeed, Value); }
+[[nodiscard]] constexpr FieldValue MaxWidth(int Value) { return FieldValue(FID_MaxWidth, Value); }
+[[nodiscard]] constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
+[[nodiscard]] constexpr FieldValue Opacity(double Value) { return FieldValue(FID_Opacity, Value); }
+[[nodiscard]] constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value); }
+[[nodiscard]] constexpr FieldValue Parent(OBJECTID Value) { return FieldValue(FID_Parent, Value); }
+[[nodiscard]] constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, int(Value)); }
+[[nodiscard]] constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
+[[nodiscard]] constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }
+[[nodiscard]] constexpr FieldValue Port(int Value) { return FieldValue(FID_Port, Value); }
+[[nodiscard]] constexpr FieldValue RefreshRate(double Value) { return FieldValue(FID_RefreshRate, Value); }
+[[nodiscard]] constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
+[[nodiscard]] constexpr FieldValue Size(int Value) { return FieldValue(FID_Size, Value); }
+[[nodiscard]] constexpr FieldValue Speed(double Value) { return FieldValue(FID_Speed, Value); }
+[[nodiscard]] constexpr FieldValue StrokeWidth(double Value) { return FieldValue(FID_StrokeWidth, Value); }
+[[nodiscard]] constexpr FieldValue Surface(OBJECTID Value) { return FieldValue(FID_Surface, Value); }
+[[nodiscard]] constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
+[[nodiscard]] constexpr FieldValue Target(OBJECTPTR Value) { return FieldValue(FID_Target, Value); }
+[[nodiscard]] constexpr FieldValue ClientData(CPTR Value) { return FieldValue(FID_ClientData, Value); }
+[[nodiscard]] constexpr FieldValue Version(double Value) { return FieldValue(FID_Version, Value); }
+[[nodiscard]] constexpr FieldValue Viewport(OBJECTID Value) { return FieldValue(FID_Viewport, Value); }
+[[nodiscard]] constexpr FieldValue Viewport(OBJECTPTR Value) { return FieldValue(FID_Viewport, Value); }
+[[nodiscard]] constexpr FieldValue Weight(int Value) { return FieldValue(FID_Weight, Value); }
+[[nodiscard]] constexpr FieldValue WheelSpeed(double Value) { return FieldValue(FID_WheelSpeed, Value); }
+[[nodiscard]] constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
+[[nodiscard]] constexpr FieldValue WindowHandle(int Value) { return FieldValue(FID_WindowHandle, Value); }
 
 // Template-based Flags are required for strongly typed enums
 

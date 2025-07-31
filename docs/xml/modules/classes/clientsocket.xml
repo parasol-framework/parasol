@@ -112,7 +112,7 @@
 
     <field>
       <name>ClientData</name>
-      <comment>Free for user data storage.</comment>
+      <comment>Available for client data storage.</comment>
       <access read="R">Read</access>
       <type>APTR</type>
     </field>

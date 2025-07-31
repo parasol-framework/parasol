@@ -99,7 +99,7 @@ typedef int SOCKET_HANDLE;
     obj(ClientSocket) Prev           # Previous socket in the chain
     obj(ClientSocket) Next           # Next socket in the chain
     ptr(struct(NetClient)) Client    # Parent client structure
-    ptr  ClientData                  # Free for user data storage.
+    ptr  ClientData                  # Available for client data storage.
     func Outgoing                    # Callback for data being sent over the socket
     func Incoming                    # Callback for data being received from the socket
     int  MsgLen                      # Length of the current incoming message

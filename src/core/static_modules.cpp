@@ -2,6 +2,7 @@
 #ifdef PARASOL_STATIC
 
 extern "C" ModHeader * register_audio_module();
+extern "C" ModHeader * register_backstage_module();
 extern "C" ModHeader * register_display_module();
 extern "C" ModHeader * register_document_module();
 extern "C" ModHeader * register_fluid_module();
@@ -24,6 +25,10 @@ static void register_static_modules(void)
 {
    #ifdef INC_MOD_AUDIO
    glStaticModules["audio"] = register_audio_module();
+   #endif
+   
+   #ifdef INC_MOD_BACKSTAGE
+   glStaticModules["backstage"] = register_backstage_module();
    #endif
 
    #ifdef INC_MOD_DISPLAY
