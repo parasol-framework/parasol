@@ -188,7 +188,12 @@ class ScopedObjectLock {
       }
 
       inline ScopedObjectLock(T *Object, int Milliseconds = 3000) {
-         if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
+         if (!Object) {
+            obj = nullptr;
+            error = ERR::NotLocked;
+            quicklock = false;
+         }
+         else if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
             obj = (T *)Object;
             quicklock = true;
          }
