@@ -76,7 +76,7 @@ operator-(const POINT<T> A, const POINT<T> &B) {
 template <class T = double, class M = double>
 [[nodiscard]] std::enable_if_t<std::is_arithmetic_v<T> and std::is_arithmetic_v<M>, POINT<T>>
 operator * (const POINT<T> &lhs, const M &Multiplier) {
-   return POINT<T> { static_cast<T>(lhs.x * Multiplier), static_cast<T>(lhs.y * Multiplier) };
+   return POINT<T> { T(lhs.x * Multiplier), T(lhs.y * Multiplier) };
 }
 
 //********************************************************************************************************************
