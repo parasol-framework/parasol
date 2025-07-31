@@ -30,7 +30,6 @@ there is a fixed limit to the clip count and the oldest members are automaticall
 
 #include "defs.h"
 #include <regex>
-#include <codecvt>
 
 #ifdef _WIN32
 using namespace display;
@@ -138,8 +137,26 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
    for (auto &item : Items) {
       std::string path;
       if (ResolvePath(item.Path, RSF::NIL, &path) IS ERR::Okay) {
-         std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-         std::u16string dest = convert.from_bytes(path);
+         // Convert UTF-8 to UTF-16 manually
+         std::u16string dest;
+         const char *src = path.c_str();
+         while (*src) {
+            uint32_t codepoint = 0;
+            int len = UTF8CharLength(src);
+            if (len IS 1) codepoint = *src;
+            else codepoint = UTF8ReadValue(src, nullptr);
+            
+            if (codepoint < 0x10000) {
+               dest.push_back(static_cast<char16_t>(codepoint));
+            }
+            else {
+               // Surrogate pair for codepoints >= 0x10000
+               codepoint -= 0x10000;
+               dest.push_back(static_cast<char16_t>(0xD800 + (codepoint >> 10)));
+               dest.push_back(static_cast<char16_t>(0xDC00 + (codepoint & 0x3FF)));
+            }
+            src += len;
+         }
          list << dest << '\0';
       }
    }
@@ -750,7 +767,40 @@ extern "C" void report_windows_hdrop(const char *Data, int CutOperation, char Wi
    if (WideChar) { // Widechar -> UTF-8
       auto sdata = reinterpret_cast<const char16_t*>(Data);  
       while (*sdata) {  
-         items.emplace_back(std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(sdata));  
+         // Convert UTF-16 to UTF-8 manually
+         std::string utf8_path;
+         const char16_t *src = sdata;
+         while (*src) {
+            uint32_t codepoint = *src++;
+            
+            // Handle surrogate pairs
+            if (codepoint >= 0xD800 and codepoint <= 0xDBFF) {
+               if (*src >= 0xDC00 and *src <= 0xDFFF) {
+                  codepoint = 0x10000 + ((codepoint & 0x3FF) << 10) + (*src++ & 0x3FF);
+               }
+            }
+            
+            // Convert to UTF-8
+            if (codepoint < 0x80) {
+               utf8_path.push_back(static_cast<char>(codepoint));
+            }
+            else if (codepoint < 0x800) {
+               utf8_path.push_back(static_cast<char>(0xC0 | (codepoint >> 6)));
+               utf8_path.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+            }
+            else if (codepoint < 0x10000) {
+               utf8_path.push_back(static_cast<char>(0xE0 | (codepoint >> 12)));
+               utf8_path.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+               utf8_path.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+            }
+            else {
+               utf8_path.push_back(static_cast<char>(0xF0 | (codepoint >> 18)));
+               utf8_path.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
+               utf8_path.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+               utf8_path.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+            }
+         }
+         items.emplace_back(utf8_path);
          sdata += std::char_traits<char16_t>::length(sdata) + 1; // Next file path  
       }
    }
