@@ -110,7 +110,7 @@ struct svgState {
       PIXEL,  // px
       SCALED, // %: Scale to fill empty space
    };
-   
+
    // Field Unit.  Makes it user to define field values that could be fixed or scaled.
 
    struct FUNIT {
@@ -123,8 +123,8 @@ struct svgState {
 
       // With field
       explicit FUNIT(svgState *pState, FIELD pField, double pValue, DU pType = DU::NIL) noexcept : state(pState), field_id(pField), value(pValue), type(pType) { }
-   
-      FUNIT(svgState *pState, FIELD pField, const std::string &pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept : 
+
+      FUNIT(svgState *pState, FIELD pField, const std::string &pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept :
          FUNIT(pState, pValue, pType, pMin) { field_id = pField; }
 
       FUNIT(svgState *pState, FIELD pField, std::string_view pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept :
@@ -133,7 +133,7 @@ struct svgState {
       // Without field
       explicit FUNIT(svgState *pState, double pValue, DU pType = DU::PIXEL) noexcept : state(pState), value(pValue), type(pType) { }
 
-      FUNIT(svgState *pState, std::string pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept : 
+      FUNIT(svgState *pState, std::string pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept :
          FUNIT(pState, std::string_view(pValue), pType, pMin) { }
 
       FUNIT(svgState *pState, std::string_view pValue, DU pType = DU::NIL, double pMin = -DBL_MAX) noexcept;
@@ -152,8 +152,8 @@ struct svgState {
          return (value >= 0.001);
       }
 
-      inline ERR set(OBJECTPTR Object) const noexcept { 
-         return Object->set(field_id, Unit(value, (type == DU::SCALED) ? (FD_DOUBLE|FD_SCALED) : FD_DOUBLE)); 
+      inline ERR set(OBJECTPTR Object) const noexcept {
+         return Object->set(field_id, Unit(value, (type == DU::SCALED) ? (FD_DOUBLE|FD_SCALED) : FD_DOUBLE));
       }
    };
 
