@@ -216,10 +216,10 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
       if (thread_count > height/4) thread_count = height/4;
       if (thread_count < 1) thread_count = 1;
 
-      dp::thread_pool pool(thread_count);
+      BS::thread_pool pool(thread_count);
 
       for (int i=0; i < thread_count; i++) {
-         pool.enqueue_detach([](extTurbulenceFX *Self, int Start, int End) { 
+         pool.detach_task([Self, Start = (height * i) / thread_count, End = (height * (i + 1)) / thread_count]() { 
             const uint8_t A = Self->Bitmap->ColourFormat->AlphaPos>>3;
             const uint8_t R = Self->Bitmap->ColourFormat->RedPos>>3;
             const uint8_t G = Self->Bitmap->ColourFormat->GreenPos>>3;
@@ -276,10 +276,10 @@ static ERR TURBULENCEFX_Draw(extTurbulenceFX *Self, struct acDraw *Args)
                   }
                }
             }
-         }, Self, (height * i) / thread_count,  (height * (i + 1)) / thread_count);
+         });
       }
 
-      pool.wait_for_tasks();
+      pool.wait();
    }
 
    render_to_filter(Self, Self->Bitmap, ARF::NONE, Self->Filter->Scene->SampleMethod);
