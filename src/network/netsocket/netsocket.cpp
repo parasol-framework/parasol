@@ -597,7 +597,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      log.warning("DEPRECATED: Read from the ClientSocket instead.");
+      // Not allowed - client must read from the ClientSocket.
       return ERR::NoSupport;
    }
    else { // Read from the server that we're connected to
@@ -673,12 +673,33 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
       }
    }
 
-   int msglen, result, magic;
-   uint32_t total_length;
+   size_t msglen, total_length;
+   int result, magic;
    ERR error;
 
    if (queue->Index >= sizeof(NetMsg)) { // The complete message header has been received
-      msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
+      // Bounds check before accessing buffer as NetMsg
+      if (queue->Length < sizeof(NetMsg)) {
+         log.warning("Buffer too small for NetMsg header.");
+         return ERR::InvalidData;
+      }
+      
+      msglen = ntohl(((NetMsg *)queue->Buffer)->Length);
+      
+      // Validate message length early
+      if (msglen > NETMSG_SIZE_LIMIT) {
+         log.warning("Message length %d exceeds limit %d.", int(msglen), NETMSG_SIZE_LIMIT);
+         queue->Index = 0;
+         return ERR::InvalidData;
+      }
+      
+      // Check for potential integer overflow in total_length calculation
+      if (msglen > UINT32_MAX - sizeof(NetMsg) - sizeof(NetMsgEnd) - 1) {
+         log.warning("Message length would cause integer overflow.");
+         queue->Index = 0;
+         return ERR::InvalidData;
+      }
+      
       total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
    }
    else { // The message header has not been read yet
@@ -687,8 +708,8 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
 
          if (queue->Index >= sizeof(NetMsg)) {
             // We have the message header
-            magic  = be32_cpu(((NetMsg *)queue->Buffer)->Magic);
-            msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
+            magic  = ntohl(((NetMsg *)queue->Buffer)->Magic);
+            msglen = ntohl(((NetMsg *)queue->Buffer)->Length);
 
             if (magic != NETMSG_MAGIC) {
                log.warning("Incoming message does not have the magic header (received $%.8x).", magic);
@@ -696,7 +717,7 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
                return ERR::InvalidData;
             }
             else if (msglen > NETMSG_SIZE_LIMIT) {
-               log.warning("Incoming message of %d ($%.8x) bytes exceeds message limit.", msglen, msglen);
+               log.warning("Incoming message of %d ($%.8x) bytes exceeds message limit.", int(msglen), int(msglen));
                queue->Index = 0;
                return ERR::InvalidData;
             }
@@ -706,7 +727,7 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
             // Check if the queue buffer needs to be extended
 
             if (total_length > queue->Length) {
-               log.trace("Extending queue length from %d to %d", queue->Length, total_length);
+               log.trace("Extending queue length from %d to %d", queue->Length, int(total_length));
                APTR buffer;
                if (AllocMemory(total_length, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
                   if (queue->Buffer) {
@@ -734,7 +755,7 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
    Args->Message = (BYTE *)queue->Buffer + sizeof(NetMsg);
    Args->Length = msglen;
 
-   //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
+   //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", int(msglen), int(total_length), queue->Index);
 
    if ((error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result)) IS ERR::Okay) {
       queue->Index += result;
@@ -744,11 +765,19 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
       // If the entire message has been read, we can report success to the user
 
       if (queue->Index >= total_length) {
-         msgend = (NetMsgEnd *)((BYTE *)queue->Buffer + sizeof(NetMsg) + msglen + 1);
-         magic = be32_cpu(msgend->Magic);
+         // Bounds check before accessing message end
+         uint32_t msgend_offset = sizeof(NetMsg) + msglen + 1;
+         if (msgend_offset + sizeof(NetMsgEnd) > queue->Length) {
+            log.warning("Buffer bounds check failed for message end access.");
+            queue->Index = 0;
+            return ERR::InvalidData;
+         }
+         
+         msgend = (NetMsgEnd *)((BYTE *)queue->Buffer + msgend_offset);
+         magic = ntohl(msgend->Magic);
          queue->Index   = 0;
          Args->Progress = Args->Length;
-         Args->CRC      = be32_cpu(msgend->CRC);
+         Args->CRC      = ntohl(msgend->CRC);
 
          log.trace("The entire message of %d bytes has been received.", msglen);
 
@@ -762,7 +791,7 @@ static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
       else return ERR::LimitedSuccess;
    }
    else {
-      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, int(error));
+      log.warning("Failed to read %d bytes off the socket, error %d.", int(total_length - queue->Index), int(error));
       queue->Index = 0;
       return error;
    }
@@ -866,8 +895,8 @@ static ERR NETSOCKET_WriteMsg(extNetSocket *Self, struct ns::WriteMsg *Args)
    log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
 
    NetMsg msg;
-   msg.Magic  = cpu_be32(NETMSG_MAGIC);
-   msg.Length = cpu_be32(Args->Length);
+   msg.Magic  = htonl(NETMSG_MAGIC);
+   msg.Length = htonl(Args->Length);
    acWrite(Self, &msg, sizeof(msg), nullptr);
 
    acWrite(Self, Args->Message, Args->Length, nullptr);
@@ -875,8 +904,8 @@ static ERR NETSOCKET_WriteMsg(extNetSocket *Self, struct ns::WriteMsg *Args)
    UBYTE endbuffer[sizeof(NetMsgEnd) + 1];
    NetMsgEnd *end = (NetMsgEnd *)(endbuffer + 1);
    endbuffer[0] = 0; // This null terminator helps with message parsing
-   end->Magic = cpu_be32((uint32_t)NETMSG_MAGIC_TAIL);
-   end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
+   end->Magic = htonl((uint32_t)NETMSG_MAGIC_TAIL);
+   end->CRC   = htonl(GenCRC32(0, Args->Message, Args->Length));
    acWrite(Self, &endbuffer, sizeof(endbuffer), nullptr);
    return ERR::Okay;
 }
@@ -1283,45 +1312,83 @@ static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, int Le
 {
    pf::Log log(__FUNCTION__);
 
+   if ((!Self) or (!Queue) or (!Message)) return log.warning(ERR::NullArgs);
+   
+   if (Length <= 0) {
+      log.trace("Zero-length write request ignored.");
+      return ERR::Okay;
+   }
+   
+   // Check for potential integer overflow
+   if (unsigned(Length) > INT_MAX - Queue->Length) return ERR::BufferOverflow;
+
    log.traceBranch("Queuing a socket message of %d bytes.", Length);
 
-   if (Queue->Buffer) {
-      if (Queue->Index >= (uint32_t)Queue->Length) {
-         log.trace("Terminating the current buffer (emptied).");
-         FreeResource(Queue->Buffer);
-         Queue->Buffer = nullptr;
-      }
+   if ((Queue->Buffer) and (Queue->Index >= Queue->Length)) {
+      log.trace("Terminating the current buffer (emptied).");
+      FreeResource(Queue->Buffer);
+      Queue->Buffer = nullptr;
+      Queue->Index = 0;
+      Queue->Length = 0;
    }
 
-   if (Queue->Buffer) { // Add more information to an existing queue
-      if (Queue->Length + Length > (uint32_t)Self->MsgLimit) {
-         log.trace("Cannot buffer message of %d bytes - it will overflow the MsgLimit.", Length);
+   if (Queue->Buffer) { // Add data to existing queue
+      uint32_t remaining_data = Queue->Length - Queue->Index;
+      
+      // Enhanced overflow check - check total size including new data
+      if ((remaining_data > (uint32_t)Self->MsgLimit) or ((uint32_t)Length > (uint32_t)Self->MsgLimit - remaining_data)) {
+         log.trace("Cannot buffer message of %d bytes - would exceed MsgLimit of %d (current: %u bytes).", Length, Self->MsgLimit, remaining_data);
          return ERR::BufferOverflow;
       }
 
-      log.trace("Extending current buffer to %d bytes.", Queue->Length + Length);
+      log.trace("Extending current buffer to %u bytes.", remaining_data + Length);
 
-      if (Queue->Index) { // Compact the existing data if some of it has been sent
-         pf::copymem((BYTE *)Queue->Buffer + Queue->Index, Queue->Buffer, Queue->Length - Queue->Index);
-         Queue->Length -= Queue->Index;
+      // Compact buffer if there's consumed data at the beginning
+      if (Queue->Index > 0) {
+         log.trace("Compacting buffer: moving %u bytes, removing %u consumed bytes.", remaining_data, Queue->Index);
+         
+         if (remaining_data > 0) {
+            // Use memmove for overlapping memory regions
+            pf::copymem((BYTE *)Queue->Buffer + Queue->Index, Queue->Buffer, remaining_data);
+         }
+         Queue->Length = remaining_data;
          Queue->Index = 0;
       }
 
-      // Adjust the buffer size
-
-      if (ReallocMemory(Queue->Buffer, Queue->Length + Length, &Queue->Buffer, nullptr) IS ERR::Okay) {
+      // Reallocate buffer for new total size
+      uint32_t new_size = Queue->Length + Length;
+      APTR new_buffer;
+      
+      if (ReallocMemory(Queue->Buffer, new_size, &new_buffer, nullptr) IS ERR::Okay) {
+         Queue->Buffer = new_buffer;
          pf::copymem(Message, (BYTE *)Queue->Buffer + Queue->Length, Length);
-         Queue->Length += Length;
+         Queue->Length = new_size;
+         
+         log.trace("Successfully extended buffer to %u bytes.", Queue->Length);
       }
-      else return ERR::ReallocMemory;
+      else {
+         log.warning("Failed to reallocate buffer from %u to %u bytes.", Queue->Length, new_size);
+         return ERR::ReallocMemory;
+      }
    }
-   else if (AllocMemory(Length, MEM::NO_CLEAR, &Queue->Buffer) IS ERR::Okay) {
-      log.trace("Allocated new buffer of %d bytes.", Length);
-      Queue->Index = 0;
-      Queue->Length = Length;
-      pf::copymem(Message, Queue->Buffer, Length);
+   else { // Allocate new buffer
+      // Check against message limit for new allocation
+      if ((uint32_t)Length > (uint32_t)Self->MsgLimit) {
+         log.trace("Initial message of %d bytes exceeds MsgLimit of %d.", Length, Self->MsgLimit);
+         return ERR::BufferOverflow;
+      }
+      
+      if (AllocMemory(Length, MEM::NO_CLEAR, &Queue->Buffer) IS ERR::Okay) {
+         log.trace("Allocated new buffer of %d bytes.", Length);
+         Queue->Index = 0;
+         Queue->Length = Length;
+         pf::copymem(Message, Queue->Buffer, Length);
+      }
+      else {
+         log.warning("Failed to allocate %d bytes for new buffer.", Length);
+         return ERR::AllocMemory;
+      }
    }
-   else return log.warning(ERR::AllocMemory);
 
    return ERR::Okay;
 }
@@ -1415,9 +1482,23 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
       #endif
    }
    else if (Message IS NTE_CLOSE) {
-      log.msg("Socket closed by server, error %d.", int(Error));
-      if (Socket->State != NTC::DISCONNECTED) Socket->setState(NTC::DISCONNECTED);
-      free_socket(Socket);
+      if (ClientSocket) {
+         log.msg("Connection closed by client.");
+         FreeResource(ClientSocket);
+      }
+      else {
+         log.msg("Connection closed by server, error %d.", int(Error));
+
+         // Prevent multiple close messages from the same socket
+         if (Socket->State IS NTC::DISCONNECTED) {
+            log.trace("Ignoring duplicate close message for socket %d", SocketHandle);
+            Socket->InUse--;
+            return;
+         }
+      
+         Socket->setState(NTC::DISCONNECTED);
+         free_socket(Socket);
+      }
    }
    else if (Message IS NTE_ACCEPT) {
       log.traceBranch("Accept message received for new client %d.", SocketHandle);

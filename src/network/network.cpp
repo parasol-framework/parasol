@@ -48,6 +48,8 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <unordered_set>
 #include <stack>
 #include <mutex>
+#include <span>
+#include <cstring>
 
 struct DNSEntry {
    std::string HostName;
@@ -61,9 +63,9 @@ struct DNSEntry {
 };
 
 #ifdef __linux__
-typedef LONG SOCKET_HANDLE;
+typedef int SOCKET_HANDLE;
 #elif _WIN32
-typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for now to avoid including winsock.h
+typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET for now to avoid including winsock.h
 #else
 #error "No support for this platform"
 #endif
@@ -85,9 +87,9 @@ typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for no
 
    struct in_addr {
       union {
-         struct { UBYTE s_b1,s_b2,s_b3,s_b4; } S_un_b;
+         struct { uint8_t s_b1,s_b2,s_b3,s_b4; } S_un_b;
          struct { UWORD s_w1,s_w2; } S_un_w;
-         ULONG S_addr;
+         uint32_t S_addr;
       } S_un;
    #define s_addr  S_un.S_addr
    #define s_host  S_un.S_un_b.s_b2
@@ -119,12 +121,12 @@ typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for no
       unsigned char   s6_addr[16];   // IPv6 address
    };
 
-   #define NOHANDLE     (ULONG)(~0)
-   #define SOCKET_ERROR (-1)
-   #define AF_INET      2
-   #define AF_INET6     23
-   #define INADDR_ANY   0
-   #define MSG_PEEK     2
+   constexpr uint32_t NOHANDLE = (uint32_t)(~0);
+   constexpr int SOCKET_ERROR = -1;
+   constexpr int AF_INET      = 2;
+   constexpr int AF_INET6     = 23;
+   constexpr int INADDR_ANY   = 0;
+   constexpr int MSG_PEEK     = 2;
 
    #define CLOSESOCKET(a) win_closesocket(a);
 #endif
@@ -162,8 +164,8 @@ class extClientSocket : public objClientSocket {
    };
    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
    struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
-   UBYTE OutgoingRecursion;
-   UBYTE InUse;
+   uint8_t OutgoingRecursion;
+   uint8_t InUse;
 };
 
 class extNetSocket : public objNetSocket {
@@ -176,16 +178,16 @@ class extNetSocket : public objNetSocket {
    struct NetClient *LastClient;
    struct NetQueue WriteQueue;
    struct NetQueue ReadQueue;
-   UBYTE  ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
-   UBYTE  IPV6:1;
-   UBYTE  Terminating:1;         // Set to TRUE when the NetSocket is marked for deletion.
-   UBYTE  ExternalSocket:1;      // Set to TRUE if the SocketHandle field was set manually by the client.
-   UBYTE  InUse;                 // Recursion counter to signal that the object is doing something.
+   uint8_t ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
+   uint8_t IPV6:1;
+   uint8_t Terminating:1;         // Set to TRUE when the NetSocket is marked for deletion.
+   uint8_t ExternalSocket:1;      // Set to TRUE if the SocketHandle field was set manually by the client.
+   uint8_t InUse;                 // Recursion counter to signal that the object is doing something.
    #ifndef _WIN32
-      UBYTE  SSLBusy;            // Tracks the current actions of SSL handshaking.
+      uint8_t  SSLBusy;            // Tracks the current actions of SSL handshaking.
    #endif
-   UBYTE  IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
-   UBYTE  OutgoingRecursion;
+   uint8_t IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
+   uint8_t OutgoingRecursion;
    #ifdef _WIN32
       #ifdef NO_NETRECURSION
          WORD WinRecursion; // For win32_netresponse()
@@ -234,20 +236,6 @@ enum {
 
 #include "module_def.c"
 
-#ifdef REVERSE_BYTEORDER
-inline ULONG cpu_be32(ULONG x) {
-   return ((((UBYTE)x)<<24)|(((UBYTE)(x>>8))<<16)|((x>>8) & 0xff00)|(x>>24));
-}
-#define be32_cpu(x) ((x<<24)|((x<<8) & 0xff0000)|((x>>8) & 0xff00)|(x>>24))
-#define cpu_be16(x) ((x<<8)|(x>>8))
-#define be16_cpu(x) ((x<<8)|(x>>8))
-#else
-#define cpu_be32(x) (x)
-#define be32_cpu(x) (x)
-#define cpu_be16(x) (x)
-#define be16_cpu(x) (x)
-#endif
-
 JUMPTABLE_CORE
 
 #ifdef ENABLE_SSL
@@ -288,9 +276,9 @@ static MSGID glResolveNameMsgID = MSGID::NIL;
 static MSGID glResolveAddrMsgID = MSGID::NIL;
 
 static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
-static BYTE check_machine_name(CSTRING HostName) __attribute__((unused));
-static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, LONG MsgType, APTR Message, LONG MsgSize);
-static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, LONG MsgType, APTR Message, LONG MsgSize);
+static int8_t check_machine_name(CSTRING HostName) __attribute__((unused));
+static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
+static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 
 static ERR init_netsocket(void);
 static ERR init_clientsocket(void);
@@ -465,9 +453,9 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
    if ((!Str) or (!Address)) return ERR::NullArgs;
 
 #ifdef __linux__
-   ULONG result = inet_addr(Str);
+   uint32_t result = inet_addr(Str);
 #elif _WIN32
-   ULONG result = win_inet_addr(Str);
+   uint32_t result = win_inet_addr(Str);
 #endif
 
    if (result IS INADDR_NONE) return ERR::Failed;
@@ -497,9 +485,9 @@ uint: The word in network byte order
 
 *********************************************************************************************************************/
 
-ULONG HostToShort(ULONG Value)
+uint32_t HostToShort(uint32_t Value)
 {
-   return (ULONG)htons((UWORD)Value);
+   return (uint32_t)htons((UWORD)Value);
 }
 
 /*********************************************************************************************************************
@@ -517,7 +505,7 @@ uint: The long in network byte order
 
 *********************************************************************************************************************/
 
-ULONG HostToLong(ULONG Value)
+uint32_t HostToLong(uint32_t Value)
 {
    return htonl(Value);
 }
@@ -537,9 +525,9 @@ uint: The Value in host byte order
 
 *********************************************************************************************************************/
 
-ULONG ShortToHost(ULONG Value)
+uint32_t ShortToHost(uint32_t Value)
 {
-   return (ULONG)ntohs((UWORD)Value);
+   return (uint32_t)ntohs((UWORD)Value);
 }
 
 /*********************************************************************************************************************
@@ -557,7 +545,7 @@ uint: The Value in host byte order.
 
 *********************************************************************************************************************/
 
-ULONG LongToHost(ULONG Value)
+uint32_t LongToHost(uint32_t Value)
 {
    return ntohl(Value);
 }
@@ -591,7 +579,7 @@ NullArgs: The NetSocket argument was not specified.
 ERR SetSSL(objNetSocket *Socket, ...)
 {
 #ifdef ENABLE_SSL
-   LONG value, tagid;
+   int value, tagid;
    ERR error;
    va_list list;
 
@@ -657,7 +645,7 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 
 //********************************************************************************************************************
 
-static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG BufferSize, LONG Flags, LONG *Result)
+static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int BufferSize, int Flags, int *Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -716,14 +704,14 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG B
        }
     }
   #else
-    BYTE read_blocked;
-    LONG pending;
+    int8_t read_blocked;
+    int pending;
 
     if (Self->SSL) {
       do {
          read_blocked = 0;
 
-         LONG result = SSL_read(Self->SSL, Buffer, BufferSize);
+         int result = SSL_read(Self->SSL, Buffer, BufferSize);
 
          if (result <= 0) {
             switch (SSL_get_error(Self->SSL, result)) {
@@ -790,7 +778,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG B
 
 #ifdef __linux__
    {
-      LONG result = recv(Socket, Buffer, BufferSize, Flags);
+      int result = recv(Socket, Buffer, BufferSize, Flags);
 
       if (result > 0) {
          *Result = result;
@@ -816,7 +804,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG B
 
 //********************************************************************************************************************
 
-static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Length, LONG Flags)
+static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, int *Length, int Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -861,11 +849,11 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Len
          return ERR::Okay;
       }
 
-      LONG bytes_sent = SSL_write(Self->SSL, Buffer, *Length);
+      int bytes_sent = SSL_write(Self->SSL, Buffer, *Length);
 
       if (bytes_sent < 0) {
          *Length = 0;
-         LONG ssl_error = SSL_get_error(Self->SSL, bytes_sent);
+         int ssl_error = SSL_get_error(Self->SSL, bytes_sent);
 
          switch(ssl_error){
             case SSL_ERROR_WANT_WRITE:
@@ -933,7 +921,7 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *Len
 
 //********************************************************************************************************************
 
-static BYTE check_machine_name(CSTRING HostName)
+static int8_t check_machine_name(CSTRING HostName)
 {
    for (LONG i=0; HostName[i]; i++) { // Check if it's a machine name
       if (HostName[i] IS '.') return FALSE;

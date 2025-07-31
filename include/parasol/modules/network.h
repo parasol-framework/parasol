@@ -143,13 +143,13 @@ struct NetMsgEnd {
 };
 
 struct NetClient {
-   char IP[8];                 // IP address in 4/8-byte format
-   struct NetClient * Next;    // Next client in the chain
-   struct NetClient * Prev;    // Previous client in the chain
-   objNetSocket * NetSocket;   // Reference to the parent socket
-   objClientSocket * Sockets;  // Pointer to a list of sockets opened with this client.
-   APTR ClientData;            // Free for user data storage.
-   int  TotalSockets;          // Count of all created sockets
+   char IP[8];                       // IP address in 4/8-byte format
+   struct NetClient * Next;          // Next client in the chain
+   struct NetClient * Prev;          // Previous client in the chain
+   objNetSocket * NetSocket;         // Reference to the parent socket
+   objClientSocket * Connections;    // Pointer to a list of connections opened by this client.
+   APTR ClientData;                  // Free for user data storage.
+   int  TotalConnections;            // Count of all socket-based connections
 };
 
 // ClientSocket class definition

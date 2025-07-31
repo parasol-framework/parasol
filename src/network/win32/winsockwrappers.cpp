@@ -259,6 +259,7 @@ ERR win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 }
 
 //********************************************************************************************************************
+// Wrapped by CLOSESOCKET()
 
 int win_closesocket(WSW_SOCKET SocketHandle)
 {

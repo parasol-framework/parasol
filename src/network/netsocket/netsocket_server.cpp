@@ -71,7 +71,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
          socklen_t len = sizeof(addr);
          clientfd = accept(FD, (struct sockaddr *)&addr, &len);
       #elif _WIN32
-         LONG len = sizeof(addr);
+         int len = sizeof(addr);
          clientfd = win_accept(Self, FD, (struct sockaddr *)&addr, &len);
       #endif
 
@@ -106,7 +106,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 
       client_ip->NetSocket = Self;
       ((LARGE *)&client_ip->IP)[0] = ((LARGE *)&ip)[0];
-      client_ip->TotalSockets = 0;
+      client_ip->TotalConnections = 0;
       Self->TotalClients++;
 
       if (!Self->Clients) Self->Clients = client_ip;
@@ -118,7 +118,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
 
    if ((Self->Flags & NSF::MULTI_CONNECT) IS NSF::NIL) { // Check if the IP is already registered and alive
-      if (client_ip->Sockets) {
+      if (client_ip->Connections) {
          // Check if the client is alive by writing to it.  If the client is dead, remove it and continue with the new connection.
 
          log.msg("Preventing second connection attempt from IP %d.%d.%d.%d\n", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
@@ -137,7 +137,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
    else {
       CLOSESOCKET(clientfd);
-      if (!client_ip->Sockets) free_client(Self, client_ip);
+      if (!client_ip->Connections) free_client(Self, client_ip);
       return;
    }
 
@@ -158,7 +158,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 }
 
 /*********************************************************************************************************************
-** Terminates the connection to the client and removes associated resources.
+** Terminates all connections to the client and removes associated resources.
 */
 
 static void free_client(extNetSocket *Self, struct NetClient *Client)
@@ -171,14 +171,14 @@ static void free_client(extNetSocket *Self, struct NetClient *Client)
 
    recursive++;
 
-   log.branch("%d:%d:%d:%d, Sockets: %d", Client->IP[0], Client->IP[1], Client->IP[2], Client->IP[3], Client->TotalSockets);
+   log.branch("%d:%d:%d:%d, Connections: %d", Client->IP[0], Client->IP[1], Client->IP[2], Client->IP[3], Client->TotalConnections);
 
-   // Free all sockets related to this client
+   // Free all sockets (connections) related to this client IP
 
-   while (Client->Sockets) {
-      objClientSocket *current_socket = Client->Sockets;
-      free_client_socket(Self, (extClientSocket *)Client->Sockets, TRUE);
-      if (Client->Sockets IS current_socket) {
+   while (Client->Connections) {
+      objClientSocket *current_socket = Client->Connections;
+      free_client_socket(Self, (extClientSocket *)Client->Connections, TRUE);
+      if (Client->Connections IS current_socket) {
          log.warning("Resource management error detected in Client->Sockets");
          break;
       }

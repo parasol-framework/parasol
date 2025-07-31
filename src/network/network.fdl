@@ -84,9 +84,9 @@ typedef int SOCKET_HANDLE;
     ptr(struct(NetClient)) Next    # Next client in the chain
     ptr(struct(NetClient)) Prev    # Previous client in the chain
     obj(NetSocket) NetSocket       # Reference to the parent socket
-    obj(ClientSocket) Sockets      # Pointer to a list of sockets opened with this client.
+    obj(ClientSocket) Connections  # Pointer to a list of connections opened by this client.
     ptr ClientData                 # Free for user data storage.
-    int TotalSockets               # Count of all created sockets
+    int TotalConnections           # Count of all socket-based connections
   ]])
 
   class("ClientSocket", {

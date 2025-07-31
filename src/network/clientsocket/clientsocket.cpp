@@ -58,9 +58,9 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    else log.warning("No Incoming callback configured.");
 
    if (ClientSocket->ReadCalled IS FALSE) {
-      UBYTE buffer[80];
+      uint8_t buffer[80];
       log.warning("Subscriber did not call Read(), cleaning buffer.");
-      LONG result;
+      int result;
       do { error = RECEIVE(Socket, ClientSocket->Handle, &buffer, sizeof(buffer), 0, &result); } while (result > 0);
       if (error != ERR::Okay) free_client_socket(Socket, ClientSocket, TRUE);
    }
@@ -68,11 +68,10 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    Socket->InUse--;
 }
 
-/*********************************************************************************************************************
-** Note that this function will prevent the task from going to sleep if it is not managed correctly.  If
-** no data is being written to the queue, the program will not be able to sleep until the client stops listening
-** to the write queue.
-*/
+//********************************************************************************************************************
+// Note that this function will prevent the task from going to sleep if it is not managed correctly.  If
+// no data is being written to the queue, the program will not be able to sleep until the client stops listening
+// to the write queue.
 
 static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 {
@@ -118,7 +117,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 
    if (ClientSocket->WriteQueue.Buffer) {
       while (ClientSocket->WriteQueue.Buffer) {
-         LONG len = ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index;
+         int len = ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index;
          #ifdef ENABLE_SSL
            #ifdef _WIN32
              if ((!Socket->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
@@ -205,14 +204,14 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
       if (Self->Next) Self->Next->Prev = Self->Prev;
    }
    else {
-      Self->Client->Sockets = Self->Next;
+      Self->Client->Connections = Self->Next;
       if (Self->Next) Self->Next->Prev = nullptr;
    }
 
-   Self->Client->TotalSockets--;
+   Self->Client->TotalConnections--;
 
-   if (!Self->Client->Sockets) {
-      log.msg("No more open sockets, removing client.");
+   if (!Self->Client->Connections) {
+      log.msg("No more connections for this IP, removing client.");
       free_client((extNetSocket *)Self->Client->NetSocket, Self->Client);
    }
 
@@ -230,14 +229,14 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 
    Self->ConnectTime = PreciseTime() / 1000LL;
 
-   if (Self->Client->Sockets) {
-      Self->Next = Self->Client->Sockets;
+   if (Self->Client->Connections) {
+      Self->Next = Self->Client->Connections;
       Self->Prev = nullptr;
-      Self->Client->Sockets->Prev = Self;
+      Self->Client->Connections->Prev = Self;
    }
 
-   Self->Client->Sockets = Self;
-   Self->Client->TotalSockets++;
+   Self->Client->Connections = Self;
+   Self->Client->TotalConnections++;
 
 #ifdef __linux__
    RegisterFD(Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_incoming), Self);
@@ -316,40 +315,40 @@ static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct cs::ReadClie
    Args->CRC      = 0;
    Args->Progress = 0;
 
-   NetQueue *queue = &Self->ReadQueue;
+   NetQueue &queue = Self->ReadQueue;
 
-   if (!queue->Buffer) {
-      queue->Length = 2048;
-      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR::Okay) {
+   if (!queue.Buffer) {
+      queue.Length = 2048;
+      if (AllocMemory(queue.Length, MEM::NO_CLEAR, &queue.Buffer) != ERR::Okay) {
          return ERR::AllocMemory;
       }
    }
 
-   LONG msglen, result, magic;
-   ULONG total_length;
+   int msglen, result, magic;
+   uint32_t total_length;
    ERR error;
 
-   if (queue->Index >= sizeof(NetMsg)) { // The complete message header has been received
-      msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
+   if (queue.Index >= sizeof(NetMsg)) { // The complete message header has been received
+      msglen = htonl(((NetMsg *)queue.Buffer)->Length);
       total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
    }
    else { // The message header has not been read yet
-      if ((error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(NetMsg) - queue->Index, &result)) IS ERR::Okay) {
-         queue->Index += result;
+      if ((error = acRead(Self, (BYTE *)queue.Buffer + queue.Index, sizeof(NetMsg) - queue.Index, &result)) IS ERR::Okay) {
+         queue.Index += result;
 
-         if (queue->Index >= sizeof(NetMsg)) {
+         if (queue.Index >= sizeof(NetMsg)) {
             // We have the message header
-            magic  = be32_cpu(((NetMsg *)queue->Buffer)->Magic);
-            msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
+            magic  = htonl(((NetMsg *)queue.Buffer)->Magic);
+            msglen = htonl(((NetMsg *)queue.Buffer)->Length);
 
             if (magic != NETMSG_MAGIC) {
                log.warning("Incoming message does not have the magic header (received $%.8x).", magic);
-               queue->Index = 0;
+               queue.Index = 0;
                return ERR::InvalidData;
             }
             else if (msglen > NETMSG_SIZE_LIMIT) {
                log.warning("Incoming message of %d ($%.8x) bytes exceeds message limit.", msglen, msglen);
-               queue->Index = 0;
+               queue.Index = 0;
                return ERR::InvalidData;
             }
 
@@ -357,16 +356,16 @@ static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct cs::ReadClie
 
             // Check if the queue buffer needs to be extended
 
-            if (total_length > queue->Length) {
-               log.trace("Extending queue length from %d to %d", queue->Length, total_length);
+            if (total_length > queue.Length) {
+               log.trace("Extending queue length from %d to %d", queue.Length, total_length);
                APTR buffer;
                if (AllocMemory(total_length, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-                  if (queue->Buffer) {
-                     pf::copymem(queue->Buffer, buffer, queue->Index);
-                     FreeResource(queue->Buffer);
+                  if (queue.Buffer) {
+                     pf::copymem(queue.Buffer, buffer, queue.Index);
+                     FreeResource(queue.Buffer);
                   }
-                  queue->Buffer = buffer;
-                  queue->Length = total_length;
+                  queue.Buffer = buffer;
+                  queue.Length = total_length;
                }
                else return log.error(ERR::AllocMemory);
             }
@@ -383,24 +382,24 @@ static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct cs::ReadClie
    }
 
    NetMsgEnd *msgend;
-   Args->Message = (BYTE *)queue->Buffer + sizeof(NetMsg);
+   Args->Message = (BYTE *)queue.Buffer + sizeof(NetMsg);
    Args->Length = msglen;
 
-   //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
+   //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue.Index);
 
-   if ((error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result)) IS ERR::Okay) {
-      queue->Index += result;
-      Args->Progress = queue->Index - sizeof(NetMsg) - sizeof(NetMsgEnd);
+   if ((error = acRead(Self, (char *)queue.Buffer + queue.Index, total_length - queue.Index, &result)) IS ERR::Okay) {
+      queue.Index += result;
+      Args->Progress = queue.Index - sizeof(NetMsg) - sizeof(NetMsgEnd);
       if (Args->Progress < 0) Args->Progress = 0;
 
       // If the entire message has been read, we can report success to the user
 
-      if (queue->Index >= total_length) {
-         msgend = (NetMsgEnd *)((BYTE *)queue->Buffer + sizeof(NetMsg) + msglen + 1);
-         magic = be32_cpu(msgend->Magic);
-         queue->Index   = 0;
+      if (queue.Index >= total_length) {
+         msgend = (NetMsgEnd *)((BYTE *)queue.Buffer + sizeof(NetMsg) + msglen + 1);
+         magic = htonl(msgend->Magic);
+         queue.Index   = 0;
          Args->Progress = Args->Length;
-         Args->CRC      = be32_cpu(msgend->CRC);
+         Args->CRC      = htonl(msgend->CRC);
 
          log.trace("The entire message of %d bytes has been received.", msglen);
 
@@ -414,8 +413,8 @@ static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct cs::ReadClie
       else return ERR::LimitedSuccess;
    }
    else {
-      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, LONG(error));
-      queue->Index = 0;
+      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue.Index, LONG(error));
+      queue.Index = 0;
       return error;
    }
 }
@@ -439,7 +438,7 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    Args->Result = 0;
    if (Self->SocketHandle IS NOHANDLE) return log.error(ERR::Disconnected);
 
-   LONG len = Args->Length;
+   int len = Args->Length;
    ERR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, &len, 0);
 
    if ((error != ERR::Okay) or (len < Args->Length)) {
@@ -489,15 +488,15 @@ static ERR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct cs::WriteCl
 
    log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
 
-   NetMsg msg = { .Magic = cpu_be32(NETMSG_MAGIC), .Length = cpu_be32(Args->Length) };
+   NetMsg msg = { .Magic = htonl(NETMSG_MAGIC), .Length = htonl(Args->Length) };
    acWrite(Self, &msg, sizeof(msg), nullptr);
    acWrite(Self, Args->Message, Args->Length, nullptr);
 
-   UBYTE endbuffer[sizeof(NetMsgEnd) + 1];
+   uint8_t endbuffer[sizeof(NetMsgEnd) + 1];
    NetMsgEnd *end = (NetMsgEnd *)(endbuffer + 1);
    endbuffer[0] = 0; // This null terminator helps with message parsing
-   end->Magic = cpu_be32((ULONG)NETMSG_MAGIC_TAIL);
-   end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
+   end->Magic = htonl((uint32_t)NETMSG_MAGIC_TAIL);
+   end->CRC   = htonl(GenCRC32(0, Args->Message, Args->Length));
    acWrite(Self, &endbuffer, sizeof(endbuffer), nullptr);
 
    return ERR::Okay;

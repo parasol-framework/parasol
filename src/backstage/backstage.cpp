@@ -22,7 +22,7 @@ The REST API and documentation on how to use Backstage is documented in the Para
 #define PRV_BACKSTAGE
 
 #include <parasol/main.h>
-//#include <parasol/modules/backstage.h>
+#include <parasol/modules/backstage.h>
 #include <parasol/modules/network.h>
 #include <parasol/strings.hpp>
 

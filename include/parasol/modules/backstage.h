@@ -8,5 +8,5 @@
 
 #define MODVERSION_BACKSTAGE (1)
 
-#include <parasol/network.h>
+#include <parasol/modules/network.h>
 
