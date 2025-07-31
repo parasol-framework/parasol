@@ -627,13 +627,13 @@ void extLightingFX::draw()
    const int chunk_size = std::max(min_rows_per_chunk, height / num_threads);
    const int num_chunks = (height + chunk_size - 1) / chunk_size;
    
-   dp::thread_pool pool(num_threads);
+   BS::thread_pool pool(num_threads);
 
    for (int chunk=0; chunk < num_chunks; ++chunk) {
       const int start_y = chunk * chunk_size;
       const int end_y = std::min(start_y + chunk_size, height);
       
-      pool.enqueue_detach([&](int start_row, int end_row) {
+      pool.detach_task([&, start_row = start_y, end_row = end_y]() {
          if (LightSource IS LS::DISTANT) {
             render_distant(start_row, end_row, bmp, lt, spot_height, width, height);
          } 
@@ -643,10 +643,10 @@ void extLightingFX::draw()
          else if (LightSource IS LS::POINT) {
             render_point(start_row, end_row, bmp, lt, spot_height, width, height);
          }
-      }, start_y, end_y);
+      });
    }
 
-   pool.wait_for_tasks();
+   pool.wait();
 }
 
 //********************************************************************************************************************

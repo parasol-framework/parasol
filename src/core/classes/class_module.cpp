@@ -668,7 +668,6 @@ static RootModule * check_resident(extModule *Self, const std::string_view Modul
    if (iequals("core", ModuleName)) {
       if (!kminit) {
          kminit = true;
-         clearmem(&glCoreRoot, sizeof(glCoreRoot));
          glCoreRoot.Class       = glRootModuleClass;
          glCoreRoot.Name        = "Core";
          glCoreRoot.OpenCount   = 1;

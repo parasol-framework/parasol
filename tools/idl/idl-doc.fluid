@@ -384,8 +384,6 @@ function saveDocuments()
             print('No meta information for class ' .. className)
          end
       end
-   else
-      print('There are no classes to save.')
    end
 end
 

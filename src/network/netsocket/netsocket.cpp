@@ -1359,8 +1359,9 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    // Safety first
 
    pf::ScopedObjectLock lock(Socket);
-   pf::ScopedObjectLock lock_client(ClientSocket); // Not locked if ClientSocket is nullptr
    if (!lock.granted()) return;
+   
+   pf::ScopedObjectLock lock_client(ClientSocket); // Not locked if ClientSocket is nullptr
    if ((ClientSocket) and (!lock_client.granted())) return;
 
    pf::SwitchContext context(Socket);

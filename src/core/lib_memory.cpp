@@ -166,7 +166,7 @@ ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    }
    else {
       freemem(start_mem);
-      return ERR::SystemLocked;
+      return log.warning(ERR::SystemLocked);
    }
 }
 

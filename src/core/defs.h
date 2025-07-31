@@ -6,6 +6,7 @@
 #endif
 
 #include <set>
+#include <unordered_set>
 #include <functional>
 #include <mutex>
 #include <sstream>
@@ -14,8 +15,6 @@
 #include <array>
 #include <atomic>
 #include <thread>
-
-#include <thread_pool/thread_pool.h>
 
 using namespace std::chrono_literals;
 
@@ -200,6 +199,7 @@ extern std::recursive_timed_mutex glmObjectLookup; // For glObjectLookup
 
 extern std::recursive_mutex glmMemory;
 extern std::recursive_mutex glmMsgHandler;
+extern std::recursive_mutex glmAsyncActions;
 
 extern std::condition_variable_any cvResources;
 extern std::condition_variable_any cvObjects;
@@ -686,6 +686,7 @@ extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 extern std::unordered_map<uint32_t, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
+extern std::unordered_set<std::shared_ptr<std::jthread>> glAsyncThreads;
 extern std::unordered_multimap<uint32_t, CLASSID> glWildClassMap; // Fast lookup for identifying classes by file extension
 extern int glWildClassMapTotal;
 extern std::vector<TaskRecord> glTasks;
@@ -959,10 +960,10 @@ class RootModule : public Object {
    #else
       MODHANDLE LibraryBase;
    #endif
-   std::string Name;           // Name of the module (as declared by the header)
+   std::string Name;       // Name of the module (as declared by the header)
    struct ModHeader *Table;
    int16_t Version;
-   int16_t OpenCount;           // Amount of programs with this module open
+   int16_t OpenCount;          // Amount of programs with this module open
    float  ModVersion;          // Version of this module
    MHF    Flags;
    bool   NoUnload;
@@ -973,6 +974,8 @@ class RootModule : public Object {
    ERR    (*Expunge)(void);
    struct ActionEntry prvActions[int(AC::END)]; // Action routines to be intercepted by the program
    std::string LibraryName; // Name of the library loaded from disk
+
+   RootModule() = default;
 };
 
 THREADID get_thread_id(void);
@@ -1200,6 +1203,22 @@ inline void remove_object_hash(OBJECTPTR Object)
 {
    std::erase(glObjectLookup[Object->Name], Object);
    if (glObjectLookup[Object->Name].empty()) glObjectLookup.erase(Object->Name);
+}
+
+//********************************************************************************************************************
+// Binary search helper.  Requires a sorted container.
+
+template<typename Container, typename Key, typename Compare>
+typename Container::const_iterator binary_search(const Container& container, const Key& key, Compare comp) {
+    unsigned floor = 0;
+    unsigned ceiling = (unsigned)container.size();
+    while (floor < ceiling) {
+        unsigned i = (floor + ceiling) >> 1;
+        if (comp(container[i], key) < 0) floor = i + 1;
+        else if (comp(container[i], key) > 0) ceiling = i;
+        else return container.begin() + i;
+    }
+    return container.end();
 }
 
 #endif // DEFS_H

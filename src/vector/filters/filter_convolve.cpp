@@ -56,7 +56,7 @@ UnitX/Y is considerably smaller than a device pixel.
 *********************************************************************************************************************/
 
 #include <array>
-#include <thread_pool/thread_pool.h>
+#include <bs_thread_pool.h>
 
 constexpr int MAX_DIM = 9; // Maximum matrix dimension for convolution filter effects.
 
@@ -78,7 +78,7 @@ class extConvolveFX : public extFilterEffect {
    bool   PreserveAlpha;
    double Matrix[MAX_DIM * MAX_DIM];
 
-   extConvolveFX() : UnitX(1), UnitY(1), Divisor(0), Bias(0), 
+   extConvolveFX() : UnitX(1), UnitY(1), Divisor(0), Bias(0),
       TargetX(-1), TargetY(-1), // If -ve, the target will be computed as the centre of the matrix.
       MatrixColumns(3), MatrixRows(3), MatrixSize(9), EdgeMode(EM::DUPLICATE), PreserveAlpha(false) { }
 
@@ -161,7 +161,7 @@ class extConvolveFX : public extFilterEffect {
             out += 4;
          }
          alpha_input += InputBitmap->LineWidth;
-         outline += (Target->Clip.Right - Target->Clip.Left) * InputBitmap->BytesPerPixel;
+         outline += (Target->Clip.Right - Target->Clip.Left) * Target->BytesPerPixel;
       }
    }
 };
@@ -183,30 +183,34 @@ static ERR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
    objBitmap *inBmp;
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
 
-   // Note: The inBmp->Data pointer is pre-adjusted to match the Clip Left and Top values (i.e. add 
+   // Note: The inBmp->Data pointer is pre-adjusted to match the Clip Left and Top values (i.e. add
    // (Clip.Left * BPP) + (Clip.Top * LineWidth) to Data in order to get its true value)
 
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) inBmp->convertToLinear();
    inBmp->premultiply();
 
    int thread_count = std::thread::hardware_concurrency();
-   if (thread_count > canvas_height / 4) thread_count = canvas_height / 4;
+   if (thread_count < 1) thread_count = 1;
+   if (canvas_height < 4) thread_count = 1; // Prevent division issues with small images
+   else if (thread_count > canvas_height / 4) thread_count = canvas_height / 4;
 
-   dp::thread_pool pool(thread_count);
-   
-   auto output = (uint8_t *)data.data();
+   BS::thread_pool pool(thread_count);
+
    int lines_per_thread = canvas_height / thread_count;
    for (int i=0; i < thread_count; i++) {
       int top = Self->Target->Clip.Top + (i * lines_per_thread);
       int bottom = (i IS thread_count - 1) ? Self->Target->Clip.Bottom : top + lines_per_thread;
 
-      pool.enqueue_detach([Self, inBmp, output](int L, int T, int R, int B) { 
-         Self->processClipped(inBmp, output, L, T, R, B);
-      }, Self->Target->Clip.Left, top, Self->Target->Clip.Right, bottom);
-      output += lines_per_thread * canvas_width * Self->Target->BytesPerPixel;
+      // Calculate output offset for each thread to prevent race conditions
+      int output_offset = i * lines_per_thread * canvas_width * Self->Target->BytesPerPixel;
+      auto thread_output = (uint8_t *)data.data() + output_offset;
+
+      pool.detach_task([Self, inBmp, thread_output, L = Self->Target->Clip.Left, T = top, R = Self->Target->Clip.Right, B = bottom]() {
+         Self->processClipped(inBmp, thread_output, L, T, R, B);
+      });
    }
 
-   pool.wait_for_tasks();
+   pool.wait();
 
    // Copy the resulting output back to the bitmap.
 
