@@ -12,6 +12,12 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 
    pf::SwitchContext context(Self);
 
+   // Check client limit before accepting to prevent resource exhaustion
+   if (Self->TotalClients >= Self->ClientLimit) {
+      log.error(ERR::ArrayFull);
+      return;
+   }
+
    if (Self->IPV6) {
 #ifdef __linux__
       #ifdef ENABLE_SSL_ACCEPT
@@ -82,12 +88,6 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       ip[5] = 0;
       ip[6] = 0;
       ip[7] = 0;
-   }
-
-   if (Self->TotalClients >= Self->ClientLimit) {
-      CLOSESOCKET(clientfd);
-      log.error(ERR::ArrayFull);
-      return;
    }
 
    // Check if this IP address already has a client structure from an earlier socket connection.

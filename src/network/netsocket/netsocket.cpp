@@ -1356,6 +1356,13 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], int(Error), Socket->InUse, Socket->WinRecursion);
    #endif
 
+   // Safety first
+
+   pf::ScopedObjectLock lock(Socket);
+   pf::ScopedObjectLock lock_client(ClientSocket); // Not locked if ClientSocket is nullptr
+   if (!lock.granted()) return;
+   if ((ClientSocket) and (!lock_client.granted())) return;
+
    pf::SwitchContext context(Socket);
 
    Socket->InUse++;
