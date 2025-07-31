@@ -9,7 +9,20 @@ static void sslDisconnect(extNetSocket *Self)
       log.traceBranch("Closing SSL connection.");
 
       SSL_set_info_callback(Self->SSL, nullptr);
-      SSL_shutdown(Self->SSL);
+      
+      // Perform proper bidirectional SSL shutdown
+      int shutdown_result = SSL_shutdown(Self->SSL);
+      if (shutdown_result == 0) {
+         // First shutdown call completed, perform second shutdown for bidirectional close
+         shutdown_result = SSL_shutdown(Self->SSL);
+         if (shutdown_result < 0) {
+            int ssl_error = SSL_get_error(Self->SSL, shutdown_result);
+            if ((ssl_error != SSL_ERROR_WANT_READ) and (ssl_error != SSL_ERROR_WANT_WRITE)) {
+               log.warning("SSL_shutdown failed: %s", ERR_error_string(ssl_error, nullptr));
+            }
+         }
+      }
+      
       SSL_free(Self->SSL);
       Self->SSL = nullptr;
    }
@@ -74,23 +87,30 @@ static ERR sslSetup(extNetSocket *Self)
    ERR error;
    pf::Log log(__FUNCTION__);
 
-   if (!ssl_init) {
-      log.traceBranch();
+   // Thread-safe SSL initialization
+   static std::mutex ssl_init_mutex;
+   static bool ssl_initialized = false;
+   
+   {
+      std::lock_guard<std::mutex> lock(ssl_init_mutex);
+      if (!ssl_initialized) {
+         log.traceBranch();
 
-      SSL_load_error_strings();
-      ERR_load_BIO_strings();
-      ERR_load_crypto_strings();
-      SSL_library_init();
-      OPENSSL_add_all_algorithms_noconf(); // Is this call a significant resource expense?
+         SSL_load_error_strings();
+         ERR_load_BIO_strings();
+         ERR_load_crypto_strings();
+         SSL_library_init();
+         OPENSSL_add_all_algorithms_noconf(); // Is this call a significant resource expense?
 
-      ssl_init = TRUE;
+         ssl_initialized = true;
+      }
    }
 
    if (Self->CTX) return ERR::Okay;
 
    log.traceBranch();
 
-   if ((Self->CTX = SSL_CTX_new(SSLv23_client_method()))) {
+   if ((Self->CTX = SSL_CTX_new(TLS_client_method()))) {
       //if (GetResource(RES::LOG_LEVEL) > 3) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
 
       if (ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {

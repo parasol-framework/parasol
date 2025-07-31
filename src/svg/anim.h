@@ -12,7 +12,7 @@ static const LONG MAX_VALUES = 8;
 //********************************************************************************************************************
 
 enum class AT : char { // Transform Type
-   TRANSLATE = 1, SCALE, ROTATE, SKEW_X, SKEW_Y
+   NIL = 0, TRANSLATE = 1, SCALE, ROTATE, SKEW_X, SKEW_Y
 };
 
 enum class ADD : char { // Additive
@@ -176,8 +176,8 @@ public:
 
 class anim_transform : public anim_base {
 public:
-   VectorMatrix matrix = { .Vector = NULL }; // Exclusive transform matrix for animation.
-   AT type;
+   VectorMatrix matrix = { .Vector = nullptr }; // Exclusive transform matrix for animation.
+   AT type = AT::NIL;
 
    anim_transform(extSVG *pSVG, OBJECTID pTarget) : anim_base(pSVG, pTarget) { }
 
@@ -201,12 +201,12 @@ class anim_motion : public anim_base {
 public:
    ART auto_rotate = ART::NIL; // Inline rotation along the path
    double rotate = 0; // Fixed angle rotation
-   objVector *mpath = NULL; // External vector path (untracked)
-   VectorMatrix *matrix = NULL;
+   objVector *mpath = nullptr; // External vector path (untracked)
+   VectorMatrix *matrix = nullptr;
    pf::GuardedObject<objVector> path; // Client provided path sequence
    std::vector<pf::POINT<float>> points;
    std::vector<float> angles; // Precalc'd angles for rotation along paths
-   LONG path_timestamp;
+   int path_timestamp = 0;
 
    anim_motion(extSVG *pSVG, OBJECTID pTarget) : anim_base(pSVG, pTarget) {
       calc_mode = CMODE::PACED;
@@ -229,7 +229,7 @@ public:
 
 class anim_value : public anim_base {
 public:
-   XMLTag *tag = NULL;
+   XMLTag *tag = nullptr;
 
    anim_value(extSVG *pSVG, OBJECTID pTarget, XMLTag *pTag) : anim_base(pSVG, pTarget), tag(pTag) { }
    void perform();

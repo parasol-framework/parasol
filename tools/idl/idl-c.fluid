@@ -2291,11 +2291,6 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function saveOutput()
-   if (#glOutput < 1) and (#glConstants < 1) then
-      print("No output was generated for the destination file.")
-      return
-   end
-
    local tempPath = "temp:" .. nz(glModule.name,"idl-c"):lower() .. ".h"
    local outPath = glOutputPath
    if (outPath == nil) then
