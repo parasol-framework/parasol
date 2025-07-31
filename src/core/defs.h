@@ -1221,26 +1221,4 @@ typename Container::const_iterator binary_search(const Container& container, con
     return container.end();
 }
 
-//********************************************************************************************************************
-// Type conversion helper for field operations
-
-template<typename T>
-ERR convert_data_to_type(CPTR Data, int Flags, T& result) {
-    if constexpr (std::is_integral_v<T>) {
-        if (Flags & FD_INT) result = *((int*)Data);
-        else if (Flags & FD_INT64) result = T(*((int64_t*)Data));
-        else if (Flags & (FD_DOUBLE|FD_FLOAT)) result = T(*((double*)Data));
-        else if (Flags & FD_STRING) result = T(strtoll((STRING)Data, nullptr, 0));
-        else return ERR::SetValueNotNumeric;
-    }
-    else if constexpr (std::is_floating_point_v<T>) {
-        if (Flags & FD_DOUBLE) result = *((double*)Data);
-        else if (Flags & FD_FLOAT) result = *((float*)Data);
-        else if (Flags & (FD_INT|FD_INT64)) result = T(*((int64_t*)Data));
-        else if (Flags & FD_STRING) result = T(strtod((STRING)Data, nullptr));
-        else return ERR::SetValueNotNumeric;
-    }
-    return ERR::Okay;
-}
-
 #endif // DEFS_H
