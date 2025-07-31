@@ -531,151 +531,151 @@ inline FieldValue Points(const std::string &Value) { return FieldValue(FID_Point
 [[nodiscard]] constexpr FieldValue Pretext(CSTRING Value) { return FieldValue(FID_Pretext, Value); }
 inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pretext, Value.c_str()); }
 
-constexpr FieldValue Acceleration(double Value) { return FieldValue(FID_Acceleration, Value); }
-constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
-constexpr FieldValue AmtColours(int Value) { return FieldValue(FID_AmtColours, Value); }
-constexpr FieldValue BaseClassID(CLASSID Value) { return FieldValue(FID_BaseClassID, int(Value)); }
-constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
-constexpr FieldValue BitsPerPixel(int Value) { return FieldValue(FID_BitsPerPixel, Value); }
-constexpr FieldValue BytesPerPixel(int Value) { return FieldValue(FID_BytesPerPixel, Value); }
-constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, int(Value)); }
-constexpr FieldValue ClassID(CLASSID Value) { return FieldValue(FID_ClassID, int(Value)); }
-constexpr FieldValue ClassVersion(double Value) { return FieldValue(FID_ClassVersion, Value); }
-constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
-constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, int(Value)); }
-constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, int(Value)); }
-constexpr FieldValue DoubleClick(double Value) { return FieldValue(FID_DoubleClick, Value); }
-constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
-constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
-constexpr FieldValue Flags(int Value) { return FieldValue(FID_Flags, Value); }
-constexpr FieldValue Font(OBJECTPTR Value) { return FieldValue(FID_Font, Value); }
-constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
-constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
-constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
-constexpr FieldValue LineLimit(int Value) { return FieldValue(FID_LineLimit, Value); }
-constexpr FieldValue Listener(int Value) { return FieldValue(FID_Listener, Value); }
-constexpr FieldValue MatrixColumns(int Value) { return FieldValue(FID_MatrixColumns, Value); }
-constexpr FieldValue MatrixRows(int Value) { return FieldValue(FID_MatrixRows, Value); }
-constexpr FieldValue MaxHeight(int Value) { return FieldValue(FID_MaxHeight, Value); }
-constexpr FieldValue MaxSpeed(double Value) { return FieldValue(FID_MaxSpeed, Value); }
-constexpr FieldValue MaxWidth(int Value) { return FieldValue(FID_MaxWidth, Value); }
-constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
-constexpr FieldValue Opacity(double Value) { return FieldValue(FID_Opacity, Value); }
-constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value); }
-constexpr FieldValue Parent(OBJECTID Value) { return FieldValue(FID_Parent, Value); }
-constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, int(Value)); }
-constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
-constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }
-constexpr FieldValue RefreshRate(double Value) { return FieldValue(FID_RefreshRate, Value); }
-constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
-constexpr FieldValue Size(int Value) { return FieldValue(FID_Size, Value); }
-constexpr FieldValue Speed(double Value) { return FieldValue(FID_Speed, Value); }
-constexpr FieldValue StrokeWidth(double Value) { return FieldValue(FID_StrokeWidth, Value); }
-constexpr FieldValue Surface(OBJECTID Value) { return FieldValue(FID_Surface, Value); }
-constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
-constexpr FieldValue Target(OBJECTPTR Value) { return FieldValue(FID_Target, Value); }
-constexpr FieldValue ClientData(CPTR Value) { return FieldValue(FID_ClientData, Value); }
-constexpr FieldValue Version(double Value) { return FieldValue(FID_Version, Value); }
-constexpr FieldValue Viewport(OBJECTID Value) { return FieldValue(FID_Viewport, Value); }
-constexpr FieldValue Viewport(OBJECTPTR Value) { return FieldValue(FID_Viewport, Value); }
-constexpr FieldValue Weight(int Value) { return FieldValue(FID_Weight, Value); }
-constexpr FieldValue WheelSpeed(double Value) { return FieldValue(FID_WheelSpeed, Value); }
-constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
-constexpr FieldValue WindowHandle(int Value) { return FieldValue(FID_WindowHandle, Value); }
+[[nodiscard]] constexpr FieldValue Acceleration(double Value) { return FieldValue(FID_Acceleration, Value); }
+[[nodiscard]] constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
+[[nodiscard]] constexpr FieldValue AmtColours(int Value) { return FieldValue(FID_AmtColours, Value); }
+[[nodiscard]] constexpr FieldValue BaseClassID(CLASSID Value) { return FieldValue(FID_BaseClassID, int(Value)); }
+[[nodiscard]] constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
+[[nodiscard]] constexpr FieldValue BitsPerPixel(int Value) { return FieldValue(FID_BitsPerPixel, Value); }
+[[nodiscard]] constexpr FieldValue BytesPerPixel(int Value) { return FieldValue(FID_BytesPerPixel, Value); }
+[[nodiscard]] constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, int(Value)); }
+[[nodiscard]] constexpr FieldValue ClassID(CLASSID Value) { return FieldValue(FID_ClassID, int(Value)); }
+[[nodiscard]] constexpr FieldValue ClassVersion(double Value) { return FieldValue(FID_ClassVersion, Value); }
+[[nodiscard]] constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
+[[nodiscard]] constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, int(Value)); }
+[[nodiscard]] constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, int(Value)); }
+[[nodiscard]] constexpr FieldValue DoubleClick(double Value) { return FieldValue(FID_DoubleClick, Value); }
+[[nodiscard]] constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
+[[nodiscard]] constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
+[[nodiscard]] constexpr FieldValue Flags(int Value) { return FieldValue(FID_Flags, Value); }
+[[nodiscard]] constexpr FieldValue Font(OBJECTPTR Value) { return FieldValue(FID_Font, Value); }
+[[nodiscard]] constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
+[[nodiscard]] constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
+[[nodiscard]] constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
+[[nodiscard]] constexpr FieldValue LineLimit(int Value) { return FieldValue(FID_LineLimit, Value); }
+[[nodiscard]] constexpr FieldValue Listener(int Value) { return FieldValue(FID_Listener, Value); }
+[[nodiscard]] constexpr FieldValue MatrixColumns(int Value) { return FieldValue(FID_MatrixColumns, Value); }
+[[nodiscard]] constexpr FieldValue MatrixRows(int Value) { return FieldValue(FID_MatrixRows, Value); }
+[[nodiscard]] constexpr FieldValue MaxHeight(int Value) { return FieldValue(FID_MaxHeight, Value); }
+[[nodiscard]] constexpr FieldValue MaxSpeed(double Value) { return FieldValue(FID_MaxSpeed, Value); }
+[[nodiscard]] constexpr FieldValue MaxWidth(int Value) { return FieldValue(FID_MaxWidth, Value); }
+[[nodiscard]] constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
+[[nodiscard]] constexpr FieldValue Opacity(double Value) { return FieldValue(FID_Opacity, Value); }
+[[nodiscard]] constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value); }
+[[nodiscard]] constexpr FieldValue Parent(OBJECTID Value) { return FieldValue(FID_Parent, Value); }
+[[nodiscard]] constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, int(Value)); }
+[[nodiscard]] constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
+[[nodiscard]] constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }
+[[nodiscard]] constexpr FieldValue RefreshRate(double Value) { return FieldValue(FID_RefreshRate, Value); }
+[[nodiscard]] constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
+[[nodiscard]] constexpr FieldValue Size(int Value) { return FieldValue(FID_Size, Value); }
+[[nodiscard]] constexpr FieldValue Speed(double Value) { return FieldValue(FID_Speed, Value); }
+[[nodiscard]] constexpr FieldValue StrokeWidth(double Value) { return FieldValue(FID_StrokeWidth, Value); }
+[[nodiscard]] constexpr FieldValue Surface(OBJECTID Value) { return FieldValue(FID_Surface, Value); }
+[[nodiscard]] constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
+[[nodiscard]] constexpr FieldValue Target(OBJECTPTR Value) { return FieldValue(FID_Target, Value); }
+[[nodiscard]] constexpr FieldValue ClientData(CPTR Value) { return FieldValue(FID_ClientData, Value); }
+[[nodiscard]] constexpr FieldValue Version(double Value) { return FieldValue(FID_Version, Value); }
+[[nodiscard]] constexpr FieldValue Viewport(OBJECTID Value) { return FieldValue(FID_Viewport, Value); }
+[[nodiscard]] constexpr FieldValue Viewport(OBJECTPTR Value) { return FieldValue(FID_Viewport, Value); }
+[[nodiscard]] constexpr FieldValue Weight(int Value) { return FieldValue(FID_Weight, Value); }
+[[nodiscard]] constexpr FieldValue WheelSpeed(double Value) { return FieldValue(FID_WheelSpeed, Value); }
+[[nodiscard]] constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
+[[nodiscard]] constexpr FieldValue WindowHandle(int Value) { return FieldValue(FID_WindowHandle, Value); }
 
 // Template-based Flags are required for strongly typed enums
 
-template <class T> FieldValue Type(T Value) {
+template <class T> [[nodiscard]] FieldValue Type(T Value) {
    static_assert(std::is_arithmetic_v<T> or std::is_enum_v<T>, "Type value must be numeric or enum");
    if constexpr (std::is_enum_v<T>) return FieldValue(FID_Type, int(Value));
    else return FieldValue(FID_Type, int(Value));
 }
 
-template <class T> FieldValue AspectRatio(T Value) {
+template <class T> [[nodiscard]] FieldValue AspectRatio(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "AspectRatio value must be numeric");
    return FieldValue(FID_AspectRatio, int(Value));
 }
 
-template <class T> FieldValue BlendMode(T Value) {
+template <class T> [[nodiscard]] FieldValue BlendMode(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "BlendMode value must be numeric");
    return FieldValue(FID_BlendMode, int(Value));
 }
 
-template <class T> FieldValue ColourSpace(T Value) {
+template <class T> [[nodiscard]] FieldValue ColourSpace(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "ColourSpace value must be numeric");
    return FieldValue(FID_ColourSpace, int(Value));
 }
 
-template <class T> FieldValue Flags(T Value) {
+template <class T> [[nodiscard]] FieldValue Flags(T Value) {
    static_assert(std::is_arithmetic_v<T> or std::is_enum_v<T>, "Flags value must be numeric or enum");
    if constexpr (std::is_enum_v<T>) return FieldValue(FID_Flags, int(Value));
    else return FieldValue(FID_Flags, int(Value));
 }
 
-template <class T> FieldValue Units(T Value) {
+template <class T> [[nodiscard]] FieldValue Units(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Units value must be numeric");
    return FieldValue(FID_Units, int(Value));
 }
 
-template <class T> FieldValue SpreadMethod(T Value) {
+template <class T> [[nodiscard]] FieldValue SpreadMethod(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "SpreadMethod value must be numeric");
    return FieldValue(FID_SpreadMethod, int(Value));
 }
 
-template <class T> FieldValue Visibility(T Value) {
+template <class T> [[nodiscard]] FieldValue Visibility(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Visibility value must be numeric");
    return FieldValue(FID_Visibility, int(Value));
 }
 
-template <class T> std::enable_if_t<std::is_arithmetic_v<T>, FieldValue> PageWidth(T Value) {
+template <class T> [[nodiscard]] std::enable_if_t<std::is_arithmetic_v<T>, FieldValue> PageWidth(T Value) {
    return FieldValue(FID_PageWidth, Value);
 }
 
-template <class T> std::enable_if_t<std::is_arithmetic_v<T>, FieldValue> PageHeight(T Value) {
+template <class T> [[nodiscard]] std::enable_if_t<std::is_arithmetic_v<T>, FieldValue> PageHeight(T Value) {
    return FieldValue(FID_PageHeight, Value);
 }
 
-template <class T> FieldValue Radius(T Value) {
+template <class T> [[nodiscard]] FieldValue Radius(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Radius value must be numeric");
    return FieldValue(FID_Radius, Value);
 }
 
-template <class T> FieldValue CenterX(T Value) {
+template <class T> [[nodiscard]] FieldValue CenterX(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "CenterX value must be numeric");
    return FieldValue(FID_CenterX, Value);
 }
 
-template <class T> FieldValue CenterY(T Value) {
+template <class T> [[nodiscard]] FieldValue CenterY(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "CenterY value must be numeric");
    return FieldValue(FID_CenterY, Value);
 }
 
-template <class T> FieldValue FX(T Value) {
+template <class T> [[nodiscard]] FieldValue FX(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "FX value must be numeric");
    return FieldValue(FID_FX, Value);
 }
 
-template <class T> FieldValue FY(T Value) {
+template <class T> [[nodiscard]] FieldValue FY(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "FY value must be numeric");
    return FieldValue(FID_FY, Value);
 }
 
-template <class T> FieldValue ResX(T Value) {
+template <class T> [[nodiscard]] FieldValue ResX(T Value) {
    static_assert(std::is_arithmetic<T>::value, "ResX value must be numeric");
    return FieldValue(FID_ResX, Value);
 }
 
-template <class T> FieldValue ResY(T Value) {
+template <class T> [[nodiscard]] FieldValue ResY(T Value) {
    static_assert(std::is_arithmetic<T>::value, "ResY value must be numeric");
    return FieldValue(FID_ResY, Value);
 }
 
-template <class T> FieldValue ViewX(T Value) {
+template <class T> [[nodiscard]] FieldValue ViewX(T Value) {
    static_assert(std::is_arithmetic<T>::value, "ViewX value must be numeric");
    return FieldValue(FID_ViewX, Value);
 }
 
-template <class T> FieldValue ViewY(T Value) {
+template <class T> [[nodiscard]] FieldValue ViewY(T Value) {
    static_assert(std::is_arithmetic<T>::value, "ViewY value must be numeric");
    return FieldValue(FID_ViewY, Value);
 }
@@ -685,57 +685,57 @@ template <class T> FieldValue ViewWidth(T Value) {
    return FieldValue(FID_ViewWidth, Value);
 }
 
-template <class T> FieldValue ViewHeight(T Value) {
+template <class T> [[nodiscard]] FieldValue ViewHeight(T Value) {
    static_assert(std::is_arithmetic<T>::value, "ViewHeight value must be numeric");
    return FieldValue(FID_ViewHeight, Value);
 }
 
-template <class T> FieldValue Width(T Value) {
+template <class T> [[nodiscard]] FieldValue Width(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Width value must be numeric");
    return FieldValue(FID_Width, Value);
 }
 
-template <class T> FieldValue Height(T Value) {
+template <class T> [[nodiscard]] FieldValue Height(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Height value must be numeric");
    return FieldValue(FID_Height, Value);
 }
 
-template <class T> FieldValue X(T Value) {
+template <class T> [[nodiscard]] FieldValue X(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X value must be numeric");
    return FieldValue(FID_X, Value);
 }
 
-template <class T> FieldValue XOffset(T Value) {
+template <class T> [[nodiscard]] FieldValue XOffset(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "XOffset value must be numeric");
    return FieldValue(FID_XOffset, Value);
 }
 
-template <class T> FieldValue Y(T Value) {
+template <class T> [[nodiscard]] FieldValue Y(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y value must be numeric");
    return FieldValue(FID_Y, Value);
 }
 
-template <class T> FieldValue YOffset(T Value) {
+template <class T> [[nodiscard]] FieldValue YOffset(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "YOffset value must be numeric");
    return FieldValue(FID_YOffset, Value);
 }
 
-template <class T> FieldValue X1(T Value) {
+template <class T> [[nodiscard]] FieldValue X1(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X1 value must be numeric");
    return FieldValue(FID_X1, Value);
 }
 
-template <class T> FieldValue Y1(T Value) {
+template <class T> [[nodiscard]] FieldValue Y1(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y1 value must be numeric");
    return FieldValue(FID_Y1, Value);
 }
 
-template <class T> FieldValue X2(T Value) {
+template <class T> [[nodiscard]] FieldValue X2(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X2 value must be numeric");
    return FieldValue(FID_X2, Value);
 }
 
-template <class T> FieldValue Y2(T Value) {
+template <class T> [[nodiscard]] FieldValue Y2(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y2 value must be numeric");
    return FieldValue(FID_Y2, Value);
 }
