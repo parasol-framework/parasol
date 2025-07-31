@@ -16,18 +16,51 @@ Name: Objects
 #endif
 #endif
 
-#include <thread_pool/thread_pool.h>
-
 #include <stdlib.h>
+#include <chrono>
+#include <thread>
 
 #include "defs.h"
 
 using namespace pf;
 
-static dp::thread_pool glAsyncActions;
+//********************************************************************************************************************
 
-void stop_async_actions(void) {
-   glAsyncActions.wait_for_tasks();
+void stop_async_actions(void) 
+{
+   std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);  
+   if (glAsyncThreads.empty()) return;
+   
+   pf::Log log(__FUNCTION__);
+   log.msg("Stopping %d async action threads...", int(glAsyncThreads.size()));
+   
+   for (auto& thread_ptr : glAsyncThreads) {
+      if (thread_ptr and thread_ptr->joinable()) {
+         thread_ptr->request_stop();
+      }
+   }
+   
+   // Give threads time to respond to stop request
+   constexpr auto STOP_TIMEOUT = std::chrono::milliseconds(2000);
+   auto start_time = std::chrono::steady_clock::now();
+   
+   while (!glAsyncThreads.empty() and (std::chrono::steady_clock::now() - start_time) < STOP_TIMEOUT) {
+      // Remove completed threads
+      for (auto it = glAsyncThreads.begin(); it != glAsyncThreads.end();) {
+         if (!(*it) or !(*it)->joinable()) it = glAsyncThreads.erase(it);
+         else ++it;
+      }
+      
+      if (!glAsyncThreads.empty()) {
+         std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      }
+   }
+   
+   if (!glAsyncThreads.empty()) {
+      log.warning("%d action threads failed to stop in time.", int(glAsyncThreads.size()));
+   }
+   
+   glAsyncThreads.clear();
 }
 
 //********************************************************************************************************************
@@ -511,7 +544,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
 
    log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p", int(ActionID), Object->UID, Parameters, Callback);
 
-   ERR error = ERR::Okay;
+   auto error = ERR::Okay;
 
    ++Object->ThreadPending;
    auto defer = Defer([Object, error] { if (error != ERR::Okay) --Object->ThreadPending; });
@@ -542,11 +575,37 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
       FUNCTION dummy;
       if (!Callback) Callback = &dummy;
 
-      glAsyncActions.enqueue_detach([](OBJECTPTR obj, ACTIONID ActionID, int ArgsSize, std::vector<int8_t> Parameters, FUNCTION Callback, const FunctionField *ArgList) {
+      // Lock global async now so that we don't incur the unlikely event of the thread executing
+      // and removing itself from the group before we've managed to add it.
+
+      std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);
+
+      auto thread_ptr = std::make_shared<std::jthread>();
+      
+      *thread_ptr = std::jthread([Object, ActionID, argssize, Parameters = std::move(param_buffer), Callback = *Callback, args, thread_ptr](std::stop_token stop_token) {
+         OBJECTPTR obj = Object;
          ERR error;
+         
+         // Cleanup function to remove thread from tracking
+         auto cleanup = [thread_ptr]() {
+            std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);
+            glAsyncThreads.erase(thread_ptr);
+         };
+         
+         // Check for stop request before proceeding
+         if (stop_token.stop_requested()) {
+            --obj->ThreadPending;
+            cleanup();
+            return;
+         }
+         
          if (error = LockObject(obj, 5000); error IS ERR::Okay) { // Access the object and process the action.
             --obj->ThreadPending;
-            error = Action(ActionID, obj, ArgsSize ? Parameters.data() : nullptr);
+            
+            // Check for stop request before executing action
+            if (!stop_token.stop_requested()) {
+               error = Action(ActionID, obj, argssize ? (APTR)Parameters.data() : nullptr);
+            }
 
             if (obj->terminating()) {
                ReleaseObject(obj);
@@ -558,7 +617,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
 
          // Send a callback notification via messaging if required.  The MSGID::THREAD_ACTION receiver is msg_threadaction()
 
-         if (Callback.defined()) {
+         if (Callback.defined() and !stop_token.stop_requested()) {
             ThreadActionMessage msg = {
                .Object   = obj,
                .ActionID = ActionID,
@@ -567,7 +626,13 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
             };
             SendMessage(MSGID::THREAD_ACTION, MSF::ADD, &msg, sizeof(msg));
          }
-      }, Object, ActionID, argssize, std::move(param_buffer), *Callback, args);
+         
+         cleanup();
+      });
+
+      glAsyncThreads.insert(thread_ptr);
+
+      thread_ptr->detach();
    }
 
    return error;

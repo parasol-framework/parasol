@@ -66,6 +66,8 @@ struct CoreBase *LocalCoreBase = nullptr;
 // NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.
 std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
 
+std::unordered_set<std::shared_ptr<std::jthread>> glAsyncThreads;
+
 std::condition_variable_any cvObjects;
 std::condition_variable_any cvResources;
 
@@ -78,6 +80,7 @@ std::map<std::string, std::vector<Object *>, CaseInsensitiveMap> glObjectLookup;
 std::mutex glmPrint;
 std::recursive_mutex glmMemory;
 std::recursive_mutex glmMsgHandler;
+std::recursive_mutex glmAsyncActions;
 std::recursive_timed_mutex glmObjectLookup;
 std::recursive_timed_mutex glmTimer;
 std::timed_mutex glmClassDB;
