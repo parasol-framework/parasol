@@ -6,6 +6,7 @@
 #endif
 
 #include <set>
+#include <unordered_set>
 #include <functional>
 #include <mutex>
 #include <sstream>
@@ -14,8 +15,6 @@
 #include <array>
 #include <atomic>
 #include <thread>
-
-#include <thread_pool/thread_pool.h>
 
 using namespace std::chrono_literals;
 
@@ -200,6 +199,7 @@ extern std::recursive_timed_mutex glmObjectLookup; // For glObjectLookup
 
 extern std::recursive_mutex glmMemory;
 extern std::recursive_mutex glmMsgHandler;
+extern std::recursive_mutex glmAsyncActions;
 
 extern std::condition_variable_any cvResources;
 extern std::condition_variable_any cvObjects;
@@ -686,6 +686,7 @@ extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 extern std::unordered_map<uint32_t, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
 extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
+extern std::unordered_set<std::shared_ptr<std::jthread>> glAsyncThreads;
 extern std::unordered_multimap<uint32_t, CLASSID> glWildClassMap; // Fast lookup for identifying classes by file extension
 extern int glWildClassMapTotal;
 extern std::vector<TaskRecord> glTasks;

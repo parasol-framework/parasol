@@ -19,8 +19,6 @@ and A.
 
 *********************************************************************************************************************/
 
-#include <thread_pool/thread_pool.h>
-
 constexpr int RAND_m = 2147483647; // 2**31 - 1
 constexpr int RAND_a = 16807;      // 7**5; primitive root of m
 constexpr int RAND_q = 127773;     // m / a
