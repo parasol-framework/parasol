@@ -257,7 +257,6 @@ function (idl_gen)
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
-         PRE_BUILD
          ${COMMAND_LIST}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
@@ -287,7 +286,6 @@ function (idl_compile)
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
-         PRE_BUILD
          COMMAND "${PARASOL_CMD}" "${IDL_COMPILE_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
@@ -549,7 +547,6 @@ file(GLOB_RECURSE icon_files "data/icons/*.svg")
 
 add_custom_command (
    OUTPUT  "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip"
-   PRE_BUILD
    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/icons"
    COMMAND ${CMAKE_COMMAND} -E tar "cf" "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip" --format=zip -- "."
    DEPENDS ${icon_files}
