@@ -45,21 +45,38 @@ template <class T = double> struct POINT {
    }
 };
 
-template <class T = double> bool operator==(const POINT<T> &a, const POINT<T> &b) {
+template <class T = double>
+[[nodiscard]] std::enable_if_t<std::is_arithmetic_v<T>, bool>
+operator==(const POINT<T> &a, const POINT<T> &b) {
    return (a.x == b.x) and (a.y == b.y);
 }
 
-template <class T = double> T operator-(const POINT<T> A, const POINT<T> &B) {
-   if (A == B) return 0;
-   double a = std::abs(B.x - A.x);
-   double b = std::abs(B.y - A.y);
+// Fast distance approximation for integral types
+template <class T = double>
+[[nodiscard]] std::enable_if_t<std::is_integral_v<T>, T>
+operator-(const POINT<T> A, const POINT<T> &B) {
+   if (A == B) return T{0};
+   double a = std::abs(double(B.x - A.x));
+   double b = std::abs(double(B.y - A.y));
    if (a > b) std::swap(a, b);
    return T(b + 0.428 * a * a / b); // Error level of ~1.04%
-   //return T(std::sqrt((a * a) + (b * b))); // Full accuracy
 }
 
-template <class T = double> POINT<T> operator * (const POINT<T> &lhs, const double &Multiplier) {
-   return POINT<T> { lhs.x * Multiplier, lhs.y * Multiplier };
+// Optimized distance calculation for floating-point types
+template <class T>
+[[nodiscard]] std::enable_if_t<std::is_floating_point_v<T>, T>
+operator-(const POINT<T> A, const POINT<T> &B) {
+   if (A == B) return T{0};
+   T a = std::abs(B.x - A.x);
+   T b = std::abs(B.y - A.y);
+   if (a > b) std::swap(a, b);
+   return b + T(0.428) * a * a / b; // Direct T arithmetic
+}
+
+template <class T = double, class M = double>
+[[nodiscard]] std::enable_if_t<std::is_arithmetic_v<T> and std::is_arithmetic_v<M>, POINT<T>>
+operator * (const POINT<T> &lhs, const M &Multiplier) {
+   return POINT<T> { static_cast<T>(lhs.x * Multiplier), static_cast<T>(lhs.y * Multiplier) };
 }
 
 //********************************************************************************************************************
@@ -107,8 +124,10 @@ private:
    FUNC func;
 };
 
-template <typename F> deferred_call<F> Defer(F &&f) {
-   return deferred_call<F>(std::forward<F>(f));
+template <typename F>
+[[nodiscard]] std::enable_if_t<std::is_invocable_v<std::decay_t<F>>, deferred_call<std::decay_t<F>>>
+Defer(F &&f) {
+   return deferred_call<std::decay_t<F>>(std::forward<F>(f));
 }
 
 //********************************************************************************************************************
@@ -123,21 +142,39 @@ template <class T = Object> struct DeleteObject {
 
 // Simplify the creation of unique pointers with the destructor
 
-template <class T = Object> std::unique_ptr<T> make_unique_object(T *Object) {
-   return std::unique_ptr<T>(Object, DeleteObject{});
+template <class T = Object>
+[[nodiscard]] std::enable_if_t<std::is_base_of_v<Object, T>, std::unique_ptr<T, DeleteObject<T>>>
+make_unique_object(T *Object) {
+   return std::unique_ptr<T, DeleteObject<T>>(Object, DeleteObject<T>{});
 }
 
 // Variant for std::shared_ptr
 
-template <class T = Object> std::shared_ptr<T> make_shared_object(T *Object) {
-   return std::shared_ptr<T>(Object, DeleteObject{});
+template <class T = Object>
+[[nodiscard]] std::enable_if_t<std::is_base_of_v<Object, T>, std::shared_ptr<T>>
+make_shared_object(T *Object) {
+   return std::shared_ptr<T>(Object, DeleteObject<T>{});
 }
+
+//********************************************************************************************************************
+// SFINAE trait to detect lockable objects
+
+template<typename T, typename = void>
+struct is_lockable : std::false_type {};
+
+template<typename T>
+struct is_lockable<T, std::void_t<
+   decltype(std::declval<T>().lock(std::declval<int>())),
+   decltype(std::declval<T>().unlock())
+>> : std::true_type {};
 
 //********************************************************************************************************************
 // Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
 template <class T = Object>
 class ScopedObjectLock {
+   static_assert(std::is_base_of_v<Object, T> or is_lockable<T>::value,
+                 "T must be Object-derived or have lock()/unlock() methods");
    private:
       bool quicklock;
 
@@ -164,8 +201,8 @@ class ScopedObjectLock {
          }
       }
 
-      inline ScopedObjectLock() { obj = NULL; error = ERR::NotLocked; }
-      inline bool granted() { return error == ERR::Okay; }
+      inline ScopedObjectLock() { obj = nullptr; error = ERR::NotLocked; }
+      [[nodiscard]] inline bool granted() { return error == ERR::Okay; }
 
       inline T * operator->() { return obj; }; // Promotes underlying methods and fields
       inline T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
@@ -197,6 +234,10 @@ class LocalResource {
 
 template <class T = Object, class C = std::atomic_int>
 class GuardedObject {
+   static_assert(std::is_base_of_v<Object, T>, "T must derive from Object");
+   static_assert(std::is_arithmetic_v<C> or std::is_same_v<C, std::atomic_int>,
+                 "Counter type must be arithmetic or atomic_int");
+
    private:
       C * count;  // Count of GuardedObjects accessing the same resource.  Can be int (non-threaded) or std::atomic_int
       T * object; // Pointer to the Parasol object being guarded.  Use '*' or '->' operators to access.
@@ -206,11 +247,11 @@ class GuardedObject {
 
       // Constructors
 
-      GuardedObject() : count(new C(1)), object(NULL), id(0) { }
+      GuardedObject() : count(new C(1)), object(nullptr), id(0) { }
 
       GuardedObject(T *pObject) : count(new C(1)), object(pObject) {
-         static_assert(std::is_base_of_v<Object, T>, "The resource value must belong to Object");
-         id = ((int *)pObject)[-2];
+         if (pObject) id = ((int *)pObject)[-2];
+         else id = 0;
       }
 
       GuardedObject(const GuardedObject &other) { // Copy constructor
@@ -218,9 +259,10 @@ class GuardedObject {
             object = other.object;
             count  = other.count;
             count[0]++;
+            id     = other.id;
          }
          else { // If the other object is undefined then use a default state
-            object = NULL;
+            object = nullptr;
             id     = 0;
             count  = new C(1);
          }
@@ -230,7 +272,7 @@ class GuardedObject {
          id     = other.id;
          object = other.object;
          count  = other.count;
-         other.count = NULL;
+         other.count = nullptr;
       }
 
       // Destructor
@@ -251,11 +293,12 @@ class GuardedObject {
             object = other.object;
             count  = other.count;
             count[0]++;
+            id     = other.id;
          }
          else { // If the other object is undefined then we reset our state with no count inheritance.
-            object   = NULL;
-            id       = 0;
-            count[0] = 1;
+            object = nullptr;
+            id     = 0;
+            count  = new C(1);
          }
          return *this;
       }
@@ -266,7 +309,7 @@ class GuardedObject {
          id     = other.id;
          object = other.object;
          count  = other.count;
-         other.count = NULL;
+         other.count = nullptr;
          return *this;
       }
 
@@ -302,7 +345,7 @@ class GuardedResource {
 
       // Constructors
 
-      GuardedResource() : count(new C(1)), resource(NULL), id(0) { }
+      GuardedResource() : count(new C(1)), resource(nullptr), id(0) { }
 
       GuardedResource(T *Resource) : count(new C(1)), resource(Resource) {
          id = ((int *)Resource)[-2];
@@ -315,7 +358,7 @@ class GuardedResource {
             count[0]++;
          }
          else { // If the other resource is undefined then use a default state
-            resource = NULL;
+            resource = nullptr;
             id       = 0;
             count    = new C(1);
          }
@@ -325,7 +368,7 @@ class GuardedResource {
          id       = other.id;
          resource = other.resource;
          count    = other.count;
-         other.count = NULL;
+         other.count = nullptr;
       }
 
       // Destructor
@@ -348,7 +391,7 @@ class GuardedResource {
             count[0]++;
          }
          else { // If the other resource is undefined then we reset our state with no count inheritance.
-            resource = NULL;
+            resource = nullptr;
             id       = 0;
             count[0] = 1;
          }
@@ -361,7 +404,7 @@ class GuardedResource {
          id       = other.id;
          resource = other.resource;
          count    = other.count;
-         other.count = NULL;
+         other.count = nullptr;
          return *this;
       }
 
@@ -394,7 +437,7 @@ class SwitchContext { // C++ wrapper for changing the current context with a res
    public:
       SwitchContext(T NewContext) {
          if (NewContext) old_context = SetContext((OBJECTPTR)NewContext);
-         else old_context = NULL;
+         else old_context = nullptr;
       }
       ~SwitchContext() { if (old_context) SetContext(old_context); }
 };
@@ -409,83 +452,83 @@ class objBitmap;
 namespace fl {
    using namespace pf;
 
-constexpr FieldValue Path(CSTRING Value) { return FieldValue(FID_Path, Value); }
+[[nodiscard]] constexpr FieldValue Path(CSTRING Value) { return FieldValue(FID_Path, Value); }
 inline FieldValue Path(const std::string &Value) { return FieldValue(FID_Path, Value.c_str()); }
 
-constexpr FieldValue Location(CSTRING Value) { return FieldValue(FID_Location, Value); }
+[[nodiscard]] constexpr FieldValue Location(CSTRING Value) { return FieldValue(FID_Location, Value); }
 inline FieldValue Location(const std::string &Value) { return FieldValue(FID_Location, Value.c_str()); }
 
-constexpr FieldValue Args(CSTRING Value) { return FieldValue(FID_Args, Value); }
+[[nodiscard]] constexpr FieldValue Args(CSTRING Value) { return FieldValue(FID_Args, Value); }
 inline FieldValue Args(const std::string &Value) { return FieldValue(FID_Args, Value.c_str()); }
 
-constexpr FieldValue Fill(CSTRING Value) { return FieldValue(FID_Fill, Value); }
+[[nodiscard]] constexpr FieldValue Fill(CSTRING Value) { return FieldValue(FID_Fill, Value); }
 inline FieldValue Fill(const std::string &Value) { return FieldValue(FID_Fill, Value.c_str()); }
 
-constexpr FieldValue Statement(CSTRING Value) { return FieldValue(FID_Statement, Value); }
+[[nodiscard]] constexpr FieldValue Statement(CSTRING Value) { return FieldValue(FID_Statement, Value); }
 inline FieldValue Statement(const std::string &Value) { return FieldValue(FID_Statement, Value.c_str()); }
 
-constexpr FieldValue Stroke(CSTRING Value) { return FieldValue(FID_Stroke, Value); }
+[[nodiscard]] constexpr FieldValue Stroke(CSTRING Value) { return FieldValue(FID_Stroke, Value); }
 inline FieldValue Stroke(const std::string &Value) { return FieldValue(FID_Stroke, Value.c_str()); }
 
-constexpr FieldValue String(CSTRING Value) { return FieldValue(FID_String, Value); }
+[[nodiscard]] constexpr FieldValue String(CSTRING Value) { return FieldValue(FID_String, Value); }
 inline FieldValue String(const std::string &Value) { return FieldValue(FID_String, Value.c_str()); }
 
-constexpr FieldValue Name(CSTRING Value) { return FieldValue(FID_Name, Value); }
+[[nodiscard]] constexpr FieldValue Name(CSTRING Value) { return FieldValue(FID_Name, Value); }
 inline FieldValue Name(const std::string &Value) { return FieldValue(FID_Name, Value.c_str()); }
 
-constexpr FieldValue Allow(CSTRING Value) { return FieldValue(FID_Allow, Value); }
+[[nodiscard]] constexpr FieldValue Allow(CSTRING Value) { return FieldValue(FID_Allow, Value); }
 inline FieldValue Allow(const std::string &Value) { return FieldValue(FID_Allow, Value.c_str()); }
 
-constexpr FieldValue Style(CSTRING Value) { return FieldValue(FID_Style, Value); }
+[[nodiscard]] constexpr FieldValue Style(CSTRING Value) { return FieldValue(FID_Style, Value); }
 inline FieldValue Style(const std::string &Value) { return FieldValue(FID_Style, Value.c_str()); }
 
-constexpr FieldValue Face(CSTRING Value) { return FieldValue(FID_Face, Value); }
+[[nodiscard]] constexpr FieldValue Face(CSTRING Value) { return FieldValue(FID_Face, Value); }
 inline FieldValue Face(const std::string &Value) { return FieldValue(FID_Face, Value.c_str()); }
 
-constexpr FieldValue FileExtension(CSTRING Value) { return FieldValue(FID_FileExtension, Value); }
+[[nodiscard]] constexpr FieldValue FileExtension(CSTRING Value) { return FieldValue(FID_FileExtension, Value); }
 inline FieldValue FileExtension(const std::string &Value) { return FieldValue(FID_FileExtension, Value.c_str()); }
 
-constexpr FieldValue FileDescription(CSTRING Value) { return FieldValue(FID_FileDescription, Value); }
+[[nodiscard]] constexpr FieldValue FileDescription(CSTRING Value) { return FieldValue(FID_FileDescription, Value); }
 inline FieldValue FileDescription(const std::string &Value) { return FieldValue(FID_FileDescription, Value.c_str()); }
 
-constexpr FieldValue FileHeader(CSTRING Value) { return FieldValue(FID_FileHeader, Value); }
+[[nodiscard]] constexpr FieldValue FileHeader(CSTRING Value) { return FieldValue(FID_FileHeader, Value); }
 inline FieldValue FileHeader(const std::string &Value) { return FieldValue(FID_FileHeader, Value.c_str()); }
 
-constexpr FieldValue FontSize(double Value) { return FieldValue(FID_FontSize, Value); }
-constexpr FieldValue FontSize(int Value) { return FieldValue(FID_FontSize, Value); }
-constexpr FieldValue FontSize(CSTRING Value) { return FieldValue(FID_FontSize, Value); }
+[[nodiscard]] constexpr FieldValue FontSize(double Value) { return FieldValue(FID_FontSize, Value); }
+[[nodiscard]] constexpr FieldValue FontSize(int Value) { return FieldValue(FID_FontSize, Value); }
+[[nodiscard]] constexpr FieldValue FontSize(CSTRING Value) { return FieldValue(FID_FontSize, Value); }
 inline FieldValue FontSize(const std::string &Value) { return FieldValue(FID_FontSize, Value.c_str()); }
 
-constexpr FieldValue ArchiveName(CSTRING Value) { return FieldValue(FID_ArchiveName, Value); }
+[[nodiscard]] constexpr FieldValue ArchiveName(CSTRING Value) { return FieldValue(FID_ArchiveName, Value); }
 inline FieldValue ArchiveName(const std::string &Value) { return FieldValue(FID_ArchiveName, Value.c_str()); }
 
-constexpr FieldValue Volume(CSTRING Value) { return FieldValue(FID_Volume, Value); }
+[[nodiscard]] constexpr FieldValue Volume(CSTRING Value) { return FieldValue(FID_Volume, Value); }
 inline FieldValue Volume(const std::string &Value) { return FieldValue(FID_Volume, Value.c_str()); }
 
-constexpr FieldValue DPMS(CSTRING Value) { return FieldValue(FID_DPMS, Value); }
+[[nodiscard]] constexpr FieldValue DPMS(CSTRING Value) { return FieldValue(FID_DPMS, Value); }
 inline FieldValue DPMS(const std::string &Value) { return FieldValue(FID_DPMS, Value.c_str()); }
 
-constexpr FieldValue Icon(CSTRING Value) { return FieldValue(FID_Icon, Value); }
+[[nodiscard]] constexpr FieldValue Icon(CSTRING Value) { return FieldValue(FID_Icon, Value); }
 inline FieldValue Icon(const std::string &Value) { return FieldValue(FID_Icon, Value.c_str()); }
 
-constexpr FieldValue Procedure(CSTRING Value) { return FieldValue(FID_Procedure, Value); }
+[[nodiscard]] constexpr FieldValue Procedure(CSTRING Value) { return FieldValue(FID_Procedure, Value); }
 inline FieldValue Procedure(const std::string &Value) { return FieldValue(FID_Procedure, Value.c_str()); }
 
-constexpr FieldValue ReadOnly(int Value) { return FieldValue(FID_ReadOnly, Value); }
-constexpr FieldValue ReadOnly(bool Value) { return FieldValue(FID_ReadOnly, (Value ? 1 : 0)); }
+[[nodiscard]] constexpr FieldValue ReadOnly(int Value) { return FieldValue(FID_ReadOnly, Value); }
+[[nodiscard]] constexpr FieldValue ReadOnly(bool Value) { return FieldValue(FID_ReadOnly, (Value ? 1 : 0)); }
 
-constexpr FieldValue ButtonOrder(CSTRING Value) { return FieldValue(FID_ButtonOrder, Value); }
+[[nodiscard]] constexpr FieldValue ButtonOrder(CSTRING Value) { return FieldValue(FID_ButtonOrder, Value); }
 inline FieldValue ButtonOrder(const std::string &Value) { return FieldValue(FID_ButtonOrder, Value.c_str()); }
 
-constexpr FieldValue Point(double Value) { return FieldValue(FID_Point, Value); }
-constexpr FieldValue Point(int Value) { return FieldValue(FID_Point, Value); }
-constexpr FieldValue Point(CSTRING Value) { return FieldValue(FID_Point, Value); }
+[[nodiscard]] constexpr FieldValue Point(double Value) { return FieldValue(FID_Point, Value); }
+[[nodiscard]] constexpr FieldValue Point(int Value) { return FieldValue(FID_Point, Value); }
+[[nodiscard]] constexpr FieldValue Point(CSTRING Value) { return FieldValue(FID_Point, Value); }
 inline FieldValue Point(const std::string &Value) { return FieldValue(FID_Point, Value.c_str()); }
 
-constexpr FieldValue Points(CSTRING Value) { return FieldValue(FID_Points, Value); }
+[[nodiscard]] constexpr FieldValue Points(CSTRING Value) { return FieldValue(FID_Points, Value); }
 inline FieldValue Points(const std::string &Value) { return FieldValue(FID_Points, Value.c_str()); }
 
-constexpr FieldValue Pretext(CSTRING Value) { return FieldValue(FID_Pretext, Value); }
+[[nodiscard]] constexpr FieldValue Pretext(CSTRING Value) { return FieldValue(FID_Pretext, Value); }
 inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pretext, Value.c_str()); }
 
 constexpr FieldValue Acceleration(double Value) { return FieldValue(FID_Acceleration, Value); }
@@ -543,8 +586,9 @@ constexpr FieldValue WindowHandle(int Value) { return FieldValue(FID_WindowHandl
 // Template-based Flags are required for strongly typed enums
 
 template <class T> FieldValue Type(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Type value must be numeric");
-   return FieldValue(FID_Type, int(Value));
+   static_assert(std::is_arithmetic_v<T> or std::is_enum_v<T>, "Type value must be numeric or enum");
+   if constexpr (std::is_enum_v<T>) return FieldValue(FID_Type, int(Value));
+   else return FieldValue(FID_Type, int(Value));
 }
 
 template <class T> FieldValue AspectRatio(T Value) {
@@ -563,8 +607,9 @@ template <class T> FieldValue ColourSpace(T Value) {
 }
 
 template <class T> FieldValue Flags(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Flags value must be numeric");
-   return FieldValue(FID_Flags, int(Value));
+   static_assert(std::is_arithmetic_v<T> or std::is_enum_v<T>, "Flags value must be numeric or enum");
+   if constexpr (std::is_enum_v<T>) return FieldValue(FID_Flags, int(Value));
+   else return FieldValue(FID_Flags, int(Value));
 }
 
 template <class T> FieldValue Units(T Value) {
@@ -582,13 +627,11 @@ template <class T> FieldValue Visibility(T Value) {
    return FieldValue(FID_Visibility, int(Value));
 }
 
-template <class T> FieldValue PageWidth(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "PageWidth value must be numeric");
+template <class T> std::enable_if_t<std::is_arithmetic_v<T>, FieldValue> PageWidth(T Value) {
    return FieldValue(FID_PageWidth, Value);
 }
 
-template <class T> FieldValue PageHeight(T Value) {
-   static_assert(std::is_arithmetic<T>::value, "PageHeight value must be numeric");
+template <class T> std::enable_if_t<std::is_arithmetic_v<T>, FieldValue> PageHeight(T Value) {
    return FieldValue(FID_PageHeight, Value);
 }
 
