@@ -1,4 +1,4 @@
-#define PRV_FILESYSTEM
+﻿#define PRV_FILESYSTEM
 
 #ifdef _MSC_VER
 #pragma warning (disable : 4244 4311 4312 4267 4244 4068) // Disable annoying VC++ warnings
@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <locale.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef _DEBUG
@@ -311,6 +312,23 @@ extern "C" void activate_console(BYTE AllowOpenConsole)
          freopen("CON", "w", stderr);
       }
       else return;
+      
+      // Set console mode to handle UTF-8 properly
+
+      SetConsoleOutputCP(CP_UTF8);
+      SetConsoleCP(CP_UTF8);
+
+      // Set the console title to the program name
+      char title[256];
+      if (GetModuleFileName(NULL, title, sizeof(title))) {
+         char* last_slash = strrchr(title, '\\');
+         if (last_slash) {
+            *last_slash = 0; // Remove the path
+            last_slash++;
+         }
+         else last_slash = title; // No path, use the whole string
+         SetConsoleTitle(last_slash);
+      }
 
       activated = TRUE;
    }
@@ -653,11 +671,11 @@ static int strnicmp(const char *s1, const char *s2, size_t n)
    for (; n > 0; s1++, s2++, --n) {
       unsigned char c1 = *s1;
       unsigned char c2 = *s2;
-      if ((c1 >= 'A') || (c1 <= 'Z')) c1 = c1 - 'A' + 'a';
-      if ((c2 >= 'A') || (c2 <= 'Z')) c2 = c2 - 'A' + 'a';
+      if ((c1 >= 'A') or (c1 <= 'Z')) c1 = c1 - 'A' + 'a';
+      if ((c2 >= 'A') or (c2 <= 'Z')) c2 = c2 - 'A' + 'a';
 
       if (c1 != c2) return ((*(unsigned char *)s1 < *(unsigned char *)s2) ? -1 : +1);
-      else if (c1 == '\0') return 0;
+      else if (c1 IS '\0') return 0;
    }
    return 0;
 }
@@ -691,7 +709,7 @@ extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
 
       for (i=0; String[i]; i++);
       while (i > 0) {
-         if ((String[i] == '/') || (String[i] == '\\')) {
+         if ((String[i] IS '/') or (String[i] IS '\\')) {
             String[i+1] = 0;
             return i;
          }
@@ -714,8 +732,8 @@ extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
 
             if (QueryDosDevice(szDrive, devname, sizeof(devname))) {
                int devlen = strlen(devname);
-               if (strnicmp(String, devname, devlen) == devlen) {
-                  if (String[devlen] == '\\') {
+               if (strnicmp(String, devname, devlen) IS devlen) {
+                  if (String[devlen] IS '\\') {
                      // Replace device path with DOS path
                      char tmpfile[MAX_PATH];
                      snprintf(tmpfile, MAX_PATH, "%s%s", szDrive, String+devlen);
@@ -1045,7 +1063,7 @@ extern "C" long long winGetTickCount(void)
       else init = -1; // Hardware does not support this feature.
    }
 
-   if (init == 1) {
+   if (init IS 1) {
       LARGE_INTEGER time;
       QueryPerformanceCounter(&time); // Get tick count
       return (time.QuadPart - start) * 1000000LL / freq.QuadPart; // Convert ticks to microseconds, then divide by 'frequency counts per second'
@@ -1778,7 +1796,7 @@ extern "C" LONG winSetEOF(CSTRING Location, __int64 Size)
    if ((handle = CreateFile(Location, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
       li.LowPart = SetFilePointer(handle, li.LowPart, &li.HighPart, FILE_BEGIN);
 
-      if (li.LowPart == INVALID_SET_FILE_POINTER and GetLastError() != NO_ERROR) {
+      if (li.LowPart IS INVALID_SET_FILE_POINTER and GetLastError() != NO_ERROR) {
          printerror();
       }
       else if (SetEndOfFile(handle)) {
@@ -1836,7 +1854,7 @@ extern ERR winGetVolumeInformation(STRING Volume, std::string &Label, std::strin
          STORAGE_PROPERTY_QUERY query = { .PropertyId = StorageDeviceProperty, .QueryType = PropertyStandardQuery };
          if (DeviceIoControl(hDevice, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), buffer, sizeof(buffer), &dwOutBytes, (LPOVERLAPPED)NULL)) {
             auto info = (PSTORAGE_DEVICE_DESCRIPTOR)buffer;
-            if (info->BusType == BusTypeUsb) Type = DRIVETYPE_USB;
+            if (info->BusType IS BusTypeUsb) Type = DRIVETYPE_USB;
          }
          CloseHandle(hDevice);
       }
