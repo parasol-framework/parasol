@@ -259,6 +259,7 @@ ERR win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 }
 
 //********************************************************************************************************************
+// Wrapped by CLOSESOCKET()
 
 int win_closesocket(WSW_SOCKET SocketHandle)
 {
@@ -328,7 +329,7 @@ ERR win_listen(WSW_SOCKET SocketHandle, int BackLog)
 
 //********************************************************************************************************************
 
-ERR WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, int Len, int Flags, int *Result)
+ERR WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, size_t Len, int Flags, int *Result)
 {
    *Result = 0;
    if (!Len) return ERR::Okay;
@@ -346,7 +347,7 @@ ERR WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, int Len, int Flags, int *
 
 //********************************************************************************************************************
 
-ERR WIN_SEND(WSW_SOCKET Socket, const void *Buffer, int *Length, int Flags)
+ERR WIN_SEND(WSW_SOCKET Socket, const void *Buffer, size_t *Length, int Flags)
 {
    if (!*Length) return ERR::Okay;
    *Length = send(Socket, reinterpret_cast<const char *>(Buffer), *Length, Flags);

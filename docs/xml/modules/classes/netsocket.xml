@@ -18,13 +18,13 @@
 <header>Client-Server Connections</header>
 <p>After a connection has been established, data may be written using any of the following methods:</p>
 <list type="bullet">
-<li>Write directly to the socket with either the <action>Write</action> action or <method>WriteMsg</method> method.</li>
+<li>Write directly to the socket with the <action>Write</action> action.</li>
 <li>Subscribe to the socket by referring to a routine in the <fl>Outgoing</fl> field.  The routine will be called to
 initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>
 </list>
 <p>It is possible to write to a NetSocket object before the connection to a server is established.  Doing so will buffer the data in the socket until the connection with the server has been initiated, at which point the data will be immediately sent.</p>
 <header>Server-Client Connections</header>
-<p>To accept incoming client connections, create a NetSocket object with the <code>SERVER</code> flag set and define the <fl>Port</fl> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the <code>MULTICONNECT</code> flag.</p>
+<p>To accept incoming client connections, create a NetSocket object with the <code>SERVER</code> flag set and define the <fl>Port</fl> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the <code>MULTI_CONNECT</code> flag.</p>
 <p>When a new connection is detected, the <fl>Feedback</fl> function will be called as <code>Feedback(*NetSocket, *ClientSocket, LONG State)</code></p>
 <p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved and the State value will be set to <code>NTC::CONNECTED</code>.  If a client disconnects, the <fl>Feedback</fl> function will be called in the same manner but with a State value of <code>NTC::DISCONNECTED</code>.</p>
 <p>Information on all active connections can be read from the <fl>Clients</fl> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
@@ -161,49 +161,6 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       </result>
     </method>
 
-    <method>
-      <name>ReadMsg</name>
-      <comment>Read a message from the socket.</comment>
-      <prototype>ERR ns::ReadMsg(OBJECTPTR Object, APTR * Message, INT * Length, INT * Progress, INT * CRC)</prototype>
-      <input>
-        <param type="APTR *" name="Message">A pointer to the message buffer will be placed here if a message has been received.</param>
-        <param type="INT *" name="Length">The length of the message is returned here.</param>
-        <param type="INT *" name="Progress">The number of bytes that have been read for the incoming message.</param>
-        <param type="INT *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
-      </input>
-      <description>
-<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the <method>WriteMsg</method> method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
-<p>This method never returns a successful error code unless an entire message has been received from the sender.</p>
-      </description>
-      <result>
-        <error code="Okay">A complete message has been read and indicated in the result parameters.</error>
-        <error code="BadData">The message header or tail was invalid, or the message length exceeded internally imposed limits.</error>
-        <error code="LimitedSuccess">Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the <code>Length</code> parameter.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NoData">No new data was found for the socket.</error>
-        <error code="AllocMemory">A message buffer could not be allocated.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
-    <method>
-      <name>WriteMsg</name>
-      <comment>Writes a message to the socket.</comment>
-      <prototype>ERR ns::WriteMsg(OBJECTPTR Object, APTR Message, INT Length)</prototype>
-      <input>
-        <param type="APTR" name="Message">Pointer to the message to send.</param>
-        <param type="INT" name="Length">The length of the message.</param>
-      </input>
-      <description>
-<p>Messages can be written to sockets with the WriteMsg method and read back by the receiver with <method>ReadMsg</method>.  The message data is sent through the <action>Write</action> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
-      </result>
-    </method>
-
   </methods>
 
   <fields>
@@ -279,7 +236,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <type>FUNCTION</type>
       <description>
 <p>Refer to a custom function in this field and it will be called whenever the <fl>State</fl> of the socket (such as connection or disconnection) changes.</p>
-<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, int State)</code></p>
+<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, NTC State)</code></p>
 <p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <fl>State</fl> field.</p>
       </description>
     </field>
@@ -308,7 +265,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 
     <field>
       <name>MsgLimit</name>
-      <comment>Limits the size of incoming and outgoing messages.</comment>
+      <comment>Limits the size of incoming and outgoing data packets.</comment>
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
@@ -353,7 +310,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 
     <field>
       <name>State</name>
-      <comment>The current connection state of the netsocket object.</comment>
+      <comment>The current connection state of the NetSocket object.</comment>
       <access read="R" write="S">Read/Set</access>
       <type lookup="NTC">NTC</type>
       <description>
@@ -413,9 +370,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <field name="Next" type="struct NetClient *">Next client in the chain</field>
       <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
       <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
-      <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="Connections" type="objClientSocket *">Pointer to a list of connections opened by this client.</field>
       <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalSockets" type="INT">Count of all created sockets</field>
+      <field name="TotalConnections" type="INT">Count of all socket-based connections</field>
     </struct>
 
   </structs>

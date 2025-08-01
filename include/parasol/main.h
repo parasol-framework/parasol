@@ -571,6 +571,7 @@ inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pret
 [[nodiscard]] constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, int(Value)); }
 [[nodiscard]] constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
 [[nodiscard]] constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }
+[[nodiscard]] constexpr FieldValue Port(int Value) { return FieldValue(FID_Port, Value); }
 [[nodiscard]] constexpr FieldValue RefreshRate(double Value) { return FieldValue(FID_RefreshRate, Value); }
 [[nodiscard]] constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
 [[nodiscard]] constexpr FieldValue Size(int Value) { return FieldValue(FID_Size, Value); }

@@ -61,6 +61,10 @@ target_include_directories (${MOD} PRIVATE
 target_precompile_headers(${MOD} PRIVATE
    "vector.h" "font.h")
 
+# Enable unity builds to speed up compilation of the many AGG source files
+set_target_properties(${MOD} PROPERTIES UNITY_BUILD ON)
+set_target_properties(${MOD} PROPERTIES UNITY_BUILD_BATCH_SIZE 8)
+
 target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PUBLIC linear_rgb)
 target_link_libraries (${MOD} PRIVATE ${MATH_LINK} freetype)

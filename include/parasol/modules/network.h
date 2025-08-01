@@ -64,12 +64,6 @@ enum class NSL : int {
    CONNECT = 1,
 };
 
-// Internal identifiers for the NetMsg structure.
-
-#define NETMSG_SIZE_LIMIT 1048576
-#define NETMSG_MAGIC 941629299
-#define NETMSG_MAGIC_TAIL 2198696884
-
 // These error codes for certificate validation match the OpenSSL error codes (X509 definitions)
 
 #define SCV_OK 0
@@ -128,41 +122,22 @@ struct IPAddress {
 
 struct NetQueue {
    uint32_t Index;    // The current read/write position within the buffer
-   uint32_t Length;   // The size of the buffer.
-   APTR     Buffer;   // The buffer hosting the data
-};
-
-struct NetMsg {
-   uint32_t Magic;    // Standard key to recognise the message packet
-   uint32_t Length;   // Byte length of the message
-};
-
-struct NetMsgEnd {
-   uint32_t CRC;    // Checksum of the message packet
-   uint32_t Magic;  // Standard key to recognise the message packet
+  std::vector<uint8_t> Buffer; // The buffer hosting the data
 };
 
 struct NetClient {
-   char IP[8];                 // IP address in 4/8-byte format
-   struct NetClient * Next;    // Next client in the chain
-   struct NetClient * Prev;    // Previous client in the chain
-   objNetSocket * NetSocket;   // Reference to the parent socket
-   objClientSocket * Sockets;  // Pointer to a list of sockets opened with this client.
-   APTR ClientData;            // Free for user data storage.
-   int  TotalSockets;          // Count of all created sockets
+   char IP[8];                       // IP address in 4/8-byte format
+   struct NetClient * Next;          // Next client in the chain
+   struct NetClient * Prev;          // Previous client in the chain
+   objNetSocket * NetSocket;         // Reference to the parent socket
+   objClientSocket * Connections;    // Pointer to a list of connections opened by this client.
+   APTR ClientData;                  // Free for user data storage.
+   int  TotalConnections;            // Count of all socket-based connections
 };
 
 // ClientSocket class definition
 
 #define VER_CLIENTSOCKET (1.000000)
-
-// ClientSocket methods
-
-namespace cs {
-struct ReadClientMsg { APTR Message; int Length; int Progress; int CRC; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct WriteClientMsg { APTR Message; int Length; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-
-} // namespace
 
 class objClientSocket : public Object {
    public:
@@ -175,10 +150,9 @@ class objClientSocket : public Object {
    objClientSocket * Prev;       // Previous socket in the chain
    objClientSocket * Next;       // Next socket in the chain
    struct NetClient * Client;    // Parent client structure
-   APTR     ClientData;          // Free for user data storage.
+   APTR     ClientData;          // Available for client data storage.
    FUNCTION Outgoing;            // Callback for data being sent over the socket
    FUNCTION Incoming;            // Callback for data being received from the socket
-   int      MsgLen;              // Length of the current incoming message
    int      ReadCalled:1;        // TRUE if the Read action has been called
 
    // Action stubs
@@ -227,19 +201,6 @@ class objClientSocket : public Object {
       struct acWrite write = { (int8_t *)Buffer, Size };
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
-   }
-   inline ERR readClientMsg(APTR * Message, int * Length, int * Progress, int * CRC) noexcept {
-      struct cs::ReadClientMsg args = { (APTR)0, (int)0, (int)0, (int)0 };
-      ERR error = Action(AC(-1), this, &args);
-      if (Message) *Message = args.Message;
-      if (Length) *Length = args.Length;
-      if (Progress) *Progress = args.Progress;
-      if (CRC) *CRC = args.CRC;
-      return(error);
-   }
-   inline ERR writeClientMsg(APTR Message, int Length) noexcept {
-      struct cs::WriteClientMsg args = { Message, Length };
-      return(Action(AC(-2), this, &args));
    }
 
    // Customised field setting
@@ -434,8 +395,6 @@ struct Connect { CSTRING Address; int Port; static const AC id = AC(-1); ERR cal
 struct GetLocalIPAddress { struct IPAddress * Address; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DisconnectClient { struct NetClient * Client; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DisconnectSocket { objClientSocket * Socket; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ReadMsg { APTR Message; int Length; int Progress; int CRC; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct WriteMsg { APTR Message; int Length; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -449,14 +408,14 @@ class objNetSocket : public Object {
    struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
    APTR   ClientData;             // A client-defined value that can be useful in action notify events.
    STRING Address;                // An IP address or domain name to connect to.
-   NTC    State;                  // The current connection state of the netsocket object.
+   NTC    State;                  // The current connection state of the NetSocket object.
    ERR    Error;                  // Information about the last error that occurred during a NetSocket operation
    int    Port;                   // The port number to use for initiating a connection.
    NSF    Flags;                  // Optional flags.
    int    TotalClients;           // Indicates the total number of clients currently connected to the socket (if in server mode).
    int    Backlog;                // The maximum number of connections that can be queued against the socket.
    int    ClientLimit;            // The maximum number of clients that can be connected to a server socket.
-   int    MsgLimit;               // Limits the size of incoming and outgoing messages.
+   int    MsgLimit;               // Limits the size of incoming and outgoing data packets.
 
    // Action stubs
 
@@ -525,19 +484,6 @@ class objNetSocket : public Object {
    inline ERR disconnectSocket(objClientSocket * Socket) noexcept {
       struct ns::DisconnectSocket args = { Socket };
       return(Action(AC(-4), this, &args));
-   }
-   inline ERR readMsg(APTR * Message, int * Length, int * Progress, int * CRC) noexcept {
-      struct ns::ReadMsg args = { (APTR)0, (int)0, (int)0, (int)0 };
-      ERR error = Action(AC(-5), this, &args);
-      if (Message) *Message = args.Message;
-      if (Length) *Length = args.Length;
-      if (Progress) *Progress = args.Progress;
-      if (CRC) *CRC = args.CRC;
-      return(error);
-   }
-   inline ERR writeMsg(APTR Message, int Length) noexcept {
-      struct ns::WriteMsg args = { Message, Length };
-      return(Action(AC(-6), this, &args));
    }
 
    // Customised field setting

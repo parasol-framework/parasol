@@ -350,16 +350,12 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
       }
 
       if (glLogLevel > 2) {
-         char cmdline[160];
-         size_t pos = 0;
-         for (LONG i=0; (i < Info->ArgCount) and (pos < sizeof(cmdline)-1); i++) {
-            if (i > 0) cmdline[pos++] = ' ';
-            for (LONG j=0; (Info->Args[i][j]) and (pos < sizeof(cmdline)-1); j++) {
-               cmdline[pos++] = Info->Args[i][j];
-            }
+         std::ostringstream cmdline;         
+         for (int i=0; i < Info->ArgCount; i++) {
+            if (i > 0) cmdline << ' ';
+            cmdline << Info->Args[i];
          }
-         cmdline[pos] = 0;
-         KMSG("Parameters: %s\n", cmdline);
+         KMSG("Parameters: %s\n", cmdline.str().c_str());
       }
    }
 

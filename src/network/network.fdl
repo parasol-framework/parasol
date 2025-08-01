@@ -52,41 +52,21 @@ typedef int SOCKET_HANDLE;
   enum("NSL", { type="int", start=1, comment="Tags for SetSSL()." },
      "CONNECT: Initiate an SSL connection on this socket.")
 
-  const("NETMSG", { restrict="c", comment="Internal identifiers for the NetMsg structure." }, {
-    SIZE_LIMIT = 1024 * 1024,
-    MAGIC      = 0x38201f73,
-    MAGIC_TAIL = 0x830d73b4
-  })
-
   struct("NetQueue", { restrict="c", comment="Stream management for read/write queues" }, [[
     uint Index    # The current read/write position within the buffer
-    uint Length   # The size of the buffer.
-    ptr  Buffer   # The buffer hosting the data
+  ]],
+  [[
+  std::vector<uint8_t> Buffer; // The buffer hosting the data
   ]])
-
-  struct("NetMsg", { restrict="c" }, [[
-    uint Magic  # Standard key to recognise the message packet
-    uint Length # Byte length of the message
-  ]])
-
-  struct("NetMsgEnd", { restrict="c" }, [[
-    uint CRC   # Checksum of the message packet
-    uint Magic # Standard key to recognise the message packet
-  ]])
-
-  methods("ClientSocket", "cs", {
-    { id=1, name="ReadClientMsg" },
-    { id=2, name="WriteClientMsg" }
-  })
 
   struct("NetClient", { comment="Simple data storage class utilised by NetSocket to represent a client machine/IP." }, [[
     char(8) IP                     # IP address in 4/8-byte format
     ptr(struct(NetClient)) Next    # Next client in the chain
     ptr(struct(NetClient)) Prev    # Previous client in the chain
     obj(NetSocket) NetSocket       # Reference to the parent socket
-    obj(ClientSocket) Sockets      # Pointer to a list of sockets opened with this client.
+    obj(ClientSocket) Connections  # Pointer to a list of connections opened by this client.
     ptr ClientData                 # Free for user data storage.
-    int TotalSockets               # Count of all created sockets
+    int TotalConnections           # Count of all socket-based connections
   ]])
 
   class("ClientSocket", {
@@ -99,10 +79,9 @@ typedef int SOCKET_HANDLE;
     obj(ClientSocket) Prev           # Previous socket in the chain
     obj(ClientSocket) Next           # Next socket in the chain
     ptr(struct(NetClient)) Client    # Parent client structure
-    ptr  ClientData                  # Free for user data storage.
+    ptr  ClientData                  # Available for client data storage.
     func Outgoing                    # Callback for data being sent over the socket
     func Incoming                    # Callback for data being received from the socket
-    int  MsgLen                      # Length of the current incoming message
     bit(int) ReadCalled              # TRUE if the Read action has been called
   ]])
 
@@ -143,8 +122,6 @@ typedef int SOCKET_HANDLE;
     { id=2, name="GetLocalIPAddress" },
     { id=3, name="DisconnectClient" },
     { id=4, name="DisconnectSocket" },
-    { id=5, name="ReadMsg" },
-    { id=6, name="WriteMsg" }
   })
 
   class("NetSocket", { src="netsocket/netsocket.cpp", output="netsocket/netsocket_def.c" }, [[

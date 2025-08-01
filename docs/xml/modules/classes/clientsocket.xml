@@ -56,52 +56,6 @@
 
   </actions>
 
-  <methods>
-    <method>
-      <name>ReadClientMsg</name>
-      <comment>Read a message from the socket.</comment>
-      <prototype>ERR cs::ReadClientMsg(OBJECTPTR Object, APTR * Message, INT * Length, INT * Progress, INT * CRC)</prototype>
-      <input>
-        <param type="APTR *" name="Message">A pointer to the message buffer will be placed here if a message has been received.</param>
-        <param type="INT *" name="Length">The length of the message is returned here.</param>
-        <param type="INT *" name="Progress">The number of bytes that have been read for the incoming message.</param>
-        <param type="INT *" name="CRC">Indicates the CRC value that the message is expected to match.</param>
-      </input>
-      <description>
-<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the <method>WriteClientMsg</method> method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
-<p>This method never returns a successful error code unless an entire message has been received from the sender.</p>
-      </description>
-      <result>
-        <error code="Okay">A complete message has been read and indicated in the result parameters.</error>
-        <error code="BadData">The message header or tail was invalid, or the message length exceeded internally imposed limits.</error>
-        <error code="LimitedSuccess">Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the Length parameter.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="NoData">No new data was found for the socket.</error>
-        <error code="AllocMemory">A message buffer could not be allocated.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
-    <method>
-      <name>WriteClientMsg</name>
-      <comment>Writes a message to the socket.</comment>
-      <prototype>ERR cs::WriteClientMsg(OBJECTPTR Object, APTR Message, INT Length)</prototype>
-      <input>
-        <param type="APTR" name="Message">Pointer to the message to send.</param>
-        <param type="INT" name="Length">The length of the <code>Message</code>.</param>
-      </input>
-      <description>
-<p>Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with <method>ReadClientMsg</method>. The message data is sent through the <action>Write</action> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
-      </result>
-    </method>
-
-  </methods>
-
   <fields>
     <field>
       <name>Client</name>
@@ -112,7 +66,7 @@
 
     <field>
       <name>ClientData</name>
-      <comment>Free for user data storage.</comment>
+      <comment>Available for client data storage.</comment>
       <access read="R">Read</access>
       <type>APTR</type>
     </field>
@@ -129,13 +83,6 @@
       <comment>Callback for data being received from the socket</comment>
       <access read="R">Read</access>
       <type>FUNCTION</type>
-    </field>
-
-    <field>
-      <name>MsgLen</name>
-      <comment>Length of the current incoming message</comment>
-      <access read="R">Read</access>
-      <type>INT</type>
     </field>
 
     <field>
@@ -173,9 +120,9 @@
       <field name="Next" type="struct NetClient *">Next client in the chain</field>
       <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
       <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
-      <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="Connections" type="objClientSocket *">Pointer to a list of connections opened by this client.</field>
       <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalSockets" type="INT">Count of all created sockets</field>
+      <field name="TotalConnections" type="INT">Count of all socket-based connections</field>
     </struct>
 
   </structs>

@@ -11,7 +11,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
    log.trace("Connection from server received.");
 
-   LONG result = EHOSTUNREACH; // Default error in case getsockopt() fails
+   int result = EHOSTUNREACH; // Default error in case getsockopt() fails
    socklen_t optlen = sizeof(result);
    getsockopt(Self->SocketHandle, SOL_SOCKET, SO_ERROR, &result, &optlen);
 
@@ -120,10 +120,10 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
 
 restart:
 
-   Self->ReadCalled = FALSE;
+   Self->ReadCalled = false;
 
-   LONG result;
-   ERR error = ERR::Okay;
+   int result;
+   auto error = ERR::Okay;
    if (Self->Incoming.defined()) {
       if (Self->Incoming.isC()) {
          auto routine = (ERR (*)(extNetSocket *, APTR))Self->Incoming.Routine;
@@ -140,7 +140,7 @@ restart:
 
    if (!Self->ReadCalled) {
       std::array<char,512> buffer;
-      LONG total = 0;
+      int total = 0;
 
       do {
          error = RECEIVE(Self, Self->SocketHandle, buffer.data(), buffer.size(), 0, &result);
@@ -167,14 +167,13 @@ restart:
    Self->IncomingRecursion = 0;
 }
 
-/*********************************************************************************************************************
-** If the socket refers to a client, this routine will be called when there is empty space available on the socket
-** for writing data to the server.
-**
-** It should be noted that this function will prevent the task from going to sleep if it is not managed correctly.  If
-** no data is being written to the queue, the program will not be able to sleep until the client stops listening
-** to the write queue.
-*/
+//********************************************************************************************************************
+// If the socket refers to a client, this routine will be called when there is empty space available on the socket
+// for writing data to the server.
+//
+// It should be noted that this function will prevent the task from going to sleep if it is not managed correctly.  If
+// no data is being written to the queue, the program will not be able to sleep until the client stops listening
+// to the write queue.
 
 static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
 {
@@ -215,44 +214,40 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    Self->InUse++;
    Self->OutgoingRecursion++;
 
-   ERR error = ERR::Okay;
+   auto error = ERR::Okay;
 
    // Send out remaining queued data before getting new data to send
 
-   if (Self->WriteQueue.Buffer) {
-      while (Self->WriteQueue.Buffer) {
-         LONG len = Self->WriteQueue.Length - Self->WriteQueue.Index;
-         #ifdef ENABLE_SSL
-           #ifdef _WIN32
-             if ((!Self->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
-           #else
-             if ((!Self->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
-           #endif
+   while (!Self->WriteQueue.Buffer.empty()) {
+      size_t len = Self->WriteQueue.Buffer.size() - Self->WriteQueue.Index;
+      #ifdef ENABLE_SSL
+         #ifdef _WIN32
+            if ((!Self->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #else
-           if (len > glMaxWriteLen) len = glMaxWriteLen;
+            if ((!Self->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #endif
+      #else
+         if (len > glMaxWriteLen) len = glMaxWriteLen;
+      #endif
 
-         if (len > 0) {
-            error = SEND(Self, Self->SocketHandle, (BYTE *)Self->WriteQueue.Buffer + Self->WriteQueue.Index, &len, 0);
-            if ((error != ERR::Okay) or (!len)) break;
-            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->UID, len, Self->WriteQueue.Length-Self->WriteQueue.Index);
-            Self->WriteQueue.Index += len;
-         }
+      if (len > 0) {
+         error = SEND(Self, Self->SocketHandle, Self->WriteQueue.Buffer.data() + Self->WriteQueue.Index, &len, 0);
+         if ((error != ERR::Okay) or (!len)) break;
+         log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Self->UID, int(len), int(Self->WriteQueue.Buffer.size() - Self->WriteQueue.Index));
+         Self->WriteQueue.Index += len;
+      }
 
-         if (Self->WriteQueue.Index >= Self->WriteQueue.Length) {
-            log.trace("Freeing the write queue (pos %d/%d).", Self->WriteQueue.Index, Self->WriteQueue.Length);
-            FreeResource(Self->WriteQueue.Buffer);
-            Self->WriteQueue.Buffer = nullptr;
-            Self->WriteQueue.Index = 0;
-            Self->WriteQueue.Length = 0;
-            break;
-         }
+      if (Self->WriteQueue.Index >= Self->WriteQueue.Buffer.size()) {
+         Self->WriteQueue.Buffer.clear();
+         Self->WriteQueue.Index = 0;
+         break;
       }
    }
 
    // Before feeding new data into the queue, the current buffer must be empty.
 
-   if ((!Self->WriteQueue.Buffer) or (Self->WriteQueue.Index >= Self->WriteQueue.Length)) {
+   if ((Self->WriteQueue.Buffer.empty()) or 
+       (Self->WriteQueue.Index >= Self->WriteQueue.Buffer.size())) {
       if (Self->Outgoing.defined()) {
          if (Self->Outgoing.isC()) {
             auto routine = (ERR (*)(extNetSocket *, APTR))Self->Outgoing.Routine;
@@ -269,7 +264,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
       // we don't tax the system resources.
 
-      if ((!Self->Outgoing.defined()) and (!Self->WriteQueue.Buffer)) {
+      if ((!Self->Outgoing.defined()) and (Self->WriteQueue.Buffer.empty())) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->UID, Self->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);

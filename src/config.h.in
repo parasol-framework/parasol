@@ -25,6 +25,7 @@
 
 #ifdef PARASOL_STATIC
 #cmakedefine INC_MOD_AUDIO
+#cmakedefine INC_MOD_BACKSTAGE
 #cmakedefine INC_MOD_DISPLAY
 #cmakedefine INC_MOD_DOCUMENT
 #cmakedefine INC_MOD_FLUID

@@ -20,7 +20,7 @@ and readiness for outgoing data is supported by #Outgoing.
 After a connection has been established, data may be written using any of the following methods:
 
 <list type="bullet">
-<li>Write directly to the socket with either the #Write() action or #WriteMsg() method.</li>
+<li>Write directly to the socket with the #Write() action.</li>
 <li>Subscribe to the socket by referring to a routine in the #Outgoing field.  The routine will be called to
 initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>
 </ul>
@@ -33,7 +33,7 @@ immediately sent.
 
 To accept incoming client connections, create a NetSocket object with the `SERVER` flag set and define the #Port value
 on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the
-`MULTICONNECT` flag.
+`MULTI_CONNECT` flag.
 
 When a new connection is detected, the #Feedback function will be called as `Feedback(*NetSocket, *ClientSocket, LONG State)`
 
@@ -54,7 +54,7 @@ All data that is received from client sockets will be passed to the #Incoming fe
 // The MaxWriteLen cannot exceed the size of the network queue on the host platform, otherwise all send attempts will
 // return 'could block' error codes.  Note that when using SSL, the write length is an SSL library imposition.
 
-static int glMaxWriteLen = 16 * 1024;
+static size_t glMaxWriteLen = 16 * 1024;
 
 //********************************************************************************************************************
 // Prototypes for internal methods
@@ -71,7 +71,6 @@ static void free_client(extNetSocket *, NetClient *);
 static void free_client_socket(extNetSocket *, extClientSocket *, BYTE);
 static void server_client_connect(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
-static ERR write_queue(extNetSocket *, NetQueue *, CPTR, int);
 
 //********************************************************************************************************************
 
@@ -355,6 +354,7 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
 
    while (Self->Clients) free_client(Self, Self->Clients);
 
+   Self->~extNetSocket();
    return ERR::Okay;
 }
 
@@ -556,7 +556,6 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 }
 
 //********************************************************************************************************************
-// Action: NewObject
 
 static ERR NETSOCKET_NewObject(extNetSocket *Self)
 {
@@ -570,6 +569,14 @@ static ERR NETSOCKET_NewObject(extNetSocket *Self)
       Self->WriteSocket = nullptr;
       Self->ReadSocket = nullptr;
    #endif
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR NETSOCKET_NewPlacement(extNetSocket * Self)
+{
+   new (Self) extNetSocket;
    return ERR::Okay;
 }
 
@@ -597,7 +604,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      log.warning("DEPRECATED: Read from the ClientSocket instead.");
+      // Not allowed - client must read from the ClientSocket.
       return ERR::NoSupport;
    }
    else { // Read from the server that we're connected to
@@ -614,156 +621,6 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          free_socket(Self);
       }
 
-      return error;
-   }
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-ReadMsg: Read a message from the socket.
-
-This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with
-the #WriteMsg() method will conform to this protocol, thus simplifying message transfers between programs based on the
-core platform at either point of the network link.
-
-This method never returns a successful error code unless an entire message has been received from the sender.
-
--INPUT-
-&ptr Message: A pointer to the message buffer will be placed here if a message has been received.
-&int Length: The length of the message is returned here.
-&int Progress: The number of bytes that have been read for the incoming message.
-&int CRC: Indicates the CRC value that the message is expected to match.
-
--ERRORS-
-Okay: A complete message has been read and indicated in the result parameters.
-Args
-NullArgs
-LimitedSuccess: Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the `Length` parameter.
-NoData: No new data was found for the socket.
-BadData: The message header or tail was invalid, or the message length exceeded internally imposed limits.
-AllocMemory: A message buffer could not be allocated.
-
-*********************************************************************************************************************/
-
-static ERR NETSOCKET_ReadMsg(extNetSocket *Self, struct ns::ReadMsg *Args)
-{
-   pf::Log log;
-
-   if (!Args) return log.warning(ERR::NullArgs);
-
-   log.traceBranch("Reading message.");
-
-   Args->Message = nullptr;
-   Args->Length  = 0;
-   Args->CRC     = 0;
-   Args->Progress = 0;
-
-   NetQueue *queue;
-   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      return log.warning(ERR::NoSupport);
-   }
-
-   queue = &Self->ReadQueue;
-
-   if (!queue->Buffer) {
-      queue->Length = 2048;
-      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR::Okay) {
-         return ERR::AllocMemory;
-      }
-   }
-
-   int msglen, result, magic;
-   uint32_t total_length;
-   ERR error;
-
-   if (queue->Index >= sizeof(NetMsg)) { // The complete message header has been received
-      msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
-      total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
-   }
-   else { // The message header has not been read yet
-      if ((error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(NetMsg) - queue->Index, &result)) IS ERR::Okay) {
-         queue->Index += result;
-
-         if (queue->Index >= sizeof(NetMsg)) {
-            // We have the message header
-            magic  = be32_cpu(((NetMsg *)queue->Buffer)->Magic);
-            msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
-
-            if (magic != NETMSG_MAGIC) {
-               log.warning("Incoming message does not have the magic header (received $%.8x).", magic);
-               queue->Index = 0;
-               return ERR::InvalidData;
-            }
-            else if (msglen > NETMSG_SIZE_LIMIT) {
-               log.warning("Incoming message of %d ($%.8x) bytes exceeds message limit.", msglen, msglen);
-               queue->Index = 0;
-               return ERR::InvalidData;
-            }
-
-            total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
-
-            // Check if the queue buffer needs to be extended
-
-            if (total_length > queue->Length) {
-               log.trace("Extending queue length from %d to %d", queue->Length, total_length);
-               APTR buffer;
-               if (AllocMemory(total_length, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-                  if (queue->Buffer) {
-                     pf::copymem(queue->Buffer, buffer, queue->Index);
-                     FreeResource(queue->Buffer);
-                  }
-                  queue->Buffer = buffer;
-                  queue->Length = total_length;
-               }
-               else return log.warning(ERR::AllocMemory);
-            }
-         }
-         else {
-            log.trace("Succeeded in reading partial message header only (%d bytes).", result);
-            return ERR::LimitedSuccess;
-         }
-      }
-      else {
-         log.trace("Read() failed, error '%s'", GetErrorMsg(error));
-         return ERR::LimitedSuccess;
-      }
-   }
-
-   NetMsgEnd *msgend;
-   Args->Message = (BYTE *)queue->Buffer + sizeof(NetMsg);
-   Args->Length = msglen;
-
-   //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
-
-   if ((error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result)) IS ERR::Okay) {
-      queue->Index += result;
-      Args->Progress = queue->Index - sizeof(NetMsg) - sizeof(NetMsgEnd);
-      if (Args->Progress < 0) Args->Progress = 0;
-
-      // If the entire message has been read, we can report success to the user
-
-      if (queue->Index >= total_length) {
-         msgend = (NetMsgEnd *)((BYTE *)queue->Buffer + sizeof(NetMsg) + msglen + 1);
-         magic = be32_cpu(msgend->Magic);
-         queue->Index   = 0;
-         Args->Progress = Args->Length;
-         Args->CRC      = be32_cpu(msgend->CRC);
-
-         log.trace("The entire message of %d bytes has been received.", msglen);
-
-         if (NETMSG_MAGIC_TAIL != magic) {
-            log.warning("Incoming message has an invalid tail of $%.8x, CRC $%.8x.", magic, Args->CRC);
-            return ERR::InvalidData;
-         }
-
-         return ERR::Okay;
-      }
-      else return ERR::LimitedSuccess;
-   }
-   else {
-      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, int(error));
-      queue->Index = 0;
       return error;
    }
 }
@@ -799,16 +656,16 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 
    if ((Self->SocketHandle IS NOHANDLE) or (Self->State != NTC::CONNECTED)) { // Queue the write prior to server connection
       log.trace("Writing %d bytes to server (queued for connection).", Args->Length);
-      write_queue(Self, &Self->WriteQueue, Args->Buffer, Args->Length);
+      Self->write_queue(Self->WriteQueue, Args->Buffer, Args->Length);
       return ERR::Okay;
    }
 
    // Note that if a write queue has been setup, there is no way that we can write to the server until the queue has
    // been exhausted.  Thus we have add more data to the queue if it already exists.
 
-   int len;
+   size_t len;
    ERR error;
-   if (!Self->WriteQueue.Buffer) {
+   if (Self->WriteQueue.Buffer.empty()) { // No prior buffer to send
       len = Args->Length;
       error = SEND(Self, Self->SocketHandle, Args->Buffer, &len, 0);
    }
@@ -817,11 +674,11 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
       error = ERR::BufferOverflow;
    }
 
-   if ((error != ERR::Okay) or (len < Args->Length)) {
+   if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
       if (error != ERR::Okay) log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
       else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
-         write_queue(Self, &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
+         Self->write_queue(Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
          #elif _WIN32
@@ -833,51 +690,6 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    else log.trace("Successfully wrote all %d bytes to the server.", Args->Length);
 
    Args->Result = Args->Length;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-WriteMsg: Writes a message to the socket.
-
-Messages can be written to sockets with the WriteMsg method and read back by the receiver with #ReadMsg().  The
-message data is sent through the #Write() action, so the standard process will apply (the message will be
-queued and does not block if buffers are full).
-
--INPUT-
-buf(ptr) Message: Pointer to the message to send.
-bufsize Length: The length of the message.
-
--ERRORS-
-Okay
-Args
-OutOfRange
-
-*********************************************************************************************************************/
-
-static ERR NETSOCKET_WriteMsg(extNetSocket *Self, struct ns::WriteMsg *Args)
-{
-   pf::Log log;
-
-   if ((!Args) or (!Args->Message) or (Args->Length < 1)) return log.warning(ERR::Args);
-   if ((Args->Length < 1) or (Args->Length > NETMSG_SIZE_LIMIT)) return log.warning(ERR::OutOfRange);
-
-   log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
-
-   NetMsg msg;
-   msg.Magic  = cpu_be32(NETMSG_MAGIC);
-   msg.Length = cpu_be32(Args->Length);
-   acWrite(Self, &msg, sizeof(msg), nullptr);
-
-   acWrite(Self, Args->Message, Args->Length, nullptr);
-
-   UBYTE endbuffer[sizeof(NetMsgEnd) + 1];
-   NetMsgEnd *end = (NetMsgEnd *)(endbuffer + 1);
-   endbuffer[0] = 0; // This null terminator helps with message parsing
-   end->Magic = cpu_be32((uint32_t)NETMSG_MAGIC_TAIL);
-   end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
-   acWrite(Self, &endbuffer, sizeof(endbuffer), nullptr);
    return ERR::Okay;
 }
 
@@ -941,7 +753,7 @@ Feedback: A callback trigger for when the state of the NetSocket is changed.
 Refer to a custom function in this field and it will be called whenever the #State of the socket (such as
 connection or disconnection) changes.
 
-The function must be in the format `Function(*NetSocket, *ClientSocket, int State)`
+The function must be in the format `Function(*NetSocket, *ClientSocket, NTC State)`
 
 The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects
 the new value in the #State field.
@@ -980,9 +792,9 @@ Flags: Optional flags.
 Incoming: Callback that is triggered when the socket receives data.
 
 The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The
-function must follow this definition: `ERR Incoming(*NetSocket, OBJECTPTR Context)`
+function prototype is `ERR Incoming(*NetSocket, OBJECTPTR Context)`.
 
-The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.
+The `NetSocket` parameter refers to the NetSocket object.  The `Context` refers to the object that set the `Incoming` field.
 
 Retrieve data from the socket with the #Read() action. Reading at least some of the data from the socket is
 compulsory - if the function does not do this then the data will be cleared from the socket when the function returns.
@@ -1073,7 +885,7 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-MsgLimit: Limits the size of incoming and outgoing messages.
+MsgLimit: Limits the size of incoming and outgoing data packets.
 
 This field limits the size of incoming and outgoing message queues (each socket connection receives two queues assigned
 to both incoming and outgoing messages).  The size is defined in bytes.  Sending or receiving messages that overflow
@@ -1088,7 +900,7 @@ OutQueueSize: The number of bytes on the socket's outgoing queue.
 
 static ERR GET_OutQueueSize(extNetSocket *Self, int *Value)
 {
-   *Value = Self->WriteQueue.Length;
+   *Value = Self->WriteQueue.Buffer.size();
    return ERR::Okay;
 }
 
@@ -1121,7 +933,7 @@ static ERR SET_SocketHandle(extNetSocket *Self, APTR Value)
 /*********************************************************************************************************************
 
 -FIELD-
-State: The current connection state of the netsocket object.
+State: The current connection state of the NetSocket object.
 
 *********************************************************************************************************************/
 
@@ -1173,7 +985,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
          }
       }
 
-      if ((Self->State IS NTC::CONNECTED) and ((Self->WriteQueue.Buffer) or (Self->Outgoing.defined()))) {
+      if ((Self->State IS NTC::CONNECTED) and ((!Self->WriteQueue.Buffer.empty()) or (Self->Outgoing.defined()))) {
          log.msg("Sending queued data to server on connection.");
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
@@ -1194,7 +1006,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
 -FIELD-
 TotalClients: Indicates the total number of clients currently connected to the socket (if in server mode).
 
-In server mode, the netsocket will maintain a count of the total number of clients currently connected to the socket.
+In server mode, the NetSocket will maintain a count of the total number of clients currently connected to the socket.
 You can read the total number of connections from this field.
 
 In client mode, this field is always set to zero.
@@ -1259,10 +1071,10 @@ static void free_socket(extNetSocket *Self)
       Self->ReadSocket  = nullptr;
    #endif
 
-   log.trace("Freeing I/O buffer queues.");
-
-   if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = nullptr; }
-   if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = nullptr; }
+   Self->ReadQueue.Buffer.clear();
+   Self->WriteQueue.Buffer.clear();
+   Self->ReadQueue.Index = 0;
+   Self->WriteQueue.Index = 0;
 
    if (!Self->terminating()) {
       if (Self->State != NTC::DISCONNECTED) {
@@ -1274,58 +1086,41 @@ static void free_socket(extNetSocket *Self)
    log.trace("Resetting exception handler.");
 
    SetResourcePtr(RES::EXCEPTION_HANDLER, nullptr); // Stop winsock from fooling with our exception handler
-
 }
 
 //********************************************************************************************************************
+// Store data in the write queue
 
-static ERR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, int Length)
+ERR extNetSocket::write_queue(NetQueue &Queue, CPTR Message, size_t Length)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("Queuing a socket message of %d bytes.", Length);
+   if (!Message) return log.warning(ERR::NullArgs);
+   if (Length <= 0) return ERR::Okay;
+   if (Length > size_t(MsgLimit)) return log.warning(ERR::BufferOverflow);
 
-   if (Queue->Buffer) {
-      if (Queue->Index >= (uint32_t)Queue->Length) {
-         log.trace("Terminating the current buffer (emptied).");
-         FreeResource(Queue->Buffer);
-         Queue->Buffer = nullptr;
+   if (!Queue.Buffer.empty()) { // Add data to existing queue
+      uint32_t remaining_data = Queue.Buffer.size() - Queue.Index;
+
+      if (Queue.Index > 8192) { // Compact the queue
+         if (remaining_data > 0) Queue.Buffer.erase(Queue.Buffer.begin(), Queue.Buffer.begin() + Queue.Index);
+         else Queue.Buffer.clear();
+         Queue.Index = 0;
       }
+
+      Queue.Buffer.resize(Queue.Buffer.size() + Length);
+      pf::copymem(Message, Queue.Buffer.data() + Queue.Buffer.size() - Length, Length);
    }
-
-   if (Queue->Buffer) { // Add more information to an existing queue
-      if (Queue->Length + Length > (uint32_t)Self->MsgLimit) {
-         log.trace("Cannot buffer message of %d bytes - it will overflow the MsgLimit.", Length);
-         return ERR::BufferOverflow;
-      }
-
-      log.trace("Extending current buffer to %d bytes.", Queue->Length + Length);
-
-      if (Queue->Index) { // Compact the existing data if some of it has been sent
-         pf::copymem((BYTE *)Queue->Buffer + Queue->Index, Queue->Buffer, Queue->Length - Queue->Index);
-         Queue->Length -= Queue->Index;
-         Queue->Index = 0;
-      }
-
-      // Adjust the buffer size
-
-      if (ReallocMemory(Queue->Buffer, Queue->Length + Length, &Queue->Buffer, nullptr) IS ERR::Okay) {
-         pf::copymem(Message, (BYTE *)Queue->Buffer + Queue->Length, Length);
-         Queue->Length += Length;
-      }
-      else return ERR::ReallocMemory;
+   else {
+      Queue.Buffer.resize(Length);
+      Queue.Index = 0;
+      pf::copymem(Message, Queue.Buffer.data(), Length);
    }
-   else if (AllocMemory(Length, MEM::NO_CLEAR, &Queue->Buffer) IS ERR::Okay) {
-      log.trace("Allocated new buffer of %d bytes.", Length);
-      Queue->Index = 0;
-      Queue->Length = Length;
-      pf::copymem(Message, Queue->Buffer, Length);
-   }
-   else return log.warning(ERR::AllocMemory);
 
    return ERR::Okay;
 }
 
+//********************************************************************************************************************
 // This function is called from winsockwrappers.c whenever a network event occurs on a NetSocket.  Callbacks
 // set against the NetSocket object will send/receive data on the socket.
 //
@@ -1360,7 +1155,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
 
    pf::ScopedObjectLock lock(Socket);
    if (!lock.granted()) return;
-   
+
    pf::ScopedObjectLock lock_client(ClientSocket); // Not locked if ClientSocket is nullptr
    if ((ClientSocket) and (!lock_client.granted())) return;
 
@@ -1415,9 +1210,23 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
       #endif
    }
    else if (Message IS NTE_CLOSE) {
-      log.msg("Socket closed by server, error %d.", int(Error));
-      if (Socket->State != NTC::DISCONNECTED) Socket->setState(NTC::DISCONNECTED);
-      free_socket(Socket);
+      if (ClientSocket) {
+         if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection closed by client.");
+         FreeResource(ClientSocket);
+      }
+      else {
+         if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection closed by server, error %d.", int(Error));
+
+         // Prevent multiple close messages from the same socket
+         if (Socket->State IS NTC::DISCONNECTED) {
+            log.trace("Ignoring duplicate close message for socket %d", SocketHandle);
+            Socket->InUse--;
+            return;
+         }
+
+         Socket->setState(NTC::DISCONNECTED);
+         free_socket(Socket);
+      }
    }
    else if (Message IS NTE_ACCEPT) {
       log.traceBranch("Accept message received for new client %d.", SocketHandle);
@@ -1425,7 +1234,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    }
    else if (Message IS NTE_CONNECT) {
       if (Error IS ERR::Okay) {
-         log.msg("Connection to server granted.");
+         if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection to server granted.");
 
          #ifdef ENABLE_SSL
             if (Socket->WinSSL) {

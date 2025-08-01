@@ -1,6 +1,6 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file 
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
@@ -58,9 +58,9 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    else log.warning("No Incoming callback configured.");
 
    if (ClientSocket->ReadCalled IS FALSE) {
-      UBYTE buffer[80];
+      uint8_t buffer[80];
       log.warning("Subscriber did not call Read(), cleaning buffer.");
-      LONG result;
+      int result;
       do { error = RECEIVE(Socket, ClientSocket->Handle, &buffer, sizeof(buffer), 0, &result); } while (result > 0);
       if (error != ERR::Okay) free_client_socket(Socket, ClientSocket, TRUE);
    }
@@ -68,11 +68,10 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    Socket->InUse--;
 }
 
-/*********************************************************************************************************************
-** Note that this function will prevent the task from going to sleep if it is not managed correctly.  If
-** no data is being written to the queue, the program will not be able to sleep until the client stops listening
-** to the write queue.
-*/
+//********************************************************************************************************************
+// Note that this function will prevent the task from going to sleep if it is not managed correctly.  If
+// no data is being written to the queue, the program will not be able to sleep until the client stops listening
+// to the write queue.
 
 static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 {
@@ -112,44 +111,39 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    ClientSocket->InUse++;
    ClientSocket->OutgoingRecursion++;
 
-   ERR error = ERR::Okay;
+   auto error = ERR::Okay;
 
    // Send out remaining queued data before getting new data to send
 
-   if (ClientSocket->WriteQueue.Buffer) {
-      while (ClientSocket->WriteQueue.Buffer) {
-         LONG len = ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index;
-         #ifdef ENABLE_SSL
-           #ifdef _WIN32
-             if ((!Socket->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
-           #else
-             if ((!Socket->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
-           #endif
+   while (!ClientSocket->WriteQueue.Buffer.empty()) {
+      size_t len = ClientSocket->WriteQueue.Buffer.size() - ClientSocket->WriteQueue.Index;
+      #ifdef ENABLE_SSL
+         #ifdef _WIN32
+            if ((!Socket->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #else
-           if (len > glMaxWriteLen) len = glMaxWriteLen;
+            if ((!Socket->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #endif
+      #else
+         if (len > glMaxWriteLen) len = glMaxWriteLen;
+      #endif
 
-         if (len > 0) {
-            error = SEND(Socket, ClientSocket->SocketHandle, (BYTE *)ClientSocket->WriteQueue.Buffer + ClientSocket->WriteQueue.Index, &len, 0);
-            if ((error != ERR::Okay) or (!len)) break;
-            log.trace("[NetSocket:%d] Sent %d of %d bytes remaining on the queue.", Socket->UID, len, ClientSocket->WriteQueue.Length - ClientSocket->WriteQueue.Index);
-            ClientSocket->WriteQueue.Index += len;
-         }
+      if (len > 0) {
+         error = SEND(Socket, ClientSocket->SocketHandle, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len, 0);
+         if ((error != ERR::Okay) or (!len)) break;
+         ClientSocket->WriteQueue.Index += len;
+      }
 
-         if (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Length) {
-            log.trace("Freeing the write queue (pos %d/%d).", ClientSocket->WriteQueue.Index, ClientSocket->WriteQueue.Length);
-            FreeResource(ClientSocket->WriteQueue.Buffer);
-            ClientSocket->WriteQueue.Buffer = nullptr;
-            ClientSocket->WriteQueue.Index = 0;
-            ClientSocket->WriteQueue.Length = 0;
-            break;
-         }
+      if (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Buffer.size()) {
+         ClientSocket->WriteQueue.Buffer.clear();
+         ClientSocket->WriteQueue.Index = 0;
+         break;
       }
    }
 
    // Before feeding new data into the queue, the current buffer must be empty.
 
-   if ((!ClientSocket->WriteQueue.Buffer) or (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Length)) {
+   if ((ClientSocket->WriteQueue.Buffer.empty()) or
+       (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Buffer.size())) {
       if (ClientSocket->Outgoing.defined()) {
          if (ClientSocket->Outgoing.isC()) {
             auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))(ClientSocket->Outgoing.Routine);
@@ -169,7 +163,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
       // we don't tax the system resources.
 
-      if ((!ClientSocket->Outgoing.defined()) and (!ClientSocket->WriteQueue.Buffer)) {
+      if ((!ClientSocket->Outgoing.defined()) and (ClientSocket->WriteQueue.Buffer.empty())) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
@@ -197,25 +191,23 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
       Self->Handle = -1;
    }
 
-   if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = nullptr; }
-   if (Self->WriteQueue.Buffer) { FreeResource(Self->WriteQueue.Buffer); Self->WriteQueue.Buffer = nullptr; }
-
    if (Self->Prev) {
       Self->Prev->Next = Self->Next;
       if (Self->Next) Self->Next->Prev = Self->Prev;
    }
    else {
-      Self->Client->Sockets = Self->Next;
+      Self->Client->Connections = Self->Next;
       if (Self->Next) Self->Next->Prev = nullptr;
    }
 
-   Self->Client->TotalSockets--;
+   Self->Client->TotalConnections--;
 
-   if (!Self->Client->Sockets) {
-      log.msg("No more open sockets, removing client.");
+   if (!Self->Client->Connections) {
+      log.msg("No more connections for this IP, removing client.");
       free_client((extNetSocket *)Self->Client->NetSocket, Self->Client);
    }
 
+   Self->~extClientSocket();
    return ERR::Okay;
 }
 
@@ -230,14 +222,14 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 
    Self->ConnectTime = PreciseTime() / 1000LL;
 
-   if (Self->Client->Sockets) {
-      Self->Next = Self->Client->Sockets;
+   if (Self->Client->Connections) {
+      Self->Next = Self->Client->Connections;
       Self->Prev = nullptr;
-      Self->Client->Sockets->Prev = Self;
+      Self->Client->Connections->Prev = Self;
    }
 
-   Self->Client->Sockets = Self;
-   Self->Client->TotalSockets++;
+   Self->Client->Connections = Self;
+   Self->Client->TotalConnections++;
 
 #ifdef __linux__
    RegisterFD(Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_incoming), Self);
@@ -245,6 +237,14 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
    win_socket_reference(Self->Handle, Self);
 #endif
 
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+static ERR CLIENTSOCKET_NewPlacement(extClientSocket *Self)
+{
+   new (Self) extClientSocket;
    return ERR::Okay;
 }
 
@@ -277,156 +277,11 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 
 /*********************************************************************************************************************
 
--METHOD-
-ReadClientMsg: Read a message from the socket.
-
-This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with
-the #WriteClientMsg() method will conform to this protocol, thus simplifying message transfers between programs based 
-on the core platform at either point of the network link.
-
-This method never returns a successful error code unless an entire message has been received from the sender.
-
--INPUT-
-&ptr Message: A pointer to the message buffer will be placed here if a message has been received.
-&int Length: The length of the message is returned here.
-&int Progress: The number of bytes that have been read for the incoming message.
-&int CRC: Indicates the CRC value that the message is expected to match.
-
--ERRORS-
-Okay: A complete message has been read and indicated in the result parameters.
-Args
-NullArgs
-LimitedSuccess: Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the Length parameter.
-NoData: No new data was found for the socket.
-BadData: The message header or tail was invalid, or the message length exceeded internally imposed limits.
-AllocMemory: A message buffer could not be allocated.
-
-*********************************************************************************************************************/
-
-static ERR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct cs::ReadClientMsg *Args)
-{
-   pf::Log log;
-
-   if (!Args) return log.error(ERR::NullArgs);
-
-   log.traceBranch("Reading message.");
-
-   Args->Message  = nullptr;
-   Args->Length   = 0;
-   Args->CRC      = 0;
-   Args->Progress = 0;
-
-   NetQueue *queue = &Self->ReadQueue;
-
-   if (!queue->Buffer) {
-      queue->Length = 2048;
-      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR::Okay) {
-         return ERR::AllocMemory;
-      }
-   }
-
-   LONG msglen, result, magic;
-   ULONG total_length;
-   ERR error;
-
-   if (queue->Index >= sizeof(NetMsg)) { // The complete message header has been received
-      msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
-      total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
-   }
-   else { // The message header has not been read yet
-      if ((error = acRead(Self, (BYTE *)queue->Buffer + queue->Index, sizeof(NetMsg) - queue->Index, &result)) IS ERR::Okay) {
-         queue->Index += result;
-
-         if (queue->Index >= sizeof(NetMsg)) {
-            // We have the message header
-            magic  = be32_cpu(((NetMsg *)queue->Buffer)->Magic);
-            msglen = be32_cpu(((NetMsg *)queue->Buffer)->Length);
-
-            if (magic != NETMSG_MAGIC) {
-               log.warning("Incoming message does not have the magic header (received $%.8x).", magic);
-               queue->Index = 0;
-               return ERR::InvalidData;
-            }
-            else if (msglen > NETMSG_SIZE_LIMIT) {
-               log.warning("Incoming message of %d ($%.8x) bytes exceeds message limit.", msglen, msglen);
-               queue->Index = 0;
-               return ERR::InvalidData;
-            }
-
-            total_length = sizeof(NetMsg) + msglen + 1 + sizeof(NetMsgEnd);
-
-            // Check if the queue buffer needs to be extended
-
-            if (total_length > queue->Length) {
-               log.trace("Extending queue length from %d to %d", queue->Length, total_length);
-               APTR buffer;
-               if (AllocMemory(total_length, MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-                  if (queue->Buffer) {
-                     pf::copymem(queue->Buffer, buffer, queue->Index);
-                     FreeResource(queue->Buffer);
-                  }
-                  queue->Buffer = buffer;
-                  queue->Length = total_length;
-               }
-               else return log.error(ERR::AllocMemory);
-            }
-         }
-         else {
-            log.trace("Succeeded in reading partial message header only (%d bytes).", result);
-            return ERR::LimitedSuccess;
-         }
-      }
-      else {
-         log.trace("Read() failed, error '%s'", GetErrorMsg(error));
-         return ERR::LimitedSuccess;
-      }
-   }
-
-   NetMsgEnd *msgend;
-   Args->Message = (BYTE *)queue->Buffer + sizeof(NetMsg);
-   Args->Length = msglen;
-
-   //log.trace("Current message is %d bytes long (raw len: %d), progress is %d bytes.", msglen, total_length, queue->Index);
-
-   if ((error = acRead(Self, (char *)queue->Buffer + queue->Index, total_length - queue->Index, &result)) IS ERR::Okay) {
-      queue->Index += result;
-      Args->Progress = queue->Index - sizeof(NetMsg) - sizeof(NetMsgEnd);
-      if (Args->Progress < 0) Args->Progress = 0;
-
-      // If the entire message has been read, we can report success to the user
-
-      if (queue->Index >= total_length) {
-         msgend = (NetMsgEnd *)((BYTE *)queue->Buffer + sizeof(NetMsg) + msglen + 1);
-         magic = be32_cpu(msgend->Magic);
-         queue->Index   = 0;
-         Args->Progress = Args->Length;
-         Args->CRC      = be32_cpu(msgend->CRC);
-
-         log.trace("The entire message of %d bytes has been received.", msglen);
-
-         if (NETMSG_MAGIC_TAIL != magic) {
-            log.warning("Incoming message has an invalid tail of $%.8x, CRC $%.8x.", magic, Args->CRC);
-            return ERR::InvalidData;
-         }
-
-         return ERR::Okay;
-      }
-      else return ERR::LimitedSuccess;
-   }
-   else {
-      log.warning("Failed to read %d bytes off the socket, error %d.", total_length - queue->Index, LONG(error));
-      queue->Index = 0;
-      return error;
-   }
-}
-
-/*********************************************************************************************************************
-
 -ACTION-
 Write: Writes data to the socket.
 
-Write raw data to a client socket with this action.  Write connections are buffered, so any data overflow generated 
-in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are 
+Write raw data to a client socket with this action.  Write connections are buffered, so any data overflow generated
+in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are
 governed by the @NetSocket.MsgLimit value.
 
 *********************************************************************************************************************/
@@ -439,14 +294,14 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    Args->Result = 0;
    if (Self->SocketHandle IS NOHANDLE) return log.error(ERR::Disconnected);
 
-   LONG len = Args->Length;
+   size_t len = Args->Length;
    ERR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, &len, 0);
 
-   if ((error != ERR::Okay) or (len < Args->Length)) {
+   if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
       if (error != ERR::Okay) log.trace("SEND() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
       else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
-         write_queue((extNetSocket *)(Self->Client->NetSocket), &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
+         ((extNetSocket *)(Self->Client->NetSocket))->write_queue(Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
          #elif _WIN32
@@ -457,49 +312,6 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    else log.trace("Successfully wrote all %d bytes to the server.", Args->Length);
 
    Args->Result = Args->Length;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-WriteClientMsg: Writes a message to the socket.
-
-Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with #ReadClientMsg().  
-The message data is sent through the #Write() action, so the standard process will apply (the message will be
-queued and does not block if buffers are full).
-
--INPUT-
-buf(ptr) Message: Pointer to the message to send.
-bufsize Length: The length of the `Message`.
-
--ERRORS-
-Okay
-Args
-OutOfRange
-
-*********************************************************************************************************************/
-
-static ERR CLIENTSOCKET_WriteClientMsg(extClientSocket *Self, struct cs::WriteClientMsg *Args)
-{
-   pf::Log log;
-
-   if ((!Args) or (!Args->Message) or (Args->Length < 1)) return log.error(ERR::Args);
-   if ((Args->Length < 1) or (Args->Length > NETMSG_SIZE_LIMIT)) return log.error(ERR::OutOfRange);
-
-   log.traceBranch("Message: %p, Length: %d", Args->Message, Args->Length);
-
-   NetMsg msg = { .Magic = cpu_be32(NETMSG_MAGIC), .Length = cpu_be32(Args->Length) };
-   acWrite(Self, &msg, sizeof(msg), nullptr);
-   acWrite(Self, Args->Message, Args->Length, nullptr);
-
-   UBYTE endbuffer[sizeof(NetMsgEnd) + 1];
-   NetMsgEnd *end = (NetMsgEnd *)(endbuffer + 1);
-   endbuffer[0] = 0; // This null terminator helps with message parsing
-   end->Magic = cpu_be32((ULONG)NETMSG_MAGIC_TAIL);
-   end->CRC   = cpu_be32(GenCRC32(0, Args->Message, Args->Length));
-   acWrite(Self, &endbuffer, sizeof(endbuffer), nullptr);
-
    return ERR::Okay;
 }
 
@@ -515,7 +327,6 @@ static const FieldArray clClientSocketFields[] = {
    { "ClientData",  FDF_POINTER|FDF_R },
    { "Outgoing",    FDF_FUNCTION|FDF_R },
    { "Incoming",    FDF_FUNCTION|FDF_R },
-   { "MsgLen",      FDF_INT|FDF_R },
    // Virtual fields
 //   { "Handle", FDF_INT|FDF_R|FDF_VIRTUAL, GET_ClientHandle, SET_ClientHandle },
    END_FIELD

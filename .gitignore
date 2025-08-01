@@ -76,3 +76,5 @@ out/
 3rdparty/blend2d-apps/
 local-claude/
 CLAUDE.local.md
+msys-debug/
+msys-release/

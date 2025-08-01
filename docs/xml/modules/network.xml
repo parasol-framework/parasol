@@ -201,9 +201,9 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
       <field name="Next" type="struct NetClient *">Next client in the chain</field>
       <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
       <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
-      <field name="Sockets" type="objClientSocket *">Pointer to a list of sockets opened with this client.</field>
+      <field name="Connections" type="objClientSocket *">Pointer to a list of connections opened by this client.</field>
       <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalSockets" type="INT">Count of all created sockets</field>
+      <field name="TotalConnections" type="INT">Count of all socket-based connections</field>
     </struct>
 
   </structs>

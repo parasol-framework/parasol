@@ -32,6 +32,7 @@ static bool glSandbox = false;
 static bool glRelaunched = false;
 static bool glTime = false;
 static bool glDialog = false;
+static bool glBackstage = false;
 
 static ERR exec_source(CSTRING, int, const std::string);
 
@@ -45,6 +46,7 @@ The following options can be used when executing script files:\n\
  --procedure [n] The name of a procedure to execute.\n\
  --time          Print the amount of time that it took to execute the script.\n\
  --dialog        Display a file dialog for choosing a script manually.\n\
+ --backstage     Enables the backstage REST API (see Wiki).\n\
 \n\
  --log-api       Activates run-time log messages at API level.\n\
  --log-info      Activates run-time log messages at INFO level.\n\
@@ -102,6 +104,10 @@ static ERR process_args(void)
             // Internal argument to detect relaunching at an altered security level
             glRelaunched = true;
          }
+         else if (pf::iequals(args[i], "--backstage")) {
+            glBackstage = true;
+            if (i + 1 < args.size()) i++;
+         }
          else if (pf::iequals(args[i], "--procedure")) {
             if (i + 1 < args.size()) {
                glProcedure.assign(args[i+1]);
@@ -140,6 +146,10 @@ extern "C" int main(int argc, char **argv)
 
    int result = 0;
    if (process_args() IS ERR::Okay) {
+      if (glBackstage) {
+         objModule::load("backstage");
+      }
+
       if (glDialog) {
          auto start = glDialogScript.find("%%PATH%%");
          if (!glTargetFile.empty()) {
