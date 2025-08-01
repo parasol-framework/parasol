@@ -19,50 +19,47 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
 
    if (Self->IPV6) {
-#ifdef __linux__
-      #ifdef ENABLE_SSL_ACCEPT
-         if (Self->SSL) {
-            LONG result;
-            if ((result = xtSSL_accept(Self->SSL)) != 1) {
-               log.warning("SSL_accept: %s", xtERR_error_string(xtSSL_get_error(Self->SSL, result), NULL));
-            }
+      #ifdef __linux__
+         // For dual-stack sockets, use sockaddr_storage to handle both IPv4 and IPv6
+         struct sockaddr_storage addr_storage;
+         socklen_t len = sizeof(addr_storage);
+         clientfd = accept(FD, (struct sockaddr *)&addr_storage, &len);
+         if (clientfd IS NOHANDLE) return;
 
-            log.warning("No support for retrieving IPV6 address and client handle yet.");
-
-            clientfd = NOHANDLE;
+         if (addr_storage.ss_family IS AF_INET6) { // IPv6 connection
+            struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr_storage;
+            ip[0] = addr6->sin6_addr.s6_addr[0];
+            ip[1] = addr6->sin6_addr.s6_addr[1];
+            ip[2] = addr6->sin6_addr.s6_addr[2];
+            ip[3] = addr6->sin6_addr.s6_addr[3];
+            ip[4] = addr6->sin6_addr.s6_addr[4];
+            ip[5] = addr6->sin6_addr.s6_addr[5];
+            ip[6] = addr6->sin6_addr.s6_addr[6];
+            ip[7] = addr6->sin6_addr.s6_addr[7];
+            log.trace("Accepted IPv6 client connection");
+         }
+         else if (addr_storage.ss_family IS AF_INET) { // IPv4 connection on dual-stack socket
+            struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr_storage;
+            uint32_t ipv4_addr = net::LongToHost(addr4->sin_addr.s_addr);
+            ip[0] = ipv4_addr & 0xff;
+            ip[1] = (ipv4_addr >> 8) & 0xff;
+            ip[2] = (ipv4_addr >> 16) & 0xff;
+            ip[3] = (ipv4_addr >> 24) & 0xff;
+            ip[4] = ip[5] = ip[6] = ip[7] = 0;
+            log.trace("Accepted IPv4 client connection on dual-stack socket");
          }
          else {
-            struct sockaddr_in6 addr;
-            socklen_t len = sizeof(addr);
-            clientfd = accept(FD, (struct sockaddr *)&addr, &len);
-            if (clientfd IS NOHANDLE) return;
-            ip[0] = addr.sin6_addr.s6_addr[0];
-            ip[1] = addr.sin6_addr.s6_addr[1];
-            ip[2] = addr.sin6_addr.s6_addr[2];
-            ip[3] = addr.sin6_addr.s6_addr[3];
-            ip[4] = addr.sin6_addr.s6_addr[4];
-            ip[5] = addr.sin6_addr.s6_addr[5];
-            ip[6] = addr.sin6_addr.s6_addr[6];
-            ip[7] = addr.sin6_addr.s6_addr[7];
+            log.warning("Unsupported address family: %d", addr_storage.ss_family);
+            close(clientfd);
+            return;
          }
+      #elif _WIN32
+         log.warning("IPv6 dual-stack server not yet implemented for Windows");
+         return;
       #else
-         struct sockaddr_in6 addr;
-         socklen_t len = sizeof(addr);
-         clientfd = accept(FD, (struct sockaddr *)&addr, &len);
-         if (clientfd IS NOHANDLE) return;
-         ip[0] = addr.sin6_addr.s6_addr[0];
-         ip[1] = addr.sin6_addr.s6_addr[1];
-         ip[2] = addr.sin6_addr.s6_addr[2];
-         ip[3] = addr.sin6_addr.s6_addr[3];
-         ip[4] = addr.sin6_addr.s6_addr[4];
-         ip[5] = addr.sin6_addr.s6_addr[5];
-         ip[6] = addr.sin6_addr.s6_addr[6];
-         ip[7] = addr.sin6_addr.s6_addr[7];
+         #warning Platform requires IPV6 support.
+         return;
       #endif
-#else
-      log.warning("IPV6 not supported yet.");
-      return;
-#endif
    }
    else {
       struct sockaddr_in addr;

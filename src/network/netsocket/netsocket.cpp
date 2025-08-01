@@ -192,10 +192,67 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 
    // Start connect()
 
+   if (IPs.empty()) {
+      log.warning("No IP addresses resolved for %s", HostName.c_str());
+      Socket->Error = ERR::HostNotFound;
+      Socket->setState(NTC::DISCONNECTED);
+      return;
+   }
+
+   // Use the first resolved address
+   const IPAddress &addr = IPs[0];
+   
+   if (addr.Type IS IPADDR::V6) {
+      Socket->IPV6 = true;
+      struct sockaddr_in6 server_address6;
+      pf::clearmem(&server_address6, sizeof(server_address6));
+      server_address6.sin6_family = AF_INET6;
+      server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
+      pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr.Data, 16);
+      
+      #ifdef __linux__
+         int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6));
+         
+         if (result IS -1) {
+            if (errno IS EINPROGRESS) {
+               log.trace("IPv6 connection in progress...");
+            }
+            else if ((errno IS EWOULDBLOCK) or (errno IS EAGAIN)) {
+               log.trace("IPv6 connect() attempt would block or need to try again.");
+            }
+            else {
+               log.warning("IPv6 Connect() failed: %s", strerror(errno));
+               Socket->Error = ERR::Failed;
+               Socket->setState(NTC::DISCONNECTED);
+               return;
+            }
+
+            Socket->setState(NTC::CONNECTING);
+            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
+         }
+         else {
+            log.trace("IPv6 connect() successful.");
+            Socket->setState(NTC::CONNECTED);
+            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::read|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+         }
+      #elif _WIN32
+         Socket->Error = win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6));
+         if (Socket->Error != ERR::Okay) {
+            log.warning("IPv6 connect() failed: %s", GetErrorMsg(Socket->Error));
+            return;
+         }
+         Socket->setState(NTC::CONNECTING);
+      #endif
+      return;
+   }
+   
+   // IPv4 connection
+   Socket->IPV6 = false;
    pf::clearmem(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
    server_address.sin_port = net::HostToShort((UWORD)Socket->Port);
-   server_address.sin_addr.s_addr = net::HostToLong(IPs[0].Data[0]);
+   server_address.sin_addr.s_addr = net::HostToLong(addr.Data[0]);
 
 #ifdef __linux__
    int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address));
@@ -332,7 +389,7 @@ NullArgs
 static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectSocket *Args)
 {
    if ((!Args) or (!Args->Socket)) return ERR::NullArgs;
-   free_client_socket(Self, (extClientSocket *)(Args->Socket), TRUE);
+   free_client_socket(Self, (extClientSocket *)(Args->Socket), true);
    return ERR::Okay;
 }
 
@@ -370,7 +427,7 @@ static ERR NETSOCKET_FreeWarning(extNetSocket *Self)
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
          pf::Log log;
          log.msg("NetSocket in use, cannot free yet (request delayed).");
-         Self->Terminating = TRUE;
+         Self->Terminating = true;
          SendMessage(MSGID::FREE, MSF::NIL, &Self->UID, sizeof(OBJECTID));
       }
       return ERR::InUse;
@@ -405,23 +462,35 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
 
    if ((!Args) or (!Args->Address)) return log.warning(ERR::NullArgs);
 
-   struct sockaddr_in addr;
+   struct sockaddr_storage addr_storage;
    int result;
 
 #ifdef __linux__
-   socklen_t addr_length = sizeof(addr);
-   result = getsockname(Self->SocketHandle, (struct sockaddr *)&addr, &addr_length);
+   socklen_t addr_length = sizeof(addr_storage);
+   result = getsockname(Self->SocketHandle, (struct sockaddr *)&addr_storage, &addr_length);
 #elif _WIN32
-   int addr_length = sizeof(addr);
-   result = win_getsockname(Self->SocketHandle, (struct sockaddr *)&addr, &addr_length);
+   int addr_length = sizeof(addr_storage);
+   result = win_getsockname(Self->SocketHandle, (struct sockaddr *)&addr_storage, &addr_length);
 #endif
 
    if (!result) {
-      Args->Address->Data[0] = net::LongToHost(addr.sin_addr.s_addr);
-      Args->Address->Data[1] = 0;
-      Args->Address->Data[2] = 0;
-      Args->Address->Data[3] = 0;
-      Args->Address->Type = IPADDR::V4;
+      if (addr_storage.ss_family IS AF_INET6) {
+         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr_storage;
+         pf::copymem(Args->Address->Data, &addr6->sin6_addr.s6_addr, 16);
+         Args->Address->Type = IPADDR::V6;
+      }
+      else if (addr_storage.ss_family IS AF_INET) {
+         struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr_storage;
+         Args->Address->Data[0] = net::LongToHost(addr4->sin_addr.s_addr);
+         Args->Address->Data[1] = 0;
+         Args->Address->Data[2] = 0;
+         Args->Address->Data[3] = 0;
+         Args->Address->Type = IPADDR::V4;
+      }
+      else {
+         log.warning("Unsupported address family: %d", addr_storage.ss_family);
+         return ERR::Failed;
+      }
       return ERR::Okay;
    }
    else return log.warning(ERR::Failed);
@@ -450,13 +519,26 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
 #ifdef __linux__
 
-   //if ((Self->SocketHandle = socket(PF_INET6, SOCK_STREAM, 0)) IS NOHANDLE) {
-      if ((Self->SocketHandle = socket(PF_INET, SOCK_STREAM, 0)) IS NOHANDLE) {
-         log.warning("socket() %s", strerror(errno));
-         return ERR::Failed;
+   // Create socket - IPv6 dual-stack if available, otherwise IPv4
+   if ((Self->SocketHandle = socket(PF_INET6, SOCK_STREAM, 0)) != NOHANDLE) {
+      Self->IPV6 = true;
+      
+      // Enable dual-stack mode (accept both IPv4 and IPv6)
+      int v6only = 0;
+      if (setsockopt(Self->SocketHandle, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only)) != 0) {
+         log.warning("Failed to set dual-stack mode: %s", strerror(errno));
       }
-   //}
-   //else Self->IPV6 = TRUE;
+      
+      log.trace("Created IPv6 dual-stack socket");
+   }
+   else if ((Self->SocketHandle = socket(PF_INET, SOCK_STREAM, 0)) != NOHANDLE) {
+      Self->IPV6 = false;
+      log.trace("Created IPv4 socket");
+   }
+   else {
+      log.warning("Failed to create socket: %s", strerror(errno));
+      return ERR::Failed;
+   }
 
    // Put the socket into non-blocking mode, this is required when registering it as an FD and also prevents connect()
    // calls from going to sleep.
@@ -478,7 +560,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
 #elif _WIN32
 
-   Self->SocketHandle = win_socket(Self, TRUE, FALSE);
+   Self->SocketHandle = win_socket(Self, true, false);
    if (Self->SocketHandle IS NOHANDLE) return ERR::Failed;
 
 #endif
@@ -610,7 +692,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    else { // Read from the server that we're connected to
       if (Self->SocketHandle IS NOHANDLE) return log.warning(ERR::Disconnected);
 
-      Self->ReadCalled = TRUE;
+      Self->ReadCalled = true;
 
       if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
 
@@ -682,7 +764,7 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
          #elif _WIN32
-            win_socketstate(Self->SocketHandle, -1, TRUE);
+            win_socketstate(Self->SocketHandle, -1, true);
             Self->WriteSocket = &client_server_outgoing;
          #endif
       }
@@ -871,7 +953,7 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
             #ifdef __linux__
                RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
             #elif _WIN32
-               win_socketstate(Self->SocketHandle, -1, TRUE);
+               win_socketstate(Self->SocketHandle, -1, true);
                Self->WriteSocket = &client_server_outgoing;
             #endif
          }
@@ -926,7 +1008,7 @@ static ERR SET_SocketHandle(extNetSocket *Self, APTR Value)
    // socket created from outside the core platform code base.
 
    Self->SocketHandle = (SOCKET_HANDLE)(MAXINT)Value;
-   Self->ExternalSocket = TRUE;
+   Self->ExternalSocket = true;
    return ERR::Okay;
 }
 
@@ -990,7 +1072,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
          #elif _WIN32
-            win_socketstate(Self->SocketHandle, -1, TRUE);
+            win_socketstate(Self->SocketHandle, -1, true);
             Self->WriteSocket = &client_server_outgoing;
          #endif
       }
