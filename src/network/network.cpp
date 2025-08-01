@@ -213,6 +213,8 @@ class extNetSocket : public objNetSocket {
         BIO *BIO;
       #endif
    #endif
+ 
+   ERR write_queue(NetQueue &Queue, CPTR Message, size_t Length);
 };
 
 class extNetLookup : public objNetLookup {
@@ -804,7 +806,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
 
 //********************************************************************************************************************
 
-static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, int *Length, int Flags)
+static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *Length, int Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -813,13 +815,13 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, int *Leng
 #ifdef ENABLE_SSL
   #ifdef _WIN32
     if (Self->WinSSL) {
-       log.traceBranch("Windows SSL Length: %d", *Length);
+       log.traceBranch("Windows SSL Length: %d", int(*Length));
 
-       int bytes_sent = ssl_wrapper_write(Self->WinSSL, Buffer, *Length);
+       size_t bytes_sent = ssl_wrapper_write(Self->WinSSL, Buffer, *Length);
 
        if (bytes_sent > 0) {
           if (*Length != bytes_sent) {
-             log.traceWarning("Sent %d of requested %d bytes.", bytes_sent, *Length);
+             log.traceWarning("Sent %d of requested %d bytes.", int(bytes_sent), int(*Length));
           }
           *Length = bytes_sent;
           return ERR::Okay;
@@ -840,14 +842,12 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, int *Leng
     }
   #else
     if (Self->SSL) {
-       log.traceBranch("SSLBusy: %d, Length: %d", Self->SSLBusy, *Length);
+       log.traceBranch("SSLBusy: %d, Length: %d", Self->SSLBusy, int(*Length));
 
       if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
       else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
-      if (Self->SSLBusy != SSL_NOT_BUSY) {
-         return ERR::Okay;
-      }
+      if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
 
       int bytes_sent = SSL_write(Self->SSL, Buffer, *Length);
 
@@ -942,8 +942,6 @@ static STRUCTS glStructures = {
    { "DNSEntry",  sizeof(DNSEntry) },
    { "IPAddress", sizeof(IPAddress) },
    { "NetClient", sizeof(NetClient) },
-   { "NetMsg",    sizeof(NetMsg) },
-   { "NetMsgEnd", sizeof(NetMsgEnd) },
    { "NetQueue",  sizeof(NetQueue) }
 };
 

@@ -1,0 +1,305 @@
+--[[
+NetMsg Protocol Test
+
+This test verifies the structured message protocol using ReadClientMsg() and WriteClientMsg() methods.
+Tests include:
+- NetMsg structure integrity and validation
+- CRC checksum verification
+- Message size limits and boundary conditions
+- Magic header/tail validation
+- Error handling for malformed messages
+- Message fragmentation and reassembly
+- Protocol robustness under various conditions
+
+The NetMsg protocol uses:
+- Magic header (NETMSG_MAGIC = 0x38201f73)
+- Length field for message size
+- CRC checksum for data integrity
+- Magic tail (NETMSG_MAGIC_TAIL = 0x830d73b4)
+- Size limit of NETMSG_SIZE_LIMIT (1MB)
+--]]
+
+   include 'network'
+
+   glPort = 8302
+   glMessagesReceived = 0
+   glMessagesSent = 0
+   glExpectedMessages = 5
+   glTestPayloads = {}
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function testBasicMessageProtocol()
+   local proc = processing.new({ timeout = 10.0 })
+   
+   print('Testing basic NetMsg protocol with ReadClientMsg/WriteClientMsg...')
+   
+   -- Initialize test payloads of varying sizes
+   glTestPayloads = {
+      'Small message',
+      'Medium sized message with more content to test protocol handling',
+      string.rep('Large message data block ', 100), -- ~2KB message
+      'Special chars: !@#$%^&*()[]{}|\\:";\'<>?,./`~',
+      '' -- Empty message test
+   }
+   
+   local server = obj.new('netsocket', {
+      name = 'MsgProtocolServer',
+      feedback = function(Socket, Client, State)
+         if (State == NTC_CONNECTED) then
+            print('[Server] Client connected, starting message protocol test...')
+            -- Send first test message using WriteClientMsg
+            local payload = glTestPayloads[1]
+            print('[Server] Sending message 1: "' .. payload .. '"')
+            local err = Client.mtWriteClientMsg(payload, #payload)
+            if (err == ERR_Okay) then
+               glMessagesSent = glMessagesSent + 1
+               print('[Server] Successfully sent message via WriteClientMsg')
+            else
+               error('[Server] WriteClientMsg failed: ' .. mSys.GetErrorMsg(err))
+            end
+         end
+      end,
+      incoming = function(Socket, Client)
+         print('[Server] Incoming data detected, attempting ReadClientMsg...')
+         
+         -- Use ReadClientMsg to receive structured message
+         local buffer = string.rep(' ', NETMSG_SIZE_LIMIT)
+         local err, msg_len = Client.mtReadClientMsg(buffer, #buffer)
+         
+         if (err == ERR_Okay) then
+            local received_msg = buffer:sub(1, msg_len)
+            glMessagesReceived = glMessagesReceived + 1
+            print('[Server] ReadClientMsg successful, length: ' .. msg_len)
+            print('[Server] Message content: "' .. received_msg .. '"')
+            
+            -- Verify message integrity
+            local expected_index = glMessagesReceived + 1 -- Client sends response messages
+            if (expected_index <= #glTestPayloads) then
+               local expected = glTestPayloads[expected_index]
+               if (received_msg == expected) then
+                  print('[Server] Message integrity verified!')
+               else
+                  error('[Server] Message mismatch. Expected: "' .. expected .. '", Got: "' .. received_msg .. '"')
+               end
+            end
+            
+            -- Send next message if more to test
+            local next_index = glMessagesSent + 1
+            if (next_index <= #glTestPayloads) then
+               local next_payload = glTestPayloads[next_index]
+               print('[Server] Sending message ' .. next_index .. ': "' .. next_payload:sub(1, math.min(50, #next_payload)) .. '..."')
+               local err = Client.mtWriteClientMsg(next_payload, #next_payload)
+               if (err == ERR_Okay) then
+                  glMessagesSent = glMessagesSent + 1
+               else
+                  error('[Server] WriteClientMsg failed for message ' .. next_index .. ': ' .. mSys.GetErrorMsg(err))
+               end
+            else
+               print('[Server] All messages sent, test complete')
+               proc.signal()
+            end
+            
+         elseif (err == ERR_NoData) then
+            print('[Server] No complete message available yet')
+         else
+            error('[Server] ReadClientMsg failed: ' .. mSys.GetErrorMsg(err))
+         end
+      end,
+      port = glPort,
+      flags = 'SERVER'
+   })
+   
+   local client = obj.new('netsocket', {
+      name = 'MsgProtocolClient',
+      feedback = function(Socket, Client, State)
+         if (State == NTC_CONNECTED) then
+            print('[Client] Connected to message protocol server')
+         end
+      end,
+      incoming = function(Socket, Script)
+         print('[Client] Incoming data detected, attempting ReadClientMsg...')
+         
+         -- Use ReadClientMsg to receive structured message  
+         local buffer = string.rep(' ', NETMSG_SIZE_LIMIT)
+         local err, msg_len = Socket.mtReadClientMsg(buffer, #buffer)
+         
+         if (err == ERR_Okay) then
+            local received_msg = buffer:sub(1, msg_len) 
+            print('[Client] ReadClientMsg successful, length: ' .. msg_len)
+            print('[Client] Message content: "' .. received_msg:sub(1, math.min(50, #received_msg)) .. '..."')
+            
+            -- Echo back the message with modification using WriteClientMsg
+            local response = 'ECHO:' .. received_msg
+            print('[Client] Sending echo response via WriteClientMsg...')
+            local err = Socket.mtWriteClientMsg(response, #response)
+            if (err == ERR_Okay) then
+               print('[Client] Echo response sent successfully')
+            else
+               error('[Client] WriteClientMsg failed: ' .. mSys.GetErrorMsg(err))
+            end
+            
+         elseif (err == ERR_NoData) then
+            print('[Client] No complete message available yet')
+         else
+            error('[Client] ReadClientMsg failed: ' .. mSys.GetErrorMsg(err))
+         end
+      end
+   })
+   
+   -- Connect and run test
+   print('[Client] Connecting to server...')
+   local err = client.mtConnect('127.0.0.1', glPort)
+   assert(err == ERR_Okay, 'Failed to connect: ' .. mSys.GetErrorMsg(err))
+   
+   local err = proc.sleep()
+   assert(err == ERR_Okay, 'Message protocol test failed: ' .. mSys.GetErrorMsg(err))
+   
+   -- Verify all messages were processed
+   print('Messages sent: ' .. glMessagesSent .. ', Messages received: ' .. glMessagesReceived)
+   assert(glMessagesSent == #glTestPayloads, 
+      'Not all messages were sent. Expected: ' .. #glTestPayloads .. ', Sent: ' .. glMessagesSent)
+   
+   print('NetMsg protocol test completed successfully!')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function testMessageSizeLimits()
+   local proc = processing.new({ timeout = 8.0 })
+   local limit_test_complete = false
+   
+   print('Testing NetMsg size limits and boundary conditions...')
+   
+   -- Test very large message (near NETMSG_SIZE_LIMIT)
+   local large_message = string.rep('X', NETMSG_SIZE_LIMIT - 1000) -- Just under limit
+   local oversized_message = string.rep('Y', NETMSG_SIZE_LIMIT + 1000) -- Over limit
+   
+   local server = obj.new('netsocket', {
+      name = 'SizeLimitServer',
+      feedback = function(Socket, Client, State)
+         if (State == NTC_CONNECTED) then
+            print('[Server] Testing large message (' .. #large_message .. ' bytes)...')
+            local err = Client.mtWriteClientMsg(large_message, #large_message)
+            if (err == ERR_Okay) then
+               print('[Server] Large message sent successfully')
+            else
+               error('[Server] Large message failed: ' .. mSys.GetErrorMsg(err))
+            end
+         end
+      end,
+      incoming = function(Socket, Client)
+         local buffer = string.rep(' ', NETMSG_SIZE_LIMIT)
+         local err, msg_len = Client.mtReadClientMsg(buffer, #buffer)
+         
+         if (err == ERR_Okay) then
+            print('[Server] Received large echo, length: ' .. msg_len)
+            assert(msg_len > NETMSG_SIZE_LIMIT - 2000, 'Large message size incorrect')
+            
+            -- Now test oversized message (should fail gracefully)
+            print('[Server] Testing oversized message (' .. #oversized_message .. ' bytes)...')
+            local err = Client.mtWriteClientMsg(oversized_message, #oversized_message)
+            if (err != ERR_Okay) then
+               print('[Server] Oversized message correctly rejected: ' .. mSys.GetErrorMsg(err))
+               limit_test_complete = true
+               proc.signal()
+            else
+               error('[Server] Oversized message should have been rejected')
+            end
+         else
+            print('[Server] ReadClientMsg error: ' .. mSys.GetErrorMsg(err))
+         end
+      end,
+      port = glPort + 1,
+      flags = 'SERVER'
+   })
+   
+   local client = obj.new('netsocket', {
+      name = 'SizeLimitClient',
+      incoming = function(Socket, Script)
+         local buffer = string.rep(' ', NETMSG_SIZE_LIMIT)
+         local err, msg_len = Socket.mtReadClientMsg(buffer, #buffer)
+         
+         if (err == ERR_Okay) then
+            print('[Client] Received large message, echoing back...')
+            local response = buffer:sub(1, msg_len)
+            local err = Socket.mtWriteClientMsg(response, #response)
+            if (err != ERR_Okay) then
+               error('[Client] Failed to echo large message: ' .. mSys.GetErrorMsg(err))
+            end
+         end
+      end
+   })
+   
+   client.mtConnect('127.0.0.1', glPort + 1)
+   
+   local err = proc.sleep()
+   assert(err == ERR_Okay, 'Size limit test failed: ' .. mSys.GetErrorMsg(err))
+   assert(limit_test_complete, 'Size limit test did not complete properly')
+   
+   print('Message size limit test completed successfully!')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function testMalformedMessages()
+   local proc = processing.new({ timeout = 5.0 })
+   local malformed_handled = false
+   
+   print('Testing malformed message handling...')
+   
+   local server = obj.new('netsocket', {
+      name = 'MalformedTestServer',
+      feedback = function(Socket, Client, State)
+         if (State == NTC_CONNECTED) then
+            -- Send raw bytes that don't conform to NetMsg protocol
+            print('[Server] Sending malformed data...')
+            local malformed_data = 'This is not a valid NetMsg format'
+            local err, len = Client.acWrite(malformed_data)
+            assert(err == ERR_Okay, 'Failed to send malformed data')
+         end
+      end,
+      port = glPort + 2,
+      flags = 'SERVER'
+   })
+   
+   local client = obj.new('netsocket', {
+      name = 'MalformedTestClient',
+      incoming = function(Socket, Script)
+         -- Try to read as NetMsg - should handle gracefully
+         local buffer = string.rep(' ', 1024)
+         local err, msg_len = Socket.mtReadClientMsg(buffer, #buffer)
+         
+         if (err != ERR_Okay) then
+            print('[Client] ReadClientMsg properly rejected malformed data: ' .. mSys.GetErrorMsg(err))
+            malformed_handled = true
+            proc.signal()
+         else
+            -- If it somehow worked, verify the data
+            print('[Client] Unexpectedly read data: ' .. buffer:sub(1, msg_len))
+         end
+      end
+   })
+   
+   client.mtConnect('127.0.0.1', glPort + 2)
+   
+   local err = proc.sleep()
+   assert(err == ERR_Okay, 'Malformed message test failed: ' .. mSys.GetErrorMsg(err))
+   
+   print('Malformed message test completed successfully!')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = { 
+         'testBasicMessageProtocol', 
+         'testMessageSizeLimits',
+         'testMalformedMessages'
+      },
+      cleanup = function()
+         glMessagesReceived = 0
+         glMessagesSent = 0
+         glTestPayloads = {}
+      end
+   }

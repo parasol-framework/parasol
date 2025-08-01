@@ -19,10 +19,10 @@ unsigned long win_inet_addr(const char *);
 char *win_inet_ntoa(unsigned long);//struct in_addr);
 ERR win_listen(WSW_SOCKET, int);
 void win_socketstate(WSW_SOCKET, char, char);
-ERR WIN_SEND(WSW_SOCKET, const void *, int *, int);
+ERR WIN_SEND(WSW_SOCKET, const void *, size_t *, int);
 int win_shutdown(WSW_SOCKET, int);
 WSW_SOCKET win_socket(void *, char, char);/*uses PF_INET, SOCK_STREAM, 0 for params to socket() */
-ERR WIN_RECEIVE(WSW_SOCKET, void *, int, int, int *);
+ERR WIN_RECEIVE(WSW_SOCKET, void *, size_t, int, int *);
 void winCloseResolveHandle(void *);
 void win_socket_reference(WSW_SOCKET, void *);
 

@@ -21,16 +21,12 @@ FDEF maConnect[] = { { "Address", FD_STR }, { "Port", FD_INT }, { 0, 0 } };
 FDEF maGetLocalIPAddress[] = { { "IPAddress:Address", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF maDisconnectClient[] = { { "NetClient:Client", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF maDisconnectSocket[] = { { "Socket", FD_OBJECTPTR }, { 0, 0 } };
-FDEF maReadMsg[] = { { "Message", FD_PTR|FD_RESULT }, { "Length", FD_INT|FD_RESULT }, { "Progress", FD_INT|FD_RESULT }, { "CRC", FD_INT|FD_RESULT }, { 0, 0 } };
-FDEF maWriteMsg[] = { { "Message", FD_BUFFER|FD_PTR }, { "Length", FD_INT|FD_BUFSIZE }, { 0, 0 } };
 
 static const struct MethodEntry clNetSocketMethods[] = {
    { AC(-1), (APTR)NETSOCKET_Connect, "Connect", maConnect, sizeof(struct ns::Connect) },
    { AC(-2), (APTR)NETSOCKET_GetLocalIPAddress, "GetLocalIPAddress", maGetLocalIPAddress, sizeof(struct ns::GetLocalIPAddress) },
    { AC(-3), (APTR)NETSOCKET_DisconnectClient, "DisconnectClient", maDisconnectClient, sizeof(struct ns::DisconnectClient) },
    { AC(-4), (APTR)NETSOCKET_DisconnectSocket, "DisconnectSocket", maDisconnectSocket, sizeof(struct ns::DisconnectSocket) },
-   { AC(-5), (APTR)NETSOCKET_ReadMsg, "ReadMsg", maReadMsg, sizeof(struct ns::ReadMsg) },
-   { AC(-6), (APTR)NETSOCKET_WriteMsg, "WriteMsg", maWriteMsg, sizeof(struct ns::WriteMsg) },
    { AC::NIL, 0, 0, 0, 0 }
 };
 
@@ -41,6 +37,7 @@ static const struct ActionArray clNetSocketActions[] = {
    { AC::FreeWarning, NETSOCKET_FreeWarning },
    { AC::Init, NETSOCKET_Init },
    { AC::NewObject, NETSOCKET_NewObject },
+   { AC::NewPlacement, NETSOCKET_NewPlacement },
    { AC::Read, NETSOCKET_Read },
    { AC::Write, NETSOCKET_Write },
    { AC::NIL, nullptr }
