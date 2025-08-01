@@ -1,5 +1,38 @@
 # Parasol executable
 
+# Generate version information based on current date (YYYY.MM.DD format)
+string(TIMESTAMP PARASOL_VERSION_MAJOR "%Y")
+string(TIMESTAMP PARASOL_VERSION_MINOR "%m")
+string(TIMESTAMP PARASOL_VERSION_PATCH "%d")
+string(TIMESTAMP PARASOL_COPYRIGHT_YEAR "%Y")
+
+# Remove leading zeros from month and day for proper version format
+string(REGEX REPLACE "^0+" "" PARASOL_VERSION_MINOR "${PARASOL_VERSION_MINOR}")
+string(REGEX REPLACE "^0+" "" PARASOL_VERSION_PATCH "${PARASOL_VERSION_PATCH}")
+
+# Ensure we don't get empty strings for single digit values
+if(PARASOL_VERSION_MINOR STREQUAL "")
+    set(PARASOL_VERSION_MINOR "0")
+endif()
+if(PARASOL_VERSION_PATCH STREQUAL "")
+    set(PARASOL_VERSION_PATCH "0")
+endif()
+
+message(STATUS "Parasol version: ${PARASOL_VERSION_MAJOR}.${PARASOL_VERSION_MINOR}.${PARASOL_VERSION_PATCH}")
+
+# Generate versioned manifest and resource files
+configure_file(
+    "${PROJECT_SOURCE_DIR}/src/link/parasol.manifest.in"
+    "${PROJECT_SOURCE_DIR}/src/link/parasol.manifest"
+    @ONLY
+)
+
+configure_file(
+    "${PROJECT_SOURCE_DIR}/src/link/resource.rc.in"
+    "${PROJECT_SOURCE_DIR}/src/link/resource.rc"
+    @ONLY
+)
+
 if (RUN_ANYWHERE)
    set (CMAKE_INSTALL_RPATH "$ORIGIN/lib/lib")
 else ()
@@ -9,6 +42,11 @@ endif ()
 if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
    add_executable (parasol_cmd WIN32 "parasol.cpp" "sandbox-win.cpp" "${PROJECT_SOURCE_DIR}/src/link/resource.rc")
+   
+   # Disable automatic manifest generation since we provide our own
+   if (MSVC)
+      set_target_properties(parasol_cmd PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+   endif()
 else ()
    add_executable (parasol_cmd "parasol.cpp")
 endif ()

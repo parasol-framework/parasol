@@ -106,9 +106,7 @@ extern "C" void winResetStdOut(struct winprocess *Process, char *Buffer, DWORD *
       else *Size = 1;
    }
    else {
-      char msg[400];
-      winFormatMessage(0, msg, sizeof(msg));
-      MSG("PeekNamedPipe() failed: %s\n", msg);
+      MSG("PeekNamedPipe() failed: %s\n", winFormatMessage().c_str());
       *Size = 1;
    }
 }
@@ -143,9 +141,7 @@ extern "C" void winResetStdErr(struct winprocess *Process, char *Buffer, DWORD *
       else *Size = 1;
    }
    else {
-      char msg[400];
-      winFormatMessage(0, msg, sizeof(msg));
-      MSG("PeekNamedPipe() failed: %s\n", msg);
+      MSG("PeekNamedPipe() failed: %s\n", winFormatMessage().c_str());
       *Size = 1;
    }
 }

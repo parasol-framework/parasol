@@ -769,9 +769,7 @@ static ERR TASK_Activate(extTask *Self)
       }
    }
    else {
-      char msg[300];
-      winFormatMessage(winerror, msg, sizeof(msg));
-      log.warning("Launch Error: %s", msg);
+      log.warning("Launch Error: %s", winFormatMessage(winerror).c_str());
       error = ERR::ProcessCreation;
    }
 
