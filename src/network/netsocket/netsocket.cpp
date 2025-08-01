@@ -199,16 +199,56 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       return;
    }
 
-   // Use the first resolved address
-   const IPAddress &addr = IPs[0];
+   // Find an appropriate address for our socket type
+   const IPAddress *addr = nullptr;
    
-   if (addr.Type IS IPADDR::V6) {
-      Socket->IPV6 = true;
+   // If we have an IPv4 socket, prefer IPv4 addresses
+   if (!Socket->IPV6) {
+      for (const auto &ip : IPs) {
+         if (ip.Type IS IPADDR::V4) {
+            addr = &ip;
+            break;
+         }
+      }
+   } else {
+      // For IPv6 sockets, use the first address (could be IPv4 or IPv6)
+      addr = &IPs[0];
+   }
+   
+   if (!addr) {
+      log.warning("No compatible IP address found for socket type (IPv6: %s)", Socket->IPV6 ? "true" : "false");
+      Socket->Error = ERR::HostNotFound;
+      Socket->setState(NTC::DISCONNECTED);
+      return;
+   }
+   
+   if (addr->Type IS IPADDR::V6) {
+      #ifdef __linux__
+         Socket->IPV6 = true;
+      #elif _WIN32
+         // Windows currently only supports IPv4 connections, skip IPv6 attempts
+         log.warning("IPv6 address found but Windows socket is IPv4-only, trying next address");
+         // Try to find an IPv4 address instead
+         for (const auto &ip : IPs) {
+            if (ip.Type IS IPADDR::V4) {
+               addr = &ip;
+               break;
+            }
+         }
+         if (addr->Type IS IPADDR::V6) {
+            log.warning("No IPv4 addresses available for Windows IPv4 socket");
+            Socket->Error = ERR::NoSupport;
+            Socket->setState(NTC::DISCONNECTED);
+            return;
+         }
+         // If we found an IPv4 address, fall through to IPv4 connection logic
+         goto ipv4_connection;
+      #endif
       struct sockaddr_in6 server_address6;
       pf::clearmem(&server_address6, sizeof(server_address6));
       server_address6.sin6_family = AF_INET6;
       server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
-      pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr.Data, 16);
+      pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr->Data, 16);
       
       #ifdef __linux__
          int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6));
@@ -247,12 +287,13 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       return;
    }
    
+ipv4_connection:
    // IPv4 connection
    Socket->IPV6 = false;
    pf::clearmem(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
    server_address.sin_port = net::HostToShort((UWORD)Socket->Port);
-   server_address.sin_addr.s_addr = net::HostToLong(addr.Data[0]);
+   server_address.sin_addr.s_addr = net::HostToLong(addr->Data[0]);
 
 #ifdef __linux__
    int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address));
@@ -560,8 +601,12 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
 #elif _WIN32
 
+   // Try IPv4 socket for maximum compatibility
    Self->SocketHandle = win_socket(Self, true, false);
    if (Self->SocketHandle IS NOHANDLE) return ERR::Failed;
+   
+   // Windows implementation uses IPv4 for maximum compatibility
+   Self->IPV6 = false;
 
 #endif
 
@@ -590,6 +635,21 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             }
             else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
             else return log.warning(ERR::Failed);
+         #elif _WIN32
+            // Windows IPv6 dual-stack server binding
+            struct sockaddr_in6 addr;
+            pf::clearmem(&addr, sizeof(addr));
+            addr.sin6_family = AF_INET6;
+            addr.sin6_port   = net::HostToShort(Self->Port);
+            addr.sin6_addr   = in6addr_any;
+            
+            if ((error = win_bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
+               if ((error = win_listen(Self->SocketHandle, Self->Backlog)) IS ERR::Okay) {
+                  return ERR::Okay;
+               }
+               else return log.warning(error);
+            }
+            else return log.warning(error);
          #else
             return ERR::NoSupport;
          #endif
