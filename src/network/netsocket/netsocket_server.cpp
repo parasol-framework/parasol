@@ -54,8 +54,40 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
             return;
          }
       #elif _WIN32
-         log.warning("IPv6 dual-stack server not yet implemented for Windows");
-         return;
+         // Windows IPv6 dual-stack accept using wrapper function
+         int family;
+         struct sockaddr_storage addr_storage;
+         int len = sizeof(addr_storage);
+         clientfd = win_accept_ipv6(Self, FD, (struct sockaddr *)&addr_storage, &len, &family);
+         if (clientfd IS NOHANDLE) return;
+
+         if (family IS AF_INET6) { // IPv6 connection
+            struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr_storage;
+            ip[0] = addr6->sin6_addr.s6_addr[0];
+            ip[1] = addr6->sin6_addr.s6_addr[1];
+            ip[2] = addr6->sin6_addr.s6_addr[2];
+            ip[3] = addr6->sin6_addr.s6_addr[3];
+            ip[4] = addr6->sin6_addr.s6_addr[4];
+            ip[5] = addr6->sin6_addr.s6_addr[5];
+            ip[6] = addr6->sin6_addr.s6_addr[6];
+            ip[7] = addr6->sin6_addr.s6_addr[7]; 
+            log.trace("Accepted IPv6 client connection on Windows");
+         }
+         else if (family IS AF_INET) { // IPv4 connection on dual-stack socket
+            struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr_storage;
+            uint32_t ipv4_addr = net::LongToHost(addr4->sin_addr.s_addr);
+            ip[0] = ipv4_addr & 0xff;
+            ip[1] = (ipv4_addr >> 8) & 0xff;
+            ip[2] = (ipv4_addr >> 16) & 0xff;
+            ip[3] = (ipv4_addr >> 24) & 0xff;
+            ip[4] = ip[5] = ip[6] = ip[7] = 0;
+            log.trace("Accepted IPv4 client connection on dual-stack socket (Windows)");
+         }
+         else {
+            log.warning("Unsupported address family on Windows: %d", family);
+            CLOSESOCKET(clientfd);
+            return;
+         }
       #else
          #warning Platform requires IPV6 support.
          return;

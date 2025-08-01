@@ -145,6 +145,9 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    constexpr int IPPROTO_IPV6 = 41;
    constexpr int IPV6_V6ONLY  = 27;
 
+   // IPv6 constants
+   static const struct in6_addr in6addr_any = {{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}};
+
    #define CLOSESOCKET(a) win_closesocket(a);
 #endif
 
@@ -432,16 +435,12 @@ CSTRING AddressToStr(IPAddress *Address)
             return pf::strclone(ipv6_str);
          }
       #elif _WIN32
-         // Windows IPv6 string conversion - simplified implementation
-         const uint8_t *bytes = (const uint8_t *)Address->Data;
+         // Windows IPv6 string conversion using wrapper function
          char ipv6_str[46];
-         
-         snprintf(ipv6_str, sizeof(ipv6_str), 
-            "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
-         
-         return pf::strclone(ipv6_str);
+         const char *result = win_inet_ntop(AF_INET6, Address->Data, ipv6_str, sizeof(ipv6_str));
+         if (result) {
+            return pf::strclone(result);
+         }
       #endif
       return nullptr;
    }
@@ -507,16 +506,13 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
             return ERR::Okay;
          }
       #elif _WIN32
-         // Windows IPv6 parsing - simplified implementation for common formats
-         if (strcmp(Str, "::1") IS 0) {
-            // IPv6 loopback
-            pf::clearmem(Address->Data, 16);
-            ((uint8_t *)Address->Data)[15] = 1;
+         // Windows IPv6 parsing using wrapper function
+         struct in6_addr ipv6_addr;
+         if (win_inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
+            pf::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
             Address->Type = IPADDR::V6;
             return ERR::Okay;
          }
-         // For now, only support IPv6 loopback on Windows
-         // TODO Full IPv6 parsing for Windows
          return ERR::Failed;
       #endif
    }
