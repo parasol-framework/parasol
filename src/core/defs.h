@@ -1083,7 +1083,7 @@ extern "C" int winGetCurrentThreadId(void);
 extern "C" void winDeathBringer(int Value);
 extern "C" int winDuplicateHandle(int, int, int, int *);
 extern "C" void winEnterCriticalSection(APTR);
-extern "C" STRING winFormatMessage(int, char *, int);
+extern std::string winFormatMessage(int);
 extern "C" int winFreeLibrary(WINHANDLE);
 extern "C" void winFreeProcess(APTR);
 extern "C" int winGetEnv(CSTRING, STRING, int);
