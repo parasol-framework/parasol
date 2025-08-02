@@ -264,6 +264,8 @@ end
       table.insert(glParticles, newParticle())
    end
 
+   processing.task().set('AffinityMask', 6)
+
    -- Run at a high frequency to ensure that the CPU performance is not scaled back
    err, glTimerHandle = mSys.SubscribeTimer(0.001, timer)
 
