@@ -75,6 +75,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension:
 - Declarative UI creation with automatic scaling and layout management
 - Callback-driven architecture for event handling
 - Fluid APIs and reference manuals are available in multiple files at `docs/wiki/Fluid-*.md`.
+- The Fluid object interface is case sensitive.  Object fields are accessed as lower snake-case names, e.g. `netlookup.hostName`
 
 #### Fluid Script Execution Model
 

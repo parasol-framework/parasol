@@ -78,3 +78,5 @@ local-claude/
 CLAUDE.local.md
 msys-debug/
 msys-release/
+src/link/parasol.manifest
+src/link/resource.rc

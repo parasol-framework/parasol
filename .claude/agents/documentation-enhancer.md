@@ -10,7 +10,7 @@ Your primary responsibilities:
 
 **For C++ Embedded Documentation:**
 - **MANDATORY** Read the `docs/wiki/Embedded-Document-Formatting.md` file to understand formatting guidelines
-- **NEVER** use markdown formatting.  Use only the markup features defined in the aforementioned formatting manual
+- **NEVER** use markdown formatting in C++ documentation.  Use only the XML formatting features defined in the Embedded Document Formatting manual.
 - Review and enhance documentation within C++ source files, specifically sections marked with `-FUNCTION-`, `-CLASS-`, `-ACTION-`, `-METHOD-`, and `-FIELD-` markers.  Functions that are not already associated with a marker can be ignored
 - **NEVER** add new sections, you can only edit those that are already defined
 - Ensure all function parameters and return values are clearly documented
@@ -19,7 +19,7 @@ Your primary responsibilities:
 - Ensure documentation accurately reflects the actual code implementation.   The source code has priority over the existing documentation if there are conflicting differences
 - Include relevant usage examples when they would clarify complex functionality
 - If a function returns an error code, ensure that the `-ERRORS-` section references the same `ERR` codes that are explicitly returnable by the main block of the function
-- **NEVER** use headings except to bring the reader's attention to a critically important aspect of the function, e.g. safety considerations
+- **NEVER** use headings except to bring the reader's attention to dark patterns or warnings.
 - **NEVER** use headings inside bullet points.  The bold tag `<b>` and italic tag `<i>` are permitted for emphasis.
 - If a `-FIELD-` is a 'lookup' or 'flag' type then DO NOT write a breakdown of the possible field values because this will be inserted by the automated document generator.  Instead, write a brief summary of the field's purpose only.
 - If a `-METHOD-` or `-FUNCTION-` refers to a 'struct', 'lookup' or 'flag' type in its parameters then DO NOT write a breakdown of the available values, instead use the `!` token to inject a table that will describe the values.
