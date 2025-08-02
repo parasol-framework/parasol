@@ -117,7 +117,7 @@ ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
    if (def IS prv->Structs.end()) return ERR::Search;
 
    auto &struct_def = def->second;
-   
+
    APTR memory;
    if (AllocMemory(struct_def.Size, MEM::DATA, &memory) != ERR::Okay) {
       return ERR::AllocMemory;
@@ -133,7 +133,13 @@ ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
                APTR address = (BYTE *)memory + field.Offset;
                auto type = field.Type;
 
-               if (type & FD_ARRAY) {
+               if (type & FD_FLOAT)  ((FLOAT *)address)[0]  = lua_tonumber(Lua, -1);
+               else if (type & FD_DOUBLE) ((DOUBLE *)address)[0] = lua_tonumber(Lua, -1);
+               else if (type & FD_INT64)  ((LARGE *)address)[0]  = lua_tonumber(Lua, -1);
+               else if (type & FD_INT)    ((LONG *)address)[0]   = lua_tointeger(Lua, -1);
+               else if (type & FD_WORD)   ((WORD *)address)[0]   = lua_tointeger(Lua, -1);
+               else if (type & FD_BYTE)   ((UBYTE *)address)[0]  = lua_tointeger(Lua, -1);
+               else if (type & FD_ARRAY) {
                   if (type & FD_CPP);
                   else if (field.ArraySize IS - 1); // Pointer to a null-terminated array
                   else if (lua_istable(Lua, -1) and (type & (FD_FLOAT|FD_DOUBLE|FD_INT64|FD_INT|FD_WORD|FD_BYTE))) { // Embedded, fixed size array
@@ -150,18 +156,9 @@ ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
                      }
                   }
                }
-               else if (type & FD_STRING) {
-               }
-               else if (type & FD_STRUCT) {
-               }
-               else if (type & FD_POINTER) {
-               }
-               else if (type & FD_FLOAT)  ((FLOAT *)address)[0]  = lua_tonumber(Lua, -1);
-               else if (type & FD_DOUBLE) ((DOUBLE *)address)[0] = lua_tonumber(Lua, -1);
-               else if (type & FD_INT64)  ((LARGE *)address)[0]  = lua_tonumber(Lua, -1);
-               else if (type & FD_INT)    ((LONG *)address)[0]   = lua_tointeger(Lua, -1);
-               else if (type & FD_WORD)   ((WORD *)address)[0]   = lua_tointeger(Lua, -1);
-               else if (type & FD_BYTE)   ((UBYTE *)address)[0]  = lua_tointeger(Lua, -1);
+               else if (type & FD_STRING);
+               else if (type & FD_STRUCT);
+               else if (type & FD_POINTER);
                break;
             }
          }
