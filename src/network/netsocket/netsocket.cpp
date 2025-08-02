@@ -453,7 +453,6 @@ static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectS
 }
 
 //********************************************************************************************************************
-// Action: Free
 
 static ERR NETSOCKET_Free(extNetSocket *Self)
 {
@@ -475,8 +474,6 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
 }
 
 //********************************************************************************************************************
-// Action: FreeWarning
-//
 // If a netsocket object is about to be freed, ensure that we are not using the netsocket object in one of our message
 // handlers.  We can still delay the free request in any case.
 

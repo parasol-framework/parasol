@@ -132,12 +132,25 @@ static int module_call(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
-   UBYTE buffer[256]; // +8 for overflow protection
+   UBYTE buffer[MAX_MODULE_ARGS * 16]; // 16 bytes seems overkill but some parameters output meta information (e.g. size).
    int i;
+   
+   // Track dynamically allocated objects for cleanup
+   std::vector<std::string*> allocated_strings;
+   std::vector<std::string_view*> allocated_string_views;
+   std::vector<APTR> allocated_structs;
+   
+   // Cleanup lambda for early exits
+   auto cleanup = [&]() {
+      for (auto ptr : allocated_strings) delete ptr;
+      for (auto ptr : allocated_string_views) delete ptr;
+      for (auto ptr : allocated_structs) FreeResource(ptr);
+   };
 
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) {
       log.warning(ERR::ObjectCorrupt);
+      cleanup();
       return 0;
    }
 
@@ -151,7 +164,10 @@ static int module_call(lua_State *Lua)
 
    auto index = lua_tointeger(Lua, lua_upvalueindex(2));
    int nargs = lua_gettop(Lua);
-   if (nargs > MAX_MODULE_ARGS-1) nargs = MAX_MODULE_ARGS-1;
+   if (nargs > MAX_MODULE_ARGS-1) {
+      log.warning("Limit of %d args exceeded.", MAX_MODULE_ARGS - 1);
+      nargs = MAX_MODULE_ARGS-1;
+   }
 
    UBYTE *end = buffer + sizeof(buffer);
 
@@ -173,7 +189,8 @@ static int module_call(lua_State *Lua)
    int in = 0;
 
    int j = 0;
-   for (i=1; (args[i].Name) and ((size_t)j < sizeof(buffer)-8); i++) {
+   
+   for (i=1; args[i].Name; i++) {
       int argtype = args[i].Type;
 
       //log.trace("%s() Arg: %s, Offset: %d, Type: $%.8x (received %s)", mod->Functions[index].Name, args[i].Name, j, argtype, lua_typename(Lua, lua_type(Lua, i)));
@@ -189,6 +206,7 @@ static int module_call(lua_State *Lua)
             // storage of type values.  Buffers can be combined with FD_ARRAY to store more than one element.
 
             if (argtype & FD_CPP) {
+               cleanup();
                luaL_error(Lua, "No support for calls utilising C++ arrays.");
                return 0;
             }
@@ -217,6 +235,7 @@ static int module_call(lua_State *Lua)
                   else log.warning("Integer type unspecified for BUFSIZE argument in %s()", mod->Functions[index].Name);
                }
                else {
+                  cleanup();
                   luaL_error(Lua, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
                   return 0;
                }
@@ -229,7 +248,9 @@ static int module_call(lua_State *Lua)
          else if (argtype & FD_STR) { // FD_RESULT
             if (argtype & FD_CPP) {
                // Special case; we provide a std::string that will be used as a buffer for storing the result.
-               ((std::string **)(buffer + j))[0] = new std::string;
+               auto str_ptr = new std::string;
+               allocated_strings.push_back(str_ptr);
+               ((std::string **)(buffer + j))[0] = str_ptr;
                arg_values[in]  = buffer + j;
                arg_types[in++] = &ffi_type_pointer;
                j += sizeof(APTR);
@@ -313,7 +334,9 @@ static int module_call(lua_State *Lua)
          if (argtype & FD_CPP) { // std::string_view (enforced, cannot be nullptr)
             size_t len;
             auto str = lua_tolstring(Lua, i, &len);
-            ((std::string_view **)(buffer + j))[0] = new std::string_view(str, len);
+            auto view_ptr = new std::string_view(str, len);
+            allocated_string_views.push_back(view_ptr);
+            ((std::string_view **)(buffer + j))[0] = view_ptr;
          }
          else if ((type IS LUA_TSTRING) or (type IS LUA_TNUMBER) or (type IS LUA_TBOOLEAN)) {
             ((CSTRING *)(buffer + j))[0] = lua_tostring(Lua, i);
@@ -491,6 +514,30 @@ static int module_call(lua_State *Lua)
             arg_types[in++] = &ffi_type_pointer;
             j += sizeof(APTR);
          }
+         else if (lua_type(Lua, i) IS LUA_TTABLE) {
+            if (args[i].Type & FD_STRUCT) {
+               // Convert Lua table to C struct
+               lua_pushvalue(Lua, i); // Duplicate table for table_to_struct (consumes stack)
+               APTR struct_data;
+               if (table_to_struct(Lua, args[i].Name, &struct_data) IS ERR::Okay) {
+                  allocated_structs.push_back(struct_data); // Track for cleanup
+                  ((APTR *)(buffer + j))[0] = struct_data;
+                  arg_values[in] = buffer + j;
+                  arg_types[in++] = &ffi_type_pointer;
+                  j += sizeof(APTR);
+               }
+               else {
+                  cleanup();
+                  luaL_error(Lua, "Failed to convert table to struct for arg #%d (%s).", i, args[i].Name);
+                  return 0;
+               }
+            }
+            else {
+               cleanup();
+               luaL_error(Lua, "Type mismatch, arg #%d (%s) expected pointer, got table.", i, args[i].Name);
+               return 0;
+            }
+         }
          else {
             ((APTR *)(buffer + j))[0] = lua_touserdata(Lua, i); //lua_topointer?
             arg_values[in] = buffer + j;
@@ -639,11 +686,13 @@ static int module_call(lua_State *Lua)
       result = 0;
    }
 
-   if ((size_t)j >= sizeof(buffer)-8) {
-      luaL_error(Lua, "Too many arguments - buffer overflow.");
-      return 0;
-   }
+   // Cleanup dynamically allocated objects after successful function call
+   for (auto ptr : allocated_string_views) delete ptr;
+   for (auto ptr : allocated_structs) FreeResource(ptr);
 
+   // Clear the allocated_strings vector since those pointers are consumed by process_results()
+   allocated_strings.clear();
+   
    return process_results(prv, buffer, args) + result;
 }
 
