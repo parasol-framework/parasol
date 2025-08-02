@@ -145,6 +145,14 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    constexpr int IPPROTO_IPV6 = 41;
    constexpr int IPV6_V6ONLY  = 27;
 
+   // getaddrinfo constants
+   constexpr int AF_UNSPEC    = 0;
+   constexpr int AI_CANONNAME = 2;
+   constexpr int EAI_AGAIN    = 2;
+   constexpr int EAI_FAIL     = 3;
+   constexpr int EAI_MEMORY   = 4;
+   constexpr int EAI_SYSTEM   = 5;
+
    // IPv6 constants
    static const struct in6_addr in6addr_any = {{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}};
 
@@ -171,6 +179,12 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    #define htonl win_htonl
    #define ntohs win_ntohs
    #define ntohl win_ntohl
+   
+   // Forward declarations for getaddrinfo functions (available in ws2_32.lib)
+   extern "C" {
+      int getaddrinfo(const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res);
+      void freeaddrinfo(struct addrinfo *res);
+   }
 
 #else
    #error "No support for this platform"

@@ -224,9 +224,28 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
    
    if (addr->Type IS IPADDR::V6) {
       #ifdef _WIN32
-         // TODO: IPv6 connectivity
-         Socket->Error = ERR::Failed;
-         Socket->setState(NTC::DISCONNECTED);
+         // IPv6 connectivity for Windows
+         struct sockaddr_in6 server_address6;
+         pf::clearmem(&server_address6, sizeof(server_address6));
+         server_address6.sin6_family = AF_INET6;
+         server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
+         pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr->Data, 16);
+         
+         if ((Socket->Error = win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6))) != ERR::Okay) {
+            if (Socket->Error IS ERR::BufferOverflow) {
+               log.trace("IPv6 connection in progress...");
+               Socket->setState(NTC::CONNECTING);
+            }
+            else {
+               log.warning("IPv6 connect() failed: %s", GetErrorMsg(Socket->Error));
+               Socket->setState(NTC::DISCONNECTED);
+               return;
+            }
+         }
+         else {
+            log.trace("IPv6 connect() successful.");
+            Socket->setState(NTC::CONNECTED);
+         }
          return;
       #else
          struct sockaddr_in6 server_address6;
