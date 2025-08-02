@@ -438,9 +438,7 @@ CSTRING AddressToStr(IPAddress *Address)
          // Windows IPv6 string conversion using wrapper function
          char ipv6_str[46];
          const char *result = win_inet_ntop(AF_INET6, Address->Data, ipv6_str, sizeof(ipv6_str));
-         if (result) {
-            return pf::strclone(result);
-         }
+         if (result) return pf::strclone(result);
       #endif
       return nullptr;
    }

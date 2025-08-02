@@ -210,8 +210,8 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
             break;
          }
       }
-   } else {
-      // For IPv6 sockets, use the first address (could be IPv4 or IPv6)
+   } 
+   else { // For IPv6 sockets, use the first address (could be IPv4 or IPv6)
       addr = &IPs[0];
    }
    
@@ -223,34 +223,18 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
    }
    
    if (addr->Type IS IPADDR::V6) {
-      #ifdef __linux__
-         Socket->IPV6 = true;
-      #elif _WIN32
-         // Windows currently only supports IPv4 connections, skip IPv6 attempts
-         log.warning("IPv6 address found but Windows socket is IPv4-only, trying next address");
-         // Try to find an IPv4 address instead
-         for (const auto &ip : IPs) {
-            if (ip.Type IS IPADDR::V4) {
-               addr = &ip;
-               break;
-            }
-         }
-         if (addr->Type IS IPADDR::V6) {
-            log.warning("No IPv4 addresses available for Windows IPv4 socket");
-            Socket->Error = ERR::NoSupport;
-            Socket->setState(NTC::DISCONNECTED);
-            return;
-         }
-         // If we found an IPv4 address, fall through to IPv4 connection logic
-         goto ipv4_connection;
-      #endif
-      struct sockaddr_in6 server_address6;
-      pf::clearmem(&server_address6, sizeof(server_address6));
-      server_address6.sin6_family = AF_INET6;
-      server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
-      pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr->Data, 16);
-      
-      #ifdef __linux__
+      #ifdef _WIN32
+         // TODO: IPv6 connectivity
+         Socket->Error = ERR::Failed;
+         Socket->setState(NTC::DISCONNECTED);
+         return;
+      #else
+         struct sockaddr_in6 server_address6;
+         pf::clearmem(&server_address6, sizeof(server_address6));
+         server_address6.sin6_family = AF_INET6;
+         server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
+         pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr->Data, 16);
+         
          int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6));
          
          if (result IS -1) {
@@ -274,22 +258,56 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          else {
             log.trace("IPv6 connect() successful.");
             Socket->setState(NTC::CONNECTED);
-            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::read|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
          }
-      #elif _WIN32
-         Socket->Error = win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6));
-         if (Socket->Error != ERR::Okay) {
-            log.warning("IPv6 connect() failed: %s", GetErrorMsg(Socket->Error));
-            return;
-         }
-         Socket->setState(NTC::CONNECTING);
       #endif
       return;
    }
    
-ipv4_connection:
-   // IPv4 connection
-   Socket->IPV6 = false;
+   // IPv4 connection - check if we need IPv4-mapped IPv6 address for dual-stack socket
+   if (Socket->IPV6) {
+      // Use IPv4-mapped IPv6 address for dual-stack socket
+      #ifdef __linux__
+         struct sockaddr_in6 server_address6;
+         pf::clearmem(&server_address6, sizeof(server_address6));
+         server_address6.sin6_family = AF_INET6;
+         server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
+         
+         // Create IPv4-mapped IPv6 address (::ffff:x.x.x.x)
+         server_address6.sin6_addr.s6_addr[10] = 0xff;
+         server_address6.sin6_addr.s6_addr[11] = 0xff;
+         *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = net::HostToLong(addr->Data[0]);
+         
+         int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6));
+         
+         if (result IS -1) {
+            if (errno IS EINPROGRESS) {
+               log.trace("IPv4-mapped IPv6 connection in progress...");
+            }
+            else if ((errno IS EWOULDBLOCK) or (errno IS EAGAIN)) {
+               log.trace("IPv4-mapped IPv6 connect() attempt would block or need to try again.");
+            }
+            else {
+               log.warning("IPv4-mapped IPv6 Connect() failed: %s", strerror(errno));
+               Socket->Error = ERR::Failed;
+               Socket->setState(NTC::DISCONNECTED);
+               return;
+            }
+
+            Socket->setState(NTC::CONNECTING);
+            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
+         }
+         else {
+            log.trace("IPv4-mapped IPv6 connect() successful.");
+            Socket->setState(NTC::CONNECTED);
+            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+         }
+         return;
+      #endif
+   }
+   
+   // Pure IPv4 connection
    pf::clearmem(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
    server_address.sin_port = net::HostToShort((UWORD)Socket->Port);
