@@ -59,10 +59,8 @@ struct resolve_buffer {
 
 static ERR resolve_address(CSTRING, const IPAddress *, DNSEntry **);
 static ERR resolve_name(CSTRING, DNSEntry **);
-#ifdef _WIN32
 static ERR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry **);
-#else
-static ERR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry **);
+#ifdef __linux__
 static ERR cache_host(HOSTMAP &, CSTRING, struct addrinfo *, DNSEntry **);
 #endif
 
@@ -566,8 +564,8 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info
 static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
 {
    // Use the cache if available.
-   auto it = glHosts.find(HostName);
-   if (it != glHosts.end()) {
+   
+   if (auto it = glHosts.find(HostName); it != glHosts.end()) {
       *Info = &it->second;
       return ERR::Okay;
    }
@@ -579,7 +577,7 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
    hints.ai_family   = AF_UNSPEC;
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_flags    = AI_CANONNAME;
-   int result = getaddrinfo(HostName, nullptr, &hints, &servinfo);
+   auto result = getaddrinfo(HostName, nullptr, &hints, &servinfo);
 
    switch (result) {
       case 0: {
@@ -615,7 +613,8 @@ static void resolve_callback(extNetLookup *Self, ERR Error, const std::string &H
       routine(Self, Error, HostName, Addresses, Self->Callback.Meta);
    }
    else if (Self->Callback.isScript()) {
-      sc::Call(Self->Callback, std::to_array<ScriptArg>({ { "NetLookup", Self, FDF_OBJECT }, { "Error", LONG(Error) } }));
+      // Fluid scripts can retrieve the host and addresses from the NetLookup object - it's a more optimal solution
+      sc::Call(Self->Callback, std::to_array<ScriptArg>({ { "NetLookup", Self, FDF_OBJECT }, { "Error", int(Error) } }));
    }
 }
 

@@ -121,12 +121,32 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
       unsigned char   s6_addr[16];   // IPv6 address
    };
 
+   struct sockaddr_in6 {
+      short sin6_family;
+      UWORD sin6_port;
+      uint32_t sin6_flowinfo;
+      struct in6_addr sin6_addr;
+      uint32_t sin6_scope_id;
+   };
+
+   struct sockaddr_storage {
+      short ss_family;
+      char __ss_pad1[6];
+      int64_t __ss_align;
+      char __ss_pad2[112];
+   };
+
    constexpr uint32_t NOHANDLE = (uint32_t)(~0);
    constexpr int SOCKET_ERROR = -1;
    constexpr int AF_INET      = 2;
    constexpr int AF_INET6     = 23;
    constexpr int INADDR_ANY   = 0;
    constexpr int MSG_PEEK     = 2;
+   constexpr int IPPROTO_IPV6 = 41;
+   constexpr int IPV6_V6ONLY  = 27;
+
+   // IPv6 constants
+   static const struct in6_addr in6addr_any = {{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}};
 
    #define CLOSESOCKET(a) win_closesocket(a);
 #endif
@@ -405,23 +425,41 @@ CSTRING AddressToStr(IPAddress *Address)
 
    if (!Address) return nullptr;
 
-   if (Address->Type != IPADDR::V4) {
-      log.warning("Only IPv4 Addresses are supported currently");
+   if (Address->Type IS IPADDR::V6) {
+      #ifdef __linux__
+         char ipv6_str[INET6_ADDRSTRLEN];
+         struct in6_addr addr;
+         pf::copymem(Address->Data, &addr.s6_addr, 16);
+         
+         if (inet_ntop(AF_INET6, &addr, ipv6_str, INET6_ADDRSTRLEN)) {
+            return pf::strclone(ipv6_str);
+         }
+      #elif _WIN32
+         // Windows IPv6 string conversion using wrapper function
+         char ipv6_str[46];
+         const char *result = win_inet_ntop(AF_INET6, Address->Data, ipv6_str, sizeof(ipv6_str));
+         if (result) return pf::strclone(result);
+      #endif
       return nullptr;
    }
+   else if (Address->Type IS IPADDR::V4) {
+      struct in_addr addr;
+      addr.s_addr = net::HostToLong(Address->Data[0]);
 
-   struct in_addr addr;
-   addr.s_addr = net::HostToLong(Address->Data[0]);
+      STRING result;
+      #ifdef __linux__
+         result = inet_ntoa(addr);
+      #elif _WIN32
+         result = win_inet_ntoa(addr.s_addr);
+      #endif
 
-   STRING result;
-#ifdef __linux__
-   result = inet_ntoa(addr);
-#elif _WIN32
-   result = win_inet_ntoa(addr.s_addr);
-#endif
-
-   if (!result) return nullptr;
-   return pf::strclone(result);
+      if (!result) return nullptr;
+      return pf::strclone(result);
+   }
+   else {
+      log.warning("Unsupported address type: %d", int(Address->Type));
+      return nullptr;
+   }
 }
 
 /*********************************************************************************************************************
@@ -429,8 +467,8 @@ CSTRING AddressToStr(IPAddress *Address)
 -FUNCTION-
 StrToAddress: Converts an IP Address in string form to an !IPAddress structure.
 
-Converts an IPv4 or an IPv6 address in dotted string format to an !IPAddress structure.  The `String` must be of form
-`1.2.3.4` (IPv4).
+Converts an IPv4 or an IPv6 address in string format to an !IPAddress structure.  The `String` must be of form
+`1.2.3.4` (IPv4) or `2001:db8::1` (IPv6).  IPv6 addresses are automatically detected by the presence of colons.
 
 <pre>
 struct IPAddress addr;
@@ -454,11 +492,35 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
 {
    if ((!Str) or (!Address)) return ERR::NullArgs;
 
-#ifdef __linux__
-   uint32_t result = inet_addr(Str);
-#elif _WIN32
-   uint32_t result = win_inet_addr(Str);
-#endif
+   pf::clearmem(Address, sizeof(IPAddress));
+
+   // Try IPv6 first (contains colons)
+   if (strchr(Str, ':')) {
+      #ifdef __linux__
+         struct in6_addr ipv6_addr;
+         if (inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
+            pf::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
+            Address->Type = IPADDR::V6;
+            return ERR::Okay;
+         }
+      #elif _WIN32
+         // Windows IPv6 parsing using wrapper function
+         struct in6_addr ipv6_addr;
+         if (win_inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
+            pf::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
+            Address->Type = IPADDR::V6;
+            return ERR::Okay;
+         }
+         return ERR::Failed;
+      #endif
+   }
+
+   // IPv4
+   #ifdef __linux__
+      uint32_t result = inet_addr(Str);
+   #elif _WIN32
+      uint32_t result = win_inet_addr(Str);
+   #endif
 
    if (result IS INADDR_NONE) return ERR::Failed;
 
@@ -467,7 +529,6 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
    Address->Data[2] = 0;
    Address->Data[3] = 0;
    Address->Type = IPADDR::V4;
-   Address->Pad = 0;
 
    return ERR::Okay;
 }

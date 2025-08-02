@@ -375,28 +375,6 @@ int win_shutdown(WSW_SOCKET S, int How)
 }
 
 //********************************************************************************************************************
-// Create a socket, make it non-blocking and configure it to wake our task when activity occurs on the socket.
-
-WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
-{
-   if (auto handle = socket(PF_INET, SOCK_STREAM, 0); handle != INVALID_SOCKET) {
-      u_long non_blocking = 1;
-      ioctlsocket(handle, FIONBIO, &non_blocking);
-      int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
-      if (Read) flags |= FD_READ;
-      if (Write) flags |= FD_WRITE;
-      if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
-
-      auto sock = WSW_SOCKET(handle);
-      glNetLookup[sock].Reference = NetSocket;
-      glNetLookup[sock].SocketHandle = sock;
-      glNetLookup[sock].Flags = flags;
-      return sock;
-   }
-   else return (WSW_SOCKET)INVALID_SOCKET;
-}
-
-//********************************************************************************************************************
 
 int win_WSAGetLastError()
 {
@@ -508,4 +486,197 @@ int ShutdownWinsock()
    if (glNetClassInit) { UnregisterClass("NetClass", GetModuleHandle(nullptr)); glNetClassInit = FALSE; }
    if (glWinsockInitialised) { WSACleanup(); glWinsockInitialised = FALSE; }
    return 0;
+}
+
+//********************************************************************************************************************
+// Create a socket, make it non-blocking and configure it to wake our task when activity occurs on the socket.
+
+WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
+{
+   if (auto handle = socket(PF_INET, SOCK_STREAM, 0); handle != INVALID_SOCKET) {
+      u_long non_blocking = 1;
+      ioctlsocket(handle, FIONBIO, &non_blocking);
+      int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
+      if (Read) flags |= FD_READ;
+      if (Write) flags |= FD_WRITE;
+      if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
+
+      auto sock = WSW_SOCKET(handle);
+      glNetLookup[sock].Reference = NetSocket;
+      glNetLookup[sock].SocketHandle = sock;
+      glNetLookup[sock].Flags = flags;
+      return sock;
+   }
+   else return (WSW_SOCKET)INVALID_SOCKET;
+}
+
+//********************************************************************************************************************
+// IPv6 wrapper functions for Windows with fall-back to IPv4 if IPv6 is not supported or fails.
+
+WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write)
+{
+   // Try to create IPv6 dual-stack socket first
+   SOCKET handle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+   if (handle != INVALID_SOCKET) {
+      // Set dual-stack mode (disable IPv6-only mode to accept IPv4 connections)
+      DWORD v6only = 0;
+      if (setsockopt(handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&v6only, sizeof(v6only)) != 0) {
+         // Log warning but continue - some systems may not support dual-stack
+      }
+      
+      u_long non_blocking = 1;
+      ioctlsocket(handle, FIONBIO, &non_blocking);
+      
+      int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
+      if (Read) flags |= FD_READ;
+      if (Write) flags |= FD_WRITE;
+      if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
+      
+      auto sock = WSW_SOCKET(handle);
+      glNetLookup[sock].Reference = NetSocket;
+      glNetLookup[sock].SocketHandle = sock;
+      glNetLookup[sock].Flags = flags;
+      return sock;
+   }
+   else { // Fall back to IPv4-only socket
+      return win_socket(NetSocket, Read, Write);
+   }
+}
+
+//********************************************************************************************************************
+// Use Windows Winsock2 inet_pton if available (Windows Vista+)
+// For older systems, provide basic IPv6 parsing
+
+int win_inet_pton(int af, const char *src, void *dst)
+{  
+   if (af IS AF_INET6) {
+      // Basic IPv6 parsing for common formats
+      if (strcmp(src, "::1") IS 0) { // IPv6 loopback
+         memset(dst, 0, 16);
+         ((unsigned char*)dst)[15] = 1;
+         return 1;
+      }
+      else if (strcmp(src, "::") IS 0) { // IPv6 any address
+         memset(dst, 0, 16);
+         return 1;
+      }
+      else if (strncmp(src, "::ffff:", 7) IS 0) { // IPv4-mapped IPv6 address
+         memset(dst, 0, 10);
+         ((unsigned char*)dst)[10] = 0xff;
+         ((unsigned char*)dst)[11] = 0xff;
+         
+         // Parse the IPv4 part
+         unsigned long ipv4 = inet_addr(src + 7);
+         if (ipv4 != INADDR_NONE) {
+            memcpy(((unsigned char*)dst) + 12, &ipv4, 4);
+            return 1;
+         }
+      }
+      else { // Try to use Windows inet_pton if available
+         static auto inet_pton_func = (int (WINAPI*)(int, const char*, void*))GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
+         if (inet_pton_func) return inet_pton_func(af, src, dst);
+         return 0;
+      }
+   }
+   else if (af IS AF_INET) { // Use standard IPv4 parsing
+      unsigned long result = inet_addr(src);
+      if (result != INADDR_NONE) {
+         memcpy(dst, &result, 4);
+         return 1;
+      }
+   }
+   
+   return 0;
+}
+
+//********************************************************************************************************************
+
+const char *win_inet_ntop(int af, const void *src, char *dst, size_t size)
+{
+   if (af IS AF_INET6) {
+      if (size < 46) return nullptr; // Need at least 46 bytes for full IPv6 address
+      
+      const unsigned char *bytes = (const unsigned char*)src;
+      
+      // Check for special addresses
+      static unsigned char loopback[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
+      static unsigned char any[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+      
+      if (memcmp(src, loopback, 16) IS 0) {
+         strcpy(dst, "::1");
+         return dst;
+      }
+      else if (memcmp(src, any, 16) IS 0) {
+         strcpy(dst, "::");
+         return dst;
+      }
+      else if (bytes[10] IS 0xff and bytes[11] IS 0xff) {
+         // IPv4-mapped IPv6
+         struct in_addr ipv4_addr;
+         memcpy(&ipv4_addr, bytes + 12, 4);
+         _snprintf(dst, size, "::ffff:%s", inet_ntoa(ipv4_addr));
+         return dst;
+      }
+      else {
+         // Try to use Windows inet_ntop if available
+         static auto inet_ntop_func = (const char* (WINAPI*)(int, const void*, char*, size_t))
+            GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
+         if (inet_ntop_func) {
+            return inet_ntop_func(af, src, dst, size);
+         }
+         
+         // Fallback: format as full hex representation
+         _snprintf(dst, size, 
+            "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
+         return dst;
+      }
+   }
+   else if (af IS AF_INET) {
+      if (size < 16) return nullptr; // Need at least 16 bytes for IPv4
+      struct in_addr addr;
+      memcpy(&addr, src, 4);
+      const char *result = inet_ntoa(addr);
+      if (result and strlen(result) < size) {
+         strcpy(dst, result);
+         return dst;
+      }
+   }
+   
+   return nullptr; // Error
+}
+
+//********************************************************************************************************************
+
+WSW_SOCKET win_accept_ipv6(void *NetSocket, WSW_SOCKET ServerSocket, struct sockaddr *addr, int *addrlen, int *family)
+{
+   // Use sockaddr_storage for dual-stack accept
+   struct sockaddr_storage storage;
+   int storage_len = sizeof(storage);
+   
+   SOCKET client_fd = accept(ServerSocket, (struct sockaddr*)&storage, &storage_len);
+   if (client_fd IS INVALID_SOCKET) return (WSW_SOCKET)INVALID_SOCKET;
+   
+   if (addr and addrlen) {
+      int copy_len = (*addrlen < storage_len) ? *addrlen : storage_len;
+      memcpy(addr, &storage, copy_len);
+      *addrlen = copy_len;
+   }
+   
+   if (family) *family = storage.ss_family;
+
+   u_long non_blocking = 1;
+   ioctlsocket(client_fd, FIONBIO, &non_blocking);
+   
+   // Register the client socket for event handling
+   int flags = FD_CLOSE | FD_READ | FD_WRITE;
+   if (!glSocketsDisabled) WSAAsyncSelect(client_fd, glNetWindow, WM_NETWORK, flags);
+   
+   auto sock = WSW_SOCKET(client_fd);
+   glNetLookup[sock].Reference = NetSocket;
+   glNetLookup[sock].SocketHandle = sock;
+   glNetLookup[sock].Flags = flags;
+   
+   return sock;
 }
