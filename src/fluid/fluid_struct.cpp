@@ -99,6 +99,81 @@ ERR keyvalue_to_table(lua_State *Lua, const KEYVALUE *Map)
 }
 
 //********************************************************************************************************************
+// Convert a Lua table to a C structure.  The structure is allocated with AllocMemory() and must be freed by the caller.
+// Types that would require an allocation are not supported - our goal is to support primitive structs and anything
+// more complex than that should really be managed as an object.
+
+ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (!Result) return ERR::NullArgs;
+   *Result = NULL;
+
+   if (!lua_istable(Lua, -1)) return log.warning(ERR::WrongType);
+
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   auto def = prv->Structs.find(StructName);
+   if (def IS prv->Structs.end()) return ERR::Search;
+
+   auto &struct_def = def->second;
+   
+   APTR memory;
+   if (AllocMemory(struct_def.Size, MEM::DATA, &memory) != ERR::Okay) {
+      return ERR::AllocMemory;
+   }
+
+   lua_pushnil(Lua); // Access first key for lua_next()
+   while (lua_next(Lua, -2) != 0) { // Pops the current key and pushes the k,v pair.
+      if (auto field_name = lua_tostring(Lua, -2)) {
+         // Find matching field in struct definition
+         auto field_hash = strihash(field_name);
+         for (auto &field : struct_def.Fields) {
+            if (field.nameHash() IS field_hash) {
+               APTR address = (BYTE *)memory + field.Offset;
+               auto type = field.Type;
+
+               if (type & FD_ARRAY) {
+                  if (type & FD_CPP);
+                  else if (field.ArraySize IS - 1); // Pointer to a null-terminated array
+                  else if (lua_istable(Lua, -1) and (type & (FD_FLOAT|FD_DOUBLE|FD_INT64|FD_INT|FD_WORD|FD_BYTE))) { // Embedded, fixed size array
+                     for (int i = 0; i < field.ArraySize; i++) {
+                        lua_pushinteger(Lua, i + 1); // Lua arrays are 1-based
+                        lua_gettable(Lua, -2); // Get value at index
+                        if (type & FD_FLOAT)       ((FLOAT*)address)[i]  = lua_tonumber(Lua, -1);
+                        else if (type & FD_DOUBLE) ((DOUBLE*)address)[i] = lua_tonumber(Lua, -1);
+                        else if (type & FD_INT64)  ((LARGE*)address)[i]  = lua_tonumber(Lua, -1);
+                        else if (type & FD_INT)    ((LONG*)address)[i]   = lua_tointeger(Lua, -1);
+                        else if (type & FD_WORD)   ((WORD*)address)[i]   = lua_tointeger(Lua, -1);
+                        else if (type & FD_BYTE)   ((UBYTE*)address)[i]  = lua_tointeger(Lua, -1);
+                        lua_pop(Lua, 1); // Remove value
+                     }
+                  }
+               }
+               else if (type & FD_STRING) {
+               }
+               else if (type & FD_STRUCT) {
+               }
+               else if (type & FD_POINTER) {
+               }
+               else if (type & FD_FLOAT)  ((FLOAT *)address)[0]  = lua_tonumber(Lua, -1);
+               else if (type & FD_DOUBLE) ((DOUBLE *)address)[0] = lua_tonumber(Lua, -1);
+               else if (type & FD_INT64)  ((LARGE *)address)[0]  = lua_tonumber(Lua, -1);
+               else if (type & FD_INT)    ((LONG *)address)[0]   = lua_tointeger(Lua, -1);
+               else if (type & FD_WORD)   ((WORD *)address)[0]   = lua_tointeger(Lua, -1);
+               else if (type & FD_BYTE)   ((UBYTE *)address)[0]  = lua_tointeger(Lua, -1);
+               break;
+            }
+         }
+      }
+      lua_pop(Lua, 1); // Remove value, keep key for next iteration
+   }
+
+   *Result = memory;
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
 
 ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_record &StructDef, CPTR Address)
 {
@@ -193,7 +268,7 @@ ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_rec
       else if (type & FD_FLOAT)  lua_pushnumber(Lua, ((FLOAT *)address)[0]);
       else if (type & FD_DOUBLE) lua_pushnumber(Lua, ((DOUBLE *)address)[0]);
       else if (type & FD_INT64)  lua_pushnumber(Lua, ((LARGE *)address)[0]);
-      else if (type & FD_INT)   lua_pushinteger(Lua, ((LONG *)address)[0]);
+      else if (type & FD_INT)    lua_pushinteger(Lua, ((LONG *)address)[0]);
       else if (type & FD_WORD)   lua_pushinteger(Lua, ((WORD *)address)[0]);
       else if (type & FD_BYTE)   lua_pushinteger(Lua, ((UBYTE *)address)[0]);
       else lua_pushnil(Lua);

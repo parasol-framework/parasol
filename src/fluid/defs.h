@@ -406,6 +406,7 @@ extern void register_thread_class(lua_State *);
 //static void register_widget_class(lua_State *);
 void release_object(struct object *);
 ERR struct_to_table(lua_State *, std::vector<lua_ref> &, struct struct_record &, CPTR);
+ERR table_to_struct(lua_State *, std::string_view, APTR *);
 ERR keyvalue_to_table(lua_State *, const KEYVALUE *);
 ERR msg_thread_script_callback(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize);
 
