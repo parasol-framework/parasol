@@ -104,6 +104,96 @@ LJLIB_CF(string_rep)		LJLIB_REC(.)
   return 1;
 }
 
+// PARASOL FEATURE: string.resize() is a quicker version of string.rep() for reserving space without filling it.
+// Clients can also use the LuaJIT buffer library, but this function remains useful for string data.
+// 
+// 1. Takes a size parameter - Uses lj_lib_checkint(L, 1) to get the size from the first argument
+// 2. Validates the size - Checks that size is not negative and throws an error if it is
+// 3. Reserves buffer space - Uses lj_buf_need(sb, (MSize)size) to ensure the buffer has enough capacity
+// 4. Advances the write pointer - Sets sb->w += size to reserve the space without filling it
+// 5. Returns the string - Creates and returns the string with the reserved space
+
+LJLIB_CF(string_resize)
+{
+  int32_t size = lj_lib_checkint(L, 1);
+  if (size < 0) lj_err_arg(L, 1, LJ_ERR_NUMRNG);
+  SBuf *sb = lj_buf_tmp_(L);
+  lj_buf_reset(sb);
+  lj_buf_need(sb, (MSize)size);
+  sb->w += size;  /* Advance write pointer to reserve space */
+  setstrV(L, L->top-1, lj_buf_str(L, sb));
+  lj_gc_check(L);
+  return 1;
+}
+
+LJLIB_CF(string_split)
+{
+  GCstr *s = lj_lib_checkstr(L, 1);
+  GCstr *sep = lj_lib_optstr(L, 2);
+  const char *str = strdata(s);
+  const char *sepstr;
+  MSize seplen;
+  MSize slen = s->len;
+  GCtab *t;
+  int32_t idx = 1;
+  
+  if ((!sep) || (sep->len == 0)) {
+    sepstr = " \t\n\r";  /* Default whitespace separators */
+    seplen = 4;
+  } else {
+    sepstr = strdata(sep);
+    seplen = sep->len;
+  }
+  
+  lua_createtable(L, 8, 0);  /* Initial array size estimate */
+  t = tabV(L->top-1);
+  
+  if (slen == 0) return 1;  /* Return empty table for empty string */
+  
+  const char *start = str;
+  const char *end = str + slen;
+  const char *pos = start;
+  
+  while (pos <= end) {
+    const char *found = NULL;
+    
+    /* Find next separator */
+    if (seplen == 1) {
+      found = (const char*)memchr(pos, sepstr[0], end - pos);
+    } 
+    else {
+      /* Multi-character separator or whitespace */
+      for (const char *p = pos; p <= end - seplen; p++) {
+        if (seplen == 4 && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
+          found = p;
+          break;
+        } 
+        else if (memcmp(p, sepstr, seplen) == 0) {
+          found = p;
+          break;
+        }
+      }
+    }
+    
+    if (found) {
+      /* Add substring to table */
+      GCstr *substr = lj_str_new(L, pos, found - pos);
+      setstrV(L, lj_tab_setint(L, t, idx), substr);
+      idx++;
+      pos = found + (seplen == 4 ? 1 : seplen);  /* Skip separator */
+    } else {
+      /* Add final substring */
+      GCstr *substr = lj_str_new(L, pos, end - pos);
+      setstrV(L, lj_tab_setint(L, t, idx), substr);
+      idx++;
+      break;
+    }
+  }
+  
+  lj_gc_check(L);
+  return 1;
+}
+
 LJLIB_ASM(string_reverse)  LJLIB_REC(string_op IRCALL_lj_buf_putstr_reverse)
 {
   lj_lib_checkstr(L, 1);
