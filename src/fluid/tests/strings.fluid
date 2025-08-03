@@ -1,16 +1,16 @@
 -- Flute tests for the custom string functions
 
-function testResize()
-   local s = string.resize(10)
+function testAlloc()
+   local s = string.alloc(10)
    if #s != 10 then error("String size is not 10 characters, got " .. #s) end
    
    -- Test zero size
-   local empty = string.resize(0)
-   if #empty != 0 then error("Zero resize should create empty string, got " .. #empty) end
+   local empty = string.alloc(0)
+   if #empty != 0 then error("Zero alloc should create empty string, got " .. #empty) end
    
    -- Test large size
-   local big = string.resize(1000)
-   if #big != 1000 then error("Large resize failed, expected 1000, got " .. #big) end
+   local big = string.alloc(1000)
+   if #big != 1000 then error("Large alloc failed, expected 1000, got " .. #big) end
 end
 
 function testSplit()
@@ -184,16 +184,132 @@ function testEndsWith()
    if string.endsWith("Hello", "hello") then error("Should be case sensitive") end
 end
 
+function testCap()
+   -- Basic capitalization
+   local capped = string.cap("hello")
+   if capped != "Hello" then error("Expected 'Hello', got '" .. capped .. "'") end
+   
+   -- Already capitalized
+   local already = string.cap("Hello")
+   if already != "Hello" then error("Expected 'Hello', got '" .. already .. "'") end
+   
+   -- Single character
+   local single = string.cap("a")
+   if single != "A" then error("Expected 'A', got '" .. single .. "'") end
+   
+   -- Empty string
+   local empty = string.cap("")
+   if empty != "" then error("Empty string should remain empty, got '" .. empty .. "'") end
+   
+   -- Non-alphabetic first character
+   local nonalpha = string.cap("123hello")
+   if nonalpha != "123hello" then error("Expected '123hello', got '" .. nonalpha .. "'") end
+   
+   -- Mixed case
+   local mixed = string.cap("hELLO")
+   if mixed != "HELLO" then error("Expected 'HELLO', got '" .. mixed .. "'") end
+end
+
+function testDecap()
+   -- Basic decapitalization
+   local decapped = string.decap("Hello")
+   if decapped != "hello" then error("Expected 'hello', got '" .. decapped .. "'") end
+   
+   -- Already lowercase
+   local already = string.decap("hello")
+   if already != "hello" then error("Expected 'hello', got '" .. already .. "'") end
+   
+   -- Single character
+   local single = string.decap("A")
+   if single != "a" then error("Expected 'a', got '" .. single .. "'") end
+   
+   -- Empty string
+   local empty = string.decap("")
+   if empty != "" then error("Empty string should remain empty, got '" .. empty .. "'") end
+   
+   -- Non-alphabetic first character
+   local nonalpha = string.decap("123Hello")
+   if nonalpha != "123Hello" then error("Expected '123Hello', got '" .. nonalpha .. "'") end
+   
+   -- Mixed case
+   local mixed = string.decap("HeLLo")
+   if mixed != "heLLo" then error("Expected 'heLLo', got '" .. mixed .. "'") end
+end
+
+function testHash()
+   -- Basic hash (case insensitive by default)
+   local hash1 = string.hash("hello")
+   local hash2 = string.hash("HELLO")
+   if hash1 != hash2 then error("Case insensitive hashes should match: " .. hash1 .. " != " .. hash2) end
+   
+   -- Case sensitive hash
+   local hash3 = string.hash("hello", true)
+   local hash4 = string.hash("HELLO", true)
+   if hash3 == hash4 then error("Case sensitive hashes should differ: " .. hash3 .. " == " .. hash4) end
+   
+   -- Empty string
+   local emptyHash = string.hash("")
+   if emptyHash == 0 then error("Empty string hash should not be 0, got " .. emptyHash) end
+   
+   -- Same string should produce same hash
+   local consistent1 = string.hash("test")
+   local consistent2 = string.hash("test")
+   if consistent1 != consistent2 then error("Consistent hashing failed: " .. consistent1 .. " != " .. consistent2) end
+   
+   -- Different strings should produce different hashes (highly likely)
+   local diff1 = string.hash("hello")
+   local diff2 = string.hash("world")
+   if diff1 == diff2 then error("Different strings produced same hash (collision): " .. diff1) end
+end
+
+function testEscXML()
+   -- Basic XML escaping
+   local escaped = string.escXML("Hello & goodbye")
+   if escaped != "Hello &amp; goodbye" then error("Expected 'Hello &amp; goodbye', got '" .. escaped .. "'") end
+   
+   -- Less than and greater than
+   local brackets = string.escXML("<tag>content</tag>")
+   if brackets != "&lt;tag&gt;content&lt;/tag&gt;" then error("Expected '&lt;tag&gt;content&lt;/tag&gt;', got '" .. brackets .. "'") end
+   
+   -- All three special characters
+   local all = string.escXML("A & B < C > D")
+   if all != "A &amp; B &lt; C &gt; D" then error("Expected 'A &amp; B &lt; C &gt; D', got '" .. all .. "'") end
+   
+   -- No special characters
+   local normal = string.escXML("Hello World")
+   if normal != "Hello World" then error("Expected 'Hello World', got '" .. normal .. "'") end
+   
+   -- Empty string
+   local empty = string.escXML("")
+   if empty != "" then error("Empty string should remain empty, got '" .. empty .. "'") end
+   
+   -- Nil input (should return empty string)
+   local nilResult = string.escXML(nil)
+   if nilResult != "" then error("Nil input should return empty string, got '" .. nilResult .. "'") end
+   
+   -- Multiple ampersands (should not double-escape)
+   local amps = string.escXML("A & B & C")
+   if amps != "A &amp; B &amp; C" then error("Expected 'A &amp; B &amp; C', got '" .. amps .. "'") end
+   
+   -- Mixed with quotes (should not escape quotes)
+   local quotes = string.escXML('Hello "world" & <test>')
+   if quotes != 'Hello "world" &amp; &lt;test&gt;' then error("Expected 'Hello \"world\" &amp; &lt;test&gt;', got '" .. quotes .. "'") end
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
-         'testResize',
+         'testAlloc',
          'testSplit',
          'testTrim',
          'testRTrim',
          'testJoin',
          'testStartsWith',
-         'testEndsWith'
+         'testEndsWith',
+         'testCap',
+         'testDecap',
+         'testHash',
+         'testEscXML'
       }
    }

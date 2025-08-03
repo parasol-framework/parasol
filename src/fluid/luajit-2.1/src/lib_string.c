@@ -104,7 +104,7 @@ LJLIB_CF(string_rep)		LJLIB_REC(.)
   return 1;
 }
 
-// PARASOL FEATURE: string.resize() is a quicker version of string.rep() for reserving space without filling it.
+// PARASOL FEATURE: string.alloc() is a quicker version of string.rep() for reserving space without filling it.
 // Clients can also use the LuaJIT buffer library, but this function remains useful for string data.
 //
 // 1. Takes a size parameter - Uses lj_lib_checkint(L, 1) to get the size from the first argument
@@ -113,7 +113,7 @@ LJLIB_CF(string_rep)		LJLIB_REC(.)
 // 4. Advances the write pointer - Sets sb->w += size to reserve the space without filling it
 // 5. Returns the string - Creates and returns the string with the reserved space
 
-LJLIB_CF(string_resize)
+LJLIB_CF(string_alloc)
 {
   int32_t size = lj_lib_checkint(L, 1);
   if (size < 0) lj_err_arg(L, 1, LJ_ERR_NUMRNG);
@@ -349,6 +349,128 @@ LJLIB_CF(string_join)
     }
   }
 
+  setstrV(L, L->top-1, lj_buf_str(L, sb));
+  lj_gc_check(L);
+  return 1;
+}
+
+LJLIB_CF(string_cap)
+{
+  GCstr *s = lj_lib_checkstr(L, 1);
+  const char *str = strdata(s);
+  MSize len = s->len;
+  
+  if (len == 0) {
+    setstrV(L, L->top-1, &G(L)->strempty);
+    return 1;
+  }
+  
+  /* Create new string with first character uppercased */
+  SBuf *sb = lj_buf_tmp_(L);
+  lj_buf_reset(sb);
+  
+  /* Convert first character to uppercase */
+  char first = str[0];
+  if (first >= 'a' && first <= 'z') {
+    first = first - 32;  /* Convert to uppercase */
+  }
+  lj_buf_putb(sb, first);
+  
+  /* Add remaining characters unchanged */
+  if (len > 1) lj_buf_putmem(sb, str + 1, len - 1);
+  
+  setstrV(L, L->top-1, lj_buf_str(L, sb));
+  lj_gc_check(L);
+  return 1;
+}
+
+LJLIB_CF(string_decap)
+{
+  GCstr *s = lj_lib_checkstr(L, 1);
+  const char *str = strdata(s);
+  MSize len = s->len;
+  
+  if (len == 0) {
+    setstrV(L, L->top-1, &G(L)->strempty);
+    return 1;
+  }
+  
+  /* Create new string with first character lowercased */
+  SBuf *sb = lj_buf_tmp_(L);
+  lj_buf_reset(sb);
+  
+  /* Convert first character to lowercase */
+  char first = str[0];
+  if (first >= 'A' && first <= 'Z') {
+    first = first + 32;  /* Convert to lowercase */
+  }
+  lj_buf_putb(sb, first);
+  
+  if (len > 1) lj_buf_putmem(sb, str + 1, len - 1);
+  
+  setstrV(L, L->top-1, lj_buf_str(L, sb));
+  lj_gc_check(L);
+  return 1;
+}
+
+LJLIB_CF(string_hash)
+{
+  GCstr *s = lj_lib_checkstr(L, 1);
+  int caseSensitive = 0;  /* Default: case insensitive */
+  
+  /* Check for optional second parameter (boolean) */
+  if (L->base+1 < L->top && tvisbool(L->base+1)) {
+    caseSensitive = boolV(L->base+1);
+  }
+  const char *str = strdata(s);
+  MSize len = s->len;
+  uint32_t hash = 5381;  /* djb2 hash algorithm */
+  MSize i;
+  
+  if (caseSensitive) {
+    for (i = 0; i < len; i++) {
+      hash = ((hash << 5) + hash) + (unsigned char)str[i];
+    }
+  } 
+  else {
+    for (i = 0; i < len; i++) {
+      unsigned char c = (unsigned char)str[i];
+      if (c >= 0x41 && c <= 0x5A) c = c + 0x20;
+      hash = ((hash << 5) + hash) + c;
+    }
+  }
+  
+  setintV(L->top-1, (int32_t)hash);
+  return 1;
+}
+
+LJLIB_CF(string_escXML)
+{
+  GCstr *s = lj_lib_optstr(L, 1);
+  
+  /* Handle nil input - return empty string */
+  if (!s) {
+    setstrV(L, L->top-1, &G(L)->strempty);
+    return 1;
+  }
+  
+  const char *str = strdata(s);
+  MSize len = s->len;
+  SBuf *sb = lj_buf_tmp_(L);
+  MSize i;
+  
+  lj_buf_reset(sb);
+  
+  for (i = 0; i < len; i++) {
+    char c = str[i];
+    switch (c) {
+      case '&': lj_buf_putmem(sb, "&amp;", 5); break;
+      case '<': lj_buf_putmem(sb, "&lt;", 4); break;
+      case '>': lj_buf_putmem(sb, "&gt;", 4); break;
+      default: lj_buf_putb(sb, c); break;
+    }
+  }
+  
   setstrV(L, L->top-1, lj_buf_str(L, sb));
   lj_gc_check(L);
   return 1;

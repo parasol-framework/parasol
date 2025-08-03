@@ -71,56 +71,6 @@ end
 
 ------------------------------------------------------------------------------
 
-string.escXML = function(s)
-   if s == nil then return '' end
-   s = string.gsub(s, '&', '&amp;')
-   s = string.gsub(s, '<', '&lt;')
-   s = string.gsub(s, '>', '&gt;')
-   return s
-end
-
-------------------------------------------------------------------------------
-
-string.cap = function(s)
-   if nz(s) then
-      return s:sub(1,1):upper() .. s:sub(2)
-   else
-      return ''
-   end
-end
-
-------------------------------------------------------------------------------
-
-string.decap = function(s)
-   if nz(s) then
-      return s:sub(1,1):lower() .. s:sub(2)
-   else
-      return ''
-   end
-end
-
-------------------------------------------------------------------------------
-
-string.hash = function(s, c)
-   if type(s) != 'string' then return 0 end
-
-   local hash = 5381
-   if c then
-      for i = 1, #s do
-         hash = bit.lshift(hash,5) + hash + s:byte(i)
-      end
-   else
-      for i = 1, #s do
-         local low = s:byte(i)
-         if (low >= 0x41 and low <= 0x5a) then low = low + 0x20 end
-         hash = bit.lshift(hash,5) + hash + low
-      end
-   end
-   return hash
-end
-
-------------------------------------------------------------------------------
-
 if file == nil then
    file = { ui = { } }
 end
