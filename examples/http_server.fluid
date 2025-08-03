@@ -146,7 +146,7 @@ function serveFile(client, filePath)
    end
 
    local fileSize = file.size
-   local buffer = string.rep(' ', fileSize)
+   local buffer = string.reserve(fileSize)
    local err, bytesRead = file.acRead(buffer)
    file.free()
 
@@ -222,7 +222,7 @@ function generateDirectoryListing(dirPath, urlPath)
    catch(function()
       dir = obj.new('file', { path = dirPath, flags = FL_FOLDER })
    end)
-   
+
    if dir then
       local err = dir.acNext()
       while err == ERR_Okay do
@@ -230,20 +230,20 @@ function generateDirectoryListing(dirPath, urlPath)
          local isFolder = bit.band(dir.flags, FL_FOLDER) != 0
          local size = isFolder and '-' or formatFileSize(dir.size)
          local modTime = formatDate(dir.timeStamp)
-         
+
          local href = urlPath
          if href != '/' then href = href .. '/' end
          href = href .. name
          if isFolder then href = href .. '/' end
-         
+
          local displayName = name
          if isFolder then displayName = displayName .. '/' end
-         
+
          local cssClass = isFolder and ' class="dir"' or ''
          html = html .. '<tr><td><a href="' .. href .. '"' .. cssClass .. '>' .. displayName .. '</a></td>'
          html = html .. '<td class="size">' .. size .. '</td>'
          html = html .. '<td>' .. modTime .. '</td></tr>\n'
-         
+
          err = dir.acNext()
       end
       dir.free()
@@ -251,7 +251,7 @@ function generateDirectoryListing(dirPath, urlPath)
 
    html = html .. '</tbody>\n</table>\n'
    html = html .. '</body>\n</html>\n'
-   
+
    return html
 end
 
@@ -259,19 +259,19 @@ end
 
 function serveDirectory(client, dirPath, urlPath)
    local indexPath = dirPath .. '/index.html'
-   
+
    -- Try to serve index.html first
    local indexFile
    catch(function()
       indexFile = obj.new('file', { path = indexPath, flags = 'READ' })
    end)
-   
+
    if indexFile then
       indexFile.free()
       serveFile(client, indexPath)
       return
    end
-   
+
    -- Generate directory listing
    local html = generateDirectoryListing(dirPath, urlPath)
    sendHttpResponse(client, 200, 'OK', {
@@ -290,7 +290,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function handleRequest(client)
-   local buffer = string.rep(' ', 4096)
+   local buffer = string.reserve(4096)
    local err, bytesRead = client.acRead(buffer)
 
    if err != ERR_Okay then
@@ -323,7 +323,7 @@ function handleRequest(client)
 
    -- Remove query parameters and decode URL
    local urlPath = request.path:match("([^?]*)")
-   
+
    -- Security: prevent directory traversal
    if urlPath:find("%.%.") then
       local errorBody = "<html><body><h1>403 Forbidden</h1><p>Access denied.</p></body></html>"
@@ -334,13 +334,13 @@ function handleRequest(client)
    end
 
    local filePath = glOptions.folder .. urlPath
-   
+
    -- Check if path exists and determine if it's a file or directory
    local fileObj
    catch(function()
       fileObj = obj.new('file', { path = filePath })
    end)
-   
+
    if not fileObj then
       local errorBody = "<html><body><h1>404 Not Found</h1><p>The requested resource was not found.</p></body></html>"
       sendHttpResponse(client, 404, "Not Found", {
@@ -348,10 +348,10 @@ function handleRequest(client)
       }, errorBody)
       return
    end
-   
+
    local isFolder = bit.band(fileObj.flags, FL_FOLDER) != 0
    fileObj.free()
-   
+
    if isFolder then
       -- Ensure directory URLs end with /
       if not urlPath:match('/$') then
@@ -406,21 +406,9 @@ end
       return
    end
 
-   local folder
-   catch(function()
-      folder = obj.new('file', { path = glOptions.folder, flags=FL_FOLDER })
-   end,
-   function()
-      print('Error: folder "' .. glOptions.folder .. '" does not exist')
-      exit()
-   end)
-
-   if bit.band(folder.flags, FL_FOLDER) == 0 then
-      print('Error: "' .. glOptions.folder .. '" is not a folder')
-      folder.free()
-      return
+   local err, filetype = mSys.AnalysePath(glOptions.folder)
+   if filetype != LOC_FOLDER then
+      error('Error: folder "' .. nz(glOptions.folder,'NIL') .. '" does not exist')
    end
-
-   folder.free()
 
    startServer()
