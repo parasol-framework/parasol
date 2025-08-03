@@ -30,6 +30,7 @@ each entry the proxy database.  You may change existing values of any proxy and 
 #include <unordered_map>
 #include <functional>
 #include <format>
+#include <array>
 
 #ifdef _WIN32
 #define HKEY_PROXY "\\HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\"
@@ -97,12 +98,12 @@ public:
       bool enabled;
    };
    
-   static std::vector<ProxyEntry> parseProxyString(std::string_view servers, bool enabled) {
+   static std::vector<ProxyEntry> parseProxyString(const std::string_view servers, const bool enabled) {
       std::vector<ProxyEntry> entries;
       
-      const std::unordered_map<std::string, int> protocolPorts = {
+      static constexpr std::array<std::pair<std::string_view, int>, 3> protocolPorts = {{
          {"ftp", 21}, {"http", 80}, {"https", 443}
-      };
+      }};
       
       size_t pos = 0;
       while (pos < servers.length()) {
@@ -115,9 +116,9 @@ public:
    
 private:
    static std::optional<ProxyEntry> parseNextEntry(
-      std::string_view servers, size_t& pos,
-      const std::unordered_map<std::string, int>& protocolPorts,
-      bool enabled) {
+      const std::string_view servers, size_t& pos,
+      const std::array<std::pair<std::string_view, int>, 3>& protocolPorts,
+      const bool enabled) {
       
       while (pos < servers.length() and servers[pos] == ';') ++pos;
       if (pos >= servers.length()) return std::nullopt;
@@ -138,7 +139,9 @@ private:
             std::string server = serverPart.substr(0, colonPos);
             int serverPort = std::stoi(serverPart.substr(colonPos + 1));
            
-            if (auto it = protocolPorts.find(protocol); it != protocolPorts.end()) {
+            auto it = std::find_if(protocolPorts.begin(), protocolPorts.end(),
+               [&protocol](const auto& pair) { return pair.first == protocol; });
+            if (it != protocolPorts.end()) {
                return ProxyEntry{ std::format("Windows {}", protocol), server, it->second, serverPort, enabled };
             }
          }
@@ -848,20 +851,20 @@ static const FieldDef clPorts[] = {
    { "FTPS",      990 },
    { "TelnetSSL", 992 },
    { "All",       0 },   // All ports
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clProxyFields[] = {
-   { "NetworkFilter", FDF_STRING|FDF_RW, NULL, SET_NetworkFilter },
-   { "GatewayFilter", FDF_STRING|FDF_RW, NULL, SET_GatewayFilter },
-   { "Username",      FDF_STRING|FDF_RW, NULL, SET_Username },
-   { "Password",      FDF_STRING|FDF_RW, NULL, SET_Password },
-   { "ProxyName",     FDF_STRING|FDF_RW, NULL, SET_ProxyName },
-   { "Server",        FDF_STRING|FDF_RW, NULL, SET_Server },
-   { "Port",          FDF_INT|FDF_LOOKUP|FDF_RW, NULL, SET_Port, &clPorts },
-   { "ServerPort",    FDF_INT|FDF_RW, NULL, SET_ServerPort },
-   { "Enabled",       FDF_INT|FDF_RW, NULL, SET_Enabled },
-   { "Record",        FDF_INT|FDF_RW, NULL, SET_Record },
+   { "NetworkFilter", FDF_STRING|FDF_RW, nullptr, SET_NetworkFilter },
+   { "GatewayFilter", FDF_STRING|FDF_RW, nullptr, SET_GatewayFilter },
+   { "Username",      FDF_STRING|FDF_RW, nullptr, SET_Username },
+   { "Password",      FDF_STRING|FDF_RW, nullptr, SET_Password },
+   { "ProxyName",     FDF_STRING|FDF_RW, nullptr, SET_ProxyName },
+   { "Server",        FDF_STRING|FDF_RW, nullptr, SET_Server },
+   { "Port",          FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_Port, &clPorts },
+   { "ServerPort",    FDF_INT|FDF_RW, nullptr, SET_ServerPort },
+   { "Enabled",       FDF_INT|FDF_RW, nullptr, SET_Enabled },
+   { "Record",        FDF_INT|FDF_RW, nullptr, SET_Record },
    END_FIELD
 };
 
