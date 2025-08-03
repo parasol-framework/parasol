@@ -1,0 +1,199 @@
+-- Flute tests for the custom string functions
+
+function testResize()
+   local s = string.resize(10)
+   if #s != 10 then error("String size is not 10 characters, got " .. #s) end
+   
+   -- Test zero size
+   local empty = string.resize(0)
+   if #empty != 0 then error("Zero resize should create empty string, got " .. #empty) end
+   
+   -- Test large size
+   local big = string.resize(1000)
+   if #big != 1000 then error("Large resize failed, expected 1000, got " .. #big) end
+end
+
+function testSplit()
+   -- Basic comma split
+   local parts = string.split("a,b,c", ",")
+   if #parts != 3 then error("Expected 3 parts, got " .. #parts) end
+   if parts[1] != "a" then error("Expected 'a', got '" .. parts[1] .. "'") end
+   if parts[2] != "b" then error("Expected 'b', got '" .. parts[2] .. "'") end
+   if parts[3] != "c" then error("Expected 'c', got '" .. parts[3] .. "'") end
+   
+   -- Whitespace split (default)
+   local words = string.split("hello world\ttab\nnewline")
+   if #words != 4 then error("Expected 4 words, got " .. #words) end
+   if words[1] != "hello" then error("Expected 'hello', got '" .. words[1] .. "'") end
+   if words[2] != "world" then error("Expected 'world', got '" .. words[2] .. "'") end
+   if words[3] != "tab" then error("Expected 'tab', got '" .. words[3] .. "'") end
+   if words[4] != "newline" then error("Expected 'newline', got '" .. words[4] .. "'") end
+   
+   -- Multi-character separator
+   local multi = string.split("one::two::three", "::")
+   if #multi != 3 then error("Expected 3 parts with :: separator, got " .. #multi) end
+   if multi[1] != "one" then error("Expected 'one', got '" .. multi[1] .. "'") end
+   if multi[2] != "two" then error("Expected 'two', got '" .. multi[2] .. "'") end
+   if multi[3] != "three" then error("Expected 'three', got '" .. multi[3] .. "'") end
+   
+   -- Empty string
+   local empty = string.split("")
+   if #empty != 0 then error("Empty string split should return empty table, got " .. #empty) end
+   
+   -- No separator found
+   local nosep = string.split("hello", ",")
+   if #nosep != 1 then error("No separator should return single item, got " .. #nosep) end
+   if nosep[1] != "hello" then error("Expected 'hello', got '" .. nosep[1] .. "'") end
+end
+
+function testTrim()
+   -- Basic trim
+   local trimmed = string.trim("  hello world  ")
+   if trimmed != "hello world" then error("Expected 'hello world', got '" .. trimmed .. "'") end
+   
+   -- Left whitespace only
+   local left = string.trim("  hello")
+   if left != "hello" then error("Expected 'hello', got '" .. left .. "'") end
+   
+   -- Right whitespace only
+   local right = string.trim("hello  ")
+   if right != "hello" then error("Expected 'hello', got '" .. right .. "'") end
+   
+   -- Mixed whitespace types
+   local mixed = string.trim("\t\n  hello world  \r\n\t")
+   if mixed != "hello world" then error("Expected 'hello world', got '" .. mixed .. "'") end
+   
+   -- All whitespace
+   local allspace = string.trim("   \t\n\r   ")
+   if allspace != "" then error("All whitespace should return empty string, got '" .. allspace .. "'") end
+   
+   -- Empty string
+   local empty = string.trim("")
+   if empty != "" then error("Empty string should remain empty, got '" .. empty .. "'") end
+   
+   -- No whitespace
+   local none = string.trim("hello")
+   if none != "hello" then error("No whitespace should be unchanged, got '" .. none .. "'") end
+end
+
+function testRTrim()
+   -- Basic right trim
+   local trimmed = string.rtrim("hello world  ")
+   if trimmed != "hello world" then error("Expected 'hello world', got '" .. trimmed .. "'") end
+   
+   -- Left whitespace preserved
+   local left = string.rtrim("  hello world  ")
+   if left != "  hello world" then error("Expected '  hello world', got '" .. left .. "'") end
+   
+   -- Mixed whitespace types
+   local mixed = string.rtrim("hello world  \r\n\t")
+   if mixed != "hello world" then error("Expected 'hello world', got '" .. mixed .. "'") end
+   
+   -- All whitespace
+   local allspace = string.rtrim("   \t\n\r   ")
+   if allspace != "" then error("All whitespace should return empty string, got '" .. allspace .. "'") end
+   
+   -- Empty string
+   local empty = string.rtrim("")
+   if empty != "" then error("Empty string should remain empty, got '" .. empty .. "'") end
+   
+   -- No whitespace
+   local none = string.rtrim("hello")
+   if none != "hello" then error("No whitespace should be unchanged, got '" .. none .. "'") end
+end
+
+function testJoin()
+   -- Basic join
+   local joined = string.join({"hello", "world"}, " ")
+   if joined != "hello world" then error("Expected 'hello world', got '" .. joined .. "'") end
+   
+   -- CSV style
+   local csv = string.join({"a", "b", "c"}, ",")
+   if csv != "a,b,c" then error("Expected 'a,b,c', got '" .. csv .. "'") end
+   
+   -- No separator
+   local concat = string.join({"a", "b", "c"})
+   if concat != "abc" then error("Expected 'abc', got '" .. concat .. "'") end
+   
+   -- Mixed types (numbers should be converted)
+   local mixed = string.join({1, "hello", 2.5, "world"}, "-")
+   if mixed != "1-hello-2.5-world" then error("Expected '1-hello-2.5-world', got '" .. mixed .. "'") end
+   
+   -- Empty table
+   local empty = string.join({}, ",")
+   if empty != "" then error("Empty table should return empty string, got '" .. empty .. "'") end
+   
+   -- Single item
+   local single = string.join({"hello"}, ",")
+   if single != "hello" then error("Single item should return 'hello', got '" .. single .. "'") end
+   
+   -- Empty strings in table
+   local withEmpty = string.join({"a", "", "b"}, ",")
+   if withEmpty != "a,,b" then error("Expected 'a,,b', got '" .. withEmpty .. "'") end
+end
+
+function testStartsWith()
+   -- Basic positive case
+   if not string.startsWith("hello world", "hello") then error("Should start with 'hello'") end
+   
+   -- Basic negative case
+   if string.startsWith("hello world", "world") then error("Should not start with 'world'") end
+   
+   -- Empty prefix (should always match)
+   if not string.startsWith("hello", "") then error("Should match empty prefix") end
+   
+   -- Prefix longer than string
+   if string.startsWith("hi", "hello") then error("Should not match longer prefix") end
+   
+   -- Exact match
+   if not string.startsWith("hello", "hello") then error("Should match exact string") end
+   
+   -- Empty string with empty prefix
+   if not string.startsWith("", "") then error("Empty string should match empty prefix") end
+   
+   -- Empty string with non-empty prefix
+   if string.startsWith("", "hello") then error("Empty string should not match non-empty prefix") end
+   
+   -- Case sensitive
+   if string.startsWith("Hello", "hello") then error("Should be case sensitive") end
+end
+
+function testEndsWith()
+   -- Basic positive case
+   if not string.endsWith("hello world", "world") then error("Should end with 'world'") end
+   
+   -- Basic negative case
+   if string.endsWith("hello world", "hello") then error("Should not end with 'hello'") end
+   
+   -- Empty suffix (should always match)
+   if not string.endsWith("hello", "") then error("Should match empty suffix") end
+   
+   -- Suffix longer than string
+   if string.endsWith("hi", "hello") then error("Should not match longer suffix") end
+   
+   -- Exact match
+   if not string.endsWith("hello", "hello") then error("Should match exact string") end
+   
+   -- Empty string with empty suffix
+   if not string.endsWith("", "") then error("Empty string should match empty suffix") end
+   
+   -- Empty string with non-empty suffix
+   if string.endsWith("", "hello") then error("Empty string should not match non-empty suffix") end
+   
+   -- Case sensitive
+   if string.endsWith("Hello", "hello") then error("Should be case sensitive") end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = {
+         'testResize',
+         'testSplit',
+         'testTrim',
+         'testRTrim',
+         'testJoin',
+         'testStartsWith',
+         'testEndsWith'
+      }
+   }

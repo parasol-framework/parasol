@@ -92,3 +92,4 @@ flute_test(fluid_processing "${CMAKE_CURRENT_SOURCE_DIR}/tests/processing.fluid"
 flute_test(fluid_struct "${CMAKE_CURRENT_SOURCE_DIR}/tests/struct.fluid")
 flute_test(fluid_threads "${CMAKE_CURRENT_SOURCE_DIR}/tests/action_threads.fluid")
 flute_test(fluid_xml "${CMAKE_CURRENT_SOURCE_DIR}/tests/to_xml.fluid")
+flute_test(fluid_strings "${CMAKE_CURRENT_SOURCE_DIR}/tests/strings.fluid")

@@ -106,7 +106,7 @@ LJLIB_CF(string_rep)		LJLIB_REC(.)
 
 // PARASOL FEATURE: string.resize() is a quicker version of string.rep() for reserving space without filling it.
 // Clients can also use the LuaJIT buffer library, but this function remains useful for string data.
-// 
+//
 // 1. Takes a size parameter - Uses lj_lib_checkint(L, 1) to get the size from the first argument
 // 2. Validates the size - Checks that size is not negative and throws an error if it is
 // 3. Reserves buffer space - Uses lj_buf_need(sb, (MSize)size) to ensure the buffer has enough capacity
@@ -136,7 +136,7 @@ LJLIB_CF(string_split)
   MSize slen = s->len;
   GCtab *t;
   int32_t idx = 1;
-  
+
   if ((!sep) || (sep->len == 0)) {
     sepstr = " \t\n\r";  /* Default whitespace separators */
     seplen = 4;
@@ -144,37 +144,37 @@ LJLIB_CF(string_split)
     sepstr = strdata(sep);
     seplen = sep->len;
   }
-  
+
   lua_createtable(L, 8, 0);  /* Initial array size estimate */
   t = tabV(L->top-1);
-  
+
   if (slen == 0) return 1;  /* Return empty table for empty string */
-  
+
   const char *start = str;
   const char *end = str + slen;
   const char *pos = start;
-  
+
   while (pos <= end) {
     const char *found = NULL;
-    
+
     /* Find next separator */
     if (seplen == 1) {
       found = (const char*)memchr(pos, sepstr[0], end - pos);
-    } 
+    }
     else {
       /* Multi-character separator or whitespace */
       for (const char *p = pos; p <= end - seplen; p++) {
         if (seplen == 4 && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
           found = p;
           break;
-        } 
+        }
         else if (memcmp(p, sepstr, seplen) == 0) {
           found = p;
           break;
         }
       }
     }
-    
+
     if (found) {
       /* Add substring to table */
       GCstr *substr = lj_str_new(L, pos, found - pos);
@@ -189,7 +189,167 @@ LJLIB_CF(string_split)
       break;
     }
   }
-  
+
+  lj_gc_check(L);
+  return 1;
+}
+
+LJLIB_CF(string_trim)
+{
+  GCstr *s = lj_lib_checkstr(L, 1);
+  const char *str = strdata(s);
+  MSize len = s->len;
+  const char *start = str;
+  const char *end = str + len;
+
+  if (len == 0) {
+    setstrV(L, L->top-1, &G(L)->strempty);
+    return 1;
+  }
+
+  /* Skip leading whitespace */
+  while (start < end && (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r'))
+    start++;
+
+  /* Skip trailing whitespace */
+  while (end > start && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
+    end--;
+
+  /* If all whitespace, return empty string */
+  if (start >= end) {
+    setstrV(L, L->top-1, &G(L)->strempty);
+    return 1;
+  }
+
+  /* Create trimmed string */
+  GCstr *result = lj_str_new(L, start, end - start);
+  setstrV(L, L->top-1, result);
+  lj_gc_check(L);
+  return 1;
+}
+
+LJLIB_CF(string_rtrim)
+{
+  GCstr *s = lj_lib_checkstr(L, 1);
+  const char *str = strdata(s);
+  MSize len = s->len;
+  const char *end = str + len;
+
+  if (len == 0) {
+    setstrV(L, L->top-1, s);  /* Return original empty string */
+    return 1;
+  }
+
+  /* Find end of non-whitespace */
+  while (end > str && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\n' || end[-1] == '\r'))
+    end--;
+
+  /* Create right-trimmed string */
+  GCstr *result = lj_str_new(L, str, end - str);
+  setstrV(L, L->top-1, result);
+  lj_gc_check(L);
+  return 1;
+}
+
+LJLIB_CF(string_startsWith)
+{
+  GCstr *s = lj_lib_checkstr(L, 1);
+  GCstr *prefix = lj_lib_checkstr(L, 2);
+  const char *str = strdata(s);
+  const char *prefixstr = strdata(prefix);
+  MSize slen = s->len;
+  MSize prefixlen = prefix->len;
+
+  /* Empty prefix always matches */
+  if (prefixlen == 0) {
+    setboolV(L->top-1, 1);
+    return 1;
+  }
+
+  /* Prefix longer than string cannot match */
+  if (prefixlen > slen) {
+    setboolV(L->top-1, 0);
+    return 1;
+  }
+
+  /* Compare prefix with start of string */
+  int matches = (memcmp(str, prefixstr, prefixlen) == 0);
+  setboolV(L->top-1, matches);
+  return 1;
+}
+
+LJLIB_CF(string_endsWith)
+{
+  GCstr *s = lj_lib_checkstr(L, 1);
+  GCstr *suffix = lj_lib_checkstr(L, 2);
+  const char *str = strdata(s);
+  const char *suffixstr = strdata(suffix);
+  MSize slen = s->len;
+  MSize suffixlen = suffix->len;
+
+  /* Empty suffix always matches */
+  if (suffixlen == 0) {
+    setboolV(L->top-1, 1);
+    return 1;
+  }
+
+  /* Suffix longer than string cannot match */
+  if (suffixlen > slen) {
+    setboolV(L->top-1, 0);
+    return 1;
+  }
+
+  /* Compare suffix with end of string */
+  int matches = (memcmp(str + slen - suffixlen, suffixstr, suffixlen) == 0);
+  setboolV(L->top-1, matches);
+  return 1;
+}
+
+LJLIB_CF(string_join)
+{
+  GCtab *t = lj_lib_checktab(L, 1);
+  GCstr *sep = lj_lib_optstr(L, 2);
+  const char *sepstr = "";
+  MSize seplen = 0;
+  SBuf *sb = lj_buf_tmp_(L);
+  int32_t len = (int32_t)lj_tab_len(t);
+  int32_t i;
+
+  if (sep) {
+    sepstr = strdata(sep);
+    seplen = sep->len;
+  }
+
+  lj_buf_reset(sb);
+
+  for (i = 1; i <= len; i++) {
+    cTValue *tv = lj_tab_getint(t, i);
+    if (tv && !tvisnil(tv)) {
+      int isValidType = 0;
+
+      /* Check if we have a valid type to process */
+      if (tvisstr(tv) || tvisnum(tv)) {
+        isValidType = 1;
+      }
+
+      if (isValidType) {
+        /* Add separator before non-first elements */
+        if (sb->w > sb->b && seplen > 0) {
+          lj_buf_putmem(sb, sepstr, seplen);
+        }
+
+        if (tvisstr(tv)) {
+          /* Add string content */
+          lj_buf_putstr(sb, strV(tv));
+        } else if (tvisnum(tv)) {
+          /* Convert number to string directly into buffer */
+          sb = lj_strfmt_putnum(sb, tv);
+        }
+      }
+    }
+  }
+
+  setstrV(L, L->top-1, lj_buf_str(L, sb));
   lj_gc_check(L);
   return 1;
 }
