@@ -1,0 +1,426 @@
+--[[
+Simple HTTP server for serving static files from a folder.
+
+Usage: parasol.exe http_server.fluid folder=path/to/files port=8080
+
+Parameters:
+  folder - The folder containing HTML pages and static files to serve
+  port   - The port number to listen on (default: 8080)
+  config - A Fluid config file with more
+--]]
+
+include 'network'
+
+glSelf = obj.find('self')
+glPath = glSelf.workingPath
+
+local glConfigFile = arg('config')
+local glServer = nil
+
+glOptions = {
+   port   = 8080,
+   folder = '.'
+}
+
+   if not glConfigFile then glConfigFile = glPath .. 'http_server_cfg.fluid' end
+
+   if glConfigFile then
+      loadFile(glConfigFile, glOptions)
+   else
+      if mSys.AnalysePath(glConfigFile) == ERR_Okay then
+         loadFile(glConfigFile, glOptions)
+      end
+   end
+
+   if arg('port') then glOptions.port = arg('port') end
+   if arg('folder') then glOptions.folder = arg('folder') end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function getMimeType(filename)
+   local extension = filename:match("%.([^%.]+)$")
+   if not extension then
+      return 'application/octet-stream'
+   end
+
+   extension = extension:lower()
+
+   local mimeTypes = {
+      html = 'text/html',
+      htm = 'text/html',
+      css = 'text/css',
+      js = 'application/javascript',
+      json = 'application/json',
+      xml = 'application/xml',
+      txt = 'text/plain',
+      png = 'image/png',
+      jpg = 'image/jpeg',
+      jpeg = 'image/jpeg',
+      gif = 'image/gif',
+      svg = 'image/svg+xml',
+      ico = 'image/x-icon',
+      pdf = 'application/pdf'
+   }
+
+   return mimeTypes[extension] or 'application/octet-stream'
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function parseHttpRequest(requestData)
+   local lines = {}
+   for line in requestData:gmatch("[^\r\n]+") do
+      table.insert(lines, line)
+   end
+
+   if #lines == 0 then
+      return nil
+   end
+
+   local requestLine = lines[1]
+   local method, path, version = requestLine:match("(%S+)%s+(%S+)%s+(%S+)")
+
+   if not method or not path then
+      return nil
+   end
+
+   local headers = {}
+   for i = 2, #lines do
+      local line = lines[i]
+      local name, value = line:match("([^:]+):%s*(.+)")
+      if name and value then
+         headers[name:lower()] = value
+      end
+   end
+
+   return {
+      method = method,
+      path = path,
+      version = version,
+      headers = headers
+   }
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function sendHttpResponse(client, statusCode, statusText, headers, body)
+   local response = "HTTP/1.1 " .. statusCode .. " " .. statusText .. "\r\n"
+
+   if not headers['content-length'] and body then
+      headers['content-length'] = tostring(#body)
+   end
+
+   if not headers['connection'] then
+      headers['connection'] = 'close'
+   end
+
+   for name, value in pairs(headers) do
+      response = response .. name .. ": " .. value .. "\r\n"
+   end
+
+   response = response .. "\r\n"
+
+   if body then
+      response = response .. body
+   end
+
+   local err = client.acWrite(response)
+   if err != ERR_Okay then
+      print('Failed to send response: ' .. mSys.GetErrorMsg(err))
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function serveFile(client, filePath)
+   local file
+   catch(function()
+      file = obj.new('file', { path = filePath, flags = 'READ' })
+   end)
+   if not file then
+      local errorBody = "<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>"
+      sendHttpResponse(client, 404, "Not Found", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+
+   local fileSize = file.size
+   local buffer = string.rep(' ', fileSize)
+   local err, bytesRead = file.acRead(buffer)
+   file.free()
+
+   if err != ERR_Okay or bytesRead != fileSize then
+      local errorBody = "<html><body><h1>500 Internal Server Error</h1><p>Error reading file.</p></body></html>"
+      sendHttpResponse(client, 500, "Internal Server Error", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+
+   local mimeType = getMimeType(filePath)
+   sendHttpResponse(client, 200, "OK", {
+      ['content-type'] = mimeType
+   }, buffer:sub(1, bytesRead))
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function formatFileSize(bytes)
+   if bytes < 1024 then
+      return tostring(bytes) .. ' B'
+   elseif bytes < 1024 * 1024 then
+      return string.format('%.1f KB', bytes / 1024)
+   elseif bytes < 1024 * 1024 * 1024 then
+      return string.format('%.1f MB', bytes / (1024 * 1024))
+   else
+      return string.format('%.1f GB', bytes / (1024 * 1024 * 1024))
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function formatDate(timestamp)
+   local tm = obj.new('time')
+   tm.acSet(timestamp)
+   return string.format('%04d-%02d-%02d %02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function generateDirectoryListing(dirPath, urlPath)
+   local html = '<!DOCTYPE html>\n<html>\n<head>\n'
+   html = html .. '<meta charset="utf-8">\n'
+   html = html .. '<title>Directory listing for ' .. urlPath .. '</title>\n'
+   html = html .. '<style>\n'
+   html = html .. 'body { font-family: Arial, sans-serif; margin: 40px; }\n'
+   html = html .. 'h1 { color: #333; }\n'
+   html = html .. 'table { border-collapse: collapse; width: 100%; }\n'
+   html = html .. 'th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ddd; }\n'
+   html = html .. 'th { background-color: #f5f5f5; font-weight: bold; }\n'
+   html = html .. 'tr:hover { background-color: #f9f9f9; }\n'
+   html = html .. 'a { text-decoration: none; color: #0066cc; }\n'
+   html = html .. 'a:hover { text-decoration: underline; }\n'
+   html = html .. '.dir { font-weight: bold; }\n'
+   html = html .. '.size { text-align: right; }\n'
+   html = html .. '</style>\n'
+   html = html .. '</head>\n<body>\n'
+   html = html .. '<h1>Directory listing for ' .. urlPath .. '</h1>\n'
+   html = html .. '<table>\n'
+   html = html .. '<thead>\n<tr><th>Name</th><th>Size</th><th>Last Modified</th></tr>\n</thead>\n'
+   html = html .. '<tbody>\n'
+
+   -- Add parent directory link if not root
+   if urlPath != '/' then
+      local parentPath = urlPath:match('(.+)/')
+      if not parentPath then parentPath = '/' end
+      html = html .. '<tr><td><a href="' .. parentPath .. '" class="dir">../</a></td><td>-</td><td>-</td></tr>\n'
+   end
+
+   -- List directory contents
+   local dir
+   catch(function()
+      dir = obj.new('file', { path = dirPath, flags = FL_FOLDER })
+   end)
+   
+   if dir then
+      local err = dir.acNext()
+      while err == ERR_Okay do
+         local name = dir.name
+         local isFolder = bit.band(dir.flags, FL_FOLDER) != 0
+         local size = isFolder and '-' or formatFileSize(dir.size)
+         local modTime = formatDate(dir.timeStamp)
+         
+         local href = urlPath
+         if href != '/' then href = href .. '/' end
+         href = href .. name
+         if isFolder then href = href .. '/' end
+         
+         local displayName = name
+         if isFolder then displayName = displayName .. '/' end
+         
+         local cssClass = isFolder and ' class="dir"' or ''
+         html = html .. '<tr><td><a href="' .. href .. '"' .. cssClass .. '>' .. displayName .. '</a></td>'
+         html = html .. '<td class="size">' .. size .. '</td>'
+         html = html .. '<td>' .. modTime .. '</td></tr>\n'
+         
+         err = dir.acNext()
+      end
+      dir.free()
+   end
+
+   html = html .. '</tbody>\n</table>\n'
+   html = html .. '</body>\n</html>\n'
+   
+   return html
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function serveDirectory(client, dirPath, urlPath)
+   local indexPath = dirPath .. '/index.html'
+   
+   -- Try to serve index.html first
+   local indexFile
+   catch(function()
+      indexFile = obj.new('file', { path = indexPath, flags = 'READ' })
+   end)
+   
+   if indexFile then
+      indexFile.free()
+      serveFile(client, indexPath)
+      return
+   end
+   
+   -- Generate directory listing
+   local html = generateDirectoryListing(dirPath, urlPath)
+   sendHttpResponse(client, 200, 'OK', {
+      ['content-type'] = 'text/html; charset=utf-8'
+   }, html)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function timestamp()
+   local tm = obj.new('time')
+   tm.acQuery()
+   return string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function handleRequest(client)
+   local buffer = string.rep(' ', 4096)
+   local err, bytesRead = client.acRead(buffer)
+
+   if err != ERR_Okay then
+      print('Failed to read request: ' .. mSys.GetErrorMsg(err))
+      return
+   end
+
+   local requestData = buffer:sub(1, bytesRead)
+   local request = parseHttpRequest(requestData)
+
+   if not request then
+      local errorBody = "<html><body><h1>400 Bad Request</h1><p>Invalid HTTP request.</p></body></html>"
+      sendHttpResponse(client, 400, "Bad Request", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+
+   print('[' .. timestamp() .. '] ' .. request.method .. ' ' .. request.path)
+
+   -- Only handle GET requests
+   if request.method != 'GET' then
+      local errorBody = "<html><body><h1>405 Method Not Allowed</h1><p>Only GET requests are supported.</p></body></html>"
+      sendHttpResponse(client, 405, "Method Not Allowed", {
+         ['content-type'] = 'text/html',
+         ['allow'] = 'GET'
+      }, errorBody)
+      return
+   end
+
+   -- Remove query parameters and decode URL
+   local urlPath = request.path:match("([^?]*)")
+   
+   -- Security: prevent directory traversal
+   if urlPath:find("%.%.") then
+      local errorBody = "<html><body><h1>403 Forbidden</h1><p>Access denied.</p></body></html>"
+      sendHttpResponse(client, 403, "Forbidden", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+
+   local filePath = glOptions.folder .. urlPath
+   
+   -- Check if path exists and determine if it's a file or directory
+   local fileObj
+   catch(function()
+      fileObj = obj.new('file', { path = filePath })
+   end)
+   
+   if not fileObj then
+      local errorBody = "<html><body><h1>404 Not Found</h1><p>The requested resource was not found.</p></body></html>"
+      sendHttpResponse(client, 404, "Not Found", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+   
+   local isFolder = bit.band(fileObj.flags, FL_FOLDER) != 0
+   fileObj.free()
+   
+   if isFolder then
+      -- Ensure directory URLs end with /
+      if not urlPath:match('/$') then
+         sendHttpResponse(client, 301, 'Moved Permanently', {
+            ['location'] = urlPath .. '/'
+         })
+         return
+      end
+      serveDirectory(client, filePath, urlPath)
+   else
+      serveFile(client, filePath)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function startServer()
+   print('Starting HTTP server on port ' .. glOptions.port)
+   print('Serving files from: ' .. glOptions.folder)
+   print('Press Ctrl+C to stop the server')
+
+   glServer = obj.new('netsocket', {
+      port = glOptions.port,
+      flags = 'SERVER|MULTI_CONNECT', -- LOG_ALL
+      feedback = function(socket, client, state)
+         if state == NTC_CONNECTED then
+            print('Client connected: ' .. tostring(client))
+         elseif state == NTC_DISCONNECTED then
+            print('Client disconnected: ' .. tostring(client))
+         end
+      end,
+      incoming = function(socket, client)
+         handleRequest(client)
+      end
+   })
+
+   if not glServer then
+      error('Failed to create server socket')
+   end
+
+   print('Server started successfully')
+
+   local proc = processing.new()
+   proc.sleep()
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+   if not glOptions.folder then
+      print('Error: folder parameter is required')
+      print('Usage: parasol.exe http_server.fluid folder=path/to/files port=8080')
+      return
+   end
+
+   local folder
+   catch(function()
+      folder = obj.new('file', { path = glOptions.folder, flags=FL_FOLDER })
+   end,
+   function()
+      print('Error: folder "' .. glOptions.folder .. '" does not exist')
+      exit()
+   end)
+
+   if bit.band(folder.flags, FL_FOLDER) == 0 then
+      print('Error: "' .. glOptions.folder .. '" is not a folder')
+      folder.free()
+      return
+   end
+
+   folder.free()
+
+   startServer()
