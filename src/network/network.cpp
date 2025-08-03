@@ -179,7 +179,7 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    #define htonl win_htonl
    #define ntohs win_ntohs
    #define ntohl win_ntohl
-   
+
    // Forward declarations for getaddrinfo functions (available in ws2_32.lib)
    extern "C" {
       int getaddrinfo(const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res);
@@ -247,7 +247,7 @@ class extNetSocket : public objNetSocket {
         BIO *BIO;
       #endif
    #endif
- 
+
    ERR write_queue(NetQueue &Queue, CPTR Message, size_t Length);
 };
 
@@ -444,7 +444,7 @@ CSTRING AddressToStr(IPAddress *Address)
          char ipv6_str[INET6_ADDRSTRLEN];
          struct in6_addr addr;
          pf::copymem(Address->Data, &addr.s6_addr, 16);
-         
+
          if (inet_ntop(AF_INET6, &addr, ipv6_str, INET6_ADDRSTRLEN)) {
             return pf::strclone(ipv6_str);
          }
@@ -707,20 +707,6 @@ ERR SetSSL(objNetSocket *Socket, ...)
 #endif
 
 //********************************************************************************************************************
-// Used by RECEIVE() SSL support.
-
-#ifdef _WIN32
-static void client_server_pending(SOCKET_HANDLE FD, APTR Self) __attribute__((unused));
-static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
-{
-   #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-   RegisterFD((HOSTHANDLE)((extNetSocket *)Self)->SocketHandle, RFD::REMOVE|RFD::READ|RFD::SOCKET, nullptr, nullptr);
-   #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
-   client_server_incoming(FD, (extNetSocket *)Self);
-}
-#endif
-
-//********************************************************************************************************************
 
 static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int BufferSize, int Flags, int *Result)
 {
@@ -780,7 +766,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
           }
        }
     }
-  #else
+  #else // OpenSSL
     int8_t read_blocked;
     int pending;
 
@@ -805,12 +791,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
 
                    log.msg("SSL socket handshake requested by server.");
                    Self->SSLBusy = SSL_HANDSHAKE_WRITE;
-                   #ifdef __linux__
-                      RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, &ssl_handshake_write, Self);
-                   #else
-                      win_socketstate(Socket, -1, TRUE);
-                   #endif
-
+                   RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, &ssl_handshake_write, Self);
                    return ERR::Okay;
 
                 case SSL_ERROR_SYSCALL:
@@ -838,14 +819,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
          // For this reason we set the RECALL flag so that we can be called again manually when we know that there is
          // data pending.
 
-         #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
-         #elif _WIN32
-            // In Windows we don't want to listen to FD's on a permanent basis,
-            // so this is a temporary setting that will be reset by client_server_pending()
-
-            RegisterFD((HOSTHANDLE)(MAXINT)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_pending), (APTR)Self);
-         #endif
+         RegisterFD((HOSTHANDLE)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
       }
 
       return ERR::Okay;

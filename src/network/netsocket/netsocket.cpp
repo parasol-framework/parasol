@@ -1323,7 +1323,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    }
 
    #if defined(_DEBUG) || defined(ENABLE_TRACE_MSGS)
-   static const CSTRING msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
+   static constexpr const char* const msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
    log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], int(Error), Socket->InUse, Socket->WinRecursion);
    #endif
 
