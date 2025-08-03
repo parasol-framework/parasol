@@ -196,7 +196,12 @@ LJLIB_CF(string_split)
 
 LJLIB_CF(string_trim)
 {
-  GCstr *s = lj_lib_checkstr(L, 1);
+  GCstr *s = lj_lib_optstr(L, 1);
+  if (!s) {
+    setstrV(L, L->top-1, &G(L)->strempty);
+    return 1;
+  }
+  
   const char *str = strdata(s);
   MSize len = s->len;
   const char *start = str;
@@ -230,7 +235,12 @@ LJLIB_CF(string_trim)
 
 LJLIB_CF(string_rtrim)
 {
-  GCstr *s = lj_lib_checkstr(L, 1);
+  GCstr *s = lj_lib_optstr(L, 1);
+  if (!s) {
+    setstrV(L, L->top-1, &G(L)->strempty);
+    return 1;
+  }
+  
   const char *str = strdata(s);
   MSize len = s->len;
   const char *end = str + len;

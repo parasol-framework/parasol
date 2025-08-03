@@ -1,10 +1,5 @@
 -- Common utility functions are kept in this module.
 
-math.round = function(num, idp)
-   local mult = 10^(idp or 0)
-   return math.floor(num * mult + 0.5) / mult
-end
-
 ------------------------------------------------------------------------------
 -- Parse the key-values of a table into an XML string.
 

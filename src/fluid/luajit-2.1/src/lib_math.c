@@ -95,6 +95,22 @@ LJLIB_ASM(math_min)		LJLIB_REC(math_minmax IR_MIN)
 }
 LJLIB_ASM_(math_max)		LJLIB_REC(math_minmax IR_MAX)
 
+LJLIB_CF(math_round)
+{
+   double num = lj_lib_checknum(L, 1);
+   double mult = 1.0;
+   
+   if (L->base+1 < L->top) {
+      /* Second argument is decimal places */
+      double idp = lj_lib_checknum(L, 2);
+      mult = pow(10.0, idp);
+   }
+   
+   double result = floor(num * mult + 0.5) / mult;
+   setnumV(L->top-1, result);
+   return 1;
+}
+
 LJLIB_PUSH(3.14159265358979323846) LJLIB_SET(pi)
 LJLIB_PUSH(1e310) LJLIB_SET(huge)
 
