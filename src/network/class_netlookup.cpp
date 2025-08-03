@@ -372,7 +372,7 @@ static ERR GET_Addresses(extNetLookup *Self, BYTE **Value, int *Elements)
 -FIELD-
 Callback: This function will be called on the completion of any name or address resolution.
 
-The function referenced here will receive the results of the most recently resolved name or address.  The C/C++ prototype
+The function referenced here will receive the results of the most recently resolved name or address.  The C++ prototype
 is `Function(*NetLookup, ERR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)`.
 
 The Fluid prototype is as follows, with results readable from the #HostName and #Addresses fields:

@@ -42,27 +42,6 @@ static ERR find_proxy(extProxy *);
 static void clear_values(extProxy *);
 static ERR get_record(extProxy *);
 
-#ifdef _WIN32
-static LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
-{
-   if ((String) and (Offset >= 0) and (TotalBytes > 0)) {
-      STRING orig = String;
-      String += Offset;
-      const LONG skip = TotalBytes;
-      while (String[skip] != 0) { *String = String[skip]; String++; }
-      *String = 0;
-      return (LONG)(String - orig);
-   }
-   else return 0;
-}
-#endif
-
-/*
-static void free_proxy(void)
-{
- if (glConfig) { FreeResource(glConfig); glConfig = NULL; }
-}
-*/
 
 /*********************************************************************************************************************
 
@@ -519,7 +498,8 @@ static ERR PROXY_SaveSettings(extProxy *Self)
                      }
                   }
 
-                  StrShrink(server_buffer, index, end-index);
+                  // Remove the substring by shifting remaining characters left
+                  memmove(server_buffer + index, server_buffer + end, strlen(server_buffer + end) + 1);
                }
 
                // Add the entry to the end of the string list
