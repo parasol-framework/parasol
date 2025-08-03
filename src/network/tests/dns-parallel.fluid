@@ -2,6 +2,8 @@
 Tests for resolving server names in parallel.
 --]]
 
+   mNet = mod.load('network')
+
    local glSelf = obj.find('self')
    local proc = processing.new({ timeout = 5.0 })
 
@@ -28,9 +30,9 @@ function name_resolved(NetLookup, Error)
       for index, ip in pairs(addresses) do
          if (ip.type == IPADDR_V4) or (ip.type == IPADDR_V6) then
             if (ip_list == nil) then
-               ip_list = netAddressToString(ip)
+               ip_list = mNet.AddressToStr(ip)
             else
-               ip_list = ip_list .. ', ' .. netAddressToString(ip)
+               ip_list = ip_list .. ', ' .. mNet.AddressToStr(ip)
             end
          else
             error('Unrecognised TCP/IP address type ' .. ip.type)

@@ -6,7 +6,7 @@ This test checks connectivity and I/O with a server by sending a simple HTTP req
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function testHTTP()
+function testRawHTTP()
    local proc = processing.new({ timeout = 5.0 })
    local netsocket
    netsocket = obj.new('netsocket', {
@@ -49,5 +49,5 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = { 'testHTTP' }
+      tests = { 'testRawHTTP' }
    }

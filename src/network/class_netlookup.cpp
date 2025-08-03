@@ -559,6 +559,50 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info
 #endif
 }
 
+#ifdef _WIN32
+
+static ERR cache_host_from_addrinfo(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
+{
+   if ((!Host) or (!Cache)) return ERR::NullArgs;
+
+   *Cache = nullptr;
+
+   if (!Key) {
+      if (!(Key = Host->ai_canonname)) return ERR::Args;
+   }
+
+   pf::Log log(__FUNCTION__);
+   log.detail("Key: %s, Addresses: %p (IPv6: %d)", Key, Host->ai_addr, (Host->ai_family IS AF_INET6));
+
+   DNSEntry cache;
+   if (!Host->ai_canonname) cache.HostName = Key;
+   else cache.HostName = Host->ai_canonname;
+
+   if ((Host->ai_family != AF_INET) and (Host->ai_family != AF_INET6)) return ERR::Args;
+
+   for (auto scan=Host; scan; scan=scan->ai_next) {
+      if (!scan->ai_addr) continue;
+
+      if (scan->ai_family IS AF_INET) {
+         auto addr = ((struct sockaddr_in *)scan->ai_addr)->sin_addr.s_addr;
+         cache.Addresses.push_back({ ntohl(addr), 0, 0, 0, IPADDR::V4 });
+      }
+      else if (scan->ai_family IS AF_INET6) {
+         auto addr = (struct sockaddr_in6 *)scan->ai_addr;
+         cache.Addresses.push_back({
+            ((uint32_t *)&addr->sin6_addr.s6_addr)[0], ((uint32_t *)&addr->sin6_addr.s6_addr)[1], 
+            ((uint32_t *)&addr->sin6_addr.s6_addr)[2], ((uint32_t *)&addr->sin6_addr.s6_addr)[3], IPADDR::V6
+         });
+      }
+   }
+
+   Store[Key] = std::move(cache);
+   *Cache = &Store[Key];
+   return ERR::Okay;
+}
+
+#endif
+
 //********************************************************************************************************************
 
 static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
@@ -570,20 +614,32 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
       return ERR::Okay;
    }
 
-#ifdef __linux__
+   // Use getaddrinfo() on both Linux and Windows for proper IPv4 and IPv6 (AAAA record) support
    struct addrinfo hints, *servinfo;
 
+   pf::Log log(__FUNCTION__);
+   log.detail("Resolving hostname: %s using getaddrinfo", HostName);
+
    pf::clearmem(&hints, sizeof hints);
-   hints.ai_family   = AF_UNSPEC;
+   hints.ai_family   = AF_UNSPEC;     // Allow both IPv4 and IPv6
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_flags    = AI_CANONNAME;
    auto result = getaddrinfo(HostName, nullptr, &hints, &servinfo);
+   
+   log.detail("getaddrinfo returned: %d", result);
 
    switch (result) {
       case 0: {
+#ifdef __linux__
          ERR error = cache_host(glHosts, HostName, servinfo, Info);
          freeaddrinfo(servinfo);
          return error;
+#elif _WIN32
+         // Convert getaddrinfo result to hostent format for Windows compatibility
+         ERR error = cache_host_from_addrinfo(glHosts, HostName, servinfo, Info);
+         freeaddrinfo(servinfo);
+         return error;
+#endif
       }
       case EAI_AGAIN:  return ERR::Retry;
       case EAI_FAIL:   return ERR::Failed;
@@ -593,11 +649,6 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
    }
 
    return ERR::Failed;
-#elif _WIN32
-   struct hostent *host = win_gethostbyname(HostName);
-   if (!host) return ERR::Failed;
-   return cache_host(glHosts, HostName, host, Info);
-#endif
 }
 
 //********************************************************************************************************************
