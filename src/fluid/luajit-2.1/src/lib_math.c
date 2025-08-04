@@ -99,15 +99,14 @@ LJLIB_CF(math_round)
 {
    double num = lj_lib_checknum(L, 1);
    double mult = 1.0;
-   
-   if (L->base+1 < L->top) {
-      /* Second argument is decimal places */
+
+   if (L->base+1 < L->top) { // Second argument is decimal places
       double idp = lj_lib_checknum(L, 2);
       mult = pow(10.0, idp);
    }
-   
+
    double result = floor(num * mult + 0.5) / mult;
-   setnumV(L->top-1, result);
+   setnumV(L->base-1-LJ_FR2, result); // setnumV(L->top-1, result); ??
    return 1;
 }
 
