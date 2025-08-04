@@ -150,7 +150,6 @@ static int module_call(lua_State *Lua)
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) {
       log.warning(ERR::ObjectCorrupt);
-      cleanup();
       return 0;
    }
 
@@ -241,13 +240,15 @@ static int module_call(lua_State *Lua)
                }
             }
             else {
+               cleanup();
                luaL_error(Lua, "A memory buffer is required in arg #%d.", i);
                return 0;
             }
          }
          else if (argtype & FD_STR) { // FD_RESULT
             if (argtype & FD_CPP) {
-               // Special case; we provide a std::string that will be used as a buffer for storing the result.
+               // Special case; we provide a std::string that will be used as a buffer for storing the result and destroy
+               // it after processing results.
                auto str_ptr = new std::string;
                allocated_strings.push_back(str_ptr);
                ((std::string **)(buffer + j))[0] = str_ptr;
@@ -289,6 +290,7 @@ static int module_call(lua_State *Lua)
             j += sizeof(APTR);
          }
          else {
+            cleanup();
             luaL_error(Lua, "Unrecognised arg %d type %d", i, argtype);
             return 0;
          }
@@ -320,6 +322,7 @@ static int module_call(lua_State *Lua)
                break;
 
             default:
+               cleanup();
                luaL_error(Lua, "Type mismatch, arg #%d (%s) expected function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
                return 0;
          }
@@ -345,10 +348,12 @@ static int module_call(lua_State *Lua)
             ((CSTRING *)(buffer + j))[0] = nullptr;
          }
          else if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
+            cleanup();
             luaL_error(Lua, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
             return 0;
          }
          else {
+            cleanup();
             luaL_error(Lua, "Type mismatch, arg #%d (%s) expected string, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
             return 0;
          }
@@ -409,17 +414,20 @@ static int module_call(lua_State *Lua)
                      i++;
                   }
                   else {
+                     cleanup();
                      luaL_error(Lua, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
                      return 0;
                   }
                }
             }
             else {
+               cleanup();
                luaL_error(Lua, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
                return 0;
             }
          }
          else {
+            cleanup();
             luaL_error(Lua, "Type mismatch, arg #%d (%s) expected array, got '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)));
             return 0;
          }
@@ -577,10 +585,12 @@ static int module_call(lua_State *Lua)
          j += sizeof(int);
       }
       else if (argtype & (FD_TAGS|FD_VARTAGS)) {
+         cleanup();
          luaL_error(Lua, "Functions using tags are not supported.");
          return 0;
       }
       else {
+         cleanup();
          log.warning("%s() unsupported arg '%s', flags $%.8x, aborting now.", mod->Functions[index].Name, args[i].Name, argtype);
          return 0;
       }
@@ -628,6 +638,7 @@ static int module_call(lua_State *Lua)
                      lua_pushlightuserdata(Lua, (APTR)structptr);
                   }
                   else {
+                     cleanup();
                      luaL_error(Lua, "Failed to resolve struct %s, error: %s", args->Name, GetErrorMsg(error));
                      return 0;
                   }
@@ -686,14 +697,11 @@ static int module_call(lua_State *Lua)
       result = 0;
    }
 
-   // Cleanup dynamically allocated objects after successful function call
-   for (auto ptr : allocated_string_views) delete ptr;
-   for (auto ptr : allocated_structs) FreeResource(ptr);
+   auto return_code = process_results(prv, buffer, args) + result;
 
-   // Clear the allocated_strings vector since those pointers are consumed by process_results()
-   allocated_strings.clear();
-   
-   return process_results(prv, buffer, args) + result;
+   cleanup();
+
+   return return_code;
 }
 
 //********************************************************************************************************************
@@ -742,7 +750,6 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
                if (argtype & FD_CPP) { // std::string variant
                   auto str_result = (std::string *)var;
                   lua_pushlstring(prv->Lua, str_result->data(), str_result->size());
-                  delete str_result;
                }
                else {
                   lua_pushstring(prv->Lua, ((STRING *)var)[0]);
@@ -751,9 +758,6 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
             }
             else lua_pushnil(prv->Lua);
             results++;
-         }
-         else if (argtype & FD_CPP) { // Delete dynamically created std::string_view
-            delete ((std::string_view **)scan)[0];
          }
          scan += sizeof(APTR);
       }
