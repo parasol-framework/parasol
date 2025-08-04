@@ -191,20 +191,42 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
       Self->Handle = -1;
    }
 
-   if (Self->Prev) {
-      Self->Prev->Next = Self->Next;
-      if (Self->Next) Self->Next->Prev = Self->Prev;
-   }
-   else {
-      Self->Client->Connections = Self->Next;
-      if (Self->Next) Self->Next->Prev = nullptr;
-   }
+   if (Self->Client) { // If undefined, ClientSocket was never initialised correctly
+      if (Self->Prev) {
+         Self->Prev->Next = Self->Next;
+         if (Self->Next) Self->Next->Prev = Self->Prev;
+      }
+      else {
+         Self->Client->Connections = Self->Next;
+         if (Self->Next) Self->Next->Prev = nullptr;
+      }
 
-   Self->Client->TotalConnections--;
+      Self->Client->TotalConnections--;
 
-   if (!Self->Client->Connections) {
-      log.msg("No more connections for this IP, removing client.");
-      free_client((extNetSocket *)Self->Client->NetSocket, Self->Client);
+      if (!Self->Client->Connections) {
+         log.msg("No more connections for this IP, removing client.");
+         free_client((extNetSocket *)Self->Client->NetSocket, Self->Client);
+      }
+   
+      auto owner = (extNetSocket *)Self->Owner;
+      if ((owner) and (owner->classID() IS CLASSID::NETSOCKET)) {
+         if (owner->Feedback.defined()) {
+            log.traceBranch("Reporting client disconnection to NetSocket %p.", owner);
+
+            if (owner->Feedback.isC()) {
+               pf::SwitchContext context(owner->Feedback.Context);
+               auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))owner->Feedback.Routine;
+               if (routine) routine(owner, Self, NTC::DISCONNECTED, owner->Feedback.Meta);
+            }
+            else if (owner->Feedback.isScript()) {
+               sc::Call(owner->Feedback, std::to_array<ScriptArg>({
+                  { "NetSocket",    owner, FD_OBJECTPTR },
+                  { "ClientSocket", APTR(Self), FD_OBJECTPTR },
+                  { "State",        int(NTC::DISCONNECTED) }
+               }));
+            }
+         }
+      }
    }
 
    Self->~extClientSocket();
@@ -215,6 +237,8 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 
 static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 {
+   if (!Self->Client) return ERR::FieldNotSet;
+
 #ifdef __linux__
    int non_blocking = 1;
    ioctl(Self->Handle, FIONBIO, &non_blocking);

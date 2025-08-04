@@ -1412,6 +1412,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
       if (ClientSocket) {
          if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection closed by client.");
          FreeResource(ClientSocket);
+         // Note: Disconnection feedback is sent to the NetSocket by the ClientSocket destructor.
       }
       else {
          if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection closed by server, error %d.", int(Error));

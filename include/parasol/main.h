@@ -453,6 +453,7 @@ class SwitchContext { // C++ wrapper for changing the current context with a res
 // These field name and type declarations help to ensure that fields are paired with the correct type during create().
 
 class objBitmap;
+struct NetClient;
 
 namespace fl {
    using namespace pf;
@@ -546,7 +547,7 @@ inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pret
 [[nodiscard]] constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, int(Value)); }
 [[nodiscard]] constexpr FieldValue ClassID(CLASSID Value) { return FieldValue(FID_ClassID, int(Value)); }
 [[nodiscard]] constexpr FieldValue ClassVersion(double Value) { return FieldValue(FID_ClassVersion, Value); }
-[[nodiscard]] constexpr FieldValue Client(class NetClient *Value) { return FieldValue(FID_Client, Value); }
+[[nodiscard]] constexpr FieldValue Client(struct NetClient *Value) { return FieldValue(FID_Client, Value); }
 [[nodiscard]] constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
 [[nodiscard]] constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, int(Value)); }
 [[nodiscard]] constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, int(Value)); }
