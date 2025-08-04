@@ -225,9 +225,8 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       return;
    }
    
-   if (addr->Type IS IPADDR::V6) {
+   if (addr->Type IS IPADDR::V6) { // Pure IPv6 connection
       #ifdef _WIN32
-         // IPv6 connectivity for Windows
          struct sockaddr_in6 server_address6;
          pf::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
@@ -286,8 +285,8 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       return;
    }
    
-   // IPv4 connection - check if we need IPv4-mapped IPv6 address for dual-stack socket
-   if (Socket->IPV6) {
+   // IPv4 connection to dual-stack socket - use IPv4-mapped IPv6 address
+   if ((Socket->IPV6) and (addr->Type IS IPADDR::V4)) {
       // Use IPv4-mapped IPv6 address for dual-stack socket
       #ifdef __linux__
          struct sockaddr_in6 server_address6;

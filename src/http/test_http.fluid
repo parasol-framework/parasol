@@ -8,22 +8,24 @@ collected too early.
 --]]
 
    require 'common'
+   include 'http'
 
    local glOutFile = 'temp:http-output.txt'
    local glSelf = obj.find('self')
 
 function testGet()
+   local content
    local proc = processing.new({ timeout = 10.0 })
 
    local http = obj.new('http', {
       src        = 'http://www.parasol.ws/index.html',
       method     = 'get',
       outputFile = glOutFile,
-      flags      = '!DEBUG',
+      flags      = HTF_DEBUG_SOCKET,
       connectTimeout = 10,
       stateChanged = function(HTTP, State)
          if (State == HGS_COMPLETED) then
-            local content = file.readAll(glOutFile)
+            content = file.readAll(glOutFile)
             print(string.format('%.80s [80 of %d bytes]', content, content:len()))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
@@ -39,6 +41,7 @@ function testGet()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
    if (http.currentState != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.currentState) end
+   assert(content, 'No content received.')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -50,7 +53,7 @@ function testPostString()
    local http = obj.new('http', {
       src        = 'http://httpbin.org/post',
       method     = 'post',
-      flags      = '!debug|NoHead',
+      flags      = bit.bor(HTF_DEBUG_SOCKET, HTF_NO_HEAD),
       outputFile = glOutFile,
       contentLength = -1,
       outgoing = function(HTTP, BufferSize)
@@ -89,7 +92,7 @@ function testPostStringFile()
       src        = 'http://httpbin.org/post',
       method     = 'post',
       contentType = 'text/plain',
-      flags      = '!debug|NoHead',
+      flags      = bit.bor(HTF_DEBUG_SOCKET, HTF_NO_HEAD),
       inputFile  = 'string:' .. body,
       size       = body:len(),
       stateChanged = function(HTTP, State)
@@ -120,7 +123,7 @@ function testSSLProxy()
       src         = 'https://www.google.co.uk/',
       method      = 'get',
       outputFile  = glOutFile,
-      flags       = '!debug|debugsocket',
+      flags       = HTF_DEBUG_SOCKET,
       proxyserver = 'localhost',
       proxyport   = '8080'
    })
@@ -135,16 +138,17 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function testHTTPS()
+   local content
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
       src        = 'https://www.google.com',
       method     = 'get',
       outputFile = glOutFile,
-      flags      = '!debug',
+      flags      = HTF_DEBUG_SOCKET,
       stateChanged = function(HTTP, State)
          if (State == HGS_COMPLETED) then
-            local content = file.readAll(glOutFile)
+            content = file.readAll(glOutFile)
             print(string.format('%.80s [%d bytes]', content, content:len()))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
@@ -158,6 +162,7 @@ function testHTTPS()
    assert(err == ERR_Okay, 'HTTP activation failed: ' .. mSys.GetErrorMsg(err))
 
    local err = proc.sleep(5.0)
+   assert(content, 'No content received.')
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
 
@@ -166,16 +171,17 @@ end
 -- all be handled in the background.
 
 function testRedirectedHTTPS()
+   local content
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
       src        = 'https://www.google.co.uk',
       method     = 'get',
       outputFile = glOutFile,
-      flags      = '!debug',
+      flags      = HTF_DEBUG_SOCKET,
       stateChanged = function(HTTP, State)
          if (State == HGS_COMPLETED) then
-            local content = file.readAll(glOutFile)
+            content = file.readAll(glOutFile)
             print(string.format('%.80s [%d bytes]', content, content:len()))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
@@ -190,6 +196,7 @@ function testRedirectedHTTPS()
 
    local err = proc.sleep(5.0)
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+   assert(content, 'No content received.')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -200,7 +207,7 @@ function testPHPPost()
    local http = obj.new('http', {
       src        = 'http://parasol.ws/upload.php',
       method     = 'post',
-      flags      = '!debug|debugoutgoing',
+      flags      = bit.bor(HTF_DEBUG_SOCKET, HTF_DEBUG_OUTGOING),
       inputfile  = 'string:file=fred.txt&amp;contentsize=4&amp;content=ABCD',
       outputFile = glOutFile
    })
@@ -216,7 +223,7 @@ function testUploadChunked()
    local http = obj.new('http', {
       src        = 'http://parasol.ws/upload.php',
       method     = 'post',
-      flags      = '!debug|debugoutgoing',
+      flags      = bit.bor(HTF_DEBUG_SOCKET, HTF_DEBUG_OUTGOING),
       inputfile  = glPath .. 'test_http.fluid',
       outputFile = glOutFile
    })
@@ -234,7 +241,7 @@ function testChunks()
       src        = 'http://news.bbc.co.uk',
       method     = 'get',
       outputFile = glOutFile,
-      flags      = '!debug'
+      flags      = HTF_DEBUG_SOCKET
    })
 
    http.acActivate()
@@ -250,7 +257,7 @@ function testDownload()
       src        = 'http://www.parasol.ws/index.html',
       method     = 'get',
       outputFile = glOutFile,
-      flags      = '!debug'
+      flags      = HTF_DEBUG_SOCKET
    })
 
    http.acActivate()
@@ -266,7 +273,7 @@ function testUpload()
       src       = 'http://www.parasol.ws/dav/test-upload',
       method    = 'put',
       inputfile = glinFile,
-      flags     = '!debug'
+      flags     = HTF_DEBUG_SOCKET
    })
 
    http.acActivate()
@@ -283,7 +290,7 @@ function testMultiPart()
       src         = 'http://parasol.ws/tkr/upload.php',
       method      = 'post',
       outputFile  = glOutFile,
-      flags       = '!nohead|debug',
+      flags       = bit.bor(HTF_NO_HEADER, HTF_DEBUG_SOCKET),
       contenttype = 'multipart/form-data; boundary=' .. boundary
    } )
 
@@ -335,10 +342,41 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function testIPV6()
+   local proc = processing.new({ timeout = 10.0 })
+
+   local http = obj.new('http', {
+      src        = 'http://www.v6.facebook.com/',
+      method     = 'get',
+      outputFile = glOutFile,
+      flags      = HTF_DEBUG_SOCKET,
+      connectTimeout = 10,
+      stateChanged = function(HTTP, State)
+         if (State == HGS_COMPLETED) then
+            local content = file.readAll(glOutFile)
+            print(string.format('%.80s [80 of %d bytes]', content, content:len()))
+         end
+         if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
+            proc.signal()
+         end
+      end
+   })
+
+   local err = http.acActivate()
+   assert(err == ERR_Okay, "HTTP object failed to activate.")
+
+   err = proc.sleep()
+   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
+   if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
+   if (http.currentState != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.currentState) end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
    return {
       tests = {
         'testPostString', 'testGet', 'testPostStringFile',
-        'testHTTPS'
+        'testHTTPS', 'testIPV6'
       },
       init = function(Path)
          glPath = Path
