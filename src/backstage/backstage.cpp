@@ -83,7 +83,7 @@ static ERR MODExpunge(void)
 
 //********************************************************************************************************************
 
-void server_feedback(objNetSocket *Socket, class objClientSocket *Client, NTC State) 
+void server_feedback(objNetSocket *Socket, class objClientSocket *Client, NTC State)
 {
    pf::Log log(__FUNCTION__);
    if (State IS NTC::CONNECTED) {
@@ -107,7 +107,7 @@ ERR init_backstage(int Port)
 {
    pf::Log log(__FUNCTION__);
 
-   glServer = objNetSocket::create::global({ 
+   glServer = objNetSocket::create::global({
       fl::Port(Port),
       fl::Flags(NSF::SERVER | NSF::MULTI_CONNECT),
       fl::Feedback((CPTR)server_feedback),

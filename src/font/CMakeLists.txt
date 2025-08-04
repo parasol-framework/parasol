@@ -19,7 +19,7 @@ endif ()
 
 add_library (${MOD})
 
-set_module_defaults (${MOD})
+set_module_defaults (${MOD} "Font")
 
 target_sources (${MOD} PRIVATE "font.cpp" ${FT_SOURCE})
 

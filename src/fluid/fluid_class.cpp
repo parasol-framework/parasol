@@ -376,12 +376,7 @@ static ERR FLUID_Activate(objScript *Self)
 
       if (auto core = objModule::create::global(fl::Name("core"))) {
          SetName(core, "mSys");
-         auto mod = (struct module *)lua_newuserdata(prv->Lua, sizeof(struct module));
-         clearmem(mod, sizeof(struct module));
-         luaL_getmetatable(prv->Lua, "Fluid.mod");
-         lua_setmetatable(prv->Lua, -2);
-         mod->Module = core;
-         core->get(FID_FunctionList, mod->Functions);
+         new_module(prv->Lua, core);
          lua_setglobal(prv->Lua, "mSys");
       }
       else {

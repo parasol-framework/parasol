@@ -304,10 +304,10 @@ endfunction ()
 # --------------------------------------------------------------------------------------------------------------------
 # This is a convenience function that configures the default settings needed for Parasol modules
 
-function (set_module_defaults ARG_TARGET)
+function (set_module_defaults ARG_TARGET ARG_NAMESPACE)
    target_include_directories (${ARG_TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
-   add_compile_definitions ("MOD_NAME=${ARG_TARGET}")
+   add_compile_definitions ("MOD_NAME=${ARG_TARGET}" "MOD_NAMESPACE=${ARG_NAMESPACE}")
 
    if (MSVC)
 

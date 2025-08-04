@@ -86,7 +86,7 @@ static STRUCTS glStructures = {
 #include "../idl.h"
 
 static RootModule glCoreRoot;
-struct ModHeader glCoreHeader(NULL, NULL, NULL, NULL, glIDL, &glStructures, "core");
+struct ModHeader glCoreHeader(nullptr, nullptr, nullptr, nullptr, glIDL, &glStructures, "core", "Sys");
 
 static RootModule * check_resident(extModule *, std::string_view);
 static void free_module(MODHANDLE handle);
@@ -101,15 +101,15 @@ static ERR SET_Name(extModule *, CSTRING);
 static const FieldDef clFlags[] = {
    { "LinkLibrary", MOF::LINK_LIBRARY },
    { "Static",      MOF::STATIC },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray glModuleFields[] = {
    { "FunctionList", FDF_POINTER|FDF_RW },
    { "ModBase",      FDF_POINTER|FDF_R },
    { "Root",         FDF_POINTER|FDF_R },
-   { "Header",       FDF_POINTER|FDF_RI, NULL, SET_Header },
-   { "Flags",        FDF_INT|FDF_RI, NULL, NULL, &clFlags },
+   { "Header",       FDF_POINTER|FDF_RI, nullptr, SET_Header },
+   { "Flags",        FDF_INT|FDF_RI, nullptr, nullptr, &clFlags },
    // Virtual fields
    { "Name",         FDF_STRING|FDF_RI, GET_Name, SET_Name },
    END_FIELD
@@ -123,7 +123,7 @@ static const ActionArray glModuleActions[] = {
    { AC::Free, MODULE_Free },
    { AC::Init, MODULE_Init },
    { AC::NewPlacement, MODULE_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 //********************************************************************************************************************
@@ -259,17 +259,17 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
 
 ERR ROOTMODULE_Free(RootModule *Self)
 {
-   if (Self->Table) Self->Table->Root = NULL; // Remove the DLL's reference to the master.
+   if (Self->Table) Self->Table->Root = nullptr; // Remove the DLL's reference to the master.
 
    // Note that the order in which we perform the following actions is very important.
 
-   if (Self->CoreBase) { FreeResource(Self->CoreBase); Self->CoreBase = NULL; }
+   if (Self->CoreBase) { FreeResource(Self->CoreBase); Self->CoreBase = nullptr; }
 
    // Free the module's segment/code area
 
    if ((!Self->NoUnload) and ((Self->Flags & MHF::STATIC) IS MHF::NIL)) {
       free_module(Self->LibraryBase);
-      Self->LibraryBase = NULL;
+      Self->LibraryBase = nullptr;
    }
 
    if (auto lock = std::unique_lock{glmGeneric, 200ms}) {
@@ -312,10 +312,10 @@ static ERR MODULE_Free(extModule *Self)
    if (Self->Root) {
       if (Self->Root->OpenCount > 0) Self->Root->OpenCount--;
       if (Self->Root->Close)         Self->Root->Close(Self);
-      Self->Root = NULL;
+      Self->Root = nullptr;
    }
 
-   if (Self->prvMBMemory) { FreeResource(Self->prvMBMemory); Self->prvMBMemory = NULL; }
+   if (Self->prvMBMemory) { FreeResource(Self->prvMBMemory); Self->prvMBMemory = nullptr; }
    Self->~extModule();
    return ERR::Okay;
 }
@@ -332,7 +332,7 @@ static ERR MODULE_Init(extModule *Self)
 
    // Check if the module is resident.  If not, we need to load and prepare the module for a shared environment.
 
-   OBJECTPTR context = NULL;
+   OBJECTPTR context = nullptr;
 
    std::string_view name = std::string_view(Self->Name);
    if (auto i = name.find_last_of(":/\\"); i != std::string::npos) {
@@ -346,7 +346,7 @@ static ERR MODULE_Init(extModule *Self)
    log.trace("Finding module %s (%s)", Self->Name.c_str(), name.data());
 
    RootModule *master;
-   struct ModHeader *table = NULL;
+   struct ModHeader *table = nullptr;
    if ((master = check_resident(Self, name))) {
       Self->Root = master;
    }
@@ -401,7 +401,7 @@ static ERR MODULE_Init(extModule *Self)
 
       if (master->Init) {
          #ifdef PARASOL_STATIC
-            error = master->Init(Self, NULL);
+            error = master->Init(Self, nullptr);
          #else
             // Build a Core base for the module to use
             if (auto modkb = (struct CoreBase *)build_jump_table(glFunctions)) {
@@ -421,7 +421,7 @@ static ERR MODULE_Init(extModule *Self)
       }
 
       SetContext(context);
-      context = NULL;
+      context = nullptr;
    }
    else {
       error = log.warning(ERR::NewObject);
@@ -464,7 +464,7 @@ static ERR MODULE_Init(extModule *Self)
    // just in case.
 
    #ifdef _WIN32
-      winSetUnhandledExceptionFilter(NULL);
+      winSetUnhandledExceptionFilter(nullptr);
    #endif
 
    log.trace("Module has been successfully initialised.");
@@ -479,7 +479,7 @@ exit:
       if (root_mod) {
          if (master->Expunge) master->Expunge();
          FreeResource(master);
-         Self->Root = NULL;
+         Self->Root = nullptr;
       }
    }
 
@@ -525,7 +525,7 @@ static ERR MODULE_ResolveSymbol(extModule *Self, struct mod::ResolveSymbol *Args
 
 #ifdef _WIN32
    #ifdef PARASOL_STATIC
-   if ((Args->Address = winGetProcAddress(NULL, Args->Name))) {
+   if ((Args->Address = winGetProcAddress(nullptr, Args->Name))) {
    #else
    if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR::FieldNotSet;
    if ((Args->Address = winGetProcAddress(Self->Root->LibraryBase, Args->Name))) {
@@ -637,7 +637,7 @@ static ERR SET_Name(extModule *Self, CSTRING Name)
 #ifndef PARASOL_STATIC
 APTR build_jump_table(const Function *FList)
 {
-   if (!FList) return NULL;
+   if (!FList) return nullptr;
 
    pf::Log log(__FUNCTION__);
 
@@ -647,13 +647,13 @@ APTR build_jump_table(const Function *FList)
    log.trace("%d functions have been detected in the function list.", size);
 
    void **functions;
-   if (AllocMemory((size+1) * sizeof(APTR), MEM::NO_CLEAR|MEM::UNTRACKED, (APTR *)&functions, NULL) IS ERR::Okay) {
+   if (AllocMemory((size+1) * sizeof(APTR), MEM::NO_CLEAR|MEM::UNTRACKED, (APTR *)&functions, nullptr) IS ERR::Okay) {
       for (LONG i=0; i < size; i++) functions[i] = FList[i].Address;
-      functions[size] = NULL;
+      functions[size] = nullptr;
       return functions;
    }
    else log.warning(ERR::AllocMemory);
-   return NULL;
+   return nullptr;
 }
 #endif
 
@@ -692,7 +692,7 @@ static RootModule * check_resident(extModule *Self, const std::string_view Modul
       }
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -721,11 +721,11 @@ static void free_module(MODHANDLE handle)
 
 //********************************************************************************************************************
 
-static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { NULL, 0 } };
+static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { nullptr, 0 } };
 
 static const MethodEntry glModuleMethods[] = {
    { mod::ResolveSymbol::id, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct mod::ResolveSymbol) },
-   { AC::NIL, NULL, NULL, NULL, 0 }
+   { AC::NIL, nullptr, nullptr, nullptr, 0 }
 };
 
 //********************************************************************************************************************
@@ -738,7 +738,7 @@ static const FieldArray glRootModuleFields[] = {
 static const ActionArray glRootModuleActions[] = {
    { AC::Free, ROOTMODULE_Free },
    { AC::NewPlacement, ROOTMODULE_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 //********************************************************************************************************************

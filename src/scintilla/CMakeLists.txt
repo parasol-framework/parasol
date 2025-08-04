@@ -79,7 +79,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")
 endif ()
 
-set_module_defaults (scintilla)
+set_module_defaults (scintilla "Sci")
 
 target_sources (scintilla PRIVATE ${SOURCE} ${LEXERS})
 

@@ -11,7 +11,7 @@ idl_gen ("defs/hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR
 
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
-set_module_defaults (${MOD})
+set_module_defaults (${MOD} "Doc")
 target_sources (${MOD} PRIVATE "${MOD}.cpp")
 
 # Enable precompiled headers for the document module to speed up compilation

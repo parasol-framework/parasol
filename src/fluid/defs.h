@@ -290,11 +290,16 @@ struct fnumber {
 };
 
 struct module {
-   struct Function *Functions;
-   OBJECTPTR Module;
+   struct Function *Functions = nullptr;
+   OBJECTPTR Module = nullptr;
+   std::unordered_map<uint32_t, int> FunctionMap; // Hash map for O(1) function lookup
+
+   ~module() {
+      if (Module) FreeResource(Module);
+   }
 };
 
-inline ULONG simple_hash(CSTRING String, ULONG Hash = 5381) {
+inline ULONG simple_hash(CSTRING String, uint32_t Hash = 5381) {
    while (auto c = *String++) Hash = ((Hash<<5) + Hash) + c;
    return Hash;
 }
@@ -405,6 +410,7 @@ extern void register_struct_class(lua_State *);
 extern void register_thread_class(lua_State *);
 //static void register_widget_class(lua_State *);
 void release_object(struct object *);
+void new_module(lua_State *, objModule *);
 ERR struct_to_table(lua_State *, std::vector<lua_ref> &, struct struct_record &, CPTR);
 ERR table_to_struct(lua_State *, std::string_view, APTR *);
 ERR keyvalue_to_table(lua_State *, const KEYVALUE *);
